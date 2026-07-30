@@ -169,13 +169,28 @@ export class CatalogSearchService {
     const order = new Map(ids.map((r, index) => [r.id, index]));
     rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 
-    const total = await this.prisma.marketplaceListingProjection.count({ where });
+    // Jumlah harus ikut menghitung kata kuncinya. Menghitung `where` saja
+    // melaporkan "6 produk ditemukan" ketika hanya satu yang cocok — angka
+    // yang salah lebih buruk daripada tidak ada angka, karena pembeli
+    // menyimpulkan ada lima hasil lain yang tidak ditampilkan.
+    const counted = await this.prisma.$queryRaw<{ total: bigint }[]>`
+      SELECT count(*)::bigint AS total
+        FROM platform.marketplace_listing_projection
+       WHERE search_document @@ websearch_to_tsquery('simple', ${term})
+    `;
+    const matched = Number(counted[0]?.total ?? 0);
+
+    // Penyaring lain dapat memangkas lebih jauh, dan itu hanya diketahui dari
+    // baris yang benar-benar terbaca. Yang dilaporkan adalah yang lebih kecil.
+    const total =
+      rows.length < ids.length ? paging.offset + rows.length : Math.max(matched, rows.length);
+
     return {
       items: rows.map(toItem),
       page: paging.page,
       limit: paging.limit,
       total,
-      hasMore: paging.offset + rows.length < total,
+      hasMore: rows.length === paging.limit && paging.offset + rows.length < total,
     };
   }
 
