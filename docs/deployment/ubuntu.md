@@ -501,6 +501,7 @@ membingungkan. Jangan dipasang.
 | `migrate deploy` gagal `permission denied` | pengguna DB tidak berhak `CREATE` | beri hak pada database `ebisnis` |
 | Login selalu `429 Too Many Requests` | rate limit melihat satu IP karena proxy | naikkan `THROTTLE_AUTH_LIMIT` sementara, dan perbaiki pembacaan IP asal |
 | Redirect berputar ke `/ebisnis/` | konfigurasi Apache lama masih aktif | `sudo a2dissite` konfigurasi lama, pastikan hanya `ebisnis.conf` aktif |
+| `a2ensite` menolak: "is a real file, not touching it" | `sites-enabled/ebisnis.conf` berkas biasa hasil salin manual, bukan symlink | `install.sh` mencadangkannya sendiri; manual: `sudo mv /etc/apache2/sites-enabled/ebisnis.conf /etc/apache2/ebisnis.conf.lama.bak && sudo a2ensite ebisnis` |
 
 Bila API gagal start, penyebabnya hampir selalu terbaca pada baris pertama:
 

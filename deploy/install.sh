@@ -330,9 +330,26 @@ if [[ ! -f /etc/ssl/certs/apache-selfsigned.crt ]]; then
     -subj "/C=ID/ST=DKI Jakarta/L=Jakarta/O=eBisnis/CN=ebisnis.id" 2>/dev/null
 fi
 
+# a2ensite menolak bekerja bila sites-enabled memuat berkas biasa, bukan
+# symlink — kondisi yang lazim pada server yang konfigurasinya pernah disalin
+# manual. Berkas lama dicadangkan, tidak dihapus: isinya mungkin masih memuat
+# pengaturan sistem lain yang perlu dirujuk.
+ENABLED=/etc/apache2/sites-enabled/ebisnis.conf
+if [[ -e "$ENABLED" && ! -L "$ENABLED" ]]; then
+  BACKUP_CONF="/etc/apache2/ebisnis.conf.lama-$(date +%Y%m%d-%H%M%S).bak"
+  warn "$ENABLED adalah berkas biasa, bukan symlink (konfigurasi lama)."
+  warn "Dicadangkan ke $BACKUP_CONF lalu diganti symlink ke sites-available."
+  mv "$ENABLED" "$BACKUP_CONF"
+fi
+
 a2ensite ebisnis >/dev/null
 a2dissite 000-default >/dev/null 2>&1 || true
-apache2ctl configtest
+
+if ! apache2ctl configtest; then
+  die "Konfigurasi Apache tidak lolos uji. Apache TIDAK di-reload, sehingga
+konfigurasi yang sedang berjalan tidak terganggu. Perbaiki lebih dahulu,
+lalu jalankan:  sudo apache2ctl configtest && sudo systemctl reload apache2"
+fi
 systemctl reload apache2
 
 if ufw status | grep -q "Status: active"; then
