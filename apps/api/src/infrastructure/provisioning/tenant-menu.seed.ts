@@ -215,8 +215,11 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
   // 23 Pusat Aktivasi Marketplace
   { code: 'MARKETPLACE_ACTIVATION', label: 'Pusat Aktivasi Marketplace', translationKey: 'menu.marketplaceActivation', route: '/app/marketplace/aktivasi', icon: 'rocket', moduleCode: 'MARKETPLACE', sortOrder: 23, actions: ['READ'] },
   { code: 'MARKETPLACE_ENROLLMENT', parentCode: 'MARKETPLACE_ACTIVATION', label: 'Pendaftaran Seller', translationKey: 'menu.marketplaceActivation.enrollment', route: '/app/marketplace/aktivasi', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: ['READ', 'CREATE', 'UPDATE', 'SUBMIT'] },
-  { code: 'MARKETPLACE_READINESS', parentCode: 'MARKETPLACE_ACTIVATION', label: 'Status Kesiapan', translationKey: 'menu.marketplaceActivation.readiness', route: '/app/marketplace/aktivasi/kesiapan', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: ['READ'] },
-  { code: 'MARKETPLACE_GOLIVE', parentCode: 'MARKETPLACE_ACTIVATION', label: 'Checklist Go-Live', translationKey: 'menu.marketplaceActivation.goLive', route: '/app/marketplace/aktivasi/go-live', moduleCode: 'MARKETPLACE', sortOrder: 3, actions: ['READ', 'REVIEW', 'APPROVE'] },
+  // Kesiapan dan checklist go-live saat ini disajikan pada halaman aktivasi.
+  // Ditandai comingSoon sampai keduanya punya halaman tersendiri, supaya menu
+  // tidak mengarah ke route yang belum ada.
+  { code: 'MARKETPLACE_READINESS', parentCode: 'MARKETPLACE_ACTIVATION', label: 'Status Kesiapan', translationKey: 'menu.marketplaceActivation.readiness', route: '/app/marketplace/aktivasi/kesiapan', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: ['READ'], comingSoon: true },
+  { code: 'MARKETPLACE_GOLIVE', parentCode: 'MARKETPLACE_ACTIVATION', label: 'Checklist Go-Live', translationKey: 'menu.marketplaceActivation.goLive', route: '/app/marketplace/aktivasi/go-live', moduleCode: 'MARKETPLACE', sortOrder: 3, actions: ['READ', 'REVIEW', 'APPROVE'], comingSoon: true },
   { code: 'ESMARTLINK_ACCOUNT', parentCode: 'MARKETPLACE_ACTIVATION', label: 'Akun eSmartlink', translationKey: 'menu.marketplaceActivation.esmartlink', route: '/app/marketplace/aktivasi/esmartlink', moduleCode: 'MARKETPLACE', sortOrder: 4, actions: ['READ', 'CREATE', 'MANAGE_CREDENTIAL'], comingSoon: true },
 
   // 24 Pengaturan Toko Online
