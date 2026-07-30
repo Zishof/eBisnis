@@ -187,6 +187,61 @@ Yang benar:
 fi
 echo "    Konfigurasi dapat dibaca oleh $APP_USER."
 
+# Tolak nilai contoh yang belum diganti. Tanpa pemeriksaan ini, kesalahannya
+# baru muncul pada tahap migration sebagai "Can't reach database server at
+# HOST:5434" — pesan yang membingungkan karena 'HOST' terlihat seperti nama
+# host sungguhan.
+get_env() { grep -E "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2-; }
+PROBLEMS=()
+
+for key in DATABASE_URL DIRECT_DATABASE_URL DATABASE_ADMIN_URL; do
+  val=$(get_env "$key")
+  [[ -z "$val" ]] && { PROBLEMS+=("$key kosong"); continue; }
+  [[ "$val" == *"USER:PASSWORD"* ]] && PROBLEMS+=("$key masih memakai USER:PASSWORD")
+  [[ "$val" == *"@HOST:"*        ]] && PROBLEMS+=("$key masih memakai HOST sebagai alamat server")
+done
+
+for key in JWT_ACCESS_SECRET JWT_REFRESH_SECRET; do
+  val=$(get_env "$key")
+  if [[ -z "$val" ]]; then
+    PROBLEMS+=("$key kosong — hasilkan dengan: openssl rand -base64 48")
+  elif [[ ${#val} -lt 32 ]]; then
+    PROBLEMS+=("$key kurang dari 32 karakter")
+  elif [[ "$val" == change-this-* ]]; then
+    PROBLEMS+=("$key masih memakai nilai contoh")
+  fi
+done
+
+if [[ "$(get_env JWT_ACCESS_SECRET)" == "$(get_env JWT_REFRESH_SECRET)" ]]; then
+  PROBLEMS+=("JWT_ACCESS_SECRET dan JWT_REFRESH_SECRET tidak boleh sama")
+fi
+
+if [[ ${#PROBLEMS[@]} -gt 0 ]]; then
+  printf 'Konfigurasi pada %s belum lengkap:\n\n' "$ENV_FILE" >&2
+  printf '  - %s\n' "${PROBLEMS[@]}" >&2
+  die "
+Perbaiki dengan:  sudo nano $ENV_FILE
+lalu jalankan ulang skrip ini."
+fi
+
+[[ -z "$(get_env BOOTSTRAP_SUPER_ADMIN_PASSWORD)" ]] && \
+  warn "BOOTSTRAP_SUPER_ADMIN_PASSWORD kosong — super admin tidak akan dibuat pada seed."
+
+# Uji koneksi database selagi masih murah. Kegagalan di sini jauh lebih mudah
+# dipahami daripada kegagalan migration beberapa langkah kemudian.
+if [[ -n "$PSQL" ]]; then
+  if ! sudo -u "$APP_USER" "$PSQL" "$(get_env DATABASE_ADMIN_URL)" -tAc "SELECT 1" >/dev/null 2>&1; then
+    die "Tidak dapat terhubung ke database memakai DATABASE_ADMIN_URL.
+
+Uji manual untuk melihat pesan aslinya:
+    psql \"\$(sudo grep -E '^DATABASE_ADMIN_URL=' $ENV_FILE | cut -d= -f2-)\" -c 'SELECT 1'
+
+Periksa: alamat dan port benar, server menerima koneksi dari mesin ini,
+kredensial benar, dan kata sandi ter-URL-encode bila memuat karakter khusus."
+  fi
+  echo "    Koneksi database berhasil."
+fi
+
 # ---------------------------------------------------------------------------
 log "6/10  Ambil source dari GitHub"
 # ---------------------------------------------------------------------------
