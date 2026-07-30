@@ -731,3 +731,35 @@ enum SupportTicketPriority {
 
   @@schema("platform")
 }
+
+// --- Versi 9: storefront dan domain -----------------------------------------
+
+enum MarketplaceDomainType {
+  /// Sub-jalur pada marketplace: belanja.ebisnis.id/toko/<slug>.
+  MARKETPLACE_PATH
+  /// Subdomain yang diterbitkan platform.
+  PLATFORM_SUBDOMAIN
+  /// Domain milik tenant sendiri.
+  CUSTOM
+
+  @@schema("platform")
+}
+
+enum MarketplaceDomainStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  ACTIVE
+  FAILED
+  REVOKED
+
+  @@schema("platform")
+}
+
+enum MarketplaceDomainVerificationMethod {
+  /// TXT record pada _ebisnis-verify.<host>.
+  DNS_TXT
+  /// Berkas pada https://<host>/.well-known/ebisnis-verification.txt
+  HTTP_FILE
+
+  @@schema("platform")
+}

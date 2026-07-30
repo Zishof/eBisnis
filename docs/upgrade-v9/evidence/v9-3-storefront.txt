@@ -1,0 +1,16 @@
+Tenant A: DEMO (demo) -> uji-a-1785448830413.example  [terverifikasi]
+Tenant B: JONI_UTAMA_X2LVGD (joni_utama_x2lvgd) -> uji-b-1785448830413.example  [BELUM terverifikasi]
+
+LULUS  domain terverifikasi dilayani  — status 200
+LULUS  menghasilkan toko yang benar  — Uji Toko 0
+LULUS  mode SINGLE_STORE  — SINGLE_STORE
+LULUS  nama schema TIDAK dikirim ke pengunjung  — ["mode","host","canonicalHost","storeId","storeSlug","storeName"]
+LULUS  domain belum terverifikasi DITOLAK  — status 404
+LULUS  penolakan tidak menyebut alasan sebenarnya
+LULUS  domain tenant A tidak menghasilkan toko tenant B
+LULUS  bentuk host berbeda menghasilkan toko yang sama  — 200,200,200
+LULUS  toko dengan seller ditangguhkan ditolak  — status 404
+
+objek uji dibersihkan.
+
+SELURUH PEMERIKSAAN LULUS

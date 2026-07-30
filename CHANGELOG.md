@@ -22,6 +22,10 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   baris**, bukan seluruhnya.
 - Penugasan batas data kini per orang, bukan per role, sehingga dua kepala
   gudang dapat memegang gudang yang berbeda.
+- **Alamat yang tidak terdaftar ditolak, bukan diarahkan ke toko bawaan.**
+  Setiap kesalahan DNS yang mengarah ke platform akan menampilkan halaman tidak
+  ditemukan, bukan katalog milik tenant lain. Alasan penolakan dicatat untuk
+  penyelidikan tetapi tidak dikembalikan kepada pengunjung.
 - **Kredensial penyedia pembayaran tidak pernah melewati catatan tiket.**
   Formulir khusus yang menuntut verifikasi ulang identitas adalah satu-satunya
   jalan masuk; tiket hanya mencatat bahwa kredensial sudah diisi. Balasan tiket
@@ -33,6 +37,13 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   pesanan.
 
 ### Added
+
+- **Toko online dengan alamat sendiri.** Tenant dapat membuat toko pada
+  marketplace dan menghubungkannya ke domain miliknya. Domain baru dilayani
+  setelah kepemilikannya terbukti lewat TXT record atau berkas verifikasi —
+  mendaftarkan domain orang lain tidak cukup untuk menerima lalu lintasnya.
+- Alamat kanonik otomatis menunjuk domain utama, sehingga mesin pencari tidak
+  melihat katalog yang sama pada beberapa alamat.
 
 - **Aktivasi pembayaran online.** Tenant dapat meminta aktivasi akun eSmartlink
   langsung dari Pusat Aktivasi; sistem membuka tiket dukungan dan menautkannya.

@@ -46,6 +46,11 @@ export const appConfig = () => ({
    * dipakai untuk penyandian baru. Kunci lama tetap dipasang agar data yang
    * dibuat dengannya masih dapat dibuka setelah rotasi.
    */
+  /** Marketplace publik Versi 9. */
+  marketplace: {
+    publicHost: process.env.MARKETPLACE_PUBLIC_HOST ?? 'belanja.ebisnis.id',
+  },
+
   credential: {
     encryptionKeys: process.env.CREDENTIAL_ENCRYPTION_KEYS ?? '',
     activeKeyId: process.env.CREDENTIAL_ENCRYPTION_ACTIVE_KEY ?? '',
