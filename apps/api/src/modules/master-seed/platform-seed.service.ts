@@ -51,9 +51,29 @@ export class PlatformSeedService {
     summary.paymentChannels = await this.seedPaymentProvider();
     summary.migrationCatalog = await this.seedMigrationCatalog();
     summary.settings = await this.seedSettings();
+    summary.marketplacePrograms = await this.seedMarketplaceProgram();
     const cms = await this.cmsSeed.seedAll();
     Object.assign(summary, cms);
     return { summary };
+  }
+
+  /**
+   * Program marketplace bawaan. Satu baris; dibuat sebagai data agar batas
+   * seperti jumlah gambar minimum dapat diubah tanpa rilis kode.
+   */
+  private async seedMarketplaceProgram(): Promise<number> {
+    const host = process.env.MARKETPLACE_PUBLIC_HOST ?? 'belanja.ebisnis.id';
+    await this.prisma.marketplaceProgram.upsert({
+      where: { code: 'EBISNIS_MARKETPLACE' },
+      update: {},
+      create: {
+        code: 'EBISNIS_MARKETPLACE',
+        name: 'Marketplace eBisnis',
+        publicHost: host,
+        description: 'Marketplace publik yang menampilkan listing seluruh seller aktif.',
+      },
+    });
+    return 1;
   }
 
   // -------------------------------------------------------------------------

@@ -131,6 +131,7 @@ model Tenant {
   quotes            PricingQuote[]
   discountRedemptions DiscountRedemption[]
   discountEligibility DiscountTenantEligibility[]
+  marketplaceSellers  MarketplaceSeller[]
 
   @@unique([code])
   @@unique([slug])

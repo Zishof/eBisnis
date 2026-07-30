@@ -10,10 +10,17 @@
  * dan bukan daftar menu.
  */
 
-/** Kode profil hak aksi. */
+/**
+ * Kode profil hak aksi.
+ *
+ * P0–P12 adalah profil umum Versi 8. M1–M8 adalah profil khusus marketplace
+ * Versi 9, ditambahkan pada berkas yang sama dan bukan berkas kedua, supaya
+ * mesin penurunan izinnya tetap satu.
+ */
 export type ProfileCode =
   | 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6'
-  | 'P7' | 'P8' | 'P9' | 'P10' | 'P11' | 'P12';
+  | 'P7' | 'P8' | 'P9' | 'P10' | 'P11' | 'P12'
+  | 'M1' | 'M2' | 'M3' | 'M4' | 'M5' | 'M6' | 'M7' | 'M8' | 'M9';
 
 /**
  * Tingkat pembatasan data. Menentukan baris mana yang terlihat, bukan tombol
@@ -26,7 +33,10 @@ export type DataScopeCode =
   | 'BRAND'           // brand yang ditugaskan
   | 'OUTLET'          // outlet yang ditugaskan
   | 'OUTLET_TERMINAL' // outlet + terminal + shift, khusus kasir
+  | 'STORE'           // toko online yang ditugaskan (Versi 9)
   | 'WAREHOUSE'       // gudang yang ditugaskan
+  | 'FULFILLMENT_LOCATION' // lokasi pemenuhan pesanan online (Versi 9)
+  | 'PAYMENT_PROVIDER_ACCOUNT' // akun provider pembayaran tertentu (Versi 9)
   | 'DEPARTMENT'      // unit kerja
   | 'TEAM'            // bawahan langsung
   | 'SELF'            // hanya data milik sendiri
@@ -75,6 +85,73 @@ const EXECUTIVE = [
 
 const SERVICE_ACCOUNT = ['READ', 'CREATE', 'UPDATE'] as const;
 
+// --- Profil marketplace Versi 9 ------------------------------------------
+
+const MP_VIEWER = ['READ', 'PRINT', 'EXPORT'] as const;
+
+const MP_OPERATOR = [...MP_VIEWER, 'CREATE', 'UPDATE'] as const;
+
+const MP_BULK = [...MP_OPERATOR, 'DELETE', 'RESTORE', 'IMPORT'] as const;
+
+/**
+ * Operator fulfillment. Sengaja TIDAK memiliki UPDATE: blueprint menyatakan
+ * "Packer tidak mengubah harga atau kuantitas order" dan "Picker tidak membuat
+ * stock adjustment". Ditegakkan lewat profil, bukan lewat aturan pemisahan
+ * tugas — sebab tidak ada dua role yang bertabrakan di sini, yang ada adalah
+ * batas hak di dalam satu role.
+ */
+const MP_FULFILLMENT = ['READ', 'PRINT', 'PICK', 'PACK', 'SHIP', 'ASSIGN'] as const;
+
+/**
+ * Layanan pelanggan. Boleh membuat permintaan retur, tetapi TIDAK memiliki
+ * REFUND_APPROVE maupun MANAGE_CREDENTIAL — keduanya disebut eksplisit pada
+ * blueprint sebagai yang tidak boleh dipegang layanan pelanggan.
+ */
+const MP_CUSTOMER_SERVICE = ['READ', 'PRINT', 'CREATE', 'UPDATE'] as const;
+
+const MP_SUPERVISOR = [
+  ...MP_BULK,
+  'PICK', 'PACK', 'SHIP', 'DELIVER', 'ASSIGN',
+  'SUBMIT', 'REVIEW', 'CANCEL', 'RETURN_APPROVE',
+] as const;
+
+/**
+ * Manajer atau administrator seller. Blueprint menyatakan ia memegang seluruh
+ * operasi tenant marketplace "kecuali credential penuh dan platform
+ * moderation", sehingga MANAGE_CREDENTIAL tidak termasuk — hak itu terpisah
+ * pada ADMIN_ESMARTLINK_TENANT yang menuntut step-up.
+ */
+const MP_SELLER_ADMIN = [
+  ...MP_SUPERVISOR,
+  'APPROVE', 'REJECT', 'PUBLISH', 'UNPUBLISH', 'MODERATE',
+  'RESERVE', 'RELEASE', 'VIEW_AMOUNT', 'VIEW_COST',
+] as const;
+
+/**
+ * Platform marketplace. Menambah moderasi lintas seller, rekonsiliasi, dan
+ * pembacaan audit. HARD_DELETE tetap tidak termasuk, sejalan dengan keputusan
+ * P8 pada Versi 8: penghapusan permanen adalah hak tersendiri.
+ */
+const MP_PLATFORM = [
+  ...MP_SELLER_ADMIN,
+  'RECONCILE', 'AUDIT_READ', 'VIEW_PROFIT', 'REFUND_APPROVE', 'POST',
+] as const;
+
+/**
+ * Pemegang credential provider pembayaran.
+ *
+ * Blueprint Versi 9 bertentangan dengan dirinya sendiri pada titik ini: M7
+ * didefinisikan sebagai seluruh operasi seller "kecuali credential penuh",
+ * tetapi ADMIN_ESMARTLINK_TENANT — yang seluruh alasan keberadaannya adalah
+ * mengelola credential — didaftarkan sebagai M7. Salah satu harus mengalah.
+ *
+ * Yang dipertahankan adalah pengecualian pada M7, sebab ia melindungi role yang
+ * jauh lebih banyak dipakai (ADMIN_TOKO_ONLINE). Hak credential dipisahkan ke
+ * profil tersendiri ini, dan hanya berlaku pada modul aktivasi. Aksinya sendiri
+ * menuntut step-up.
+ */
+const MP_CREDENTIAL = [...MP_SELLER_ADMIN, 'MANAGE_CREDENTIAL'] as const;
+
 /**
  * Aksi yang diberikan tiap profil.
  *
@@ -97,6 +174,15 @@ export const PROFILE_ACTIONS: Record<ProfileCode, readonly string[]> = {
   P10: SELF_SERVICE,
   P11: EXECUTIVE,
   P12: SERVICE_ACCOUNT,
+  M1: MP_VIEWER,
+  M2: MP_OPERATOR,
+  M3: MP_BULK,
+  M4: MP_FULFILLMENT,
+  M5: MP_CUSTOMER_SERVICE,
+  M6: MP_SUPERVISOR,
+  M7: MP_SELLER_ADMIN,
+  M8: MP_PLATFORM,
+  M9: MP_CREDENTIAL,
 };
 
 export const PROFILE_LABELS: Record<ProfileCode, string> = {
@@ -113,6 +199,15 @@ export const PROFILE_LABELS: Record<ProfileCode, string> = {
   P10: 'Layanan Mandiri',
   P11: 'Eksekutif/Investor',
   P12: 'Perangkat/Service Account',
+  M1: 'Viewer Marketplace',
+  M2: 'Operator Katalog/Pesanan',
+  M3: 'Operator Bulk',
+  M4: 'Operator Fulfillment',
+  M5: 'Layanan Pelanggan',
+  M6: 'Supervisor Marketplace',
+  M7: 'Manajer/Admin Seller',
+  M8: 'Platform Marketplace',
+  M9: 'Pemegang Credential Pembayaran',
 };
 
 /**

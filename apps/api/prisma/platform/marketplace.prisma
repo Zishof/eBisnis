@@ -1,0 +1,230 @@
+// eBisnis.id Versi 9 — Fondasi marketplace pada control plane.
+//
+// Penempatan mengikuti docs/upgrade-v9/03-marketplace-domain-model-map.md:
+// pendaftaran seller dan persetujuannya adalah urusan platform, sedangkan
+// katalog, pesanan, dan operasi gudang tetap kanonik di schema tenant.
+//
+// Larangan yang berlaku di sini: jangan menyimpan credential provider pada
+// model mana pun di berkas ini. Credential adalah pekerjaan V9-2 dan memakai
+// penyimpanan terenkripsi tersendiri.
+
+/// Program marketplace. Satu baris untuk `belanja.ebisnis.id`; dibuat sebagai
+/// model, bukan konstanta, agar kebijakan dan fee dapat berversi tanpa rilis.
+model MarketplaceProgram {
+  id             String  @id @default(uuid()) @db.Uuid
+  code           String  @db.VarChar(48)
+  name           String  @db.VarChar(160)
+  publicHost     String  @map("public_host") @db.VarChar(255)
+  storePathPrefix String @default("toko") @map("store_path_prefix") @db.VarChar(48)
+  description    String? @db.Text
+
+  /// Persyaratan yang harus dipenuhi seller sebelum dapat menerima pesanan.
+  /// Disimpan sebagai kebijakan, bukan ditanam di kode, karena syaratnya berbeda
+  /// antar-kategori dan berubah tanpa perlu rilis.
+  requiresPaymentAccount Boolean @default(true) @map("requires_payment_account")
+  requiresStoreProfile   Boolean @default(true) @map("requires_store_profile")
+  requiresShippingOrigin Boolean @default(true) @map("requires_shipping_origin")
+  requiresReturnPolicy   Boolean @default(true) @map("requires_return_policy")
+  minimumListingImages   Int     @default(3) @map("minimum_listing_images")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(true) @map("is_system")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version       Int       @default(1)
+
+  sellers MarketplaceSeller[]
+
+  @@unique([code])
+  @@index([isActive, deletedAt])
+  @@map("marketplace_program")
+  @@schema("platform")
+}
+
+/// Seller adalah satu tenant yang mengikuti program marketplace.
+/// Satu tenant hanya dapat menjadi satu seller pada satu program.
+model MarketplaceSeller {
+  id        String @id @default(uuid()) @db.Uuid
+  programId String @map("program_id") @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  sellerCode String @map("seller_code") @db.VarChar(48)
+
+  status         MarketplaceSellerStatus @default(PROSPECT)
+  sellerType     String  @default("BUSINESS") @map("seller_type") @db.VarChar(32)
+  displayName    String  @map("display_name") @db.VarChar(160)
+  supportEmail   String? @map("support_email") @db.VarChar(255)
+  supportPhone   String? @map("support_phone") @db.VarChar(48)
+
+  /// Diisi saat platform menyetujui, bukan saat tenant mengajukan.
+  approvedAt     DateTime? @map("approved_at") @db.Timestamptz(6)
+  approvedBy     String?   @map("approved_by") @db.Uuid
+  suspendedAt    DateTime? @map("suspended_at") @db.Timestamptz(6)
+  suspendedBy    String?   @map("suspended_by") @db.Uuid
+  suspendReason  String?   @map("suspend_reason") @db.Text
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  program     MarketplaceProgram             @relation(fields: [programId], references: [id], onDelete: Restrict)
+  tenant      Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  enrollments MarketplaceSellerEnrollment[]
+  stores      MarketplaceStore[]
+
+  @@unique([programId, tenantId])
+  @@unique([sellerCode])
+  @@index([status, deletedAt])
+  @@index([tenantId])
+  @@map("marketplace_seller")
+  @@schema("platform")
+}
+
+/// Satu berkas pendaftaran. Seller dapat mendaftar ulang setelah ditolak,
+/// sehingga riwayat pengajuan sebelumnya tetap utuh.
+model MarketplaceSellerEnrollment {
+  id       String @id @default(uuid()) @db.Uuid
+  sellerId String @map("seller_id") @db.Uuid
+
+  status         MarketplaceEnrollmentStatus @default(DRAFT)
+  submittedAt    DateTime? @map("submitted_at") @db.Timestamptz(6)
+  submittedBy    String?   @map("submitted_by") @db.Uuid
+  decidedAt      DateTime? @map("decided_at") @db.Timestamptz(6)
+  decidedBy      String?   @map("decided_by") @db.Uuid
+  decisionNote   String?   @map("decision_note") @db.Text
+
+  /// Hasil pemeriksaan kesiapan terakhir. Disimpan agar tenant melihat alasan
+  /// penolakan yang sama dengan yang dilihat admin, bukan pesan umum.
+  readinessSnapshot Json? @map("readiness_snapshot")
+  readinessCheckedAt DateTime? @map("readiness_checked_at") @db.Timestamptz(6)
+
+  metadata     Json?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy    String?   @map("created_by") @db.Uuid
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy    String?   @map("updated_by") @db.Uuid
+  version      Int       @default(1)
+
+  seller      MarketplaceSeller                    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  transitions MarketplaceEnrollmentTransition[]
+
+  @@index([sellerId, createdAt])
+  @@index([status])
+  @@map("marketplace_seller_enrollment")
+  @@schema("platform")
+}
+
+/// Riwayat perpindahan status pendaftaran.
+///
+/// Dicatat terpisah, bukan sebagai kolom pada enrollment, karena pertanyaan
+/// "kapan berkas ini menunggu provider, dan berapa lama" tidak dapat dijawab
+/// oleh satu kolom status yang selalu ditimpa.
+model MarketplaceEnrollmentTransition {
+  id           String @id @default(uuid()) @db.Uuid
+  enrollmentId String @map("enrollment_id") @db.Uuid
+
+  fromStatus MarketplaceEnrollmentStatus? @map("from_status")
+  toStatus   MarketplaceEnrollmentStatus  @map("to_status")
+  reason     String?  @db.Text
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actorId    String?  @map("actor_id") @db.Uuid
+  requestId  String?  @map("request_id") @db.VarChar(64)
+
+  enrollment MarketplaceSellerEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId, occurredAt])
+  @@map("marketplace_enrollment_transition")
+  @@schema("platform")
+}
+
+/// Toko pada marketplace. Ini adalah sisi platform: slug, verifikasi, dan
+/// status suspensi. Profil, tema, dan halaman toko tinggal di schema tenant
+/// sebagai `online_store` (V9-3).
+model MarketplaceStore {
+  id       String @id @default(uuid()) @db.Uuid
+  sellerId String @map("seller_id") @db.Uuid
+
+  storeSlug   String @map("store_slug") @db.VarChar(96)
+  storeName   String @map("store_name") @db.VarChar(160)
+  tagline     String? @db.VarChar(255)
+  description String? @db.Text
+
+  status MarketplaceStoreStatus @default(DRAFT)
+
+  /// Verifikasi toko oleh platform. Tanpa ini toko tetap dapat menyiapkan
+  /// listing tetapi tidak tampil pada marketplace publik.
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
+  verifiedBy String?   @map("verified_by") @db.Uuid
+
+  suspendedAt   DateTime? @map("suspended_at") @db.Timestamptz(6)
+  suspendedBy   String?   @map("suspended_by") @db.Uuid
+  suspendReason String?   @map("suspend_reason") @db.Text
+
+  /// Alamat asal pengiriman dan alamat retur disimpan sebagai referensi ke
+  /// alamat pada schema tenant. Tidak disalin, agar tidak ada dua kebenaran.
+  shippingOriginRef String? @map("shipping_origin_ref") @db.Uuid
+  returnAddressRef  String? @map("return_address_ref") @db.Uuid
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version       Int       @default(1)
+
+  seller   MarketplaceSeller       @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  policies MarketplaceStorePolicy[]
+
+  @@unique([storeSlug])
+  @@index([sellerId, status])
+  @@index([status, verifiedAt])
+  @@map("marketplace_store")
+  @@schema("platform")
+}
+
+/// Kebijakan toko berversi: pengiriman, retur, garansi, privasi.
+///
+/// Berversi karena pembeli berhak melihat kebijakan yang berlaku SAAT ia
+/// memesan, bukan kebijakan terbaru. Pesanan menunjuk versi kebijakan.
+model MarketplaceStorePolicy {
+  id      String @id @default(uuid()) @db.Uuid
+  storeId String @map("store_id") @db.Uuid
+
+  policyType MarketplaceStorePolicyType @map("policy_type")
+  version    Int                        @default(1)
+  title      String                     @db.VarChar(160)
+  bodyHtml   String                     @map("body_html") @db.Text
+
+  effectiveFrom DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo   DateTime? @map("effective_to") @db.Timestamptz(6)
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  publishedBy   String?   @map("published_by") @db.Uuid
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  store MarketplaceStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, policyType, version])
+  @@index([storeId, policyType, publishedAt])
+  @@map("marketplace_store_policy")
+  @@schema("platform")
+}

@@ -24,6 +24,7 @@ import {
   AuthenticatedUser,
   BlockDemo,
   CurrentUser,
+  Permissions,
   PlatformPermissions,
   Public,
   RequireStepUp,
@@ -105,6 +106,7 @@ export class PaymentController {
   @ApiBearerAuth('access-token')
   @BlockDemo()
   @Post('billing/invoices/:id/payment-orders')
+  @Permissions('SUBSCRIPTION_INVOICE.READ', 'SUBSCRIPTION_CHECKOUT.CREATE')
   @HttpCode(201)
   @ApiOperation({ summary: 'Membuat payment order Esmartlink untuk sebuah invoice' })
   createOrder(
@@ -123,6 +125,7 @@ export class PaymentController {
   @ApiBearerAuth('access-token')
   @BlockDemo()
   @Post('payments/esmartlink/orders')
+  @Permissions('SUBSCRIPTION_CHECKOUT.CREATE')
   @HttpCode(201)
   @ApiOperation({ summary: 'Membuat payment order Esmartlink' })
   createOrderDirect(@Body() dto: CreatePaymentOrderDto, @CurrentUser() user: AuthenticatedUser) {
@@ -132,6 +135,7 @@ export class PaymentController {
   @ApiBearerAuth('access-token')
   @BlockDemo()
   @Post('billing/payment-orders/:id/check-payment')
+  @Permissions('SUBSCRIPTION_INVOICE.READ')
   @HttpCode(200)
   @ApiOperation({
     summary: 'Cek pembayaran satu payment order melalui inquiry provider',
@@ -146,6 +150,7 @@ export class PaymentController {
 
   @ApiBearerAuth('access-token')
   @Get('payments/orders/:id')
+  @Permissions('SUBSCRIPTION_INVOICE.READ')
   @ApiOperation({ summary: 'Detail payment order' })
   async getOrder(@Param('id') orderId: string, @CurrentUser() user: AuthenticatedUser) {
     const order = await this.prisma.paymentOrder.findUnique({

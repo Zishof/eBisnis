@@ -88,6 +88,43 @@ const SOD_RULE_META: Record<string, { name: string; description: string; severit
     description: 'Satu orang yang menagih sekaligus menerima uang dapat menahan setoran tanpa terlihat.',
     severity: 'CRITICAL',
   },
+
+  // --- Versi 9: marketplace ------------------------------------------------
+  LISTING_PUBLISH: {
+    name: 'Pembuat listing bukan penyetujunya',
+    description: 'Listing yang dibuat dan diterbitkan orang yang sama menghapus tinjauan sebelum produk tampil ke publik.',
+    severity: 'HIGH',
+  },
+  MARKETPLACE_REFUND: {
+    name: 'Pemohon refund bukan penyetujunya',
+    description: 'Refund memindahkan uang keluar; pemohon dan penyetujunya harus dua orang berbeda.',
+    severity: 'CRITICAL',
+  },
+  PAYMENT_RECONCILE: {
+    name: 'Operator pesanan bukan petugas rekonsiliasi',
+    description: 'Satu orang yang memproses pesanan sekaligus merekonsiliasi pembayarannya dapat menutupi selisih.',
+    severity: 'HIGH',
+  },
+  ESMARTLINK_CREDENTIAL: {
+    name: 'Petugas aktivasi bukan pemegang credential',
+    description: 'Yang mengurus aktivasi tidak boleh membaca credential setelah tersimpan.',
+    severity: 'CRITICAL',
+  },
+  MODERATION_CONFLICT: {
+    name: 'Moderator tidak memoderasi tenant sendiri',
+    description: 'Moderator yang juga seller pada kasus yang ditanganinya berada dalam benturan kepentingan.',
+    severity: 'HIGH',
+  },
+  DISPUTE_CONFLICT: {
+    name: 'Petugas sengketa tidak memutus kasus buatannya',
+    description: 'Pembuat dan pemutus sengketa harus dua pihak berbeda agar keputusannya dapat dipercaya.',
+    severity: 'HIGH',
+  },
+  FEE_APPROVAL: {
+    name: 'Pembuat aturan fee bukan penyetujunya',
+    description: 'Aturan fee yang aktif di atas ambang menuntut persetujuan pihak lain.',
+    severity: 'MEDIUM',
+  },
 };
 
 /**

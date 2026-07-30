@@ -31,6 +31,7 @@ import { TenantConnectionService } from '../../infrastructure/database/tenant-co
 import { MASTER_RESOURCES, MASTER_RESOURCE_PATTERN } from './master-resource.registry';
 import { BaseQueryDto } from '../../common/dto/base-query.dto';
 import {
+  AuthenticatedOnly,
   AuthenticatedUser,
   BlockDemo,
   CurrentUser,
@@ -38,6 +39,7 @@ import {
   RequestContext,
   RequestMeta,
   RequireStepUp,
+  ResourcePermission,
 } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 
@@ -425,6 +427,7 @@ export class MasterController {
   constructor(private readonly lifecycle: MasterLifecycleService) {}
 
   @Get('master-resources')
+  @AuthenticatedOnly()
   @ApiOperation({ summary: 'Daftar resource master yang tersedia beserta kebijakan purge' })
   listResources() {
     return MASTER_RESOURCES.map((resource) => ({
@@ -440,6 +443,7 @@ export class MasterController {
   }
 
   @Get(`:resource(${MASTER_RESOURCE_PATTERN})`)
+  @ResourcePermission('READ')
   @ApiOperation({ summary: 'Daftar record master dengan pencarian, filter, sorting, dan pagination' })
   list(
     @Param('resource') resource: string,
@@ -451,6 +455,7 @@ export class MasterController {
   }
 
   @Get(`:resource(${MASTER_RESOURCE_PATTERN})/:id`)
+  @ResourcePermission('READ')
   @ApiOperation({ summary: 'Detail satu record master' })
   findOne(
     @Param('resource') resource: string,
@@ -462,6 +467,7 @@ export class MasterController {
   }
 
   @Post(`:resource(${MASTER_RESOURCE_PATTERN})`)
+  @ResourcePermission('CREATE')
   @HttpCode(201)
   @BlockDemo()
   @ApiOperation({ summary: 'Membuat record master' })
@@ -475,6 +481,7 @@ export class MasterController {
   }
 
   @Patch(`:resource(${MASTER_RESOURCE_PATTERN})/:id`)
+  @ResourcePermission('UPDATE')
   @BlockDemo()
   @ApiOperation({ summary: 'Mengubah record master (optimistic version opsional)' })
   update(
@@ -489,6 +496,7 @@ export class MasterController {
   }
 
   @Post(`:resource(${MASTER_RESOURCE_PATTERN})/:id/deactivate`)
+  @ResourcePermission('UPDATE')
   @HttpCode(200)
   @BlockDemo()
   @ApiOperation({ summary: 'Menonaktifkan record (isActive = false)' })
@@ -503,6 +511,7 @@ export class MasterController {
   }
 
   @Post(`:resource(${MASTER_RESOURCE_PATTERN})/:id/activate`)
+  @ResourcePermission('UPDATE')
   @HttpCode(200)
   @BlockDemo()
   @ApiOperation({ summary: 'Mengaktifkan kembali record' })
@@ -516,6 +525,7 @@ export class MasterController {
   }
 
   @Delete(`:resource(${MASTER_RESOURCE_PATTERN})/:id`)
+  @ResourcePermission('DELETE')
   @BlockDemo()
   @ApiOperation({ summary: 'Soft delete — audit dan referensi tetap terjaga' })
   softDelete(
@@ -529,6 +539,7 @@ export class MasterController {
   }
 
   @Post(`:resource(${MASTER_RESOURCE_PATTERN})/:id/restore`)
+  @ResourcePermission('RESTORE')
   @HttpCode(200)
   @BlockDemo()
   @ApiOperation({ summary: 'Memulihkan record yang di-soft-delete' })
@@ -542,6 +553,7 @@ export class MasterController {
   }
 
   @Get(`:resource(${MASTER_RESOURCE_PATTERN})/:id/references`)
+  @ResourcePermission('READ')
   @ApiOperation({ summary: 'Laporan referensi record — dipakai sebelum purge' })
   references(
     @Param('resource') resource: string,
@@ -572,6 +584,7 @@ export class MasterController {
   }
 
   @Get(`:resource(${MASTER_RESOURCE_PATTERN})/:id/audit`)
+  @ResourcePermission('AUDIT_READ')
   @ApiOperation({ summary: 'Riwayat audit satu record dari schema audit tenant' })
   auditTrail(
     @Param('resource') resource: string,

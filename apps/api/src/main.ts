@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
+import { assertEveryRouteIsMarked } from './common/security/route-authorization.audit';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
@@ -72,6 +73,10 @@ async function bootstrap(): Promise<void> {
     jsonDocumentUrl: 'api-json',
     swaggerOptions: { persistAuthorization: true },
   });
+
+  // Diperiksa sebelum port dibuka. Menyala dengan endpoint yang tidak menyatakan
+  // hak aksesnya lebih buruk daripada tidak menyala: yang pertama diam.
+  assertEveryRouteIsMarked(app);
 
   await app.listen(port, '0.0.0.0');
 

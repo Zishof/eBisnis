@@ -1,0 +1,24 @@
+=== BUKTI V9-1 BAGIAN B — FONDASI MARKETPLACE — 2026-07-30T20:34:32Z ===
+
+--- Katalog menu, aksi, role, SoD ---
+menu node        : 124 | root: 36
+aksi permission  : 40
+role katalog     : 169 (tenant 146 )
+baris izin       : 5491
+SoD kelompok     : 17
+
+root baru V9     : 15 / 15
+ADMIN_TOKO_ONLINE              menu  54  scope STORE
+PICKER_PESANAN_ONLINE          menu  17  scope WAREHOUSE
+ADMIN_ESMARTLINK_TENANT        menu  15  scope PAYMENT_PROVIDER_ACCOUNT
+LAYANAN_PELANGGAN_MARKETPLACE  menu  16  scope ASSIGNED_QUEUE
+
+ADMIN_ESMARTLINK_TENANT pada ESMARTLINK_ACCOUNT: ["READ","CREATE","MANAGE_CREDENTIAL"]
+ADMIN_TOKO_ONLINE pada ESMARTLINK_ACCOUNT      : ["READ","CREATE"]
+
+--- Route tanpa penanda otorisasi (termasuk 8 endpoint marketplace baru) ---
+Route tanpa penanda otorisasi: 0
+
+--- Penerapan pada schema demo ---
+  migration: sudah mutakhir
+  menu 124, role 152, izin baru 0

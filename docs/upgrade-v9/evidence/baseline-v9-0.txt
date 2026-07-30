@@ -1,0 +1,59 @@
+=== BASELINE V9-0 — 2026-07-30T19:19:51Z ===
+commit: 7399fb83b1ce4c9293c9bf7a16fa4473a2b655f5
+branch: feature/v9-marketplace
+
+--- pnpm db:validate ---
+
+Prisma config detected, skipping environment variable loading.
+Prisma schema loaded from prisma\platform
+The schemas at prisma\platform are valid 🚀
+--- pnpm db:generate ---
+
+Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
+
+--- pnpm lint ---
+
+Scope: 2 of 3 workspace projects
+apps/api lint$ eslint "src/**/*.ts" --max-warnings 0
+apps/web lint$ eslint "src/**/*.{ts,tsx}" --max-warnings 0
+apps/web lint: Done
+apps/api lint: Done
+--- pnpm test ---
+apps/api test: Test Suites: 5 passed, 5 total
+apps/api test: Tests:       104 passed, 104 total
+apps/web test: [2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+apps/web test: [2m      Tests [22m [1m[32m15 passed[39m[22m[90m (15)[39m
+--- pnpm build ---
+apps/api build: Done
+apps/web build: [32m✓ built in 8.51s[39m
+apps/web build: Done
+--- typecheck (tsc --noEmit per app) ---
+api tsc exit=0
+web tsc exit=0
+
+--- Inventaris kapabilitas (grep count, 0 = tidak ada) ---
+HelpTopic                0
+CrudActionGroup          0
+exceljs                  0
+pdfkit                   0
+google-auth-library      0
+Ticket                   1
+Expedition               0
+LocationPing             0
+ProofOfDelivery          0
+marketplace              1
+OnlineStore              0
+storefront               0
+ShippingProvider         0
+TrackingEvent            0
+PickTask                 0
+PackTask                 0
+MarketplaceListing       0
+
+--- Ukuran ---
+tabel tenant       : 121
+model platform     : 136
+endpoint API       : 157
+halaman web        : 28
+migration tenant   : 10
+menu / role        : 73 node 21 root / 129 role

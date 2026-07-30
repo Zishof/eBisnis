@@ -1,0 +1,16 @@
+=== BUKTI V9-1 — OTORISASI — 2026-07-30T20:03:22Z ===
+commit dasar: 981b002
+
+--- 1. Route tanpa penanda otorisasi (aplikasi nyata dijalankan) ---
+Route tanpa penanda otorisasi: 0
+
+--- 2. Penegakan batas data pada schema demo ---
+=== Subjek uji ===
+tingkat: WAREHOUSE | menuntut penugasan: true
+penugasan gudang saat ini: 0
+
+saldo stok seluruhnya : 3
+terlihat TANPA penugasan : 0   <- harus 0
+setelah ditugaskan gudang GDG-TOKO-B : 1  (dari 3)   <- harus 1
+
+hasil: tolak-tanpa-penugasan=BENAR, izinkan-setelah-penugasan=BENAR

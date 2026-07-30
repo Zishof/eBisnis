@@ -1,0 +1,18 @@
+Masuk sebagai "admin".
+
+LULUS  permission platform marketplace tersemai ke super admin  — 4 dari 4
+LULUS  sesi tanpa tenant ditolak pada endpoint seller  — status 403 PASSWORD_CHANGE_REQUIRED
+LULUS  penolakan endpoint platform bukan karena kekurangan hak  — status 403 PASSWORD_CHANGE_REQUIRED
+LULUS  route tak dikenal mengembalikan 404  — status 404
+LULUS  OpenAPI memuat 7 path marketplace  — 7 path
+LULUS  OpenAPI memuat 8 operasi marketplace  — 8 operasi
+         GET       /api/v1/platform/marketplace/sellers/{id}
+         GET       /api/v1/platform/marketplace/sellers/{id}/readiness
+         POST      /api/v1/platform/marketplace/sellers/{id}/transition
+         GET,POST  /api/v1/seller/marketplace/enrollment
+         POST      /api/v1/seller/marketplace/enrollment/submit
+         GET       /api/v1/seller/marketplace/readiness
+         POST      /api/v1/seller/marketplace/readiness/refresh
+LULUS  seluruh endpoint marketplace menuntut autentikasi
+
+SELURUH PEMERIKSAAN LULUS

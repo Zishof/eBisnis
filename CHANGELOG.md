@@ -7,7 +7,53 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ## [Unreleased]
 
+### Security
+
+- **Endpoint yang tidak menyatakan hak aksesnya kini ditolak, bukan diloloskan.**
+  Sebelumnya pemeriksaan hak dilewati begitu saja bila sebuah endpoint lupa
+  diberi keterangan hak akses — dan 32 dari 157 endpoint memang belum
+  memilikinya, termasuk **seluruh tambah, ubah, dan hapus data master**.
+  Ketiga puluh dua endpoint itu kini menyatakan haknya, dan aplikasi menolak
+  menyala bila ada endpoint baru yang lupa. (Temuan V6-0-F03.)
+- **Batas data mulai benar-benar menyaring.** Sejak Versi 8 sistem menyimpan
+  bahwa seorang kepala gudang hanya berhak atas gudangnya, tetapi tidak
+  menegakkannya. Kini pemegang batas gudang, outlet, brand, atau departemen
+  hanya melihat baris milik penugasannya. Yang belum ditugaskan melihat **nol
+  baris**, bukan seluruhnya.
+- Penugasan batas data kini per orang, bukan per role, sehingga dua kepala
+  gudang dapat memegang gudang yang berbeda.
+- Hak mengelola credential pembayaran dipisahkan dari administrator toko dan
+  menuntut verifikasi tambahan. Petugas layanan pelanggan tidak dapat melihat
+  credential maupun menyetujui refund; packer dan picker tidak dapat mengubah
+  pesanan.
+
 ### Added
+
+- **Fondasi marketplace: tenant dapat mendaftar sebagai penjual.** Pusat
+  Aktivasi Marketplace menampilkan pemeriksaan kesiapan beserta alasan yang
+  dapat ditindaklanjuti — bukan sekadar "belum siap". Pendaftaran berjalan
+  melalui 14 tahap yang dapat maju dan mundur sebagaimana kenyataannya, dan
+  platform yang memutuskan kapan sebuah toko boleh berjualan.
+  Halamannya tersedia di **Pusat Aktivasi Marketplace** pada portal tenant,
+  lengkap dalam empat bahasa. Syarat yang belum tersedia pada versi ini
+  ditandai berbeda dari syarat yang gagal — yang pertama menunggu fitur
+  berikutnya, yang kedua menunggu tindakan Anda.
+- 15 kelompok menu marketplace baru: aktivasi, toko online, katalog online,
+  penjualan online, pembayaran, reservasi, fulfillment, retur, promosi,
+  pelanggan, performa toko, operasi platform, tiket, dan bantuan. Menu
+  pengiriman yang sudah ada diperluas, bukan digandakan.
+- 33 role marketplace: dari Pengelola Katalog Online, Picker, dan Packer sampai
+  Penyetuju Refund dan Moderator Produk Marketplace.
+- 14 hak baru termasuk Terbitkan, Ambil Barang, Kemas, Kirim, Setujui Retur,
+  Setujui Refund, dan Kelola Credential.
+- Perintah `pnpm route:audit` yang memeriksa seluruh endpoint menyatakan hak
+  aksesnya, dapat dipakai sebagai gerbang sebelum rilis.
+- Audit Versi 9 fase V9-0 pada `docs/upgrade-v9/`: kondisi source, status
+  penerapan Versi 8, matriks gap 67 requirement, peta model marketplace,
+  inventaris kapabilitas eSmartlink, kendala pembayaran dan settlement, peta
+  order/fulfillment/pengiriman, delta menu-role-permission, register 30 risiko
+  keamanan, rencana implementasi 16 fase, baseline pengujian, peta pemakaian
+  ulang tabel, serta inventaris route API dan UI.
 
 - **Role default Indonesia disemai otomatis saat tenant mendaftar.** Setiap
   tenant baru kini memperoleh 124 role siap pakai — dari Kasir POS, Kepala

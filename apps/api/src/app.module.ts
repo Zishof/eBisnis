@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { DiscoveryModule } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { appConfig } from './config/configuration';
@@ -15,10 +16,14 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { CmsModule } from './modules/cms/cms.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { SeedAdminModule } from './modules/seed-admin/seed-admin.module';
+import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [appConfig], cache: true }),
+    // Dipakai memeriksa bahwa setiap route menyatakan hak aksesnya saat aplikasi
+    // menyala; lihat common/security/route-authorization.audit.ts.
+    DiscoveryModule,
     ScheduleModule.forRoot(),
     // Batas rate berasal dari konfigurasi agar environment pengujian otomatis
     // (Playwright, smoke test) tidak menabrak proteksi yang ditujukan untuk
@@ -40,6 +45,7 @@ import { SeedAdminModule } from './modules/seed-admin/seed-admin.module';
     PaymentModule,
     CmsModule,
     SeedAdminModule,
+    MarketplaceModule,
     // TenantModule didaftarkan TERAKHIR: MasterController memakai route
     // wildcard `:resource`, sehingga harus dicocokkan setelah seluruh route
     // spesifik seperti /devices, /sample-data, dan /billing.

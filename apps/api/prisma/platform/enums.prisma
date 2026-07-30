@@ -607,3 +607,63 @@ enum HardDeletePolicy {
 
   @@schema("platform")
 }
+
+// --- Versi 9: marketplace ---------------------------------------------------
+
+enum MarketplaceSellerStatus {
+  PROSPECT
+  PENDING_APPROVAL
+  APPROVED
+  ACTIVE
+  SUSPENDED
+  REJECTED
+  CLOSED
+
+  @@schema("platform")
+}
+
+/// Empat belas status pendaftaran sesuai blueprint Versi 9 bagian 5.2.
+///
+/// Panjang, tetapi setiap status menjawab pertanyaan berbeda dari tenant yang
+/// bertanya "kenapa saya belum bisa berjualan". Menggabungkannya menjadi
+/// beberapa status saja akan mengembalikan jawaban "sedang diproses" untuk
+/// keadaan yang penanganannya sama sekali berbeda.
+enum MarketplaceEnrollmentStatus {
+  DRAFT
+  PROFILE_INCOMPLETE
+  PAYMENT_ACCOUNT_REQUIRED
+  ACTIVATION_TICKET_REQUIRED
+  ACTIVATION_TICKET_OPENED
+  WAITING_PROVIDER
+  CREDENTIAL_RECEIVED
+  CREDENTIAL_CONFIGURED
+  PAYMENT_TESTING
+  UNDER_REVIEW
+  ACTIVE
+  SUSPENDED
+  REJECTED
+  CLOSED
+
+  @@schema("platform")
+}
+
+enum MarketplaceStoreStatus {
+  DRAFT
+  PENDING_VERIFICATION
+  VERIFIED
+  PUBLISHED
+  SUSPENDED
+  CLOSED
+
+  @@schema("platform")
+}
+
+enum MarketplaceStorePolicyType {
+  SHIPPING
+  RETURN
+  WARRANTY
+  PRIVACY
+  TERMS
+
+  @@schema("platform")
+}
