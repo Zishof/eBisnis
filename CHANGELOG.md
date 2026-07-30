@@ -9,6 +9,10 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Added
 
+- Audit Versi 8 fase V8-0 pada `docs/upgrade-v8/`: kondisi saat ini, inventaris
+  menu, matriks gap konten bantuan, matriks gap impor/ekspor, inventaris
+  role/duty/privilege, rancangan login Google, dan rencana implementasi.
+
 - Audit Versi 6 fase V6-0 pada `docs/upgrade-v6/`: inventaris kondisi saat ini,
   status regression Versi 5, matriks gap V5→V6, inventaris database dan
   migration, inventaris route API dan UI, baseline pengujian, risk register,
