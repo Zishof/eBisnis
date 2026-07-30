@@ -223,9 +223,16 @@ Diterapkan pada 14 schema pengembangan; dijalankan ulang menghasilkan 0 izin bar
 
 ## Keterbatasan yang diketahui
 
-**UI belum ada.** Endpoint dan layanannya berjalan dan dapat dipanggil, tetapi
-halaman Pusat Aktivasi Marketplace belum dibuat. Menu-menunya sudah tersemai dan
-sebagian besar bertanda `comingSoon`.
+**UI Pusat Aktivasi sudah ada** pada `/app/marketplace/aktivasi`, dimuat lazy
+sebagai bundle terpisah (9,6 kB). Halaman lain menyusul bersama fasenya.
+
+Yang membedakannya dari daftar centang biasa: `PENDING_PHASE` disajikan dengan
+ikon dan warna berbeda dari `FAIL`. Menyamakan keduanya membuat tenant mengira
+dirinya bersalah atas kapabilitas yang memang belum dibangun.
+
+Bukti asap lawan API yang berjalan:
+[`evidence/v9-1c-ui-smoke.txt`](evidence/v9-1c-ui-smoke.txt) — 7 path, 8 operasi,
+seluruhnya menuntut autentikasi, dan keempat permission platform tersemai.
 
 **Kebanyakan menu marketplace bertanda `comingSoon`.** Menu aktivasi tidak,
 karena endpointnya memang sudah ada. Sisanya menunggu fase yang membangunnya.

@@ -34,6 +34,10 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   dapat ditindaklanjuti — bukan sekadar "belum siap". Pendaftaran berjalan
   melalui 14 tahap yang dapat maju dan mundur sebagaimana kenyataannya, dan
   platform yang memutuskan kapan sebuah toko boleh berjualan.
+  Halamannya tersedia di **Pusat Aktivasi Marketplace** pada portal tenant,
+  lengkap dalam empat bahasa. Syarat yang belum tersedia pada versi ini
+  ditandai berbeda dari syarat yang gagal — yang pertama menunggu fitur
+  berikutnya, yang kedua menunggu tindakan Anda.
 - 15 kelompok menu marketplace baru: aktivasi, toko online, katalog online,
   penjualan online, pembayaran, reservasi, fulfillment, retur, promosi,
   pelanggan, performa toko, operasi platform, tiket, dan bantuan. Menu

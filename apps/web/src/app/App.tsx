@@ -27,6 +27,10 @@ import { ComingSoonPage } from '../pages/app/ComingSoonPage';
 import { RequireAuth } from './RequireAuth';
 import { LoadingState } from '../components/ui';
 
+const MarketplaceActivationPage = lazy(() =>
+  import('../pages/app/MarketplaceActivationPage').then((m) => ({ default: m.default })),
+);
+
 const PlatformLayout = lazy(() =>
   import('../pages/platform/PlatformLayout').then((m) => ({ default: m.PlatformLayout })),
 );
@@ -111,6 +115,7 @@ export function App() {
           <Route path="devices" element={<SubscriptionPage tab="devices" />} />
           <Route path="subscription/checkout" element={<SubscriptionPage tab="checkout" />} />
           <Route path="subscription/invoices" element={<SubscriptionPage tab="invoices" />} />
+          <Route path="marketplace/aktivasi" element={<MarketplaceActivationPage />} />
           <Route path="*" element={<ComingSoonPage />} />
         </Route>
 
