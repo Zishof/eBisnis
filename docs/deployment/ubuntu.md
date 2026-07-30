@@ -204,9 +204,13 @@ sudo REPO_URL=git@github.com:Zishof/eBisnis.git bash /opt/ebisnis/app/deploy/ins
 Clone dilakukan **sebagai pengguna `ebisnis`**, bukan root. Bila terlanjur
 di-clone sebagai root, `install.sh` memperbaiki kepemilikannya sendiri.
 
-Skrip mengerjakan: paket dasar, Node 22, pnpm, klien PostgreSQL 17, pengguna
+Skrip mengerjakan: paket dasar, Node 22, pnpm, klien PostgreSQL, pengguna
 sistem `ebisnis`, install dependency, build, `prisma migrate deploy`,
-pembuatan super admin, systemd, dan Apache. Berjalan sekitar 5–10 menit.
+pembuatan super admin, provisioning sandbox demo, systemd, dan Apache.
+Berjalan sekitar 5–10 menit.
+
+Sandbox demo dilewati dengan `SKIP_DEMO_SEED=1` bila demo publik tidak
+diinginkan. Tanpa demo, tombol "Coba Demo" pada website tidak berfungsi.
 
 Skrip berhenti dengan pesan jelas bila `/etc/ebisnis/ebisnis.env` belum ada,
 dan **tidak** menimpanya bila sudah ada.

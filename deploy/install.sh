@@ -286,6 +286,17 @@ log "8/10  Migration dan super admin"
 # ---------------------------------------------------------------------------
 sudo -u "$APP_USER" bash -lc "cd '$APP_DIR/apps/api' && pnpm exec prisma migrate deploy"
 sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && pnpm seed:platform"
+
+# seed:platform sengaja tidak memprovision demo. Tanpa langkah berikut, schema
+# demo tidak ada dan tombol "Coba Demo" pada website publik gagal. Idempotent,
+# aman dijalankan ulang.
+if [[ "${SKIP_DEMO_SEED:-0}" == "1" ]]; then
+  warn "SKIP_DEMO_SEED=1 — sandbox demo tidak diprovision."
+else
+  sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && pnpm seed:tenant" \
+    || warn "Provisioning demo gagal — website tetap berjalan, tetapi /demo tidak tersedia."
+fi
+
 sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && pnpm seed:verify" || warn "Verifikasi seed melaporkan masalah — periksa keluarannya."
 
 # Bandingkan versi server dengan versi pg_dump selagi koneksi sudah terbukti.
