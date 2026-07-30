@@ -387,18 +387,36 @@ pada `deploy/apache/ebisnis.conf`.
 
 Ubuntu 20.04 (focal) berjalan, dengan dua batasan yang perlu diketahui.
 
-### Repositori PostgreSQL sudah tidak tersedia
+### Repositori PostgreSQL berpindah ke arsip
 
-PGDG hanya menyediakan repositori untuk rilis Ubuntu yang masih didukung.
-`focal` sudah dihapus, sehingga `postgresql-client-17` tidak dapat dipasang dari
-sana. Binary `jammy` juga tidak bisa dipakai — ia menuntut glibc 2.35, sedangkan
-focal punya 2.31.
+Repositori utama PGDG hanya memuat rilis Ubuntu yang masih didukung, dan
+`focal` sudah dihapus dari sana:
 
-`install.sh` memeriksa ketersediaan repositori lebih dahulu; bila tidak ada, ia
-memakai klien PostgreSQL bawaan distribusi sambil menyatakan konsekuensinya.
-Instalasi tetap berhasil: Prisma memakai protokol wire PostgreSQL, bukan
-`pg_dump`, sehingga migration dan aplikasi berjalan normal berapa pun versi
-kliennya.
+```text
+apt.postgresql.org/.../dists/focal-pgdg/Release          404
+apt-archive.postgresql.org/.../dists/focal-pgdg/Release  200
+```
+
+Namun **arsipnya tetap memuat klien versi baru**, sampai
+`postgresql-client-17`. Jadi backup tetap dapat dibuat tanpa menaikkan versi
+sistem operasi.
+
+`install.sh` mencoba repositori utama lebih dahulu, lalu arsip, lalu baru
+menyerah ke klien bawaan distribusi. Pemasangan manual bila diperlukan:
+
+```bash
+sudo install -d /usr/share/postgresql-common/pgdg
+curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc   | sudo tee /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc > /dev/null
+echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt-archive.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main"   | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+sudo apt-get update && sudo apt-get install -y postgresql-client-17
+```
+
+Binary `jammy` tidak dapat dipakai sebagai jalan pintas — ia menuntut glibc
+2.35, sedangkan focal punya 2.31.
+
+Perlu diketahui: instalasi tetap berhasil walau klien lebih tua, karena Prisma
+memakai protokol wire PostgreSQL dan bukan `pg_dump`. Yang terdampak hanya
+backup.
 
 ### Backup ketika pg_dump lebih tua
 

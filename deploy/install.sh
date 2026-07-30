@@ -66,21 +66,38 @@ log "3/10  Klien PostgreSQL"
 # update.sh bergantung padanya, jadi ketidaksesuaian versi harus ketahuan
 # sekarang, bukan saat pembaruan pertama.
 #
-# PGDG hanya menyediakan repositori untuk rilis Ubuntu yang masih didukung.
-# Untuk rilis yang sudah dihapus (mis. focal), kita jatuh ke klien bawaan
-# distribusi dan menyatakan konsekuensinya secara terbuka.
+# Repositori utama PGDG hanya memuat rilis Ubuntu yang masih didukung. Rilis
+# yang sudah EOL dipindahkan ke apt-archive, dan arsip itu TETAP memuat klien
+# versi baru — sehingga backup tetap dapat dibuat tanpa menaikkan versi sistem
+# operasi. Karena itu arsip dicoba sebelum menyerah ke klien bawaan distribusi.
 if ! command -v pg_dump >/dev/null || ! pg_dump --version | grep -qE ' 1[6-9]| 2[0-9]'; then
-  PGDG_DIST="https://apt.postgresql.org/pub/repos/apt/dists/${CODENAME}-pgdg/Release"
-  if curl -fsI -m 20 "$PGDG_DIST" >/dev/null 2>&1; then
+  PG_BASE=""
+  for host in "https://apt.postgresql.org/pub/repos/apt" \
+              "https://apt-archive.postgresql.org/pub/repos/apt"; do
+    if curl -fsI -m 20 "${host}/dists/${CODENAME}-pgdg/Release" >/dev/null 2>&1; then
+      PG_BASE="$host"
+      break
+    fi
+  done
+
+  if [[ -n "$PG_BASE" ]]; then
+    [[ "$PG_BASE" == *apt-archive* ]] && \
+      warn "'${CODENAME}' sudah tidak ada di repositori utama PGDG; memakai arsip."
     install -d /usr/share/postgresql-common/pgdg
     curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
       -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
     echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
-https://apt.postgresql.org/pub/repos/apt ${CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+${PG_BASE} ${CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list
     apt-get update -qq
-    apt-get install -y -qq postgresql-client-17
+    # Pasang versi tertinggi yang tersedia untuk rilis ini.
+    for v in 17 16 15 14 13; do
+      if apt-get install -y -qq "postgresql-client-$v" 2>/dev/null; then
+        echo "    postgresql-client-$v terpasang."
+        break
+      fi
+    done
   else
-    warn "PGDG tidak menyediakan repositori untuk '${CODENAME}' (rilis ini kemungkinan sudah EOL)."
+    warn "Tidak ada repositori PGDG untuk '${CODENAME}', termasuk arsip."
     warn "Memakai klien PostgreSQL bawaan distribusi."
     apt-get install -y -qq postgresql-client || true
   fi
