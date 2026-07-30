@@ -38,6 +38,19 @@ export const appConfig = () => ({
     refreshTtl: process.env.JWT_REFRESH_TTL ?? '30d',
   },
 
+  /**
+   * Enkripsi credential provider pembayaran per tenant.
+   *
+   * Kunci berasal dari environment, tidak pernah dari basis data. Format
+   * `encryptionKeys`: `id:bahan,id2:bahan2`, dengan `activeKeyId` menunjuk yang
+   * dipakai untuk penyandian baru. Kunci lama tetap dipasang agar data yang
+   * dibuat dengannya masih dapat dibuka setelah rotasi.
+   */
+  credential: {
+    encryptionKeys: process.env.CREDENTIAL_ENCRYPTION_KEYS ?? '',
+    activeKeyId: process.env.CREDENTIAL_ENCRYPTION_ACTIVE_KEY ?? '',
+  },
+
   schema: {
     platform: process.env.PLATFORM_SCHEMA ?? 'platform',
     platformAudit: process.env.PLATFORM_AUDIT_SCHEMA ?? 'platform__audit',

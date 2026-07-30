@@ -11,6 +11,7 @@ import { MasterSeedService } from '../modules/master-seed/master-seed.service';
 import { PlatformSeedService } from '../modules/master-seed/platform-seed.service';
 import { CmsSeedService } from '../modules/master-seed/cms-seed.service';
 import { DataScopeResolver } from './authorization/data-scope.resolver';
+import { SecretBoxService } from './crypto/secret-box.service';
 
 /**
  * Modul infrastruktur global: akses database platform, akses schema tenant,
@@ -28,6 +29,7 @@ import { DataScopeResolver } from './authorization/data-scope.resolver';
     NumberSequenceService,
     IdempotencyService,
     DataScopeResolver,
+    SecretBoxService,
     MasterSeedService,
     PlatformSeedService,
     CmsSeedService,
@@ -42,6 +44,7 @@ import { DataScopeResolver } from './authorization/data-scope.resolver';
     NumberSequenceService,
     IdempotencyService,
     DataScopeResolver,
+    SecretBoxService,
     MasterSeedService,
     PlatformSeedService,
     CmsSeedService,

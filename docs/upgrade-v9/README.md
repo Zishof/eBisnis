@@ -1,7 +1,7 @@
 # Audit Versi 9 — Marketplace dan Toko Online
 
-Fase **V9-0** selesai pada commit `981b002`; **V9-1** (otorisasi dan fondasi
-marketplace) menyusul.
+Fase **V9-0** sampai **V9-2** selesai: audit, penegakan otorisasi, fondasi
+marketplace, dan aktivasi eSmartlink.
 Branch `feature/v9-marketplace`.
 
 ## Kesimpulan singkat
@@ -42,6 +42,7 @@ pada V9-1, sebelum endpoint marketplace pertama dibuat.
 | [13-ui-route-inventory.md](13-ui-route-inventory.md) | 55 route yang ada, storefront yang harus dibangun |
 | [14-authorization-enforcement.md](14-authorization-enforcement.md) | **V9-1 bagian A** — guard gagal-tertutup dan penegakan batas data |
 | [15-marketplace-foundation.md](15-marketplace-foundation.md) | **V9-1 bagian B** — menu, profil M1–M9, role, dan pendaftaran seller |
+| [16-esmartlink-activation.md](16-esmartlink-activation.md) | **V9-2** — tiket aktivasi, credential terenkripsi, dan uji kesehatan |
 | [evidence/baseline-v9-0.txt](evidence/baseline-v9-0.txt) | keluaran perintah mentah |
 
 ## Urutan membaca

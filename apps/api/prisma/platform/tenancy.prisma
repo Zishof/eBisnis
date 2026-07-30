@@ -132,6 +132,8 @@ model Tenant {
   discountRedemptions DiscountRedemption[]
   discountEligibility DiscountTenantEligibility[]
   marketplaceSellers  MarketplaceSeller[]
+  paymentAccounts     TenantPaymentProviderAccount[]
+  supportTickets      SupportTicket[]
 
   @@unique([code])
   @@unique([slug])

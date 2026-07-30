@@ -216,6 +216,21 @@ if [[ "$(get_env JWT_ACCESS_SECRET)" == "$(get_env JWT_REFRESH_SECRET)" ]]; then
   PROBLEMS+=("JWT_ACCESS_SECRET dan JWT_REFRESH_SECRET tidak boleh sama")
 fi
 
+# Kunci enkripsi credential (Versi 9). Diperiksa sebagai peringatan, bukan
+# penghenti: server tanpa kunci tetap berjalan, hanya fitur marketplace yang
+# tidak dapat menyimpan credential tenant.
+CRED_KEYS=$(get_env CREDENTIAL_ENCRYPTION_KEYS)
+CRED_ACTIVE=$(get_env CREDENTIAL_ENCRYPTION_ACTIVE_KEY)
+if [[ -z "$CRED_KEYS" ]]; then
+  warn "CREDENTIAL_ENCRYPTION_KEYS kosong. Aktivasi pembayaran marketplace tidak akan dapat menyimpan credential."
+elif [[ "$CRED_KEYS" == *GANTI_DENGAN* ]]; then
+  PROBLEMS+=("CREDENTIAL_ENCRYPTION_KEYS masih memakai nilai contoh — hasilkan dengan: openssl rand -base64 48")
+elif [[ -z "$CRED_ACTIVE" ]]; then
+  PROBLEMS+=("CREDENTIAL_ENCRYPTION_ACTIVE_KEY kosong padahal CREDENTIAL_ENCRYPTION_KEYS diisi")
+elif [[ "$CRED_KEYS" != *"${CRED_ACTIVE}:"* ]]; then
+  PROBLEMS+=("CREDENTIAL_ENCRYPTION_ACTIVE_KEY \"$CRED_ACTIVE\" tidak ada pada CREDENTIAL_ENCRYPTION_KEYS")
+fi
+
 if [[ ${#PROBLEMS[@]} -gt 0 ]]; then
   printf 'Konfigurasi pada %s belum lengkap:\n\n' "$ENV_FILE" >&2
   printf '  - %s\n' "${PROBLEMS[@]}" >&2
