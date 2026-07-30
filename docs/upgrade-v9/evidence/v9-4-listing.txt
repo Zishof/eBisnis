@@ -1,0 +1,40 @@
+=== BUKTI V9-4 — LISTING DAN MEDIA — 2026-07-30T22:31:10Z ===
+
+--- Endpoint listing (8 operasi) ---
+   GET,POST  /api/v1/seller/listings
+   POST      /api/v1/seller/listings/youtube/preview
+   GET       /api/v1/seller/listings/{id}
+   GET       /api/v1/seller/listings/{id}/publication-gate
+   POST      /api/v1/seller/listings/{id}/publish
+   POST      /api/v1/seller/listings/{id}/unpublish
+   POST      /api/v1/seller/listings/{id}/youtube
+   GET       /api/v1/seller/listings/{id}/youtube/embed
+
+--- Tabel V013 pada schema demo ---
+   online_listing
+   online_listing_media
+   online_listing_publication
+   online_listing_variant
+
+--- Batasan unik pada media ---
+   online_listing_media_pkey
+   ux_online_media_hash
+   ux_online_media_primary
+
+--- CHECK constraint ---
+   ck_online_listing_condition
+   ck_online_listing_status
+   ck_online_listing_youtube
+   ck_online_media_dimension
+   ck_online_media_format
+   ck_online_media_moderation
+   ck_online_variant_dimensions
+   ck_online_variant_price
+=== Batasan basis data pada id video ===
+LULUS  id video sah       diterima
+LULUS  skrip              ditolak
+LULUS  terlalu pendek     ditolak
+LULUS  terlalu panjang    ditolak
+LULUS  spasi              ditolak
+
+SELURUH PEMERIKSAAN LULUS

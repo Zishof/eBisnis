@@ -85,6 +85,13 @@
       "file": "V012__marketplace_profiles.sql",
       "name": "Profil hak marketplace pada constraint role",
       "description": "Memperluas ck_role_module_profile_code agar menerima profil marketplace M1-M9 di samping P0-P12."
+    },
+    {
+      "version": "V013",
+      "sequence": 13,
+      "file": "V013__online_listing.sql",
+      "name": "Listing produk online dan medianya",
+      "description": "online_listing, online_listing_variant, online_listing_media, online_listing_publication beserta batasan satu gambar utama per listing, satu listing per produk, dan pola id video YouTube; trigger audit untuk ketiga tabel utama."
     }
   ]
 }

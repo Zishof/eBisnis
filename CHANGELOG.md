@@ -22,6 +22,10 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   baris**, bukan seluruhnya.
 - Penugasan batas data kini per orang, bukan per role, sehingga dua kepala
   gudang dapat memegang gudang yang berbeda.
+- **Gambar produk diperiksa dari isinya, bukan dari nama berkasnya.** Berkas
+  yang menyamar sebagai gambar lewat ekstensi ditolak, begitu pula gambar yang
+  menyatakan ukuran raksasa untuk menghabiskan memori server. Pemeriksaan
+  dilakukan tanpa membuka gambarnya.
 - **Alamat yang tidak terdaftar ditolak, bukan diarahkan ke toko bawaan.**
   Setiap kesalahan DNS yang mengarah ke platform akan menampilkan halaman tidak
   ditemukan, bukan katalog milik tenant lain. Alasan penolakan dicatat untuk
@@ -37,6 +41,15 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   pesanan.
 
 ### Added
+
+- **Produk online dengan gerbang publikasi.** Penjual dapat menyiapkan listing
+  dan melihat daftar lengkap syarat yang belum terpenuhi — bukan ditolak satu
+  per satu setiap kali menekan terbit. Minimal tiga gambar aktif, satu gambar
+  utama, harga, stok, berat, dimensi, kebijakan retur, dan pemeriksaan kepatuhan
+  semuanya diperiksa sekaligus.
+- Video YouTube opsional pada produk. Yang disimpan hanya id videonya; alamat
+  pemutar dibangun sistem, sehingga tautan yang dimasukkan penjual tidak pernah
+  menjadi bagian dari halaman.
 
 - **Toko online dengan alamat sendiri.** Tenant dapat membuat toko pada
   marketplace dan menghubungkannya ke domain miliknya. Domain baru dilayani
