@@ -18,6 +18,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { SeedAdminModule } from './modules/seed-admin/seed-admin.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { StorefrontModule } from './modules/storefront/storefront.module';
+import { ListingModule } from './modules/listing/listing.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { StorefrontModule } from './modules/storefront/storefront.module';
     SeedAdminModule,
     MarketplaceModule,
     StorefrontModule,
+    ListingModule,
     // TenantModule didaftarkan TERAKHIR: MasterController memakai route
     // wildcard `:resource`, sehingga harus dicocokkan setelah seluruh route
     // spesifik seperti /devices, /sample-data, dan /billing.
