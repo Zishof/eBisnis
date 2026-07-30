@@ -7,6 +7,11 @@ katalog, pengunjung `ebisnis.id` melihat website perusahaan.
 Karena itu **tidak ada aplikasi kedua yang perlu dipasang.** Yang diperlukan
 hanya membuat alamat baru menunjuk ke server yang sama.
 
+> **Memakai Cloudflare Tunnel?** Ikuti [`belanja-tunnel.md`](belanja-tunnel.md),
+> bukan panduan ini. Dengan tunnel tidak ada record `A`, tidak ada sertifikat
+> yang perlu dipasang, dan tidak ada port yang perlu dibuka — mengikuti langkah
+> di bawah justru akan melewati tunnel dan menghasilkan error 522.
+
 ## Ringkas
 
 | Langkah | Di mana | Perlu diulang? |
