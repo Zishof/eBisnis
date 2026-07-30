@@ -108,8 +108,14 @@ log(`  "kaos": ${kaos?.items?.length ?? 0} hasil dari ${semua?.total ?? 0} produ
 check('kata kunci mempersempit hasil', (kaos?.items?.length ?? 0) < (semua?.total ?? 0), true);
 check('kata kunci menemukan sesuatu', (kaos?.items?.length ?? 0) > 0, true);
 
+// Jumlah yang dilaporkan harus jumlah yang cocok, bukan jumlah seluruh
+// katalog. Melaporkan enam ketika hanya satu yang cocok membuat pembeli
+// menyimpulkan ada lima hasil lain yang tidak ditampilkan.
+check('jumlah yang dilaporkan sesuai hasil kata kunci', kaos?.total, kaos?.items?.length);
+
 const takAda = unwrap((await anon('/public/catalog/search?q=xyzqwertyasdf')).body);
 check('kata kunci yang tidak ada menghasilkan kosong', takAda?.items?.length ?? -1, 0);
+check('jumlah nol saat tidak ada yang cocok', takAda?.total, 0);
 
 const kategoriSaring = unwrap((await anon('/public/catalog/search?kategori=fashion-pria')).body);
 log(`  kategori "fashion-pria": ${kategoriSaring?.items?.length ?? 0} hasil`);

@@ -28,7 +28,9 @@ Basis: http://localhost:3000/api/v1
   "kaos": 1 hasil dari 6 produk
   LULUS  kata kunci mempersempit hasil
   LULUS  kata kunci menemukan sesuatu
+  LULUS  jumlah yang dilaporkan sesuai hasil kata kunci
   LULUS  kata kunci yang tidak ada menghasilkan kosong
+  LULUS  jumlah nol saat tidak ada yang cocok
   kategori "fashion-pria": 2 hasil
   LULUS  penyaring kategori bekerja
   LULUS  kategori induk mencakup subkategorinya
