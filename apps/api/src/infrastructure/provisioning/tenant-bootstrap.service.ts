@@ -4,6 +4,124 @@ import { TenantConnectionService } from '../database/tenant-connection.service';
 import { PrismaService } from '../database/prisma.service';
 import { deterministicBatchId } from '../../modules/master-seed/master-seed.service';
 import { MENU_TREE_SEED, PERMISSION_ACTIONS_SEED, ROLE_TEMPLATES_SEED } from './tenant-menu.seed';
+import { buildLegacyRoleMap, expandTenantRoles } from './role-expansion';
+import { buildSodGroups, TENANT_ROLE_CATALOG } from './tenant-role.seed';
+import type { DataScopeCode } from './role-profile';
+
+/** Jumlah baris izin per pernyataan INSERT. */
+const PERMISSION_INSERT_CHUNK = 500;
+
+/**
+ * Tingkat batas data yang tidak berarti apa-apa sampai penugasan konkret
+ * dibuat. Pemegang role bergudang tanpa gudang yang ditugaskan harus melihat
+ * nol baris, bukan seluruhnya.
+ */
+const SCOPES_NEEDING_ASSIGNMENT = new Set<DataScopeCode>([
+  'LEGAL_ENTITY', 'BRAND', 'OUTLET', 'OUTLET_TERMINAL', 'WAREHOUSE',
+  'DEPARTMENT', 'TEAM', 'ASSIGNED_TRIP', 'ASSIGNED_QUEUE', 'OWNERSHIP', 'API_SCOPE',
+]);
+
+/** Keterangan aturan pemisahan tugas, dikunci pada kode kelompok di katalog role. */
+const SOD_RULE_META: Record<string, { name: string; description: string; severity: string }> = {
+  POS_VOID: {
+    name: 'Kasir tidak membatalkan transaksinya sendiri',
+    description: 'Void dan refund harus disetujui supervisor, bukan kasir yang membuat transaksi.',
+    severity: 'HIGH',
+  },
+  PR_APPROVAL: {
+    name: 'Pemohon pembelian bukan penyetujunya',
+    description: 'Permintaan pembelian disetujui pihak lain agar pengeluaran tidak disetujui sendiri.',
+    severity: 'HIGH',
+  },
+  VENDOR_PAYMENT: {
+    name: 'Pembuat pemasok bukan pembayarnya',
+    description: 'Satu orang yang dapat membuat pemasok sekaligus membayarnya dapat mengalirkan dana ke pemasok fiktif.',
+    severity: 'CRITICAL',
+  },
+  PO_RECEIPT_PAY: {
+    name: 'Pemesan, penerima, dan pembayar dipisah',
+    description: 'Pemesan barang, penerima barang, dan pembayar tagihan harus tiga pihak berbeda.',
+    severity: 'CRITICAL',
+  },
+  STOCK_ADJUSTMENT: {
+    name: 'Pembuat penyesuaian stok bukan penyetujunya',
+    description: 'Penyesuaian stok menutupi selisih fisik; penyetujunya harus pihak lain.',
+    severity: 'HIGH',
+  },
+  JOURNAL: {
+    name: 'Penyiap jurnal bukan penyetujunya',
+    description: 'Jurnal yang disiapkan dan disetujui orang yang sama menghapus kontrol pembukuan.',
+    severity: 'CRITICAL',
+  },
+  PAYROLL: {
+    name: 'Penyiap payroll bukan penyetujunya',
+    description: 'Perhitungan gaji dan persetujuannya harus dipegang dua orang berbeda.',
+    severity: 'CRITICAL',
+  },
+  EXPENSE: {
+    name: 'Pengaju biaya bukan penyetujunya',
+    description: 'Biaya perjalanan dan reimbursement tidak boleh disetujui pengajunya sendiri.',
+    severity: 'MEDIUM',
+  },
+  BUDGET: {
+    name: 'Penyusun anggaran bukan penyetujunya',
+    description: 'Anggaran yang disusun dan disetujui orang yang sama menghilangkan kontrol perencanaan.',
+    severity: 'MEDIUM',
+  },
+  WORKFLOW_APPROVAL: {
+    name: 'Pengaju workflow bukan penyetujunya',
+    description: 'Aturan umum yang berlaku pada seluruh alur persetujuan.',
+    severity: 'HIGH',
+  },
+  CONTENT_PUBLISH: {
+    name: 'Penulis konten bukan penerbitnya',
+    description: 'Konten publik ditinjau pihak lain sebelum terbit.',
+    severity: 'LOW',
+  },
+  HELP_PUBLISH: {
+    name: 'Penulis panduan bukan penerbitnya',
+    description: 'Panduan ditinjau pihak lain sebelum terbit agar isinya tidak menyesatkan.',
+    severity: 'LOW',
+  },
+  AR_CASH: {
+    name: 'Penagih piutang bukan penerima kasnya',
+    description: 'Satu orang yang menagih sekaligus menerima uang dapat menahan setoran tanpa terlihat.',
+    severity: 'CRITICAL',
+  },
+};
+
+/**
+ * Menyisipkan izin role secara berkelompok.
+ *
+ * Katalog Versi 8 menghasilkan puluhan ribu baris per tenant. Satu INSERT per
+ * baris membuat pendaftaran tenant berjalan lama tanpa alasan; satu INSERT per
+ * 500 baris menyelesaikannya dalam beberapa puluh pernyataan.
+ */
+async function insertRolePermissions(
+  client: PoolClient,
+  schema: string,
+  roleId: string,
+  rows: ReadonlyArray<readonly [string, string]>,
+): Promise<number> {
+  let inserted = 0;
+  for (let offset = 0; offset < rows.length; offset += PERMISSION_INSERT_CHUNK) {
+    const chunk = rows.slice(offset, offset + PERMISSION_INSERT_CHUNK);
+    const values: string[] = [];
+    const params: string[] = [roleId];
+    for (const [menuId, actionId] of chunk) {
+      values.push(`($1, $${params.length + 1}, $${params.length + 2}, 'ALLOW')`);
+      params.push(menuId, actionId);
+    }
+    const result = await client.query(
+      `INSERT INTO ${schema}.role_menu_permission (role_id, menu_id, permission_action_id, effect)
+       VALUES ${values.join(', ')}
+       ON CONFLICT (role_id, menu_id, permission_action_id) DO NOTHING`,
+      params,
+    );
+    inserted += result.rowCount ?? 0;
+  }
+  return inserted;
+}
 
 export interface OrganizationSeedOptions {
   businessName: string;
@@ -21,6 +139,7 @@ export interface OrganizationSeedResult {
   outletWarehouseId: string;
   menuCount: number;
   roleCount: number;
+  permissionCount: number;
 }
 
 @Injectable()
@@ -158,6 +277,15 @@ export class TenantBootstrapService {
         });
       }
 
+      // Id aksi dibaca sekali lalu dipakai ulang. Sebelumnya setiap baris izin
+      // memicu satu query lookup; dengan katalog role Versi 8 itu berarti
+      // puluhan ribu round-trip di tengah pendaftaran tenant.
+      const actionIds = new Map<string, string>();
+      for (const action of PERMISSION_ACTIONS_SEED) {
+        const id = await lookupByCode(client, S, 'permission_action', action.code);
+        if (id) actionIds.set(action.code, id);
+      }
+
       // --- Menu tree ---------------------------------------------------------
       const menuIds = new Map<string, string>();
       let menuCount = 0;
@@ -182,7 +310,7 @@ export class TenantBootstrapService {
         menuCount += 1;
 
         for (const actionCode of node.actions ?? ['READ']) {
-          const actionId = await lookupByCode(client, S, 'permission_action', actionCode);
+          const actionId = actionIds.get(actionCode);
           if (!actionId) continue;
           await client.query(
             `INSERT INTO ${S}.menu_action (menu_id, permission_action_id)
@@ -193,8 +321,17 @@ export class TenantBootstrapService {
       }
 
       // --- Role template -----------------------------------------------------
+      // Template lama dipertahankan lebih dulu agar penugasan pengguna yang
+      // sudah ada tidak putus, lalu katalog Versi 8 ditambahkan di belakangnya.
+      // Keduanya idempoten, sehingga provisioning yang diulang tidak menggandakan.
+      const roleTemplates = [...ROLE_TEMPLATES_SEED, ...expandTenantRoles()];
+      const catalogByCode = new Map(TENANT_ROLE_CATALOG.map((entry) => [entry.code, entry]));
+      const legacyMap = buildLegacyRoleMap();
+      const roleIds = new Map<string, string>();
       let roleCount = 0;
-      for (const template of ROLE_TEMPLATES_SEED) {
+      let permissionCount = 0;
+      for (const template of roleTemplates) {
+        const entry = catalogByCode.get(template.code);
         const roleId = await upsertByCode(client, S, 'role', template.code, {
           code: template.code,
           name: template.name,
@@ -202,25 +339,121 @@ export class TenantBootstrapService {
           role_type: template.roleType,
           sort_order: template.sortOrder,
           is_system: true,
+          profile_code: entry?.profile ?? null,
+          role_family: entry?.family ?? null,
+          is_core: entry?.core ?? false,
+          is_legacy: !entry,
+          successor_code: legacyMap.get(template.code) ?? null,
         });
+        roleIds.set(template.code, roleId);
         roleCount += 1;
 
+        // upsertByCode sengaja tidak memperbarui baris yang sudah ada, agar
+        // seed tidak menimpa penyuntingan tenant. Kolom tata kelola tetap perlu
+        // menyusul pada tenant lama, jadi diperbarui di sini — terbatas pada
+        // role sistem, dan hanya bila nilainya memang berbeda supaya tidak
+        // menghasilkan baris audit palsu setiap provisioning diulang.
+        await client.query(
+          `UPDATE ${S}.role
+              SET profile_code = $2, role_family = $3, is_core = $4,
+                  is_legacy = $5, successor_code = $6, updated_at = now()
+            WHERE id = $1 AND is_system = TRUE
+              AND (profile_code IS DISTINCT FROM $2
+                OR role_family IS DISTINCT FROM $3
+                OR is_core IS DISTINCT FROM $4
+                OR is_legacy IS DISTINCT FROM $5
+                OR successor_code IS DISTINCT FROM $6)`,
+          [
+            roleId,
+            entry?.profile ?? null,
+            entry?.family ?? null,
+            entry?.core ?? false,
+            !entry,
+            legacyMap.get(template.code) ?? null,
+          ],
+        );
+
+        const rows: Array<[string, string]> = [];
         for (const [menuCode, actions] of Object.entries(template.permissions)) {
           const menuId = menuIds.get(menuCode);
           if (!menuId) continue;
           const actionCodes = actions === '*' ? PERMISSION_ACTIONS_SEED.map((a) => a.code) : actions;
           for (const actionCode of actionCodes) {
-            const actionId = await lookupByCode(client, S, 'permission_action', actionCode);
-            if (!actionId) continue;
-            await client.query(
-              `INSERT INTO ${S}.role_menu_permission (role_id, menu_id, permission_action_id, effect)
-               VALUES ($1, $2, $3, 'ALLOW')
-               ON CONFLICT (role_id, menu_id, permission_action_id) DO NOTHING`,
-              [roleId, menuId, actionId],
-            );
+            const actionId = actionIds.get(actionCode);
+            if (actionId) rows.push([menuId, actionId]);
           }
         }
+        permissionCount += await insertRolePermissions(client, S, roleId, rows);
+
+        if (!entry) continue;
+
+        // Profil per modul disimpan agar penurunan izin dapat diulang saat menu
+        // baru ditambahkan, tanpa menebak profil apa yang dulu dipakai.
+        for (const [moduleCode, profileCode] of Object.entries(entry.modules)) {
+          await client.query(
+            // WHERE pada DO UPDATE menahan penulisan ulang bernilai sama.
+            // Tanpanya setiap provisioning yang diulang menerbitkan satu baris
+            // audit per profil, dan riwayat perubahan hak terisi perubahan yang
+            // tidak pernah terjadi.
+            `INSERT INTO ${S}.role_module_profile (role_id, module_code, profile_code)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (role_id, module_code)
+             DO UPDATE SET profile_code = EXCLUDED.profile_code, updated_at = now()
+             WHERE role_module_profile.profile_code IS DISTINCT FROM EXCLUDED.profile_code`,
+            [roleId, moduleCode, profileCode],
+          );
+        }
+
+        await client.query(
+          `INSERT INTO ${S}.role_data_scope (role_id, scope_level, requires_assignment, description)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (role_id)
+           DO UPDATE SET scope_level = EXCLUDED.scope_level,
+                         requires_assignment = EXCLUDED.requires_assignment,
+                         description = EXCLUDED.description,
+                         updated_at = now()
+           WHERE role_data_scope.scope_level IS DISTINCT FROM EXCLUDED.scope_level
+              OR role_data_scope.requires_assignment IS DISTINCT FROM EXCLUDED.requires_assignment
+              OR role_data_scope.description IS DISTINCT FROM EXCLUDED.description`,
+          [roleId, entry.dataScope, SCOPES_NEEDING_ASSIGNMENT.has(entry.dataScope), entry.description],
+        );
       }
+
+      // --- Aturan pemisahan tugas -------------------------------------------
+      // Diturunkan dari katalog role, bukan ditulis terpisah, sehingga aturan
+      // tidak mungkin menyimpang dari role yang benar-benar disemai.
+      let sodRuleCount = 0;
+      for (const group of buildSodGroups()) {
+        const meta = SOD_RULE_META[group.group];
+        if (!meta) {
+          this.logger.warn(`Kelompok SoD '${group.group}' tidak punya keterangan; dilewati`);
+          continue;
+        }
+        const ruleId = await upsertByCode(client, S, 'segregation_of_duty_rule', group.group, {
+          code: group.group,
+          name: meta.name,
+          description: meta.description,
+          severity: meta.severity,
+          enforcement: 'BLOCK',
+          is_system: true,
+        });
+        sodRuleCount += 1;
+
+        for (const member of group.members) {
+          const roleId = roleIds.get(member.code);
+          if (!roleId) continue;
+          await client.query(
+            `INSERT INTO ${S}.segregation_of_duty_role (rule_id, role_id, side)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (rule_id, role_id) DO UPDATE SET side = EXCLUDED.side
+             WHERE segregation_of_duty_role.side IS DISTINCT FROM EXCLUDED.side`,
+            [ruleId, roleId, member.side],
+          );
+        }
+      }
+      this.logger.log(
+        `Tata kelola role tersemai: ${roleCount} role, ${permissionCount} izin, ${sodRuleCount} aturan SoD`,
+      );
 
       // --- Onboarding progress ----------------------------------------------
       await client.query(
@@ -256,6 +489,7 @@ export class TenantBootstrapService {
         outletWarehouseId,
         menuCount,
         roleCount,
+        permissionCount,
       };
     });
   }

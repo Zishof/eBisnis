@@ -64,6 +64,13 @@
       "file": "V009__reference_check_indexes.sql",
       "name": "Index pendukung reference check",
       "description": "Index pada 23 kolom foreign key yang dipakai MasterLifecycleService untuk memeriksa referensi sebelum hapus permanen, termasuk stock_movement.uom_id, pos_sale.customer_id, dan goods_receipt.supplier_id."
+    },
+    {
+      "version": "V010",
+      "sequence": 10,
+      "file": "V010__role_governance.sql",
+      "name": "Tata kelola role, data scope, dan pemisahan tugas",
+      "description": "role_module_profile, role_data_scope, segregation_of_duty_rule, segregation_of_duty_role, segregation_of_duty_exception, segregation_of_duty_violation, kolom tambahan role.profile_code/role_family/is_core/is_legacy/successor_code, dan trigger audit untuk tabel tata kelola baru."
     }
   ]
 }

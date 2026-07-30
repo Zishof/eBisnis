@@ -1,5 +1,10 @@
 # 12 — Inventaris Role, Duty, dan Privilege
 
+> **Status: sebagian besar sudah diterapkan** (migration `V010__role_governance.sql`).
+> Bagian "Kondisi sekarang" di bawah adalah keadaan **sebelum** V010, dipertahankan
+> sebagai catatan audit. Keadaan setelahnya ada pada bagian
+> [Hasil setelah V010](#hasil-setelah-v010) di akhir dokumen.
+
 ## Kondisi sekarang
 
 | Objek | Jumlah | Sumber |
@@ -143,3 +148,102 @@ melanggar ditolak kecuali diberi pengecualian tertulis beserta alasannya.
 | Role lama putus | dipertahankan dan dipetakan, tidak dihapus |
 | SoD memblokir operasi tenant kecil yang orangnya sedikit | pengecualian tertulis beralasan, dicatat audit, dan ditinjau berkala |
 | Menu tersembunyi dianggap otorisasi | perbaikan V6-0-F03 menjadi prasyarat |
+
+## Hasil setelah V010
+
+Diukur pada schema `tokosaya` setelah `pnpm migrate:tenants` dijalankan.
+
+| Objek | Sebelum | Sesudah |
+| --- | ---: | ---: |
+| Role | 6 | **129** |
+| Aksi permission | 22 | **26** |
+| Baris role-menu-permission | 2.990 | **7.139** |
+| Profil modul per role | 0 | **455** |
+| Batas data per role | 0 | **124** |
+| Aturan SoD | 0 | **13** |
+| Sisi role pada aturan SoD | 0 | **30** |
+
+129, bukan 130, karena `DEMO_USER` ada pada template lama sekaligus katalog baru
+dan keduanya menunjuk baris yang sama.
+
+### Yang berbeda dari rancangan di atas
+
+**Duty dan Privilege tidak dibuat sebagai tabel.** Rancangan awal mengusulkan
+`PrivilegeCatalog` dan `DutyCatalog` sebagai lapisan antara. Yang dipakai adalah
+**profil per modul** (`role_module_profile`): role menyatakan profil P0–P12 pada
+satu modul, dan seeder menurunkannya menjadi baris `role_menu_permission`.
+
+Alasannya, lapisan Duty menyelesaikan masalah yang sama — mencegah ratusan ribu
+baris ditulis satu per satu — dengan menambah dua tabel dan satu tabel relasi.
+Profil menyelesaikannya dengan satu tabel, dan sekaligus memberi sifat yang
+tidak dimiliki Duty: menu baru pada modul yang sudah dikenal **otomatis
+terwarisi seluruh role** tanpa satu pun baris katalog diubah. Diuji pada
+`role-expansion.spec.ts` bagian "mewarisi menu baru tanpa mengubah katalog role".
+
+Jika kelak ada tenant yang menuntut hak yang tidak dapat dinyatakan sebagai
+profil per modul, `PrivilegeCatalog` dapat ditambahkan secara additive di
+atasnya tanpa membongkar yang sudah ada.
+
+**Aturan SoD bersisi banyak, bukan berpasangan.** Rancangan menyebut "pasangan
+duty". Yang diterapkan adalah kelompok bersisi: `PREPARER`, `APPROVER`,
+`EXECUTOR`, dan `CUSTODIAN`. Dua role dalam satu kelompok dengan sisi berbeda
+tidak boleh dipegang satu orang.
+
+Bentuk pasangan tidak dapat menyatakan `PO_RECEIPT_PAY`, yang justru berkaki
+tiga: pemesan barang, penerima barang, dan pembayar tagihan harus tiga pihak
+berbeda. Hal yang sama berlaku pada `VENDOR_PAYMENT` — pembuat pemasok,
+penyetuju tagihan, dan pengeksekusi pembayaran.
+
+### Aturan SoD yang disemai
+
+| Kode | Tingkat | Sisi |
+| --- | --- | ---: |
+| `PO_RECEIPT_PAY` | CRITICAL | 3 |
+| `VENDOR_PAYMENT` | CRITICAL | 3 |
+| `JOURNAL` | CRITICAL | 2 |
+| `PAYROLL` | CRITICAL | 2 |
+| `AR_CASH` | CRITICAL | 2 |
+| `POS_VOID` | HIGH | 2 |
+| `PR_APPROVAL` | HIGH | 2 |
+| `STOCK_ADJUSTMENT` | HIGH | 2 |
+| `WORKFLOW_APPROVAL` | HIGH | 2 |
+| `BUDGET` | MEDIUM | 2 |
+| `EXPENSE` | MEDIUM | 2 |
+| `CONTENT_PUBLISH` | LOW | 2 |
+| `HELP_PUBLISH` | LOW | 2 |
+
+Penegakannya ada pada `SegregationOfDutyService.enforce()`, dipanggil saat role
+ditetapkan. Pelanggaran yang **diloloskan** pengecualian juga dicatat, bukan
+hanya yang ditolak — sebab yang diloloskan itulah yang benar-benar berjalan di
+produksi.
+
+### Batas data yang disemai
+
+| Tingkat | Role |
+| --- | ---: |
+| `LEGAL_ENTITY` | 37 |
+| `TENANT` | 34 |
+| `WAREHOUSE` | 11 |
+| `BRAND` | 10 |
+| `SELF` | 8 |
+| `DEPARTMENT` | 8 |
+| `OUTLET` | 4 |
+| `TEAM` | 3 |
+| `ASSIGNED_QUEUE` | 3 |
+| `ASSIGNED_TRIP` | 2 |
+| `OWNERSHIP` | 2 |
+| `API_SCOPE` | 1 |
+| `OUTLET_TERMINAL` | 1 |
+
+Tingkat selain `TENANT` dan `SELF` ditandai `requires_assignment = TRUE`:
+pemegangnya melihat **nol baris** sampai gudang, outlet, atau departemen konkret
+ditugaskan kepadanya. Ini disengaja — role bergudang tanpa gudang yang
+ditugaskan tidak boleh berarti "seluruh gudang".
+
+### Yang masih terbuka
+
+`role_data_scope` menyatakan **tingkat** batas data dan sudah tersemai, tetapi
+**penegakannya pada query** belum ada. Sampai itu dikerjakan, batas data adalah
+data yang benar tanpa penjaga — sama seperti menu tersembunyi tanpa
+`PermissionGuard`. Penegakan menunggu perbaikan V6-0-F03, yang menjadi
+prasyaratnya.

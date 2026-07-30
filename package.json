@@ -15,6 +15,7 @@
     "db:seed": "pnpm --filter @ebisnis/api db:seed",
     "seed:platform": "pnpm --filter @ebisnis/api seed:platform",
     "seed:tenant": "pnpm --filter @ebisnis/api seed:tenant",
+    "migrate:tenants": "pnpm --filter @ebisnis/api migrate:tenants",
     "seed:verify": "pnpm --filter @ebisnis/api seed:verify",
     "seed:repair": "pnpm --filter @ebisnis/api seed:repair",
     "seed:cleanup": "pnpm --filter @ebisnis/api seed:cleanup",

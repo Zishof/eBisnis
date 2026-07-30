@@ -20,7 +20,8 @@
     "seed:verify": "ts-node -P tsconfig.json src/cli/seed-verify.cli.ts",
     "seed:repair": "ts-node -P tsconfig.json src/cli/seed-repair.cli.ts",
     "seed:cleanup": "ts-node -P tsconfig.json src/cli/seed-cleanup.cli.ts",
-    "docs:generate": "ts-node -P tsconfig.json src/cli/generate-docs.cli.ts"
+    "docs:generate": "ts-node -P tsconfig.json src/cli/generate-docs.cli.ts",
+    "migrate:tenants": "ts-node -P tsconfig.json src/cli/migrate-tenants.cli.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
@@ -70,4 +71,3 @@
     "typescript": "^5.7.3"
   }
 }
-
