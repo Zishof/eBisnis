@@ -42,6 +42,11 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   (command injection pada CLI `glob`).
 - CI memindai secret pada seluruh riwayat commit dan mengaudit dependency setiap
   push serta setiap pekan.
+- Kredensial integrasi bank dan payment pada source legacy `docs/input/`
+  diredaksi: API key Bank Kaltimtara, application id, kata sandi VA Esmartlink,
+  serta secret key QRIS dan VA JARING. Temuan ini berasal dari gitleaks, bukan
+  dari scan manual, dan tercatat pada
+  `docs/development/security-incident-2026-07-30-legacy-credentials.md`.
 
 ### Fixed
 
@@ -56,6 +61,12 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Known issues
 
+- Kredensial integrasi bank pada source legacy masih ada di riwayat commit
+  `a463093`. Rotasi kredensial oleh pemilik integrasi bersifat wajib;
+  pembersihan riwayat memerlukan keputusan tersendiri.
+- Proteksi branch GitHub tidak aktif karena memerlukan GitHub Pro untuk
+  repository privat. Mitigasi lokal berupa hook `pre-push` tersedia; lihat
+  `docs/development/branch-protection.md`.
 - Endpoint CRUD master, termasuk purge, belum memverifikasi permission
   (`PermissionGuard` keluar lebih awal bila handler tanpa metadata permission).
   Rencana perbaikan ada pada `docs/upgrade-v6/08-upgrade-plan.md` fase V6-0.x.

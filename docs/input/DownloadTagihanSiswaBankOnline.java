@@ -494,9 +494,9 @@ public class DownloadTagihanSiswaBankOnline {
 						JSONObject postData = new JSONObject();
 						String va = Common.getGeneratedAngkaDigit(10);
 						postData.put("merchantId",
-								Common.getKonfigurasi("qris_jaring_merchantId", "3200124010015").getNilai());
+								Common.getKonfigurasi("qris_jaring_merchantId", "<REDACTED_MERCHANT_ID>").getNilai());
 						postData.put("terminalId",
-								Common.getKonfigurasi("qris_jaring_terminalId", "10010005").getNilai());
+								Common.getKonfigurasi("qris_jaring_terminalId", "<REDACTED_TERMINAL_ID>").getNilai());
 						postData.put("trxId", va);
 						postData.put("amount", mytotal + "");
 						postData.put("expire", Common.getKonfigurasi("qris_jaring_expire", "7200").getNilai());
@@ -505,7 +505,7 @@ public class DownloadTagihanSiswaBankOnline {
 
 						String strURL = Common.getKonfigurasi("qris_jaring_gateway_url",
 								"http://api.jsa2.host/agg/api/v1/qris/generate").getNilai();
-						String screet_key = Common.getKonfigurasi("qris_jaring_screet_key", "YnNuOmJzbg==").getNilai();
+						String screet_key = Common.getKonfigurasi("qris_jaring_screet_key", "<REDACTED_SECRET_KEY>").getNilai();
 
 						String sign = postData.getString("merchantId") + postData.getString("terminalId")
 								+ postData.getString("posId") + postData.getString("trxId")
@@ -604,7 +604,7 @@ public class DownloadTagihanSiswaBankOnline {
 
 						String strURL = Common.getKonfigurasi("va_jaring_gateway_url",
 								"http://sandbox.jaring.host/api/v3/billpay/inquiry").getNilai();
-						String screet_key = Common.getKonfigurasi("va_jaring_screet_key", "amFyaW5nOmphcmluZw==")
+						String screet_key = Common.getKonfigurasi("va_jaring_screet_key", "<REDACTED_SECRET_KEY>")
 								.getNilai();
 
 						String sign = postData.getString("custName") + postData.getString("custID")

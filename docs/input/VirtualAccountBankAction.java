@@ -224,8 +224,8 @@ public class VirtualAccountBankAction extends GenericAutowireComposer implements
 					+ transaction_id;
 
 			String username_va_e_smartlink = Common
-					.getKonfigurasi("username_va_e_smartlink", "api-smartlink-sbx@budi-mulia.com").getNilai().trim();
-			String password_va_e_smartlink = Common.getKonfigurasi("password_va_e_smartlink", "sQ3f2PMbGWvNxvi")
+					.getKonfigurasi("username_va_e_smartlink", "<REDACTED_USERNAME>").getNilai().trim();
+			String password_va_e_smartlink = Common.getKonfigurasi("password_va_e_smartlink", "<REDACTED_PASSWORD>")
 					.getNilai().trim();
 
 			if (virtualAccountBankReadOnly.getSiswa() != null) {
@@ -345,12 +345,12 @@ public class VirtualAccountBankAction extends GenericAutowireComposer implements
 		if (virtualAccountBankReadOnly.getMahasiswa() != null
 				&& bankVirtualAccount.equalsIgnoreCase("bankaltimtara baru")) {
 			String linkPost = Common
-					.getKonfigurasi("url_status_va_bankaltimtara_baru", "http://36.66.232.249:8017/ubt/status_va")
+					.getKonfigurasi("url_status_va_bankaltimtara_baru", "http://<REDACTED_HOST>:8017/ubt/status_va")
 					.getNilai().trim();
 			String signatureKey = Common
-					.getKonfigurasi("key_bankaltimtara_baru", "0CcfEADwiAssIGQ6AMiWbiP9VHI0zzrBu4WUKfY1bNEF9q3FZJ")
+					.getKonfigurasi("key_bankaltimtara_baru", "<REDACTED_API_KEY>")
 					.getNilai().trim();
-			String appId = Common.getKonfigurasi("app_id_bankaltimtara_baru", "pKMUSJfL5G8wKHSbhoTU7PQ3TJdX0HlV")
+			String appId = Common.getKonfigurasi("app_id_bankaltimtara_baru", "<REDACTED_APP_ID>")
 					.getNilai().trim();
 
 			String npm = virtualAccountBankReadOnly.getBiodataCalonMahasiswa() != null
@@ -815,11 +815,11 @@ public class VirtualAccountBankAction extends GenericAutowireComposer implements
 
 															String username_va_e_smartlink = Common
 																	.getKonfigurasi("username_va_e_smartlink",
-																			"api-smartlink-sbx@budi-mulia.com")
+																			"<REDACTED_USERNAME>")
 																	.getNilai().trim();
 															String password_va_e_smartlink = Common
 																	.getKonfigurasi("password_va_e_smartlink",
-																			"sQ3f2PMbGWvNxvi")
+																			"<REDACTED_PASSWORD>")
 																	.getNilai().trim();
 
 															if (virtualAccountBank.getSiswa() != null) {
@@ -1776,11 +1776,11 @@ public class VirtualAccountBankAction extends GenericAutowireComposer implements
 
 													String username_va_e_smartlink = Common
 															.getKonfigurasi("username_va_e_smartlink",
-																	"api-smartlink-sbx@budi-mulia.com")
+																	"<REDACTED_USERNAME>")
 															.getNilai().trim();
 													String password_va_e_smartlink = Common
 															.getKonfigurasi("password_va_e_smartlink",
-																	"sQ3f2PMbGWvNxvi")
+																	"<REDACTED_PASSWORD>")
 															.getNilai().trim();
 
 													if (virtualAccountBankReadOnly.getSiswa() != null) {
@@ -2256,15 +2256,15 @@ public class VirtualAccountBankAction extends GenericAutowireComposer implements
 
 												String linkPost = Common
 														.getKonfigurasi("url_status_va_bankaltimtara_baru",
-																"http://36.66.232.249:8017/ubt/status_va")
+																"http://<REDACTED_HOST>:8017/ubt/status_va")
 														.getNilai().trim();
 
 												String signatureKey = Common
 														.getKonfigurasi("key_bankaltimtara_baru",
-																"0CcfEADwiAssIGQ6AMiWbiP9VHI0zzrBu4WUKfY1bNEF9q3FZJ")
+																"<REDACTED_API_KEY>")
 														.getNilai().trim();
 												String appId = Common.getKonfigurasi("app_id_bankaltimtara_baru",
-														"pKMUSJfL5G8wKHSbhoTU7PQ3TJdX0HlV").getNilai().trim();
+														"<REDACTED_APP_ID>").getNilai().trim();
 
 												String payload = appId + ";status_va:"
 														+ (virtualAccountBankReadOnly.getBiodataCalonMahasiswa() != null

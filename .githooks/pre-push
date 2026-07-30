@@ -1,0 +1,44 @@
+#!/bin/sh
+#
+# Menolak force-push dan penghapusan branch main.
+#
+# Ini pengganti lokal untuk branch protection GitHub, yang memerlukan GitHub Pro
+# pada repository privat. Karena hanya berlaku di mesin yang mengaktifkannya,
+# ia bukan pengganti setara — lihat docs/development/branch-protection.md.
+#
+# Aktifkan dengan:  git config core.hooksPath .githooks
+#
+# Git mengirim baris berikut lewat stdin:
+#   <local_ref> <local_sha> <remote_ref> <remote_sha>
+
+PROTECTED='refs/heads/main'
+ZERO='0000000000000000000000000000000000000000'
+status=0
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$remote_ref" = "$PROTECTED" ] || continue
+
+  # Penghapusan branch: sisi lokal berupa sha nol.
+  if [ "$local_sha" = "$ZERO" ]; then
+    echo "pre-push: DITOLAK — penghapusan $PROTECTED tidak diizinkan." >&2
+    status=1
+    continue
+  fi
+
+  # Branch baru di remote: tidak ada yang bisa ditimpa.
+  [ "$remote_sha" = "$ZERO" ] && continue
+
+  # Fast-forward hanya terjadi bila commit remote adalah leluhur commit lokal.
+  # Bila bukan, push ini akan menimpa riwayat yang sudah ada di remote.
+  if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+    echo "pre-push: DITOLAK — push ini bukan fast-forward terhadap $PROTECTED." >&2
+    echo "  remote : $remote_sha" >&2
+    echo "  lokal  : $local_sha" >&2
+    echo "  Riwayat yang sudah dipush tidak boleh ditimpa." >&2
+    echo "  Bila memang disengaja, jalankan dengan --no-verify dan pahami" >&2
+    echo "  bahwa commit di remote akan hilang." >&2
+    status=1
+  fi
+done
+
+exit "$status"
