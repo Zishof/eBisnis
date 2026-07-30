@@ -1,0 +1,52 @@
+[Unit]
+Description=eBisnis.id API (NestJS)
+Documentation=https://github.com/Zishof/eBisnis
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ebisnis
+Group=ebisnis
+
+WorkingDirectory=/opt/ebisnis/app/apps/api
+
+# Konfigurasi dibaca dari .env pada WorkingDirectory, yang merupakan symlink ke
+# /etc/ebisnis/ebisnis.env. Satu berkas dipakai bersama oleh runtime NestJS dan
+# Prisma CLI, sehingga tidak mungkin keduanya membaca nilai yang berbeda.
+ExecStart=/usr/bin/node dist/main.js
+
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ebisnis-api
+
+# Matikan dengan rapi agar permintaan yang sedang berjalan sempat selesai.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# ---------------------------------------------------------------------------
+# Pengetatan.
+# ---------------------------------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+
+# ProtectSystem=strict membuat seluruh filesystem read-only. Beri izin tulis
+# hanya pada direktori yang benar-benar diperlukan.
+ReadWritePaths=/var/log/ebisnis
+ReadWritePaths=/var/lib/ebisnis
+
+[Install]
+WantedBy=multi-user.target

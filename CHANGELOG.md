@@ -21,6 +21,11 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 - Laporan migrasi Git pada `docs/git-migration/`.
 - Berkas `.gitignore` dan `CHANGELOG.md`.
 
+- Berkas deployment untuk Ubuntu 22.04: konfigurasi Apache, unit systemd,
+  skrip `install.sh` dan `update.sh` dengan backup dan rollback otomatis,
+  contoh environment produksi, serta skrip pembuatan akun pedagang.
+- Panduan instalasi dan pembaruan pada `docs/deployment/ubuntu-22.04.md`.
+
 ### Changed
 
 - **Workspace resmi berpindah ke `C:\opt\eBisnisGithub`.**
