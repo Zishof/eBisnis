@@ -38,12 +38,18 @@ Satu perbaikan tambahan di luar daftar semula:
 
 ## Verifikasi akhir
 
-```bash
-grep -rInE "root123|admin123!!" --exclude-dir=node_modules --exclude-dir=.git .
-grep -rInE "postgres(ql)?://[^\"'\s]*:[^\"'@\s]+@" --exclude-dir=node_modules --exclude-dir=.git .
-```
+Pencarian dijalankan terhadap seluruh berkas tracked, memakai pola untuk:
 
-Hasil: nol kecocokan selain placeholder `USER:PASSWORD`.
+- nilai kata sandi database dan super admin pengembangan (nilai nyatanya
+  sengaja tidak dituliskan di sini);
+- connection string yang memuat kata sandi:
+  `postgres(ql)?://[^"'\s]*:[^"'@\s]+@`;
+- blok `BEGIN ... PRIVATE KEY`;
+- token GitHub: `gh[pousr]_[A-Za-z0-9]{20,}`;
+- berkas bernama tepat `.env`.
+
+Hasil: nol kecocokan, selain placeholder `USER:PASSWORD` dan kredensial palsu
+`ci:ci` pada workflow CI yang tidak pernah terhubung ke database mana pun.
 
 | Pemeriksaan | Hasil |
 | --- | --- |
