@@ -188,6 +188,7 @@ Ketentuan kata sandi: minimal 10 karakter, memuat huruf kecil, huruf besar,
 angka, dan simbol.
 
 ```bash
+sudo chown root:ebisnis /etc/ebisnis/ebisnis.env
 sudo chmod 640 /etc/ebisnis/ebisnis.env
 ```
 

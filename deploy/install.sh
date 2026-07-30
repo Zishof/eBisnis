@@ -138,7 +138,15 @@ log "4/10  Pengguna sistem dan direktori"
 # ---------------------------------------------------------------------------
 id -u "$APP_USER" >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin "$APP_USER"
 install -d -o "$APP_USER" -g "$APP_USER" -m 755 /opt/ebisnis "$LOG_DIR" "$STATE_DIR"
-install -d -o root      -g root       -m 700 /etc/ebisnis "$BACKUP_DIR"
+
+# /etc/ebisnis harus dapat DITELUSURI oleh pengguna aplikasi. Berkas di dalamnya
+# boleh 640, tetapi tanpa izin x pada direktorinya berkas itu tetap tidak dapat
+# dibuka, dan dotenv gagal tanpa pesan — gejalanya muncul jauh kemudian sebagai
+# "Environment variable not found: DATABASE_URL" dari Prisma.
+install -d -o root -g "$APP_USER" -m 750 /etc/ebisnis
+
+# Backup hanya disentuh root (update.sh berjalan sebagai root), jadi tetap 700.
+install -d -o root -g root -m 700 "$BACKUP_DIR"
 
 # ---------------------------------------------------------------------------
 log "5/10  Konfigurasi environment"
@@ -150,18 +158,34 @@ else
 
 Buat lebih dahulu dari contoh, isi nilainya, lalu jalankan ulang skrip ini:
 
-    sudo install -d -m 700 /etc/ebisnis
+    sudo install -d -o root -g $APP_USER -m 750 /etc/ebisnis
     sudo cp deploy/env.production.example $ENV_FILE
-    sudo chmod 600 $ENV_FILE
+    sudo chown root:$APP_USER $ENV_FILE
+    sudo chmod 640 $ENV_FILE
     sudo nano $ENV_FILE
 
 Yang WAJIB diisi: DATABASE_URL, DIRECT_DATABASE_URL, DATABASE_ADMIN_URL,
 JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, BOOTSTRAP_SUPER_ADMIN_PASSWORD,
 CORS_ORIGINS, APP_URL, WEB_URL."
 fi
-chmod 600 "$ENV_FILE"
 chown root:"$APP_USER" "$ENV_FILE"
 chmod 640 "$ENV_FILE"
+
+# Buktikan pengguna aplikasi benar-benar dapat membacanya. Tanpa pemeriksaan ini,
+# kesalahan izin baru terlihat beberapa langkah kemudian sebagai pesan Prisma
+# yang menyesatkan tentang variabel lingkungan.
+if ! sudo -u "$APP_USER" test -r "$ENV_FILE"; then
+  die "Pengguna '$APP_USER' tidak dapat membaca $ENV_FILE.
+
+Periksa izin direktori dan berkasnya:
+    ls -ld /etc/ebisnis
+    ls -l  $ENV_FILE
+
+Yang benar:
+    /etc/ebisnis        drwxr-x---  root:$APP_USER   (750)
+    $ENV_FILE  -rw-r-----  root:$APP_USER   (640)"
+fi
+echo "    Konfigurasi dapat dibaca oleh $APP_USER."
 
 # ---------------------------------------------------------------------------
 log "6/10  Ambil source dari GitHub"
