@@ -1,0 +1,43 @@
+=== Tabel V9-2 ===
+┌─────────┬───────────────────────────────────────────┐
+│ (index) │ table_name                                │
+├─────────┼───────────────────────────────────────────┤
+│ 0       │ 'payment_credential_access_log'           │
+│ 1       │ 'payment_provider_activation_ticket_link' │
+│ 2       │ 'payment_provider_capability'             │
+│ 3       │ 'payment_provider_credential_version'     │
+│ 4       │ 'payment_provider_health_check'           │
+│ 5       │ 'support_ticket'                          │
+│ 6       │ 'support_ticket_message'                  │
+│ 7       │ 'support_ticket_transition'               │
+│ 8       │ 'tenant_payment_provider_account'         │
+└─────────┴───────────────────────────────────────────┘
+LULUS  sembilan tabel V9-2 tersedia  — 9 dari 9
+LULUS  step-up CREDENTIAL_MANAGE terdaftar
+
+=== Batasan unik beserta kolomnya ===
+┌─────────┬───────────────────────────────────────────┬─────────────────────────────────────┐
+│ (index) │ tabel                                     │ kolom                               │
+├─────────┼───────────────────────────────────────────┼─────────────────────────────────────┤
+│ 0       │ 'payment_provider_activation_ticket_link' │ 'ticket_id,account_id'              │
+│ 1       │ 'payment_provider_capability'             │ 'account_id,capability_code'        │
+│ 2       │ 'payment_provider_credential_version'     │ 'account_id,field_code,version'     │
+│ 3       │ 'support_ticket'                          │ 'ticket_number'                     │
+│ 4       │ 'tenant_payment_provider_account'         │ 'account_code'                      │
+│ 5       │ 'tenant_payment_provider_account'         │ 'tenant_id,provider_id,environment' │
+└─────────┴───────────────────────────────────────────┴─────────────────────────────────────┘
+LULUS  satu akun per tenant per provider per environment
+LULUS  satu versi credential per field
+LULUS  satu tautan tiket per akun
+LULUS  nomor tiket unik
+
+=== Kolom bernuansa rahasia pada tabel V9-2 ===
+┌─────────┬───────────────────────────────────────┬─────────────┐
+│ (index) │ table_name                            │ column_name │
+├─────────┼───────────────────────────────────────┼─────────────┤
+│ 0       │ 'payment_provider_credential_version' │ 'key_id'    │
+└─────────┴───────────────────────────────────────┴─────────────┘
+LULUS  satu-satunya kolom bernuansa rahasia adalah key_id
+LULUS  nilai rahasia hanya pada kolom ciphertext  — text
+
+SELURUH PEMERIKSAAN LULUS

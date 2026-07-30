@@ -22,12 +22,26 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   baris**, bukan seluruhnya.
 - Penugasan batas data kini per orang, bukan per role, sehingga dua kepala
   gudang dapat memegang gudang yang berbeda.
+- **Kredensial penyedia pembayaran tidak pernah melewati catatan tiket.**
+  Formulir khusus yang menuntut verifikasi ulang identitas adalah satu-satunya
+  jalan masuk; tiket hanya mencatat bahwa kredensial sudah diisi. Balasan tiket
+  dibaca banyak orang dan tersimpan selamanya.
+- Setiap pembukaan kredensial tercatat beserta alasannya, termasuk yang gagal.
 - Hak mengelola credential pembayaran dipisahkan dari administrator toko dan
   menuntut verifikasi tambahan. Petugas layanan pelanggan tidak dapat melihat
   credential maupun menyetujui refund; packer dan picker tidak dapat mengubah
   pesanan.
 
 ### Added
+
+- **Aktivasi pembayaran online.** Tenant dapat meminta aktivasi akun eSmartlink
+  langsung dari Pusat Aktivasi; sistem membuka tiket dukungan dan menautkannya.
+  Menekan tombol dua kali tidak membuat tiket kembar.
+- Kredensial pembayaran disimpan terenkripsi dan berversi. Rotasi tidak menimpa
+  nilai lama, sehingga kredensial yang keliru dapat dikembalikan tanpa meminta
+  ulang ke penyedia. Setelah tersimpan, yang terlihat hanya empat karakter
+  terakhir.
+- Uji kesiapan akun pembayaran beserta riwayatnya.
 
 - **Fondasi marketplace: tenant dapat mendaftar sebagai penjual.** Pusat
   Aktivasi Marketplace menampilkan pemeriksaan kesiapan beserta alasan yang

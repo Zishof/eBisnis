@@ -1,0 +1,216 @@
+// eBisnis.id Versi 9 — Akun provider pembayaran per tenant dan tiket aktivasi.
+//
+// `PaymentProvider` yang ada bersifat global: satu baris per provider dengan
+// `secretReference` menunjuk env var. Pola itu dipertahankan untuk akun platform
+// dan tidak diubah. Marketplace membutuhkan satu akun per seller, sehingga
+// modelnya ditambahkan di sini.
+//
+// Aturan yang berlaku pada seluruh berkas ini:
+//   nilai rahasia hanya ada pada PaymentProviderCredentialVersion.ciphertext
+//   ciphertext dihasilkan SecretBoxService; kuncinya dari environment
+//   tidak ada kolom yang menyimpan rahasia dalam bentuk terbaca
+//   tiket TIDAK PERNAH memuat credential
+
+/// Akun provider pembayaran milik satu tenant.
+model TenantPaymentProviderAccount {
+  id         String @id @default(uuid()) @db.Uuid
+  tenantId   String @map("tenant_id") @db.Uuid
+  providerId String @map("provider_id") @db.Uuid
+
+  /// SANDBOX atau PRODUCTION. Keduanya terpisah penuh: credential sandbox tidak
+  /// pernah dipakai memproses pembayaran nyata, dan sebaliknya.
+  environment ProviderEnvironment @default(SANDBOX)
+
+  accountCode String  @map("account_code") @db.VarChar(64)
+  label       String  @db.VarChar(160)
+
+  /// Identitas merchant pada sisi provider. Bukan rahasia — ia muncul pada
+  /// dokumen dan dapat ditampilkan.
+  merchantId  String? @map("merchant_id") @db.VarChar(96)
+
+  status TenantPaymentAccountStatus @default(DRAFT)
+
+  /// URL callback khusus akun ini. Provider memanggil URL ini, sehingga ia harus
+  /// dapat diakses publik dan diverifikasi sebelum akun diaktifkan.
+  callbackUrl String? @map("callback_url") @db.VarChar(255)
+
+  /// Daftar IP yang boleh mengirim callback untuk akun ini. Kosong berarti
+  /// mewarisi daftar milik provider.
+  allowedIps String? @map("allowed_ips") @db.Text
+
+  activatedAt   DateTime? @map("activated_at") @db.Timestamptz(6)
+  activatedBy   String?   @map("activated_by") @db.Uuid
+  suspendedAt   DateTime? @map("suspended_at") @db.Timestamptz(6)
+  suspendedBy   String?   @map("suspended_by") @db.Uuid
+  suspendReason String?   @map("suspend_reason") @db.Text
+
+  /// Hasil uji terakhir. Disimpan agar status akun dapat dijelaskan tanpa
+  /// menjalankan ulang uji ke provider.
+  lastHealthCheckAt     DateTime? @map("last_health_check_at") @db.Timestamptz(6)
+  lastHealthCheckStatus String?   @map("last_health_check_status") @db.VarChar(24)
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version       Int       @default(1)
+
+  tenant             Tenant                             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  provider           PaymentProvider                    @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  credentialVersions PaymentProviderCredentialVersion[]
+  capabilities       PaymentProviderCapability[]
+  healthChecks       PaymentProviderHealthCheck[]
+  ticketLinks        PaymentProviderActivationTicketLink[]
+
+  /// Satu akun per tenant per provider per environment. Batasan ini yang
+  /// mencegah dua akun produksi aktif bersamaan pada satu tenant.
+  @@unique([tenantId, providerId, environment])
+  @@unique([accountCode])
+  @@index([status, deletedAt])
+  @@index([providerId, status])
+  @@map("tenant_payment_provider_account")
+  @@schema("platform")
+}
+
+/// Satu versi credential. Rotasi menambah versi, tidak menimpa.
+///
+/// Berversi karena rotasi harus dapat dibatalkan: bila credential baru ternyata
+/// salah, akun harus dapat kembali ke versi sebelumnya tanpa meminta ulang ke
+/// provider. Versi lama dinonaktifkan, bukan dihapus.
+model PaymentProviderCredentialVersion {
+  id        String @id @default(uuid()) @db.Uuid
+  accountId String @map("account_id") @db.Uuid
+
+  version   Int
+  /// Jenis rahasia: API_KEY, SECRET_KEY, PASSWORD, dan sejenisnya.
+  fieldCode String @map("field_code") @db.VarChar(48)
+
+  /// Satu-satunya tempat nilai rahasia berada, dan ia terenkripsi.
+  ciphertext String @db.Text
+  /// Id kunci yang dipakai; menandai versi yang perlu dirotasi setelah kunci
+  /// environment berganti.
+  keyId String @map("key_id") @db.VarChar(32)
+  /// Empat karakter terakhir untuk ditampilkan. Tidak cukup untuk memakai
+  /// rahasianya, cukup untuk memastikan yang tersimpan adalah yang dimaksud.
+  hint  String @db.VarChar(16)
+
+  isActive     Boolean   @default(true) @map("is_active")
+  activatedAt  DateTime  @default(now()) @map("activated_at") @db.Timestamptz(6)
+  retiredAt    DateTime? @map("retired_at") @db.Timestamptz(6)
+  retiredBy    String?   @map("retired_by") @db.Uuid
+  retireReason String?   @map("retire_reason") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  account TenantPaymentProviderAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  reads   PaymentCredentialAccessLog[]
+
+  @@unique([accountId, fieldCode, version])
+  @@index([accountId, fieldCode, isActive])
+  @@map("payment_provider_credential_version")
+  @@schema("platform")
+}
+
+/// Catatan setiap pembukaan credential.
+///
+/// Terpisah dari audit umum karena pertanyaannya berbeda: bukan "siapa mengubah
+/// apa", melainkan "berapa kali rahasia ini dibuka, oleh proses apa, dan apakah
+/// jumlahnya wajar". Lonjakan pembacaan adalah sinyal paling awal bahwa sesuatu
+/// tidak beres.
+model PaymentCredentialAccessLog {
+  id                  String @id @default(uuid()) @db.Uuid
+  credentialVersionId String @map("credential_version_id") @db.Uuid
+
+  /// Alasan pembukaan: CREATE_ORDER, INQUIRY, HEALTH_CHECK, ROTATION.
+  purpose   String   @db.VarChar(48)
+  actorId   String?  @map("actor_id") @db.Uuid
+  requestId String?  @map("request_id") @db.VarChar(64)
+  succeeded Boolean  @default(true)
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  credentialVersion PaymentProviderCredentialVersion @relation(fields: [credentialVersionId], references: [id], onDelete: Cascade)
+
+  @@index([credentialVersionId, occurredAt])
+  @@index([occurredAt])
+  @@map("payment_credential_access_log")
+  @@schema("platform")
+}
+
+/// Kapabilitas yang benar-benar dimiliki akun.
+///
+/// Dibuat sebagai data, bukan konstanta, supaya sistem tidak pernah memanggil
+/// endpoint yang tidak ada. `supportsRefund` bernilai false sampai provider
+/// menyediakan API refund resmi — sampai saat itu refund berjalan manual.
+model PaymentProviderCapability {
+  id        String @id @default(uuid()) @db.Uuid
+  accountId String @map("account_id") @db.Uuid
+
+  capabilityCode String  @map("capability_code") @db.VarChar(48)
+  isSupported    Boolean @default(false) @map("is_supported")
+  /// Dari mana kesimpulan ini berasal: PROVIDER_DOC, TESTED, ASSUMED.
+  evidence       String  @default("ASSUMED") @db.VarChar(24)
+  note           String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  account TenantPaymentProviderAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, capabilityCode])
+  @@map("payment_provider_capability")
+  @@schema("platform")
+}
+
+/// Hasil satu uji ke provider.
+model PaymentProviderHealthCheck {
+  id        String @id @default(uuid()) @db.Uuid
+  accountId String @map("account_id") @db.Uuid
+
+  /// CREATE_ORDER, CALLBACK, INQUIRY.
+  checkType String                   @map("check_type") @db.VarChar(32)
+  status    ProviderHealthCheckStatus @default(PENDING)
+
+  /// Payload tersamar. Bukan payload mentah: uji pun tidak boleh menyimpan
+  /// rahasia dalam bentuk terbaca.
+  requestSummary  Json?   @map("request_summary")
+  responseSummary Json?   @map("response_summary")
+  httpStatus      Int?    @map("http_status")
+  durationMs      Int?    @map("duration_ms")
+  message         String? @db.Text
+
+  startedAt  DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(6)
+  actorId    String?   @map("actor_id") @db.Uuid
+  requestId  String?   @map("request_id") @db.VarChar(64)
+
+  account TenantPaymentProviderAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, checkType, startedAt])
+  @@map("payment_provider_health_check")
+  @@schema("platform")
+}
+
+/// Menautkan tiket aktivasi ke akun provider yang diurusnya.
+model PaymentProviderActivationTicketLink {
+  id        String @id @default(uuid()) @db.Uuid
+  ticketId  String @map("ticket_id") @db.Uuid
+  accountId String @map("account_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  ticket  SupportTicket                @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  account TenantPaymentProviderAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, accountId])
+  @@index([accountId])
+  @@map("payment_provider_activation_ticket_link")
+  @@schema("platform")
+}

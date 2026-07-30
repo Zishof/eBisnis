@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "StepUpPurpose" ADD VALUE 'CREDENTIAL_MANAGE';

@@ -42,6 +42,9 @@ enum StepUpPurpose {
   TENANT_SUSPEND
   PAYMENT_REPLAY
   SEED_CLEANUP
+  /// Versi 9: memasukkan atau merotasi credential provider pembayaran.
+  /// Aksinya membuka akses ke uang, sehingga menuntut pembuktian ulang identitas.
+  CREDENTIAL_MANAGE
 
   @@schema("platform")
 }
@@ -664,6 +667,67 @@ enum MarketplaceStorePolicyType {
   WARRANTY
   PRIVACY
   TERMS
+
+  @@schema("platform")
+}
+
+// --- Versi 9: akun provider dan ticketing -----------------------------------
+
+enum ProviderEnvironment {
+  SANDBOX
+  PRODUCTION
+
+  @@schema("platform")
+}
+
+enum TenantPaymentAccountStatus {
+  DRAFT
+  AWAITING_CREDENTIAL
+  CREDENTIAL_SET
+  TESTING
+  ACTIVE
+  SUSPENDED
+  CLOSED
+
+  @@schema("platform")
+}
+
+enum ProviderHealthCheckStatus {
+  PENDING
+  PASSED
+  FAILED
+  SKIPPED
+
+  @@schema("platform")
+}
+
+enum SupportTicketType {
+  ESMARTLINK_ACCOUNT_ACTIVATION
+  MARKETPLACE_ENROLLMENT
+  TECHNICAL
+  BILLING
+  OTHER
+
+  @@schema("platform")
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_REQUESTER
+  WAITING_PROVIDER
+  RESOLVED
+  CLOSED
+  CANCELLED
+
+  @@schema("platform")
+}
+
+enum SupportTicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 
   @@schema("platform")
 }

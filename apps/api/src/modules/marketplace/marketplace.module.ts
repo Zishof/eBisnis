@@ -15,6 +15,12 @@ import {
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { MarketplaceEnrollmentService } from './marketplace-enrollment.service';
 import { MarketplaceReadinessService } from './marketplace-readiness.service';
+import { EsmartlinkActivationService } from './esmartlink-activation.service';
+import { CredentialResolverService } from './credential-resolver.service';
+import {
+  PlatformEsmartlinkController,
+  SellerEsmartlinkController,
+} from './esmartlink-activation.controller';
 
 class EnrollDto {
   @ApiProperty({ example: 'Toko Joni Jaya', maxLength: 160 })
@@ -203,8 +209,23 @@ export class PlatformMarketplaceController {
 
 @Module({
   imports: [InfrastructureModule],
-  controllers: [SellerMarketplaceController, PlatformMarketplaceController],
-  providers: [MarketplaceEnrollmentService, MarketplaceReadinessService],
-  exports: [MarketplaceEnrollmentService, MarketplaceReadinessService],
+  controllers: [
+    SellerMarketplaceController,
+    PlatformMarketplaceController,
+    SellerEsmartlinkController,
+    PlatformEsmartlinkController,
+  ],
+  providers: [
+    MarketplaceEnrollmentService,
+    MarketplaceReadinessService,
+    EsmartlinkActivationService,
+    CredentialResolverService,
+  ],
+  exports: [
+    MarketplaceEnrollmentService,
+    MarketplaceReadinessService,
+    EsmartlinkActivationService,
+    CredentialResolverService,
+  ],
 })
 export class MarketplaceModule {}
