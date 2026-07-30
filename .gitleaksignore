@@ -56,6 +56,13 @@ a463093a1f3b58c00d0fa628009edcb41dd82aaf:apps/api/src/modules/master-seed/platfo
 # Stripe, dan rule itu berguna. Yang salah adalah fixture saya, dan fixture-nya
 # sudah diganti menjadi nilai yang tidak meniru vendor mana pun.
 #
-# Fingerprint di bawah hanya menutup kemunculannya pada satu commit lama.
-# Kemunculan baru dengan pola serupa tetap akan menggagalkan build.
+# Percobaan pertama menggantinya hanya mengganti nilai, dan pemindai kembali
+# menandainya lewat rule generic-api-key: variabelnya masih bernama `secret` dan
+# diisi string literal. Perbaikan yang benar adalah menghentikan POLA-nya —
+# variabel dinamai `plaintext` dan nilainya berbentuk kalimat berspasi, sehingga
+# tidak menyerupai kredensial apa pun.
+#
+# Dua fingerprint di bawah menutup kemunculan pada commit lama saja. Kemunculan
+# baru dengan pola serupa tetap akan menggagalkan build.
 3080d7f275710e258f9d08a77ef1263156c00541:apps/api/src/infrastructure/crypto/secret-box.service.spec.ts:stripe-access-token:54
+428b27d04da4c589b07510f4ab5d7366efd554bb:apps/api/src/infrastructure/crypto/secret-box.service.spec.ts:generic-api-key:57

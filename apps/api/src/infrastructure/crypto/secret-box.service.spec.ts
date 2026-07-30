@@ -51,11 +51,12 @@ describe('SecretBoxService', () => {
     const service = build(`k1:${KEY_A}`, 'k1');
 
     it('mengembalikan nilai asli', () => {
-      // Nilai uji sengaja TIDAK meniru format vendor mana pun. Fixture yang
-      // menyerupai kunci asli membuat pemindai rahasia menandai berkas test,
-      // dan menonaktifkan aturannya akan melemahkan pemeriksaan yang berguna.
-      const secret = 'nilai-uji-abcdef123456';
-      expect(service.open(service.seal(secret).ciphertext)).toBe(secret);
+      // Nilai uji sengaja berbentuk kalimat, bukan string mirip kunci, dan
+      // variabelnya tidak dinamai "secret". Fixture yang menyerupai kredensial
+      // membuat pemindai rahasia menandai berkas test; menonaktifkan aturannya
+      // akan melemahkan pemeriksaan yang berguna pada kode sungguhan.
+      const plaintext = 'nilai uji enkripsi satu';
+      expect(service.open(service.seal(plaintext).ciphertext)).toBe(plaintext);
     });
 
     it('menghasilkan ciphertext berbeda untuk nilai yang sama', () => {
@@ -68,13 +69,13 @@ describe('SecretBoxService', () => {
     });
 
     it('tidak memuat nilai asli pada ciphertext', () => {
-      const secret = 'nilai-yang-sangat-rahasia';
-      expect(service.seal(secret).ciphertext).not.toContain(secret);
+      const plaintext = 'nilai uji yang tidak boleh terlihat';
+      expect(service.seal(plaintext).ciphertext).not.toContain(plaintext);
     });
 
     it('menangani unicode dan nilai panjang', () => {
-      const secret = 'ünïcödé-🔐-' + 'x'.repeat(2000);
-      expect(service.open(service.seal(secret).ciphertext)).toBe(secret);
+      const plaintext = 'ünïcödé 🔐 ' + 'x'.repeat(2000);
+      expect(service.open(service.seal(plaintext).ciphertext)).toBe(plaintext);
     });
 
     it('menolak nilai kosong', () => {
@@ -91,7 +92,7 @@ describe('SecretBoxService', () => {
     const service = build(`k1:${KEY_A}`, 'k1');
 
     it('hanya menampilkan empat karakter terakhir', () => {
-      expect(service.seal('nilai-uji-abcd7c41').hint).toBe('••••7c41');
+      expect(service.seal('nilai uji empat 7c41').hint).toBe('••••7c41');
     });
 
     it('tidak memberi petunjuk pada nilai pendek', () => {
