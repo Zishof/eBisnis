@@ -5,6 +5,7 @@ import { TenantConnectionService } from '../../infrastructure/database/tenant-co
 import { NumberSequenceService } from '../../infrastructure/sequence/number-sequence.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { enqueueListingEvent } from '../catalog/listing-event';
 import { validateImage } from './media-validation';
 import { parseYoutubeUrl } from './youtube.util';
 import {
@@ -301,6 +302,10 @@ export class OnlineListingService {
             actor.requestId ?? null,
           ],
         );
+
+        // Dititipkan dalam transaksi yang sama. Bila penerbitan gagal, peristiwa
+        // ini ikut dibatalkan; bila berhasil, katalog publik pasti mendapatnya.
+        await enqueueListingEvent(client, actor.schemaName, 'PUBLISH', { listingId });
       },
       { requestId: actor.requestId, moduleCode: 'MARKETPLACE', actionCode: 'LISTING_PUBLISHED' },
     );
@@ -346,6 +351,10 @@ export class OnlineListingService {
            VALUES ($1, $2, 'PAUSED', $3, $4, $5)`,
           [listingId, current.rows[0].status, reason, actor.userId, actor.requestId ?? null],
         );
+
+        // Penarikan juga dititipkan. Tanpa ini listing tetap terlihat publik
+        // meski penjual sudah menghentikannya — kegagalan yang paling merugikan.
+        await enqueueListingEvent(client, actor.schemaName, 'UNPUBLISH', { listingId, reason });
       },
       { requestId: actor.requestId, moduleCode: 'MARKETPLACE', actionCode: 'LISTING_UNPUBLISHED' },
     );

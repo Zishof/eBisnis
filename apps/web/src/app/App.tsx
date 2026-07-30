@@ -7,6 +7,7 @@ import { PricingPage } from '../pages/public/PricingPage';
 import { NewsListPage } from '../pages/public/NewsListPage';
 import { NewsDetailPage } from '../pages/public/NewsDetailPage';
 import { ContactPage } from '../pages/public/ContactPage';
+import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
@@ -50,6 +51,16 @@ const PlatformAuditPage = lazy(() =>
   import('../pages/platform/PlatformAuditPage').then((m) => ({ default: m.PlatformAuditPage })),
 );
 
+const BelanjaHomePage = lazy(() =>
+  import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
+);
+const BelanjaSearchPage = lazy(() =>
+  import('../pages/belanja/BelanjaSearchPage').then((m) => ({ default: m.BelanjaSearchPage })),
+);
+const BelanjaProductPage = lazy(() =>
+  import('../pages/belanja/BelanjaProductPage').then((m) => ({ default: m.BelanjaProductPage })),
+);
+
 export function App() {
   return (
     <Suspense fallback={<LoadingState />}>
@@ -69,6 +80,13 @@ export function App() {
           <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
           <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />
+        </Route>
+
+        {/* Marketplace publik (belanja.ebisnis.id) */}
+        <Route path="/belanja" element={<BelanjaLayout />}>
+          <Route index element={<BelanjaHomePage />} />
+          <Route path="cari" element={<BelanjaSearchPage />} />
+          <Route path=":storeSlug/:productSlug" element={<BelanjaProductPage />} />
         </Route>
 
         {/* Aplikasi tenant */}

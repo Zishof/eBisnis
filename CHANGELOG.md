@@ -7,7 +7,23 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ## [Unreleased]
 
+### Added
+
+- **Marketplace publik `belanja.ebisnis.id`.** Katalog yang dapat dibuka siapa
+  pun tanpa masuk: penelusuran kategori, pencarian, penyaringan harga dan
+  ketersediaan, serta halaman produk. Pemesanan belum dibuka — tombol beli
+  sengaja belum ada agar tidak ada tombol yang ditekan tanpa hasil.
+- **59 kategori marketplace** dalam sebelas kelompok. Hanya kategori paling
+  dalam yang boleh dipilih penjual, sehingga produk selalu dapat ditemukan
+  lewat penelusuran. Suplemen, alat kesehatan, dan susu bayi ditandai sebagai
+  kategori yang menuntut pemeriksaan tambahan.
+- **Pencarian produk** dengan peringkat kesesuaian: judul dinilai lebih tinggi
+  daripada nama toko, dan nama toko lebih tinggi daripada deskripsi.
+- Data contoh marketplace (`seed:marketplace-demo`) berisi satu toko dan enam
+  produk, disiapkan agar seluruh rantai dapat dicoba dari awal sampai akhir.
+
 ### Security
+
 
 - **Endpoint yang tidak menyatakan hak aksesnya kini ditolak, bukan diloloskan.**
   Sebelumnya pemeriksaan hak dilewati begitu saja bila sebuah endpoint lupa
@@ -168,6 +184,11 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Fixed
 
+- **Perubahan produk yang tersangkut kini diproses ulang.** Bila proses
+  penyegaran katalog mati di tengah jalan, perubahan yang sedang ditanganinya
+  tertinggal selamanya dan produk yang sudah diterbitkan tidak pernah muncul —
+  tanpa ada pemberitahuan apa pun. Perubahan yang tertinggal lebih dari lima
+  menit kini diambil kembali pada putaran berikutnya.
 - Sesi demo memakai `platform_user_id` yang valid sehingga `/auth/me` tidak lagi
   gagal; schema demo kini memiliki `user_subject` beserta role `DEMO_USER`.
 - Sidebar portal tenant merender menu sampai tingkat ketiga; sebelumnya modul

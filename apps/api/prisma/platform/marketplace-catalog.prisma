@@ -1,0 +1,151 @@
+// eBisnis.id Versi 9 — Kategori marketplace dan projection katalog publik.
+//
+// Projection ada karena marketplace publik tidak boleh membaca schema tenant
+// pada setiap permintaan. Selain lambat, ia menuntut koneksi ke ratusan schema
+// dari satu permintaan anonim — dan satu kesalahan penyaringan di sana
+// membocorkan data seller lain
+// (docs/upgrade-v9/03-marketplace-domain-model-map.md).
+//
+// Aturan keras: projection HANYA memuat listing yang benar-benar dipublikasikan
+// oleh seller yang aktif. Menyalin seluruh listing lalu menyaring saat membaca
+// berarti data yang belum terbit pernah ada di tempat yang dibaca publik.
+
+/// Kategori marketplace. Seragam lintas seller, dikelola platform.
+///
+/// Dibangun pada fase ini, bukan V9-12, karena tanpanya syarat `CATEGORY` pada
+/// gerbang publikasi tidak dapat dipenuhi tenant mana pun — dan tanpa listing
+/// yang terbit, tidak ada yang dapat diproyeksikan maupun dicari.
+model MarketplaceCategory {
+  id       String  @id @default(uuid()) @db.Uuid
+  parentId String? @map("parent_id") @db.Uuid
+
+  code String @db.VarChar(64)
+  name String @db.VarChar(160)
+  slug String @db.VarChar(96)
+
+  /// Jalur materialized, mis. `/FASHION/PRIA/KEMEJA`. Dipakai menampilkan
+  /// remah roti dan mencari seluruh keturunan tanpa rekursi.
+  path  String @db.VarChar(512)
+  level Int    @default(0)
+
+  description String? @db.Text
+  iconName    String? @map("icon_name") @db.VarChar(64)
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  /// Kategori yang menuntut dokumen atau pemeriksaan tambahan.
+  isRestricted    Boolean @default(false) @map("is_restricted")
+  restrictionNote String? @map("restriction_note") @db.Text
+
+  /// Hanya kategori daun yang boleh dipilih listing. Kategori induk ada untuk
+  /// menavigasi, bukan untuk menempatkan produk.
+  isLeaf Boolean @default(true) @map("is_leaf")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(true) @map("is_system")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version       Int       @default(1)
+
+  parent   MarketplaceCategory?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children MarketplaceCategory[] @relation("CategoryTree")
+  listings MarketplaceListingProjection[]
+
+  @@unique([code])
+  @@unique([slug])
+  @@index([parentId, sortOrder])
+  @@index([isActive, isLeaf])
+  @@map("marketplace_category")
+  @@schema("platform")
+}
+
+/// Salinan listing yang dibaca marketplace publik.
+///
+/// Diperbarui worker dari `sync_outbox` milik tenant. Baris di sini berarti
+/// "listing ini boleh dilihat siapa pun"; listing yang ditarik dari publikasi
+/// dihapus dari sini, bukan ditandai.
+model MarketplaceListingProjection {
+  id       String @id @default(uuid()) @db.Uuid
+  sellerId String @map("seller_id") @db.Uuid
+  storeId  String @map("store_id") @db.Uuid
+
+  /// Penunjuk balik ke sumbernya. Tidak diberi foreign key karena beda schema.
+  tenantId        String @map("tenant_id") @db.Uuid
+  tenantSchema    String @map("tenant_schema") @db.VarChar(72)
+  tenantListingId String @map("tenant_listing_id") @db.Uuid
+
+  categoryId String @map("category_id") @db.Uuid
+
+  slug        String  @db.VarChar(160)
+  title       String  @db.VarChar(200)
+  description String? @db.Text
+  condition   String  @db.VarChar(24)
+
+  /// Rentang harga seluruh varian. Disimpan agar penyaringan harga tidak perlu
+  /// menyentuh tabel varian.
+  minPrice     Decimal @map("min_price") @db.Decimal(19, 4)
+  maxPrice     Decimal @map("max_price") @db.Decimal(19, 4)
+  currencyCode String  @default("IDR") @map("currency_code") @db.VarChar(8)
+
+  /// Ketersediaan, bukan jumlah pasti. Jumlah pasti berubah setiap detik dan
+  /// menyalinnya ke sini berarti berjanji lebih dari yang dapat ditepati.
+  availability String @default("IN_STOCK") @db.VarChar(24)
+
+  primaryImageKey String? @map("primary_image_key") @db.VarChar(512)
+  imageCount      Int     @default(0) @map("image_count")
+  youtubeVideoId  String? @map("youtube_video_id") @db.VarChar(16)
+
+  storeName String @map("store_name") @db.VarChar(160)
+  storeSlug String @map("store_slug") @db.VarChar(96)
+
+  /// Kapan sumbernya terakhir berubah. Selisih besar terhadap `syncedAt`
+  /// berarti projection tertinggal, dan itu harus terlihat.
+  sourceUpdatedAt DateTime @map("source_updated_at") @db.Timestamptz(6)
+  syncedAt        DateTime @default(now()) @map("synced_at") @db.Timestamptz(6)
+
+  /// Dokumen pencarian PostgreSQL. Diisi migration lewat trigger.
+  searchDocument Unsupported("tsvector")? @map("search_document")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  seller   MarketplaceSeller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  store    MarketplaceStore    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category MarketplaceCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  /// Satu listing tenant menghasilkan tepat satu baris projection.
+  @@unique([tenantId, tenantListingId])
+  @@unique([slug])
+  @@index([categoryId, minPrice])
+  @@index([storeId])
+  @@index([sellerId])
+  @@index([availability, syncedAt])
+  @@map("marketplace_listing_projection")
+  @@schema("platform")
+}
+
+/// Catatan setiap kali worker memproses peristiwa dari tenant.
+///
+/// Dipisahkan dari projection karena pertanyaannya berbeda: bukan "apa isi
+/// katalog", melainkan "apakah katalog tertinggal, dan sejak kapan".
+model MarketplaceProjectionRun {
+  id           String @id @default(uuid()) @db.Uuid
+  tenantId     String @map("tenant_id") @db.Uuid
+  tenantSchema String @map("tenant_schema") @db.VarChar(72)
+
+  eventsRead      Int @default(0) @map("events_read")
+  eventsApplied   Int @default(0) @map("events_applied")
+  eventsSkipped   Int @default(0) @map("events_skipped")
+  eventsFailed    Int @default(0) @map("events_failed")
+
+  startedAt  DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(6)
+  durationMs Int?      @map("duration_ms")
+  lastError  String?   @map("last_error") @db.Text
+
+  @@index([tenantId, startedAt])
+  @@map("marketplace_projection_run")
+  @@schema("platform")
+}
