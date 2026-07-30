@@ -1,0 +1,71 @@
+name: Migration check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/api/tenant-migrations/**'
+      - 'apps/api/prisma/**'
+      - 'scripts/ci/verify-migrations.mjs'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/tenant-migrations/**'
+      - 'apps/api/prisma/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=platform
+  DIRECT_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=platform
+  DATABASE_ADMIN_URL: postgresql://ci:ci@localhost:5432/ci
+
+jobs:
+  verify:
+    name: Integritas migration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Butuh riwayat agar dapat membandingkan terhadap base branch.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Validasi schema Prisma
+        run: pnpm db:validate
+
+      - name: Penamaan, katalog, SQL destruktif, dan immutability
+        # Pada pull request, base SHA dipakai untuk membuktikan migration lama
+        # tidak diubah. Pada push ke main, pemeriksaan itu dilewati.
+        run: |
+          if [ -n "${{ github.event.pull_request.base.sha }}" ]; then
+            node scripts/ci/verify-migrations.mjs "${{ github.event.pull_request.base.sha }}"
+          else
+            node scripts/ci/verify-migrations.mjs
+          fi
+
+      - name: Pastikan tidak ada migration produksi dari CI
+        # Penegasan eksplisit: tidak satu pun workflow boleh menyentuh database.
+        # Berkas ini sendiri dikecualikan karena memuat pola pencariannya.
+        run: |
+          if grep -rn "migrate deploy\|migrate dev\|db push" .github/workflows/ \
+               --exclude=migration-check.yml; then
+            echo "::error::Workflow tidak boleh menjalankan migration terhadap database."
+            exit 1
+          fi
+          echo "Tidak ada perintah migration pada workflow."
