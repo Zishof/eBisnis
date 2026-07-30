@@ -1,0 +1,50 @@
+=========================================================================
+BUKTI V9-5 — JALUR HTTP KATALOG PUBLIK
+Basis: http://localhost:3000/api/v1
+=========================================================================
+
+1. DAPAT DIBACA TANPA MASUK
+  LULUS  kategori terbuka untuk anonim
+  11 kategori akar
+  LULUS  pohon kategori berisi
+  LULUS  pencarian terbuka untuk anonim
+  6 produk pada katalog
+
+2. NAMA SCHEMA DAN PENGENAL INTERNAL TIDAK BOCOR
+  LULUS  tidak ada pengenal tenant pada respons pencarian
+  LULUS  detail produk terbuka untuk anonim
+  LULUS  tidak ada pengenal tenant pada detail produk
+  contoh: Sepatu Lari Ringan Pria — Toko Demo eBisnis
+
+3. R26 — BATAS TERHADAP PENGAMBILAN MASSAL
+  LULUS  permintaan besar tetap dilayani
+  LULUS  ukuran halaman dipangkas ke batas
+  jumlah=100000 dilayani dengan limit 48
+  LULUS  penelusuran sangat dalam ditolak
+  LULUS  halaman jauh tanpa penyaring ditolak
+  LULUS  halaman jauh dengan kata kunci dilayani
+
+4. PENCARIAN MENYARING, BUKAN MENGEMBALIKAN SEMUANYA
+  "kaos": 1 hasil dari 6 produk
+  LULUS  kata kunci mempersempit hasil
+  LULUS  kata kunci menemukan sesuatu
+  LULUS  kata kunci yang tidak ada menghasilkan kosong
+  kategori "fashion-pria": 2 hasil
+  LULUS  penyaring kategori bekerja
+  LULUS  kategori induk mencakup subkategorinya
+  kategori induk "fashion": 4 hasil
+  LULUS  kategori tak dikenal menghasilkan kosong, bukan galat
+
+5. PENGURUTAN
+  LULUS  harga termurah tersusun menaik
+  termurah: 68000, termahal: 320000
+  LULUS  urutan menurun benar-benar berbeda
+  LULUS  nilai urut tak dikenal diabaikan, bukan diteruskan
+
+6. ALAMAT YANG TIDAK ADA
+  LULUS  produk tak dikenal menghasilkan 404
+  LULUS  alamat berisi upaya suntikan tetap 404
+
+=========================================================================
+SELURUH PEMERIKSAAN LULUS
+=========================================================================

@@ -83,6 +83,7 @@ model MarketplaceSeller {
   tenant      Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   enrollments MarketplaceSellerEnrollment[]
   stores      MarketplaceStore[]
+  listings    MarketplaceListingProjection[]
 
   @@unique([programId, tenantId])
   @@unique([sellerCode])
@@ -191,6 +192,7 @@ model MarketplaceStore {
   seller   MarketplaceSeller       @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   policies MarketplaceStorePolicy[]
   domains  MarketplaceStoreDomain[]
+  listings MarketplaceListingProjection[]
 
   @@unique([storeSlug])
   @@index([sellerId, status])

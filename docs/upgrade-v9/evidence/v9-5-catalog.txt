@@ -1,0 +1,54 @@
+=========================================================================
+BUKTI V9-5 — KATALOG MARKETPLACE PUBLIK
+=========================================================================
+
+1. KATALOG KATEGORI
+  59 kategori: 11 akar, 48 daun, 3 terbatas
+  LULUS  kategori tertanam
+  LULUS  setiap akar punya anak
+  LULUS  jalur anak berawalan jalur induk
+  LULUS  kategori berANAK tidak ditandai daun
+
+2. TABEL PROJECTION
+  LULUS  search_document ada
+  LULUS  tenant_schema tersimpan untuk penelusuran balik
+  indeks: 9
+  LULUS  indeks GIN pencarian teks penuh ada
+  LULUS  indeks trigram judul ada
+  LULUS  satu listing tenant hanya satu baris
+  LULUS  trigger dokumen pencarian terpasang
+
+3. DOKUMEN PENCARIAN DIBENTUK BASIS DATA, BUKAN APLIKASI
+  LULUS  dokumen terisi tanpa campur tangan aplikasi
+  LULUS  kata dari judul ditemukan
+  LULUS  kata dari deskripsi ditemukan
+  LULUS  kata yang tidak ada tidak ditemukan
+  LULUS  judul baru ikut terindeks
+  LULUS  judul lama tidak lagi ditemukan
+  baris bukti dibersihkan
+
+4. OUTBOX SEBAGAI ANTREAN
+  cek_seed_6222: sync_outbox tersedia
+  demo: sync_outbox tersedia
+  joni_utama_0bbi1e: sync_outbox tersedia
+  LULUS  outbox punya sequence_no untuk urutan
+  LULUS  outbox punya status untuk SKIP LOCKED
+
+5. RIWAYAT PUTARAN PROJECTION
+  LULUS  mencatat jumlah gagal terpisah dari dilewati
+  LULUS  mencatat lama putaran
+
+6. R15 — KATALOG HANYA BERISI YANG BOLEH DILIHAT PUBLIK
+  tenant demo: 6 terbit, 0 belum terbit
+  katalog publik: 6 produk
+  LULUS  yang terbit sampai ke katalog
+  LULUS  tidak ada baris katalog tanpa listing terbit
+  LULUS  tidak ada produk berharga nol
+  LULUS  setiap produk berkategori daun yang aktif
+  LULUS  ketersediaan sesuai stok dan izin pre-order
+  1 produk berstatus pesan-dahulu
+  catatan: tenant_schema tersimpan untuk penelusuran, tidak dikembalikan endpoint publik
+
+=========================================================================
+SELURUH PEMERIKSAAN LULUS
+=========================================================================
