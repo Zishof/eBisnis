@@ -10,6 +10,22 @@
 
 DocumentRoot ${EBISNIS_WEB_ROOT}
 
+# ---------------------------------------------------------------------------
+# Warisan context path lama.
+#
+# Sistem Java sebelumnya disajikan pada /ebisnis/, dan konfigurasi lama
+# mengalihkan / ke sana. Tautan, bookmark, dan redirect yang tersimpan di cache
+# browser masih menunjuk ke situ. Tanpa aturan ini, pengunjung tetap membuka
+# aplikasi (karena FallbackResource melayani index.html untuk path apa pun),
+# tetapi dengan URL yang keliru dan tautan dalam aplikasi menjadi rancu.
+#
+# 302, bukan 301, supaya tidak tersimpan permanen di browser selama masa
+# transisi. Ubah menjadi 301 setelah yakin tidak ada lagi yang memakai /ebisnis/.
+# ---------------------------------------------------------------------------
+RewriteEngine On
+RewriteRule ^/ebisnis/?$      / [R=302,L]
+RewriteRule ^/ebisnis/(.*)$   /$1 [R=302,L]
+
 ProxyPreserveHost On
 ProxyRequests Off
 
