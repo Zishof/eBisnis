@@ -1,0 +1,13 @@
+=== bukti quality gate workspace baru ===
+waktu    : 2026-07-30T15:17:44Z
+workspace: C:\opt\eBisnisGithub
+
+install  : pnpm install --frozen-lockfile   -> exit 0
+validate : The schemas at prisma\platform are valid
+generate : Generated Prisma Client (v6.19.3)
+migrate  : Database schema is up to date! (1 migration)
+lint     : apps/api Done, apps/web Done (0 warning)
+test     : 68 Jest + 15 Vitest = 83 lulus
+build    : apps/api Done, apps/web built in 4.85s
+smoke    : 124 lulus / 0 gagal
+health   : database up, tenantSchemas 9, tenantMigrationVersion V009
