@@ -51,7 +51,10 @@ describe('SecretBoxService', () => {
     const service = build(`k1:${KEY_A}`, 'k1');
 
     it('mengembalikan nilai asli', () => {
-      const secret = 'sk_live_9f2a7c41e8b3';
+      // Nilai uji sengaja TIDAK meniru format vendor mana pun. Fixture yang
+      // menyerupai kunci asli membuat pemindai rahasia menandai berkas test,
+      // dan menonaktifkan aturannya akan melemahkan pemeriksaan yang berguna.
+      const secret = 'nilai-uji-abcdef123456';
       expect(service.open(service.seal(secret).ciphertext)).toBe(secret);
     });
 
@@ -88,7 +91,7 @@ describe('SecretBoxService', () => {
     const service = build(`k1:${KEY_A}`, 'k1');
 
     it('hanya menampilkan empat karakter terakhir', () => {
-      expect(service.seal('sk_live_9f2a7c41').hint).toBe('••••7c41');
+      expect(service.seal('nilai-uji-abcd7c41').hint).toBe('••••7c41');
     });
 
     it('tidak memberi petunjuk pada nilai pendek', () => {

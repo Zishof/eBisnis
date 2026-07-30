@@ -44,3 +44,18 @@ a463093a1f3b58c00d0fa628009edcb41dd82aaf:docs/input/DownloadTagihanSiswaBankOnli
 # ---------------------------------------------------------------------------
 a463093a1f3b58c00d0fa628009edcb41dd82aaf:apps/api/src/modules/master-seed/platform-seed.service.ts:generic-api-key:643
 a463093a1f3b58c00d0fa628009edcb41dd82aaf:apps/api/src/modules/master-seed/platform-seed.service.ts:generic-api-key:699
+
+# ---------------------------------------------------------------------------
+# 3. Fixture unit test yang meniru format kunci Stripe — BUKAN kredensial
+#
+# Nilai `sk_live_9f2a7c41e8b3` pada test SecretBoxService adalah string yang
+# saya karang untuk menguji enkripsi. Ia tidak pernah menjadi kredensial pada
+# sistem mana pun, sehingga tidak ada yang perlu dirotasi.
+#
+# gitleaks benar menandainya: awalan `sk_live_` adalah format kunci rahasia
+# Stripe, dan rule itu berguna. Yang salah adalah fixture saya, dan fixture-nya
+# sudah diganti menjadi nilai yang tidak meniru vendor mana pun.
+#
+# Fingerprint di bawah hanya menutup kemunculannya pada satu commit lama.
+# Kemunculan baru dengan pola serupa tetap akan menggagalkan build.
+3080d7f275710e258f9d08a77ef1263156c00541:apps/api/src/infrastructure/crypto/secret-box.service.spec.ts:stripe-access-token:54
