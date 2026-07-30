@@ -9,6 +9,13 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Added
 
+- Audit Versi 9 fase V9-0 pada `docs/upgrade-v9/`: kondisi source, status
+  penerapan Versi 8, matriks gap 67 requirement, peta model marketplace,
+  inventaris kapabilitas eSmartlink, kendala pembayaran dan settlement, peta
+  order/fulfillment/pengiriman, delta menu-role-permission, register 30 risiko
+  keamanan, rencana implementasi 16 fase, baseline pengujian, peta pemakaian
+  ulang tabel, serta inventaris route API dan UI.
+
 - **Role default Indonesia disemai otomatis saat tenant mendaftar.** Setiap
   tenant baru kini memperoleh 124 role siap pakai — dari Kasir POS, Kepala
   Gudang, dan Akuntan Buku Besar sampai Penyetuju Payroll dan Auditor Internal —
