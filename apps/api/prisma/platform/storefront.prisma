@@ -1,0 +1,91 @@
+// eBisnis.id Versi 9 — Registry domain terverifikasi dan projection toko.
+//
+// `Website` dan `WebsiteDomain` yang sudah ada TIDAK dipakai di sini. Keduanya
+// melayani situs pemasaran platform: tidak punya `tenantId`, tidak punya
+// verifikasi kepemilikan, dan mencampurnya dengan toko tenant berarti satu
+// kekeliruan query menampilkan halaman tenant lain
+// (docs/upgrade-v9/03-marketplace-domain-model-map.md).
+//
+// Aturan keras pada berkas ini:
+//   host TIDAK PERNAH diterjemahkan langsung menjadi nama schema
+//   domain yang belum terverifikasi TIDAK PERNAH dilayani
+//   satu domain hanya boleh dimiliki satu toko
+
+/// Domain yang menunjuk ke satu toko.
+///
+/// Verifikasi bukan formalitas: tanpanya, tenant A dapat mendaftarkan
+/// `tokojoni.com` milik tenant B dan menerima lalu lintasnya.
+model MarketplaceStoreDomain {
+  id      String @id @default(uuid()) @db.Uuid
+  storeId String @map("store_id") @db.Uuid
+
+  /// Host yang sudah dinormalkan: huruf kecil, tanpa port, tanpa titik akhir.
+  /// Pencarian selalu memakai bentuk ini, bukan nilai yang dikirim peramban.
+  host String @db.VarChar(255)
+
+  domainType MarketplaceDomainType @default(CUSTOM) @map("domain_type")
+  status     MarketplaceDomainStatus @default(PENDING_VERIFICATION)
+
+  /// Token yang harus dipasang pemilik domain sebagai bukti kepemilikan.
+  /// Bukan rahasia — ia memang dipublikasikan pada DNS atau berkas.
+  verificationToken  String  @map("verification_token") @db.VarChar(96)
+  verificationMethod MarketplaceDomainVerificationMethod @default(DNS_TXT) @map("verification_method")
+
+  verifiedAt      DateTime? @map("verified_at") @db.Timestamptz(6)
+  verifiedBy      String?   @map("verified_by") @db.Uuid
+  lastCheckedAt   DateTime? @map("last_checked_at") @db.Timestamptz(6)
+  lastCheckError  String?   @map("last_check_error") @db.Text
+  failedAttempts  Int       @default(0) @map("failed_attempts")
+
+  /// Domain utama toko. Domain lain dialihkan ke sini agar mesin pencari tidak
+  /// melihat konten yang sama pada beberapa alamat.
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedBy    String?   @map("revoked_by") @db.Uuid
+  revokeReason String?   @map("revoke_reason") @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+
+  store    MarketplaceStore                       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  attempts MarketplaceDomainVerificationAttempt[]
+
+  /// Satu host hanya boleh dimiliki satu toko. Batasan ini yang mencegah dua
+  /// tenant mengklaim domain yang sama.
+  @@unique([host])
+  @@index([storeId, status])
+  @@index([status, verifiedAt])
+  @@map("marketplace_store_domain")
+  @@schema("platform")
+}
+
+/// Riwayat percobaan verifikasi.
+///
+/// Dicatat karena verifikasi yang gagal berkali-kali adalah sinyal: entah
+/// pemilik salah memasang, atau seseorang mencoba mengklaim domain orang lain.
+model MarketplaceDomainVerificationAttempt {
+  id       String @id @default(uuid()) @db.Uuid
+  domainId String @map("domain_id") @db.Uuid
+
+  method    MarketplaceDomainVerificationMethod
+  succeeded Boolean
+  /// Nilai yang ditemukan saat pemeriksaan, untuk membandingkan dengan token.
+  /// Aman ditampilkan: token verifikasi memang dipublikasikan.
+  foundValue String? @map("found_value") @db.Text
+  message    String? @db.Text
+
+  actorId    String?  @map("actor_id") @db.Uuid
+  requestId  String?  @map("request_id") @db.VarChar(64)
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  domain MarketplaceStoreDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@index([domainId, occurredAt])
+  @@map("marketplace_domain_verification_attempt")
+  @@schema("platform")
+}

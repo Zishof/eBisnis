@@ -190,6 +190,7 @@ model MarketplaceStore {
 
   seller   MarketplaceSeller       @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   policies MarketplaceStorePolicy[]
+  domains  MarketplaceStoreDomain[]
 
   @@unique([storeSlug])
   @@index([sellerId, status])
