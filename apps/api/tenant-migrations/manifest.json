@@ -71,6 +71,13 @@
       "file": "V010__role_governance.sql",
       "name": "Tata kelola role, data scope, dan pemisahan tugas",
       "description": "role_module_profile, role_data_scope, segregation_of_duty_rule, segregation_of_duty_role, segregation_of_duty_exception, segregation_of_duty_violation, kolom tambahan role.profile_code/role_family/is_core/is_legacy/successor_code, dan trigger audit untuk tabel tata kelola baru."
+    },
+    {
+      "version": "V011",
+      "sequence": 11,
+      "file": "V011__user_scope_assignment.sql",
+      "name": "Penugasan batas data per pengguna",
+      "description": "user_scope_assignment beserta index penugasan aktif, perluasan tingkat role_data_scope dengan STORE, FULFILLMENT_LOCATION, dan PAYMENT_PROVIDER_ACCOUNT, serta trigger audit."
     }
   ]
 }

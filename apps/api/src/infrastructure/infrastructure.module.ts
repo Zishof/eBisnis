@@ -10,6 +10,7 @@ import { IdempotencyService } from './idempotency/idempotency.service';
 import { MasterSeedService } from '../modules/master-seed/master-seed.service';
 import { PlatformSeedService } from '../modules/master-seed/platform-seed.service';
 import { CmsSeedService } from '../modules/master-seed/cms-seed.service';
+import { DataScopeResolver } from './authorization/data-scope.resolver';
 
 /**
  * Modul infrastruktur global: akses database platform, akses schema tenant,
@@ -26,6 +27,7 @@ import { CmsSeedService } from '../modules/master-seed/cms-seed.service';
     AuditService,
     NumberSequenceService,
     IdempotencyService,
+    DataScopeResolver,
     MasterSeedService,
     PlatformSeedService,
     CmsSeedService,
@@ -39,6 +41,7 @@ import { CmsSeedService } from '../modules/master-seed/cms-seed.service';
     AuditService,
     NumberSequenceService,
     IdempotencyService,
+    DataScopeResolver,
     MasterSeedService,
     PlatformSeedService,
     CmsSeedService,

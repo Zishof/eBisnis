@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { DiscoveryModule } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { appConfig } from './config/configuration';
@@ -19,6 +20,9 @@ import { SeedAdminModule } from './modules/seed-admin/seed-admin.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [appConfig], cache: true }),
+    // Dipakai memeriksa bahwa setiap route menyatakan hak aksesnya saat aplikasi
+    // menyala; lihat common/security/route-authorization.audit.ts.
+    DiscoveryModule,
     ScheduleModule.forRoot(),
     // Batas rate berasal dari konfigurasi agar environment pengujian otomatis
     // (Playwright, smoke test) tidak menabrak proteksi yang ditujukan untuk

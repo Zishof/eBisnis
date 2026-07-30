@@ -10,6 +10,7 @@ import {
   applyBalanceDelta,
   consumeAvailable,
 } from '../../infrastructure/provisioning/tenant-bootstrap.service';
+import { DataScopeResolver } from '../../infrastructure/authorization/data-scope.resolver';
 
 export interface StockTreeNode {
   type: 'REGION' | 'WAREHOUSE';
@@ -41,6 +42,7 @@ export class ErpInventoryService {
     private readonly tenantDb: TenantConnectionService,
     private readonly sequences: NumberSequenceService,
     private readonly audit: AuditService,
+    private readonly dataScope: DataScopeResolver,
   ) {}
 
   async createTransfer(
@@ -797,6 +799,19 @@ export class ErpInventoryService {
       params.push(filters.productId);
       conditions.push(`b.product_id = $${params.length}`);
     }
+
+    // Batas data ditegakkan di sini, bukan pada controller. Pemegang batas
+    // WAREHOUSE tanpa gudang yang ditugaskan memperoleh predikat FALSE sehingga
+    // ia melihat nol baris, bukan seluruh gudang tenant.
+    const scope = await this.dataScope.buildPredicate(
+      ctx.schemaName,
+      ctx.userId,
+      { WAREHOUSE: 'b.warehouse_id', LEGAL_ENTITY: 'w.legal_entity_id', OUTLET: 'w.outlet_id' },
+      { startIndex: params.length + 1 },
+    );
+    conditions.push(scope.sql);
+    params.push(...scope.params);
+
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     return this.tenantDb.query<Record<string, unknown>>(

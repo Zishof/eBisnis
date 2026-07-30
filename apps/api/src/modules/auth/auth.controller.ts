@@ -8,6 +8,7 @@ import { StepUpPurpose } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { TenantPermissionService } from './tenant-permission.service';
 import {
+  AuthenticatedOnly,
   AuthenticatedUser,
   CurrentUser,
   Public,
@@ -125,6 +126,7 @@ export class AuthController {
 
   @ApiBearerAuth('access-token')
   @Post('logout')
+  @AuthenticatedOnly()
   @HttpCode(200)
   @ApiOperation({ summary: 'Keluar dan mencabut seluruh refresh token pada sesi ini' })
   async logout(@CurrentUser() user: AuthenticatedUser) {
@@ -134,6 +136,7 @@ export class AuthController {
 
   @ApiBearerAuth('access-token')
   @Get('me')
+  @AuthenticatedOnly()
   @ApiOperation({ summary: 'Profil, konteks tenant, dan hak akses pengguna saat ini' })
   async me(@CurrentUser() user: AuthenticatedUser) {
     const tenantPermissions = user.schemaName
@@ -157,6 +160,7 @@ export class AuthController {
 
   @ApiBearerAuth('access-token')
   @Post('change-password')
+  @AuthenticatedOnly()
   @HttpCode(200)
   @ApiOperation({ summary: 'Mengganti kata sandi dan mencabut sesi lama' })
   changePassword(
@@ -178,6 +182,7 @@ export class AuthController {
 
   @ApiBearerAuth('access-token')
   @Post('step-up')
+  @AuthenticatedOnly()
   @HttpCode(200)
   @ApiOperation({
     summary: 'Verifikasi ulang kata sandi untuk aksi sensitif',
@@ -202,6 +207,7 @@ export class MeController {
 
   @ApiBearerAuth('access-token')
   @Get('context')
+  @AuthenticatedOnly()
   @ApiOperation({ summary: 'Konteks aktif pengguna' })
   context(@CurrentUser() user: AuthenticatedUser) {
     return {
@@ -217,6 +223,7 @@ export class MeController {
 
   @ApiBearerAuth('access-token')
   @Get('menus')
+  @AuthenticatedOnly()
   @ApiOperation({ summary: 'Menu tree sesuai hak akses. Menu tanpa READ tidak tampil.' })
   async menus(@CurrentUser() user: AuthenticatedUser) {
     if (!user.schemaName) return [];
@@ -225,6 +232,7 @@ export class MeController {
 
   @ApiBearerAuth('access-token')
   @Get('permissions')
+  @AuthenticatedOnly()
   @ApiOperation({ summary: 'Daftar permission efektif pada tenant aktif' })
   async permissions(@CurrentUser() user: AuthenticatedUser) {
     if (!user.schemaName) return { tenantPermissions: [], platformPermissions: user.platformPermissions };

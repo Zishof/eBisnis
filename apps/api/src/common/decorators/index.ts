@@ -6,12 +6,38 @@ export const PERMISSIONS_KEY = 'ebisnis:permissions';
 export const PLATFORM_PERMISSIONS_KEY = 'ebisnis:platformPermissions';
 export const STEP_UP_KEY = 'ebisnis:stepUp';
 export const DEMO_BLOCKED_KEY = 'ebisnis:demoBlocked';
+export const AUTHENTICATED_ONLY_KEY = 'ebisnis:authenticatedOnly';
+export const RESOURCE_PERMISSION_KEY = 'ebisnis:resourcePermission';
 
 /** Menandai endpoint dapat diakses tanpa autentikasi. Guard global aktif secara default. */
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 
 /** Permission tenant yang dibutuhkan, format `MENU_CODE.ACTION`. */
 export const Permissions = (...permissions: string[]) => SetMetadata(PERMISSIONS_KEY, permissions);
+
+/**
+ * Endpoint menuntut sesi yang sah tetapi tidak menuntut permission tertentu.
+ *
+ * Dipakai hanya untuk endpoint yang berbicara tentang pemanggilnya sendiri:
+ * profil, keluar, ganti kata sandi, daftar menu yang boleh ia lihat. Endpoint
+ * yang menyentuh data selain milik pemanggil wajib memakai `@Permissions` atau
+ * `@ResourcePermission`, bukan penanda ini.
+ *
+ * Penanda ini harus ditulis eksplisit. PermissionGuard menolak handler yang
+ * tidak memiliki satu pun penanda, sehingga hak akses tidak dapat terlewat
+ * hanya karena dekoratornya lupa ditulis.
+ */
+export const AuthenticatedOnly = () => SetMetadata(AUTHENTICATED_ONLY_KEY, true);
+
+/**
+ * Permission yang kode menunya ditentukan saat permintaan, dari parameter route
+ * `:resource`.
+ *
+ * Endpoint CRUD master melayani puluhan sumber daya lewat satu handler, sehingga
+ * kode menunya tidak dapat ditulis sebagai konstanta. Guard menyelesaikannya
+ * lewat registry: `resourceCode` menjadi `menuCode`, lalu `MENU_CODE.ACTION`.
+ */
+export const ResourcePermission = (action: string) => SetMetadata(RESOURCE_PERMISSION_KEY, action);
 
 /** Permission control plane yang dibutuhkan, mis. `PLATFORM.TENANT.READ`. */
 export const PlatformPermissions = (...permissions: string[]) =>

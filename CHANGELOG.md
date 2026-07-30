@@ -7,8 +7,26 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ## [Unreleased]
 
+### Security
+
+- **Endpoint yang tidak menyatakan hak aksesnya kini ditolak, bukan diloloskan.**
+  Sebelumnya pemeriksaan hak dilewati begitu saja bila sebuah endpoint lupa
+  diberi keterangan hak akses — dan 32 dari 157 endpoint memang belum
+  memilikinya, termasuk **seluruh tambah, ubah, dan hapus data master**.
+  Ketiga puluh dua endpoint itu kini menyatakan haknya, dan aplikasi menolak
+  menyala bila ada endpoint baru yang lupa. (Temuan V6-0-F03.)
+- **Batas data mulai benar-benar menyaring.** Sejak Versi 8 sistem menyimpan
+  bahwa seorang kepala gudang hanya berhak atas gudangnya, tetapi tidak
+  menegakkannya. Kini pemegang batas gudang, outlet, brand, atau departemen
+  hanya melihat baris milik penugasannya. Yang belum ditugaskan melihat **nol
+  baris**, bukan seluruhnya.
+- Penugasan batas data kini per orang, bukan per role, sehingga dua kepala
+  gudang dapat memegang gudang yang berbeda.
+
 ### Added
 
+- Perintah `pnpm route:audit` yang memeriksa seluruh endpoint menyatakan hak
+  aksesnya, dapat dipakai sebagai gerbang sebelum rilis.
 - Audit Versi 9 fase V9-0 pada `docs/upgrade-v9/`: kondisi source, status
   penerapan Versi 8, matriks gap 67 requirement, peta model marketplace,
   inventaris kapabilitas eSmartlink, kendala pembayaran dan settlement, peta

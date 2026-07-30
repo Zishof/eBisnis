@@ -4,16 +4,35 @@ import { Request } from 'express';
 import { StepUpPurpose } from '@prisma/client';
 import { AppError, ErrorCodes } from '../../../common/errors/app-error';
 import {
+  AUTHENTICATED_ONLY_KEY,
   AuthenticatedUser,
+  IS_PUBLIC_KEY,
   PERMISSIONS_KEY,
   PLATFORM_PERMISSIONS_KEY,
+  RESOURCE_PERMISSION_KEY,
   STEP_UP_KEY,
 } from '../../../common/decorators';
 import { AuthService } from '../auth.service';
 import { TenantPermissionService } from '../tenant-permission.service';
+import { MASTER_RESOURCES } from '../../tenant/master-resource.registry';
+
+/** Peta kode sumber daya master ke kode menunya, untuk `@ResourcePermission`. */
+const RESOURCE_MENU_CODES = new Map(
+  MASTER_RESOURCES.map((resource) => [resource.resourceCode, resource.menuCode]),
+);
 
 /**
  * Guard otorisasi: permission control plane, permission tenant, dan step-up.
+ *
+ * Handler yang tidak memiliki satu pun penanda otorisasi **ditolak**. Sebelum
+ * perbaikan ini guard mengembalikan `true` pada kasus tersebut, sehingga 32
+ * endpoint — termasuk seluruh CRUD master — dapat dipanggil tanpa pemeriksaan
+ * hak sama sekali (temuan V6-0-F03).
+ *
+ * Menolak lebih baik daripada meloloskan karena kesalahannya menjadi terlihat:
+ * endpoint yang lupa diberi penanda gagal saat pertama dipanggil, bukan diam-diam
+ * terbuka untuk semua orang. Pemeriksaan saat aplikasi menyala
+ * (`assertEveryRouteIsMarked`) membuatnya terlihat lebih awal lagi.
  */
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -24,21 +43,40 @@ export class PermissionGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const targets = [context.getHandler(), context.getClass()];
+
+    if (this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, targets)) {
+      return true;
+    }
+
     const platformPermissions = this.reflector.getAllAndOverride<string[]>(
       PLATFORM_PERMISSIONS_KEY,
-      [context.getHandler(), context.getClass()],
+      targets,
     );
-    const tenantPermissions = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    const stepUpPurpose = this.reflector.getAllAndOverride<StepUpPurpose>(STEP_UP_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const tenantPermissions = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, targets);
+    const stepUpPurpose = this.reflector.getAllAndOverride<StepUpPurpose>(STEP_UP_KEY, targets);
+    const resourceAction = this.reflector.getAllAndOverride<string>(
+      RESOURCE_PERMISSION_KEY,
+      targets,
+    );
+    const authenticatedOnly = this.reflector.getAllAndOverride<boolean>(
+      AUTHENTICATED_ONLY_KEY,
+      targets,
+    );
 
-    if (!platformPermissions?.length && !tenantPermissions?.length && !stepUpPurpose) {
-      return true;
+    const hasMarker =
+      Boolean(platformPermissions?.length) ||
+      Boolean(tenantPermissions?.length) ||
+      Boolean(resourceAction) ||
+      Boolean(stepUpPurpose) ||
+      Boolean(authenticatedOnly);
+
+    if (!hasMarker) {
+      throw AppError.forbidden(
+        ErrorCodes.PERMISSION_DENIED,
+        'Endpoint ini tidak menyatakan hak akses yang dibutuhkannya sehingga ditolak.',
+        { handler: `${context.getClass().name}.${context.getHandler().name}` },
+      );
     }
 
     const request = context.switchToHttp().getRequest<Request & { user?: AuthenticatedUser }>();
@@ -65,7 +103,26 @@ export class PermissionGuard implements CanActivate {
       }
     }
 
-    if (tenantPermissions?.length) {
+    // Permission tenant statis dan permission yang diturunkan dari `:resource`
+    // diperiksa lewat jalur yang sama, agar tidak ada dua aturan berbeda.
+    const requiredTenantPermissions = [...(tenantPermissions ?? [])];
+
+    if (resourceAction) {
+      const resourceCode = (request.params as Record<string, string> | undefined)?.resource;
+      const menuCode = resourceCode ? RESOURCE_MENU_CODES.get(resourceCode) : undefined;
+      if (!menuCode) {
+        // Sumber daya tak dikenal ditolak, bukan diloloskan. Meloloskannya berarti
+        // parameter route yang salah ketik menghapus pemeriksaan hak.
+        throw AppError.forbidden(
+          ErrorCodes.PERMISSION_DENIED,
+          'Sumber daya master tidak dikenal.',
+          { resource: resourceCode ?? null },
+        );
+      }
+      requiredTenantPermissions.push(`${menuCode}.${resourceAction}`);
+    }
+
+    if (requiredTenantPermissions.length) {
       if (!user.schemaName) {
         throw AppError.forbidden(
           ErrorCodes.FORBIDDEN,
@@ -75,7 +132,7 @@ export class PermissionGuard implements CanActivate {
       const missing = await this.tenantPermissions.findMissing(
         user.schemaName,
         user.userId,
-        tenantPermissions,
+        requiredTenantPermissions,
         { isDemo: user.isDemo },
       );
       if (missing.length) {

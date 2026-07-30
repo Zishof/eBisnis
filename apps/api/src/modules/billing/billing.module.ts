@@ -21,6 +21,7 @@ import { PrismaService } from '../../infrastructure/database/prisma.service';
 import {
   AuthenticatedUser,
   BlockDemo,
+  Permissions,
   CurrentUser,
   RequestContext,
   RequestMeta,
@@ -109,6 +110,7 @@ export class BillingController {
 
   @ApiBearerAuth('access-token')
   @Get('devices')
+  @Permissions('SUBSCRIPTION_DEVICE.READ')
   @ApiOperation({ summary: 'Daftar perangkat POS tenant' })
   async listDevices(@CurrentUser() user: AuthenticatedUser) {
     requireTenant(user);
@@ -127,6 +129,7 @@ export class BillingController {
   @ApiBearerAuth('access-token')
   @BlockDemo()
   @Post('devices')
+  @Permissions('SUBSCRIPTION_DEVICE.CREATE')
   @HttpCode(201)
   @ApiOperation({ summary: 'Mendaftarkan perangkat POS baru' })
   registerDevice(@Body() dto: RegisterDeviceDto, @CurrentUser() user: AuthenticatedUser) {
@@ -137,6 +140,7 @@ export class BillingController {
   @ApiBearerAuth('access-token')
   @BlockDemo()
   @Post('devices/:id/revoke')
+  @Permissions('SUBSCRIPTION_DEVICE.MANAGE_DEVICE')
   @HttpCode(200)
   @ApiOperation({ summary: 'Mencabut perangkat POS' })
   revokeDevice(
@@ -152,6 +156,7 @@ export class BillingController {
 
   @ApiBearerAuth('access-token')
   @Post('subscriptions/quotes')
+  @Permissions('SUBSCRIPTION_CHECKOUT.CREATE')
   @HttpCode(201)
   @ApiOperation({
     summary: 'Membuat quote langganan dengan explanation trace',
@@ -171,6 +176,7 @@ export class BillingController {
 
   @ApiBearerAuth('access-token')
   @Get('subscriptions/quotes/:id')
+  @Permissions('SUBSCRIPTION_CHECKOUT.READ')
   @ApiOperation({ summary: 'Detail quote' })
   async getQuote(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const quote = await this.prisma.pricingQuote.findUnique({
@@ -186,6 +192,7 @@ export class BillingController {
   @ApiBearerAuth('access-token')
   @BlockDemo()
   @Post('subscriptions/quotes/:id/accept')
+  @Permissions('SUBSCRIPTION_CHECKOUT.CREATE')
   @HttpCode(200)
   @ApiOperation({ summary: 'Menerima quote dan menerbitkan invoice immutable' })
   acceptQuote(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
@@ -197,6 +204,7 @@ export class BillingController {
 
   @ApiBearerAuth('access-token')
   @Get('subscriptions')
+  @Permissions('SUBSCRIPTION.READ')
   @ApiOperation({ summary: 'Daftar langganan tenant' })
   listSubscriptions(@CurrentUser() user: AuthenticatedUser) {
     requireTenant(user);
@@ -212,6 +220,7 @@ export class BillingController {
 
   @ApiBearerAuth('access-token')
   @Get('billing/invoices')
+  @Permissions('SUBSCRIPTION_INVOICE.READ')
   @ApiOperation({ summary: 'Daftar invoice langganan' })
   listInvoices(@CurrentUser() user: AuthenticatedUser, @Query('status') status?: string) {
     requireTenant(user);
@@ -227,6 +236,7 @@ export class BillingController {
 
   @ApiBearerAuth('access-token')
   @Get('billing/invoices/:id')
+  @Permissions('SUBSCRIPTION_INVOICE.READ')
   @ApiOperation({ summary: 'Detail invoice' })
   async getInvoice(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const invoice = await this.prisma.billingInvoice.findUnique({
@@ -246,6 +256,7 @@ export class BillingController {
 
   @ApiBearerAuth('access-token')
   @Get('devices/:id/entitlements')
+  @Permissions('SUBSCRIPTION_DEVICE.READ')
   @ApiOperation({ summary: 'Hak akses efektif satu perangkat POS' })
   async deviceEntitlements(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const device = await this.prisma.posDevice.findUnique({ where: { id } });
