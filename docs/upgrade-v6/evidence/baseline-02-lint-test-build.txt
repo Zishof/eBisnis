@@ -1,0 +1,28 @@
+### pnpm lint ###
+
+> ebisnis@0.1.0 lint C:\opt\eBisnis
+> pnpm -r lint
+
+Scope: 2 of 3 workspace projects
+apps/api lint$ eslint "src/**/*.ts" --max-warnings 0
+apps/web lint$ eslint "src/**/*.{ts,tsx}" --max-warnings 0
+apps/web lint: Done
+apps/api lint: Done
+LINT_EXIT=0
+
+### pnpm test ###
+apps/api test: PASS src/modules/pricing/discount-evaluator.service.spec.ts
+apps/api test: PASS src/infrastructure/database/schema-name.util.spec.ts
+apps/api test: PASS src/modules/payment/esmartlink/esmartlink-channel.parser.spec.ts
+apps/api test: Test Suites: 3 passed, 3 total
+apps/api test: Tests:       68 passed, 68 total
+apps/api test: Done
+apps/web test: [2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+apps/web test: Done
+TEST_EXIT=0
+
+### pnpm build ###
+apps/api build: Done
+apps/web build: [32m✓ built in 8.46s[39m
+apps/web build: Done
+BUILD_EXIT=0

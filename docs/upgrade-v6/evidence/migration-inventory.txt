@@ -1,0 +1,54 @@
+=== tenant_schema_registry ===
+schema                  ver   status        provisioned
+cek_seed_6222           V008  READY         Thu Jul 30 2026 14:
+demo                    V009  READY         Thu Jul 30 2026 13:
+joni_utama_0bbi1e       V008  READY         Thu Jul 30 2026 14:
+joni_utama_2v20v8       V009  READY         Thu Jul 30 2026 17:
+joni_utama_4i087s       V008  READY         Thu Jul 30 2026 14:
+joni_utama_ndi47r       V008  READY         Thu Jul 30 2026 14:
+joni_utama_s941u8       V009  READY         Thu Jul 30 2026 17:
+joni_utama_ur87v1       V009  READY         Thu Jul 30 2026 18:
+joni_utama_vemvqq       V000  FAILED        -
+joni_utama_x2lvgd       V000  FAILED        -
+
+=== migration history (SUCCESS) ===
+
+=== migration history (NON-SUCCESS) ===
+  V001 : 10
+  V002 : 10
+  V003 : 10
+  V004 : 10
+  V005 : 10
+  V006 : 10
+  V007 : 10
+  V008 : 10
+  V009 : 4
+
+=== schema_migration_catalog (9) ===
+  V001  active=true  checksum=a51041c1adde54da...
+  V002  active=true  checksum=af2a1296810d9bf8...
+  V003  active=true  checksum=04aac824bbeb21fd...
+  V004  active=true  checksum=9035fd80d851b069...
+  V005  active=true  checksum=247cf1d26ebd9e93...
+  V006  active=true  checksum=48282b7406c00678...
+  V007  active=true  checksum=e4e677ab6e6f0cb5...
+  V008  active=true  checksum=d803629b148549fe...
+  V009  active=true  checksum=0b58ceb70c9a8673...
+
+=== provisioning_job per status ===
+  SUCCEEDED     8
+  FAILED        3
+
+=== step gagal pada provisioning_job FAILED ===
+  2026-07-30T06:13:11  stage=SEEDING           FAILED  column "code" does not exist
+  2026-07-30T07:25:02  stage=CREATING_OWNER    FAILED  could not determine data type of parameter $1
+  2026-07-30T07:29:03  stage=CREATING_OWNER    FAILED  could not determine data type of parameter $1
+
+CATATAN: kedua error di atas adalah bug V5 yang SUDAH diperbaiki
+  - "column code does not exist"  -> product_supplier.code ditambahkan pada V003
+  - "could not determine data type of parameter $1" -> role_scope insert diperbaiki
+  Schema terkait tetap tertinggal sebagai artefak uji.
+
+=== INKONSISTENSI registry_version vs applied_version ===
+  joni_utama_vemvqq       registry=V000  benar-benar diterapkan=V008
+  joni_utama_x2lvgd       registry=V000  benar-benar diterapkan=V008

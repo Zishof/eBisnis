@@ -1,0 +1,609 @@
+// ---------------------------------------------------------------------------
+// ENUM — seluruh enum control plane
+// ---------------------------------------------------------------------------
+
+enum PlatformUserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  LOCKED
+
+  @@schema("platform")
+}
+
+enum PlatformRoleType {
+  SUPER_ADMIN
+  SUPPORT
+  BILLING
+  AUDITOR
+  CUSTOM
+
+  @@schema("platform")
+}
+
+enum PermissionEffect {
+  ALLOW
+  DENY
+
+  @@schema("platform")
+}
+
+enum SupportAccessMode {
+  READ_ONLY
+  READ_WRITE
+
+  @@schema("platform")
+}
+
+enum StepUpPurpose {
+  SUPPORT_WRITE
+  HARD_DELETE
+  PRICE_CHANGE
+  TENANT_SUSPEND
+  PAYMENT_REPLAY
+  SEED_CLEANUP
+
+  @@schema("platform")
+}
+
+enum RegistrationStatus {
+  DRAFT
+  VALIDATING
+  USERNAME_RESERVED
+  PROVISIONING
+  READY
+  FAILED
+  CANCELLED
+
+  @@schema("platform")
+}
+
+enum TenantStatus {
+  PENDING
+  PROVISIONING
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+  FAILED
+
+  @@schema("platform")
+}
+
+enum TenantSchemaStatus {
+  RESERVED
+  PROVISIONING
+  READY
+  MIGRATING
+  SUSPENDED
+  FAILED
+
+  @@schema("platform")
+}
+
+enum ProvisioningStage {
+  REQUESTED
+  VALIDATING
+  RESERVED
+  CREATING_SCHEMAS
+  APPLYING_MIGRATIONS
+  INSTALLING_AUDIT
+  SEEDING
+  CREATING_OWNER
+  VERIFYING
+  READY
+  FAILED
+  RETRYING
+
+  @@schema("platform")
+}
+
+enum ProvisioningStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  RETRYING
+
+  @@schema("platform")
+}
+
+enum ProvisioningStepStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+
+  @@schema("platform")
+}
+
+enum LocaleDirection {
+  LTR
+  RTL
+
+  @@schema("platform")
+}
+
+enum TranslationReviewStatus {
+  DRAFT
+  TRANSLATED
+  REVIEWED
+  APPROVED
+
+  @@schema("platform")
+}
+
+enum ModuleCategory {
+  CORE
+  OPERATIONS
+  FINANCE
+  PEOPLE
+  PLATFORM
+
+  @@schema("platform")
+}
+
+enum CatalogStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+  RETIRED
+
+  @@schema("platform")
+}
+
+enum FeatureType {
+  BOOLEAN
+  LIMIT
+  QUOTA
+  TOGGLE
+
+  @@schema("platform")
+}
+
+enum PlanStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+
+  @@schema("platform")
+}
+
+enum PlanVersionStatus {
+  DRAFT
+  IN_REVIEW
+  SCHEDULED
+  PUBLISHED
+  RETIRED
+
+  @@schema("platform")
+}
+
+enum FutureModulePolicy {
+  SNAPSHOT_AT_VERSION
+  INCLUDE_FUTURE_MODULES
+
+  @@schema("platform")
+}
+
+enum EntitlementScope {
+  TENANT_WIDE
+  LEGAL_ENTITY
+  BRAND
+  OUTLET
+  DEVICE
+  USER
+
+  @@schema("platform")
+}
+
+enum BillingMetric {
+  PER_POS_DEVICE
+  PER_ACTIVE_DEVICE
+  PER_OUTLET
+  PER_LEGAL_ENTITY
+  PER_USER
+  PER_TRANSACTION
+  PER_STORAGE_GB
+  FLAT_TENANT
+  ONE_TIME
+  USAGE_BASED
+
+  @@schema("platform")
+}
+
+enum BillingInterval {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+  ONE_TIME
+
+  @@schema("platform")
+}
+
+enum AssignmentScope {
+  TENANT
+  LEGAL_ENTITY
+  BRAND
+  OUTLET
+  DEVICE
+
+  @@schema("platform")
+}
+
+enum PackageMode {
+  UNIFORM_TENANT_PACKAGE
+  PACKAGE_PER_OUTLET
+  PACKAGE_PER_DEVICE
+  MIXED_PACKAGE
+  CUSTOM_CONTRACT
+
+  @@schema("platform")
+}
+
+enum TenantWidePolicy {
+  ANY_ACTIVE_ITEM
+  MINIMUM_PAID_QUANTITY
+  ALL_DEVICES_REQUIRED
+  EXPLICIT_CONTRACT
+
+  @@schema("platform")
+}
+
+enum PriceOverrideType {
+  REPLACE_BASE_PRICE
+  DISCOUNT_FROM_BASE
+  FIXED_PACKAGE_TOTAL
+  CUSTOM_FORMULA_STRUCTURED
+
+  @@schema("platform")
+}
+
+enum PlanConstraintType {
+  MIN_DEVICES
+  MAX_DEVICES
+  MIN_OUTLETS
+  MAX_OUTLETS
+  MAX_USERS
+  MAX_STORAGE_GB
+  MAX_TRANSACTIONS
+
+  @@schema("platform")
+}
+
+enum DiscountStackPolicy {
+  EXCLUSIVE
+  BEST_PRICE
+  STACKABLE
+
+  @@schema("platform")
+}
+
+enum DiscountConditionField {
+  SELECTED_DEVICE_COUNT
+  ACTIVE_DEVICE_COUNT
+  BILLING_INTERVAL
+  BILLING_INTERVAL_COUNT
+  TENANT_ID
+  TENANT_AGE_DAYS
+  PLAN_CODE
+  CURRENCY_CODE
+  REGISTRATION_SOURCE
+  FIRST_SUBSCRIPTION
+  RENEWAL
+  PAYMENT_MODE
+  QUOTE_SUBTOTAL
+  PROMOTION_CODE
+  CURRENT_DATE
+
+  @@schema("platform")
+}
+
+enum DiscountOperator {
+  EQ
+  NE
+  GT
+  GTE
+  LT
+  LTE
+  IN
+  NOT_IN
+  BETWEEN
+  IS_TRUE
+  IS_FALSE
+
+  @@schema("platform")
+}
+
+enum DiscountBenefitType {
+  PERCENT_DISCOUNT
+  FIXED_DISCOUNT
+  UNIT_PRICE_OVERRIDE
+  FREE_DEVICE_COUNT
+  FREE_BILLING_PERIOD
+  WAIVE_ADMIN_FEE
+
+  @@schema("platform")
+}
+
+enum ConditionGroupOperator {
+  AND
+  OR
+
+  @@schema("platform")
+}
+
+enum QuoteStatus {
+  DRAFT
+  CALCULATED
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+
+  @@schema("platform")
+}
+
+enum SubscriptionPaymentMode {
+  PER_DEVICE
+  SELECTED_DEVICES
+  CONSOLIDATED_ALL_DEVICES
+
+  @@schema("platform")
+}
+
+enum PosDeviceStatus {
+  REGISTERED
+  ACTIVE
+  INACTIVE
+  REVOKED
+  REPLACED
+
+  @@schema("platform")
+}
+
+enum DeviceEntitlementStatus {
+  TRIAL
+  ACTIVE
+  GRACE
+  EXPIRED
+  REVOKED
+
+  @@schema("platform")
+}
+
+enum SubscriptionStatus {
+  DRAFT
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELLED
+  EXPIRED
+
+  @@schema("platform")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  VOID
+
+  @@schema("platform")
+}
+
+enum InvoiceLineType {
+  PACKAGE
+  ADD_ON
+  ADMIN_FEE
+  TAX
+  DISCOUNT
+  ADJUSTMENT
+
+  @@schema("platform")
+}
+
+enum PaymentProviderStatus {
+  DISABLED
+  SANDBOX
+  ENABLED
+
+  @@schema("platform")
+}
+
+enum AdminFeeType {
+  FIXED
+  PERCENT
+
+  @@schema("platform")
+}
+
+enum PaymentOrderStatus {
+  DRAFT
+  CREATING
+  WAITING_PAYMENT
+  PAID
+  EXPIRED
+  FAILED
+  CANCELLED
+  REPLACED
+
+  @@schema("platform")
+}
+
+enum PaymentAttemptType {
+  CREATE_ORDER
+  INQUIRY
+  RETRY
+  CANCEL
+
+  @@schema("platform")
+}
+
+enum PaymentAttemptStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  TIMEOUT
+
+  @@schema("platform")
+}
+
+enum NormalizedPaymentStatus {
+  UNKNOWN
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+
+  @@schema("platform")
+}
+
+enum CallbackProcessingStatus {
+  RECEIVED
+  VALIDATED
+  PROCESSED
+  DUPLICATE
+  REJECTED
+  FAILED
+
+  @@schema("platform")
+}
+
+enum PaymentInquirySource {
+  MANUAL_SINGLE
+  MANUAL_BATCH
+  SCHEDULED_RECONCILIATION
+  CALLBACK_RECOVERY
+  SUPPORT_REPLAY
+
+  @@schema("platform")
+}
+
+enum BatchRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+
+  @@schema("platform")
+}
+
+enum ReconciliationOutcome {
+  MATCHED
+  PROVIDER_PAID_LOCAL_UNPAID
+  LOCAL_PAID_PROVIDER_UNPAID
+  AMOUNT_MISMATCH
+  NOT_FOUND
+  ERROR
+
+  @@schema("platform")
+}
+
+enum CmsStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+  REJECTED
+
+  @@schema("platform")
+}
+
+enum CmsPageType {
+  LANDING
+  STANDARD
+  LEGAL
+  PRICING
+  CONTACT
+  NEWS_INDEX
+  FAQ
+
+  @@schema("platform")
+}
+
+enum CmsNavigationLocation {
+  HEADER
+  FOOTER
+  MOBILE
+  TOPBAR
+
+  @@schema("platform")
+}
+
+enum AnnouncementSeverity {
+  INFO
+  SUCCESS
+  WARNING
+  CRITICAL
+
+  @@schema("platform")
+}
+
+enum AnnouncementAudience {
+  PUBLIC
+  TENANT
+  PLATFORM_ADMIN
+
+  @@schema("platform")
+}
+
+enum ContactMessageStatus {
+  NEW
+  IN_PROGRESS
+  RESPONDED
+  CLOSED
+  SPAM
+
+  @@schema("platform")
+}
+
+enum NewsletterStatus {
+  PENDING
+  SUBSCRIBED
+  UNSUBSCRIBED
+  BOUNCED
+
+  @@schema("platform")
+}
+
+enum DemoSessionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+
+  @@schema("platform")
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+  DENIED
+
+  @@schema("platform__audit")
+}
+
+enum AuditOperation {
+  INSERT
+  UPDATE
+  DELETE
+
+  @@schema("platform__audit")
+}
+
+enum HardDeletePolicy {
+  NEVER_PURGE
+  PURGE_IF_UNREFERENCED
+  PURGE_SAMPLE_ONLY
+  PURGE_AFTER_RETENTION
+  PLATFORM_SUPER_ADMIN_ONLY
+
+  @@schema("platform")
+}

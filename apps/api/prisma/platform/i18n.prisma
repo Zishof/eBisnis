@@ -1,0 +1,175 @@
+// ---------------------------------------------------------------------------
+// I18N — locale, namespace, key, value, tenant override
+// ---------------------------------------------------------------------------
+
+model Locale {
+  id               String          @id @default(uuid()) @db.Uuid
+  code             String          @db.VarChar(16)
+  name             String          @db.VarChar(96)
+  nativeName       String          @map("native_name") @db.VarChar(96)
+  direction        LocaleDirection @default(LTR)
+  fallbackCode     String?         @map("fallback_code") @db.VarChar(16)
+  isDefault        Boolean         @default(false) @map("is_default")
+  enabled          Boolean         @default(false)
+  numberFormat     String          @default("id-ID") @map("number_format") @db.VarChar(32)
+  dateFormat       String          @default("dd/MM/yyyy") @map("date_format") @db.VarChar(32)
+  sortOrder        Int             @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(false) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  values             TranslationValue[]
+  tenantOverrides    TenantTranslationOverride[]
+  users              PlatformUser[]
+  pageTranslations   CmsPageTranslation[]
+  blockTranslations  CmsBlockTranslation[]
+  newsTranslations   NewsArticleTranslation[]
+
+  @@unique([code])
+  @@index([enabled, sortOrder])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("locale")
+  @@schema("platform")
+}
+
+model TranslationNamespace {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @db.VarChar(48)
+  name        String  @db.VarChar(120)
+  description String? @db.Text
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(true) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  keys TranslationKey[]
+
+  @@unique([code])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("translation_namespace")
+  @@schema("platform")
+}
+
+model TranslationKey {
+  id          String  @id @default(uuid()) @db.Uuid
+  namespaceId String  @map("namespace_id") @db.Uuid
+  key         String  @db.VarChar(255)
+  defaultText String  @map("default_text") @db.Text
+  description String? @db.Text
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(false) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  namespace       TranslationNamespace        @relation(fields: [namespaceId], references: [id], onDelete: Restrict)
+  values          TranslationValue[]
+  tenantOverrides TenantTranslationOverride[]
+
+  @@unique([namespaceId, key])
+  @@index([key])
+  @@index([isSample, sampleBatchId])
+  @@map("translation_key")
+  @@schema("platform")
+}
+
+model TranslationValue {
+  id           String                  @id @default(uuid()) @db.Uuid
+  keyId        String                  @map("key_id") @db.Uuid
+  localeCode   String                  @map("locale_code") @db.VarChar(16)
+  value        String                  @db.Text
+  reviewStatus TranslationReviewStatus @default(DRAFT) @map("review_status")
+  createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy    String?                 @map("created_by") @db.Uuid
+  updatedAt    DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy    String?                 @map("updated_by") @db.Uuid
+  deletedAt    DateTime?               @map("deleted_at") @db.Timestamptz(6)
+  version      Int                     @default(1)
+
+  key    TranslationKey @relation(fields: [keyId], references: [id], onDelete: Cascade)
+  locale Locale         @relation(fields: [localeCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([keyId, localeCode])
+  @@index([localeCode])
+  @@map("translation_value")
+  @@schema("platform")
+}
+
+model TenantTranslationOverride {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  keyId         String    @map("key_id") @db.Uuid
+  localeCode    String    @map("locale_code") @db.VarChar(16)
+  value         String    @db.Text
+  effectiveFrom DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveUntil DateTime? @map("effective_until") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version       Int       @default(1)
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  key    TranslationKey @relation(fields: [keyId], references: [id], onDelete: Cascade)
+  locale Locale         @relation(fields: [localeCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([tenantId, keyId, localeCode])
+  @@index([tenantId, localeCode])
+  @@map("tenant_translation_override")
+  @@schema("platform")
+}
+
+model TranslationImportRun {
+  id            String    @id @default(uuid()) @db.Uuid
+  direction     String    @db.VarChar(16)
+  localeCode    String?   @map("locale_code") @db.VarChar(16)
+  fileName      String?   @map("file_name") @db.VarChar(255)
+  totalKeys     Int       @default(0) @map("total_keys")
+  createdKeys   Int       @default(0) @map("created_keys")
+  updatedKeys   Int       @default(0) @map("updated_keys")
+  skippedKeys   Int       @default(0) @map("skipped_keys")
+  status        String    @default("RUNNING") @db.VarChar(24)
+  errorMessage  String?   @map("error_message") @db.Text
+  executedById  String?   @map("executed_by_id") @db.Uuid
+  startedAt     DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt    DateTime? @map("finished_at") @db.Timestamptz(6)
+
+  @@index([startedAt])
+  @@map("translation_import_run")
+  @@schema("platform")
+}

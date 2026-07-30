@@ -1,0 +1,411 @@
+// ---------------------------------------------------------------------------
+// PAYMENT — provider (Esmartlink), channel, order, attempt, callback, inquiry,
+// batch check, host-to-host log, reconciliation, dead letter
+// ---------------------------------------------------------------------------
+
+model PaymentProvider {
+  id                String                @id @default(uuid()) @db.Uuid
+  code              String                @db.VarChar(48)
+  name              String                @db.VarChar(120)
+  environment       String                @default("SANDBOX") @db.VarChar(24)
+  status            PaymentProviderStatus @default(DISABLED)
+  baseUrl           String?               @map("base_url") @db.VarChar(255)
+  createOrderPath   String                @default("api/payment/create-order") @map("create_order_path") @db.VarChar(160)
+  inquiryOrderPath  String                @default("api/payment/inquiry-order/") @map("inquiry_order_path") @db.VarChar(160)
+  callbackUrl       String?               @map("callback_url") @db.VarChar(255)
+  successRedirectUrl String?              @map("success_redirect_url") @db.VarChar(255)
+  failedRedirectUrl String?               @map("failed_redirect_url") @db.VarChar(255)
+  // Hanya referensi ke secret store / nama env var. Bukan nilai secret.
+  secretReference   String?               @map("secret_reference") @db.VarChar(160)
+  allowedIps        String?               @map("allowed_ips") @db.Text
+  trustProxy        Boolean               @default(false) @map("trust_proxy")
+  ackSuccess        String                @default("OK") @map("ack_success") @db.VarChar(32)
+  ackError          String                @default("ERROR") @map("ack_error") @db.VarChar(32)
+  rawPayloadRetentionDays Int             @default(90) @map("raw_payload_retention_days")
+  defaultChannelCodes String?             @map("default_channel_codes") @db.VarChar(255)
+  statusMapping     Json?                 @map("status_mapping")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(true) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  channels        PaymentChannel[]
+  orders          PaymentOrder[]
+  callbackEvents  PaymentCallbackEvent[]
+  h2hLogs         HostToHostLog[]
+  reconRuns       PaymentReconciliationRun[]
+  legacyConfigs   PaymentChannelLegacyConfig[]
+  rateLimitStates ProviderRateLimitState[]
+
+  @@unique([code])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("payment_provider")
+  @@schema("platform")
+}
+
+model PaymentChannel {
+  id            String       @id @default(uuid()) @db.Uuid
+  providerId    String       @map("provider_id") @db.Uuid
+  code          String       @db.VarChar(48)
+  name          String       @db.VarChar(120)
+  labelKey      String       @map("label_key") @db.VarChar(160)
+  adminFeeType  AdminFeeType @default(FIXED) @map("admin_fee_type")
+  adminFeeValue Decimal      @default(0) @map("admin_fee_value") @db.Decimal(19, 4)
+  expiryOptions Json?        @map("expiry_options")
+  // Referensi credential khusus channel (precedence tertinggi). Bukan plaintext.
+  secretReference String?    @map("secret_reference") @db.VarChar(160)
+  sortOrder     Int          @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(false) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  provider PaymentProvider @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  orders   PaymentOrder[]
+
+  @@unique([providerId, code])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("payment_channel")
+  @@schema("platform")
+}
+
+model PaymentChannelLegacyConfig {
+  id           String   @id @default(uuid()) @db.Uuid
+  providerId   String   @map("provider_id") @db.Uuid
+  rawConfig    String   @map("raw_config") @db.Text
+  parsedCount  Int      @default(0) @map("parsed_count")
+  skippedCount Int      @default(0) @map("skipped_count")
+  parsedResult Json?    @map("parsed_result")
+  importedAt   DateTime @default(now()) @map("imported_at") @db.Timestamptz(6)
+  importedBy   String?  @map("imported_by") @db.Uuid
+
+  provider PaymentProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, importedAt])
+  @@map("payment_channel_legacy_config")
+  @@schema("platform")
+}
+
+model PaymentOrder {
+  id                    String             @id @default(uuid()) @db.Uuid
+  providerId            String             @map("provider_id") @db.Uuid
+  invoiceId             String             @map("invoice_id") @db.Uuid
+  selectedChannelId     String?            @map("selected_channel_id") @db.Uuid
+  orderNumber           String             @map("order_number") @db.VarChar(64)
+  providerOrderId       String?            @map("provider_order_id") @db.VarChar(96)
+  providerTransactionId String?            @map("provider_transaction_id") @db.VarChar(96)
+  paymentUrl            String?            @map("payment_url") @db.Text
+  virtualAccount        String?            @map("virtual_account") @db.VarChar(64)
+  amount                Decimal            @db.Decimal(19, 4)
+  adminFee              Decimal            @default(0) @map("admin_fee") @db.Decimal(19, 4)
+  totalAmount           Decimal            @map("total_amount") @db.Decimal(19, 4)
+  currencyCode          String             @default("IDR") @map("currency_code") @db.VarChar(8)
+  status                PaymentOrderStatus @default(DRAFT)
+  expiresAt             DateTime?          @map("expires_at") @db.Timestamptz(6)
+  paidAt                DateTime?          @map("paid_at") @db.Timestamptz(6)
+  requestSnapshot       Json?              @map("request_snapshot")
+  responseSnapshot      Json?              @map("response_snapshot")
+  idempotencyKey        String             @map("idempotency_key") @db.VarChar(96)
+  replacedByOrderId     String?            @map("replaced_by_order_id") @db.Uuid
+  failureCode           String?            @map("failure_code") @db.VarChar(64)
+  failureMessage        String?            @map("failure_message") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version   Int      @default(1)
+
+  provider        PaymentProvider            @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  invoice         BillingInvoice             @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  selectedChannel PaymentChannel?            @relation(fields: [selectedChannelId], references: [id], onDelete: SetNull)
+  attempts        PaymentAttempt[]
+  callbackEvents  PaymentCallbackEvent[]
+  inquiryAttempts PaymentInquiryAttempt[]
+  batchItems      PaymentCheckBatchItem[]
+  transitions     PaymentStatusTransition[]
+  allocations     BillingPaymentAllocation[]
+  reconItems      PaymentReconciliationItem[]
+
+  @@unique([orderNumber])
+  @@unique([idempotencyKey])
+  @@unique([providerId, providerTransactionId])
+  @@unique([providerId, providerOrderId])
+  @@index([invoiceId, status])
+  @@index([status, expiresAt])
+  @@map("payment_order")
+  @@schema("platform")
+}
+
+model PaymentAttempt {
+  id                    String               @id @default(uuid()) @db.Uuid
+  orderId               String               @map("order_id") @db.Uuid
+  attemptType           PaymentAttemptType   @map("attempt_type")
+  status                PaymentAttemptStatus @default(PENDING)
+  idempotencyKey        String?              @map("idempotency_key") @db.VarChar(96)
+  requestPayloadMasked  Json?                @map("request_payload_masked")
+  responsePayloadMasked Json?                @map("response_payload_masked")
+  httpStatus            Int?                 @map("http_status")
+  providerCode          String?              @map("provider_code") @db.VarChar(32)
+  providerMessage       String?              @map("provider_message") @db.Text
+  durationMs            Int?                 @map("duration_ms")
+  errorMessage          String?              @map("error_message") @db.Text
+  occurredAt            DateTime             @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  order PaymentOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, attemptType, occurredAt])
+  @@map("payment_attempt")
+  @@schema("platform")
+}
+
+model PaymentCallbackEvent {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  providerId            String                   @map("provider_id") @db.Uuid
+  orderId               String?                  @map("order_id") @db.Uuid
+  providerTransactionId String                   @map("provider_transaction_id") @db.VarChar(96)
+  providerOrderId       String?                  @map("provider_order_id") @db.VarChar(96)
+  rawStatus             String                   @map("raw_status") @db.VarChar(48)
+  normalizedStatus      NormalizedPaymentStatus  @default(UNKNOWN) @map("normalized_status")
+  amount                Decimal?                 @db.Decimal(19, 4)
+  transactionTime       DateTime?                @map("transaction_time") @db.Timestamptz(6)
+  payloadMasked         Json                     @map("payload_masked")
+  payloadChecksum       String                   @map("payload_checksum") @db.VarChar(64)
+  processingStatus      CallbackProcessingStatus @default(RECEIVED) @map("processing_status")
+  processingMessage     String?                  @map("processing_message") @db.Text
+  remoteIp              String?                  @map("remote_ip") @db.VarChar(64)
+  receivedAt            DateTime                 @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt           DateTime?                @map("processed_at") @db.Timestamptz(6)
+  ackBody               String?                  @map("ack_body") @db.VarChar(64)
+
+  provider    PaymentProvider            @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  order       PaymentOrder?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  allocations BillingPaymentAllocation[]
+  deadLetters PaymentDeadLetter[]
+
+  @@unique([providerId, providerTransactionId, payloadChecksum])
+  @@index([orderId, processingStatus])
+  @@index([receivedAt])
+  @@index([providerTransactionId])
+  @@map("payment_callback_event")
+  @@schema("platform")
+}
+
+model PaymentInquiryAttempt {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  orderId               String                  @map("order_id") @db.Uuid
+  source                PaymentInquirySource    @default(MANUAL_SINGLE)
+  batchId               String?                 @map("batch_id") @db.Uuid
+  requestUrlMasked      String?                 @map("request_url_masked") @db.Text
+  responsePayloadMasked Json?                   @map("response_payload_masked")
+  rawStatus             String?                 @map("raw_status") @db.VarChar(48)
+  normalizedStatus      NormalizedPaymentStatus @default(UNKNOWN) @map("normalized_status")
+  httpStatus            Int?                    @map("http_status")
+  durationMs            Int?                    @map("duration_ms")
+  errorMessage          String?                 @map("error_message") @db.Text
+  actorUserId           String?                 @map("actor_user_id") @db.Uuid
+  occurredAt            DateTime                @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  order PaymentOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, occurredAt])
+  @@index([batchId])
+  @@map("payment_inquiry_attempt")
+  @@schema("platform")
+}
+
+model PaymentCheckBatch {
+  id            String               @id @default(uuid()) @db.Uuid
+  batchNumber   String               @map("batch_number") @db.VarChar(48)
+  source        PaymentInquirySource @default(MANUAL_BATCH)
+  requestedById String?              @map("requested_by_id") @db.Uuid
+  totalItems    Int                  @default(0) @map("total_items")
+  processedItems Int                 @default(0) @map("processed_items")
+  successItems  Int                  @default(0) @map("success_items")
+  failureItems  Int                  @default(0) @map("failure_items")
+  status        BatchRunStatus       @default(PENDING)
+  concurrency   Int                  @default(4)
+  errorMessage  String?              @map("error_message") @db.Text
+  startedAt     DateTime?            @map("started_at") @db.Timestamptz(6)
+  finishedAt    DateTime?            @map("finished_at") @db.Timestamptz(6)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version       Int                  @default(1)
+
+  items PaymentCheckBatchItem[]
+
+  @@unique([batchNumber])
+  @@index([status, createdAt])
+  @@map("payment_check_batch")
+  @@schema("platform")
+}
+
+model PaymentCheckBatchItem {
+  id            String                  @id @default(uuid()) @db.Uuid
+  batchId       String                  @map("batch_id") @db.Uuid
+  orderId       String                  @map("order_id") @db.Uuid
+  sequence      Int
+  status        BatchRunStatus          @default(PENDING)
+  resultCode    String?                 @map("result_code") @db.VarChar(48)
+  resultMessage String?                 @map("result_message") @db.Text
+  normalizedStatus NormalizedPaymentStatus @default(UNKNOWN) @map("normalized_status")
+  startedAt     DateTime?               @map("started_at") @db.Timestamptz(6)
+  finishedAt    DateTime?               @map("finished_at") @db.Timestamptz(6)
+
+  batch PaymentCheckBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  order PaymentOrder      @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@unique([batchId, orderId])
+  @@index([batchId, status])
+  @@index([batchId, sequence])
+  @@map("payment_check_batch_item")
+  @@schema("platform")
+}
+
+model PaymentStatusTransition {
+  id         String             @id @default(uuid()) @db.Uuid
+  orderId    String             @map("order_id") @db.Uuid
+  fromStatus PaymentOrderStatus @map("from_status")
+  toStatus   PaymentOrderStatus @map("to_status")
+  sourceType String             @map("source_type") @db.VarChar(48)
+  sourceId   String?            @map("source_id") @db.Uuid
+  reason     String?            @db.Text
+  occurredAt DateTime           @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  order PaymentOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, occurredAt])
+  @@map("payment_status_transition")
+  @@schema("platform")
+}
+
+// Setiap inbound request provider WAJIB tercatat di sini, termasuk IP tidak
+// dikenal, payload invalid, order tidak ditemukan, dan exception.
+model HostToHostLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  providerId     String?  @map("provider_id") @db.Uuid
+  direction      String   @default("INBOUND") @db.VarChar(16)
+  endpoint       String   @db.VarChar(160)
+  remoteIp       String?  @map("remote_ip") @db.VarChar(64)
+  headersMasked  Json?    @map("headers_masked")
+  payloadMasked  String?  @map("payload_masked") @db.Text
+  orderNumber    String?  @map("order_number") @db.VarChar(64)
+  providerTransactionId String? @map("provider_transaction_id") @db.VarChar(96)
+  amount         Decimal? @db.Decimal(19, 4)
+  result         String   @default("OK") @db.VarChar(24)
+  resultDetail   String?  @map("result_detail") @db.Text
+  stackTrace     String?  @map("stack_trace") @db.Text
+  httpStatus     Int?     @map("http_status")
+  durationMs     Int?     @map("duration_ms")
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  provider PaymentProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([occurredAt])
+  @@index([remoteIp, occurredAt])
+  @@index([orderNumber])
+  @@map("host_to_host_log")
+  @@schema("platform")
+}
+
+model PaymentReconciliationRun {
+  id            String         @id @default(uuid()) @db.Uuid
+  runNumber     String         @map("run_number") @db.VarChar(48)
+  providerId    String         @map("provider_id") @db.Uuid
+  periodStart   DateTime       @map("period_start") @db.Timestamptz(6)
+  periodEnd     DateTime       @map("period_end") @db.Timestamptz(6)
+  status        BatchRunStatus @default(PENDING)
+  totalOrders   Int            @default(0) @map("total_orders")
+  matchedCount  Int            @default(0) @map("matched_count")
+  discrepancyCount Int         @default(0) @map("discrepancy_count")
+  errorCount    Int            @default(0) @map("error_count")
+  startedAt     DateTime?      @map("started_at") @db.Timestamptz(6)
+  finishedAt    DateTime?      @map("finished_at") @db.Timestamptz(6)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  provider PaymentProvider            @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  items    PaymentReconciliationItem[]
+
+  @@unique([runNumber])
+  @@index([providerId, periodStart])
+  @@map("payment_reconciliation_run")
+  @@schema("platform")
+}
+
+model PaymentReconciliationItem {
+  id             String                @id @default(uuid()) @db.Uuid
+  runId          String                @map("run_id") @db.Uuid
+  orderId        String                @map("order_id") @db.Uuid
+  providerStatus String?               @map("provider_status") @db.VarChar(48)
+  localStatus    PaymentOrderStatus    @map("local_status")
+  outcome        ReconciliationOutcome @default(MATCHED)
+  discrepancyNote String?              @map("discrepancy_note") @db.Text
+  actionTaken    String?               @map("action_taken") @db.VarChar(96)
+  occurredAt     DateTime              @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  run   PaymentReconciliationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  order PaymentOrder             @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@unique([runId, orderId])
+  @@index([runId, outcome])
+  @@map("payment_reconciliation_item")
+  @@schema("platform")
+}
+
+model PaymentDeadLetter {
+  id              String    @id @default(uuid()) @db.Uuid
+  callbackEventId String?   @map("callback_event_id") @db.Uuid
+  reason          String    @db.Text
+  payloadMasked   Json?     @map("payload_masked")
+  retryCount      Int       @default(0) @map("retry_count")
+  lastRetryAt     DateTime? @map("last_retry_at") @db.Timestamptz(6)
+  resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  callbackEvent PaymentCallbackEvent? @relation(fields: [callbackEventId], references: [id], onDelete: SetNull)
+
+  @@index([resolvedAt, createdAt])
+  @@map("payment_dead_letter")
+  @@schema("platform")
+}
+
+model ProviderRateLimitState {
+  id             String    @id @default(uuid()) @db.Uuid
+  providerId     String    @map("provider_id") @db.Uuid
+  windowStart    DateTime  @map("window_start") @db.Timestamptz(6)
+  requestCount   Int       @default(0) @map("request_count")
+  throttledUntil DateTime? @map("throttled_until") @db.Timestamptz(6)
+  backoffMs      Int       @default(0) @map("backoff_ms")
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  provider PaymentProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, windowStart])
+  @@map("provider_rate_limit_state")
+  @@schema("platform")
+}

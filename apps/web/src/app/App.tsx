@@ -1,0 +1,138 @@
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
+import { PublicLayout } from '../pages/public/PublicLayout';
+import { HomePage } from '../pages/public/HomePage';
+import { CmsPage } from '../pages/public/CmsPage';
+import { PricingPage } from '../pages/public/PricingPage';
+import { NewsListPage } from '../pages/public/NewsListPage';
+import { NewsDetailPage } from '../pages/public/NewsDetailPage';
+import { ContactPage } from '../pages/public/ContactPage';
+import { LoginPage } from '../pages/auth/LoginPage';
+import { RegisterPage } from '../pages/auth/RegisterPage';
+import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
+import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage';
+import { DemoEntryPage } from '../pages/auth/DemoEntryPage';
+import { AppLayout } from '../pages/app/AppLayout';
+import { DashboardPage } from '../pages/app/DashboardPage';
+import { MasterListPage } from '../pages/app/MasterListPage';
+import { StockTreePage } from '../pages/app/StockTreePage';
+import { RequestOrderPage } from '../pages/app/RequestOrderPage';
+import { PurchaseOrderPage } from '../pages/app/PurchaseOrderPage';
+import { GoodsReceiptPage } from '../pages/app/GoodsReceiptPage';
+import { BackorderPage } from '../pages/app/BackorderPage';
+import { InternalTransferPage } from '../pages/app/InternalTransferPage';
+import { SampleDataPage } from '../pages/app/SampleDataPage';
+import { SubscriptionPage } from '../pages/app/SubscriptionPage';
+import { ComingSoonPage } from '../pages/app/ComingSoonPage';
+import { RequireAuth } from './RequireAuth';
+import { LoadingState } from '../components/ui';
+
+const PlatformLayout = lazy(() =>
+  import('../pages/platform/PlatformLayout').then((m) => ({ default: m.PlatformLayout })),
+);
+const PlatformDashboardPage = lazy(() =>
+  import('../pages/platform/PlatformDashboardPage').then((m) => ({ default: m.PlatformDashboardPage })),
+);
+const PlatformTenantsPage = lazy(() =>
+  import('../pages/platform/PlatformTenantsPage').then((m) => ({ default: m.PlatformTenantsPage })),
+);
+const PlatformPackagesPage = lazy(() =>
+  import('../pages/platform/PlatformPackagesPage').then((m) => ({ default: m.PlatformPackagesPage })),
+);
+const PlatformCmsPage = lazy(() =>
+  import('../pages/platform/PlatformCmsPage').then((m) => ({ default: m.PlatformCmsPage })),
+);
+const PlatformAuditPage = lazy(() =>
+  import('../pages/platform/PlatformAuditPage').then((m) => ({ default: m.PlatformAuditPage })),
+);
+
+export function App() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <Routes>
+        {/* Website publik — route `/` menampilkan website, bukan redirect login. */}
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/harga" element={<PricingPage />} />
+          <Route path="/berita" element={<NewsListPage />} />
+          <Route path="/berita/:slug" element={<NewsDetailPage />} />
+          <Route path="/kontak" element={<ContactPage />} />
+          <Route path="/tentang" element={<CmsPage slug="tentang" />} />
+          <Route path="/syarat" element={<CmsPage slug="syarat" />} />
+          <Route path="/privasi" element={<CmsPage slug="privasi" />} />
+          <Route path="/masuk" element={<LoginPage />} />
+          <Route path="/daftar" element={<RegisterPage />} />
+          <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
+          <Route path="/demo" element={<DemoEntryPage />} />
+          <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />
+        </Route>
+
+        {/* Aplikasi tenant */}
+        <Route
+          path="/app"
+          element={
+            <RequireAuth>
+              <AppLayout />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path="products" element={<MasterListPage resource="products" />} />
+          <Route path="product-categories" element={<MasterListPage resource="product-categories" />} />
+          <Route path="uoms" element={<MasterListPage resource="uoms" />} />
+          <Route path="suppliers" element={<MasterListPage resource="suppliers" />} />
+          <Route path="product-suppliers" element={<MasterListPage resource="product-suppliers" />} />
+          <Route path="customers" element={<MasterListPage resource="customers" />} />
+          <Route path="customer-groups" element={<MasterListPage resource="customer-groups" />} />
+          <Route path="supplier-groups" element={<MasterListPage resource="supplier-groups" />} />
+          <Route path="warehouses" element={<MasterListPage resource="warehouses" />} />
+          <Route path="warehouse-types" element={<MasterListPage resource="warehouse-types" />} />
+          <Route path="outlets" element={<MasterListPage resource="outlets" />} />
+          <Route path="outlet-types" element={<MasterListPage resource="outlet-types" />} />
+          <Route path="regions" element={<MasterListPage resource="regions" />} />
+          <Route path="stock-policies" element={<MasterListPage resource="stock-policies" />} />
+          <Route path="payment-methods" element={<MasterListPage resource="payment-methods" />} />
+          <Route path="payment-terms" element={<MasterListPage resource="payment-terms" />} />
+          <Route path="tax-categories" element={<MasterListPage resource="tax-categories" />} />
+          <Route path="departments" element={<MasterListPage resource="departments" />} />
+          <Route path="job-positions" element={<MasterListPage resource="job-positions" />} />
+          <Route path="leave-types" element={<MasterListPage resource="leave-types" />} />
+          <Route path="vehicle-types" element={<MasterListPage resource="vehicle-types" />} />
+          <Route path="chart-of-accounts" element={<MasterListPage resource="chart-of-accounts" />} />
+          <Route path="roles" element={<MasterListPage resource="roles" />} />
+
+          <Route path="request-orders" element={<RequestOrderPage />} />
+          <Route path="purchase-orders" element={<PurchaseOrderPage />} />
+          <Route path="goods-receipts" element={<GoodsReceiptPage />} />
+          <Route path="backorders" element={<BackorderPage />} />
+          <Route path="internal-transfers" element={<InternalTransferPage />} />
+          <Route path="stock-tree" element={<StockTreePage />} />
+          <Route path="sample-data" element={<SampleDataPage />} />
+          <Route path="devices" element={<SubscriptionPage tab="devices" />} />
+          <Route path="subscription/checkout" element={<SubscriptionPage tab="checkout" />} />
+          <Route path="subscription/invoices" element={<SubscriptionPage tab="invoices" />} />
+          <Route path="*" element={<ComingSoonPage />} />
+        </Route>
+
+        {/* Portal Platform Super Admin */}
+        <Route
+          path="/platform"
+          element={
+            <RequireAuth requirePlatformStaff>
+              <PlatformLayout />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<PlatformDashboardPage />} />
+          <Route path="tenants" element={<PlatformTenantsPage />} />
+          <Route path="registrations" element={<PlatformTenantsPage tab="registrations" />} />
+          <Route path="packages" element={<PlatformPackagesPage />} />
+          <Route path="cms" element={<PlatformCmsPage />} />
+          <Route path="audit" element={<PlatformAuditPage />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}

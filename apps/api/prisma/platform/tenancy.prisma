@@ -1,0 +1,475 @@
+// ---------------------------------------------------------------------------
+// TENANCY — registration, tenant registry, schema registry, provisioning, demo
+// ---------------------------------------------------------------------------
+
+model Registration {
+  id                String             @id @default(uuid()) @db.Uuid
+  registrationCode  String             @map("registration_code") @db.VarChar(32)
+  businessName      String             @map("business_name") @db.VarChar(255)
+  businessType      String?            @map("business_type") @db.VarChar(255)
+  country           String             @default("Indonesia") @db.VarChar(100)
+  province          String?            @db.VarChar(100)
+  cityRegency       String?            @map("city_regency") @db.VarChar(100)
+  district          String?            @db.VarChar(100)
+  address           String?            @db.VarChar(255)
+  contactPerson     String?            @map("contact_person") @db.VarChar(255)
+  contactPhone      String?            @map("contact_phone") @db.VarChar(50)
+  businessPhone     String?            @map("business_phone") @db.VarChar(50)
+  email             String             @db.VarChar(255)
+  desiredUsername   String             @map("desired_username") @db.VarChar(64)
+  normalizedUsername String            @map("normalized_username") @db.VarChar(64)
+  generatePassword  Boolean            @default(true) @map("generate_password")
+  status            RegistrationStatus @default(DRAFT)
+  source            String             @default("PUBLIC_WEB") @db.VarChar(48)
+  localeCode        String             @default("id") @map("locale_code") @db.VarChar(16)
+  termsAcceptedAt   DateTime?          @map("terms_accepted_at") @db.Timestamptz(6)
+  privacyAcceptedAt DateTime?          @map("privacy_accepted_at") @db.Timestamptz(6)
+  failureCode       String?            @map("failure_code") @db.VarChar(64)
+  failureMessage    String?            @map("failure_message") @db.Text
+  ipAddress         String?            @map("ip_address") @db.VarChar(64)
+  userAgent         String?            @map("user_agent") @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+
+  tenant             Tenant?
+  provisioningJobs   ProvisioningJob[]
+  reservation        SchemaNameReservation?
+  credentialDelivery RegistrationCredentialDelivery[]
+
+  @@unique([registrationCode])
+  @@index([normalizedUsername])
+  @@index([status, createdAt])
+  @@index([email])
+  @@map("registration")
+  @@schema("platform")
+}
+
+model RegistrationCredentialDelivery {
+  id             String    @id @default(uuid()) @db.Uuid
+  registrationId String    @map("registration_id") @db.Uuid
+  channel        String    @default("API_RESPONSE") @db.VarChar(48)
+  deliveredAt    DateTime  @default(now()) @map("delivered_at") @db.Timestamptz(6)
+  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(6)
+  // Tidak pernah menyimpan password. Hanya bukti bahwa credential ditampilkan.
+  fingerprint    String    @db.VarChar(64)
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([registrationId])
+  @@map("registration_credential_delivery")
+  @@schema("platform")
+}
+
+model SchemaNameReservation {
+  id             String    @id @default(uuid()) @db.Uuid
+  normalizedName String    @map("normalized_name") @db.VarChar(64)
+  auditName      String    @map("audit_name") @db.VarChar(72)
+  registrationId String?   @unique @map("registration_id") @db.Uuid
+  reservedAt     DateTime  @default(now()) @map("reserved_at") @db.Timestamptz(6)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt     DateTime? @map("consumed_at") @db.Timestamptz(6)
+  releasedAt     DateTime? @map("released_at") @db.Timestamptz(6)
+
+  registration Registration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+
+  @@unique([normalizedName])
+  @@index([expiresAt])
+  @@map("schema_name_reservation")
+  @@schema("platform")
+}
+
+model Tenant {
+  id             String       @id @default(uuid()) @db.Uuid
+  registrationId String?      @unique @map("registration_id") @db.Uuid
+  code           String       @db.VarChar(64)
+  name           String       @db.VarChar(255)
+  slug           String       @db.VarChar(64)
+  status         TenantStatus @default(PENDING)
+  isDemo         Boolean      @default(false) @map("is_demo")
+  localeCode     String       @default("id") @map("locale_code") @db.VarChar(16)
+  timezone       String       @default("Asia/Jakarta") @db.VarChar(64)
+  currencyCode   String       @default("IDR") @map("currency_code") @db.VarChar(8)
+  trialEndsAt    DateTime?    @map("trial_ends_at") @db.Timestamptz(6)
+  activatedAt    DateTime?    @map("activated_at") @db.Timestamptz(6)
+  suspendedAt    DateTime?    @map("suspended_at") @db.Timestamptz(6)
+  suspendReason  String?      @map("suspend_reason") @db.Text
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(false) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  registration      Registration?               @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  schemaRegistry    TenantSchemaRegistry?
+  memberships       TenantMembership[]
+  provisioningJobs  ProvisioningJob[]
+  migrationHistory  TenantSchemaMigrationHistory[]
+  supportSessions   PlatformSupportSession[]
+  tenantActions     PlatformTenantAction[]
+  translationOverrides TenantTranslationOverride[]
+  planContracts     TenantPlanContract[]
+  priceOverrides    TenantPriceOverride[]
+  packageAssignments PackageAssignment[]
+  entitlementSnapshots EntitlementSnapshot[]
+  devices           PosDevice[]
+  subscriptions     Subscription[]
+  invoices          BillingInvoice[]
+  quotes            PricingQuote[]
+  discountRedemptions DiscountRedemption[]
+  discountEligibility DiscountTenantEligibility[]
+
+  @@unique([code])
+  @@unique([slug])
+  @@index([status, isActive, deletedAt])
+  @@index([createdAt])
+  @@index([isSample, sampleBatchId])
+  @@map("tenant")
+  @@schema("platform")
+}
+
+model TenantSchemaRegistry {
+  id              String             @id @default(uuid()) @db.Uuid
+  tenantId        String             @unique @map("tenant_id") @db.Uuid
+  username        String             @db.VarChar(64)
+  schemaName      String             @map("schema_name") @db.VarChar(64)
+  auditSchemaName String             @map("audit_schema_name") @db.VarChar(72)
+  schemaVersion   String             @default("V000") @map("schema_version") @db.VarChar(16)
+  status          TenantSchemaStatus @default(RESERVED)
+  provisionedAt   DateTime?          @map("provisioned_at") @db.Timestamptz(6)
+  lastMigratedAt  DateTime?          @map("last_migrated_at") @db.Timestamptz(6)
+  lastVerifiedAt  DateTime?          @map("last_verified_at") @db.Timestamptz(6)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version         Int                @default(1)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([schemaName])
+  @@unique([auditSchemaName])
+  @@unique([username])
+  @@index([status])
+  @@map("tenant_schema_registry")
+  @@schema("platform")
+}
+
+model TenantMembership {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  platformUserId  String    @map("platform_user_id") @db.Uuid
+  tenantSubjectId String?   @map("tenant_subject_id") @db.Uuid
+  isOwner         Boolean   @default(false) @map("is_owner")
+  status          String    @default("ACTIVE") @db.VarChar(24)
+  invitedAt       DateTime? @map("invited_at") @db.Timestamptz(6)
+  joinedAt        DateTime? @map("joined_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version         Int       @default(1)
+
+  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   PlatformUser @relation(fields: [platformUserId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, platformUserId])
+  @@index([platformUserId])
+  @@map("tenant_membership")
+  @@schema("platform")
+}
+
+model ProvisioningJob {
+  id             String             @id @default(uuid()) @db.Uuid
+  registrationId String?            @map("registration_id") @db.Uuid
+  tenantId       String?            @map("tenant_id") @db.Uuid
+  schemaName     String             @map("schema_name") @db.VarChar(64)
+  status         ProvisioningStatus @default(PENDING)
+  currentStage   ProvisioningStage  @default(REQUESTED) @map("current_stage")
+  attempt        Int                @default(1)
+  maxAttempts    Int                @default(3) @map("max_attempts")
+  errorCode      String?            @map("error_code") @db.VarChar(64)
+  errorMessage   String?            @map("error_message") @db.Text
+  retryAt        DateTime?          @map("retry_at") @db.Timestamptz(6)
+  startedAt      DateTime?          @map("started_at") @db.Timestamptz(6)
+  finishedAt     DateTime?          @map("finished_at") @db.Timestamptz(6)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version        Int                @default(1)
+
+  registration Registration?      @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  steps        ProvisioningStep[]
+
+  @@index([status, retryAt])
+  @@index([schemaName])
+  @@index([tenantId])
+  @@map("provisioning_job")
+  @@schema("platform")
+}
+
+model ProvisioningStep {
+  id           String                 @id @default(uuid()) @db.Uuid
+  jobId        String                 @map("job_id") @db.Uuid
+  stage        ProvisioningStage
+  sequence     Int
+  status       ProvisioningStepStatus @default(PENDING)
+  checksum     String?                @db.VarChar(64)
+  detail       Json?
+  errorMessage String?                @map("error_message") @db.Text
+  startedAt    DateTime?              @map("started_at") @db.Timestamptz(6)
+  finishedAt   DateTime?              @map("finished_at") @db.Timestamptz(6)
+  durationMs   Int?                   @map("duration_ms")
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  job ProvisioningJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, sequence])
+  @@index([jobId, status])
+  @@map("provisioning_step")
+  @@schema("platform")
+}
+
+model SchemaMigrationCatalog {
+  id          String   @id @default(uuid()) @db.Uuid
+  version     String   @db.VarChar(16)
+  name        String   @db.VarChar(160)
+  checksum    String   @db.VarChar(64)
+  scriptPath  String   @map("script_path") @db.VarChar(255)
+  description String?  @db.Text
+  sequence    Int
+  releasedAt  DateTime @default(now()) @map("released_at") @db.Timestamptz(6)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version_    Int      @default(1) @map("version_no")
+
+  history TenantSchemaMigrationHistory[]
+
+  @@unique([version])
+  @@unique([sequence])
+  @@map("schema_migration_catalog")
+  @@schema("platform")
+}
+
+model TenantSchemaMigrationHistory {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String?   @map("tenant_id") @db.Uuid
+  schemaName       String    @map("schema_name") @db.VarChar(64)
+  migrationVersion String    @map("migration_version") @db.VarChar(16)
+  catalogId        String?   @map("catalog_id") @db.Uuid
+  checksum         String    @db.VarChar(64)
+  appliedAt        DateTime  @default(now()) @map("applied_at") @db.Timestamptz(6)
+  durationMs       Int       @default(0) @map("duration_ms")
+  status           String    @default("SUCCEEDED") @db.VarChar(24)
+  errorMessage     String?   @map("error_message") @db.Text
+
+  tenant  Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  catalog SchemaMigrationCatalog? @relation(fields: [catalogId], references: [id], onDelete: SetNull)
+
+  @@unique([schemaName, migrationVersion])
+  @@index([tenantId])
+  @@index([appliedAt])
+  @@map("tenant_schema_migration_history")
+  @@schema("platform")
+}
+
+model PlatformSupportSession {
+  id                 String            @id @default(uuid()) @db.Uuid
+  tenantId           String            @map("tenant_id") @db.Uuid
+  schemaNameSnapshot String            @map("schema_name_snapshot") @db.VarChar(64)
+  requestedById      String            @map("requested_by_id") @db.Uuid
+  reason             String            @db.Text
+  accessMode         SupportAccessMode @default(READ_ONLY) @map("access_mode")
+  stepUpVerifiedAt   DateTime?         @map("step_up_verified_at") @db.Timestamptz(6)
+  startedAt          DateTime          @default(now()) @map("started_at") @db.Timestamptz(6)
+  expiresAt          DateTime          @map("expires_at") @db.Timestamptz(6)
+  endedAt            DateTime?         @map("ended_at") @db.Timestamptz(6)
+  readCount          Int               @default(0) @map("read_count")
+  writeCount         Int               @default(0) @map("write_count")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requestedBy PlatformUser @relation(fields: [requestedById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, expiresAt])
+  @@index([requestedById])
+  @@map("platform_support_session")
+  @@schema("platform")
+}
+
+model PlatformTenantAction {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  actionCode   String    @map("action_code") @db.VarChar(48)
+  requestedById String   @map("requested_by_id") @db.Uuid
+  reason       String?   @db.Text
+  parameters   Json?
+  status       String    @default("PENDING") @db.VarChar(24)
+  result       Json?
+  errorMessage String?   @map("error_message") @db.Text
+  startedAt    DateTime? @map("started_at") @db.Timestamptz(6)
+  finishedAt   DateTime? @map("finished_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, actionCode])
+  @@index([status])
+  @@map("platform_tenant_action")
+  @@schema("platform")
+}
+
+model DemoSession {
+  id           String            @id @default(uuid()) @db.Uuid
+  sessionToken String            @map("session_token") @db.VarChar(128)
+  schemaName   String            @default("demo") @map("schema_name") @db.VarChar(64)
+  status       DemoSessionStatus @default(ACTIVE)
+  ipAddress    String?           @map("ip_address") @db.VarChar(64)
+  userAgent    String?           @map("user_agent") @db.Text
+  localeCode   String            @default("id") @map("locale_code") @db.VarChar(16)
+  resetGeneration Int            @default(0) @map("reset_generation")
+  startedAt    DateTime          @default(now()) @map("started_at") @db.Timestamptz(6)
+  expiresAt    DateTime          @map("expires_at") @db.Timestamptz(6)
+  endedAt      DateTime?         @map("ended_at") @db.Timestamptz(6)
+
+  @@unique([sessionToken])
+  @@index([status, expiresAt])
+  @@index([ipAddress, startedAt])
+  @@map("demo_session")
+  @@schema("platform")
+}
+
+model DemoResetRun {
+  id              String    @id @default(uuid()) @db.Uuid
+  generation      Int
+  triggeredBy     String    @default("SCHEDULER") @map("triggered_by") @db.VarChar(48)
+  triggeredById   String?   @map("triggered_by_id") @db.Uuid
+  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt      DateTime? @map("finished_at") @db.Timestamptz(6)
+  status          String    @default("RUNNING") @db.VarChar(24)
+  tablesTruncated Int       @default(0) @map("tables_truncated")
+  errorMessage    String?   @map("error_message") @db.Text
+
+  @@index([startedAt])
+  @@map("demo_reset_run")
+  @@schema("platform")
+}
+
+model GlobalPermissionAction {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @db.VarChar(48)
+  name        String  @db.VarChar(120)
+  nameKey     String  @map("name_key") @db.VarChar(120)
+  description String? @db.Text
+  actionType  String  @default("STANDARD") @map("action_type") @db.VarChar(24)
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(true) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  @@unique([code])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("global_permission_action")
+  @@schema("platform")
+}
+
+model GlobalMenuTemplate {
+  id             String  @id @default(uuid()) @db.Uuid
+  parentId       String? @map("parent_id") @db.Uuid
+  code           String  @db.VarChar(64)
+  translationKey String  @map("translation_key") @db.VarChar(160)
+  defaultLabel   String  @map("default_label") @db.VarChar(160)
+  route          String? @db.VarChar(160)
+  icon           String? @db.VarChar(64)
+  moduleCode     String? @map("module_code") @db.VarChar(48)
+  platformTarget String  @default("WEB") @map("platform_target") @db.VarChar(24)
+  level          Int     @default(0)
+  path           String  @db.VarChar(512)
+  sortOrder      Int     @default(0) @map("sort_order")
+  isComingSoon   Boolean @default(false) @map("is_coming_soon")
+  actionCodes    Json?   @map("action_codes")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(true) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  parent   GlobalMenuTemplate?  @relation("MenuTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children GlobalMenuTemplate[] @relation("MenuTree")
+
+  @@unique([code])
+  @@index([parentId, sortOrder])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("global_menu_template")
+  @@schema("platform")
+}
+
+model GlobalRoleTemplate {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @db.VarChar(64)
+  name        String  @db.VarChar(120)
+  nameKey     String  @map("name_key") @db.VarChar(120)
+  description String? @db.Text
+  roleType    String  @default("TENANT") @map("role_type") @db.VarChar(24)
+  isDefault   Boolean @default(false) @map("is_default")
+  permissions Json
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(true) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  @@unique([code])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("global_role_template")
+  @@schema("platform")
+}

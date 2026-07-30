@@ -1,0 +1,299 @@
+// ---------------------------------------------------------------------------
+// IDENTITY — user, role, permission, session, token, step-up
+// ---------------------------------------------------------------------------
+
+model PlatformUser {
+  id                  String             @id @default(uuid()) @db.Uuid
+  username            String             @db.VarChar(64)
+  normalizedUsername  String             @map("normalized_username") @db.VarChar(64)
+  email               String?            @db.VarChar(255)
+  normalizedEmail     String?            @map("normalized_email") @db.VarChar(255)
+  phone               String?            @db.VarChar(32)
+  displayName         String             @map("display_name") @db.VarChar(160)
+  passwordHash        String             @map("password_hash") @db.Text
+  status              PlatformUserStatus @default(ACTIVE)
+  mustChangePassword  Boolean            @default(false) @map("must_change_password")
+  isPlatformStaff     Boolean            @default(false) @map("is_platform_staff")
+  preferredLocaleCode String?            @map("preferred_locale_code") @db.VarChar(16)
+  lastLoginAt         DateTime?          @map("last_login_at") @db.Timestamptz(6)
+  failedLoginCount    Int                @default(0) @map("failed_login_count")
+  lockedUntil         DateTime?          @map("locked_until") @db.Timestamptz(6)
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(false) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  profile        PlatformUserProfile?
+  roles          PlatformUserRole[]
+  sessions       PlatformSession[]
+  memberships    TenantMembership[]
+  stepUps        PlatformStepUpChallenge[]
+  supportSess    PlatformSupportSession[]
+  savedViews     PlatformAdminSavedView[]
+  authoredNews   NewsArticle[]
+  locale         Locale?                   @relation(fields: [preferredLocaleCode], references: [code], onDelete: SetNull, onUpdate: Cascade)
+
+  @@unique([normalizedUsername])
+  @@unique([normalizedEmail])
+  @@index([status, isActive, deletedAt])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("platform_user")
+  @@schema("platform")
+}
+
+model PlatformUserProfile {
+  id             String   @id @default(uuid()) @db.Uuid
+  platformUserId String   @unique @map("platform_user_id") @db.Uuid
+  fullName       String?  @map("full_name") @db.VarChar(160)
+  avatarUrl      String?  @map("avatar_url") @db.Text
+  timezone       String   @default("Asia/Jakarta") @db.VarChar(64)
+  dateFormat     String   @default("dd/MM/yyyy") @map("date_format") @db.VarChar(32)
+  numberFormat   String   @default("id-ID") @map("number_format") @db.VarChar(32)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version        Int      @default(1)
+
+  user PlatformUser @relation(fields: [platformUserId], references: [id], onDelete: Cascade)
+
+  @@map("platform_user_profile")
+  @@schema("platform")
+}
+
+model PlatformRole {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @db.VarChar(64)
+  name        String           @db.VarChar(160)
+  nameKey     String           @map("name_key") @db.VarChar(160)
+  description String?          @db.Text
+  roleType    PlatformRoleType @default(CUSTOM) @map("role_type")
+  sortOrder   Int              @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(false) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  permissions PlatformRolePermission[]
+  users       PlatformUserRole[]
+
+  @@unique([code])
+  @@index([isActive, deletedAt])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("platform_role")
+  @@schema("platform")
+}
+
+model PlatformPermission {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @db.VarChar(96)
+  moduleCode  String  @map("module_code") @db.VarChar(48)
+  actionCode  String  @map("action_code") @db.VarChar(48)
+  name        String  @db.VarChar(160)
+  nameKey     String  @map("name_key") @db.VarChar(160)
+  description String? @db.Text
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(true) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  roles PlatformRolePermission[]
+
+  @@unique([code])
+  @@index([moduleCode])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("platform_permission")
+  @@schema("platform")
+}
+
+model PlatformRolePermission {
+  id           String           @id @default(uuid()) @db.Uuid
+  roleId       String           @map("role_id") @db.Uuid
+  permissionId String           @map("permission_id") @db.Uuid
+  effect       PermissionEffect @default(ALLOW)
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy    String?          @map("created_by") @db.Uuid
+
+  role       PlatformRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission PlatformPermission @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
+  @@map("platform_role_permission")
+  @@schema("platform")
+}
+
+model PlatformUserRole {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  roleId     String    @map("role_id") @db.Uuid
+  validFrom  DateTime  @default(now()) @map("valid_from") @db.Timestamptz(6)
+  validUntil DateTime? @map("valid_until") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?   @map("created_by") @db.Uuid
+
+  user PlatformUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role PlatformRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+  @@map("platform_user_role")
+  @@schema("platform")
+}
+
+model PlatformSession {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  tokenFamilyId String    @map("token_family_id") @db.Uuid
+  tenantId      String?   @map("tenant_id") @db.Uuid
+  schemaName    String?   @map("schema_name") @db.VarChar(64)
+  isDemo        Boolean   @default(false) @map("is_demo")
+  issuedAt      DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason String?   @map("revoked_reason") @db.VarChar(96)
+  ipAddress     String?   @map("ip_address") @db.VarChar(64)
+  userAgent     String?   @map("user_agent") @db.Text
+  lastSeenAt    DateTime? @map("last_seen_at") @db.Timestamptz(6)
+
+  user          PlatformUser           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens PlatformRefreshToken[]
+
+  @@index([userId, revokedAt])
+  @@index([tokenFamilyId])
+  @@index([expiresAt])
+  @@map("platform_session")
+  @@schema("platform")
+}
+
+model PlatformRefreshToken {
+  id            String    @id @default(uuid()) @db.Uuid
+  sessionId     String    @map("session_id") @db.Uuid
+  tokenHash     String    @map("token_hash") @db.VarChar(128)
+  parentTokenId String?   @map("parent_token_id") @db.Uuid
+  issuedAt      DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt        DateTime? @map("used_at") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  session PlatformSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([tokenHash])
+  @@index([sessionId, revokedAt])
+  @@index([expiresAt])
+  @@map("platform_refresh_token")
+  @@schema("platform")
+}
+
+model PlatformLoginAttempt {
+  id          String   @id @default(uuid()) @db.Uuid
+  username    String   @db.VarChar(64)
+  userId      String?  @map("user_id") @db.Uuid
+  success     Boolean
+  failureCode String?  @map("failure_code") @db.VarChar(64)
+  ipAddress   String?  @map("ip_address") @db.VarChar(64)
+  userAgent   String?  @map("user_agent") @db.Text
+  occurredAt  DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([username, occurredAt])
+  @@index([ipAddress, occurredAt])
+  @@map("platform_login_attempt")
+  @@schema("platform")
+}
+
+model PlatformStepUpChallenge {
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  purpose       StepUpPurpose
+  challengeHash String        @map("challenge_hash") @db.VarChar(128)
+  reason        String?       @db.Text
+  targetType    String?       @map("target_type") @db.VarChar(64)
+  targetId      String?       @map("target_id") @db.VarChar(64)
+  issuedAt      DateTime      @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt     DateTime      @map("expires_at") @db.Timestamptz(6)
+  verifiedAt    DateTime?     @map("verified_at") @db.Timestamptz(6)
+  consumedAt    DateTime?     @map("consumed_at") @db.Timestamptz(6)
+
+  user PlatformUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, expiresAt])
+  @@map("platform_step_up_challenge")
+  @@schema("platform")
+}
+
+model PlatformAdminSavedView {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  resourceCode String   @map("resource_code") @db.VarChar(64)
+  name         String   @db.VarChar(120)
+  definition   Json
+  isDefault    Boolean  @default(false) @map("is_default")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version      Int      @default(1)
+
+  user PlatformUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, resourceCode, name])
+  @@map("platform_admin_saved_view")
+  @@schema("platform")
+}
+
+model PlatformSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @db.VarChar(96)
+  valueType   String   @map("value_type") @db.VarChar(24)
+  value       Json
+  description String?  @db.Text
+  isSecret    Boolean  @default(false) @map("is_secret")
+  isActive    Boolean  @default(true) @map("is_active")
+  isSystem    Boolean  @default(true) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  version     Int      @default(1)
+
+  @@unique([key])
+  @@map("platform_setting")
+  @@schema("platform")
+}

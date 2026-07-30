@@ -1,0 +1,22 @@
+=== TOOL VERSIONS ===
+node    : v22.17.0
+pnpm    : 9.15.4
+svn     : 1.14.2-SlikSvn
+psql    : psql (PostgreSQL) 9.3.5
+pg_dump : pg_dump (PostgreSQL) 9.3.5
+npx     : 11.4.2
+
+=== WORKSPACE ===
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+=== SOURCE FILE COUNTS ===
+apps/api/src *.ts      : 67
+apps/api *.spec.ts     : 3
+apps/web/src *.ts,*.tsx: 46
+apps/web/e2e *.spec.ts : 3
+prisma platform *.prisma: 11
+tenant migrations *.sql : 9
+platform migrations    : 1
+docs *.md              : 19

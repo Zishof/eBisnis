@@ -1,0 +1,36 @@
+{
+  "name": "ebisnis",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "db:format": "pnpm --filter @ebisnis/api db:format",
+    "db:validate": "pnpm --filter @ebisnis/api db:validate",
+    "db:migrate": "pnpm --filter @ebisnis/api db:migrate",
+    "db:deploy": "pnpm --filter @ebisnis/api db:deploy",
+    "db:generate": "pnpm --filter @ebisnis/api db:generate",
+    "db:seed": "pnpm --filter @ebisnis/api db:seed",
+    "seed:platform": "pnpm --filter @ebisnis/api seed:platform",
+    "seed:tenant": "pnpm --filter @ebisnis/api seed:tenant",
+    "seed:verify": "pnpm --filter @ebisnis/api seed:verify",
+    "seed:repair": "pnpm --filter @ebisnis/api seed:repair",
+    "seed:cleanup": "pnpm --filter @ebisnis/api seed:cleanup",
+    "docs:generate": "pnpm --filter @ebisnis/api docs:generate",
+    "api:generate": "pnpm --filter @ebisnis/web api:generate",
+    "dev": "concurrently -n api,web -c cyan,magenta \"pnpm --filter @ebisnis/api dev\" \"pnpm --filter @ebisnis/web dev\"",
+    "dev:api": "pnpm --filter @ebisnis/api dev",
+    "dev:web": "pnpm --filter @ebisnis/web dev",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "test:e2e": "pnpm --filter @ebisnis/web test:e2e",
+    "check": "pnpm lint && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  }
+}

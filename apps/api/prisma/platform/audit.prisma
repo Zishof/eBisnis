@@ -1,0 +1,133 @@
+// ---------------------------------------------------------------------------
+// PLATFORM AUDIT — schema `platform__audit`, append-only
+// Role runtime tidak memiliki UPDATE/DELETE pada schema ini (lihat migration
+// V000 hardening). Payload sensitif wajib dimask sebelum ditulis.
+// ---------------------------------------------------------------------------
+
+model AuditEvent {
+  id             String      @id @default(uuid()) @db.Uuid
+  occurredAt     DateTime    @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  tenantId       String?     @map("tenant_id") @db.Uuid
+  tenantSchema   String?     @map("tenant_schema") @db.VarChar(64)
+  requestId      String?     @map("request_id") @db.VarChar(64)
+  correlationId  String?     @map("correlation_id") @db.VarChar(64)
+  actorUserId    String?     @map("actor_user_id") @db.Uuid
+  actorUsername  String?     @map("actor_username") @db.VarChar(64)
+  actorRoleCodes Json?       @map("actor_role_codes")
+  sessionId      String?     @map("session_id") @db.Uuid
+  supportSessionId String?   @map("support_session_id") @db.Uuid
+  deviceId       String?     @map("device_id") @db.Uuid
+  ipAddress      String?     @map("ip_address") @db.VarChar(64)
+  userAgent      String?     @map("user_agent") @db.Text
+  moduleCode     String      @map("module_code") @db.VarChar(48)
+  actionCode     String      @map("action_code") @db.VarChar(48)
+  entityType     String?     @map("entity_type") @db.VarChar(96)
+  entityId       String?     @map("entity_id") @db.VarChar(96)
+  documentNumber String?     @map("document_number") @db.VarChar(96)
+  result         AuditResult @default(SUCCESS)
+  reason         String?     @db.Text
+  metadata       Json?
+
+  rowChanges AuditRowChange[]
+
+  @@index([occurredAt])
+  @@index([actorUserId, occurredAt])
+  @@index([tenantId, occurredAt])
+  @@index([moduleCode, actionCode, occurredAt])
+  @@index([entityType, entityId])
+  @@index([requestId])
+  @@map("audit_event")
+  @@schema("platform__audit")
+}
+
+model AuditRowChange {
+  id                 String         @id @default(uuid()) @db.Uuid
+  auditEventId       String         @map("audit_event_id") @db.Uuid
+  tableSchema        String         @map("table_schema") @db.VarChar(64)
+  tableName          String         @map("table_name") @db.VarChar(96)
+  rowPk              Json           @map("row_pk")
+  operation          AuditOperation
+  oldData            Json?          @map("old_data")
+  newData            Json?          @map("new_data")
+  changedColumns     Json?          @map("changed_columns")
+  transactionId      BigInt?        @map("transaction_id")
+  statementTimestamp DateTime       @default(now()) @map("statement_timestamp") @db.Timestamptz(6)
+
+  event AuditEvent @relation(fields: [auditEventId], references: [id], onDelete: Restrict)
+
+  @@index([auditEventId])
+  @@index([tableSchema, tableName, statementTimestamp])
+  @@map("audit_row_change")
+  @@schema("platform__audit")
+}
+
+model AuditSecurityEvent {
+  id            String      @id @default(uuid()) @db.Uuid
+  occurredAt    DateTime    @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  eventCode     String      @map("event_code") @db.VarChar(64)
+  severity      String      @default("INFO") @db.VarChar(16)
+  actorUserId   String?     @map("actor_user_id") @db.Uuid
+  actorUsername String?     @map("actor_username") @db.VarChar(64)
+  ipAddress     String?     @map("ip_address") @db.VarChar(64)
+  userAgent     String?     @map("user_agent") @db.Text
+  requestId     String?     @map("request_id") @db.VarChar(64)
+  result        AuditResult @default(FAILURE)
+  detail        Json?
+
+  @@index([occurredAt])
+  @@index([eventCode, occurredAt])
+  @@index([actorUserId, occurredAt])
+  @@map("audit_security_event")
+  @@schema("platform__audit")
+}
+
+model AuditExportEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  tenantId      String?  @map("tenant_id") @db.Uuid
+  resourceCode  String   @map("resource_code") @db.VarChar(64)
+  filterSnapshot Json?   @map("filter_snapshot")
+  rowCount      Int      @default(0) @map("row_count")
+  format        String   @default("CSV") @db.VarChar(16)
+  requestId     String?  @map("request_id") @db.VarChar(64)
+
+  @@index([occurredAt])
+  @@index([actorUserId, occurredAt])
+  @@map("audit_export_event")
+  @@schema("platform__audit")
+}
+
+model AuditPermissionChange {
+  id            String   @id @default(uuid()) @db.Uuid
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  targetType    String   @map("target_type") @db.VarChar(48)
+  targetId      String   @map("target_id") @db.VarChar(96)
+  tenantId      String?  @map("tenant_id") @db.Uuid
+  beforeSnapshot Json?   @map("before_snapshot")
+  afterSnapshot Json?    @map("after_snapshot")
+  reason        String?  @db.Text
+  requestId     String?  @map("request_id") @db.VarChar(64)
+
+  @@index([occurredAt])
+  @@index([targetType, targetId])
+  @@map("audit_permission_change")
+  @@schema("platform__audit")
+}
+
+model AuditSchemaMigration {
+  id             String   @id @default(uuid()) @db.Uuid
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  schemaName     String   @map("schema_name") @db.VarChar(64)
+  migrationVersion String @map("migration_version") @db.VarChar(16)
+  checksum       String   @db.VarChar(64)
+  status         String   @db.VarChar(24)
+  durationMs     Int      @default(0) @map("duration_ms")
+  actorUserId    String?  @map("actor_user_id") @db.Uuid
+  errorMessage   String?  @map("error_message") @db.Text
+
+  @@index([schemaName, occurredAt])
+  @@map("audit_schema_migration")
+  @@schema("platform__audit")
+}

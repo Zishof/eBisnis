@@ -1,0 +1,13 @@
+Path: .
+Working Copy Root Path: C:\opt\eBisnis
+URL: svn://38.47.178.34/pos/eBisnis
+Relative URL: ^/eBisnis
+Repository Root: svn://38.47.178.34/pos
+Repository UUID: 0a6fe329-0a23-41ef-b204-d71cfcd7d950
+Revision: 103
+Node Kind: directory
+Schedule: normal
+Last Changed Author: fauzi
+Last Changed Rev: 103
+Last Changed Date: 2026-07-30 09:41:12 +0700 (Thu, 30 Jul 2026)
+

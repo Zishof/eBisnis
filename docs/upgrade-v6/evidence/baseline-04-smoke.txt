@@ -1,0 +1,15 @@
+### smoke-test.mjs ###
+    (password admin belum diganti — pemeriksaan portal dilewati)
+  ✓ Pengguna tenant biasa ditolak pada /platform/**
+
+=== 20. HAPUS & PULIHKAN DATA CONTOH ===
+  ✓ Data contoh dihapus sebagian
+  ✓ Data contoh yang dipakai transaksi diblokir
+  ✓ Data contoh dipulihkan
+  ✓ Verifikasi seed kembali LULUS
+
+=== HASIL ===
+Lulus : 124
+Gagal : 0
+
+Tenant uji: joni_utama_kh1e9s (schema joni_utama_kh1e9s, audit joni_utama_kh1e9s__audit)

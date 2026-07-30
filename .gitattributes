@@ -1,0 +1,38 @@
+# Normalisasi line ending: repository menyimpan LF, checkout mengikuti platform.
+# Penting karena CI berjalan di Linux sementara pengembangan di Windows.
+* text=auto eol=lf
+
+# Berkas yang WAJIB LF walau di-checkout pada Windows.
+*.sh          text eol=lf
+*.mjs         text eol=lf
+*.sql         text eol=lf
+gradlew       text eol=lf
+ebisnisctl    text eol=lf
+
+# Berkas yang wajib CRLF.
+*.bat         text eol=crlf
+*.cmd         text eol=crlf
+*.ps1         text eol=crlf
+
+# Biner: jangan diubah dan jangan di-diff sebagai teks.
+*.png         binary
+*.jpg         binary
+*.jpeg        binary
+*.gif         binary
+*.ico         binary
+*.pdf         binary
+*.woff        binary
+*.woff2       binary
+*.ttf         binary
+*.zip         binary
+*.gz          binary
+*.dump        binary
+*.apk         binary
+*.jar         binary
+*.keystore    binary
+
+# Berkas hasil generate: sembunyikan dari diff agar review tetap terbaca,
+# tetapi tetap versioned.
+pnpm-lock.yaml                    linguist-generated=true -diff
+docs/database/*.md                linguist-generated=true
+apps/web/src/api/generated/**     linguist-generated=true

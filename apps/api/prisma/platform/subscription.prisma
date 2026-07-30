@@ -1,0 +1,562 @@
+// ---------------------------------------------------------------------------
+// MODULE / FEATURE CATALOG + PACKAGE (SUBSCRIPTION PLAN) ENGINE
+// Harga TIDAK PERNAH hard-coded pada source. Semua berasal dari katalog ini.
+// ---------------------------------------------------------------------------
+
+model ModuleCatalog {
+  id             String         @id @default(uuid()) @db.Uuid
+  code           String         @db.VarChar(48)
+  name           String         @db.VarChar(120)
+  nameKey        String         @map("name_key") @db.VarChar(160)
+  descriptionKey String?        @map("description_key") @db.VarChar(160)
+  description    String?        @db.Text
+  category       ModuleCategory @default(OPERATIONS)
+  status         CatalogStatus  @default(ACTIVE)
+  icon           String?        @db.VarChar(64)
+  dependsOn      Json?          @map("depends_on")
+  sortOrder      Int            @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(true) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  features      FeatureCatalog[]
+  planModules   SubscriptionPlanModule[]
+  addOnModules  SubscriptionAddOnModule[]
+  moduleOverrides TenantPlanModuleOverride[]
+  marketingFeatures MarketingFeature[]
+
+  @@unique([code])
+  @@index([category, sortOrder])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("module_catalog")
+  @@schema("platform")
+}
+
+model FeatureCatalog {
+  id           String        @id @default(uuid()) @db.Uuid
+  moduleId     String        @map("module_id") @db.Uuid
+  code         String        @db.VarChar(64)
+  name         String        @db.VarChar(120)
+  nameKey      String        @map("name_key") @db.VarChar(160)
+  description  String?       @db.Text
+  featureType  FeatureType   @default(BOOLEAN) @map("feature_type")
+  defaultLimit Int?          @map("default_limit")
+  unit         String?       @db.VarChar(32)
+  status       CatalogStatus @default(ACTIVE)
+  sortOrder    Int           @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(true) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  module          ModuleCatalog              @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  planFeatures    SubscriptionPlanFeature[]
+  featureOverrides TenantPlanFeatureOverride[]
+
+  @@unique([code])
+  @@index([moduleId, sortOrder])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("feature_catalog")
+  @@schema("platform")
+}
+
+model SubscriptionProduct {
+  id               String        @id @default(uuid()) @db.Uuid
+  code             String        @db.VarChar(48)
+  name             String        @db.VarChar(120)
+  nameKey          String        @map("name_key") @db.VarChar(160)
+  productType      String        @default("LICENSE") @map("product_type") @db.VarChar(32)
+  defaultTrialDays Int           @default(30) @map("default_trial_days")
+  status           CatalogStatus @default(ACTIVE)
+  sortOrder        Int           @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(true) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  plans SubscriptionPlan[]
+
+  @@unique([code])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("subscription_product")
+  @@schema("platform")
+}
+
+model SubscriptionPlan {
+  id             String     @id @default(uuid()) @db.Uuid
+  productId      String     @map("product_id") @db.Uuid
+  code           String     @db.VarChar(48)
+  name           String     @db.VarChar(120)
+  nameKey        String     @map("name_key") @db.VarChar(160)
+  descriptionKey String?    @map("description_key") @db.VarChar(160)
+  marketSegment  String     @default("GENERAL") @map("market_segment") @db.VarChar(48)
+  status         PlanStatus @default(DRAFT)
+  isPublic       Boolean    @default(true) @map("is_public")
+  isRecommended  Boolean    @default(false) @map("is_recommended")
+  sortOrder      Int        @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(false) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  product  SubscriptionProduct       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  versions SubscriptionPlanVersion[]
+  eligibility DiscountPlanEligibility[]
+
+  @@unique([code])
+  @@index([status, isPublic, sortOrder])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("subscription_plan")
+  @@schema("platform")
+}
+
+model SubscriptionPlanVersion {
+  id                 String             @id @default(uuid()) @db.Uuid
+  planId             String             @map("plan_id") @db.Uuid
+  versionNumber      Int                @map("version_number")
+  status             PlanVersionStatus  @default(DRAFT)
+  effectiveFrom      DateTime           @map("effective_from") @db.Timestamptz(6)
+  effectiveUntil     DateTime?          @map("effective_until") @db.Timestamptz(6)
+  futureModulePolicy FutureModulePolicy @default(SNAPSHOT_AT_VERSION) @map("future_module_policy")
+  tenantWidePolicy   TenantWidePolicy   @default(ANY_ACTIVE_ITEM) @map("tenant_wide_policy")
+  trialDays          Int                @default(30) @map("trial_days")
+  gracePeriodDays    Int                @default(7) @map("grace_period_days")
+  changeNote         String?            @map("change_note") @db.Text
+  publishedAt        DateTime?          @map("published_at") @db.Timestamptz(6)
+  publishedBy        String?            @map("published_by") @db.Uuid
+  retiredAt          DateTime?          @map("retired_at") @db.Timestamptz(6)
+
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+
+  plan        SubscriptionPlan            @relation(fields: [planId], references: [id], onDelete: Restrict)
+  modules     SubscriptionPlanModule[]
+  features    SubscriptionPlanFeature[]
+  prices      SubscriptionPlanPrice[]
+  constraints SubscriptionPlanConstraint[]
+  contracts   TenantPlanContract[]
+  overrides   TenantPriceOverride[]
+  assignments PackageAssignment[]
+  quotes      PricingQuote[]
+  subscriptions Subscription[]
+
+  @@unique([planId, versionNumber])
+  @@index([status, effectiveFrom])
+  @@index([planId, status])
+  @@map("subscription_plan_version")
+  @@schema("platform")
+}
+
+model SubscriptionPlanModule {
+  id               String           @id @default(uuid()) @db.Uuid
+  planVersionId    String           @map("plan_version_id") @db.Uuid
+  moduleId         String           @map("module_id") @db.Uuid
+  entitlementScope EntitlementScope @default(DEVICE) @map("entitlement_scope")
+  included         Boolean          @default(true)
+  isAddOnOnly      Boolean          @default(false) @map("is_add_on_only")
+  usagePolicy      String?          @map("usage_policy") @db.VarChar(48)
+  sortOrder        Int              @default(0) @map("sort_order")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version          Int              @default(1)
+
+  planVersion SubscriptionPlanVersion @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  module      ModuleCatalog           @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+
+  @@unique([planVersionId, moduleId])
+  @@index([moduleId])
+  @@map("subscription_plan_module")
+  @@schema("platform")
+}
+
+model SubscriptionPlanFeature {
+  id            String           @id @default(uuid()) @db.Uuid
+  planVersionId String           @map("plan_version_id") @db.Uuid
+  featureId     String           @map("feature_id") @db.Uuid
+  included      Boolean          @default(true)
+  limitValue    Int?             @map("limit_value")
+  unit          String?          @db.VarChar(32)
+  entitlementScope EntitlementScope @default(TENANT_WIDE) @map("entitlement_scope")
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version       Int              @default(1)
+
+  planVersion SubscriptionPlanVersion @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  feature     FeatureCatalog          @relation(fields: [featureId], references: [id], onDelete: Restrict)
+
+  @@unique([planVersionId, featureId])
+  @@index([featureId])
+  @@map("subscription_plan_feature")
+  @@schema("platform")
+}
+
+model SubscriptionPlanPrice {
+  id             String          @id @default(uuid()) @db.Uuid
+  planVersionId  String          @map("plan_version_id") @db.Uuid
+  currencyCode   String          @default("IDR") @map("currency_code") @db.VarChar(8)
+  billingMetric  BillingMetric   @default(PER_POS_DEVICE) @map("billing_metric")
+  billingInterval BillingInterval @default(MONTH) @map("billing_interval")
+  intervalCount  Int             @default(1) @map("interval_count")
+  unitPrice      Decimal         @map("unit_price") @db.Decimal(19, 4)
+  minimumQty     Int             @default(1) @map("minimum_qty")
+  taxInclusive   Boolean         @default(false) @map("tax_inclusive")
+  effectiveFrom  DateTime        @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveUntil DateTime?       @map("effective_until") @db.Timestamptz(6)
+
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+
+  planVersion SubscriptionPlanVersion     @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  tiers       SubscriptionPlanPriceTier[]
+
+  @@unique([planVersionId, currencyCode, billingMetric, billingInterval, intervalCount, effectiveFrom])
+  @@index([planVersionId, isActive])
+  @@map("subscription_plan_price")
+  @@schema("platform")
+}
+
+model SubscriptionPlanPriceTier {
+  id          String   @id @default(uuid()) @db.Uuid
+  priceId     String   @map("price_id") @db.Uuid
+  minQuantity Int      @map("min_quantity")
+  maxQuantity Int?     @map("max_quantity")
+  unitPrice   Decimal? @map("unit_price") @db.Decimal(19, 4)
+  flatAmount  Decimal? @map("flat_amount") @db.Decimal(19, 4)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version     Int      @default(1)
+
+  price SubscriptionPlanPrice @relation(fields: [priceId], references: [id], onDelete: Cascade)
+
+  @@unique([priceId, minQuantity])
+  @@index([priceId, sortOrder])
+  @@map("subscription_plan_price_tier")
+  @@schema("platform")
+}
+
+model SubscriptionPlanConstraint {
+  id             String             @id @default(uuid()) @db.Uuid
+  planVersionId  String             @map("plan_version_id") @db.Uuid
+  constraintType PlanConstraintType @map("constraint_type")
+  numericValue   Int?               @map("numeric_value")
+  note           String?            @db.Text
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version        Int                @default(1)
+
+  planVersion SubscriptionPlanVersion @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([planVersionId, constraintType])
+  @@map("subscription_plan_constraint")
+  @@schema("platform")
+}
+
+model SubscriptionAddOn {
+  id             String        @id @default(uuid()) @db.Uuid
+  code           String        @db.VarChar(48)
+  name           String        @db.VarChar(120)
+  nameKey        String        @map("name_key") @db.VarChar(160)
+  descriptionKey String?       @map("description_key") @db.VarChar(160)
+  status         CatalogStatus @default(ACTIVE)
+  sortOrder      Int           @default(0) @map("sort_order")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(false) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  versions SubscriptionAddOnVersion[]
+
+  @@unique([code])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("subscription_add_on")
+  @@schema("platform")
+}
+
+model SubscriptionAddOnVersion {
+  id             String            @id @default(uuid()) @db.Uuid
+  addOnId        String            @map("add_on_id") @db.Uuid
+  versionNumber  Int               @map("version_number")
+  status         PlanVersionStatus @default(DRAFT)
+  effectiveFrom  DateTime          @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveUntil DateTime?         @map("effective_until") @db.Timestamptz(6)
+  publishedAt    DateTime?         @map("published_at") @db.Timestamptz(6)
+  isActive       Boolean           @default(true) @map("is_active")
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  version        Int               @default(1)
+
+  addOn            SubscriptionAddOn         @relation(fields: [addOnId], references: [id], onDelete: Cascade)
+  modules          SubscriptionAddOnModule[]
+  prices           SubscriptionAddOnPrice[]
+  subscriptionItems SubscriptionItem[]
+
+  @@unique([addOnId, versionNumber])
+  @@index([status, effectiveFrom])
+  @@map("subscription_add_on_version")
+  @@schema("platform")
+}
+
+model SubscriptionAddOnModule {
+  id               String           @id @default(uuid()) @db.Uuid
+  addOnVersionId   String           @map("add_on_version_id") @db.Uuid
+  moduleId         String           @map("module_id") @db.Uuid
+  entitlementScope EntitlementScope @default(TENANT_WIDE) @map("entitlement_scope")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version          Int              @default(1)
+
+  addOnVersion SubscriptionAddOnVersion @relation(fields: [addOnVersionId], references: [id], onDelete: Cascade)
+  module       ModuleCatalog            @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+
+  @@unique([addOnVersionId, moduleId])
+  @@map("subscription_add_on_module")
+  @@schema("platform")
+}
+
+model SubscriptionAddOnPrice {
+  id              String          @id @default(uuid()) @db.Uuid
+  addOnVersionId  String          @map("add_on_version_id") @db.Uuid
+  currencyCode    String          @default("IDR") @map("currency_code") @db.VarChar(8)
+  billingMetric   BillingMetric   @default(FLAT_TENANT) @map("billing_metric")
+  billingInterval BillingInterval @default(MONTH) @map("billing_interval")
+  intervalCount   Int             @default(1) @map("interval_count")
+  unitPrice       Decimal         @map("unit_price") @db.Decimal(19, 4)
+  effectiveFrom   DateTime        @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveUntil  DateTime?       @map("effective_until") @db.Timestamptz(6)
+  isActive        Boolean         @default(true) @map("is_active")
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  version         Int             @default(1)
+
+  addOnVersion SubscriptionAddOnVersion @relation(fields: [addOnVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([addOnVersionId, currencyCode, billingInterval, intervalCount, effectiveFrom])
+  @@map("subscription_add_on_price")
+  @@schema("platform")
+}
+
+model TenantPlanContract {
+  id            String      @id @default(uuid()) @db.Uuid
+  tenantId      String      @map("tenant_id") @db.Uuid
+  planVersionId String      @map("plan_version_id") @db.Uuid
+  contractNumber String     @map("contract_number") @db.VarChar(48)
+  packageMode   PackageMode @default(UNIFORM_TENANT_PACKAGE) @map("package_mode")
+  startsAt      DateTime    @map("starts_at") @db.Timestamptz(6)
+  endsAt        DateTime?   @map("ends_at") @db.Timestamptz(6)
+  status        String      @default("ACTIVE") @db.VarChar(24)
+  note          String?     @db.Text
+
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+
+  tenant           Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planVersion      SubscriptionPlanVersion    @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  moduleOverrides  TenantPlanModuleOverride[]
+  featureOverrides TenantPlanFeatureOverride[]
+
+  @@unique([contractNumber])
+  @@index([tenantId, status])
+  @@map("tenant_plan_contract")
+  @@schema("platform")
+}
+
+model TenantPlanModuleOverride {
+  id         String   @id @default(uuid()) @db.Uuid
+  contractId String   @map("contract_id") @db.Uuid
+  moduleId   String   @map("module_id") @db.Uuid
+  included   Boolean  @default(true)
+  entitlementScope EntitlementScope @default(TENANT_WIDE) @map("entitlement_scope")
+  reason     String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version    Int      @default(1)
+
+  contract TenantPlanContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  module   ModuleCatalog      @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+
+  @@unique([contractId, moduleId])
+  @@map("tenant_plan_module_override")
+  @@schema("platform")
+}
+
+model TenantPlanFeatureOverride {
+  id         String   @id @default(uuid()) @db.Uuid
+  contractId String   @map("contract_id") @db.Uuid
+  featureId  String   @map("feature_id") @db.Uuid
+  included   Boolean  @default(true)
+  limitValue Int?     @map("limit_value")
+  reason     String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version    Int      @default(1)
+
+  contract TenantPlanContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  feature  FeatureCatalog     @relation(fields: [featureId], references: [id], onDelete: Restrict)
+
+  @@unique([contractId, featureId])
+  @@map("tenant_plan_feature_override")
+  @@schema("platform")
+}
+
+model TenantPriceOverride {
+  id             String            @id @default(uuid()) @db.Uuid
+  tenantId       String            @map("tenant_id") @db.Uuid
+  planVersionId  String?           @map("plan_version_id") @db.Uuid
+  overrideType   PriceOverrideType @default(REPLACE_BASE_PRICE) @map("override_type")
+  currencyCode   String            @default("IDR") @map("currency_code") @db.VarChar(8)
+  amount         Decimal?          @db.Decimal(19, 4)
+  percent        Decimal?          @db.Decimal(9, 4)
+  structuredFormula Json?          @map("structured_formula")
+  priority       Int               @default(100)
+  effectiveFrom  DateTime          @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveUntil DateTime?         @map("effective_until") @db.Timestamptz(6)
+  reason         String            @db.Text
+  approvedById   String?           @map("approved_by_id") @db.Uuid
+  approvedAt     DateTime?         @map("approved_at") @db.Timestamptz(6)
+
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+
+  tenant      Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planVersion SubscriptionPlanVersion? @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, isActive, effectiveFrom])
+  @@index([planVersionId])
+  @@map("tenant_price_override")
+  @@schema("platform")
+}
+
+model PackageAssignment {
+  id            String          @id @default(uuid()) @db.Uuid
+  tenantId      String          @map("tenant_id") @db.Uuid
+  scopeType     AssignmentScope @default(TENANT) @map("scope_type")
+  scopeId       String?         @map("scope_id") @db.Uuid
+  planVersionId String          @map("plan_version_id") @db.Uuid
+  startsAt      DateTime        @default(now()) @map("starts_at") @db.Timestamptz(6)
+  endsAt        DateTime?       @map("ends_at") @db.Timestamptz(6)
+  status        String          @default("ACTIVE") @db.VarChar(24)
+
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+
+  tenant      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planVersion SubscriptionPlanVersion @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, scopeType, scopeId])
+  @@index([planVersionId])
+  @@map("package_assignment")
+  @@schema("platform")
+}
+
+model EntitlementSnapshot {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  sourceType  String    @map("source_type") @db.VarChar(48)
+  sourceId    String?   @map("source_id") @db.Uuid
+  scopeType   EntitlementScope @default(TENANT_WIDE) @map("scope_type")
+  scopeId     String?   @map("scope_id") @db.Uuid
+  modules     Json
+  features    Json
+  generatedAt DateTime  @default(now()) @map("generated_at") @db.Timestamptz(6)
+  validUntil  DateTime? @map("valid_until") @db.Timestamptz(6)
+  checksum    String    @db.VarChar(64)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, scopeType, scopeId, generatedAt])
+  @@map("entitlement_snapshot")
+  @@schema("platform")
+}

@@ -1,0 +1,53 @@
+database : ebisnis
+user     : root
+version  : PostgreSQL 17.2 on x86_64-windows
+
+=== SCHEMA (23) ===
+  cek_seed_6222
+  cek_seed_6222__audit
+  demo
+  demo__audit
+  joni_utama_0bbi1e
+  joni_utama_0bbi1e__audit
+  joni_utama_2v20v8
+  joni_utama_2v20v8__audit
+  joni_utama_4i087s
+  joni_utama_4i087s__audit
+  joni_utama_ndi47r
+  joni_utama_ndi47r__audit
+  joni_utama_s941u8
+  joni_utama_s941u8__audit
+  joni_utama_ur87v1
+  joni_utama_ur87v1__audit
+  joni_utama_vemvqq
+  joni_utama_vemvqq__audit
+  joni_utama_x2lvgd
+  joni_utama_x2lvgd__audit
+  platform
+  platform__audit
+  public
+
+=== TABEL PER SCHEMA ===
+  cek_seed_6222             115
+  cek_seed_6222__audit      7
+  demo                      115
+  demo__audit               7
+  joni_utama_0bbi1e         115
+  joni_utama_0bbi1e__audit  7
+  joni_utama_2v20v8         115
+  joni_utama_2v20v8__audit  7
+  joni_utama_4i087s         115
+  joni_utama_4i087s__audit  7
+  joni_utama_ndi47r         115
+  joni_utama_ndi47r__audit  7
+  joni_utama_s941u8         115
+  joni_utama_s941u8__audit  7
+  joni_utama_ur87v1         115
+  joni_utama_ur87v1__audit  7
+  joni_utama_vemvqq         115
+  joni_utama_vemvqq__audit  7
+  joni_utama_x2lvgd         115
+  joni_utama_x2lvgd__audit  7
+  platform                  131
+  platform__audit           6
+  TOTAL                     1357

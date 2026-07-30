@@ -1,0 +1,24 @@
+### pnpm test:e2e (Playwright, 2 project) ###
+[46/56] [chromium-mobile] › e2e\auth-and-erp.spec.ts:157:3 › Portal tenant › monitoring stok menampilkan pohon Wilayah dan Gudang
+[47/56] [chromium-mobile] › e2e\auth-and-erp.spec.ts:163:3 › Portal tenant › data contoh dapat diverifikasi dari portal
+[48/56] [chromium-mobile] › e2e\auth-and-erp.spec.ts:171:3 › Portal tenant › aksi tulis data contoh dinonaktifkan pada sandbox demo
+[49/56] [chromium-mobile] › e2e\auth-and-erp.spec.ts:178:3 › Portal tenant › modul yang belum selesai menampilkan halaman Segera Hadir
+[50/56] [chromium-mobile] › e2e\public-website.spec.ts:8:3 › Website publik › route / menampilkan homepage, bukan redirect login
+[51/56] [chromium-mobile] › e2e\public-website.spec.ts:15:3 › Website publik › halaman harga menampilkan angka dari pricing engine
+[52/56] [chromium-mobile] › e2e\public-website.spec.ts:22:3 › Website publik › daftar berita dan detail berita dapat dibuka
+[53/56] [chromium-mobile] › e2e\public-website.spec.ts:31:3 › Website publik › halaman legal berasal dari CMS
+[54/56] [chromium-mobile] › e2e\public-website.spec.ts:38:3 › Website publik › formulir kontak tidak terkirim saat field wajib kosong
+[55/56] [chromium-mobile] › e2e\public-website.spec.ts:44:3 › Website publik › pergantian bahasa mengubah arah teks untuk bahasa Arab
+[56/56] [chromium-mobile] › e2e\public-website.spec.ts:55:3 › Website publik › halaman tidak dikenal diarahkan ke beranda
+  56 passed (50.6s)
+
+RINGKASAN BASELINE V5 (semua LULUS, tidak ada kegagalan baseline):
+  pnpm install --frozen-lockfile : OK (lockfile up to date)
+  pnpm db:validate              : OK (schema valid)
+  pnpm db:generate              : OK
+  pnpm lint                     : OK (api + web, 0 warning)
+  pnpm test                     : OK (68 Jest + 15 Vitest = 83)
+  pnpm build                     : OK (api + web)
+  pnpm seed:verify              : LULUS (platform 25/25, demo 22/22)
+  scripts/smoke-test.mjs        : 124/124
+  playwright (desktop+mobile)   : 56/56

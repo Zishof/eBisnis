@@ -1,0 +1,19 @@
+// eBisnis.id — Control Plane (schema `platform` + `platform__audit`)
+// Multi-file Prisma schema. Setiap domain berada pada file terpisah.
+//
+// Konvensi:
+//   - Model PascalCase, field camelCase, tabel snake_case via @@map.
+//   - Semua ID UUID.
+//   - Uang: Decimal(19,4). Kuantitas: Decimal(19,6). Rate: Decimal(19,8).
+//   - Tabel master mewarisi kolom lifecycle Versi 5 (isActive/deactivatedAt/
+//     deletedAt/deleteReason/isSample/sampleBatchId/version).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["platform", "platform__audit"]
+}

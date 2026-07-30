@@ -1,0 +1,410 @@
+// ---------------------------------------------------------------------------
+// BILLING — quote, device, subscription, invoice, allocation, entitlement
+// ---------------------------------------------------------------------------
+
+model PricingQuote {
+  id             String                  @id @default(uuid()) @db.Uuid
+  quoteNumber    String                  @map("quote_number") @db.VarChar(48)
+  tenantId       String                  @map("tenant_id") @db.Uuid
+  planVersionId  String                  @map("plan_version_id") @db.Uuid
+  paymentMode    SubscriptionPaymentMode @default(CONSOLIDATED_ALL_DEVICES) @map("payment_mode")
+  currencyCode   String                  @default("IDR") @map("currency_code") @db.VarChar(8)
+  billingInterval BillingInterval        @default(MONTH) @map("billing_interval")
+  intervalCount  Int                     @default(1) @map("interval_count")
+  quantity       Int                     @default(1)
+  subtotal       Decimal                 @default(0) @db.Decimal(19, 4)
+  discountTotal  Decimal                 @default(0) @map("discount_total") @db.Decimal(19, 4)
+  taxTotal       Decimal                 @default(0) @map("tax_total") @db.Decimal(19, 4)
+  adminFeeTotal  Decimal                 @default(0) @map("admin_fee_total") @db.Decimal(19, 4)
+  grandTotal     Decimal                 @default(0) @map("grand_total") @db.Decimal(19, 4)
+  promoCode      String?                 @map("promo_code") @db.VarChar(48)
+  status         QuoteStatus             @default(DRAFT)
+  calculationTrace Json                  @map("calculation_trace")
+  inputSnapshot  Json                    @map("input_snapshot")
+  expiresAt      DateTime                @map("expires_at") @db.Timestamptz(6)
+  acceptedAt     DateTime?               @map("accepted_at") @db.Timestamptz(6)
+  acceptedBy     String?                 @map("accepted_by") @db.Uuid
+  idempotencyKey String?                 @map("idempotency_key") @db.VarChar(96)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+
+  tenant      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  planVersion SubscriptionPlanVersion @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  lines       PricingQuoteLine[]
+  adjustments PricingAdjustment[]
+  invoices    BillingInvoice[]
+
+  @@unique([quoteNumber])
+  @@unique([idempotencyKey])
+  @@index([tenantId, status])
+  @@index([expiresAt])
+  @@map("pricing_quote")
+  @@schema("platform")
+}
+
+model PricingQuoteLine {
+  id                String   @id @default(uuid()) @db.Uuid
+  quoteId           String   @map("quote_id") @db.Uuid
+  deviceId          String?  @map("device_id") @db.Uuid
+  scopeType         AssignmentScope @default(DEVICE) @map("scope_type")
+  scopeId           String?  @map("scope_id") @db.Uuid
+  description       String   @db.VarChar(255)
+  quantity          Int      @default(1)
+  basePrice         Decimal  @map("base_price") @db.Decimal(19, 4)
+  effectiveUnitPrice Decimal @map("effective_unit_price") @db.Decimal(19, 4)
+  discountAmount    Decimal  @default(0) @map("discount_amount") @db.Decimal(19, 4)
+  taxAmount         Decimal  @default(0) @map("tax_amount") @db.Decimal(19, 4)
+  lineTotal         Decimal  @map("line_total") @db.Decimal(19, 4)
+  sortOrder         Int      @default(0) @map("sort_order")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  quote  PricingQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  device PosDevice?   @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([quoteId, sortOrder])
+  @@index([deviceId])
+  @@map("pricing_quote_line")
+  @@schema("platform")
+}
+
+model PricingAdjustment {
+  id             String   @id @default(uuid()) @db.Uuid
+  quoteId        String   @map("quote_id") @db.Uuid
+  sourceType     String   @map("source_type") @db.VarChar(48)
+  sourceId       String?  @map("source_id") @db.Uuid
+  label          String   @db.VarChar(255)
+  labelKey       String?  @map("label_key") @db.VarChar(160)
+  amount         Decimal  @db.Decimal(19, 4)
+  ruleSnapshot   Json     @map("rule_snapshot")
+  sequence       Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  quote PricingQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId, sequence])
+  @@map("pricing_adjustment")
+  @@schema("platform")
+}
+
+model PosDevice {
+  id              String          @id @default(uuid()) @db.Uuid
+  tenantId        String          @map("tenant_id") @db.Uuid
+  outletId        String?         @map("outlet_id") @db.Uuid
+  outletCode      String?         @map("outlet_code") @db.VarChar(64)
+  code            String          @db.VarChar(48)
+  label           String          @db.VarChar(120)
+  fingerprintHash String?         @map("fingerprint_hash") @db.VarChar(128)
+  status          PosDeviceStatus @default(REGISTERED)
+  isBillable      Boolean         @default(true) @map("is_billable")
+  trialStartedAt  DateTime?       @map("trial_started_at") @db.Timestamptz(6)
+  trialEndsAt     DateTime?       @map("trial_ends_at") @db.Timestamptz(6)
+  activatedAt     DateTime?       @map("activated_at") @db.Timestamptz(6)
+  revokedAt       DateTime?       @map("revoked_at") @db.Timestamptz(6)
+  replacedByDeviceId String?      @map("replaced_by_device_id") @db.Uuid
+  lastSeenAt      DateTime?       @map("last_seen_at") @db.Timestamptz(6)
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(false) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  activations  DeviceActivation[]
+  entitlements DeviceEntitlement[]
+  quoteLines   PricingQuoteLine[]
+  subscriptionItems SubscriptionItem[]
+  invoiceLines BillingInvoiceLine[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status, isBillable])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("pos_device")
+  @@schema("platform")
+}
+
+model DeviceActivation {
+  id              String    @id @default(uuid()) @db.Uuid
+  deviceId        String    @map("device_id") @db.Uuid
+  activationCode  String    @map("activation_code") @db.VarChar(64)
+  fingerprintHash String?   @map("fingerprint_hash") @db.VarChar(128)
+  activatedAt     DateTime? @map("activated_at") @db.Timestamptz(6)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokeReason    String?   @map("revoke_reason") @db.Text
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  device PosDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([activationCode])
+  @@index([deviceId, revokedAt])
+  @@map("device_activation")
+  @@schema("platform")
+}
+
+model DeviceEntitlement {
+  id           String                  @id @default(uuid()) @db.Uuid
+  deviceId     String                  @map("device_id") @db.Uuid
+  moduleCode   String                  @map("module_code") @db.VarChar(48)
+  featureCode  String?                 @map("feature_code") @db.VarChar(64)
+  status       DeviceEntitlementStatus @default(TRIAL)
+  startsAt     DateTime                @map("starts_at") @db.Timestamptz(6)
+  endsAt       DateTime?               @map("ends_at") @db.Timestamptz(6)
+  graceEndsAt  DateTime?               @map("grace_ends_at") @db.Timestamptz(6)
+  sourceType   String                  @map("source_type") @db.VarChar(48)
+  sourceId     String?                 @map("source_id") @db.Uuid
+  sourceSnapshot Json?                 @map("source_snapshot")
+  createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version      Int                     @default(1)
+
+  device PosDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceId, moduleCode, featureCode, startsAt])
+  @@index([deviceId, status])
+  @@index([endsAt])
+  @@map("device_entitlement")
+  @@schema("platform")
+}
+
+model Subscription {
+  id                String                  @id @default(uuid()) @db.Uuid
+  subscriptionNumber String                 @map("subscription_number") @db.VarChar(48)
+  tenantId          String                  @map("tenant_id") @db.Uuid
+  planVersionId     String                  @map("plan_version_id") @db.Uuid
+  status            SubscriptionStatus      @default(DRAFT)
+  paymentMode       SubscriptionPaymentMode @default(CONSOLIDATED_ALL_DEVICES) @map("payment_mode")
+  billingInterval   BillingInterval         @default(MONTH) @map("billing_interval")
+  intervalCount     Int                     @default(1) @map("interval_count")
+  currencyCode      String                  @default("IDR") @map("currency_code") @db.VarChar(8)
+  startsAt          DateTime                @map("starts_at") @db.Timestamptz(6)
+  endsAt            DateTime?               @map("ends_at") @db.Timestamptz(6)
+  currentPeriodStart DateTime?              @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd  DateTime?               @map("current_period_end") @db.Timestamptz(6)
+  autoRenew         Boolean                 @default(true) @map("auto_renew")
+  cancelledAt       DateTime?               @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason      String?                 @map("cancel_reason") @db.Text
+
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+
+  tenant      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  planVersion SubscriptionPlanVersion @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  items       SubscriptionItem[]
+  invoices    BillingInvoice[]
+  changes     SubscriptionChange[]
+
+  @@unique([subscriptionNumber])
+  @@index([tenantId, status])
+  @@index([currentPeriodEnd])
+  @@map("subscription")
+  @@schema("platform")
+}
+
+model SubscriptionItem {
+  id               String           @id @default(uuid()) @db.Uuid
+  subscriptionId   String           @map("subscription_id") @db.Uuid
+  itemType         String           @default("PACKAGE") @map("item_type") @db.VarChar(32)
+  deviceId         String?          @map("device_id") @db.Uuid
+  addOnVersionId   String?          @map("add_on_version_id") @db.Uuid
+  quantity         Int              @default(1)
+  unitPrice        Decimal          @map("unit_price") @db.Decimal(19, 4)
+  entitlementScope EntitlementScope @default(DEVICE) @map("entitlement_scope")
+  startsAt         DateTime         @map("starts_at") @db.Timestamptz(6)
+  endsAt           DateTime?        @map("ends_at") @db.Timestamptz(6)
+  status           String           @default("ACTIVE") @db.VarChar(24)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version          Int              @default(1)
+
+  subscription Subscription              @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  device       PosDevice?                @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  addOnVersion SubscriptionAddOnVersion? @relation(fields: [addOnVersionId], references: [id], onDelete: SetNull)
+
+  @@index([subscriptionId, status])
+  @@index([deviceId])
+  @@map("subscription_item")
+  @@schema("platform")
+}
+
+model SubscriptionChange {
+  id             String   @id @default(uuid()) @db.Uuid
+  subscriptionId String   @map("subscription_id") @db.Uuid
+  changeType     String   @map("change_type") @db.VarChar(48)
+  payload        Json
+  effectiveAt    DateTime @map("effective_at") @db.Timestamptz(6)
+  reason         String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?  @map("created_by") @db.Uuid
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId, effectiveAt])
+  @@map("subscription_change")
+  @@schema("platform")
+}
+
+model BillingInvoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  invoiceNumber  String        @map("invoice_number") @db.VarChar(48)
+  tenantId       String        @map("tenant_id") @db.Uuid
+  subscriptionId String?       @map("subscription_id") @db.Uuid
+  quoteId        String?       @map("quote_id") @db.Uuid
+  status         InvoiceStatus @default(DRAFT)
+  currencyCode   String        @default("IDR") @map("currency_code") @db.VarChar(8)
+  issueDate      DateTime      @map("issue_date") @db.Timestamptz(6)
+  dueDate        DateTime      @map("due_date") @db.Timestamptz(6)
+  subtotal       Decimal       @default(0) @db.Decimal(19, 4)
+  discountTotal  Decimal       @default(0) @map("discount_total") @db.Decimal(19, 4)
+  taxTotal       Decimal       @default(0) @map("tax_total") @db.Decimal(19, 4)
+  adminFeeTotal  Decimal       @default(0) @map("admin_fee_total") @db.Decimal(19, 4)
+  grandTotal     Decimal       @default(0) @map("grand_total") @db.Decimal(19, 4)
+  paidTotal      Decimal       @default(0) @map("paid_total") @db.Decimal(19, 4)
+  paidAt         DateTime?     @map("paid_at") @db.Timestamptz(6)
+  issuedAt       DateTime?     @map("issued_at") @db.Timestamptz(6)
+  voidedAt       DateTime?     @map("voided_at") @db.Timestamptz(6)
+  voidReason     String?       @map("void_reason") @db.Text
+  localeSnapshot String        @default("id") @map("locale_snapshot") @db.VarChar(16)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  subscription Subscription?             @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  quote        PricingQuote?             @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  lines        BillingInvoiceLine[]
+  allocations  BillingPaymentAllocation[]
+  creditNotes  BillingCreditNote[]
+  receipts     BillingReceipt[]
+  paymentOrders PaymentOrder[]
+
+  @@unique([invoiceNumber])
+  @@index([tenantId, status])
+  @@index([dueDate, status])
+  @@map("billing_invoice")
+  @@schema("platform")
+}
+
+model BillingInvoiceLine {
+  id             String          @id @default(uuid()) @db.Uuid
+  invoiceId      String          @map("invoice_id") @db.Uuid
+  lineType       InvoiceLineType @default(PACKAGE) @map("line_type")
+  deviceId       String?         @map("device_id") @db.Uuid
+  moduleCode     String?         @map("module_code") @db.VarChar(48)
+  featureCode    String?         @map("feature_code") @db.VarChar(64)
+  description    String          @db.VarChar(255)
+  snapshot       Json
+  quantity       Int             @default(1)
+  unitPrice      Decimal         @map("unit_price") @db.Decimal(19, 4)
+  discountAmount Decimal         @default(0) @map("discount_amount") @db.Decimal(19, 4)
+  taxAmount      Decimal         @default(0) @map("tax_amount") @db.Decimal(19, 4)
+  lineTotal      Decimal         @map("line_total") @db.Decimal(19, 4)
+  sortOrder      Int             @default(0) @map("sort_order")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  invoice     BillingInvoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  device      PosDevice?                 @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  allocations BillingPaymentAllocation[]
+
+  @@index([invoiceId, sortOrder])
+  @@index([deviceId])
+  @@map("billing_invoice_line")
+  @@schema("platform")
+}
+
+model BillingPaymentAllocation {
+  id            String   @id @default(uuid()) @db.Uuid
+  invoiceId     String   @map("invoice_id") @db.Uuid
+  invoiceLineId String?  @map("invoice_line_id") @db.Uuid
+  callbackEventId String? @map("callback_event_id") @db.Uuid
+  paymentOrderId String? @map("payment_order_id") @db.Uuid
+  amount        Decimal  @db.Decimal(19, 4)
+  allocatedAt   DateTime @default(now()) @map("allocated_at") @db.Timestamptz(6)
+  idempotencyKey String  @map("idempotency_key") @db.VarChar(96)
+
+  invoice     BillingInvoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  invoiceLine BillingInvoiceLine?  @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
+  callbackEvent PaymentCallbackEvent? @relation(fields: [callbackEventId], references: [id], onDelete: SetNull)
+  paymentOrder PaymentOrder?       @relation(fields: [paymentOrderId], references: [id], onDelete: SetNull)
+
+  @@unique([idempotencyKey])
+  @@index([invoiceId])
+  @@index([paymentOrderId])
+  @@map("billing_payment_allocation")
+  @@schema("platform")
+}
+
+model BillingCreditNote {
+  id              String    @id @default(uuid()) @db.Uuid
+  creditNoteNumber String   @map("credit_note_number") @db.VarChar(48)
+  invoiceId       String    @map("invoice_id") @db.Uuid
+  issueDate       DateTime  @map("issue_date") @db.Timestamptz(6)
+  reason          String    @db.Text
+  amount          Decimal   @db.Decimal(19, 4)
+  status          String    @default("ISSUED") @db.VarChar(24)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy       String?   @map("created_by") @db.Uuid
+
+  invoice BillingInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([creditNoteNumber])
+  @@index([invoiceId])
+  @@map("billing_credit_note")
+  @@schema("platform")
+}
+
+model BillingReceipt {
+  id            String   @id @default(uuid()) @db.Uuid
+  receiptNumber String   @map("receipt_number") @db.VarChar(48)
+  invoiceId     String   @map("invoice_id") @db.Uuid
+  paidAt        DateTime @map("paid_at") @db.Timestamptz(6)
+  amount        Decimal  @db.Decimal(19, 4)
+  channelCode   String?  @map("channel_code") @db.VarChar(48)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  invoice BillingInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([receiptNumber])
+  @@index([invoiceId])
+  @@map("billing_receipt")
+  @@schema("platform")
+}
+
+model IdempotencyRecord {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String?  @map("tenant_id") @db.Uuid
+  idempotencyKey String   @map("idempotency_key") @db.VarChar(96)
+  operation      String   @db.VarChar(96)
+  requestHash    String   @map("request_hash") @db.VarChar(64)
+  responseStatus Int      @map("response_status")
+  responseBody   Json?    @map("response_body")
+  resourceType   String?  @map("resource_type") @db.VarChar(64)
+  resourceId     String?  @map("resource_id") @db.VarChar(64)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@unique([idempotencyKey, operation])
+  @@index([expiresAt])
+  @@map("idempotency_record")
+  @@schema("platform")
+}

@@ -1,0 +1,228 @@
+// ---------------------------------------------------------------------------
+// DISCOUNT & PROMOTION ENGINE
+// Kondisi hanya menggunakan field + operator whitelist. Tidak ada eval/SQL bebas.
+// ---------------------------------------------------------------------------
+
+model DiscountProgram {
+  id             String              @id @default(uuid()) @db.Uuid
+  code           String              @db.VarChar(48)
+  name           String              @db.VarChar(160)
+  nameKey        String              @map("name_key") @db.VarChar(160)
+  description    String?             @db.Text
+  priority       Int                 @default(100)
+  stackPolicy    DiscountStackPolicy @default(EXCLUSIVE) @map("stack_policy")
+  maxDiscountAmount Decimal?         @map("max_discount_amount") @db.Decimal(19, 4)
+  maxRedemptions Int?                @map("max_redemptions")
+  maxPerTenant   Int?                @map("max_per_tenant")
+  validFrom      DateTime            @default(now()) @map("valid_from") @db.Timestamptz(6)
+  validUntil     DateTime?           @map("valid_until") @db.Timestamptz(6)
+  status         String              @default("DRAFT") @db.VarChar(24)
+  requiresPromoCode Boolean          @default(false) @map("requires_promo_code")
+
+  isActive      Boolean   @default(true) @map("is_active")
+  isSystem      Boolean   @default(false) @map("is_system")
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?   @map("deleted_by") @db.Uuid
+  deleteReason  String?   @map("delete_reason") @db.Text
+  version       Int       @default(1)
+
+  rules            DiscountRule[]
+  tenantEligibility DiscountTenantEligibility[]
+  planEligibility  DiscountPlanEligibility[]
+  redemptions      DiscountRedemption[]
+  promoCodes       PromoCode[]
+  approvals        DiscountApproval[]
+
+  @@unique([code])
+  @@index([status, isActive, validFrom])
+  @@index([isActive, deletedAt])
+  @@index([isSample, sampleBatchId])
+  @@map("discount_program")
+  @@schema("platform")
+}
+
+model DiscountRule {
+  id          String   @id @default(uuid()) @db.Uuid
+  programId   String   @map("program_id") @db.Uuid
+  code        String   @db.VarChar(48)
+  name        String   @db.VarChar(160)
+  sequence    Int      @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version     Int      @default(1)
+
+  program        DiscountProgram         @relation(fields: [programId], references: [id], onDelete: Cascade)
+  conditionGroups DiscountConditionGroup[]
+  benefits       DiscountBenefit[]
+
+  @@unique([programId, code])
+  @@index([programId, sequence])
+  @@map("discount_rule")
+  @@schema("platform")
+}
+
+model DiscountConditionGroup {
+  id            String                 @id @default(uuid()) @db.Uuid
+  ruleId        String                 @map("rule_id") @db.Uuid
+  parentGroupId String?                @map("parent_group_id") @db.Uuid
+  operator      ConditionGroupOperator @default(AND)
+  sequence      Int                    @default(0)
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version       Int                    @default(1)
+
+  rule       DiscountRule             @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  parent     DiscountConditionGroup?  @relation("GroupTree", fields: [parentGroupId], references: [id], onDelete: Cascade)
+  children   DiscountConditionGroup[] @relation("GroupTree")
+  conditions DiscountCondition[]
+
+  @@index([ruleId, sequence])
+  @@index([parentGroupId])
+  @@map("discount_condition_group")
+  @@schema("platform")
+}
+
+model DiscountCondition {
+  id        String                 @id @default(uuid()) @db.Uuid
+  groupId   String                 @map("group_id") @db.Uuid
+  field     DiscountConditionField
+  operator  DiscountOperator
+  valueJson Json                   @map("value_json")
+  sequence  Int                    @default(0)
+  createdAt DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version   Int                    @default(1)
+
+  group DiscountConditionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, sequence])
+  @@map("discount_condition")
+  @@schema("platform")
+}
+
+model DiscountBenefit {
+  id            String              @id @default(uuid()) @db.Uuid
+  ruleId        String              @map("rule_id") @db.Uuid
+  benefitType   DiscountBenefitType @map("benefit_type")
+  numericValue  Decimal             @map("numeric_value") @db.Decimal(19, 4)
+  currencyCode  String?             @map("currency_code") @db.VarChar(8)
+  maxAmount     Decimal?            @map("max_amount") @db.Decimal(19, 4)
+  labelKey      String?             @map("label_key") @db.VarChar(160)
+  sequence      Int                 @default(0)
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version       Int                 @default(1)
+
+  rule DiscountRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, sequence])
+  @@map("discount_benefit")
+  @@schema("platform")
+}
+
+model DiscountTenantEligibility {
+  id        String   @id @default(uuid()) @db.Uuid
+  programId String   @map("program_id") @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  included  Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  program DiscountProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, tenantId])
+  @@map("discount_tenant_eligibility")
+  @@schema("platform")
+}
+
+model DiscountPlanEligibility {
+  id        String   @id @default(uuid()) @db.Uuid
+  programId String   @map("program_id") @db.Uuid
+  planId    String   @map("plan_id") @db.Uuid
+  included  Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  program DiscountProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  plan    SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, planId])
+  @@map("discount_plan_eligibility")
+  @@schema("platform")
+}
+
+model PromoCode {
+  id             String    @id @default(uuid()) @db.Uuid
+  programId      String    @map("program_id") @db.Uuid
+  code           String    @db.VarChar(48)
+  maxRedemptions Int?      @map("max_redemptions")
+  usedCount      Int       @default(0) @map("used_count")
+  perTenantLimit Int?      @map("per_tenant_limit")
+  validFrom      DateTime  @default(now()) @map("valid_from") @db.Timestamptz(6)
+  validUntil     DateTime? @map("valid_until") @db.Timestamptz(6)
+
+  isActive  Boolean   @default(true) @map("is_active")
+  isSample  Boolean   @default(false) @map("is_sample")
+  sampleBatchId String? @map("sample_batch_id") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+
+  program     DiscountProgram      @relation(fields: [programId], references: [id], onDelete: Cascade)
+  redemptions DiscountRedemption[]
+
+  @@unique([code])
+  @@index([programId, isActive])
+  @@map("promo_code")
+  @@schema("platform")
+}
+
+model DiscountRedemption {
+  id             String   @id @default(uuid()) @db.Uuid
+  programId      String   @map("program_id") @db.Uuid
+  promoCodeId    String?  @map("promo_code_id") @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  quoteId        String?  @map("quote_id") @db.Uuid
+  invoiceId      String?  @map("invoice_id") @db.Uuid
+  amount         Decimal  @db.Decimal(19, 4)
+  idempotencyKey String   @map("idempotency_key") @db.VarChar(96)
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  program   DiscountProgram @relation(fields: [programId], references: [id], onDelete: Restrict)
+  promoCode PromoCode?      @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([idempotencyKey])
+  @@index([programId, tenantId])
+  @@index([occurredAt])
+  @@map("discount_redemption")
+  @@schema("platform")
+}
+
+model DiscountApproval {
+  id           String    @id @default(uuid()) @db.Uuid
+  programId    String    @map("program_id") @db.Uuid
+  requestedById String   @map("requested_by_id") @db.Uuid
+  approvedById String?   @map("approved_by_id") @db.Uuid
+  status       String    @default("PENDING") @db.VarChar(24)
+  reason       String?   @db.Text
+  requestedAt  DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  decidedAt    DateTime? @map("decided_at") @db.Timestamptz(6)
+
+  program DiscountProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([programId, status])
+  @@map("discount_approval")
+  @@schema("platform")
+}

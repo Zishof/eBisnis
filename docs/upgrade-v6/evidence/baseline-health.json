@@ -1,0 +1,1 @@
+{"status":"ok","app":"eBisnis.id","version":"0.1.0","environment":"development","timestamp":"2026-07-30T12:37:44.634Z","latencyMs":4,"checks":{"database":"up","tenantSchemas":8,"tenantClientCache":0,"tenantMigrationVersion":"V009"}}

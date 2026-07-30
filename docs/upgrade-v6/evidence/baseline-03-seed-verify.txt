@@ -1,0 +1,6 @@
+### pnpm seed:verify ###
+LAPORAN VERIFIKASI SEED — PLATFORM "platform"
+Total resource: 25 | gagal: 0 | status: LULUS
+LAPORAN VERIFIKASI SEED — TENANT "demo"
+Total resource: 22 | gagal: 0 | status: LULUS
+SEEDVERIFY_EXIT=0

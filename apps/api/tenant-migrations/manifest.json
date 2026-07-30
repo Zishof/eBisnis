@@ -1,0 +1,69 @@
+{
+  "$comment": "Canonical tenant migration catalog. Checksum (sha256) dihitung saat runtime dari isi file dan dicatat pada platform.schema_migration_catalog serta platform.tenant_schema_migration_history. Jangan mengubah file yang sudah diterapkan pada environment bersama — buat versi baru.",
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "version": "V001",
+      "sequence": 1,
+      "file": "V001__tenant_core.sql",
+      "name": "Tenant core",
+      "description": "Bookkeeping migration lokal, app_setting, number_sequence, file_object, entity_attachment, idempotency_record, starter_data_marker, onboarding_progress."
+    },
+    {
+      "version": "V002",
+      "sequence": 2,
+      "file": "V002__organization_access.sql",
+      "name": "Organisasi dan hak akses",
+      "description": "address, business_group, legal_entity, brand, region, outlet_type, department, job_position, outlet, user_subject, role, permission_action, menu, menu_action, role_menu_permission, role_scope, user_role_assignment, user_direct_permission, data_export_log, step_up_challenge, party, owner_profile, investor_profile, ownership_interest."
+    },
+    {
+      "version": "V003",
+      "sequence": 3,
+      "file": "V003__catalog_crm.sql",
+      "name": "Katalog dan mitra dagang",
+      "description": "uom, uom_conversion, tax_category, tax_rate, product_category, product_brand, product, product_barcode, payment_term, payment_method, supplier_group, supplier, product_supplier, customer_group, customer, price_book, price_book_item."
+    },
+    {
+      "version": "V004",
+      "sequence": 4,
+      "file": "V004__inventory.sql",
+      "name": "Gudang dan persediaan",
+      "description": "warehouse_type, warehouse, warehouse_zone, warehouse_bin, inventory_lot, stock_movement (ledger immutable), stock_balance (projection), stock_reservation, stock_policy, stock_alert, stock_count, inventory_adjustment."
+    },
+    {
+      "version": "V005",
+      "sequence": 5,
+      "file": "V005__purchasing_transfer.sql",
+      "name": "Pembelian, penerimaan, backorder, transfer",
+      "description": "request_order, purchase_order, goods_receipt (+inspection/validation/discrepancy/allocation), purchase_backorder, internal_transfer, supplier_invoice."
+    },
+    {
+      "version": "V006",
+      "sequence": 6,
+      "file": "V006__sales_pos_finance_hr.sql",
+      "name": "POS, penjualan, keuangan, SDM, logistik, BOM",
+      "description": "pos_terminal, pos_shift, pos_sale, sales_order, account_type, chart_of_account, fiscal_period, journal_entry, leave_type, employee, vehicle_type, carrier, bill_of_material."
+    },
+    {
+      "version": "V007",
+      "sequence": 7,
+      "file": "V007__workflow_reporting.sql",
+      "name": "Workflow, notifikasi, sync, reporting",
+      "description": "workflow_definition, workflow_step, workflow_instance, workflow_action_log, notification_template, notification, saved_view, sync_outbox, sync_inbox, job_execution."
+    },
+    {
+      "version": "V008",
+      "sequence": 8,
+      "file": "V008__audit_triggers.sql",
+      "name": "Audit schema dan trigger DML",
+      "description": "audit_event, audit_row_change, audit_security_event, audit_export_event, audit_permission_change, audit_posting_event, audit_schema_migration, fungsi masking, trigger DML generik, immutability guard stock_movement dan journal_entry POSTED."
+    },
+    {
+      "version": "V009",
+      "sequence": 9,
+      "file": "V009__reference_check_indexes.sql",
+      "name": "Index pendukung reference check",
+      "description": "Index pada 23 kolom foreign key yang dipakai MasterLifecycleService untuk memeriksa referensi sebelum hapus permanen, termasuk stock_movement.uom_id, pos_sale.customer_id, dan goods_receipt.supplier_id."
+    }
+  ]
+}
