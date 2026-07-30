@@ -103,9 +103,31 @@ ${PG_BASE} ${CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list
   fi
 fi
 
-if command -v pg_dump >/dev/null; then
-  CLIENT_VER=$(pg_dump --version | grep -oE '[0-9]+' | head -1)
-  echo "    pg_dump versi $CLIENT_VER"
+# /usr/bin/pg_dump pada Debian/Ubuntu adalah wrapper postgresql-common yang
+# memilih versi berdasarkan cluster default, BUKAN versi tertinggi yang
+# terpasang. Bila mesin ini punya cluster lokal versi lama, wrapper akan memakai
+# versi lama itu walau klien 17 sudah dipasang. Karena itu binary aslinya
+# dicari langsung.
+resolve_pg_bin() {
+  local name=$1 best="" bestver=0 dir ver
+  for dir in /usr/lib/postgresql/*/bin; do
+    [[ -x "$dir/$name" ]] || continue
+    ver=$(basename "$(dirname "$dir")")
+    [[ "$ver" =~ ^[0-9]+$ ]] || continue
+    (( ver > bestver )) && { bestver=$ver; best="$dir/$name"; }
+  done
+  [[ -n "$best" ]] && echo "$best" || command -v "$name" 2>/dev/null || true
+}
+
+PG_DUMP=$(resolve_pg_bin pg_dump)
+PSQL=$(resolve_pg_bin psql)
+
+if [[ -n "$PG_DUMP" ]]; then
+  CLIENT_VER=$("$PG_DUMP" --version | grep -oE '[0-9]+' | head -1)
+  echo "    pg_dump versi $CLIENT_VER  ($PG_DUMP)"
+  if [[ "$PG_DUMP" != "$(command -v pg_dump 2>/dev/null)" ]]; then
+    echo "    Catatan: /usr/bin/pg_dump menunjuk versi lain; skrip memakai path di atas."
+  fi
 else
   CLIENT_VER=0
   warn "pg_dump tidak tersedia."
@@ -190,7 +212,7 @@ sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && pnpm seed:verify" || warn "Verifi
 # Bandingkan versi server dengan versi pg_dump selagi koneksi sudah terbukti.
 # Lebih baik ketahuan sekarang daripada saat pembaruan pertama gagal backup.
 ADMIN_URL=$(grep -E '^DATABASE_ADMIN_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
-SERVER_VER=$(sudo -u "$APP_USER" psql "$ADMIN_URL" -tAc "SHOW server_version" 2>/dev/null | grep -oE '^[0-9]+' || echo '')
+SERVER_VER=$(sudo -u "$APP_USER" "${PSQL:-psql}" "$ADMIN_URL" -tAc "SHOW server_version" 2>/dev/null | grep -oE '^[0-9]+' || echo '')
 if [[ -n "$SERVER_VER" && "$CLIENT_VER" -gt 0 ]]; then
   echo "    Server PostgreSQL $SERVER_VER, pg_dump $CLIENT_VER"
   if [[ "$CLIENT_VER" -lt "$SERVER_VER" ]]; then

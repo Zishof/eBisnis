@@ -55,13 +55,30 @@ if [[ "${SKIP_DB_BACKUP:-0}" == "1" ]]; then
   warn "Pastikan backup mutakhir memang sudah ada sebelum melanjutkan."
   BACKUP_FILE="(dilewati)"
 else
-  if ! command -v pg_dump >/dev/null; then
+  # /usr/bin/pg_dump adalah wrapper postgresql-common yang memilih versi
+  # berdasarkan cluster default, bukan versi tertinggi yang terpasang. Binary
+  # aslinya dicari langsung agar klien terbaru benar-benar terpakai.
+  resolve_pg_bin() {
+    local name=$1 best="" bestver=0 dir ver
+    for dir in /usr/lib/postgresql/*/bin; do
+      [[ -x "$dir/$name" ]] || continue
+      ver=$(basename "$(dirname "$dir")")
+      [[ "$ver" =~ ^[0-9]+$ ]] || continue
+      (( ver > bestver )) && { bestver=$ver; best="$dir/$name"; }
+    done
+    [[ -n "$best" ]] && echo "$best" || command -v "$name" 2>/dev/null || true
+  }
+
+  PG_DUMP=$(resolve_pg_bin pg_dump)
+  PSQL=$(resolve_pg_bin psql)
+
+  if [[ -z "$PG_DUMP" ]]; then
     die "pg_dump tidak ditemukan. Pasang klien PostgreSQL, atau jalankan backup
 di host database lalu ulangi dengan:  sudo SKIP_DB_BACKUP=1 bash $0"
   fi
 
-  CLIENT_VER=$(pg_dump --version | grep -oE '[0-9]+' | head -1)
-  SERVER_VER=$(psql "$ADMIN_URL" -tAc "SHOW server_version" 2>/dev/null | grep -oE '^[0-9]+' || echo '')
+  CLIENT_VER=$("$PG_DUMP" --version | grep -oE '[0-9]+' | head -1)
+  SERVER_VER=$("${PSQL:-psql}" "$ADMIN_URL" -tAc "SHOW server_version" 2>/dev/null | grep -oE '^[0-9]+' || echo '')
 
   if [[ -n "$SERVER_VER" && "$CLIENT_VER" -lt "$SERVER_VER" ]]; then
     die "pg_dump versi $CLIENT_VER lebih tua daripada server PostgreSQL $SERVER_VER.
@@ -79,7 +96,8 @@ Pilihan:
 Rincian: docs/deployment/ubuntu.md bagian \"Backup ketika pg_dump lebih tua\"."
   fi
 
-  if pg_dump --dbname="$ADMIN_URL" --format=custom --file="$BACKUP_FILE" 2>/tmp/pgdump.err; then
+  echo "    memakai $PG_DUMP (versi $CLIENT_VER), server versi ${SERVER_VER:-?}"
+  if "$PG_DUMP" --dbname="$ADMIN_URL" --format=custom --file="$BACKUP_FILE" 2>/tmp/pgdump.err; then
     chmod 600 "$BACKUP_FILE"
     echo "    $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
   else

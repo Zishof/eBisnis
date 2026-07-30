@@ -8,6 +8,29 @@
 | Selector | Versi | Alasan | Ditinjau ulang bila |
 | --- | --- | --- | --- |
 | `glob@10` | `^10.5.0` | [GHSA-5j98-mcp5-4vw2](https://github.com/advisories/GHSA-5j98-mcp5-4vw2) — command injection pada CLI `glob` (`-c`/`--cmd`) versi `>=10.2.0 <10.5.0`. Masuk secara transitif melalui `@nestjs/cli`. | `@nestjs/cli` sudah memakai `glob >= 10.5.0` secara langsung |
+| `rollup` | `npm:@rollup/wasm-node@4.62.3` | Binary native `@rollup/rollup-linux-x64-gnu` menuntut GLIBC 2.32, sedangkan server produksi memakai Ubuntu 20.04 dengan GLIBC 2.31. Build gagal `ERR_DLOPEN_FAILED`. | server pindah ke Ubuntu 22.04 atau lebih baru |
+
+### Catatan tentang `rollup`
+
+`@rollup/wasm-node` adalah build WebAssembly resmi dari tim rollup, versinya
+selalu sama dengan rilis rollup, dan merupakan pengganti langsung yang memang
+disediakan untuk platform tanpa dukungan binary native.
+
+Biayanya sudah diukur, bukan diperkirakan:
+
+| | Native | WASM |
+| --- | --- | --- |
+| Waktu build `apps/web` | 4,85 detik | 4,95 detik |
+| Nama berkas hasil (hash) | `index-5D2WcnBL.js` | `index-5D2WcnBL.js` |
+
+Selisih waktunya tidak berarti, dan hash keluarannya identik — artinya bundel
+yang dihasilkan sama persis. Karena itu override diberlakukan untuk semua
+platform, bukan hanya server: menjaga satu toolchain untuk pengembangan, CI,
+dan produksi lebih berharga daripada selisih sepersepuluh detik.
+
+Efek sampingnya justru menguntungkan: tidak ada lagi binary native rollup yang
+diunduh pada platform mana pun, sehingga build tidak bisa lagi gagal karena
+ketidakcocokan glibc atau arsitektur.
 
 ### Catatan tentang `glob@10`
 

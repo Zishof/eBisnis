@@ -26,6 +26,9 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   contoh environment produksi, serta skrip pembuatan akun pedagang.
 - Panduan instalasi dan pembaruan pada `docs/deployment/ubuntu.md`.
 
+- Build frontend memakai `@rollup/wasm-node`, sehingga tidak lagi bergantung
+  pada binary native rollup yang menuntut GLIBC 2.32.
+
 ### Changed
 
 - **Workspace resmi berpindah ke `C:\opt\eBisnisGithub`.**

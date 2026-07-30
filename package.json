@@ -35,7 +35,8 @@
   },
   "pnpm": {
     "overrides": {
-      "glob@10": "^10.5.0"
+      "glob@10": "^10.5.0",
+      "rollup": "npm:@rollup/wasm-node@4.62.3"
     }
   }
 }

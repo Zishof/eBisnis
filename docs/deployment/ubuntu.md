@@ -451,6 +451,31 @@ docker run --rm postgres:17 pg_dump \
 melegakan dalam jangka panjang: dukungan standar Ubuntu 20.04 berakhir pada
 April 2025, sehingga pembaruan keamanan tidak lagi datang secara normal.
 
+### Build frontend dan GLIBC
+
+Binary native rollup menuntut GLIBC 2.32, sedangkan focal punya 2.31, sehingga
+`vite build` gagal dengan `ERR_DLOPEN_FAILED`.
+
+Sudah diselesaikan di dalam repositori: `rollup` dialihkan ke
+`@rollup/wasm-node`, build WebAssembly resmi tanpa binary native. Tidak ada yang
+perlu dilakukan di server, dan keluarannya identik dengan build native.
+Rinciannya pada [dependency-overrides.md](../development/dependency-overrides.md).
+
+### pg_dump menunjuk versi lama walau klien baru terpasang
+
+Pada Debian dan Ubuntu, `/usr/bin/pg_dump` adalah wrapper `postgresql-common`
+yang memilih versi berdasarkan cluster default, **bukan** versi tertinggi yang
+terpasang. Gejalanya: `postgresql-client-17` sudah terpasang tetapi
+`pg_dump --version` tetap melaporkan 12.
+
+Skrip deployment mengatasinya dengan mencari binary aslinya langsung pada
+`/usr/lib/postgresql/*/bin/`. Bila menjalankan `pg_dump` secara manual, sebut
+path lengkapnya:
+
+```bash
+/usr/lib/postgresql/17/bin/pg_dump --version
+```
+
 ### GitHub CLI tidak dapat dipasang lewat snap
 
 Snap `gh` dibangun untuk glibc 2.34 ke atas dan gagal dengan
