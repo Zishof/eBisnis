@@ -203,7 +203,14 @@ describe('syarat tombol unggah', () => {
     expect(profileAllowsUpload('P2')).toBe(false); // punya UPDATE, tanpa DELETE
     expect(profileAllowsUpload('P3')).toBe(true);
     expect(profileAllowsUpload('P4')).toBe(false); // penyetuju tidak mengunggah
-    expect(UPLOAD_CAPABLE_PROFILES).toEqual(['P3', 'P5', 'P6', 'P7', 'P8']);
+    // M4 operator fulfillment dan M5 layanan pelanggan sengaja tidak memenuhi
+    // syarat: yang pertama tidak boleh mengubah pesanan, yang kedua tidak boleh
+    // menghapus. Keduanya batas hak yang dinyatakan blueprint Versi 9.
+    expect(profileAllowsUpload('M4')).toBe(false);
+    expect(profileAllowsUpload('M5')).toBe(false);
+    expect(UPLOAD_CAPABLE_PROFILES).toEqual([
+      'P3', 'P5', 'P6', 'P7', 'P8', 'M3', 'M6', 'M7', 'M8', 'M9',
+    ]);
   });
 
   it('sejalan antara profil dan izin menu yang diturunkan', () => {
@@ -218,6 +225,85 @@ describe('syarat tombol unggah', () => {
         .map(([menuCode]) => `${role.code}.${menuCode}`),
     );
     expect(mismatched).toEqual([]);
+  });
+});
+
+describe('profil dan role marketplace Versi 9', () => {
+  const moduleMap = buildMenuModuleMap();
+
+  it('menambahkan profil M1–M8 pada berkas profil yang sama', () => {
+    for (const code of ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8'] as const) {
+      expect(PROFILE_ACTIONS[code].length).toBeGreaterThan(0);
+    }
+  });
+
+  it('tidak memberi MANAGE_CREDENTIAL kepada admin seller', () => {
+    // Blueprint: admin toko memegang seluruh operasi tenant marketplace
+    // "kecuali credential penuh dan platform moderation".
+    expect(PROFILE_ACTIONS.M7).not.toContain('MANAGE_CREDENTIAL');
+    expect(expandRole(byCode('ADMIN_TOKO_ONLINE')).permissions['ESMARTLINK_ACCOUNT'] ?? [])
+      .not.toContain('MANAGE_CREDENTIAL');
+  });
+
+  it('memberi MANAGE_CREDENTIAL hanya lewat role eSmartlink tersendiri', () => {
+    const permissions = expandRole(byCode('ADMIN_ESMARTLINK_TENANT')).permissions;
+    expect(permissions['ESMARTLINK_ACCOUNT']).toContain('MANAGE_CREDENTIAL');
+  });
+
+  it('tidak memberi packer maupun picker hak mengubah pesanan', () => {
+    const offending = ['PACKER_PESANAN_ONLINE', 'PICKER_PESANAN_ONLINE'].flatMap((code) =>
+      Object.entries(expandRole(byCode(code)).permissions).flatMap(([menu, actions]) =>
+        (actions as string[])
+          .filter((a) => a === 'UPDATE' || a === 'DELETE')
+          .map((a) => `${code}.${menu}.${a}`),
+      ),
+    );
+    expect(offending).toEqual([]);
+  });
+
+  it('tidak memberi layanan pelanggan hak menyetujui refund', () => {
+    const permissions = expandRole(byCode('LAYANAN_PELANGGAN_MARKETPLACE')).permissions;
+    const offending = Object.entries(permissions).filter(([, a]) =>
+      (a as string[]).includes('REFUND_APPROVE'),
+    );
+    expect(offending).toEqual([]);
+  });
+
+  it('tidak memberi HARD_DELETE kepada platform marketplace', () => {
+    expect(PROFILE_ACTIONS.M8).not.toContain('HARD_DELETE');
+  });
+
+  it('membatasi picker pada modul fulfillment dan rujukannya', () => {
+    const modules = new Set(
+      Object.keys(expandRole(byCode('PICKER_PESANAN_ONLINE')).permissions).map((c) => moduleMap.get(c)),
+    );
+    expect([...modules].sort()).toEqual([
+      'FULFILLMENT', 'HOME', 'ONLINE_CATALOG', 'ONLINE_SALES', 'SUPPORT',
+    ]);
+  });
+
+  it('memperluas root SHIPPING alih-alih membuat root kedua', () => {
+    const roots = [...new Set(moduleMap.values())];
+    expect(roots.filter((r) => r === 'SHIPPING')).toHaveLength(1);
+    expect(moduleMap.get('SHIPPING_BOOKING')).toBe('SHIPPING');
+    expect(moduleMap.get('SHIPPING_CARRIER')).toBe('SHIPPING');
+  });
+
+  it('mewariskan menu SHIPPING baru kepada role logistik Versi 8 tanpa mengubah katalognya', () => {
+    const permissions = expandRole(byCode('MANAJER_LOGISTIK')).permissions;
+    expect(permissions['SHIPPING_BOOKING']).toBeDefined();
+    expect(permissions['SHIPPING_TRACKING']).toBeDefined();
+  });
+
+  it('tidak memberi akses marketplace kepada role yang tidak memerlukannya', () => {
+    const leaked = ['MANAJER_PAJAK', 'PETUGAS_PAYROLL', 'REKRUTER'].flatMap((code) =>
+      [
+        ...new Set(Object.keys(expandRole(byCode(code)).permissions).map((c) => moduleMap.get(c))),
+      ]
+        .filter((m) => m?.startsWith('MARKETPLACE') || m?.startsWith('ONLINE_'))
+        .map((m) => `${code}.${m}`),
+    );
+    expect(leaked).toEqual([]);
   });
 });
 

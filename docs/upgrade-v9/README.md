@@ -1,6 +1,7 @@
 # Audit Versi 9 — Marketplace dan Toko Online
 
-Fase **V9-0** selesai pada commit `981b002`; **V9-1 bagian A** (otorisasi) menyusul.
+Fase **V9-0** selesai pada commit `981b002`; **V9-1** (otorisasi dan fondasi
+marketplace) menyusul.
 Branch `feature/v9-marketplace`.
 
 ## Kesimpulan singkat
@@ -40,6 +41,7 @@ pada V9-1, sebelum endpoint marketplace pertama dibuat.
 | [12-api-route-inventory.md](12-api-route-inventory.md) | 157 endpoint yang ada, 33 yang diminta |
 | [13-ui-route-inventory.md](13-ui-route-inventory.md) | 55 route yang ada, storefront yang harus dibangun |
 | [14-authorization-enforcement.md](14-authorization-enforcement.md) | **V9-1 bagian A** — guard gagal-tertutup dan penegakan batas data |
+| [15-marketplace-foundation.md](15-marketplace-foundation.md) | **V9-1 bagian B** — menu, profil M1–M9, role, dan pendaftaran seller |
 | [evidence/baseline-v9-0.txt](evidence/baseline-v9-0.txt) | keluaran perintah mentah |
 
 ## Urutan membaca

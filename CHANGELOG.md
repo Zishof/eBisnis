@@ -22,9 +22,26 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   baris**, bukan seluruhnya.
 - Penugasan batas data kini per orang, bukan per role, sehingga dua kepala
   gudang dapat memegang gudang yang berbeda.
+- Hak mengelola credential pembayaran dipisahkan dari administrator toko dan
+  menuntut verifikasi tambahan. Petugas layanan pelanggan tidak dapat melihat
+  credential maupun menyetujui refund; packer dan picker tidak dapat mengubah
+  pesanan.
 
 ### Added
 
+- **Fondasi marketplace: tenant dapat mendaftar sebagai penjual.** Pusat
+  Aktivasi Marketplace menampilkan pemeriksaan kesiapan beserta alasan yang
+  dapat ditindaklanjuti — bukan sekadar "belum siap". Pendaftaran berjalan
+  melalui 14 tahap yang dapat maju dan mundur sebagaimana kenyataannya, dan
+  platform yang memutuskan kapan sebuah toko boleh berjualan.
+- 15 kelompok menu marketplace baru: aktivasi, toko online, katalog online,
+  penjualan online, pembayaran, reservasi, fulfillment, retur, promosi,
+  pelanggan, performa toko, operasi platform, tiket, dan bantuan. Menu
+  pengiriman yang sudah ada diperluas, bukan digandakan.
+- 33 role marketplace: dari Pengelola Katalog Online, Picker, dan Packer sampai
+  Penyetuju Refund dan Moderator Produk Marketplace.
+- 14 hak baru termasuk Terbitkan, Ambil Barang, Kemas, Kirim, Setujui Retur,
+  Setujui Refund, dan Kelola Credential.
 - Perintah `pnpm route:audit` yang memeriksa seluruh endpoint menyatakan hak
   aksesnya, dapat dipakai sebagai gerbang sebelum rilis.
 - Audit Versi 9 fase V9-0 pada `docs/upgrade-v9/`: kondisi source, status

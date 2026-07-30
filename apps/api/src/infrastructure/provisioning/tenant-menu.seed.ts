@@ -45,6 +45,24 @@ export const PERMISSION_ACTIONS_SEED: PermissionActionSeed[] = [
   { code: 'DELEGATE', name: 'Delegasikan', nameKey: 'action.delegate', actionType: 'WORKFLOW', sortOrder: 24 },
   { code: 'REVERSE', name: 'Jurnal Balik', nameKey: 'action.reverse', actionType: 'POSTING', sortOrder: 25, requiresStepUp: true },
   { code: 'AUDIT_READ', name: 'Baca Audit', nameKey: 'action.auditRead', actionType: 'SENSITIVE', sortOrder: 26 },
+
+  // --- Versi 9: marketplace, fulfillment, dan pengiriman -------------------
+  { code: 'PUBLISH', name: 'Terbitkan', nameKey: 'action.publish', actionType: 'WORKFLOW', sortOrder: 27 },
+  { code: 'UNPUBLISH', name: 'Tarik dari Publikasi', nameKey: 'action.unpublish', actionType: 'WORKFLOW', sortOrder: 28 },
+  { code: 'MODERATE', name: 'Moderasi', nameKey: 'action.moderate', actionType: 'WORKFLOW', sortOrder: 29 },
+  { code: 'ASSIGN', name: 'Tugaskan', nameKey: 'action.assign', actionType: 'WORKFLOW', sortOrder: 30 },
+  { code: 'RESERVE', name: 'Reservasi Stok', nameKey: 'action.reserve', actionType: 'STANDARD', sortOrder: 31 },
+  { code: 'RELEASE', name: 'Lepas Reservasi', nameKey: 'action.release', actionType: 'STANDARD', sortOrder: 32 },
+  { code: 'PICK', name: 'Ambil Barang', nameKey: 'action.pick', actionType: 'STANDARD', sortOrder: 33 },
+  { code: 'PACK', name: 'Kemas', nameKey: 'action.pack', actionType: 'STANDARD', sortOrder: 34 },
+  { code: 'SHIP', name: 'Kirim', nameKey: 'action.ship', actionType: 'STANDARD', sortOrder: 35 },
+  { code: 'DELIVER', name: 'Serahkan', nameKey: 'action.deliver', actionType: 'STANDARD', sortOrder: 36 },
+  { code: 'RETURN_APPROVE', name: 'Setujui Retur', nameKey: 'action.returnApprove', actionType: 'WORKFLOW', sortOrder: 37 },
+  // Dua aksi berikut memindahkan uang atau membuka akses ke uang, sehingga
+  // keduanya menuntut step-up sebagaimana HARD_DELETE dan CLOSE_PERIOD.
+  { code: 'REFUND_APPROVE', name: 'Setujui Refund', nameKey: 'action.refundApprove', actionType: 'SENSITIVE', sortOrder: 38, requiresStepUp: true },
+  { code: 'MANAGE_CREDENTIAL', name: 'Kelola Credential', nameKey: 'action.manageCredential', actionType: 'SENSITIVE', sortOrder: 39, requiresStepUp: true },
+  { code: 'RECONCILE', name: 'Rekonsiliasi', nameKey: 'action.reconcile', actionType: 'SENSITIVE', sortOrder: 40 },
 ];
 
 export interface MenuNodeSeed {
@@ -178,6 +196,101 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
 
   // 21 Bantuan dan Dukungan
   { code: 'SUPPORT', label: 'Bantuan dan Dukungan', translationKey: 'menu.support', icon: 'life-buoy', sortOrder: 21, actions: ['READ'], comingSoon: true },
+
+  // ==========================================================================
+  // Versi 9 — Marketplace dan Toko Online
+  //
+  // Root baru, bukan cabang di bawah root yang ada. Katalog role menunjuk MODUL
+  // (kode menu root), sehingga menempatkan marketplace di bawah SALES akan
+  // membuat setiap role penjualan otomatis memperoleh hak marketplace.
+  //
+  // Root SHIPPING yang sudah ada TIDAK diduplikasi; ia diperluas di bawah.
+  // ==========================================================================
+
+  // 22 Beranda Marketplace
+  { code: 'MARKETPLACE_HOME', label: 'Beranda Marketplace', translationKey: 'menu.marketplaceHome', route: '/app/marketplace', icon: 'store', moduleCode: 'MARKETPLACE', sortOrder: 22, actions: ['READ'], comingSoon: true },
+  { code: 'MARKETPLACE_HOME_SUMMARY', parentCode: 'MARKETPLACE_HOME', label: 'Ringkasan Penjualan Online', translationKey: 'menu.marketplaceHome.summary', route: '/app/marketplace', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: ['READ', 'VIEW_AMOUNT'], comingSoon: true },
+  { code: 'MARKETPLACE_HOME_TODO', parentCode: 'MARKETPLACE_HOME', label: 'Perlu Diproses', translationKey: 'menu.marketplaceHome.todo', route: '/app/marketplace/todo', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: ['READ'], comingSoon: true },
+
+  // 23 Pusat Aktivasi Marketplace
+  { code: 'MARKETPLACE_ACTIVATION', label: 'Pusat Aktivasi Marketplace', translationKey: 'menu.marketplaceActivation', route: '/app/marketplace/aktivasi', icon: 'rocket', moduleCode: 'MARKETPLACE', sortOrder: 23, actions: ['READ'] },
+  { code: 'MARKETPLACE_ENROLLMENT', parentCode: 'MARKETPLACE_ACTIVATION', label: 'Pendaftaran Seller', translationKey: 'menu.marketplaceActivation.enrollment', route: '/app/marketplace/aktivasi', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: ['READ', 'CREATE', 'UPDATE', 'SUBMIT'] },
+  { code: 'MARKETPLACE_READINESS', parentCode: 'MARKETPLACE_ACTIVATION', label: 'Status Kesiapan', translationKey: 'menu.marketplaceActivation.readiness', route: '/app/marketplace/aktivasi/kesiapan', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: ['READ'] },
+  { code: 'MARKETPLACE_GOLIVE', parentCode: 'MARKETPLACE_ACTIVATION', label: 'Checklist Go-Live', translationKey: 'menu.marketplaceActivation.goLive', route: '/app/marketplace/aktivasi/go-live', moduleCode: 'MARKETPLACE', sortOrder: 3, actions: ['READ', 'REVIEW', 'APPROVE'] },
+  { code: 'ESMARTLINK_ACCOUNT', parentCode: 'MARKETPLACE_ACTIVATION', label: 'Akun eSmartlink', translationKey: 'menu.marketplaceActivation.esmartlink', route: '/app/marketplace/aktivasi/esmartlink', moduleCode: 'MARKETPLACE', sortOrder: 4, actions: ['READ', 'CREATE', 'MANAGE_CREDENTIAL'], comingSoon: true },
+
+  // 24 Pengaturan Toko Online
+  { code: 'ONLINE_STORE', label: 'Pengaturan Toko Online', translationKey: 'menu.onlineStore', icon: 'store', moduleCode: 'MARKETPLACE', sortOrder: 24, actions: ['READ'], comingSoon: true },
+  { code: 'ONLINE_STORE_PROFILE', parentCode: 'ONLINE_STORE', label: 'Profil Toko', translationKey: 'menu.onlineStore.profile', route: '/app/marketplace/toko', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: ['READ', 'UPDATE'], comingSoon: true },
+  { code: 'ONLINE_STORE_DOMAIN', parentCode: 'ONLINE_STORE', label: 'Domain Toko', translationKey: 'menu.onlineStore.domain', route: '/app/marketplace/toko/domain', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: ['READ', 'CREATE', 'UPDATE', 'DELETE'], comingSoon: true },
+  { code: 'ONLINE_STORE_POLICY', parentCode: 'ONLINE_STORE', label: 'Kebijakan Toko', translationKey: 'menu.onlineStore.policy', route: '/app/marketplace/toko/kebijakan', moduleCode: 'MARKETPLACE', sortOrder: 3, actions: ['READ', 'UPDATE', 'PUBLISH'], comingSoon: true },
+
+  // 25 Katalog Online
+  { code: 'ONLINE_CATALOG', label: 'Katalog Online', translationKey: 'menu.onlineCatalog', icon: 'package-search', moduleCode: 'MARKETPLACE', sortOrder: 25, actions: ['READ'], comingSoon: true },
+  { code: 'ONLINE_LISTING', parentCode: 'ONLINE_CATALOG', label: 'Produk Online', translationKey: 'menu.onlineCatalog.listing', route: '/app/marketplace/listing', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: [...CRUD, 'IMPORT', 'RESTORE', 'SUBMIT', 'PUBLISH', 'UNPUBLISH'], comingSoon: true },
+  { code: 'ONLINE_LISTING_MEDIA', parentCode: 'ONLINE_CATALOG', label: 'Media Produk', translationKey: 'menu.onlineCatalog.media', route: '/app/marketplace/listing/media', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: [...CRUD, 'MODERATE'], comingSoon: true },
+  { code: 'ONLINE_LISTING_REVIEW', parentCode: 'ONLINE_CATALOG', label: 'Moderasi dan Publikasi', translationKey: 'menu.onlineCatalog.review', route: '/app/marketplace/listing/moderasi', moduleCode: 'MARKETPLACE', sortOrder: 3, actions: ['READ', 'REVIEW', 'APPROVE', 'REJECT', 'PUBLISH', 'UNPUBLISH'], comingSoon: true },
+  { code: 'ONLINE_PRICE_STOCK', parentCode: 'ONLINE_CATALOG', label: 'Harga dan Stok Online', translationKey: 'menu.onlineCatalog.priceStock', route: '/app/marketplace/listing/harga', moduleCode: 'MARKETPLACE', sortOrder: 4, actions: ['READ', 'UPDATE', 'IMPORT', 'EXPORT', 'VIEW_COST'], comingSoon: true },
+
+  // 26 Penjualan Online
+  { code: 'ONLINE_SALES', label: 'Penjualan Online', translationKey: 'menu.onlineSales', icon: 'shopping-bag', moduleCode: 'MARKETPLACE', sortOrder: 26, actions: ['READ'], comingSoon: true },
+  { code: 'ONLINE_ORDER', parentCode: 'ONLINE_SALES', label: 'Pesanan Online', translationKey: 'menu.onlineSales.order', route: '/app/marketplace/pesanan', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: ['READ', 'UPDATE', 'CANCEL', 'PRINT', 'EXPORT', 'VIEW_AMOUNT'], comingSoon: true },
+  { code: 'ONLINE_ORDER_GROUP', parentCode: 'ONLINE_SALES', label: 'Grup Pesanan Multi-Seller', translationKey: 'menu.onlineSales.orderGroup', route: '/app/marketplace/pesanan/grup', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: ['READ'], comingSoon: true },
+
+  // 27 Pembayaran Marketplace
+  { code: 'MARKETPLACE_PAYMENT', label: 'Pembayaran Marketplace', translationKey: 'menu.marketplacePayment', icon: 'wallet', moduleCode: 'MARKETPLACE', sortOrder: 27, actions: ['READ'], comingSoon: true },
+  { code: 'MARKETPLACE_PAYMENT_ORDER', parentCode: 'MARKETPLACE_PAYMENT', label: 'Payment Order', translationKey: 'menu.marketplacePayment.order', route: '/app/marketplace/pembayaran', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: ['READ', 'CREATE', 'VIEW_AMOUNT'], comingSoon: true },
+  { code: 'MARKETPLACE_RECONCILIATION', parentCode: 'MARKETPLACE_PAYMENT', label: 'Rekonsiliasi', translationKey: 'menu.marketplacePayment.reconciliation', route: '/app/marketplace/pembayaran/rekonsiliasi', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: ['READ', 'RECONCILE', 'EXPORT'], comingSoon: true },
+  { code: 'MARKETPLACE_REFUND', parentCode: 'MARKETPLACE_PAYMENT', label: 'Refund', translationKey: 'menu.marketplacePayment.refund', route: '/app/marketplace/pembayaran/refund', moduleCode: 'MARKETPLACE', sortOrder: 3, actions: ['READ', 'CREATE', 'REFUND_APPROVE', 'VIEW_AMOUNT'], comingSoon: true },
+
+  // 28 Reservation dan Routing
+  { code: 'ALLOCATION', label: 'Reservation dan Routing', translationKey: 'menu.allocation', icon: 'git-branch', moduleCode: 'MARKETPLACE', sortOrder: 28, actions: ['READ'], comingSoon: true },
+  { code: 'ALLOCATION_RESERVATION', parentCode: 'ALLOCATION', label: 'Reservasi Stok', translationKey: 'menu.allocation.reservation', route: '/app/marketplace/reservasi', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: ['READ', 'RESERVE', 'RELEASE'], comingSoon: true },
+  { code: 'ALLOCATION_ROUTING', parentCode: 'ALLOCATION', label: 'Aturan Routing', translationKey: 'menu.allocation.routing', route: '/app/marketplace/routing', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: [...CRUD], comingSoon: true },
+
+  // 29 Fulfillment Online
+  { code: 'FULFILLMENT', label: 'Fulfillment Online', translationKey: 'menu.fulfillment', icon: 'boxes', moduleCode: 'MARKETPLACE', sortOrder: 29, actions: ['READ'], comingSoon: true },
+  { code: 'FULFILLMENT_ORDER', parentCode: 'FULFILLMENT', label: 'Fulfillment Order', translationKey: 'menu.fulfillment.order', route: '/app/marketplace/fulfillment', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: ['READ', 'CREATE', 'ASSIGN'], comingSoon: true },
+  { code: 'FULFILLMENT_PICKING', parentCode: 'FULFILLMENT', label: 'Picking', translationKey: 'menu.fulfillment.picking', route: '/app/marketplace/picking', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: ['READ', 'PICK', 'PRINT'], comingSoon: true },
+  { code: 'FULFILLMENT_PACKING', parentCode: 'FULFILLMENT', label: 'Packing', translationKey: 'menu.fulfillment.packing', route: '/app/marketplace/packing', moduleCode: 'MARKETPLACE', sortOrder: 3, actions: ['READ', 'PACK', 'PRINT'], comingSoon: true },
+
+  // 30 Retur dan Refund
+  { code: 'RETURN_REFUND', label: 'Retur dan Refund', translationKey: 'menu.returnRefund', icon: 'undo-2', moduleCode: 'MARKETPLACE', sortOrder: 30, actions: ['READ'], comingSoon: true },
+  { code: 'RETURN_REQUEST', parentCode: 'RETURN_REFUND', label: 'Permintaan Retur', translationKey: 'menu.returnRefund.request', route: '/app/marketplace/retur', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: ['READ', 'CREATE', 'REVIEW', 'RETURN_APPROVE', 'REJECT'], comingSoon: true },
+  { code: 'RETURN_INSPECTION', parentCode: 'RETURN_REFUND', label: 'Inspeksi Retur', translationKey: 'menu.returnRefund.inspection', route: '/app/marketplace/retur/inspeksi', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: ['READ', 'CREATE', 'UPDATE'], comingSoon: true },
+  { code: 'RETURN_DISPUTE', parentCode: 'RETURN_REFUND', label: 'Sengketa', translationKey: 'menu.returnRefund.dispute', route: '/app/marketplace/sengketa', moduleCode: 'MARKETPLACE', sortOrder: 3, actions: ['READ', 'ASSIGN', 'APPROVE', 'REJECT'], comingSoon: true },
+
+  // 31 Promosi Marketplace
+  { code: 'MARKETPLACE_PROMO', label: 'Promosi Marketplace', translationKey: 'menu.marketplacePromo', icon: 'ticket-percent', moduleCode: 'MARKETPLACE', sortOrder: 31, actions: ['READ'], comingSoon: true },
+  { code: 'MARKETPLACE_VOUCHER', parentCode: 'MARKETPLACE_PROMO', label: 'Voucher Toko', translationKey: 'menu.marketplacePromo.voucher', route: '/app/marketplace/voucher', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: [...CRUD, 'APPROVE'], comingSoon: true },
+  { code: 'MARKETPLACE_CAMPAIGN', parentCode: 'MARKETPLACE_PROMO', label: 'Kampanye dan Flash Sale', translationKey: 'menu.marketplacePromo.campaign', route: '/app/marketplace/kampanye', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: [...CRUD, 'APPROVE'], comingSoon: true },
+
+  // 32 Pelanggan Marketplace
+  { code: 'MARKETPLACE_CUSTOMER', label: 'Pelanggan Marketplace', translationKey: 'menu.marketplaceCustomer', icon: 'messages-square', moduleCode: 'MARKETPLACE', sortOrder: 32, actions: ['READ'], comingSoon: true },
+  { code: 'MARKETPLACE_CHAT', parentCode: 'MARKETPLACE_CUSTOMER', label: 'Chat Pembeli', translationKey: 'menu.marketplaceCustomer.chat', route: '/app/marketplace/chat', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: ['READ', 'CREATE'], comingSoon: true },
+  { code: 'MARKETPLACE_REVIEW', parentCode: 'MARKETPLACE_CUSTOMER', label: 'Ulasan Produk', translationKey: 'menu.marketplaceCustomer.review', route: '/app/marketplace/ulasan', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: ['READ', 'CREATE', 'MODERATE'], comingSoon: true },
+
+  // 33 Performa Toko
+  { code: 'STORE_PERFORMANCE', label: 'Performa Toko', translationKey: 'menu.storePerformance', route: '/app/marketplace/performa', icon: 'trending-up', moduleCode: 'MARKETPLACE', sortOrder: 33, actions: ['READ', 'EXPORT', 'VIEW_AMOUNT', 'VIEW_PROFIT'], comingSoon: true },
+
+  // 34 Operasi Marketplace Platform
+  { code: 'MARKETPLACE_PLATFORM', label: 'Operasi Marketplace Platform', translationKey: 'menu.marketplacePlatform', icon: 'shield-check', moduleCode: 'MARKETPLACE', sortOrder: 34, actions: ['READ'], comingSoon: true },
+  { code: 'MARKETPLACE_SELLER_ADMIN', parentCode: 'MARKETPLACE_PLATFORM', label: 'Seller dan Verifikasi', translationKey: 'menu.marketplacePlatform.seller', route: '/platform/marketplace/sellers', moduleCode: 'MARKETPLACE', sortOrder: 1, actions: ['READ', 'REVIEW', 'APPROVE', 'REJECT'], comingSoon: true },
+  { code: 'MARKETPLACE_MODERATION', parentCode: 'MARKETPLACE_PLATFORM', label: 'Moderasi', translationKey: 'menu.marketplacePlatform.moderation', route: '/platform/marketplace/moderasi', moduleCode: 'MARKETPLACE', sortOrder: 2, actions: ['READ', 'MODERATE', 'APPROVE', 'REJECT'], comingSoon: true },
+  { code: 'MARKETPLACE_FEE', parentCode: 'MARKETPLACE_PLATFORM', label: 'Fee Marketplace', translationKey: 'menu.marketplacePlatform.fee', route: '/platform/marketplace/fee', moduleCode: 'MARKETPLACE', sortOrder: 3, actions: [...CRUD, 'APPROVE', 'VIEW_AMOUNT'], comingSoon: true },
+
+  // 35 Tiket Dukungan
+  { code: 'SUPPORT_TICKET', label: 'Tiket Dukungan', translationKey: 'menu.supportTicket', route: '/app/tiket', icon: 'ticket', moduleCode: 'SUPPORT', sortOrder: 35, actions: ['READ', 'CREATE', 'UPDATE', 'ASSIGN', 'CANCEL'], comingSoon: true },
+
+  // 36 Bantuan Marketplace
+  { code: 'MARKETPLACE_HELP', label: 'Bantuan Marketplace', translationKey: 'menu.marketplaceHelp', route: '/app/marketplace/bantuan', icon: 'book-open', moduleCode: 'MARKETPLACE', sortOrder: 36, actions: ['READ'], comingSoon: true },
+
+  // --- Perluasan root SHIPPING yang SUDAH ADA ------------------------------
+  // Bukan root baru. Menambah root SHIPPING kedua akan memecah hak setiap role
+  // logistik menjadi dua modul yang harus dikelola terpisah.
+  { code: 'SHIPPING_PROVIDER', parentCode: 'SHIPPING', label: 'Provider Pengiriman', translationKey: 'menu.shipping.provider', route: '/app/pengiriman/provider', moduleCode: 'SHIPPING', sortOrder: 10, actions: [...CRUD, 'MANAGE_CREDENTIAL'], comingSoon: true },
+  { code: 'SHIPPING_BOOKING', parentCode: 'SHIPPING', label: 'Booking dan Label', translationKey: 'menu.shipping.booking', route: '/app/pengiriman/booking', moduleCode: 'SHIPPING', sortOrder: 11, actions: ['READ', 'CREATE', 'CANCEL', 'PRINT', 'SHIP'], comingSoon: true },
+  { code: 'SHIPPING_TRACKING', parentCode: 'SHIPPING', label: 'Pelacakan Kiriman', translationKey: 'menu.shipping.tracking', route: '/app/pengiriman/tracking', moduleCode: 'SHIPPING', sortOrder: 12, actions: ['READ', 'DELIVER'], comingSoon: true },
 ];
 
 export interface RoleTemplateSeed {

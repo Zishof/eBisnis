@@ -223,6 +223,11 @@ export const PLATFORM_PERMISSION_SEED = [
   'PLATFORM.CMS.PUBLISH',
   'PLATFORM.SEED.MANAGE',
   'PLATFORM.MODULE.MANAGE',
+  // --- Versi 9: marketplace ---
+  'PLATFORM.MARKETPLACE.READ',
+  'PLATFORM.MARKETPLACE.APPROVE',
+  'PLATFORM.MARKETPLACE.SUSPEND',
+  'PLATFORM.MARKETPLACE.MODERATE',
 ];
 
 export const PLATFORM_ROLE_SEED = [
@@ -294,6 +299,34 @@ export const PLATFORM_ROLE_SEED = [
     description: 'Mengelola konten website publik dan CMS.',
     permissions: ['PLATFORM.CMS.READ', 'PLATFORM.CMS.MANAGE', 'PLATFORM.CMS.PUBLISH'],
     sortOrder: 5,
+  },
+  {
+    code: 'PLATFORM_MARKETPLACE_ADMIN',
+    name: 'Platform Marketplace Admin',
+    roleType: 'CUSTOM' as const,
+    description: 'Menyetujui seller, memoderasi listing, dan menangguhkan toko.',
+    permissions: [
+      'PLATFORM.MARKETPLACE.READ',
+      'PLATFORM.MARKETPLACE.APPROVE',
+      'PLATFORM.MARKETPLACE.SUSPEND',
+      'PLATFORM.MARKETPLACE.MODERATE',
+      'PLATFORM.TENANT.READ',
+    ],
+    sortOrder: 6,
+  },
+  {
+    code: 'PLATFORM_MARKETPLACE_REVIEWER',
+    name: 'Platform Marketplace Reviewer',
+    roleType: 'CUSTOM' as const,
+    // Hanya membaca dan memoderasi. Persetujuan seller dipisah agar peninjau
+    // listing tidak sekaligus menentukan siapa yang boleh berjualan.
+    description: 'Meninjau pendaftaran dan memoderasi listing tanpa menyetujui seller.',
+    permissions: [
+      'PLATFORM.MARKETPLACE.READ',
+      'PLATFORM.MARKETPLACE.MODERATE',
+      'PLATFORM.TENANT.READ',
+    ],
+    sortOrder: 7,
   },
 ];
 

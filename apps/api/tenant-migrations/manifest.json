@@ -78,6 +78,13 @@
       "file": "V011__user_scope_assignment.sql",
       "name": "Penugasan batas data per pengguna",
       "description": "user_scope_assignment beserta index penugasan aktif, perluasan tingkat role_data_scope dengan STORE, FULFILLMENT_LOCATION, dan PAYMENT_PROVIDER_ACCOUNT, serta trigger audit."
+    },
+    {
+      "version": "V012",
+      "sequence": 12,
+      "file": "V012__marketplace_profiles.sql",
+      "name": "Profil hak marketplace pada constraint role",
+      "description": "Memperluas ck_role_module_profile_code agar menerima profil marketplace M1-M9 di samping P0-P12."
     }
   ]
 }
