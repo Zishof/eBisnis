@@ -1,0 +1,46 @@
+# Daftar abaikan gitleaks.
+#
+# Setiap baris adalah fingerprint dengan bentuk:
+#     <commit>:<berkas>:<rule>:<baris>
+#
+# Fingerprint terikat pada satu commit, satu berkas, satu rule, dan satu nomor
+# baris. Kebocoran BARU tetap menggagalkan build. Berkas ini tidak boleh diisi
+# pola luas, path, atau nama rule tanpa commit — itu akan menyembunyikan temuan
+# yang belum diketahui.
+#
+# Setiap entri wajib punya alasan.
+
+# ---------------------------------------------------------------------------
+# 1. Kredensial integrasi bank pada source legacy — NYATA, sudah diredaksi
+#
+# Ketiganya adalah kebocoran sungguhan pada docs/input/ yang sudah diredaksi
+# pada commit ee49f67. Nilainya tetap ada di commit a463093 karena riwayat Git
+# tidak dapat diubah tanpa force-push, yang memerlukan persetujuan pemilik.
+#
+# Rotasi kredensial oleh pemilik integrasi tetap WAJIB dan tidak digantikan
+# oleh pengabaian ini.
+#
+# Rincian:
+#   docs/development/security-incident-2026-07-30-legacy-credentials.md
+# ---------------------------------------------------------------------------
+a463093a1f3b58c00d0fa628009edcb41dd82aaf:docs/input/VirtualAccountBankAction.java:generic-api-key:228
+a463093a1f3b58c00d0fa628009edcb41dd82aaf:docs/input/VirtualAccountBankAction.java:generic-api-key:351
+a463093a1f3b58c00d0fa628009edcb41dd82aaf:docs/input/DownloadTagihanSiswaBankOnline.java:generic-api-key:607
+
+# ---------------------------------------------------------------------------
+# 2. False positive pada seed program diskon
+#
+# Kedua baris berikut adalah translation key, bukan kredensial:
+#
+#   baris 643:  nameKey: 'discount.posAbove10',
+#   baris 699:  labelKey: 'discount.posAbove10.benefit',
+#
+# Rule generic-api-key memakai heuristik entropi dan salah menandainya. Tidak
+# ada nilai rahasia pada kedua baris tersebut.
+#
+# Bila temuan yang sama muncul lagi pada commit berikutnya, jangan menambah
+# entri satu per satu: buat allowlist bertarget pada .gitleaks.toml yang
+# dibatasi pada rule generic-api-key dan berkas ini saja.
+# ---------------------------------------------------------------------------
+a463093a1f3b58c00d0fa628009edcb41dd82aaf:apps/api/src/modules/master-seed/platform-seed.service.ts:generic-api-key:643
+a463093a1f3b58c00d0fa628009edcb41dd82aaf:apps/api/src/modules/master-seed/platform-seed.service.ts:generic-api-key:699

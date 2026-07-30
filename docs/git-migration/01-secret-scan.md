@@ -60,6 +60,25 @@ Hasil: nol kecocokan, selain placeholder `USER:PASSWORD` dan kredensial palsu
 | data pelanggan / export data pribadi | tidak ada |
 | token GitHub pada source | tidak ada |
 
+## Temuan yang LOLOS dari scan manual
+
+Setelah push pertama, gitleaks pada CI menemukan **lima kebocoran** yang tidak
+tertangkap scan manual di atas: kredensial integrasi Bank Kaltimtara, Esmartlink,
+dan JARING pada source legacy `docs/input/`.
+
+Penyebabnya persis keterbatasan yang sudah disebutkan di bagian awal dokumen ini:
+scan manual mencari pola kata kunci seperti `password=` atau connection string,
+sedangkan kredensial tersebut berupa argumen kedua pada
+`Common.getKonfigurasi(key, default)`. gitleaks menangkapnya lewat deteksi
+entropi.
+
+Seluruhnya sudah diredaksi. Rincian, dampak, dan tindakan yang diperlukan ada
+pada
+[security-incident-2026-07-30-legacy-credentials.md](../development/security-incident-2026-07-30-legacy-credentials.md).
+
+Pelajaran yang sudah diterapkan: pemindaian entropi kini menjadi bagian tetap CI
+dan berjalan pada setiap push, bukan hanya sekali saat migrasi.
+
 ## Risiko warisan yang TIDAK selesai dengan migrasi ini
 
 `apps/api/.env` sudah ter-commit ke SVN pada revisi 104 beserta kata sandi
