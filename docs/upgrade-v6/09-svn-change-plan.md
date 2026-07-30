@@ -1,5 +1,19 @@
 # 09 — Rencana Perubahan SVN
 
+> **DOKUMEN INI SUDAH DIGANTIKAN — jangan diikuti.**
+>
+> Sejak cutover Versi 7 pada 2026-07-30, proyek ini **Git-only**. SVN tidak lagi
+> dipakai untuk commit, update, maupun deployment, dan rencana commit di bawah
+> ini tidak pernah dijalankan.
+>
+> Rencana yang berlaku sekarang:
+> [docs/git-migration/04-migration-cutover-plan.md](../git-migration/04-migration-cutover-plan.md)
+>
+> Dokumen ini dipertahankan sebagai catatan kondisi saat audit V6-0, khususnya
+> temuan bahwa `.env` dan `node_modules` sudah ter-commit ke SVN. Temuan itu
+> masih relevan karena repository SVN beserta isinya tetap ada, dan rotasi
+> kredensial yang disebutkannya tetap perlu dilakukan.
+
 > Fase V6-0. **Tidak ada commit yang dilakukan pada fase ini.** Dokumen ini
 > merencanakannya dan menandai keputusan yang memerlukan persetujuan pemilik.
 

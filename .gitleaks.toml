@@ -1,0 +1,22 @@
+# Konfigurasi gitleaks.
+#
+# Memakai seluruh rule bawaan, ditambah satu allowlist yang sangat sempit.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = """
+Berkas .gitleaksignore memuat daftar fingerprint berbentuk
+<commit>:<berkas>:<rule>:<baris>. Bagian commit adalah SHA-1 40 karakter yang
+berentropi tinggi, sehingga rule generic-api-key menandainya sebagai secret.
+
+Menambahkan fingerprint baru untuk temuan itu akan berulang tanpa henti: setiap
+entri baru menghasilkan baris berentropi tinggi berikutnya. Karena itu berkas
+tersebut dikecualikan berdasarkan path.
+
+Pengecualian ini aman karena .gitleaksignore menurut definisinya hanya berisi
+fingerprint, tidak pernah berisi nilai secret. Isinya wajib ditinjau setiap kali
+berubah, dan setiap entri di dalamnya wajib punya alasan tertulis.
+"""
+paths = ['''^\.gitleaksignore$''']

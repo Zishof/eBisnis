@@ -4,6 +4,22 @@ Platform SaaS POS dan ERP multi-tenant: website publik ber-CMS, portal tenant,
 portal platform, mesin harga langganan, dan vertical slice ERP dari Request Order
 sampai validasi penerimaan barang.
 
+| | |
+| --- | --- |
+| Repository | [`Zishof/eBisnis`](https://github.com/Zishof/eBisnis) (private) |
+| Branch utama | `main` |
+| Workspace pengembangan | `C:\opt\eBisnisGithub` |
+
+Sejak 2026-07-30 proyek ini **Git-only**. `C:\opt\eBisnis` adalah arsip
+read-only dan tidak dipakai untuk pengembangan; lihat
+[rencana cutover](docs/git-migration/04-migration-cutover-plan.md).
+
+Setelah clone, aktifkan hook yang menolak force-push dan penghapusan `main`:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Arsitektur singkat
 
 ```
@@ -30,7 +46,8 @@ tidak pernah dari request. Lihat [ADR-001](docs/architecture/ADR-001-schema-per-
 pnpm install
 ```
 
-Salin berkas contoh lalu sesuaikan. Berkas `.env` **tidak** dikomit ke SVN.
+Salin berkas contoh lalu sesuaikan. Berkas `.env` **tidak pernah** dikomit;
+`.gitignore` menutupnya.
 
 ```bash
 cp apps/api/.env.example apps/api/.env
@@ -153,4 +170,4 @@ Versi 6 (keputusan sudah diambil, implementasi belum):
 - Kondisi diskon hanya boleh menyebut field dan operator dari whitelist. `eval`,
   konstruktor `Function`, dan SQL bebas dari pengguna tidak dipakai.
 - Payload sensitif dimask sebelum masuk audit atau log.
-- `.env` tidak pernah dikomit ke SVN; lihat `.svnignore`.
+- `.env` tidak pernah dikomit; lihat `.gitignore`.
