@@ -34,7 +34,7 @@ hasilnya 404.
 | Database PostgreSQL | `ebisnis` pada `HOST:5434`, boleh kosong |
 | Pengguna database berhak `CREATE` | dipakai untuk membuat schema tiap tenant |
 | Port 5434 terjangkau dari server aplikasi | uji dengan `psql` sebelum mulai |
-| Personal Access Token GitHub | scope `repo`; repositori bersifat privat |
+| Akses ke repository privat | deploy key SSH (dianjurkan) atau Personal Access Token — lihat bagian berikutnya |
 | DNS `ebisnis.id` mengarah ke server | boleh menyusul; sementara pakai alamat IP |
 
 Uji koneksi database lebih dahulu — bila langkah ini gagal, seluruh instalasi
@@ -46,6 +46,98 @@ psql "postgresql://USER:PASSWORD@HOST:5434/ebisnis" -c "select version()"
 
 Bila kata sandi memuat karakter `@ : / ? # & %`, tuliskan ter-URL-encode pada
 connection string. Contoh: `p@ss:w/rd` menjadi `p%40ss%3Aw%2Frd`.
+
+## Akses ke repository privat
+
+**GitHub tidak lagi menerima kata sandi akun untuk operasi Git sejak Agustus
+2021.** Prompt `Username for 'https://github.com':` yang muncul saat `git clone`
+tidak dapat dilewati dengan kata sandi, berapa kali pun dicoba.
+
+Yang berlaku hanya dua: **deploy key SSH** atau **Personal Access Token**.
+
+### Deploy key SSH — dianjurkan untuk server
+
+Kunci hanya-baca yang terikat pada satu repository, dapat dicabut sendiri tanpa
+memengaruhi akun, dan tidak memerlukan kata sandi akun sama sekali. Bila server
+suatu saat disusupi, yang bocor hanya akses baca ke satu repository.
+
+**1. Buat pengguna aplikasi lebih dahulu** (dibuat juga oleh `install.sh`,
+tetapi kuncinya harus milik pengguna ini):
+
+```bash
+sudo useradd --system --create-home --shell /usr/sbin/nologin ebisnis
+sudo install -d -o ebisnis -g ebisnis -m 755 /opt/ebisnis
+```
+
+**2. Buat pasangan kunci di server.** Kunci privat dibuat dan tinggal di server;
+tidak pernah dikirim ke mana pun:
+
+```bash
+sudo -u ebisnis ssh-keygen -t ed25519 -N "" \
+  -f /home/ebisnis/.ssh/id_ed25519 \
+  -C "ebisnis-deploy@$(hostname)"
+
+sudo cat /home/ebisnis/.ssh/id_ed25519.pub
+```
+
+**3. Daftarkan kunci publiknya ke repository.** Dari komputer yang `gh`-nya
+sudah login sebagai pemilik repository:
+
+```bash
+gh repo deploy-key add kunci.pub --repo Zishof/eBisnis --title "server-produksi"
+```
+
+`kunci.pub` berisi baris `ssh-ed25519 AAAA...` dari langkah 2. Tanpa
+`--allow-write`, kuncinya hanya-baca — persis yang dibutuhkan untuk deployment.
+
+Alternatif lewat web bila dapat login: **Settings → Deploy keys → Add deploy
+key** pada repository.
+
+**4. Uji koneksinya:**
+
+```bash
+sudo -u ebisnis ssh -T -o StrictHostKeyChecking=accept-new git@github.com
+```
+
+Balasan `Hi Zishof/eBisnis! You've successfully authenticated, but GitHub does
+not provide shell access.` berarti berhasil. Kalimat "does not provide shell
+access" itu normal, bukan kesalahan.
+
+**5. Clone memakai bentuk SSH:**
+
+```bash
+sudo -u ebisnis git clone git@github.com:Zishof/eBisnis.git /opt/ebisnis/app
+```
+
+Saat menjalankan `install.sh`, beri tahu bentuk URL yang dipakai:
+
+```bash
+sudo REPO_URL=git@github.com:Zishof/eBisnis.git bash /opt/ebisnis/app/deploy/install.sh
+```
+
+### Personal Access Token — alternatif
+
+Memerlukan login ke web GitHub, sehingga tidak dapat dipakai bila kata sandi
+akun terlupa. **Settings → Developer settings → Personal access tokens**, beri
+scope `repo`, lalu pakai token itu sebagai **kata sandi** saat `git clone`
+meminta kredensial (username tetap nama akun).
+
+Agar tidak diminta berulang, simpan pada berkas kredensial milik pengguna
+aplikasi:
+
+```bash
+sudo -u ebisnis bash -c 'umask 077; printf "https://Zishof:TOKEN@github.com\n" > ~/.git-credentials'
+sudo -u ebisnis git config --global credential.helper store
+```
+
+Token tersimpan dalam bentuk teks biasa pada berkas itu. Deploy key lebih baik
+justru karena tidak ada rahasia yang perlu disimpan seperti ini.
+
+### Kata sandi akun GitHub yang terlupa
+
+Terpisah dari urusan di atas, dan tidak menghalangi deployment. Pulihkan lewat
+<https://github.com/password_reset> memakai email akun. Bila 2FA aktif dan
+perangkatnya hilang, gunakan recovery code.
 
 ## Instalasi
 
@@ -97,13 +189,15 @@ sudo chmod 640 /etc/ebisnis/ebisnis.env
 
 ### 2. Jalankan instalasi
 
+Setelah akses repository disiapkan (bagian sebelumnya):
+
 ```bash
-sudo install -d /opt/ebisnis
-sudo git clone https://github.com/Zishof/eBisnis.git /opt/ebisnis/app
-sudo bash /opt/ebisnis/app/deploy/install.sh
+sudo -u ebisnis git clone git@github.com:Zishof/eBisnis.git /opt/ebisnis/app
+sudo REPO_URL=git@github.com:Zishof/eBisnis.git bash /opt/ebisnis/app/deploy/install.sh
 ```
 
-Saat diminta kredensial GitHub, isi username dan **token** sebagai kata sandi.
+Clone dilakukan **sebagai pengguna `ebisnis`**, bukan root. Bila terlanjur
+di-clone sebagai root, `install.sh` memperbaiki kepemilikannya sendiri.
 
 Skrip mengerjakan: paket dasar, Node 22, pnpm, klien PostgreSQL 17, pengguna
 sistem `ebisnis`, install dependency, build, `prisma migrate deploy`,

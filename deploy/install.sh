@@ -97,12 +97,20 @@ chmod 640 "$ENV_FILE"
 log "6/10  Ambil source dari GitHub"
 # ---------------------------------------------------------------------------
 if [[ -d "$APP_DIR/.git" ]]; then
-  echo "    Repository sudah ada — memakai deploy/update.sh untuk memperbarui."
+  echo "    Repository sudah ada."
+  # Clone yang terlanjur dibuat sebagai root tidak dapat dipakai user aplikasi.
+  # Diperbaiki di sini, bukan dibiarkan gagal dengan pesan izin yang samar.
+  if [[ "$(stat -c '%U' "$APP_DIR")" != "$APP_USER" ]]; then
+    echo "    Kepemilikan bukan $APP_USER — memperbaiki."
+    chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
+  fi
   sudo -u "$APP_USER" git -C "$APP_DIR" fetch --all --tags --prune
 else
+  install -d -o "$APP_USER" -g "$APP_USER" "$(dirname "$APP_DIR")"
   install -d -o "$APP_USER" -g "$APP_USER" "$APP_DIR"
-  echo "    Repository privat memerlukan autentikasi. Bila diminta kredensial,"
-  echo "    pakai Personal Access Token GitHub dengan scope 'repo'."
+  echo "    Repository privat memerlukan autentikasi."
+  echo "    Cara yang dianjurkan: deploy key SSH, dan REPO_URL memakai bentuk SSH."
+  echo "    Lihat docs/deployment/ubuntu-22.04.md bagian \"Akses ke repository privat\"."
   sudo -u "$APP_USER" git clone --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
 fi
 sudo -u "$APP_USER" git -C "$APP_DIR" checkout "$BRANCH"
