@@ -8,6 +8,7 @@ import { NewsListPage } from '../pages/public/NewsListPage';
 import { NewsDetailPage } from '../pages/public/NewsDetailPage';
 import { ContactPage } from '../pages/public/ContactPage';
 import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
+import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
@@ -67,7 +68,12 @@ export function App() {
       <Routes>
         {/* Website publik — route `/` menampilkan website, bukan redirect login. */}
         <Route element={<PublicLayout />}>
-          <Route path="/" element={<HomePage />} />
+          {/* Pengunjung yang datang lewat belanja.ebisnis.id langsung melihat
+              katalog; pengunjung ebisnis.id melihat website perusahaan. */}
+          <Route
+            path="/"
+            element={isMarketplaceHost() ? <Navigate to="/belanja" replace /> : <HomePage />}
+          />
           <Route path="/harga" element={<PricingPage />} />
           <Route path="/berita" element={<NewsListPage />} />
           <Route path="/berita/:slug" element={<NewsDetailPage />} />
