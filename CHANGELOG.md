@@ -38,6 +38,10 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   dari `SMOKE_ADMIN_PASSWORD` atau `BOOTSTRAP_SUPER_ADMIN_PASSWORD`.
 - `.gitignore` menutup `.env`, private key, sertifikat, dump database, log, dan
   data runtime agar tidak pernah ikut ter-commit.
+- Menaikkan `glob` transitif ke `^10.5.0` untuk menutup GHSA-5j98-mcp5-4vw2
+  (command injection pada CLI `glob`).
+- CI memindai secret pada seluruh riwayat commit dan mengaudit dependency setiap
+  push serta setiap pekan.
 
 ### Fixed
 
@@ -59,5 +63,9 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   migration V008 sudah diterapkan. Orkestrator migration berikutnya harus
   menghitung versi dari riwayat, bukan dari registry.
 - Client Orval belum pernah digenerate; frontend masih memakai tipe manual.
+- Enam advisory `high` masih terbuka pada dependency produksi (`multer`,
+  `lodash`, `js-yaml`), seluruhnya transitif dari NestJS 10 dan memerlukan
+  upgrade mayor framework. Terdaftar beserta rencananya pada
+  `docs/development/security-debt.md`. Tidak ada temuan `critical`.
 
 [Unreleased]: https://github.com/Zishof/eBisnis/commits/main
