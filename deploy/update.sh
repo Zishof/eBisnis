@@ -47,12 +47,45 @@ install -d -m 700 "$BACKUP_DIR"
 STAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/ebisnis-$STAMP.dump"
 
-if pg_dump --dbname="$ADMIN_URL" --format=custom --file="$BACKUP_FILE" 2>/tmp/pgdump.err; then
-  chmod 600 "$BACKUP_FILE"
-  echo "    $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+if [[ "${SKIP_DB_BACKUP:-0}" == "1" ]]; then
+  # Jalan keluar untuk kasus backup ditangani di tempat lain, misalnya cron pada
+  # host database. Sengaja harus dinyatakan eksplisit setiap kali, tidak
+  # disimpan sebagai pengaturan, supaya tidak terlupa bahwa ia aktif.
+  warn "SKIP_DB_BACKUP=1 — backup DILEWATI atas permintaan eksplisit."
+  warn "Pastikan backup mutakhir memang sudah ada sebelum melanjutkan."
+  BACKUP_FILE="(dilewati)"
 else
-  cat /tmp/pgdump.err >&2
-  die "Backup gagal. Pembaruan dihentikan — tidak ada perubahan yang dilakukan."
+  if ! command -v pg_dump >/dev/null; then
+    die "pg_dump tidak ditemukan. Pasang klien PostgreSQL, atau jalankan backup
+di host database lalu ulangi dengan:  sudo SKIP_DB_BACKUP=1 bash $0"
+  fi
+
+  CLIENT_VER=$(pg_dump --version | grep -oE '[0-9]+' | head -1)
+  SERVER_VER=$(psql "$ADMIN_URL" -tAc "SHOW server_version" 2>/dev/null | grep -oE '^[0-9]+' || echo '')
+
+  if [[ -n "$SERVER_VER" && "$CLIENT_VER" -lt "$SERVER_VER" ]]; then
+    die "pg_dump versi $CLIENT_VER lebih tua daripada server PostgreSQL $SERVER_VER.
+
+pg_dump menolak membuat dump dari server yang lebih baru, sehingga backup tidak
+mungkin dibuat dari mesin ini. Pembaruan dihentikan sebelum ada yang berubah.
+
+Pilihan:
+  1. Pasang klien PostgreSQL $SERVER_VER pada server ini.
+  2. Jalankan backup pada host database, lalu ulangi dengan:
+         sudo SKIP_DB_BACKUP=1 bash $0
+  3. Ambil dump lewat container:
+         docker run --rm postgres:$SERVER_VER pg_dump --dbname='<URL>' -Fc > backup.dump
+
+Rincian: docs/deployment/ubuntu.md bagian \"Backup ketika pg_dump lebih tua\"."
+  fi
+
+  if pg_dump --dbname="$ADMIN_URL" --format=custom --file="$BACKUP_FILE" 2>/tmp/pgdump.err; then
+    chmod 600 "$BACKUP_FILE"
+    echo "    $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+  else
+    cat /tmp/pgdump.err >&2
+    die "Backup gagal. Pembaruan dihentikan — tidak ada perubahan yang dilakukan."
+  fi
 fi
 
 # Simpan sejumlah backup terakhir saja.

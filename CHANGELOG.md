@@ -24,7 +24,7 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 - Berkas deployment untuk Ubuntu 22.04: konfigurasi Apache, unit systemd,
   skrip `install.sh` dan `update.sh` dengan backup dan rollback otomatis,
   contoh environment produksi, serta skrip pembuatan akun pedagang.
-- Panduan instalasi dan pembaruan pada `docs/deployment/ubuntu-22.04.md`.
+- Panduan instalasi dan pembaruan pada `docs/deployment/ubuntu.md`.
 
 ### Changed
 

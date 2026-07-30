@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Instalasi eBisnis.id pada Ubuntu 22.04.
+# Instalasi eBisnis.id pada Ubuntu 20.04, 22.04, atau 24.04.
 #
 # Menyiapkan sistem, meng-clone source dari GitHub, membangun, menerapkan
 # migration, membuat super admin, lalu menyalakan layanan.
@@ -28,7 +28,18 @@ die()  { printf '\033[1;31m[x] %s\033[0m\n' "$*" >&2; exit 1; }
 
 [[ $EUID -eq 0 ]] || die "Jalankan dengan sudo."
 [[ -r /etc/os-release ]] && . /etc/os-release
-[[ "${VERSION_ID:-}" == "22.04" ]] || warn "Diuji pada Ubuntu 22.04; terdeteksi ${PRETTY_NAME:-tidak diketahui}."
+
+# Codename dipakai untuk repositori APT PostgreSQL. Jangan di-hardcode: nilainya
+# berbeda antar rilis (focal untuk 20.04, jammy untuk 22.04, noble untuk 24.04)
+# dan repositori yang salah membuat apt gagal dengan pesan yang membingungkan.
+CODENAME=${VERSION_CODENAME:-$(lsb_release -cs 2>/dev/null || echo '')}
+[[ -n "$CODENAME" ]] || die "Tidak dapat menentukan codename rilis Ubuntu."
+
+case "${VERSION_ID:-}" in
+  20.04|22.04|24.04) : ;;
+  *) warn "Diuji pada Ubuntu 20.04, 22.04, dan 24.04; terdeteksi ${PRETTY_NAME:-tidak diketahui}." ;;
+esac
+echo "    ${PRETTY_NAME:-?} (codename: $CODENAME)"
 
 # ---------------------------------------------------------------------------
 log "1/10  Paket dasar"
@@ -49,19 +60,39 @@ corepack prepare pnpm@9.15.4 --activate
 echo "    node $(node -v), pnpm $(pnpm -v)"
 
 # ---------------------------------------------------------------------------
-log "3/10  Klien PostgreSQL 17"
+log "3/10  Klien PostgreSQL"
 # ---------------------------------------------------------------------------
-# Versi klien harus >= versi server, jika tidak pg_dump menolak bekerja.
-if ! command -v pg_dump >/dev/null || ! pg_dump --version | grep -qE ' 1[7-9]| 2[0-9]'; then
-  install -d /usr/share/postgresql-common/pgdg
-  curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-    -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
-  echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
-http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" > /etc/apt/sources.list.d/pgdg.list
-  apt-get update -qq
-  apt-get install -y -qq postgresql-client-17
+# pg_dump menolak bekerja bila versinya lebih tua daripada server. Backup pada
+# update.sh bergantung padanya, jadi ketidaksesuaian versi harus ketahuan
+# sekarang, bukan saat pembaruan pertama.
+#
+# PGDG hanya menyediakan repositori untuk rilis Ubuntu yang masih didukung.
+# Untuk rilis yang sudah dihapus (mis. focal), kita jatuh ke klien bawaan
+# distribusi dan menyatakan konsekuensinya secara terbuka.
+if ! command -v pg_dump >/dev/null || ! pg_dump --version | grep -qE ' 1[6-9]| 2[0-9]'; then
+  PGDG_DIST="https://apt.postgresql.org/pub/repos/apt/dists/${CODENAME}-pgdg/Release"
+  if curl -fsI -m 20 "$PGDG_DIST" >/dev/null 2>&1; then
+    install -d /usr/share/postgresql-common/pgdg
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+      -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+https://apt.postgresql.org/pub/repos/apt ${CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+    apt-get update -qq
+    apt-get install -y -qq postgresql-client-17
+  else
+    warn "PGDG tidak menyediakan repositori untuk '${CODENAME}' (rilis ini kemungkinan sudah EOL)."
+    warn "Memakai klien PostgreSQL bawaan distribusi."
+    apt-get install -y -qq postgresql-client || true
+  fi
 fi
-echo "    $(pg_dump --version)"
+
+if command -v pg_dump >/dev/null; then
+  CLIENT_VER=$(pg_dump --version | grep -oE '[0-9]+' | head -1)
+  echo "    pg_dump versi $CLIENT_VER"
+else
+  CLIENT_VER=0
+  warn "pg_dump tidak tersedia."
+fi
 
 # ---------------------------------------------------------------------------
 log "4/10  Pengguna sistem dan direktori"
@@ -110,7 +141,7 @@ else
   install -d -o "$APP_USER" -g "$APP_USER" "$APP_DIR"
   echo "    Repository privat memerlukan autentikasi."
   echo "    Cara yang dianjurkan: deploy key SSH, dan REPO_URL memakai bentuk SSH."
-  echo "    Lihat docs/deployment/ubuntu-22.04.md bagian \"Akses ke repository privat\"."
+  echo "    Lihat docs/deployment/ubuntu.md bagian \"Akses ke repository privat\"."
   sudo -u "$APP_USER" git clone --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
 fi
 sudo -u "$APP_USER" git -C "$APP_DIR" checkout "$BRANCH"
@@ -138,6 +169,19 @@ log "8/10  Migration dan super admin"
 sudo -u "$APP_USER" bash -lc "cd '$APP_DIR/apps/api' && pnpm exec prisma migrate deploy"
 sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && pnpm seed:platform"
 sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && pnpm seed:verify" || warn "Verifikasi seed melaporkan masalah — periksa keluarannya."
+
+# Bandingkan versi server dengan versi pg_dump selagi koneksi sudah terbukti.
+# Lebih baik ketahuan sekarang daripada saat pembaruan pertama gagal backup.
+ADMIN_URL=$(grep -E '^DATABASE_ADMIN_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
+SERVER_VER=$(sudo -u "$APP_USER" psql "$ADMIN_URL" -tAc "SHOW server_version" 2>/dev/null | grep -oE '^[0-9]+' || echo '')
+if [[ -n "$SERVER_VER" && "$CLIENT_VER" -gt 0 ]]; then
+  echo "    Server PostgreSQL $SERVER_VER, pg_dump $CLIENT_VER"
+  if [[ "$CLIENT_VER" -lt "$SERVER_VER" ]]; then
+    warn "pg_dump ($CLIENT_VER) LEBIH TUA daripada server ($SERVER_VER)."
+    warn "deploy/update.sh tidak akan dapat membuat backup dan akan berhenti."
+    warn "Lihat docs/deployment/ubuntu.md bagian \"Backup ketika pg_dump lebih tua\"."
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 log "9/10  systemd"

@@ -1,7 +1,11 @@
-# Instalasi eBisnis.id pada Ubuntu 22.04
+# Instalasi eBisnis.id pada Ubuntu
 
 Panduan dari server kosong sampai aplikasi dapat diakses, ditambah cara
 memperbarui saat ada perubahan sistem.
+
+Diuji pada **Ubuntu 20.04, 22.04, dan 24.04**. Perbedaan yang perlu diperhatikan
+pada 20.04 dijelaskan pada bagian
+[Catatan khusus Ubuntu 20.04](#catatan-khusus-ubuntu-2004).
 
 ## Arsitektur yang dipasang
 
@@ -30,7 +34,7 @@ hasilnya 404.
 
 | Kebutuhan | Keterangan |
 | --- | --- |
-| Ubuntu 22.04 dengan akses `sudo` | |
+| Ubuntu 20.04 / 22.04 / 24.04 dengan akses `sudo` | |
 | Database PostgreSQL | `ebisnis` pada `HOST:5434`, boleh kosong |
 | Pengguna database berhak `CREATE` | dipakai untuk membuat schema tiap tenant |
 | Port 5434 terjangkau dari server aplikasi | uji dengan `psql` sebelum mulai |
@@ -378,6 +382,67 @@ adanya.
 
 Bila sistem lama sudah tidak dipakai, hapus kedua blok `<VirtualHost *:3449>`
 pada `deploy/apache/ebisnis.conf`.
+
+## Catatan khusus Ubuntu 20.04
+
+Ubuntu 20.04 (focal) berjalan, dengan dua batasan yang perlu diketahui.
+
+### Repositori PostgreSQL sudah tidak tersedia
+
+PGDG hanya menyediakan repositori untuk rilis Ubuntu yang masih didukung.
+`focal` sudah dihapus, sehingga `postgresql-client-17` tidak dapat dipasang dari
+sana. Binary `jammy` juga tidak bisa dipakai — ia menuntut glibc 2.35, sedangkan
+focal punya 2.31.
+
+`install.sh` memeriksa ketersediaan repositori lebih dahulu; bila tidak ada, ia
+memakai klien PostgreSQL bawaan distribusi sambil menyatakan konsekuensinya.
+Instalasi tetap berhasil: Prisma memakai protokol wire PostgreSQL, bukan
+`pg_dump`, sehingga migration dan aplikasi berjalan normal berapa pun versi
+kliennya.
+
+### Backup ketika pg_dump lebih tua
+
+`pg_dump` menolak membuat dump dari server yang lebih baru daripada dirinya.
+Bila server PostgreSQL berversi 13 ke atas sementara klien di server aplikasi
+versi 12, `deploy/update.sh` **berhenti sebelum mengubah apa pun** dan
+menjelaskan pilihannya. Ia tidak pernah melanjutkan tanpa backup.
+
+Tiga cara menyelesaikannya:
+
+**1. Backup dijalankan pada host database.** Paling sederhana bila host database
+Anda kelola sendiri. Pasang cron harian di sana, lalu jalankan pembaruan dengan
+menyatakan bahwa backup ditangani di tempat lain:
+
+```bash
+sudo SKIP_DB_BACKUP=1 bash /opt/ebisnis/app/deploy/update.sh
+```
+
+Variabel itu sengaja harus ditulis ulang setiap kali dan tidak disimpan sebagai
+pengaturan, supaya tidak terlupa bahwa ia aktif.
+
+**2. Dump lewat container** dengan versi yang cocok:
+
+```bash
+sudo apt-get install -y docker.io
+docker run --rm postgres:17 pg_dump \
+  --dbname='postgresql://USER:PASSWORD@HOST:5434/ebisnis' \
+  --format=custom > /var/backups/ebisnis/ebisnis-$(date +%Y%m%d-%H%M%S).dump
+```
+
+**3. Naikkan versi sistem operasi** ke 22.04 atau 24.04. Ini yang paling
+melegakan dalam jangka panjang: dukungan standar Ubuntu 20.04 berakhir pada
+April 2025, sehingga pembaruan keamanan tidak lagi datang secara normal.
+
+### GitHub CLI tidak dapat dipasang lewat snap
+
+Snap `gh` dibangun untuk glibc 2.34 ke atas dan gagal dengan
+`GLIBC_2.34 not found` pada focal. Ini tidak menghalangi apa pun — server tidak
+memerlukan GitHub CLI. Akses repository memakai deploy key SSH, dan
+pendaftaran kuncinya dilakukan dari komputer lain atau lewat web GitHub.
+
+Paket `gitsome` yang muncul pada saran `apt` **bukan** GitHub CLI; ia klien
+Python lama yang kebetulan menyediakan perintah bernama `gh` dan akan
+membingungkan. Jangan dipasang.
 
 ## Pemecahan masalah
 
