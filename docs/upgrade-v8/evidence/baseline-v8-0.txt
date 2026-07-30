@@ -1,0 +1,27 @@
+=== BASELINE V8-0 ===
+waktu: 2026-07-30T18:10:14Z
+commit: 3967cb5
+
+--- db:validate ---
+Prisma schema loaded from prisma\platform
+The schemas at prisma\platform are valid 🚀
+
+--- db:generate ---
+Generated Prisma Client (v6.19.3) — BERHASIL
+(catatan: pola grep sempat menangkap baris kosong dan tampak seperti 'Error:';
+ menjalankan ulang perintah penuh membuktikan tidak ada kesalahan)
+
+--- lint ---
+apps/web lint: Done
+apps/api lint: Done
+
+--- test ---
+apps/api test: Test Suites: 3 passed, 3 total
+apps/api test: Tests:       68 passed, 68 total
+apps/web test: [2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+apps/web test: [2m      Tests [22m [1m[32m15 passed[39m[22m[90m (15)[39m
+
+--- build ---
+apps/api build: Done
+apps/web build: [32m✓ built in 9.62s[39m
+apps/web build: Done

@@ -37,6 +37,14 @@ export const PERMISSION_ACTIONS_SEED: PermissionActionSeed[] = [
   { code: 'CHECK_ALL', name: 'Cek Massal', nameKey: 'action.checkAll', actionType: 'BATCH', sortOrder: 20 },
   { code: 'HARD_DELETE', name: 'Hapus Permanen', nameKey: 'action.hardDelete', actionType: 'SENSITIVE', sortOrder: 21, requiresStepUp: true },
   { code: 'RESTORE', name: 'Pulihkan', nameKey: 'action.restore', actionType: 'STANDARD', sortOrder: 22 },
+  // Empat aksi berikut dituntut profil P0–P12 Versi 8 dan belum ada sebelumnya.
+  // RETURN dan DELEGATE juga dibutuhkan mesin workflow Versi 6: tanpa keduanya
+  // "kembalikan ke pengaju" dan "delegasikan tugas" tidak dapat dinyatakan
+  // sebagai hak, hanya sebagai perilaku yang tersembunyi di dalam kode.
+  { code: 'RETURN', name: 'Kembalikan', nameKey: 'action.return', actionType: 'WORKFLOW', sortOrder: 23 },
+  { code: 'DELEGATE', name: 'Delegasikan', nameKey: 'action.delegate', actionType: 'WORKFLOW', sortOrder: 24 },
+  { code: 'REVERSE', name: 'Jurnal Balik', nameKey: 'action.reverse', actionType: 'POSTING', sortOrder: 25, requiresStepUp: true },
+  { code: 'AUDIT_READ', name: 'Baca Audit', nameKey: 'action.auditRead', actionType: 'SENSITIVE', sortOrder: 26 },
 ];
 
 export interface MenuNodeSeed {
