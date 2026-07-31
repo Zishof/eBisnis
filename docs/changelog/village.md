@@ -551,3 +551,100 @@ jejak tanpa menambah apa pun).
 - `jest` — **1256 tes lulus** (bertambah 40)
 - `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
 - Migrasi diverifikasi: 46 tabel village terbentuk
+
+---
+
+## D-6 — Perencanaan, APBDes, dan adapter keuangan
+
+### Ditambahkan
+
+- **`village-budget.ts`** — aturan sebagai fungsi murni: transisi anggaran,
+  penegakan pagu, keseimbangan APBDes, dua belas kode peristiwa akuntansi
+  `VILLAGE_*`, dan periode perencanaan. **42 pengujian.**
+- **Migrasi `20260731000008`** — sembilan tabel: `village_rpjm`, `village_rkp`,
+  `village_activity`, `village_budget`, `village_budget_line`,
+  `village_budget_transaction`, `village_cash_book`, `village_advance`,
+  `village_activity_plan`.
+- **`VillageBudgetService`** dan **delapan endpoint**.
+
+### Penegakan pagu ada di basis data
+
+Pada APBDes, belanja melampaui pagu adalah **pelanggaran** — bukan keputusan
+yang boleh diambil dengan menekan "lanjutkan". Karena itu dua aturan ditegakkan
+constraint:
+
+```
+committed_amount <= ceiling_amount
+realized_amount  <= committed_amount
+```
+
+Perhitungan sisa pagu yang dilakukan layanan akan salah begitu dua SPP diproses
+bersamaan: keduanya membaca sisa yang sama, keduanya menyimpulkan cukup, dan
+keduanya lolos. **Dibuktikan pada dua koneksi sungguhan** — ikatan kedua yang
+melampaui pagu ditolak meski berjalan bersamaan.
+
+Layanan tetap memeriksa lebih dahulu, dan itu disengaja: pesannya menyebutkan
+pagu, yang sudah diikat, dan sisanya. Petugas yang tahu angkanya dapat
+menyesuaikan nilainya; yang hanya diberi tahu "melampaui pagu" akan menebak.
+
+### Ikat dahulu, baru bayar
+
+Pagu terpakai sejak belanja **diikat** (SPP disetujui, kontrak ditandatangani),
+bukan sejak uang keluar. Desa yang hanya melihat realisasi akan mengira paguya
+masih tersedia padahal sudah habis diikat kontrak — lalu mengikat kontrak kedua
+yang tidak ada uangnya.
+
+Turunannya: **realisasi dibatasi ikatan, bukan pagu.** Realisasi Rp 90 juta pada
+pagu Rp 100 juta dengan ikatan Rp 70 juta tetap ditolak. Uang yang keluar tanpa
+ikatan adalah pengeluaran tanpa dasar — temuan pemeriksaan, bukan sekadar
+kelalaian pencatatan.
+
+### APBDes bukan pembukuan komersial
+
+Yang dipakai dari Core adalah **mesin peristiwa akuntansinya**, bukan bagan akun
+komersialnya. Village menyediakan strukturnya sendiri:
+Pendapatan – Belanja – Pembiayaan, dengan pagu per kegiatan sebagai satuan
+kendali.
+
+Keseimbangan diperiksa saat penetapan: surplus/defisit ditambah pembiayaan neto
+harus nol. APBDes yang tidak seimbang tidak dapat ditetapkan — bukan karena
+aturan sistem, melainkan karena begitulah anggaran disusun.
+
+Dua belas kode peristiwa `VILLAGE_*` mengikuti pola Core: setiap kode wajib
+punya daftar nilai wajibnya, dan pengujian menjaganya. `VILLAGE_ADVANCE_SETTLED`
+menuntut **dua** angka — yang dipakai dan yang dikembalikan — sebab menyimpan
+salah satunya saja membuat sisa panjar harus dihitung ulang, dan perhitungan
+ulang selalu ada yang lupa.
+
+### Keputusan lain
+
+- **APBDes yang ditetapkan wajib menyebut peraturan desanya.** Anggaran tanpa
+  dasar hukum bukan anggaran yang dapat dipertanggungjawabkan.
+- **Pagu yang sudah ditetapkan hanya berubah lewat APBDes Perubahan**, yang
+  memerlukan persetujuan BPD dan peraturan desa tersendiri. Membiarkannya
+  disunting langsung berarti anggaran yang disahkan bukan anggaran yang
+  dijalankan.
+- **Pagu tidak dapat diturunkan di bawah ikatan yang berjalan.** Kontrak yang
+  sudah ditandatangani tidak boleh kehilangan anggarannya.
+- **Satu usulan Musrenbang menjadi paling banyak satu kegiatan.** Dua kegiatan
+  yang menunjuk usulan yang sama berarti warga diberi tahu usulannya dikerjakan
+  dua kali. Tautannya eksplisit — pertanyaan "usulan saya jadi apa" dapat dijawab
+  tanpa menebak.
+- **RKP wajib berada di dalam periode RPJM induknya.** Rencana tahunan tanpa
+  rencana jangka menengah adalah rencana yang tidak dapat dipertanggungjawabkan
+  arahnya.
+- **Kelurahan memperoleh `village_activity_plan` yang jauh lebih sederhana** —
+  ia menerima pagu dari daerah, tidak menyusun anggaran sendiri.
+- **Pembatalan transaksi wajib beralasan.** Transaksi anggaran yang dibatalkan
+  tanpa keterangan adalah lubang pada pertanggungjawaban.
+
+### Bukti
+
+`docs/info-desa/bukti-d6-apbdes.txt` — **20 pemeriksaan**, seluruhnya lulus,
+termasuk dua ikatan bersamaan pada dua koneksi basis data sungguhan.
+
+### Gerbang mutu
+
+- `jest` — **1298 tes lulus** (bertambah 42)
+- `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
+- Migrasi diverifikasi: 55 tabel village terbentuk

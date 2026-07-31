@@ -6,7 +6,7 @@
  * ketergantungan pada D-12, bukan hanya oleh kesepakatan.
  */
 
-import { Body, Controller, Get, Module, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Module, Param, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -20,6 +20,7 @@ import {
   IsInt,
   IsNumber,
   IsOptional,
+  IsPositive,
   IsString,
   IsUUID,
   Matches,
@@ -37,6 +38,7 @@ import { VillageScopeService } from './village-scope.service';
 import { VillageWorkflowService } from './village-workflow.service';
 import { VillageRequestService } from './village-request.service';
 import { VillageParticipationService } from './village-participation.service';
+import { VillageBudgetService } from './village-budget.service';
 import { KATALOG_KELAYAKAN, layak, type KodeFitur } from './village-profile';
 
 function requireSchema(user: AuthenticatedUser): string {
@@ -539,6 +541,169 @@ class AspirasiDto {
   reporterName?: string;
 }
 
+
+class SusunRkpDto {
+  @ApiProperty({ example: 2027 })
+  @IsInt()
+  @Min(2000)
+  fiscalYear!: number;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(300)
+  title!: string;
+
+  @ApiPropertyOptional({ description: 'RPJM Desa induknya. Tahun RKP wajib di dalam periodenya.' })
+  @IsOptional()
+  @IsUUID()
+  rpjmId?: string;
+}
+
+class TarikUsulanDto {
+  @ApiProperty()
+  @IsUUID()
+  proposalId!: string;
+
+  @ApiProperty({ example: '2.1.03' })
+  @IsString()
+  @MaxLength(48)
+  code!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  sector?: string;
+}
+
+class SusunApbdesDto {
+  @ApiProperty({ example: 2027 })
+  @IsInt()
+  @Min(2000)
+  fiscalYear!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  rkpId?: string;
+}
+
+const JENIS_ANGGARAN = [
+  'PENDAPATAN',
+  'BELANJA',
+  'PEMBIAYAAN_PENERIMAAN',
+  'PEMBIAYAAN_PENGELUARAN',
+] as const;
+
+class TetapkanPaguDto {
+  @ApiProperty({ example: '4.1.01' })
+  @IsString()
+  @MaxLength(48)
+  accountCode!: string;
+
+  @ApiProperty({ example: 'Dana Desa' })
+  @IsString()
+  @MaxLength(300)
+  accountName!: string;
+
+  @ApiProperty({ enum: JENIS_ANGGARAN })
+  @IsIn(JENIS_ANGGARAN as unknown as string[])
+  budgetType!: (typeof JENIS_ANGGARAN)[number];
+
+  @ApiProperty({ example: 500000000 })
+  @IsNumber()
+  @Min(0)
+  ceilingAmount!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  activityId?: string;
+}
+
+class TetapkanApbdesDto {
+  @ApiProperty({
+    example: 'Perdes Nomor 3 Tahun 2027',
+    description: 'WAJIB. Anggaran tanpa dasar hukum bukan anggaran yang dapat dipertanggungjawabkan.',
+  })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(160)
+  regulationNumber!: string;
+}
+
+class IkatDto {
+  @ApiProperty()
+  @IsUUID()
+  budgetLineId!: string;
+
+  @ApiProperty({ example: 25000000 })
+  @IsNumber()
+  @IsPositive()
+  amount!: number;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(3)
+  description!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  counterparty?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  documentReference?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  transactionDate?: string;
+}
+
+class RealisasiDto {
+  @ApiProperty()
+  @IsUUID()
+  budgetLineId!: string;
+
+  @ApiProperty({ description: 'Ikatan yang direalisasi. WAJIB — realisasi tanpa ikatan tidak berdasar.' })
+  @IsUUID()
+  parentTransactionId!: string;
+
+  @ApiProperty({ example: 25000000 })
+  @IsNumber()
+  @IsPositive()
+  amount!: number;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(3)
+  description!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  paymentMethod?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  documentReference?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  transactionDate?: string;
+}
+
 // --- Controller ---------------------------------------------------------------
 
 @ApiTags('village')
@@ -551,6 +716,7 @@ export class VillageController {
     private readonly lingkup: VillageScopeService,
     private readonly permohonan: VillageRequestService,
     private readonly partisipasi: VillageParticipationService,
+    private readonly anggaran: VillageBudgetService,
   ) {}
 
 
@@ -1077,6 +1243,141 @@ export class VillageController {
     return this.partisipasi.putuskanUsulan(requireSchema(user), id, dto.status, dto.note, user);
   }
 
+
+  // --- Perencanaan dan APBDes -----------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_RKPDES.CREATE')
+  @Post('rkp')
+  @ApiOperation({
+    summary: 'Menyusun RKP Desa',
+    description:
+      'Tahun RKP wajib berada di dalam periode RPJM Desa induknya. Rencana tahunan tanpa ' +
+      'rencana jangka menengah adalah rencana yang tidak dapat dipertanggungjawabkan arahnya.',
+  })
+  susunRkp(@Body() dto: SusunRkpDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.anggaran.susunRkp(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_RKPDES.UPDATE')
+  @Post('rkp/:id/pull-proposal')
+  @ApiOperation({
+    summary: 'Menarik usulan Musrenbang menjadi kegiatan RKP',
+    description:
+      'Hanya usulan yang sudah disepakati musyawarah. Tautannya eksplisit — warga yang bertanya ' +
+      '"usulan saya jadi apa" dapat dijawab tanpa menebak.',
+  })
+  tarikUsulan(
+    @Param('id') id: string,
+    @Body() dto: TarikUsulanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.anggaran.tarikUsulan(requireSchema(user), id, dto.proposalId, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_APBDES.CREATE')
+  @Post('budgets')
+  @ApiOperation({ summary: 'Menyusun APBDes' })
+  susunApbdes(@Body() dto: SusunApbdesDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.anggaran.susunApbdes(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_APBDES.UPDATE')
+  @Post('budgets/:id/lines')
+  @ApiOperation({
+    summary: 'Menetapkan pagu baris anggaran',
+    description:
+      'Pagu yang sudah ditetapkan hanya dapat diubah melalui APBDes Perubahan, yang memerlukan ' +
+      'persetujuan BPD dan peraturan desa tersendiri.',
+  })
+  tetapkanPagu(
+    @Param('id') id: string,
+    @Body() dto: TetapkanPaguDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.anggaran.tetapkanPagu(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_APBDES.APPROVE')
+  @Post('budgets/:id/establish')
+  @ApiOperation({
+    summary: 'Menetapkan APBDes',
+    description:
+      'Menolak bila tidak seimbang: surplus/defisit ditambah pembiayaan neto harus nol. ' +
+      'APBDes yang tidak seimbang tidak dapat ditetapkan — bukan karena aturan sistem, ' +
+      'melainkan karena begitulah anggaran disusun.',
+  })
+  tetapkanApbdes(
+    @Param('id') id: string,
+    @Body() dto: TetapkanApbdesDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.anggaran.tetapkanApbdes(requireSchema(user), id, dto.regulationNumber, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_REALIZATION.CREATE')
+  @Post('budgets/commit')
+  @ApiOperation({
+    summary: 'Mengikat belanja',
+    description:
+      'MENOLAK bila melampaui pagu — bukan memperingatkan. Pada APBDes, belanja melampaui pagu ' +
+      'adalah pelanggaran, dan sistem yang memperingatkan lalu menerima hanya memindahkan ' +
+      'tanggung jawabnya kepada petugas yang menekan "lanjutkan". Wajib menyertakan ' +
+      'Idempotency-Key.',
+  })
+  ikat(
+    @Body() dto: IkatDto,
+    @Headers('idempotency-key') kunci: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (!kunci?.trim()) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Tajuk Idempotency-Key wajib disertakan pada transaksi anggaran.',
+      );
+    }
+    return this.anggaran.ikat(requireSchema(user), dto, kunci.trim(), user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_REALIZATION.POST')
+  @Post('budgets/realize')
+  @ApiOperation({
+    summary: 'Merealisasi belanja yang sudah diikat',
+    description:
+      'Menuntut ikatan induknya. Uang yang keluar tanpa ikatan adalah pengeluaran tanpa dasar — ' +
+      'temuan pemeriksaan, bukan sekadar kelalaian pencatatan.',
+  })
+  realisasikan(
+    @Body() dto: RealisasiDto,
+    @Headers('idempotency-key') kunci: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (!kunci?.trim()) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Tajuk Idempotency-Key wajib disertakan pada transaksi anggaran.',
+      );
+    }
+    return this.anggaran.realisasikan(requireSchema(user), dto, kunci.trim(), user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_REALIZATION.READ')
+  @Get('budgets/:id/absorption')
+  @ApiOperation({
+    summary: 'Serapan anggaran per baris',
+    description: 'Membedakan yang sudah diikat dari yang sudah direalisasi.',
+  })
+  serapan(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.anggaran.serapanApbdes(requireSchema(user), id);
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -1121,6 +1422,7 @@ export class VillageController {
     VillageWorkflowService,
     VillageRequestService,
     VillageParticipationService,
+    VillageBudgetService,
   ],
   exports: [
     VillageUnitService,
@@ -1130,6 +1432,7 @@ export class VillageController {
     VillageWorkflowService,
     VillageRequestService,
     VillageParticipationService,
+    VillageBudgetService,
   ],
 })
 export class VillageModule {}
