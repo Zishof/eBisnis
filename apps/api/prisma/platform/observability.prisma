@@ -1,0 +1,228 @@
+// eBisnis.id Versi 10 — Observability terpusat.
+//
+// ## Mengapa di control plane, bukan di schema tenant
+//
+// Galat dan metrik lintas tenant. Satu kegagalan pada pustaka bersama muncul
+// pada belasan tenant sekaligus, dan mengelompokkannya menuntut membaca
+// seluruhnya — yang tidak mungkin dilakukan bila datanya tersebar di schema
+// masing-masing.
+//
+// `tenantId` disimpan sebagai **dimensi**, bukan sebagai pemilik. Yang berhak
+// membaca hanya Super Admin platform; administrator tenant tidak, meski
+// datanya berasal dari tenantnya. Bila tenant memerlukannya, Super Admin
+// mengekspor paket tersanitasi lewat alur dukungan yang tercatat.
+//
+// ## Kelompok dan kejadian dipisahkan
+//
+// Tampilan bawaan menampilkan galat unik. Kejadiannya tetap tersimpan
+// seluruhnya — pertanyaan "berapa kali ini terjadi dan pada tenant mana saja"
+// tidak dapat dijawab dari data yang sudah diringkas.
+
+/// Kelompok galat: satu baris per galat yang berbeda.
+model ErrorGroup {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Sidik yang menyatukan kejadian yang sama. Dibentuk dari jenis galat,
+  /// pesan yang sudah dinormalkan, dan bingkai teratas jejak tumpukan.
+  fingerprint String @db.VarChar(64)
+
+  errorType        String  @map("error_type") @db.VarChar(160)
+  messageNormalized String @map("message_normalized") @db.Text
+  moduleCode       String? @map("module_code") @db.VarChar(48)
+  routeTemplate    String? @map("route_template") @db.VarChar(255)
+
+  severity String @default("ERROR") @db.VarChar(16)
+
+  firstSeenAt DateTime @default(now()) @map("first_seen_at") @db.Timestamptz(6)
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+
+  occurrenceCount     Int @default(0) @map("occurrence_count")
+  affectedTenantCount Int @default(0) @map("affected_tenant_count")
+  affectedUserCount   Int @default(0) @map("affected_user_count")
+
+  /// NEW, TRIAGED, INVESTIGATING, REPRODUCED, FIX_PLANNED, FIX_IN_PROGRESS,
+  /// PR_OPENED, READY_FOR_RELEASE, RESOLVED, REGRESSED, IGNORED, DUPLICATE,
+  /// NOT_ACTIONABLE.
+  status String @default("NEW") @db.VarChar(24)
+
+  assignedTo String?   @map("assigned_to") @db.Uuid
+  assignedAt DateTime? @map("assigned_at") @db.Timestamptz(6)
+
+  /// Rilis tempat galat ini pertama muncul dan tempat ia terakhir dinyatakan
+  /// selesai. Selisih keduanya yang menandai regresi.
+  introducedRelease  String? @map("introduced_release") @db.VarChar(64)
+  lastResolvedRelease String? @map("last_resolved_release") @db.VarChar(64)
+  regressed          Boolean @default(false)
+
+  /// Alasan diabaikan. Wajib bila statusnya IGNORED — galat yang diabaikan
+  /// tanpa alasan akan diabaikan lagi oleh orang berikutnya tanpa tahu mengapa.
+  ignoreReason String? @map("ignore_reason") @db.Text
+
+  resolvedAt DateTime? @map("resolved_at") @db.Timestamptz(6)
+  resolvedBy String?   @map("resolved_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  occurrences ErrorLog[]
+
+  @@unique([fingerprint])
+  @@index([status, lastSeenAt])
+  @@index([lastSeenAt])
+  @@index([moduleCode, status])
+  @@map("error_group")
+  @@schema("platform_observability")
+}
+
+/// Satu kejadian galat.
+///
+/// Seluruh isinya sudah melewati `telemetry-sanitizer`. Tidak ada jalur
+/// penulisan yang boleh melewatinya — satu jalur yang lupa akan menyimpan
+/// token pada tabel yang dibaca Super Admin.
+model ErrorLog {
+  id           String @id @default(uuid()) @db.Uuid
+  errorGroupId String @map("error_group_id") @db.Uuid
+
+  fingerprint String @db.VarChar(64)
+
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+
+  severity  String  @default("ERROR") @db.VarChar(16)
+  errorType String  @map("error_type") @db.VarChar(160)
+  errorCode String? @map("error_code") @db.VarChar(64)
+
+  /// Sudah tersanitasi. Nama medannya menyatakan itu supaya tidak ada yang
+  /// mengira boleh mengisinya dengan pesan mentah.
+  messageSanitized String  @map("message_sanitized") @db.Text
+  stackSanitized   String? @map("stack_sanitized") @db.Text
+  causeChainSanitized String? @map("cause_chain_sanitized") @db.Text
+
+  moduleCode    String? @map("module_code") @db.VarChar(48)
+  resourceCode  String? @map("resource_code") @db.VarChar(64)
+  actionCode    String? @map("action_code") @db.VarChar(64)
+  routeTemplate String? @map("route_template") @db.VarChar(255)
+  httpMethod    String? @map("http_method") @db.VarChar(10)
+  httpStatus    Int?    @map("http_status")
+
+  requestId     String? @map("request_id") @db.VarChar(64)
+  traceId       String? @map("trace_id") @db.VarChar(64)
+  correlationId String? @map("correlation_id") @db.VarChar(64)
+
+  /// Dimensi, bukan pemilik. Lihat catatan di kepala berkas.
+  tenantId              String? @map("tenant_id") @db.Uuid
+  tenantUsernameSnapshot String? @map("tenant_username_snapshot") @db.VarChar(72)
+  userId                String? @map("user_id") @db.Uuid
+  activeRoleId          String? @map("active_role_id") @db.Uuid
+  /// Hash, bukan id sesi mentah. Id sesi mentah pada log berarti siapa pun
+  /// yang membaca log dapat menyamar sebagai penggunanya.
+  sessionIdHash String? @map("session_id_hash") @db.VarChar(64)
+
+  clientType     String? @map("client_type") @db.VarChar(24)
+  appVersion     String? @map("app_version") @db.VarChar(48)
+  releaseVersion String? @map("release_version") @db.VarChar(64)
+  gitCommitSha   String? @map("git_commit_sha") @db.VarChar(48)
+
+  serviceName       String? @map("service_name") @db.VarChar(48)
+  serviceInstanceId String? @map("service_instance_id") @db.VarChar(96)
+  hostName          String? @map("host_name") @db.VarChar(128)
+
+  workerName String? @map("worker_name") @db.VarChar(64)
+  jobId      String? @map("job_id") @db.VarChar(96)
+  queueName  String? @map("queue_name") @db.VarChar(64)
+
+  browser         String? @db.VarChar(64)
+  operatingSystem String? @map("operating_system") @db.VarChar(64)
+  deviceType      String? @map("device_type") @db.VarChar(24)
+  /// Oktet terakhir sudah dibuang.
+  ipMasked String? @map("ip_masked") @db.VarChar(64)
+
+  /// Hanya header pada daftar izin.
+  requestHeadersSanitized Json? @map("request_headers_sanitized")
+  requestQuerySanitized   Json? @map("request_query_sanitized")
+
+  isHandled   Boolean @default(true) @map("is_handled")
+  isFatal     Boolean @default(false) @map("is_fatal")
+  isRetryable Boolean @default(false) @map("is_retryable")
+  retryCount  Int     @default(0) @map("retry_count")
+
+  /// API, WORKER, BROWSER, QUEUE, SCHEDULER, atau INTEGRATION.
+  source String @default("API") @db.VarChar(24)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  group ErrorGroup @relation(fields: [errorGroupId], references: [id], onDelete: Cascade)
+
+  @@index([errorGroupId, occurredAt])
+  @@index([occurredAt])
+  @@index([tenantId, occurredAt])
+  @@index([fingerprint, occurredAt])
+  @@map("error_log")
+  @@schema("platform_observability")
+}
+
+/// Catatan setiap akses ke data observability.
+///
+/// Observability memuat jejak seluruh tenant. Siapa yang membacanya, kapan,
+/// dan dengan alasan apa harus dapat dipertanggungjawabkan — termasuk ketika
+/// yang membaca adalah Super Admin.
+model ObservabilityAccessLog {
+  id String @id @default(uuid()) @db.Uuid
+
+  actorUserId   String  @map("actor_user_id") @db.Uuid
+  actorUsername String  @map("actor_username") @db.VarChar(160)
+
+  /// READ, EXPORT, AI_ANALYZE, PROFILE_CAPTURE, atau PURGE.
+  action String @db.VarChar(24)
+
+  /// Apa yang diakses.
+  subjectType String  @map("subject_type") @db.VarChar(32)
+  subjectId   String? @map("subject_id") @db.Uuid
+
+  /// Alasan wajib untuk tindakan yang mengeluarkan data. Akses tanpa alasan
+  /// tidak dapat ditinjau kemudian.
+  reason String? @db.Text
+
+  /// Tenant yang datanya tersentuh, bila terbatas pada satu tenant.
+  affectedTenantId String? @map("affected_tenant_id") @db.Uuid
+
+  requestId String? @map("request_id") @db.VarChar(64)
+  ipMasked  String? @map("ip_masked") @db.VarChar(64)
+
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([actorUserId, occurredAt])
+  @@index([action, occurredAt])
+  @@index([occurredAt])
+  @@map("observability_access_log")
+  @@schema("platform_observability")
+}
+
+/// Kebijakan retensi per jenis data.
+///
+/// Disimpan sebagai data, bukan konstanta kode. Kebutuhan penyimpanan berbeda
+/// antar pemasangan, dan aturan kepatuhan berubah tanpa menunggu rilis.
+model ObservabilityRetentionPolicy {
+  id String @id @default(uuid()) @db.Uuid
+
+  dataType String @map("data_type") @db.VarChar(48)
+
+  /// Berapa hari data disimpan pada masing-masing tingkat.
+  hotDays  Int @default(30) @map("hot_days")
+  warmDays Int @default(90) @map("warm_days")
+  coldDays Int @default(365) @map("cold_days")
+
+  /// Data yang ditahan karena alasan hukum tidak dihapus meski lewat batas.
+  legalHold Boolean @default(false) @map("legal_hold")
+
+  lastPurgedAt DateTime? @map("last_purged_at") @db.Timestamptz(6)
+  lastPurgedCount Int?   @map("last_purged_count")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([dataType])
+  @@map("observability_retention_policy")
+  @@schema("platform_observability")
+}
