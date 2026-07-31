@@ -1,0 +1,80 @@
+=========================================================================
+BUKTI VERSI 11 — AI GATEWAY, KEBIJAKAN, DAN RAG
+=========================================================================
+
+1. KATALOG MODEL DIISI DARI PENEMUAN, BUKAN DIKARANG
+   Penyedia: HEALTHY, versi 0.32.0, 3 model, 548 ms
+  LULUS  penyedia menjawab
+   Penyelarasan: 3 ditemukan, 0 baru, 0 hilang
+  LULUS  model ditemukan
+   Katalog: ecampus-translator:latest, qwen2.5:1.5b-instruct-q4_K_M, qwen2.5:3b-instruct-q4_K_M
+  LULUS  katalog terisi
+
+2. KEMAMPUAN DIUJI DENGAN MENCOBA, BUKAN DITEBAK DARI NAMA
+   Ini yang membedakan katalog yang jujur dari katalog yang berharap.
+   ecampus-translator:latest: chat=true embedding=false terstruktur=true
+   qwen2.5:1.5b-instruct-q4_K_M: chat=true embedding=false terstruktur=true
+   qwen2.5:3b-instruct-q4_K_M: chat=true embedding=false terstruktur=true
+  LULUS  ada model yang mampu chat
+  LULUS  ada model yang mampu keluaran terstruktur
+  LULUS  TIDAK ADA model yang mampu embedding
+   Sebab embedding ditolak: embedding: HTTP 501: {"error":"This server does not support embeddings. Start it with `--embeddings`"}
+  LULUS  sebabnya tercatat, bukan sekadar "tidak didukung"
+
+3. AI TIDAK MEMBERI AKSES YANG TIDAK DIMILIKI PENGGUNANYA
+   Tanpa pemeriksaan ini, AI menjadi jalan memintas seluruh hak akses:
+   yang tidak berhak membaca laporan cukup meminta AI meringkasnya.
+  LULUS  tanpa izin menu keperluannya ditolak
+   Keperluan Temukan Anomali menuntut hak REPORTING.READ. AI tidak memberi akses yang tidak Anda miliki.
+
+4. KEPERLUAN YANG TIDAK TERDAFTAR DITOLAK
+  LULUS  kode keperluan karangan ditolak
+   Daftar tertutup mencegah prompt bebas — tanpa itu, siapa pun dapat
+   mengirim pertanyaan apa saja beserta data apa saja ke penyedia.
+
+5. KEPERLUAN BERBUKTI MENOLAK DIJALANKAN TANPA BUKTI
+  LULUS  tanpa bukti ditolak
+   Keperluan Buat Kesimpulan wajib menyertakan bukti. Tanpa bukti, jawabannya hanya tebakan.
+
+6. DATA SENSITIF DISAMARKAN SEBELUM MENINGGALKAN SERVER
+  LULUS  jawaban berhasil
+   Model: ecampus-translator:latest, 15169 ms
+   Disamarkan: [{"kind":"surel","count":1},{"kind":"telepon","count":1}]
+  LULUS  surel dan telepon disamarkan
+   Kesimpulan: Pada bulan Juni, penjualan mencapai Rp 10.000.000 dan pada bulan Juli, penjualan meningkat menjadi Rp 12.000.000. Total 
+
+7. KELUARAN TERSTRUKTUR SESUAI SKEMA
+  LULUS  bidang kesimpulan ada
+  LULUS  bidang poinPenting berupa array
+  LULUS  bidang keyakinan ada
+  LULUS  bentuk keluarannya ANALYSIS, bukan tindakan
+  LULUS  sumber bukti disertakan pada jawaban
+  LULUS  peringatan disertakan
+   Peringatan: Jawaban ini dihasilkan AI dari bukti yang disertakan dan BELUM diperiksa manusia. Periksa ...
+
+8. PENCARIAN BUKTI MENGHORMATI IZIN DAN KERAHASIAAN
+   Bukti ditemukan: KB-BIASA-v11458f7e
+  LULUS  potongan biasa ditemukan
+  LULUS  potongan RAHASIA tidak pernah ikut
+  LULUS  potongan di luar izin menu tidak ikut
+   Jenis pencari: LEXICAL
+  LULUS  jenis pencarinya dinyatakan terus terang
+
+9. SELURUH PEMANGGILAN TERCATAT
+   BUAT_KESIMPULAN    SUCCESS  bukti=1 skema=true simpanIsi=false
+   BUAT_KESIMPULAN    SUCCESS  bukti=2 skema=true simpanIsi=false
+  LULUS  pemanggilan tercatat
+  LULUS  keperluan berisiko rendah TIDAK menyimpan isi
+   Prompt ERP memuat angka penjualan, nama pelanggan, dan gaji. Menyimpannya
+   utuh berarti membuat salinan kedua dari seluruh data sensitif.
+
+10. PENILAIAN DAN KUOTA
+  LULUS  penilaian tercatat
+  LULUS  penolakan tanpa alasan ditolak
+   Mutu AI hanya dapat diperbaiki dari alasan penolakannya.
+   Bentuk keluaran yang ada: ANALYSIS, RECOMMENDATION, DRAFT
+  LULUS  tidak ada bentuk keluaran yang berarti "kerjakan"
+
+=========================================================================
+SELURUH PEMERIKSAAN LULUS
+=========================================================================

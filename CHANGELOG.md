@@ -9,6 +9,28 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Added
 
+- **AI Gateway (V11-1).** Satu-satunya pintu menuju model bahasa, seluruhnya di
+  sisi server — peramban tidak pernah memanggil penyedia AI langsung. Nama model
+  TIDAK PERNAH dikarang: katalog diisi dengan bertanya kepada penyedianya, dan
+  kemampuannya ditetapkan dengan MENCOBANYA. Model yang hilang ditandai, bukan
+  dihapus. Pemutus arus terbuka setelah tiga kegagalan berturut-turut.
+- **AI tidak pernah bertindak (V11-2).** Ditegakkan oleh bentuk, bukan oleh
+  peringatan: satu-satunya bentuk keluaran yang ada adalah DRAFT, ANALYSIS, dan
+  RECOMMENDATION. Tidak ada nilai yang berarti "kerjakan", sehingga keperluan
+  yang membuat AI melakukan pembayaran, posting, persetujuan, penghapusan, atau
+  perubahan hak akses tidak dapat dinyatakan sama sekali.
+- **AI tidak memberi akses yang tidak dimiliki penggunanya (V11-2).** Izin
+  diperiksa terhadap menu keperluannya — tanpa itu, yang tidak berhak membaca
+  laporan cukup meminta AI meringkasnya. Data sensitif disamarkan sebelum
+  meninggalkan server, dan apa yang disamarkan dilaporkan pada jawabannya.
+- **Basis pengetahuan dan pencarian bukti (V11-3).** Pencarian LEKSIKAL memakai
+  pencarian teks penuh PostgreSQL, dinyatakan terus terang pada setiap jawaban.
+  Pencarian semantik terhalang bendera --embeddings pada server Ollama; bukan
+  model yang kurang. Surat RAHASIA tidak diindeks sama sekali, dan izin disaring
+  di DALAM kueri supaya potongan terlarang tidak pernah terambil.
+- **Copilot sadar-rute (V11-4).** Mencari sendiri bukti tambahan sesuai izin
+  penggunanya. Rute menentukan konteks, BUKAN izin — rute datang dari peramban
+  dan dapat ditulis apa saja.
 - **Empat peran surat dengan pemisahan tugas (V10-8).** Sekretaris, Penyetuju
   Surat, Arsiparis, dan Administrator Tata Kelola Surat — bukan satu peran
   "Administrator Surat". Tata kelola surat memisahkan yang MENYUSUN dari yang

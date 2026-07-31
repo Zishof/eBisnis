@@ -15,6 +15,8 @@ import { SecretBoxService } from './crypto/secret-box.service';
 import { ErrorCaptureService } from './observability/error-capture.service';
 import { PerformanceCollectorService } from './observability/performance-collector.service';
 import { QueryStatsAdapter } from './observability/query-stats.adapter';
+import { OllamaAdapter } from './ai/ollama.adapter';
+import { ModelCatalogService } from './ai/model-catalog.service';
 
 /**
  * Modul infrastruktur global: akses database platform, akses schema tenant,
@@ -23,6 +25,8 @@ import { QueryStatsAdapter } from './observability/query-stats.adapter';
 @Global()
 @Module({
   providers: [
+    OllamaAdapter,
+    ModelCatalogService,
     PerformanceCollectorService,
     QueryStatsAdapter,
     ErrorCaptureService,
@@ -41,6 +45,8 @@ import { QueryStatsAdapter } from './observability/query-stats.adapter';
     CmsSeedService,
   ],
   exports: [
+    OllamaAdapter,
+    ModelCatalogService,
     PerformanceCollectorService,
     QueryStatsAdapter,
     ErrorCaptureService,

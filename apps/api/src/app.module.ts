@@ -27,6 +27,7 @@ import { ObservabilityModule } from './modules/observability/observability.modul
 import { ActivityModule } from './modules/activity/activity.module';
 import { SuratModule } from './modules/surat/surat.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { AiModule } from './modules/ai/ai.module';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
@@ -77,6 +78,7 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
     ActivityModule,
     SuratModule,
     NotificationModule,
+    AiModule,
     // TenantModule didaftarkan TERAKHIR: MasterController memakai route
     // wildcard `:resource`, sehingga harus dicocokkan setelah seluruh route
     // spesifik seperti /devices, /sample-data, dan /billing.
