@@ -67,14 +67,46 @@ test.skip(
   'Fixture POS tidak ada. Jalankan: node apps/api/scripts/e2e-pos-fixture.mjs setup',
 );
 
-/** Masuk sebagai kasir uji. */
+/**
+ * Masuk sebagai kasir uji, dengan kesabaran terhadap pembatas laju.
+ *
+ * Pembatas laju masuk menolak percobaan kesebelas dalam satu menit. Pada
+ * pemakaian sungguhan itu tidak pernah terasa; pada rangkaian uji yang
+ * dijalankan berulang dalam waktu singkat, ia menghasilkan kegagalan yang
+ * tampak seperti layar rusak padahal peladen bekerja sebagaimana mestinya.
+ *
+ * Menunggu lalu mencoba lagi adalah yang dilakukan kasir sungguhan, dan itu
+ * pula yang dilakukan di sini — alih-alih melonggarkan pembatasnya, yang justru
+ * akan menghilangkan perlindungan yang memang diinginkan.
+ */
 async function masukSebagaiKasir(page: Page): Promise<void> {
   const f = fixture!;
-  await page.goto('/masuk');
-  await page.getByLabel(/nama pengguna atau surel/i).fill(f.username);
-  await page.getByLabel(/^kata sandi$/i).fill(f.password);
-  await page.getByRole('button', { name: /^masuk$/i }).click();
-  await page.waitForURL(/\/app/, { timeout: 30_000 });
+  for (let percobaan = 1; percobaan <= 3; percobaan += 1) {
+    await page.goto('/masuk');
+    await page.getByLabel(/nama pengguna atau surel/i).fill(f.username);
+    await page.getByLabel(/^kata sandi$/i).fill(f.password);
+    await page.getByRole('button', { name: /^masuk$/i }).click();
+
+    try {
+      await page.waitForURL(/\/app/, { timeout: 20_000 });
+      return;
+    } catch (e) {
+      const pesan = await page
+        .getByRole('alert')
+        .first()
+        .textContent()
+        .catch(() => null);
+      const dibatasi = /terlalu banyak|too many|coba lagi/i.test(pesan ?? '');
+      if (!dibatasi || percobaan === 3) {
+        throw new Error(
+          `Masuk gagal pada percobaan ${percobaan}` + (pesan ? `: ${pesan.trim()}` : ''),
+          { cause: e },
+        );
+      }
+      // Jendela pembatasnya satu menit; menunggu sedikit lebih lama sudah cukup.
+      await page.waitForTimeout(20_000);
+    }
+  }
 }
 
 /**

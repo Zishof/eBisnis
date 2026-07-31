@@ -25,7 +25,22 @@ export default defineConfig({
       '/health': { target: API_TARGET, changeOrigin: true },
     },
   },
-  preview: { port: 5173, strictPort: true },
+  preview: {
+    port: 5173,
+    strictPort: true,
+    /*
+     * Proxy yang sama seperti server pengembangan.
+     *
+     * `server.proxy` tidak berlaku bagi `vite preview`, dan tanpa salinan ini
+     * aplikasi yang sudah dibangun tidak dapat menghubungi API sama sekali —
+     * seluruh uji peramban akan merah dengan sebab yang tampak seperti cacat
+     * antarmuka.
+     */
+    proxy: {
+      '/api': { target: API_TARGET, changeOrigin: true },
+      '/health': { target: API_TARGET, changeOrigin: true },
+    },
+  },
   build: {
     // Vendor dipisah agar bundle aplikasi tetap kecil dan cache browser efektif.
     rollupOptions: {
