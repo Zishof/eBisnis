@@ -8,12 +8,27 @@ version: 0.1.0
 environment:
   sdk: ^3.6.0
 
-# Belum bergantung pada Flutter.
-#
-# Yang ada sekarang barulah aturan murni beserta uji konformansinya, dan
-# keduanya berjalan dengan `dart test` tanpa emulator maupun perangkat. Menunda
-# ketergantungan Flutter membuat bagian yang paling menentukan — aritmetika uang
-# dan bahan hash — dapat diuji lebih dahulu, sebelum satu piksel pun digambar.
+dependencies:
+  flutter:
+    sdk: flutter
+
 dev_dependencies:
+  flutter_test:
+    sdk: flutter
   test: ^1.25.0
-  lints: ^5.0.0
+  flutter_lints: ^5.0.0
+
+# Sengaja TANPA paket pencetak pihak ketiga.
+#
+# Perintah ESC/POS dibangun sendiri di `lib/perangkat/escpos.dart` — seluruhnya
+# fungsi murni atas daftar byte, sehingga dapat diuji tanpa printer, tanpa
+# emulator, dan tanpa perangkat apa pun. Paket pihak ketiga akan menyembunyikan
+# byte-nya di balik antarmuka yang hanya dapat dibuktikan dengan mencetak
+# sungguhan, dan perintah membuka laci kas adalah hal yang paling tidak nyaman
+# untuk dibuktikan dengan cara mencobanya.
+#
+# Yang tersisa untuk pustaka pihak ketiga hanyalah pengangkutannya (USB, serial,
+# Bluetooth), dan itu memang berbeda per platform.
+
+flutter:
+  uses-material-design: true
