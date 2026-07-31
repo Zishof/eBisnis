@@ -3,9 +3,21 @@ import { PoolClient } from 'pg';
 import { TenantConnectionService } from '../database/tenant-connection.service';
 import { PrismaService } from '../database/prisma.service';
 import { deterministicBatchId } from '../../modules/master-seed/master-seed.service';
-import { MENU_TREE_SEED, PERMISSION_ACTIONS_SEED, ROLE_TEMPLATES_SEED } from './tenant-menu.seed';
+import {
+  MENU_TREE_SEED,
+  PERMISSION_ACTIONS_SEED,
+  ROLE_TEMPLATES_SEED,
+  type MenuNodeSeed,
+  type PermissionActionSeed,
+} from './tenant-menu.seed';
+import { VerticalCatalogRegistry } from './vertical-catalog.registry';
 import { buildLegacyRoleMap, expandTenantRoles } from './role-expansion';
-import { buildSodGroups, TENANT_ROLE_CATALOG } from './tenant-role.seed';
+import {
+  buildSodGroups,
+  ROLE_CATALOG,
+  TENANT_ROLE_CATALOG,
+  type RoleCatalogEntry,
+} from './tenant-role.seed';
 import type { DataScopeCode } from './role-profile';
 
 /** Jumlah baris izin per pernyataan INSERT. */
@@ -23,6 +35,22 @@ const SCOPES_NEEDING_ASSIGNMENT = new Set<DataScopeCode>([
 
 /** Keterangan aturan pemisahan tugas, dikunci pada kode kelompok di katalog role. */
 const SOD_RULE_META: Record<string, { name: string; description: string; severity: string }> = {
+  /*
+   * Koperasi. Pasangan yang paling sering dipakai menyalurkan pinjaman fiktif:
+   * orang yang menyusun analisis kredit lalu menyetujui dan mencairkannya
+   * sendiri. Koperasi mengelola uang anggotanya sendiri, sering dengan petugas
+   * yang sedikit dan saling mengenal — di sanalah pemisahan paling mudah
+   * luntur, dan "sementara saja, orangnya sedang cuti" adalah kalimat yang
+   * mendahului sebagian besar penyimpangannya.
+   */
+  COOPERATIVE_LOAN: {
+    name: 'Penganalisis pinjaman bukan penyetujunya',
+    description:
+      'Petugas Pinjaman menyusun analisis kredit; Ketua, Manajer, atau Pengawas yang menyetujui dan ' +
+      'mencairkan. Analisis kehilangan seluruh gunanya bila penyusunnya sekaligus yang memutuskan, ' +
+      'dan basis data menolak pinjaman yang penganalisisnya sama dengan penyetujunya.',
+    severity: 'HIGH',
+  },
   POS_VOID: {
     name: 'Kasir tidak membatalkan transaksinya sendiri',
     description: 'Void dan refund harus disetujui supervisor, bukan kasir yang membuat transaksi.',
@@ -202,7 +230,56 @@ export class TenantBootstrapService {
   constructor(
     private readonly tenantDb: TenantConnectionService,
     private readonly prisma: PrismaService,
+    /*
+     * Registri katalog vertikal (IR-004). Menu dan peran yang disemai kini
+     * berasal dari sini, bukan hanya dari konstanta inti — sehingga vertikal
+     * yang mendaftarkan katalognya ikut tersemai tanpa berkas ini disunting
+     * lagi.
+     */
+    private readonly verticalCatalogs: VerticalCatalogRegistry,
   ) {}
+
+  /**
+   * Menu yang disemai: inti ditambah seluruh vertikal terdaftar.
+   *
+   * Bila registrinya kosong — misalnya pada pengujian yang membuatnya sendiri —
+   * yang dipakai tetap konstanta inti. Penyemaian yang menghasilkan nol menu
+   * karena registrinya belum terisi akan mengunci penyewa keluar dari
+   * sistemnya, dan itu kegagalan yang jauh lebih mahal daripada menu vertikal
+   * yang belum muncul.
+   */
+  private menusToSeed(): readonly MenuNodeSeed[] {
+    const fromRegistry = this.verticalCatalogs.allMenus();
+    return fromRegistry.length > 0 ? fromRegistry : MENU_TREE_SEED;
+  }
+
+  private rolesToSeed(): readonly RoleCatalogEntry[] {
+    const fromRegistry = this.verticalCatalogs.allRoles();
+    return fromRegistry.length > 0 ? fromRegistry : TENANT_ROLE_CATALOG;
+  }
+
+  /**
+   * Peran yang membentuk aturan pemisahan tugas.
+   *
+   * Sengaja BUKAN `rolesToSeed()`. Katalog inti pada registri berisi
+   * `TENANT_ROLE_CATALOG`, yang menyaring peran control plane — dan dua
+   * kelompok SoD yang sudah tersemai sejak Versi 9 beranggotakan peran
+   * semacam itu. Memakai daftar yang tersaring menghapus keduanya dari setiap
+   * penyewa: aturan yang selama ini berlaku hilang tanpa ada yang memutuskannya.
+   *
+   * Jadi yang dipakai adalah katalog peran penuh, ditambah peran vertikal yang
+   * belum ada di dalamnya.
+   */
+  private rolesForSod(): RoleCatalogEntry[] {
+    const inti = new Set(ROLE_CATALOG.map((r) => r.code));
+    const vertikal = this.rolesToSeed().filter((r) => !inti.has(r.code));
+    return [...ROLE_CATALOG, ...vertikal];
+  }
+
+  private permissionActionsToSeed(): readonly PermissionActionSeed[] {
+    const fromRegistry = this.verticalCatalogs.allPermissionActions();
+    return fromRegistry.length > 0 ? fromRegistry : PERMISSION_ACTIONS_SEED;
+  }
 
   /**
    * Membuat struktur organisasi awal + menu tree + role template.
@@ -318,7 +395,7 @@ export class TenantBootstrapService {
       }
 
       // --- Permission action -------------------------------------------------
-      for (const action of PERMISSION_ACTIONS_SEED) {
+      for (const action of this.permissionActionsToSeed()) {
         await upsertByCode(client, S, 'permission_action', action.code, {
           code: action.code,
           name: action.name,
@@ -334,7 +411,7 @@ export class TenantBootstrapService {
       // memicu satu query lookup; dengan katalog role Versi 8 itu berarti
       // puluhan ribu round-trip di tengah pendaftaran tenant.
       const actionIds = new Map<string, string>();
-      for (const action of PERMISSION_ACTIONS_SEED) {
+      for (const action of this.permissionActionsToSeed()) {
         const id = await lookupByCode(client, S, 'permission_action', action.code);
         if (id) actionIds.set(action.code, id);
       }
@@ -342,7 +419,7 @@ export class TenantBootstrapService {
       // --- Menu tree ---------------------------------------------------------
       const menuIds = new Map<string, string>();
       let menuCount = 0;
-      for (const node of MENU_TREE_SEED) {
+      for (const node of this.menusToSeed()) {
         const parentId = node.parentCode ? menuIds.get(node.parentCode) ?? null : null;
         const path = node.parentCode ? `${pathOf(menuIds, node.parentCode)}/${node.code}` : `/${node.code}`;
         const id = await upsertByCode(client, S, 'menu', node.code, {
@@ -377,8 +454,13 @@ export class TenantBootstrapService {
       // Template lama dipertahankan lebih dulu agar penugasan pengguna yang
       // sudah ada tidak putus, lalu katalog Versi 8 ditambahkan di belakangnya.
       // Keduanya idempoten, sehingga provisioning yang diulang tidak menggandakan.
-      const roleTemplates = [...ROLE_TEMPLATES_SEED, ...expandTenantRoles()];
-      const catalogByCode = new Map(TENANT_ROLE_CATALOG.map((entry) => [entry.code, entry]));
+      const seededMenus = this.menusToSeed();
+      const seededRoles = this.rolesToSeed();
+      const roleTemplates = [
+        ...ROLE_TEMPLATES_SEED,
+        ...expandTenantRoles(seededMenus, seededRoles),
+      ];
+      const catalogByCode = new Map(seededRoles.map((entry) => [entry.code, entry]));
       const legacyMap = buildLegacyRoleMap();
       const roleIds = new Map<string, string>();
       let roleCount = 0;
@@ -476,7 +558,7 @@ export class TenantBootstrapService {
       // Diturunkan dari katalog role, bukan ditulis terpisah, sehingga aturan
       // tidak mungkin menyimpang dari role yang benar-benar disemai.
       let sodRuleCount = 0;
-      for (const group of buildSodGroups()) {
+      for (const group of buildSodGroups(this.rolesForSod())) {
         const meta = SOD_RULE_META[group.group];
         if (!meta) {
           this.logger.warn(`Kelompok SoD '${group.group}' tidak punya keterangan; dilewati`);

@@ -1,0 +1,54 @@
+==============================================================================
+BUKTI PENYEMAIAN RBAC KOPERASI
+Waktu : 2026-07-31T21:19:56.851Z
+==============================================================================
+  LULUS  17 skema penyewa ditemukan
+
+1. Tiga aksi baru tersemai di SELURUH skema
+  LULUS  ANALYZE, DISBURSE, WRITE_OFF ada di 17 skema
+  LULUS  DISBURSE dan WRITE_OFF menuntut pengesahan ulang
+  LULUS  ANALYZE TIDAK menuntutnya — ia menilai, bukan memindahkan uang
+
+2. Menu koperasi tersemai lengkap
+  (skema yang diperiksa rinci: demo)
+  LULUS  22 menu koperasi tersemai
+  LULUS  tidak ada menu katalog yang gagal tersemai
+  LULUS  6 modul koperasi berdiri sendiri
+  LULUS  COOPERATIVE_SAVING berdiri sebagai modul tersendiri
+  LULUS  COOPERATIVE_LOAN berdiri sebagai modul tersendiri
+  LULUS  COOPERATIVE_PORTAL berdiri sebagai modul tersendiri
+
+3. Peran koperasi tersemai beserta izinnya
+  LULUS  9 peran koperasi tersemai
+  LULUS  Petugas Pinjaman memiliki izin pada modul pinjaman
+  LULUS  Petugas Pinjaman TIDAK memegang APPROVE
+  LULUS  Petugas Pinjaman TIDAK memegang DISBURSE
+  LULUS  Petugas Pinjaman TIDAK memegang WRITE_OFF
+  LULUS  Petugas Pinjaman MEMEGANG ANALYZE
+  LULUS  Ketua memegang APPROVE
+  LULUS  Ketua memegang WRITE_OFF
+  LULUS  Ketua TIDAK memegang CREATE
+  LULUS  Manajer memegang DISBURSE
+  LULUS  Manajer TIDAK memegang CREATE
+  LULUS  Petugas Simpanan TIDAK memiliki izin apa pun pada modul pinjaman
+  LULUS  Pengawas tidak memegang satu pun hak menulis
+
+4. Anggota terpisah dari petugas, dua arah
+  LULUS  Anggota memiliki izin pada portal
+  LULUS  Anggota tidak memegang APPROVE
+  LULUS  Anggota TIDAK memiliki izin pada satu pun menu pengurus
+  LULUS  TIDAK ada peran petugas yang memiliki izin portal
+
+5. Aturan pemisahan tugas koperasi benar-benar tersemai
+  LULUS  aturan COOPERATIVE_LOAN ada di 17 skema
+  LULUS  aturan memuat DUA sisi, bukan satu
+  LULUS  Petugas Pinjaman berada pada sisi penyiap
+  LULUS  Ketua berada pada sisi penyetuju
+  LULUS  aturan SoD berjumlah 30 — aturan lama tetap ada
+
+6. Profil koperasi C1–C4 diterima basis data
+  LULUS  profil C1–C4 tersimpan pada role_module_profile
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

@@ -5,6 +5,58 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Menu, peran, dan hak akses koperasi tersemai ke penyewa
+
+### Ditambahkan
+- **Tiga aksi hak akses baru pada katalog INTI**, bukan katalog koperasi:
+  `ANALYZE`, `DISBURSE`, dan `WRITE_OFF`. Tidak satu pun khas koperasi —
+  eMedik memerlukan `DISBURSE` untuk pencairan klaim, dan piutang usaha inti
+  memerlukan `WRITE_OFF`. `DISBURSE` dan `WRITE_OFF` menuntut pengesahan
+  ulang: keduanya memindahkan atau menghapus uang, dan sesi yang ditinggalkan
+  terbuka di meja kerja tidak boleh cukup untuk melakukannya.
+- **Profil koperasi `C1`–`C4`** beserta `V035` yang memperluas constraint
+  `role_module_profile`, menyusul `V012` (marketplace) dan `V025` (kasir).
+- **Katalog vertikal koperasi**: 22 menu, 9 peran, 1 aturan pemisahan tugas.
+  Tersemai ke **17 skema penyewa**.
+
+### Keputusan yang perlu dicatat
+- **Batas modul mengikuti batas pemisahan wewenang, bukan kerapian menu.**
+  Mesin profil memberi satu profil per modul, dan modul adalah menu teratas.
+  Bila seluruh layar koperasi bernaung di bawah satu menu `COOPERATIVE`,
+  Petugas Simpanan akan memperoleh hak mencatat pada layar pinjaman — sebab
+  keduanya satu modul. Karena itu koperasi dipecah menjadi **enam modul**:
+  keanggotaan, simpanan, pinjaman, tata kelola, usaha, dan portal.
+- **Pemisahan kini dijaga bentuk profil, bukan daftar izin.** `C1` memuat
+  `ANALYZE` dan tidak memuat `APPROVE`; `C2` memuat `APPROVE` dan `DISBURSE`
+  tetapi tidak memuat `CREATE`. Tidak ada cara menyusun peran yang melanggarnya
+  tanpa mengubah profilnya sendiri.
+- **Hanya satu kelompok pemisahan tugas yang dinyatakan.** Model peran memberi
+  satu `sodGroup` per peran, sehingga kelompok "simpanan" hanya akan berisi
+  pencatatnya tanpa penyetuju. Kelompok bersisi tunggal tidak pernah dapat
+  bertentangan — ia muncul pada layar sebagai pemeriksaan yang tampak berjalan
+  padahal tidak pernah menyala, dan orang mengandalkannya.
+- **Portal anggota adalah modulnya sendiri.** Portal yang bernaung di bawah
+  menu pengurus akan mewarisi profilnya, dan ratusan anggota memperoleh apa pun
+  yang dimiliki peran pengurus pada modul itu.
+
+### Diperbaiki
+- **Pendaftaran katalog lewat daur hidup modul membuat dua jalur penyemaian
+  menghasilkan isi berbeda.** Aplikasi HTTP memuat seluruh modul; CLI penyemai
+  hanya memuat `InfrastructureModule`. Akibatnya `pnpm migrate:tenants`
+  menyemai 139 menu sedangkan pendaftaran lewat API menyemai 161 — tanpa satu
+  pun galat. Penyewa yang disemai lewat jalur yang salah kehilangan seluruh
+  layar koperasi. Digantikan daftar tetap `VERTICAL_CATALOGS` yang dibaca
+  kedua jalur.
+- **Dua aturan pemisahan tugas hilang dari setiap penyewa.** Katalog inti pada
+  registri berisi `TENANT_ROLE_CATALOG`, yang menyaring peran control plane —
+  dan `ESMARTLINK_CREDENTIAL` serta `PAYMENT_RECONCILE` beranggotakan peran
+  semacam itu. Aturan yang berlaku sejak Versi 9 hilang tanpa ada yang
+  memutuskannya. Penyusunan aturan kini memakai katalog peran penuh.
+- **Kelompok pemisahan tugas tanpa keterangan dilewati dengan peringatan,
+  bukan galat.** `COOPERATIVE_LOAN` karena itu tidak tersemai sama sekali
+  meskipun penyemaian dilaporkan sukses. Ditemukan dengan memeriksa basis
+  datanya, bukan dengan membaca lognya.
+
 ## Provisioning penyewa baru gagal pada migrasi modul pertama
 
 ### Diperbaiki

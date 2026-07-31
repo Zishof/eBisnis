@@ -87,9 +87,17 @@ export function expandRole(
  * menunggu modul yang menunya belum ada; menyembunyikannya akan membuat
  * katalog tampak lebih kecil daripada yang sebenarnya dirancang.
  */
-export function expandTenantRoles(menus: readonly MenuNodeSeed[] = MENU_TREE_SEED): RoleTemplateSeed[] {
+export function expandTenantRoles(
+  menus: readonly MenuNodeSeed[] = MENU_TREE_SEED,
+  /*
+   * Katalog peran kini dapat berasal dari registri vertikal, bukan hanya dari
+   * konstanta inti. Bawaannya tetap `TENANT_ROLE_CATALOG` supaya pemanggil
+   * lama — dan seluruh pengujian yang ada — tidak berubah perilakunya.
+   */
+  roles: readonly RoleCatalogEntry[] = TENANT_ROLE_CATALOG,
+): RoleTemplateSeed[] {
   const moduleMap = buildMenuModuleMap(menus);
-  return TENANT_ROLE_CATALOG.map((role, index) => expandRole(role, menus, moduleMap, (index + 1) * 10));
+  return roles.map((role, index) => expandRole(role, menus, moduleMap, (index + 1) * 10));
 }
 
 /** Peta role lama Versi 5 ke padanan Versi 8, untuk migrasi penugasan. */

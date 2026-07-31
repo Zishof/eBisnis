@@ -90,6 +90,27 @@ export const PERMISSION_ACTIONS_SEED: PermissionActionSeed[] = [
   // alasannya wajib diisi. Kas yang berpindah tanpa alasan tidak dapat
   // direkonsiliasi kemudian.
   { code: 'CASH_MOVE', name: 'Kas Masuk / Keluar', nameKey: 'action.cashMove', actionType: 'SENSITIVE', sortOrder: 49 },
+
+  // --- Versi 12: aksi yang diperlukan vertikal, tetapi bukan miliknya --------
+  //
+  // Ketiganya diusulkan IR-004 masuk katalog INTI, bukan katalog koperasi, dan
+  // usulan itu diterima: tidak satu pun khas koperasi. eMedik memerlukan
+  // DISBURSE untuk pencairan klaim, ANALYZE adalah pola umum "menilai sebelum
+  // memutuskan", dan WRITE_OFF diperlukan piutang usaha inti.
+  //
+  // Mendefinisikannya sebagai COOPERATIVE_DISBURSE akan memaksa tiap vertikal
+  // berikutnya membuat kembarannya sendiri, dan layar pengaturan hak akses
+  // akan memuat tiga aksi berbeda yang artinya sama.
+  { code: 'ANALYZE', name: 'Analisis', nameKey: 'action.analyze', actionType: 'WORKFLOW', sortOrder: 50 },
+  /*
+   * DISBURSE dan WRITE_OFF menuntut pengesahan ulang.
+   *
+   * Keduanya memindahkan atau menghapus uang: pencairan mengeluarkan dana, dan
+   * penghapusbukuan menghilangkan piutang dari neraca. Sesi yang ditinggalkan
+   * terbuka di meja kerja tidak boleh cukup untuk melakukan keduanya.
+   */
+  { code: 'DISBURSE', name: 'Cairkan Dana', nameKey: 'action.disburse', actionType: 'SENSITIVE', sortOrder: 51, requiresStepUp: true },
+  { code: 'WRITE_OFF', name: 'Hapus Buku', nameKey: 'action.writeOff', actionType: 'SENSITIVE', sortOrder: 52, requiresStepUp: true },
 ];
 
 export interface MenuNodeSeed {

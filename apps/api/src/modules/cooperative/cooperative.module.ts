@@ -709,4 +709,11 @@ export class CooperativeController {
   providers: [CooperativeProfileService, CooperativePortalService, CooperativePosAdapter],
   exports: [CooperativeProfileService, CooperativePortalService, CooperativePosAdapter],
 })
+/**
+ * Katalog RBAC koperasi TIDAK didaftarkan di sini.
+ *
+ * Pendaftaran lewat daur hidup modul membuat isi registri bergantung pada
+ * modul mana yang kebetulan dimuat — dan CLI penyemai memuat lebih sedikit
+ * modul daripada aplikasi HTTP. Lihat `vertical-catalogs.ts`.
+ */
 export class CooperativeModule {}

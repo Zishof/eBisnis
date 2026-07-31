@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaService } from './database/prisma.service';
 import { TenantConnectionService } from './database/tenant-connection.service';
 import { TenantMigrationService } from './provisioning/tenant-migration.service';
@@ -19,6 +19,7 @@ import { OllamaAdapter } from './ai/ollama.adapter';
 import { ModelCatalogService } from './ai/model-catalog.service';
 import { EmbeddingService } from './ai/embedding.service';
 import { VerticalCatalogRegistry } from './provisioning/vertical-catalog.registry';
+import { VERTICAL_CATALOGS } from './provisioning/vertical-catalogs';
 import { PublicTenantResolver } from './tenant/public-tenant-resolver.service';
 
 /**
@@ -74,4 +75,25 @@ import { PublicTenantResolver } from './tenant/public-tenant-resolver.service';
     CmsSeedService,
   ],
 })
-export class InfrastructureModule {}
+export class InfrastructureModule implements OnModuleInit {
+  constructor(private readonly catalogs: VerticalCatalogRegistry) {}
+
+  /**
+   * Katalog inti didaftarkan lebih dahulu, sebelum modul vertikal mana pun.
+   *
+   * Urutan ini penting: vertikal yang mendaftar sesudahnya akan bertabrakan
+   * dengan menu inti secara terbuka, bukan menimpanya diam-diam.
+   */
+  onModuleInit(): void {
+    for (const catalog of VERTICAL_CATALOGS) {
+      if (this.catalogs.registeredCodes().includes(catalog.code)) continue;
+      this.catalogs.register(catalog);
+    }
+    /*
+     * Diperiksa setelah semuanya terdaftar. Menu yatim tidak menimbulkan galat
+     * apa pun — ia hanya tidak pernah muncul di layar — jadi lebih baik
+     * ditolak saat aplikasi dimuat daripada ditemukan penyewa.
+     */
+    this.catalogs.validateTree();
+  }
+}
