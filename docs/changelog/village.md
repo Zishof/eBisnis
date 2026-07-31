@@ -447,3 +447,107 @@ dipakai. Belum dikerjakan pada fase ini.
 - `jest` — **1216 tes lulus** (bertambah 41)
 - `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
 - Migrasi diverifikasi: 35 tabel village terbentuk
+
+---
+
+## D-5 — Pengaduan, aspirasi, dan Musrenbang
+
+### Ditambahkan
+
+- **`village-complaint.ts`** — aturan sebagai fungsi murni: mesin transisi
+  pengaduan dan usulan, penyaringan identitas, eskalasi, pengurutan usulan,
+  pembagian pagu, dan kuorum. **40 pengujian.**
+- **Migrasi `20260731000006`** — sebelas tabel pengaduan, aspirasi, Musrenbang,
+  usulan, kehadiran, dan survei.
+- **Migrasi `20260731000007`** — koreksi pemicu audit (lihat di bawah).
+- **`VillageParticipationService`** dan **sembilan endpoint**.
+
+### Anonimitas: tidak disimpan, bukan disembunyikan
+
+Pengaduan yang paling perlu didengar adalah pengaduan **tentang perangkat desa
+itu sendiri** — pungutan liar, bantuan yang tidak sampai, keputusan yang
+berpihak. Warga tidak akan menyampaikannya bila namanya terlihat oleh orang yang
+ia adukan, yang tinggal di kampung yang sama dan akan terus ia temui.
+
+Karena itu mode `ANONIM` berarti identitas pelapor **tidak disimpan sama
+sekali**. Constraint basis data menolak baris anonim yang membawa identitas apa
+pun, sehingga satu jalan kode yang lupa mengosongkannya gagal saat menyimpan
+alih-alih menyimpan diam-diam.
+
+**Tidak ada kolom hash pelapor.** Godaan yang wajar: simpan `sha256(nik)` untuk
+mencegah spam, "toh tidak dapat dibalik". Tetapi ruang NIK hanya enam belas
+digit dan desa memiliki daftar NIK seluruh warganya — mencocokkan hash terhadap
+seribu NIK memakan kurang dari sedetik. Hash dari data berentropi rendah yang
+daftarnya sudah dipegang bukan penyamaran, melainkan penundaan yang tidak
+menunda apa pun.
+
+**Kategori yang menyangkut aparatur dipaksa anonim.** Warga yang memilih
+kategori itu lalu lupa mencentang "sembunyikan nama saya" tidak boleh tanpa
+sengaja mengungkapkan dirinya kepada orang yang ia adukan.
+
+**Aduan tentang aparatur tidak dapat ditugaskan kepadanya** — ditegakkan
+constraint dan layanan. Menugaskan aduan kepada terlapor sama dengan menutupnya.
+
+### Koreksi: pemicu audit village tidak pernah terpasang
+
+Migrasi D-1 sampai D-5 memuat blok pemasangan pemicu audit yang mencari fungsi
+bernama `fn_audit_row_change`. **Nama itu tidak pernah ada.** Fungsi audit yang
+sesungguhnya bernama `audit_row_trigger()` dan tinggal pada skema audit terpisah
+(`<tenant>__audit`), sebagaimana dipasang `V008`.
+
+Akibatnya penjaga `IF EXISTS` selalu bernilai salah, blok itu dilewati tanpa
+galat, dan **tidak satu pun tabel village benar-benar diaudit** — meskipun
+komentar migrasi dan changelog D-1 sampai D-4 menyatakan sebaliknya.
+
+Kegagalannya senyap justru karena penjaganya. Blok yang dijaga `IF EXISTS` tidak
+pernah mengeluh ketika syaratnya tidak terpenuhi; ia hanya diam. Itu pilihan
+yang tepat untuk menghadapi skema uji tanpa infrastruktur audit, tetapi menjadi
+jebakan ketika nama yang dicari memang salah.
+
+Cacat kedua di jalur yang sama: `VillageMigrationService` tidak pernah
+mensubstitusi `{{AUDIT_SCHEMA}}`, sehingga naskah yang memakainya akan menyebut
+skema bernama harfiah `{{AUDIT_SCHEMA}}` — yang juga tidak ada.
+
+**Ditemukan oleh pengujian yang justru dimaksudkan membuktikan hal sebaliknya**:
+asersi bahwa `village_proposal` diaudit sementara `village_complaint` tidak.
+
+Diperbaiki: blok palsu dibuang dari kelima migrasi, pemasangan dipusatkan pada
+migrasi `20260731000007` dengan nama fungsi yang benar, dan `{{AUDIT_SCHEMA}}`
+kini disubstitusi. Klaim "diaudit" pada changelog D-1 sampai D-4 baru menjadi
+benar sejak commit ini.
+
+Yang sengaja dikecualikan dari audit: `village_complaint`, `village_aspiration`
+(pemicu menyalin nilai lama-baru termasuk identitas pelapor — aduan yang pernah
+tersimpan terbuka lalu diubah menjadi anonim akan meninggalkan salinannya, dan
+anonimitas yang bocor lewat jalur audit tetaplah bocor), serta tabel jejak
+seperti `village_resident_access_log` (mengaudit jejak menghasilkan jejak dari
+jejak tanpa menambah apa pun).
+
+### Keputusan lain
+
+- **Pengaduan yang selesai dapat dibuka kembali.** Yang sekali ditutup tidak
+  dapat dibuka lagi akan mendorong petugas menutupnya cepat-cepat demi angka
+  penyelesaian.
+- **Usulan yang tidak tertampung pagu DITUNDA, bukan ditolak.** Menolaknya
+  menghapus jejak bahwa warga pernah mengusulkannya, dan tahun depan pengusulnya
+  harus mulai dari nol.
+- **Skor musyawarah didahulukan atas jumlah penerima manfaat, dan keduanya
+  mendahului biaya.** Mengurutkan menurut biaya lebih dahulu akan membuat jalan
+  setapak selalu mengalahkan jembatan, dan desa tidak pernah membangun apa pun
+  yang besar.
+- **Kuorum sebagai data, bukan angka tetap.** Ketentuannya berbeda antar daerah;
+  menebaknya dari pusat akan salah di sebagian tempat.
+- **Eskalasi dihitung dari terakhir ada tindakan**, bukan dari tanggal masuk.
+- **Siapa yang menetapkan hasil Musrenbang tercatat.** Inilah saat usulan
+  menjadi mengikat dan pagu terbagi; pertanyaan "atas dasar apa usulan saya
+  ditunda" akan ditanyakan, dan jawabannya menuntut nama.
+
+### Bukti
+
+`docs/info-desa/bukti-d5-partisipasi.txt` — **28 pemeriksaan**, seluruhnya lulus.
+
+### Gerbang mutu
+
+- `jest` — **1256 tes lulus** (bertambah 40)
+- `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
+- Migrasi diverifikasi: 46 tabel village terbentuk

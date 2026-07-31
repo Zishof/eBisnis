@@ -38,6 +38,20 @@
       "file": "20260731000005__village__single_unit_per_schema.sql",
       "name": "Satu desa/kelurahan per schema",
       "description": "Indeks unik parsial pada village_unit yang memastikan hanya ada satu unit pemerintahan aktif per schema. eBisnis memakai skema-per-penyewa sejak awal, tetapi tidak ada yang mencegah dua unit tersisip ke satu schema — dan bila itu terjadi, kegagalannya senyap seluruhnya: layanan village membaca baris pertama menurut created_at, sehingga unit kedua tidak pernah terlihat pada daftar mana pun; bila urutannya berubah karena baris pertama dinonaktifkan, seluruh sistem tiba-tiba menunjuk desa yang berbeda tanpa galat apa pun; dan karena kelayakan profil ditentukan profile_type unit itu, dua unit berbeda profil berarti APBDes desa dapat dibuka petugas kelurahan. Indeks parsial dipilih supaya baris nonaktif tidak menghalangi — desa yang berubah status menjadi kelurahan menonaktifkan unit lamanya lalu membuat yang baru, dan itu sah."
+    },
+    {
+      "version": "20260731000006",
+      "sequence": 6,
+      "file": "20260731000006__village__complaint_and_participation.sql",
+      "name": "Pengaduan, aspirasi, dan Musrenbang",
+      "description": "village_complaint_category, village_complaint, village_complaint_evidence, village_complaint_followup, village_complaint_feedback, village_aspiration, village_musrenbang, village_proposal, village_musrenbang_attendee, village_survey, village_survey_response. Anonimitas ditegakkan basis data: constraint menolak baris anonim yang membawa identitas apa pun, sehingga satu jalan kode yang lupa mengosongkannya gagal saat menyimpan alih-alih menyimpan diam-diam. Pengaduan yang paling perlu didengar adalah pengaduan tentang perangkat desa itu sendiri, dan warga tidak akan menyampaikannya bila namanya terlihat oleh orang yang ia adukan. TIDAK ada kolom hash pelapor: ruang NIK hanya enam belas digit dan desa memiliki daftar NIK seluruh warganya, sehingga hash-nya dapat dicocokkan exhaustively dalam hitungan detik — hash dari data berentropi rendah yang daftarnya sudah dipegang bukan penyamaran melainkan penundaan yang tidak menunda apa pun. village_complaint sengaja TIDAK diberi pemicu audit baris, sebab pemicu itu menyalin nilai lama dan baru termasuk identitas pelapor; aduan yang pernah tersimpan terbuka lalu diubah menjadi anonim akan meninggalkan salinan identitasnya di tabel audit, dan anonimitas yang bocor lewat jalur audit tetaplah bocor. Perubahan statusnya tercatat pada village_complaint_followup yang tidak pernah memuat identitas. Constraint juga menolak penugasan pengaduan kepada aparatur yang diadukan — menugaskan aduan kepada terlapor sama dengan menutupnya."
+    },
+    {
+      "version": "20260731000007",
+      "sequence": 7,
+      "file": "20260731000007__village__install_audit_triggers.sql",
+      "name": "Memasang pemicu audit yang sesungguhnya",
+      "description": "KOREKSI. Migrasi D-1 sampai D-5 memuat blok pemasangan pemicu audit yang mencari fungsi bernama fn_audit_row_change — nama yang tidak pernah ada. Fungsi audit yang sesungguhnya bernama audit_row_trigger() dan tinggal pada skema audit terpisah (<tenant>__audit), sebagaimana dipasang V008. Akibatnya penjaga IF EXISTS selalu bernilai salah, blok itu dilewati tanpa galat, dan tidak satu pun tabel village benar-benar diaudit meskipun komentar migrasi menyatakan sebaliknya. Kegagalannya senyap justru karena penjaganya: blok yang dijaga IF EXISTS tidak pernah mengeluh ketika syaratnya tidak terpenuhi. Ditemukan oleh pengujian yang justru dimaksudkan membuktikan hal sebaliknya. V008 sendiri tidak memasangnya karena ia menelusuri tabel yang ada pada saat ia dijalankan, dan tabel village dibuat jauh sesudahnya. village_complaint dan village_aspiration sengaja dikecualikan: pemicu audit menyalin nilai lama dan baru termasuk identitas pelapor, dan aduan yang pernah tersimpan terbuka lalu diubah menjadi anonim akan meninggalkan salinan identitasnya di sana. Tabel jejak seperti village_resident_access_log juga dikecualikan — mengaudit jejak menghasilkan jejak dari jejak tanpa menambah apa pun."
     }
   ]
 }

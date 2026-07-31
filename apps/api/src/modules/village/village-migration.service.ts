@@ -115,7 +115,7 @@ export class VillageMigrationService {
 
       const mulai = Date.now();
       await this.tenantDb.transaction(schemaName, async (client) => {
-        await client.query(sql.replace(/\{\{TENANT_SCHEMA\}\}/g, schemaName));
+        await client.query(this.render(sql, schemaName));
         await client.query(
           `INSERT INTO "${schemaName}".schema_migration (version, name, checksum, duration_ms)
            VALUES ($1, $2, $3, $4)`,
@@ -128,6 +128,24 @@ export class VillageMigrationService {
     }
 
     return { applied, skipped };
+  }
+
+  /**
+   * Mengganti penanda skema pada naskah migrasi.
+   *
+   * `{{AUDIT_SCHEMA}}` semula tidak diganti sama sekali, dan itu cacat yang
+   * senyap: naskah yang memakainya akan menyebut skema bernama harfiah
+   * `{{AUDIT_SCHEMA}}`, yang tidak pernah ada. Bila penyebutan itu berada di
+   * dalam blok yang dijaga `IF EXISTS`, ia tidak menghasilkan galat apa pun —
+   * hanya diam.
+   *
+   * Skema audit tenant bernama `<tenant>__audit`, mengikuti pola yang sudah
+   * dipakai `TenantMigrationService`.
+   */
+  private render(sql: string, schemaName: string): string {
+    return sql
+      .replace(/\{\{TENANT_SCHEMA\}\}/g, schemaName)
+      .replace(/\{\{AUDIT_SCHEMA\}\}/g, `${schemaName}__audit`);
   }
 
   /** Versi migrasi village terakhir yang tercatat pada sebuah skema. */

@@ -305,23 +305,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS village_domain_primary_unique
 -- ---------------------------------------------------------------------------
 -- Jejak audit
 -- ---------------------------------------------------------------------------
--- Memakai fungsi pemicu generik yang sudah ada sejak V008. Village tidak
--- membangun mekanisme audit sendiri.
-DO $$
-DECLARE
-  t TEXT;
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'fn_audit_row_change') THEN
-    FOREACH t IN ARRAY ARRAY[
-      'village_unit', 'village_sub_area', 'village_rw', 'village_rt', 'village_domain'
-    ] LOOP
-      EXECUTE format(
-        'DROP TRIGGER IF EXISTS trg_audit_%1$s ON %2$I.%1$I;
-         CREATE TRIGGER trg_audit_%1$s
-           AFTER INSERT OR UPDATE OR DELETE ON %2$I.%1$I
-           FOR EACH ROW EXECUTE FUNCTION fn_audit_row_change()',
-        t, '{{TENANT_SCHEMA}}'
-      );
-    END LOOP;
-  END IF;
-END $$;
+-- Dipasang oleh migrasi 20260731000007, bukan di sini.
+--
+-- Berkas ini semula memuat blok pemasangan pemicu yang mencari fungsi bernama
+-- `fn_audit_row_change` — nama yang tidak pernah ada. Fungsi audit yang
+-- sesungguhnya bernama `audit_row_trigger()` dan tinggal pada skema audit
+-- terpisah. Karena blok itu dijaga `IF EXISTS`, ia dilewati tanpa galat, dan
+-- tidak satu pun tabel village benar-benar diaudit.
+--
+-- Blok itu dibuang alih-alih dibetulkan di tempatnya: migrasi ini belum
+-- pernah diterapkan pada skema penyewa mana pun, sehingga membetulkannya di
+-- sini masih aman. Pemasangannya dipusatkan pada satu migrasi supaya tidak
+-- terulang lima kali dengan lima peluang salah ketik.

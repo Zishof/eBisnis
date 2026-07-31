@@ -1,0 +1,57 @@
+==============================================================================
+BUKTI D-5 — PENGADUAN ANONIM, ASPIRASI, DAN MUSRENBANG
+Waktu : 2026-07-31T17:27:35.511Z
+==============================================================================
+
+1. Baris anonim tidak dapat membawa identitas apa pun
+  LULUS  aduan anonim dengan reporter_name DITOLAK
+  LULUS  aduan anonim dengan reporter_phone DITOLAK
+  LULUS  aduan anonim dengan reporter_user_id DITOLAK
+  LULUS  aduan anonim tanpa identitas diterima
+  LULUS  seluruh medan identitas benar-benar kosong
+
+2. Tidak ada kolom hash pelapor
+  LULUS  tidak ada kolom hash/fingerprint pelapor
+
+3. Pengaduan tidak diberi pemicu audit baris
+  LULUS  village_complaint TIDAK punya pemicu audit
+  LULUS  village_complaint disebut sebagai pengecualian audit yang disengaja
+  LULUS  pemasangan memakai nama fungsi yang benar
+  LULUS  tidak ada lagi penjaga yang mencari nama yang salah
+  LULUS  tabel village lain TIDAK dikecualikan
+
+4. Aduan tentang aparatur tidak dapat ditugaskan kepadanya
+  LULUS  penugasan kepada yang diadukan DITOLAK
+  LULUS  penugasan kepada petugas lain diterima
+
+5. Penutupan dan penghentian wajib beralasan
+  LULUS  status DITUTUP tanpa alasan ditolak
+  LULUS  status BUKAN_KEWENANGAN tanpa alasan ditolak
+  LULUS  penutupan beralasan diterima
+
+6. Pelapor anonim melacak lewat kode, bukan lewat identitas
+  LULUS  kode pelacakan menemukan aduannya
+  LULUS  pelapor dapat membaca alasan penutupan
+  LULUS  kode palsu tidak menemukan apa pun
+
+7. Aspirasi anonim
+  LULUS  aspirasi anonim dengan nama DITOLAK
+
+8. Musrenbang: kuorum dan pembagian pagu
+  LULUS  satu forum per jenis per tahun anggaran
+  LULUS  skor prioritas di luar 1-5 ditolak
+  LULUS  penolakan usulan tanpa alasan ditolak
+  LULUS  dua usulan disepakati sesuai pagu
+  LULUS  usulan yang tidak tertampung DITUNDA, bukan ditolak
+
+9. Kehadiran Musrenbang
+  LULUS  satu warga tidak tercatat hadir dua kali
+
+10. Penetap hasil tercatat
+  LULUS  siapa yang menetapkan hasil tercatat
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

@@ -17,11 +17,14 @@ import {
 import {
   IsBoolean,
   IsIn,
+  IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Matches,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
@@ -33,6 +36,7 @@ import { VillageResidentService } from './village-resident.service';
 import { VillageScopeService } from './village-scope.service';
 import { VillageWorkflowService } from './village-workflow.service';
 import { VillageRequestService } from './village-request.service';
+import { VillageParticipationService } from './village-participation.service';
 import { KATALOG_KELAYAKAN, layak, type KodeFitur } from './village-profile';
 
 function requireSchema(user: AuthenticatedUser): string {
@@ -364,6 +368,177 @@ class AmbilAntreanDto {
   requestId?: string;
 }
 
+
+class AdukanDto {
+  @ApiPropertyOptional({ example: 'PUNGLI' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  categoryCode?: string;
+
+  @ApiProperty({
+    enum: ['TERBUKA', 'ANONIM'],
+    description:
+      'ANONIM berarti identitas pelapor TIDAK DISIMPAN sama sekali — bukan disimpan lalu ' +
+      'disembunyikan. Kategori yang menyangkut aparatur dipaksa anonim.',
+  })
+  @IsIn(['TERBUKA', 'ANONIM'])
+  mode!: 'TERBUKA' | 'ANONIM';
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(300)
+  title!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(10)
+  description!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  locationNote?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  rtId?: string;
+
+  @ApiPropertyOptional({ description: 'Aparatur yang diadukan, bila ada.' })
+  @IsOptional()
+  @IsUUID()
+  concernsOfficerId?: string;
+
+  @ApiPropertyOptional({ description: 'Diabaikan bila mode ANONIM.' })
+  @IsOptional()
+  @IsUUID()
+  reporterResidentId?: string;
+
+  @ApiPropertyOptional({ description: 'Diabaikan bila mode ANONIM.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  reporterName?: string;
+
+  @ApiPropertyOptional({ description: 'Diabaikan bila mode ANONIM.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  reporterPhone?: string;
+}
+
+class TugaskanPengaduanDto {
+  @ApiProperty()
+  @IsUUID()
+  officerId!: string;
+}
+
+const STATUS_ADUAN = [
+  'DITERIMA',
+  'DITUGASKAN',
+  'DITINDAKLANJUTI',
+  'SELESAI',
+  'DITUTUP',
+  'BUKAN_KEWENANGAN',
+] as const;
+
+class TindakLanjutDto {
+  @ApiProperty({ enum: STATUS_ADUAN })
+  @IsIn(STATUS_ADUAN as unknown as string[])
+  status!: (typeof STATUS_ADUAN)[number];
+
+  @ApiProperty({ description: 'WAJIB untuk penutupan dan penghentian.' })
+  @IsString()
+  @MaxLength(2000)
+  note!: string;
+
+  @ApiPropertyOptional({ description: 'Bawaannya terlihat pelapor.' })
+  @IsOptional()
+  @IsBoolean()
+  visibleToReporter?: boolean;
+}
+
+class BukaMusrenbangDto {
+  @ApiProperty({ example: 2027 })
+  @IsInt()
+  @Min(2000)
+  fiscalYear!: number;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(300)
+  title!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  heldAt?: string;
+
+  @ApiPropertyOptional({ description: 'Kuorum minimum. Ketentuannya berbeda antar daerah.' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  quorumMinimum?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  budgetCeiling?: number;
+}
+
+const STATUS_USULAN_DTO = ['DIBAHAS', 'DISEPAKATI', 'DITUNDA', 'DITOLAK', 'MASUK_RKP'] as const;
+
+class PutusanUsulanDto {
+  @ApiProperty({ enum: STATUS_USULAN_DTO })
+  @IsIn(STATUS_USULAN_DTO as unknown as string[])
+  status!: (typeof STATUS_USULAN_DTO)[number];
+
+  @ApiPropertyOptional({ description: 'WAJIB untuk DITOLAK dan DITUNDA.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  note?: string;
+}
+
+class AspirasiDto {
+  @ApiProperty({ enum: ['TERBUKA', 'ANONIM'] })
+  @IsIn(['TERBUKA', 'ANONIM'])
+  mode!: 'TERBUKA' | 'ANONIM';
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(300)
+  title!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(10)
+  description!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  category?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  reporterResidentId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  reporterName?: string;
+}
+
 // --- Controller ---------------------------------------------------------------
 
 @ApiTags('village')
@@ -375,6 +550,7 @@ export class VillageController {
     private readonly penduduk: VillageResidentService,
     private readonly lingkup: VillageScopeService,
     private readonly permohonan: VillageRequestService,
+    private readonly partisipasi: VillageParticipationService,
   ) {}
 
 
@@ -759,6 +935,148 @@ export class VillageController {
     return this.permohonan.lacak(requireSchema(user), number);
   }
 
+
+  // --- Pengaduan dan partisipasi --------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_COMPLAINT.CREATE')
+  @Post('complaints')
+  @ApiOperation({
+    summary: 'Menyampaikan pengaduan',
+    description:
+      'Mode ANONIM berarti identitas pelapor TIDAK DISIMPAN sama sekali — bukan disimpan lalu ' +
+      'disembunyikan. Kategori yang menyangkut aparatur dipaksa anonim, sebab warga yang lupa ' +
+      'mencentangnya tidak boleh tanpa sengaja mengungkapkan diri kepada orang yang ia adukan. ' +
+      'Kode pelacakan yang dikembalikan adalah satu-satunya cara pelapor anonim menengok kembali ' +
+      'aduannya.',
+  })
+  adukan(@Body() dto: AdukanDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.partisipasi.adukan(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_COMPLAINT.ASSIGN')
+  @Post('complaints/:id/assign')
+  @ApiOperation({
+    summary: 'Menugaskan pengaduan',
+    description:
+      'Pengaduan tentang seorang aparatur tidak dapat ditugaskan kepadanya — menugaskan aduan ' +
+      'kepada terlapor sama dengan menutupnya.',
+  })
+  tugaskanAduan(
+    @Param('id') id: string,
+    @Body() dto: TugaskanPengaduanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.partisipasi.tugaskan(requireSchema(user), id, dto.officerId, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_COMPLAINT.UPDATE')
+  @Post('complaints/:id/follow-up')
+  @ApiOperation({
+    summary: 'Menindaklanjuti pengaduan',
+    description: 'Penutupan dan penghentian wajib beralasan — warga berhak tahu mengapa aduannya berhenti.',
+  })
+  tindaklanjuti(
+    @Param('id') id: string,
+    @Body() dto: TindakLanjutDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.partisipasi.tindaklanjuti(
+      requireSchema(user),
+      id,
+      dto.status,
+      dto.note,
+      user,
+      dto.visibleToReporter ?? true,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_COMPLAINT.READ')
+  @Get('complaints/track/:token')
+  @ApiOperation({
+    summary: 'Melacak pengaduan dari kode',
+    description: 'Tidak mengembalikan identitas siapa pun — untuk aduan anonim, tidak ada yang tersimpan.',
+  })
+  lacakAduan(@Param('token') token: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.partisipasi.lacakPengaduan(requireSchema(user), token);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_COMPLAINT.READ')
+  @Get('complaints/attention')
+  @ApiOperation({
+    summary: 'Pengaduan yang terlantar atau perlu diangkat',
+    description: 'Dihitung dari terakhir ada tindakan, bukan dari tanggal masuk.',
+  })
+  perluPerhatian(@CurrentUser() user: AuthenticatedUser) {
+    return this.partisipasi.perluPerhatian(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_ASPIRATION.CREATE')
+  @Post('aspirations')
+  @ApiOperation({ summary: 'Menyampaikan aspirasi' })
+  aspirasi(@Body() dto: AspirasiDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.partisipasi.sampaikanAspirasi(requireSchema(user), dto);
+  }
+
+  // --- Musrenbang -----------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_MUSRENBANG.CREATE')
+  @Post('musrenbang')
+  @ApiOperation({
+    summary: 'Membuka forum Musrenbang',
+    description:
+      'Jenis forum ditentukan profil penyewa: desa menyelenggarakan Musdes, kelurahan ' +
+      'menyelenggarakan Muskel. Keduanya berbeda bentuk maupun jenjangnya.',
+  })
+  bukaMusrenbang(@Body() dto: BukaMusrenbangDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.partisipasi.bukaMusrenbang(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_MUSRENBANG.READ')
+  @Get('musrenbang/:id/proposals')
+  @ApiOperation({
+    summary: 'Usulan terurut menurut prioritas musyawarah',
+    description:
+      'Skor musyawarah didahulukan atas jumlah penerima manfaat, dan keduanya mendahului biaya. ' +
+      'Mengurutkan menurut biaya lebih dahulu akan membuat jalan setapak selalu mengalahkan ' +
+      'jembatan, dan desa tidak pernah membangun apa pun yang besar.',
+  })
+  usulanTerurut(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.partisipasi.usulanTerurut(requireSchema(user), id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_MUSRENBANG.APPROVE')
+  @Post('musrenbang/:id/finalize')
+  @ApiOperation({
+    summary: 'Menetapkan hasil musyawarah',
+    description:
+      'Menolak bila kuorum tidak terpenuhi. Usulan yang tidak tertampung pagu DITUNDA, bukan ' +
+      'ditolak — menolaknya menghapus jejak bahwa warga pernah mengusulkannya.',
+  })
+  tetapkanMusrenbang(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.partisipasi.tetapkanHasil(requireSchema(user), id, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_MUSRENBANG.UPDATE')
+  @Post('proposals/:id/decide')
+  @ApiOperation({ summary: 'Memutuskan satu usulan' })
+  putuskanUsulan(
+    @Param('id') id: string,
+    @Body() dto: PutusanUsulanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.partisipasi.putuskanUsulan(requireSchema(user), id, dto.status, dto.note, user);
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -802,6 +1120,7 @@ export class VillageController {
     VillageScopeService,
     VillageWorkflowService,
     VillageRequestService,
+    VillageParticipationService,
   ],
   exports: [
     VillageUnitService,
@@ -810,6 +1129,7 @@ export class VillageController {
     VillageScopeService,
     VillageWorkflowService,
     VillageRequestService,
+    VillageParticipationService,
   ],
 })
 export class VillageModule {}
