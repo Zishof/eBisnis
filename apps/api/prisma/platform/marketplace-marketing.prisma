@@ -1,0 +1,227 @@
+// eBisnis.id Versi 9 — Promosi, ulasan, dan percakapan marketplace.
+//
+// ## Mengapa voucher marketplace bukan `DiscountProgram`
+//
+// `DiscountProgram` yang sudah ada melayani diskon langganan: didanai platform,
+// ditukar per **tenant**, dan dibatasi lewat `maxPerTenant`. Voucher
+// marketplace didanai **penjual**, ditukar per **pembeli**, dan anggarannya
+// dipotong dari kantong penjual.
+//
+// Ketiganya berbeda: pendana, penukar, dan sumber anggaran. Memaksakan satu
+// tabel untuk keduanya berarti kolom `maxPerTenant` yang tidak berarti apa-apa
+// bagi voucher, dan kolom anggaran penjual yang tidak berarti apa-apa bagi
+// langganan — dan setiap pembaca harus tahu mana yang berlaku kapan.
+//
+// Yang **dipakai ulang** adalah konsepnya: ambang, batas penukaran, masa
+// berlaku, dan kebijakan penumpukan. Bukan tabelnya.
+
+/// Voucher marketplace.
+model MarketplaceVoucher {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Kode yang diketik pembeli. Huruf besar, tanpa spasi.
+  code String @db.VarChar(32)
+
+  name        String  @db.VarChar(160)
+  description String? @db.Text
+
+  /// SELLER bila didanai penjual, PLATFORM bila didanai platform.
+  /// Menentukan siapa yang menanggung potongannya saat setelmen.
+  fundedBy String @map("funded_by") @db.VarChar(16)
+
+  /// Diisi hanya bila `fundedBy` = SELLER.
+  sellerId String? @map("seller_id") @db.Uuid
+
+  /// PERCENT atau FIXED.
+  benefitType String @map("benefit_type") @db.VarChar(16)
+  /// Persen (1–100) atau nominal rupiah, sesuai `benefitType`.
+  benefitValue Decimal @map("benefit_value") @db.Decimal(19, 4)
+  /// Batas potongan untuk voucher persen. Tanpa ini, diskon 50% pada pesanan
+  /// sepuluh juta memotong lima juta dari kantong penjual.
+  maxDiscountAmount Decimal? @map("max_discount_amount") @db.Decimal(19, 4)
+
+  /// Belanja minimum agar voucher berlaku.
+  minimumSpend Decimal @default(0) @map("minimum_spend") @db.Decimal(19, 4)
+
+  /// Anggaran total. Voucher berhenti berlaku begitu terpakai habis —
+  /// tanpa batas ini, satu kode yang tersebar dapat menghabiskan penjual.
+  budgetAmount Decimal? @map("budget_amount") @db.Decimal(19, 4)
+  budgetUsed   Decimal  @default(0) @map("budget_used") @db.Decimal(19, 4)
+
+  /// Berapa kali seluruhnya, dan berapa kali per pembeli.
+  maxRedemptions      Int? @map("max_redemptions")
+  maxPerBuyer         Int  @default(1) @map("max_per_buyer")
+  redemptionCount     Int  @default(0) @map("redemption_count")
+
+  validFrom  DateTime  @default(now()) @map("valid_from") @db.Timestamptz(6)
+  validUntil DateTime? @map("valid_until") @db.Timestamptz(6)
+
+  /// DRAFT, ACTIVE, PAUSED, EXHAUSTED, EXPIRED, CANCELLED.
+  status String @default("DRAFT") @db.VarChar(24)
+
+  /// Bolehkah dipakai bersama voucher lain.
+  stackable Boolean @default(false)
+
+  isSample      Boolean   @default(false) @map("is_sample")
+  sampleBatchId String?   @map("sample_batch_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  seller      MarketplaceSeller?             @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  redemptions MarketplaceVoucherRedemption[]
+
+  @@unique([code])
+  @@index([sellerId, status])
+  @@index([status, validUntil])
+  @@map("marketplace_voucher")
+  @@schema("platform")
+}
+
+/// Satu kali pemakaian voucher.
+///
+/// Dicatat terpisah agar batas per pembeli dapat ditegakkan, dan agar
+/// pembatalan pesanan dapat mengembalikan kuotanya.
+model MarketplaceVoucherRedemption {
+  id        String @id @default(uuid()) @db.Uuid
+  voucherId String @map("voucher_id") @db.Uuid
+  buyerId   String @map("buyer_id") @db.Uuid
+  orderId   String @map("order_id") @db.Uuid
+
+  discountAmount Decimal @map("discount_amount") @db.Decimal(19, 4)
+
+  /// APPLIED saat dipakai, RELEASED bila pesanannya batal.
+  status String @default("APPLIED") @db.VarChar(16)
+
+  appliedAt  DateTime  @default(now()) @map("applied_at") @db.Timestamptz(6)
+  releasedAt DateTime? @map("released_at") @db.Timestamptz(6)
+
+  voucher MarketplaceVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  order   MarketplaceOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// Satu pesanan tidak dapat memakai voucher yang sama dua kali.
+  @@unique([voucherId, orderId])
+  @@index([buyerId, voucherId])
+  @@map("marketplace_voucher_redemption")
+  @@schema("platform")
+}
+
+/// Ulasan produk.
+///
+/// Hanya dari pembelian yang benar-benar terjadi dan sudah sampai. Ulasan tanpa
+/// syarat itu membuat penjual dapat membeli ulasan, dan pesaing dapat menjatuhkan
+/// tanpa pernah membeli.
+model MarketplaceReview {
+  id      String @id @default(uuid()) @db.Uuid
+  orderId String @map("order_id") @db.Uuid
+  buyerId String @map("buyer_id") @db.Uuid
+
+  /// Menunjuk projection agar ulasan tetap dapat ditampilkan pada halaman
+  /// produk tanpa menyentuh schema tenant.
+  listingProjectionId String @map("listing_projection_id") @db.Uuid
+  sellerId            String @map("seller_id") @db.Uuid
+
+  rating  Int
+  title   String? @db.VarChar(160)
+  body    String? @db.Text
+
+  /// Nama yang ditampilkan. Disalin agar pembeli yang mengganti namanya tidak
+  /// mengubah ulasan lama.
+  displayName String @map("display_name") @db.VarChar(80)
+
+  /// PENDING, PUBLISHED, REJECTED, atau HIDDEN.
+  moderationStatus String  @default("PENDING") @map("moderation_status") @db.VarChar(24)
+  moderationNote   String? @map("moderation_note") @db.Text
+  moderatedAt      DateTime? @map("moderated_at") @db.Timestamptz(6)
+  moderatedBy      String?   @map("moderated_by") @db.Uuid
+
+  /// Balasan penjual. Satu kali; perdebatan panjang bukan tempatnya di ulasan.
+  sellerReply     String?   @map("seller_reply") @db.Text
+  sellerRepliedAt DateTime? @map("seller_replied_at") @db.Timestamptz(6)
+
+  helpfulCount Int @default(0) @map("helpful_count")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  order   MarketplaceOrder             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  listing MarketplaceListingProjection @relation(fields: [listingProjectionId], references: [id], onDelete: Cascade)
+
+  /// Satu pembeli menulis satu ulasan per produk per pesanan.
+  @@unique([orderId, listingProjectionId])
+  @@index([listingProjectionId, moderationStatus])
+  @@index([sellerId, createdAt])
+  @@map("marketplace_review")
+  @@schema("platform")
+}
+
+/// Percakapan antara pembeli dan penjual.
+///
+/// Satu percakapan per pasangan pembeli-toko, bukan per pesanan. Pembeli yang
+/// bertanya sebelum membeli belum punya pesanan, dan memaksanya membuat pesanan
+/// lebih dulu menghalangi pertanyaan yang justru mendahului pembelian.
+model MarketplaceConversation {
+  id      String @id @default(uuid()) @db.Uuid
+  buyerId String @map("buyer_id") @db.Uuid
+  storeId String @map("store_id") @db.Uuid
+
+  /// Pesanan yang menjadi konteks, bila ada.
+  orderId String? @map("order_id") @db.Uuid
+
+  lastMessageAt      DateTime  @default(now()) @map("last_message_at") @db.Timestamptz(6)
+  lastMessagePreview String?   @map("last_message_preview") @db.VarChar(200)
+
+  buyerUnreadCount  Int @default(0) @map("buyer_unread_count")
+  sellerUnreadCount Int @default(0) @map("seller_unread_count")
+
+  status String @default("OPEN") @db.VarChar(16)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store    MarketplaceStore              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  messages MarketplaceConversationMessage[]
+
+  @@unique([buyerId, storeId])
+  @@index([storeId, lastMessageAt])
+  @@index([buyerId, lastMessageAt])
+  @@map("marketplace_conversation")
+  @@schema("platform")
+}
+
+/// Satu pesan.
+///
+/// Append-only. Pesan yang dapat disunting setelah terkirim membuat
+/// percakapan tidak dapat dipakai sebagai bukti saat terjadi sengketa.
+model MarketplaceConversationMessage {
+  id             String @id @default(uuid()) @db.Uuid
+  conversationId String @map("conversation_id") @db.Uuid
+
+  /// BUYER atau SELLER.
+  senderType String  @map("sender_type") @db.VarChar(16)
+  senderId   String? @map("sender_id") @db.Uuid
+
+  body String @db.Text
+
+  /// Lampiran tinggal di penyimpanan berkas; ini hanya penunjuknya.
+  attachmentReference String? @map("attachment_reference") @db.VarChar(512)
+
+  /// Ditandai bila penyaring menemukan hal yang mencurigakan, mis. nomor
+  /// rekening atau ajakan bertransaksi di luar marketplace.
+  flagged     Boolean @default(false)
+  flagReason  String? @map("flag_reason") @db.VarChar(120)
+
+  readAt DateTime? @map("read_at") @db.Timestamptz(6)
+
+  sentAt    DateTime @default(now()) @map("sent_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation MarketplaceConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, sentAt])
+  @@index([flagged, sentAt])
+  @@map("marketplace_conversation_message")
+  @@schema("platform")
+}

@@ -116,6 +116,7 @@ model MarketplaceListingProjection {
   category      MarketplaceCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   cartItems     MarketplaceCartItem[]
   checkoutLines MarketplaceCheckoutLine[]
+  reviews       MarketplaceReview[]
 
   /// Satu listing tenant menghasilkan tepat satu baris projection.
   @@unique([tenantId, tenantListingId])

@@ -86,6 +86,7 @@ model MarketplaceSeller {
   listings    MarketplaceListingProjection[]
   checkoutGroups MarketplaceCheckoutGroup[]
   orders         MarketplaceOrder[]
+  vouchers       MarketplaceVoucher[]
 
   @@unique([programId, tenantId])
   @@unique([sellerCode])
@@ -196,6 +197,7 @@ model MarketplaceStore {
   domains  MarketplaceStoreDomain[]
   listings MarketplaceListingProjection[]
   checkoutGroups MarketplaceCheckoutGroup[]
+  conversations MarketplaceConversation[]
   orders         MarketplaceOrder[]
 
   @@unique([storeSlug])

@@ -97,6 +97,8 @@ model MarketplaceOrder {
   returns      MarketplaceReturnRequest[]
   refunds      MarketplaceRefund[]
   disputes     MarketplaceDispute[]
+  redemptions  MarketplaceVoucherRedemption[]
+  reviews      MarketplaceReview[]
 
   @@unique([orderNumber])
   @@index([sellerId, status])
