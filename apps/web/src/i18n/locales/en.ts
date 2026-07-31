@@ -264,6 +264,7 @@ export const en: TranslationSchema = {
     payments: 'Payments',
     cms: 'Website Content',
     locales: 'Languages and Translations',
+    sample: 'Sample products',
     audit: 'Audit',
     seed: 'Sample Data',
     supportContext: 'You are accessing tenant data through a support context.',

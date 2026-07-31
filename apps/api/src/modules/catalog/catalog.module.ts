@@ -9,6 +9,7 @@
  */
 
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -17,15 +18,38 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiProperty, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { IsBoolean } from 'class-validator';
+import { ListingModule } from '../listing/listing.module';
 import { InfrastructureModule } from '../../infrastructure/infrastructure.module';
-import { Permissions, PlatformPermissions, Public } from '../../common/decorators';
+import {
+  AuthenticatedUser,
+  CurrentUser,
+  Permissions,
+  PlatformPermissions,
+  Public,
+  RequestContext,
+  RequestMeta,
+} from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { CategoryService } from './category.service';
 import { CatalogSearchService, MAX_PAGE_SIZE, type SortOption } from './catalog-search.service';
 import { ListingProjectionService } from './listing-projection.service';
+import { SampleCatalogService } from './sample-catalog.service';
+
+class SetVisibilityDto {
+  @ApiProperty({ description: 'True menampilkan, false menyembunyikan.' })
+  @IsBoolean()
+  visible!: boolean;
+}
 
 const SORT_OPTIONS: SortOption[] = ['RELEVANCE', 'NEWEST', 'PRICE_ASC', 'PRICE_DESC'];
+
+const actorOf = (user: AuthenticatedUser, meta: RequestMeta) => ({
+  userId: user.userId,
+  username: user.username,
+  requestId: meta.requestId,
+});
 
 /** Membaca angka dari query string tanpa mempercayai bentuknya. */
 function readNumber(raw: string | undefined): number | undefined {
@@ -142,6 +166,7 @@ export class PlatformCatalogController {
   constructor(
     private readonly categories: CategoryService,
     private readonly projection: ListingProjectionService,
+    private readonly samples: SampleCatalogService,
   ) {}
 
   @Post('categories/seed')
@@ -153,6 +178,65 @@ export class PlatformCatalogController {
   })
   seed() {
     return this.categories.seed();
+  }
+
+  @Get('sample')
+  @PlatformPermissions('PLATFORM.MARKETPLACE.READ')
+  @ApiOperation({
+    summary: 'Produk contoh beserta status tampilnya',
+    description:
+      'Terlihat atau tidak ditentukan dari keberadaannya di katalog publik, ' +
+      'bukan dari status pada tenant.',
+  })
+  listSample() {
+    return this.samples.list();
+  }
+
+  @Post('sample/seed')
+  @PlatformPermissions('PLATFORM.MARKETPLACE.MODERATE')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menanam produk contoh',
+    description:
+      'Idempoten. Gerbang publikasi tetap dijalankan — produk contoh tidak diistimewakan.',
+  })
+  seedSample(@CurrentUser() user: AuthenticatedUser, @RequestContext() meta: RequestMeta) {
+    return this.samples.seed(actorOf(user, meta));
+  }
+
+  @Post('sample/hide')
+  @PlatformPermissions('PLATFORM.MARKETPLACE.MODERATE')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menyembunyikan seluruh produk contoh dari katalog publik',
+    description: 'Hanya menyentuh baris bertanda contoh; produk penjual tidak terpengaruh.',
+  })
+  hideSample(@CurrentUser() user: AuthenticatedUser, @RequestContext() meta: RequestMeta) {
+    return this.samples.hideAll(actorOf(user, meta));
+  }
+
+  @Post('sample/show')
+  @PlatformPermissions('PLATFORM.MARKETPLACE.MODERATE')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menampilkan kembali seluruh produk contoh',
+    description: 'Gerbang publikasi dijalankan ulang; yang tidak lagi memenuhi syarat tetap tersembunyi.',
+  })
+  showSample(@CurrentUser() user: AuthenticatedUser, @RequestContext() meta: RequestMeta) {
+    return this.samples.showAll(actorOf(user, meta));
+  }
+
+  @Post('sample/:id/visibility')
+  @PlatformPermissions('PLATFORM.MARKETPLACE.MODERATE')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Menyembunyikan atau menampilkan satu produk contoh' })
+  setSampleVisibility(
+    @Param('id') id: string,
+    @Body() dto: SetVisibilityDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    return this.samples.setVisibility(id, dto.visible, actorOf(user, meta));
   }
 
   @Post('projection/run')
@@ -177,9 +261,14 @@ export class PlatformCatalogController {
 }
 
 @Module({
-  imports: [InfrastructureModule],
+  imports: [InfrastructureModule, ListingModule],
   controllers: [PublicCatalogController, SellerCatalogController, PlatformCatalogController],
-  providers: [CategoryService, CatalogSearchService, ListingProjectionService],
-  exports: [CategoryService, CatalogSearchService, ListingProjectionService],
+  providers: [
+    CategoryService,
+    CatalogSearchService,
+    ListingProjectionService,
+    SampleCatalogService,
+  ],
+  exports: [CategoryService, CatalogSearchService, ListingProjectionService, SampleCatalogService],
 })
 export class CatalogModule {}

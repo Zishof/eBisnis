@@ -1,6 +1,16 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Building2, FileText, LayoutDashboard, Moon, Package, ScrollText, Sun } from 'lucide-react';
+import {
+  ArrowLeft,
+  Building2,
+  FileText,
+  LayoutDashboard,
+  Moon,
+  Package,
+  PackageOpen,
+  ScrollText,
+  Sun,
+} from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../../app/auth-context';
 import { useTheme } from '../../app/theme-context';
@@ -11,6 +21,7 @@ const NAV = [
   { to: '/platform/registrations', label: 'platform.registrations', icon: FileText },
   { to: '/platform/packages', label: 'platform.packages', icon: Package },
   { to: '/platform/cms', label: 'platform.cms', icon: FileText },
+  { to: '/platform/contoh', label: 'platform.sample', icon: PackageOpen },
   { to: '/platform/audit', label: 'platform.audit', icon: ScrollText },
 ] as const;
 
