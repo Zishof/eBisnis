@@ -2,41 +2,41 @@
 BUKTI V10-3 — PERFORMANCELOG
 =========================================================================
 
-Petugas sementara bukti.v10.3.1b948dcc dibuat dan masuk — akan dihapus di akhir.
+Petugas sementara bukti.v10.3.ccd23f4c dibuat dan masuk — akan dihapus di akhir.
 
 1. NORMALISASI RUTE
    Tiga permintaan ke id berbeda harus menjadi SATU baris agregat, bukan tiga.
    Rute yang tidak dinormalkan membuat setiap id terlihat sebagai rute
    tersendiri, dan persentil kehilangan artinya.
-   3 agregat rute ditulis.
+   30 agregat rute ditulis.
   LULUS  tiga id berbeda menjadi satu templat
-   Templat: GET /api/v1/platform/observability/errors/groups/:id — 6 permintaan
+   Templat: GET /api/v1/platform/observability/errors/groups/:id — 15 permintaan
   LULUS  id tidak tersimpan pada templat
 
 2. PERSENTIL BERASAL DARI PENGUKURAN
    p50 <= p95 <= p99 <= max adalah sifat yang harus selalu berlaku. Jika
    dilanggar, angkanya bukan persentil — melainkan angka yang kebetulan ada.
   LULUS  urutan p50 <= p90 <= p95 <= p99 <= max pada semua rute
+   POST /api/v1/surat/keluar/:id/putuskan: n=45 p50=10ms p95=17ms max=25ms
+   POST /api/v1/surat/keluar/:id/putuskan: n=45 p50=9ms p95=13ms max=15ms
+   POST /api/v1/surat/keluar/:id/putuskan: n=43 p50=7ms p95=17ms max=18ms
    GET /api/v1/public/catalog/search: n=30 p50=6ms p95=14ms max=35ms
-   GET /health: n=6 p50=3ms p95=16ms max=16ms
-   GET /api/v1/platform/observability/errors/groups/:id: n=6 p50=2ms p95=3ms max=3ms
-   POST /api/v1/auth/login: n=5 p50=121ms p95=173ms max=173ms
-   POST /api/v1/auth/login: n=3 p50=77ms p95=77ms max=77ms
-   Endpoint /routes mengembalikan 8 rute.
+   POST /api/v1/surat/keluar/:id/terbitkan: n=24 p50=31ms p95=203ms max=294ms
+   Endpoint /routes mengembalikan 35 rute.
   LULUS  urut menurun menurut p95
-   Terlambat: POST /api/v1/auth/login p95=173ms (n=8)
+   Terlambat: POST /api/v1/surat/keluar/:id/terbitkan p95=612ms (n=72)
 
 3. CUPLIKAN PROSES
-   15 cuplikan antara 2026-07-31T06:07:52.144Z dan 2026-07-31T06:23:45.182Z
-   heapUsed 46 MB → 57 MB, pegangan aktif puncak 1
+   137 cuplikan antara 2026-07-31T06:07:52.144Z dan 2026-07-31T08:51:00.250Z
+   heapUsed 44 MB → 62 MB, pegangan aktif puncak 412
   LULUS  cuplikan terambil
   LULUS  heapUsed bukan nol
 
 4. ANALISIS KEBOCORAN MENAHAN DIRI
    Satu grafik RAM yang naik bukan bukti kebocoran. Dengan sampel sedikit,
    jawaban yang benar adalah "bukti belum cukup" — bukan tebakan.
-   Sampel: 15, putusan: INSUFFICIENT_EVIDENCE
-   Alasan: Baru 15 sampel selama 16 menit; diperlukan sedikitnya 12 sampel dan 30 menit.
+   Sampel: 137, putusan: TEMPORARY_SPIKE
+   Alasan: Pemakaian heap naik tetapi dasarnya setelah GC hanya tumbuh -4%, di bawah ambang 25%. Yang bertambah tampaknya beban sesaat, bukan memori yang tertahan.
   LULUS  putusan termasuk nilai yang dikenal
   LULUS  bukti angka disertakan, bukan hanya kesimpulan
 
@@ -59,8 +59,8 @@ Petugas sementara bukti.v10.3.1b948dcc dibuat dan masuk — akan dihapus di akhi
   LULUS  POST /performance/flush ditolak untuk petugas tanpa izin
 
 7. SETIAP PEMBACAAN TERCATAT
-   MemoryAnalysis: 2 pembacaan tercatat
-   RoutePerformance: 2 pembacaan tercatat
+   MemoryAnalysis: 5 pembacaan tercatat
+   RoutePerformance: 8 pembacaan tercatat
   LULUS  pembacaan analisis memori tercatat
 
 8. TIDAK ADA RAHASIA PADA AGREGAT

@@ -243,7 +243,19 @@ try {
   const batal = await ambil(token, '/activity/abandoned-actions?hari=1');
   const ekspor = batal.body.items.find((i) => i.actionCode === 'EKSPOR');
   log(`   Tindakan EKSPOR: ${ekspor?.cancelled} dibatalkan dari ${ekspor?.total} (${ekspor?.abandonRate}%)`);
-  check('pembatalan tercatat', ekspor.cancelled, 1);
+  /*
+   * Diperiksa "sedikitnya satu", bukan "tepat satu".
+   *
+   * Ringkasan ini menghitung SELURUH tenant, bukan hanya petugas bukti ini.
+   * Menuntut angka persis berarti buktinya hanya lulus pada basis data yang
+   * benar-benar kosong — dan bukti yang hanya lulus pada keadaan sempurna akan
+   * gagal saat dijalankan pada lingkungan nyata, lalu diabaikan sebagai
+   * "memang begitu".
+   *
+   * Yang benar-benar hendak dibuktikan adalah pembatalannya tercatat, dan itu
+   * terbukti oleh angka yang tidak nol.
+   */
+  check('pembatalan tercatat', ekspor.cancelled >= 1, true);
   log('');
 
   // -- 4. Jejak perubahan berasal dari trigger, bukan dari kode ------------

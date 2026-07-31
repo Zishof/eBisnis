@@ -468,6 +468,30 @@ export const ROLE_CATALOG: RoleCatalogEntry[] = [
     { SUBSCRIPTION: 'P2', FINANCE: 'P1' }, 'TENANT',
     'Proses komisi, penyesuaian, dan statement. Persetujuan pembayaran terpisah.'),
 
+  // ------------------------------------------------------------------ Surat
+  //
+  // Empat peran, bukan satu "Administrator Surat". Tata kelola surat memisahkan
+  // yang MENYUSUN dari yang MENYETUJUI — satu peran yang dapat melakukan
+  // keduanya membuat seluruh alur persetujuan menjadi hiasan.
+  r('SEKRETARIS', 'Sekretaris', 'Surat', 'P6',
+    { SURAT: 'P6' }, 'LEGAL_ENTITY',
+    'Mencatat surat masuk, menyusun konsep surat keluar, dan meneruskan disposisi. ' +
+      'Tidak menyetujui surat yang disusunnya sendiri.',
+    { sodGroup: 'SURAT_APPROVAL', sodSide: 'PREPARER' }),
+  r('PENYETUJU_SURAT', 'Penyetuju Surat', 'Surat', 'P4',
+    { SURAT: 'P4' }, 'LEGAL_ENTITY',
+    'Menyetujui, mengembalikan, atau menolak surat keluar, lalu menerbitkan nomor resminya. ' +
+      'Tidak menyusun konsep surat yang disetujuinya sendiri.',
+    { sodGroup: 'SURAT_APPROVAL', sodSide: 'APPROVER' }),
+  r('ARSIPARIS', 'Arsiparis', 'Surat', 'P5',
+    { SURAT: 'P5' }, 'TENANT',
+    'Klasifikasi, loker arsip, masa simpan, dan penataan berkas. ' +
+      'Tidak menyusun maupun menyetujui surat.'),
+  r('ADMIN_SURAT', 'Administrator Tata Kelola Surat', 'Surat', 'P7',
+    { SURAT: 'P7' }, 'TENANT',
+    'Skema penomoran, alur persetujuan, kop surat, dan templat. Perubahan skema penomoran ' +
+      'diaudit karena menentukan nomor resmi yang keluar dari organisasi.'),
+
   // --------------------------------------------------------------- Workflow
   r('ADMIN_WORKFLOW', 'Administrator Workflow', 'Workflow', 'P7',
     { WORKFLOW: 'P7' }, 'TENANT',

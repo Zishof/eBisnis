@@ -24,7 +24,7 @@ BUKTI V10-6 — TATA KELOLA SURAT
   LULUS  langkah 1 disetujui, lanjut ke langkah 2
   LULUS  belum dapat diterbitkan di tengah alur
   LULUS  langkah terakhir menyelesaikan alur
-   Nomor terbit: 0001/SK8f97/VII/2026
+   Nomor terbit: 0001/SK22b6/VII/2026
   LULUS  nomor sesuai pola
   LULUS  penerbitan ulang mengembalikan nomor yang sama
   LULUS  penerbitan ulang tidak mengambil nomor kedua
