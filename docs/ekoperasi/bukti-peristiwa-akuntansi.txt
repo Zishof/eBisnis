@@ -1,0 +1,44 @@
+==============================================================================
+BUKTI PERISTIWA AKUNTANSI KOPERASI (IR-003)
+Waktu  : 2026-07-31T23:15:34.199Z
+Schema : demo
+==============================================================================
+
+1. Katalog koperasi terdaftar bersama katalog inti
+  LULUS  29 peristiwa koperasi terdaftar
+  LULUS  24 peristiwa inti tetap dikenal
+  LULUS  POS_SALE tetap milik inti
+  LULUS  COOPERATIVE_SHU_PAID kini milik koperasi
+  LULUS  modul lain TIDAK dapat merebut peristiwa koperasi
+
+2. Keadaan sebelum penerbitan — memeriksa catatan K-8
+  LULUS  modul koperasi belum pernah menulis satu pun peristiwa
+  (kode yang ada sebelum ini: POS_CASH_RECEIPT, POS_COGS, POS_INVENTORY_RELEASE, POS_SALE)
+
+3. Peristiwa yang salah tidak pernah terbit
+  LULUS  kode yang tidak dikenal DITOLAK
+  LULUS  peristiwa milik POS DITOLAK
+  LULUS  angsuran tanpa pemisahan pokok dan jasa DITOLAK
+  LULUS  tidak satu pun baris tertulis dari percobaan yang ditolak
+
+4. Peristiwa yang sah terbit, sekali saja
+  LULUS  satu baris terbit
+  LULUS  kodenya benar
+  LULUS  berstatus PENDING — belum dijurnal
+  LULUS  nilainya tersimpan
+  LULUS  nomor struknya tersimpan
+  LULUS  percobaan ulang TIDAK menggandakan barisnya
+  LULUS  penerbitan beberapa yang salah satunya cacat DITOLAK
+  LULUS  dan tidak satu pun dari kelompok itu tertulis
+
+5. Penjurnalan — disebutkan apa adanya
+  keadaan accounting_event: PENDING=41
+  journal_entry: 0, accounting_posting_rule: 0
+  LULUS  peristiwa POS pun masih menunggu — bukan koperasi yang tertinggal sendirian
+  LULUS  belum ada aturan posting tersemai, sehingga belum ada yang dapat dijurnal
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.

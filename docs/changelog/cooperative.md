@@ -3,6 +3,64 @@
 Changelog modular sesuai panduan koordinasi §11. Sesi Core/Integrator yang
 menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
+## K-13 — Peristiwa akuntansi koperasi terdaftar dan terbit
+
+Menyelesaikan IR-003. Katalognya sudah lengkap sejak K-8; yang belum ada
+ternyata bukan pendaftarannya saja.
+
+### Koreksi atas catatan K-8
+
+K-8 menyatakan peristiwa koperasi "tercatat pada `accounting_event` tetapi
+belum dijurnal karena `isKnownEvent()` menolaknya". **Keduanya keliru**, dan
+baru ketahuan saat pendaftaran benar-benar dikerjakan:
+
+- Modul koperasi **belum pernah menulis satu pun baris** `accounting_event`.
+  Peristiwanya tidak tertolak — ia tidak pernah terbit. Yang hilang adalah
+  penerbitnya, bukan izinnya.
+- **`isKnownEvent()` tidak dipanggil siapa pun.** Ia bukan gerbang, dan
+  mendaftarkan katalog saja tidak akan mengubah apa pun.
+- Jumlah peristiwanya **29**, bukan 26 seperti yang tercatat.
+
+Ketiganya diperiksa pada basis data, bukan dibaca dari catatan.
+
+### Ditambahkan
+- Pendaftaran `COOPERATIVE_EVENT_CATALOG` ke registri Core.
+- **`cooperative-accounting-event.service.ts`** — penerbit yang selama ini
+  hilang, memeriksa kode dan kelengkapan nilai sebelum menulis.
+  **18 pengujian.**
+- Penerbitan `COOPERATIVE_WALLET_PAYMENT` pada pewujudan pembayaran saldo.
+- **`prove-cooperative-accounting-events.mjs`** — **22 pemeriksaan.**
+
+### Keputusan yang perlu dicatat
+- **Diperiksa saat diterbitkan, bukan saat dijurnal.** Peristiwa yang kurang
+  nilainya akan gagal berhari-hari kemudian, pada pekerja yang tidak tahu
+  apa-apa tentang transaksi yang melahirkannya. Menolaknya di depan berarti
+  menolaknya ketika konteksnya masih ada dan orangnya masih di layar.
+- **Modul koperasi hanya menerbitkan peristiwanya sendiri.** Menerbitkan
+  `POS_SALE` dari sini akan menjurnal penjualan dua kali — sekali oleh kasir,
+  sekali oleh koperasi — dan pendapatannya tercatat ganda.
+- **Penerbit menerima klien transaksi, tidak membuka transaksinya sendiri.**
+  Peristiwa yang terbit di luar transaksi yang melahirkannya dapat bertahan
+  meski transaksinya digulung balik, dan yang tersisa adalah catatan keuangan
+  atas kejadian yang tidak pernah terjadi.
+- **Penerbitan berkelompok memeriksa seluruhnya sebelum menulis satu pun.**
+- **`COOPERATIVE_WALLET_PAYMENT` tidak menjurnal penjualannya** — hanya
+  perpindahan dari kewajiban simpanan ke kas, hal yang tidak diketahui POS.
+
+### Yang masih belum ada, dan bukan milik modul ini
+
+**Penjurnalan.** Peristiwa terbit berstatus `PENDING` dan menunggu saluran
+peristiwa-ke-jurnal yang **belum dibangun untuk modul mana pun**:
+`buildJournalLines()` ada sebagai fungsi murni tetapi tidak dipanggil siapa
+pun, tidak ada pekerja yang memproses antrean, dan tidak ada satu pun aturan
+posting tersemai. Empat puluh satu peristiwa menunggu, sebagian besar milik
+POS. Koperasi tidak tertinggal sendirian.
+
+Penerbitan pada jalur simpanan, pinjaman, dan SHU juga belum disambungkan —
+baru jalur pembayaran saldo yang menerbitkannya.
+
+---
+
 ## K-12 — Pembayaran memakai saldo simpanan anggota
 
 Sisi koperasi dari IR-002. Core menyediakan `ExternalPaymentRegistry` dan

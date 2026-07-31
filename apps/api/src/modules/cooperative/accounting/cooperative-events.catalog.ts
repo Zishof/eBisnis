@@ -1,26 +1,36 @@
 /**
  * Katalog peristiwa akuntansi koperasi.
  *
- * Ditulis penuh di sini, **belum didaftarkan ke mesin Core** — menunggu
- * [IR-003](../../../../../docs/integration-requests/cooperative/003-katalog-peristiwa-akuntansi-modular.md)
- * yang mengusulkan registri katalog per modul.
+ * Didaftarkan ke `AccountingEventCatalogRegistry` milik Core lewat
+ * `CooperativeModule`, sesuai IR-003 yang kini sudah disetujui dan dikerjakan.
  *
- * Bentuknya sengaja mengikuti usulan pada IR itu, sehingga saat disetujui yang
- * diperlukan hanya satu baris `registry.register(COOPERATIVE_EVENT_CATALOG)`.
+ * ## Koreksi atas catatan sebelumnya
  *
- * **Sampai saat itu, peristiwa koperasi tercatat pada `accounting_event` tetapi
- * belum dijurnal** — `isKnownEvent()` milik Core menolaknya. Buku pembantu
- * anggota berjalan; buku besarnya belum. Disebutkan apa adanya supaya tidak ada
- * yang mengira pembukuan koperasi sudah lengkap.
+ * Berkas ini semula menyatakan bahwa peristiwa koperasi "tercatat pada
+ * `accounting_event` tetapi belum dijurnal karena `isKnownEvent()` menolaknya".
+ * Keduanya keliru, dan diperiksa ulang saat pendaftaran dikerjakan:
+ *
+ *   · Modul koperasi belum pernah menulis satu pun baris `accounting_event`.
+ *     Peristiwanya tidak tertolak — ia tidak pernah terbit.
+ *   · `isKnownEvent()` tidak dipanggil siapa pun. Ia bukan gerbang.
+ *
+ * Yang benar-benar belum ada adalah **penerbitnya**, dan itu disediakan
+ * `cooperative-accounting-event.service.ts`.
+ *
+ * ## Yang masih belum ada, dan bukan milik modul ini
+ *
+ * Peristiwa yang terbit berstatus `PENDING` dan **belum menjadi jurnal** —
+ * bukan karena koperasi, melainkan karena saluran peristiwa-ke-jurnal belum
+ * dibangun untuk modul mana pun. `buildJournalLines()` ada sebagai fungsi
+ * murni tetapi tidak dipanggil siapa pun, tidak ada pekerja yang memproses
+ * antrean `PENDING`, dan tidak ada satu pun aturan posting tersemai.
+ *
+ * Keadaan itu berlaku sama bagi POS: empat puluh peristiwanya juga menunggu.
+ * Disebutkan apa adanya supaya tidak ada yang mengira pembukuan koperasi
+ * tertinggal sendirian.
  */
 
-export interface AccountingEventCatalog {
-  readonly prefix: string;
-  readonly events: readonly string[];
-  readonly requiredAmounts: Readonly<Record<string, readonly string[]>>;
-  /** Kode pemetaan akun yang dituntut tiap peristiwa. */
-  readonly requiredMappings: Readonly<Record<string, readonly string[]>>;
-}
+import type { AccountingEventCatalog } from '../../accounting/event-catalog.registry';
 
 // ------------------------------------------------------------------ Simpanan
 
@@ -201,6 +211,7 @@ const SEMUA = { ...SIMPANAN, ...PINJAMAN, ...SYARIAH, ...SHU, ...DOMPET_UNIT };
 export const COOPERATIVE_EVENTS = Object.keys(SEMUA) as Array<keyof typeof SEMUA>;
 
 export const COOPERATIVE_EVENT_CATALOG: AccountingEventCatalog = {
+  module: 'cooperative',
   prefix: 'COOPERATIVE_',
   events: COOPERATIVE_EVENTS,
   requiredAmounts: Object.fromEntries(

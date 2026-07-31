@@ -46,6 +46,10 @@ import { CooperativeProfileService } from './cooperative-profile.service';
 import { CooperativePortalService } from './cooperative-portal.service';
 import { CooperativePosAdapter } from './adapters/pos.adapter';
 import { MemberBalanceService } from './payment/member-balance.service';
+import { CooperativeAccountingEventService } from './accounting/cooperative-accounting-event.service';
+import { COOPERATIVE_EVENT_CATALOG } from './accounting/cooperative-events.catalog';
+import { AccountingEventCatalogRegistry } from '../accounting/event-catalog.registry';
+import { AccountingModule } from '../accounting/accounting.module';
 import { MemberBalancePaymentHandler } from './payment/member-balance-payment.handler';
 import { ExternalPaymentRegistry } from '../pos/external-payment.registry';
 import { PosModule } from '../pos/pos.module';
@@ -782,7 +786,7 @@ export class CooperativeController {
    * POS tidak mengetahui apa pun tentang simpanan anggota, dan menghapus modul
    * koperasi tidak menyentuh satu baris pun miliknya.
    */
-  imports: [InfrastructureModule, PosModule],
+  imports: [InfrastructureModule, PosModule, AccountingModule],
   controllers: [CooperativeController, CooperativePortalController, CooperativeWebsiteController],
   providers: [
     CooperativeProfileService,
@@ -790,6 +794,7 @@ export class CooperativeController {
     CooperativePosAdapter,
     MemberBalanceService,
     MemberBalancePaymentHandler,
+    CooperativeAccountingEventService,
   ],
   exports: [CooperativeProfileService, CooperativePortalService, CooperativePosAdapter],
 })
@@ -804,6 +809,7 @@ export class CooperativeModule implements OnModuleInit {
   constructor(
     private readonly pembayaranEksternal: ExternalPaymentRegistry,
     private readonly penanganSaldo: MemberBalancePaymentHandler,
+    private readonly katalogPeristiwa: AccountingEventCatalogRegistry,
   ) {}
 
   /**
@@ -817,7 +823,24 @@ export class CooperativeModule implements OnModuleInit {
    * yang benar pada keadaan yang salah.
    */
   onModuleInit(): void {
-    if (this.pembayaranEksternal.has(this.penanganSaldo.handlerCode)) return;
-    this.pembayaranEksternal.register(this.penanganSaldo);
+    if (!this.pembayaranEksternal.has(this.penanganSaldo.handlerCode)) {
+      this.pembayaranEksternal.register(this.penanganSaldo);
+    }
+
+    /*
+     * Katalog peristiwa akuntansi koperasi (IR-003).
+     *
+     * Setelah ini, 29 kode `COOPERATIVE_*` dikenal mesin akuntansi — dan
+     * peristiwa koperasi yang terbit dapat diperiksa kelengkapannya sebelum
+     * ditulis.
+     *
+     * Perlu disebutkan apa adanya: pendaftaran ini TIDAK membuat peristiwanya
+     * dijurnal. Saluran peristiwa-ke-jurnal belum dibangun untuk modul mana
+     * pun — POS pun peristiwanya masih menunggu.
+     */
+    const kunci = `${COOPERATIVE_EVENT_CATALOG.module}:${COOPERATIVE_EVENT_CATALOG.prefix}`;
+    if (!this.katalogPeristiwa.registeredCatalogs().includes(kunci)) {
+      this.katalogPeristiwa.register(COOPERATIVE_EVENT_CATALOG);
+    }
   }
 }
