@@ -72,8 +72,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-7 | 35 | **60** | `health-acute.spec.ts` |
 | H-8 | 30 | **54** | `health-community.spec.ts` |
 | H-9 | 30 | **67** | `health-him.spec.ts` |
+| H-9L | 25 | **53** | `health-master-data.spec.ts` |
 
-API keseluruhan: **1547** pengujian pada 55 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **1602** pengujian pada 56 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -97,6 +98,22 @@ sungguhan, pada basis data sungguhan:
 | H-7 | `prove-health-acute.mjs` | 55 pemeriksaan, seluruhnya lulus — [bukti-h7-akut.txt](bukti-h7-akut.txt) |
 | H-8 | `prove-health-community.mjs` | 45 pemeriksaan, seluruhnya lulus — [bukti-h8-puskesmas.txt](bukti-h8-puskesmas.txt) |
 | H-9 | `prove-health-him.mjs` | 74 pemeriksaan, seluruhnya lulus — [bukti-h9-rekam-medis.txt](bukti-h9-rekam-medis.txt) |
+| H-9L | `prove-health-master-data.mjs` | 61 pemeriksaan, seluruhnya lulus — [bukti-h9l-master-data.txt](bukti-h9l-master-data.txt) |
+
+Naskah H-9L menemukan cacat yang **sekelas dengan cacat H-9 pada hari yang
+sama**: pengenal yang dihitung per lingkup sempit di bawah batasan unik yang
+lebih luas. Pada H-9 itu nomor insiden per fasilitas di bawah indeks unik per
+tenant; pada H-9L itu kode kumpulan data contoh yang dihitung dari benihnya saja
+— sehingga fasilitas kedua yang disemai dengan benih yang sama gagal seluruhnya,
+persis kebalikan dari maksud "deterministik". Dua kali dalam satu hari cukup
+untuk menjadikannya hal yang diperiksa lebih dahulu pada fase berikutnya.
+
+Naskah H-9L pula yang menegaskan satu kebiasaan yang mulai berlaku sejak H-9:
+sebelum menguji bahwa sesuatu ditolak, uji lebih dahulu bahwa ia **diterima**
+dalam keadaan yang seharusnya. Uji urutan papan kekurangan semula gagal bukan
+karena urutannya salah, melainkan karena pada saat itu tidak ada satu pun
+kekurangan yang menahan — papan yang hanya memuat satu macam baris tidak
+membuktikan urutan apa pun.
 
 **Naskah H-9 semula lulus karena penjaga yang keliru.** Uji "penahanan hukum
 menahan perubahan catatan klinis" memakai catatan yang sudah ditandatangani —

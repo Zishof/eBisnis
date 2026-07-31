@@ -5,6 +5,67 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9L — Katalog layanan, pemetaan unit, dan sumber master data
+
+### Ditambahkan
+
+- **`H018__health__master_data.sql`** — `master_data_batch`, `health_service`,
+  `health_service_mapping`, `health_service_mapping_gap`, `local_code_mapping`.
+  Beserta trigger `forbid_activation_without_mapping` dan constraint
+  `health_service_issuer_only_official`.
+- **`H019__health__master_data_permissions.sql`** — aksi `ACTIVATE`, tiga menu,
+  satu peran baru, satu aturan pemisahan wewenang.
+- **`health-master-data.ts`** — aturan sebagai fungsi murni: kelayakan sumber
+  master data, penghapusan data contoh, sifat layanan, kelengkapan pemetaan,
+  aktivasi, pemetaan kode lokal, dan pembangkitan deterministik.
+  **53 pengujian.**
+- **`health-master-data.service.ts`** dan **`health-master-data.controller.ts`**
+  — dua belas jalan pada `/api/v1/health/master-data/**`.
+- **`prove-health-master-data.mjs`** — naskah bukti, **61 pemeriksaan**,
+  seluruhnya lulus dan lulus pula pada pengulangan.
+
+Uji: API 1547 → **1602**.
+
+### Diperbaiki
+
+- **Kode kumpulan data contoh dihitung dari benih saja**, sedangkan uniknya per
+  tenant. Fasilitas kedua yang disemai dengan benih yang sama gagal seluruhnya —
+  persis kebalikan dari maksud "deterministik". Kode fasilitas kini disertakan.
+  Sekelas dengan cacat nomor insiden pada H-9: pengenal yang dihitung per
+  lingkup sempit, di bawah batasan unik yang lebih luas.
+- **Penyemaian ulang berkata "berhasil" sambil membuat nol baris.** Kini ia
+  ditolak dengan alasannya, dan penyemaian yang sebagian terlewat menyebutkan
+  berapa baris yang dilewati serta mengapa.
+
+### Keputusan yang perlu dicatat
+
+- **Layanan tidak dapat diaktifkan sebelum pemetaannya lengkap**, ditegakkan
+  trigger — bukan hanya oleh layanan. Katalog layanan paling sering disunting
+  lewat jalan lain: impor massal, perbaikan data, naskah penyemaian.
+
+- **"Bila berlaku" ditentukan sifat layanannya, bukan pilihan pengguna.**
+  Pemeriksaan laboratorium selalu menuntut spesimen. Ditetapkan satu fungsi,
+  supaya tidak ada tempat kedua yang memutuskannya.
+
+- **Enam dari empat belas slot menunggu fase berikutnya**, dan kekurangannya
+  menyebut fase itu. Menyamarkannya sebagai kekurangan biasa akan membuat
+  penggunanya mencari kolom yang tidak ada.
+
+- **Papan kekurangan dikelompokkan menurut SLOT, bukan menurut layanan.** Satu
+  penyebab biasanya menjelaskan puluhan layanan sekaligus.
+
+- **Harga sintetis tidak dapat menyamar sebagai harga resmi.** Penandanya
+  melekat pada barisnya dan tidak dapat dilepas.
+
+- **Data contoh disembunyikan, tidak dihapus**, dan penyembunyiannya menolak
+  bila ada data nyata yang merujuknya — menyebutkan apa yang merujuknya, lalu
+  menyerahkan keputusannya kepada manusia.
+
+- **Pemetaan kode dipensiunkan, bukan dihapus.** Rekam lama yang sudah dikirim
+  memakai pemetaan lama harus tetap dapat dijelaskan.
+
+---
+
 ## H-9 — Rekam medis, pengkodean, penahanan hukum, mutu, dan keselamatan pasien
 
 ### Ditambahkan

@@ -122,6 +122,14 @@ export const HEALTH_PERMISSION_ACTIONS = [
       'Pemeriksaan oleh orang kedua atas pekerjaan orang pertama. Dipisahkan dari APPROVE karena ' +
       'yang diperiksa di sini adalah ketepatan pekerjaannya, bukan kelayakan keputusannya.',
   },
+  {
+    code: 'ACTIVATE',
+    name: 'Mengaktifkan',
+    reason:
+      'Membuat layanan dapat dipesan, ditagihkan, dan dibagi jasanya. Dipisahkan dari UPDATE ' +
+      'supaya yang sedang mengetik baris keseratus tidak mengaktifkan layanan yang belum pernah ' +
+      'dilihat siapa pun.',
+  },
 ] as const;
 
 // --- Menu --------------------------------------------------------------------
@@ -496,6 +504,39 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'IMPORT', 'APPROVE'],
     sortOrder: 95,
   },
+  // Katalog layanan dan master data — H-9L.
+  //
+  // Pemisahannya: yang memetakan bukan yang mengaktifkan. Pemetaan adalah
+  // pekerjaan harian — ratusan baris, sering keliru, sering diperbaiki.
+  // Aktivasi adalah keputusan yang membuat layanan itu dapat dipesan,
+  // ditagihkan, dan dibagi jasanya.
+  {
+    code: 'HEALTH_SERVICE_CATALOG',
+    parentCode: 'HEALTH',
+    label: 'Katalog Layanan',
+    route: '/app/emedik/layanan',
+    icon: 'list-checks',
+    actions: ['READ', 'CREATE', 'UPDATE', 'ACTIVATE'],
+    sortOrder: 96,
+  },
+  {
+    code: 'HEALTH_MASTER_DATA',
+    parentCode: 'HEALTH',
+    label: 'Master Data',
+    route: '/app/emedik/master-data',
+    icon: 'database',
+    actions: ['READ', 'CREATE', 'IMPORT', 'DELETE'],
+    sortOrder: 97,
+  },
+  {
+    code: 'HEALTH_CODE_MAPPING',
+    parentCode: 'HEALTH',
+    label: 'Pemetaan Kode',
+    route: '/app/emedik/pemetaan',
+    icon: 'git-compare',
+    actions: ['READ', 'CREATE', 'UPDATE'],
+    sortOrder: 98,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -544,6 +585,15 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_BED.READ', 'HEALTH_BED.CREATE', 'HEALTH_BED.UPDATE', 'HEALTH_BED.DELETE',
       'HEALTH_PROVIDER.READ', 'HEALTH_PROVIDER.CREATE', 'HEALTH_PROVIDER.UPDATE', 'HEALTH_PROVIDER.ASSIGN',
       'HEALTH_BILLING_TIER.READ', 'HEALTH_BILLING_TIER.UPDATE',
+      // Mengaktifkan layanan dan mengelola master data; ia TIDAK menyusun
+      // katalognya sendiri. Penghapusan data contoh diberikan kepadanya karena
+      // penghapusannya menolak bila ada data nyata yang merujuknya, dan
+      // keputusan atas penolakan itu harus diambil orang yang dapat menilai
+      // akibatnya.
+      'HEALTH_SERVICE_CATALOG.READ', 'HEALTH_SERVICE_CATALOG.ACTIVATE',
+      'HEALTH_MASTER_DATA.READ', 'HEALTH_MASTER_DATA.CREATE',
+      'HEALTH_MASTER_DATA.IMPORT', 'HEALTH_MASTER_DATA.DELETE',
+      'HEALTH_CODE_MAPPING.READ',
       // Administrator TIDAK diberi hak membaca rekam medis pasien. Mengelola
       // sistem tidak menuntut membaca diagnosis siapa pun, dan hak yang tidak
       // dibutuhkan adalah hak yang akan disalahgunakan.
@@ -569,6 +619,8 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_QUALITY.READ',
       'HEALTH_QUALITY.EXPORT',
       'HEALTH_HIM_CODING.READ',
+      'HEALTH_SERVICE_CATALOG.READ',
+      'HEALTH_MASTER_DATA.READ',
     ],
     sortOrder: 2,
   },
@@ -609,6 +661,11 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_TERMINOLOGY.READ',
       'HEALTH_TERMINOLOGY.IMPORT',
       'HEALTH_LEGAL_HOLD.READ',
+      // Memetakan kode lokal ke kode resmi. Ia sudah memegang terminologinya.
+      'HEALTH_CODE_MAPPING.READ',
+      'HEALTH_CODE_MAPPING.CREATE',
+      'HEALTH_CODE_MAPPING.UPDATE',
+      'HEALTH_SERVICE_CATALOG.READ',
     ],
     sortOrder: 4,
   },
@@ -948,6 +1005,24 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     sortOrder: 22,
   },
   {
+    code: 'HEALTH_SERVICE_CATALOGUER',
+    name: 'Petugas Katalog Layanan',
+    description:
+      'Menyusun katalog layanan dan pemetaannya ke unit, peran, tarif, dan akun. TIDAK ' +
+      'mengaktifkan layanan — itu keputusan orang lain.',
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_SERVICE_CATALOG.READ',
+      'HEALTH_SERVICE_CATALOG.CREATE',
+      'HEALTH_SERVICE_CATALOG.UPDATE',
+      'HEALTH_CODE_MAPPING.READ',
+      'HEALTH_CODE_MAPPING.CREATE',
+      'HEALTH_CODE_MAPPING.UPDATE',
+      'HEALTH_MASTER_DATA.READ',
+    ],
+    sortOrder: 24,
+  },
+  {
     code: 'HEALTH_LEGAL_OFFICER',
     name: 'Petugas Hukum Rumah Sakit',
     description:
@@ -1070,6 +1145,17 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'memiliki satu koder dapat mematikan pemisahan ini secara sah dan tercatat lewat ' +
       'kebijakan; yang dilarang adalah menyiasatinya dengan akun kedua.',
     conflictingPermissions: ['HEALTH_HIM_CODING.CREATE', 'HEALTH_HIM_CODING.VERIFY'],
+  },
+  {
+    code: 'HEALTH_SOD_MAP_ACTIVATE',
+    name: 'Yang memetakan layanan tidak mengaktifkannya',
+    description:
+      'Pemetaan adalah pekerjaan harian: ratusan baris, sering keliru, sering diperbaiki. ' +
+      'Aktivasi adalah keputusan yang membuat layanan dapat dipesan, ditagihkan, dan dibagi ' +
+      'jasanya. Menyatukan keduanya berarti orang yang sedang mengetik baris keseratus akan ' +
+      'mengaktifkan layanan yang belum pernah dilihat siapa pun — dan yang pertama menyadarinya ' +
+      'adalah pasien yang menerima tagihan atas layanan yang tarifnya salah ketik.',
+    conflictingPermissions: ['HEALTH_SERVICE_CATALOG.UPDATE', 'HEALTH_SERVICE_CATALOG.ACTIVATE'],
   },
   /*
    * HEALTH_SOD_HOLD_RELEASE sengaja TIDAK ada di sini.

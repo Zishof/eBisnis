@@ -520,6 +520,102 @@ bahwa pernyataannya gagal.
 klinis, layar web, dan penyemaian terminologi ICD-10/ICD-9-CM resmi —
 strukturnya sudah ada, isinya menunggu berkas sumber yang dapat ditelusuri.
 
+### H-9L · Master data dan pemetaan unit — **SELESAI**
+
+Katalog layanan, pemetaan empat belas slot ke unit, penggolongan sumber master
+data, pemetaan kode lokal ke kode resmi, dan pembangkitan data contoh
+deterministik.
+
+Uji ≥ 25 → **53 tercapai**, ditambah naskah bukti 61 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H018__health__master_data.sql`, `H019__health__master_data_permissions.sql` |
+| Aturan murni | `health-master-data.ts` + 53 pengujian |
+| Layanan | `health-master-data.service.ts` |
+| Endpoint | `health-master-data.controller.ts` — 12 jalan di `/api/v1/health/master-data/**` |
+| Katalog | `health-catalog.ts` — 3 menu, 1 peran, 1 aturan SoD, 1 aksi hak akses |
+| Bukti | `scripts/prove-health-master-data.mjs` → [bukti-h9l-master-data.txt](bukti-h9l-master-data.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **Layanan tidak dapat diaktifkan sebelum pemetaannya lengkap**, ditegakkan
+  trigger `forbid_activation_without_mapping` — bukan hanya oleh layanan.
+  Katalog layanan adalah tabel yang paling sering disunting lewat jalan lain:
+  impor massal, perbaikan data, naskah penyemaian. Aturan yang hanya ada di
+  layanan berhenti berlaku pada setiap jalan itu.
+
+- **"Bila berlaku" ditentukan sifat layanannya, bukan pilihan pengguna.**
+  Pemeriksaan laboratorium selalu menuntut spesimen, peran verifikator, dan
+  peralatan; menandainya "tidak berlaku" adalah jalan memutar yang akan selalu
+  diambil ketika tenggat mendesak, dan akibatnya baru terasa berbulan-bulan
+  kemudian. Ditetapkan satu fungsi, `sifatLayanan()`, supaya tidak ada tempat
+  kedua yang memutuskannya — aturan yang disalin ke dua tempat akan berselisih,
+  dan yang berselisih selalu diselesaikan dengan memilih yang lebih longgar.
+
+- **Kekurangan pemetaan disimpan sebagai baris, dan menyebut fase yang
+  menunggunya.** Enam dari empat belas slot menunjuk tabel yang memang belum
+  dibangun — tarif (H-9D), cakupan pembayar (H-9D), aturan jasa (H-9E),
+  peralatan (H-9H), akun pendapatan dan akun HPP (H-9N). Menyamarkannya sebagai
+  kekurangan biasa akan membuat penggunanya mencari kolom yang tidak ada, lalu
+  menyimpulkan sistemnya rusak.
+
+- **Layanan yang hanya memetakan pendapatannya akan menampilkan margin seratus
+  persen**, dan margin seratus persen tidak pernah dipertanyakan siapa pun
+  sampai kasnya tidak cocok. Karena itu layanan yang memakai persediaan wajib
+  memetakan akun harga pokoknya pula.
+
+- **Papan kekurangan dikelompokkan menurut SLOT, bukan menurut layanan.** Yang
+  berguna bukan daftar tiga ratus layanan yang belum lengkap, melainkan
+  kenyataan bahwa dua ratus delapan puluh di antaranya kurang hal yang sama —
+  satu penyebab biasanya menjelaskan puluhan layanan sekaligus.
+
+- **Harga sintetis tidak dapat menyamar sebagai harga resmi.** Hanya baris
+  bersumber `OFFICIAL_REFERENCE` yang boleh menyebut penerbit, dan penerbit itu
+  wajib disertai nomor atau tanggal terbitannya — rujukan yang tidak dapat
+  ditelusuri tidak dapat dibedakan dari karangan. Ditegakkan constraint
+  `health_service_issuer_only_official`; penandanya melekat pada barisnya dan
+  tidak dapat dilepas, sebab yang melepasnya kelak bukan orang yang membuatnya.
+
+- **Pembangkitan data contoh deterministik, dan benihnya disimpan.** Benih yang
+  sama menghasilkan katalog yang sama persis. Tanpa itu, dua penyewa demo akan
+  melihat isi yang berbeda dan salah satunya akan melaporkan kerusakan yang
+  tidak dapat ditirukan siapa pun.
+
+- **Penghapusan data contoh menolak bila ada data nyata yang merujuknya**,
+  menyebutkan apa yang merujuknya, dan menyerahkan keputusannya kepada manusia.
+  Obat contoh yang terlanjur diresepkan kepada pasien sungguhan tidak dapat
+  dihapus tanpa meninggalkan resep yang menunjuk kekosongan. Dan yang disebut
+  penghapusan pun hanya penyembunyian.
+
+- **Satu kode lokal tidak menunjuk dua kode resmi pada sistem yang sama**,
+  ditegakkan indeks unik parsial atas pemetaan yang belum dipensiunkan.
+  Pemetaan **dipensiunkan, bukan dihapus**: rekam lama yang sudah dikirim
+  memakai pemetaan lama harus tetap dapat dijelaskan.
+
+- **Yang memetakan bukan yang mengaktifkan.** Pemetaan adalah pekerjaan harian;
+  aktivasi adalah keputusan yang membuat layanan dapat ditagihkan. Yang pertama
+  menyadari penyatuannya adalah pasien yang menerima tagihan atas layanan yang
+  tarifnya salah ketik.
+
+**Dua cacat yang ditemukan naskah bukti**
+
+| Cacat | Akibatnya di produksi |
+|---|---|
+| Kode kumpulan data contoh dihitung dari benih saja, sedangkan uniknya per tenant | Fasilitas kedua yang disemai dengan benih yang sama gagal seluruhnya — persis kebalikan dari maksud "deterministik" |
+| Penyemaian ulang berkata "berhasil" sambil membuat nol baris | Sebabnya akan dicari berjam-jam; kini ia ditolak dengan alasannya |
+
+Yang pertama sekelas dengan cacat nomor insiden pada H-9: pengenal yang
+dihitung per lingkup sempit, di bawah batasan unik yang lebih luas. Dua kali
+dalam satu hari cukup untuk menjadikannya hal yang diperiksa lebih dahulu.
+
+**Yang belum:** isi KFA, ICD-10, ICD-9-CM, LOINC, dan SNOMED — seluruhnya
+terhalang akses resmi; volume data contoh penuh menurut profil `STANDARD`
+(1.000 obat, 1.500 tindakan, dan seterusnya) yang menunggu katalog per
+domainnya; serta layar web.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -582,7 +678,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 
 ```text
 1.  H-9    HIM, koding, mutu — seluruhnya milik kami          [SELESAI]
-2.  H-9L   Master data dan pemetaan unit — pondasi bagi tarif dan jasa
+2.  H-9L   Master data dan pemetaan unit — pondasi bagi tarif  [SELESAI]
 3.  H-9N   COA dan pemetaan akuntansi — strukturnya; jurnal menunggu port
 4.  H-9D   Struktur tarif berversi — isinya menunggu terbitan resmi
 5.  H-9E   Kebijakan jasa dan kontributor

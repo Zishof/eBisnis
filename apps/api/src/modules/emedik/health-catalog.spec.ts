@@ -224,6 +224,26 @@ describe('peran kesehatan', () => {
     expect(menyerahkan).toEqual(['HEALTH_MEDICAL_RECORD_OFFICER']);
   });
 
+  it('yang memetakan layanan bukan yang mengaktifkannya', () => {
+    const memetakan = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_SERVICE_CATALOG.UPDATE'),
+    ).map((r) => r.code);
+    const mengaktifkan = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_SERVICE_CATALOG.ACTIVATE'),
+    ).map((r) => r.code);
+    expect(memetakan).toEqual(['HEALTH_SERVICE_CATALOGUER']);
+    expect(mengaktifkan).toEqual(['HEALTH_ADMIN']);
+  });
+
+  it('penghapusan data contoh hanya dipegang administrator', () => {
+    // Penghapusannya menolak bila ada data nyata yang merujuknya, dan keputusan
+    // atas penolakan itu harus diambil orang yang dapat menilai akibatnya.
+    const boleh = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_MASTER_DATA.DELETE'),
+    ).map((r) => r.code);
+    expect(boleh).toEqual(['HEALTH_ADMIN']);
+  });
+
   it('koder tidak memverifikasi, verifikator tidak mengode', () => {
     const koder = HEALTH_ROLES.find((r) => r.code === 'HEALTH_CODER');
     const verifikator = HEALTH_ROLES.find((r) => r.code === 'HEALTH_CODING_VERIFIER');

@@ -1,0 +1,91 @@
+==============================================================================
+BUKTI H-9L — KATALOG LAYANAN, PEMETAAN UNIT, DAN SUMBER MASTER DATA
+Waktu   : 2026-07-31T22:54:28.185Z
+Schema  : demo
+==============================================================================
+
+Dua pengguna. Petugas katalog TIDAK diberi ACTIVATE, administrator TIDAK
+diberi CREATE maupun UPDATE atas katalognya — justru pemisahan itulah yang
+hendak dibuktikan naskah ini.
+
+1. Harga dan kode sintetis tidak dapat menyamar sebagai yang resmi
+  LULUS  baris contoh yang mengaku bersumber BPJS DITOLAK
+  LULUS  penolakannya menyebut akibatnya: dipakai menagih pasien
+  LULUS  rujukan resmi tanpa nomor terbitan DITOLAK
+  LULUS  penolakannya menyebut bahwa ia tak dapat dibedakan dari karangan
+  LULUS  menembusnya lewat basis data pun ditolak constraint
+
+2. Kekurangan pemetaan dilaporkan SATU PER SATU, beserta fase yang menunggunya
+  LULUS  layanan dibuat
+  LULUS  dan dibuat dalam keadaan TIDAK aktif
+  LULUS  pemetaan yang belum lengkap TETAP dapat disimpan
+  LULUS  kekurangannya disebut satu per satu
+  LULUS  unit layanan yang kosong menyebut akibatnya
+  LULUS  pemeriksaan laboratorium menuntut SPESIMEN tanpa ditanya
+  LULUS  dan menuntut peran VERIFIKATOR
+  LULUS  dan menuntut akun HPP karena memakai persediaan
+  LULUS  slot yang tabelnya belum ada menyebut fasenya
+  LULUS  akun pendapatan menunggu H-9N
+  LULUS  departemen TIDAK menunggu fase mana pun
+  LULUS  kekurangan disimpan sebagai BARIS, bukan sebagai angka
+
+3. Layanan tidak dapat diaktifkan sebelum pemetaannya lengkap
+  LULUS  aktivasi DITOLAK
+  LULUS  penolakannya memisahkan yang menunggu fase berikutnya
+  LULUS  menembus aktivasi lewat basis data pun ditolak trigger
+  LULUS  layanan yang belum dipetakan sama sekali pun ditolak trigger
+
+4. Setelah dilengkapi, kekurangannya ditutup — bukan menggantung
+  LULUS  pemetaan lengkap disimpan
+  LULUS  lokasi yang masih kosong dilaporkan tetapi TIDAK menahan
+  LULUS  kekurangan lama ditutup dengan waktunya, bukan dihapus
+
+5. Yang memetakan bukan yang mengaktifkan
+  LULUS  petugas katalog tidak berwenang mengaktifkan
+  LULUS  dan administrator tidak berwenang memetakan
+  LULUS  administrator mengaktifkannya
+  LULUS  dan layanannya kini aktif
+  LULUS  penonaktifan tanpa alasan yang bermakna ditolak
+
+6. Satu kode lokal tidak menunjuk dua kode resmi pada sistem yang sama
+  LULUS  pemetaan pertama diterima
+  LULUS  pemetaan kedua ke kode LOINC yang berbeda DITOLAK
+  LULUS  penolakannya menyebut kode yang sudah terpasang
+  LULUS  sistem tujuan yang berbeda boleh berdampingan
+  LULUS  menembusnya lewat basis data pun ditolak indeks unik parsial
+  LULUS  pemetaan dipensiunkan, bukan dihapus
+  LULUS  barisnya masih ada dan bertanda pensiun
+  LULUS  setelah dipensiunkan, pemetaan baru diterima
+
+7. Penyemaian contoh deterministik, dan tandanya tidak dapat dilepas
+  LULUS  penyemaian berjalan
+  LULUS  30 layanan contoh dibuat
+  LULUS  dan seluruhnya bertanda contoh
+  LULUS  catatannya menyatakan tidak boleh dipakai menagih
+  LULUS  tidak satu pun baris contoh yang mengaku resmi
+  LULUS  dan tidak satu pun langsung aktif
+  LULUS  penyemaian kedua dengan benih yang SAMA berjalan
+  LULUS  benih yang sama menghasilkan katalog yang sama PERSIS
+  LULUS  menyemai ulang fasilitas yang sama dengan benih yang sama DITOLAK
+  LULUS  penolakannya menjelaskan bahwa hasilnya akan sama persis
+  LULUS  penyemaian dengan benih berbeda berjalan
+  LULUS  benih yang berbeda menghasilkan katalog yang berbeda
+
+8. Data contoh yang sudah dipakai data nyata tidak dapat disembunyikan
+  LULUS  kumpulan yang belum dipakai boleh disembunyikan
+  LULUS  barisnya TIDAK dihapus, hanya disembunyikan
+  LULUS  kumpulan yang sudah dipakai data nyata DITOLAK
+  LULUS  penolakannya menyebut apa yang merujuknya
+  LULUS  dan menyerahkan keputusannya kepada manusia
+
+9. Papan kekurangan katalog dikelompokkan menurut slotnya
+  LULUS  layanan kedua dipetakan setengah jalan
+  LULUS  papan kekurangan terbaca
+  LULUS  dan mengelompokkan menurut slot, bukan menurut layanan
+  LULUS  yang menahan aktivasi berada di atas
+  LULUS  dan yang tidak menahan tetap dilaporkan, bukan disembunyikan
+  LULUS  katalog aktif hanya memuat yang benar-benar aktif
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
