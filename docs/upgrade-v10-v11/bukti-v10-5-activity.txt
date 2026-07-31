@@ -1,0 +1,58 @@
+=========================================================================
+BUKTI V10-5 — JEJAK PEMAKAIAN, JEJAK PERUBAHAN, DAN KAPASITAS PELAKU
+=========================================================================
+
+1. KAPASITAS PELAKU TERISI SENDIRI
+   Kolom actor_role_codes sudah ada sejak skema pertama dan KOSONG pada
+   seluruh 258 baris yang pernah ditulis — karena mengisinya bergantung
+   pada ingatan penulis 76 pemanggilan audit. active_role_code tidak
+   bergantung pada siapa pun: ia terisi dari konteks permintaan.
+   LOGIN  pelaku=bukti.v10552f120  kapasitas=(gabungan)
+  LULUS  ada baris audit untuk petugas ini
+
+   Melakukan perubahan data setelah peran dipilih:
+2. JEJAK PEMAKAIAN: IDENTITAS DARI SESI, BUKAN DARI BADAN PERMINTAAN
+  LULUS  empat peristiwa sah diterima
+  LULUS  dua peristiwa ditolak
+   ditolak [4]: Kode menu 'MENU_YANG_TIDAK_ADA' tidak dikenal.
+   ditolak [5]: UI_ACTION wajib menyertakan actionCode.
+  LULUS  tersimpan tepat empat
+  LULUS  seluruhnya atas nama pemilik sesi
+   Jalur tersimpan: /admin/pengguna
+  LULUS  kueri string dibuang
+  LULUS  nama yang dicari tidak tersimpan
+  LULUS  kapasitas ikut tercatat
+
+3. RINGKASAN PEMAKAIAN
+  LULUS  endpoint pemakaian menu terbaca
+   Menu ADMIN: 2 pembukaan oleh 1 orang
+  LULUS  pembukaan menu ADMIN tercatat
+   Menu tidak pernah dibuka: 123 dari 124
+  LULUS  daftar menu tak terpakai disertakan
+   Tindakan EKSPOR: 1 dibatalkan dari 1 (100%)
+  LULUS  pembatalan tercatat
+
+4. JEJAK PERUBAHAN BERASAL DARI TRIGGER BASIS DATA
+   Perubahan pada bagian 1 dilakukan LANGSUNG lewat SQL, tanpa melewati
+   satu baris pun kode aplikasi. Ia tetap tercatat — itulah bedanya
+   trigger basis data dari pencatatan di dalam kode.
+  LULUS  ringkasan per tabel terbaca
+   Tabel role: 153 sisip, 9 ubah, 7 hapus
+  LULUS  perubahan lewat SQL langsung tetap tercatat
+  LULUS  riwayat baris terbaca
+   Riwayat peran uji: 2 perubahan
+   Kolom name: "Peran Bukti V10-5" -> "Peran Bukti V10-5 (diubah)"
+  LULUS  perubahan disebut per kolom, bukan dua keadaan utuh
+
+5. NAMA TABEL DARI PERMINTAAN TIDAK DAPAT DISUNTIKKAN
+  LULUS  nama tabel tidak sah ditolak
+  LULUS  tabel role masih ada
+
+6. RINGKASAN AUDIT MENUNTUT IZIN
+  LULUS  tanpa ADMIN_AUDIT.READ ditolak
+
+=========================================================================
+SELURUH PEMERIKSAAN LULUS
+=========================================================================
+
+Pembersihan: sisa petugas bukti = 0

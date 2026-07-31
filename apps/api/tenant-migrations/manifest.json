@@ -106,6 +106,20 @@
       "file": "V015__accounting_events.sql",
       "name": "Peristiwa akuntansi dan aturan posting",
       "description": "accounting_event dan accounting_posting_rule. Pemetaan peristiwa ke akun tinggal di data, bukan di kode, sehingga debit dan kredit tidak ditulis di controller. Memakai journal_entry yang sudah ada sejak V006; tidak ada buku besar kedua. Memuat batasan bahwa peristiwa berstatus POSTED wajib menunjuk jurnalnya, dan kunci idempotensi agar peristiwa yang sama tidak tercatat dua kali."
+    },
+    {
+      "version": "V016",
+      "sequence": 16,
+      "file": "V016__ui_activity_log.sql",
+      "name": "Jejak pemakaian antarmuka",
+      "description": "ui_activity_log — menu yang dibuka, halaman yang ditampilkan, dan kendali yang ditekan. Sengaja TERPISAH dari audit_event karena isinya dilaporkan peramban dan tidak dapat diverifikasi server; mencampurkannya akan merusak nilai audit_event sebagai bukti. Untuk analitik pemakaian, bukan untuk membuktikan perbuatan. Tanpa trigger audit karena tabelnya append-only dan bervolume tinggi."
+    },
+    {
+      "version": "V017",
+      "sequence": 17,
+      "file": "V017__audit_active_role.sql",
+      "name": "Kapasitas pelaku pada jejak audit",
+      "description": "audit_event bertambah kolom active_role_code. audit_event sudah mencatat SIAPA sejak awal; kolom ini menjawab DALAM KAPASITAS APA. Tanpanya, pertanyaan itu menuntut penelusuran silang ke platform_role_switch_log untuk setiap baris — dan jawaban yang menuntut kerja sebanyak itu tidak akan pernah benar-benar dicari. Nullable; baris lama tidak diisi mundur karena kapasitas yang tidak tercatat tidak boleh dikarang."
     }
   ]
 }

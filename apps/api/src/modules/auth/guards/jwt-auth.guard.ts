@@ -6,6 +6,7 @@ import { Request } from 'express';
 import { AppError, ErrorCodes } from '../../../common/errors/app-error';
 import { IS_PUBLIC_KEY, DEMO_BLOCKED_KEY } from '../../../common/decorators';
 import { AccessTokenPayload, AuthService } from '../auth.service';
+import { currentScope } from '../../../common/context/request-context';
 
 /**
  * Guard autentikasi global. Endpoint publik ditandai eksplisit dengan @Public().
@@ -82,6 +83,33 @@ export class JwtAuthGuard implements CanActivate {
 
     const user = await this.authService.buildAuthenticatedUser(payload);
     (request as unknown as { user: unknown }).user = user;
+
+    // Konteks permintaan dilengkapi begitu tokennya terverifikasi, supaya
+    // pencatatan tidak perlu menerima pelakunya sebagai argumen di setiap
+    // tempat. Inilah yang membuat `actor_role_codes` terisi sendiri alih-alih
+    // bergantung pada ingatan penulis tujuh puluh enam pemanggilan audit.
+    //
+    // Ditulis ke objek konteks yang sudah dibuka middleware, bukan membuka
+    // konteks baru: konteks baru di sini tidak akan terlihat oleh kode yang
+    // berjalan setelah guard selesai.
+    const scope = currentScope();
+    if (scope) {
+      scope.actorUserId = user.userId;
+      scope.actorUsername = user.username;
+      scope.activeRoleCode = user.activeRoleCode;
+      scope.sessionId = user.sessionId;
+      scope.tenantId = user.tenantId;
+      scope.tenantSchema = user.schemaName;
+      scope.ipAddress = request.ip;
+      scope.userAgent = request.header('user-agent');
+      // `actorRoleCodes` sengaja TIDAK diisi di sini. Daftar seluruh peran
+      // tenant menuntut satu kueri tambahan ke skema tenant, dan membebankan
+      // kueri itu pada SETIAP permintaan demi sebuah kolom catatan bukan
+      // pertukaran yang sepadan. Pemanggil yang sudah memegang daftarnya tetap
+      // dapat menyebutkannya sendiri, dan `activeRoleCode` di atas sudah
+      // menjawab pertanyaan yang paling sering diajukan — dalam kapasitas apa.
+    }
+
     if (user.tenantId && user.schemaName && user.auditSchemaName) {
       (request as unknown as { tenant: unknown }).tenant = {
         tenantId: user.tenantId,

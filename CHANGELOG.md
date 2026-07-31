@@ -9,6 +9,22 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Added
 
+- **Kapasitas pelaku pada jejak audit (V10-5).** `audit_event` sudah mencatat
+  SIAPA sejak awal; kini ia menjawab DALAM KAPASITAS APA. Kolomnya terisi
+  sendiri dari konteks permintaan — bukan dari 76 pemanggilan audit yang
+  masing-masing harus ingat mengisinya. Kolom `actor_role_codes` yang lama
+  kosong pada seluruh 258 barisnya justru karena bergantung pada ingatan itu.
+- **Dashboard TableAudit (V10-5).** Jejak perubahan baris sudah ditulis trigger
+  basis data sejak V003 dan sudah terkumpul belasan ribu baris, tetapi belum
+  ada cara membacanya. Kini tersedia ringkasan per tabel, per pelaku, dan
+  riwayat lengkap satu baris yang menyebut perbedaan per kolom — bukan dua
+  keadaan utuh yang harus dibandingkan sendiri.
+- **Jejak pemakaian antarmuka (V10-5).** Menu yang dibuka, halaman yang dilihat,
+  dan kendali yang ditekan, beserta laporan menu yang TIDAK PERNAH dibuka
+  siapa pun. Disimpan TERPISAH dari jejak audit karena isinya dilaporkan
+  peramban dan tidak dapat diverifikasi server; mencampurkannya akan merusak
+  nilai jejak audit sebagai bukti. Kueri string dibuang supaya kata kunci
+  pencarian tidak ikut tersimpan.
 - **Telemetri tersanitasi (V10-1).** Penyamar bersama yang membuang kata sandi,
   token, dan nomor kartu sebelum apa pun masuk ke log — beserta pembersih jejak
   tumpukan yang membuang jalur absolut sehingga struktur direktori server tidak
