@@ -40,6 +40,10 @@ export class PosContextService {
    * dan mengembalikan nol baris. Kasir yang sudah ditugaskan akan tampak tidak
    * punya register sama sekali, tanpa satu pun pesan yang menjelaskan sebabnya.
    */
+  async subjectIdPublik(schemaName: string, platformUserId: string): Promise<string> {
+    return this.subjectId(schemaName, platformUserId);
+  }
+
   private async subjectId(schemaName: string, platformUserId: string): Promise<string> {
     const rows = await this.tenantDb.query<{ id: string }>(
       schemaName,
@@ -142,16 +146,44 @@ export class PosContextService {
       });
     }
 
+    // Kode register dibaca terpisah: `RegisterInfo` sengaja hanya membawa apa
+    // yang dibutuhkan aturan `bolehBukaShift`, dan menambahkan medan ke sana
+    // hanya demi penomoran akan mengaburkan maksudnya.
+    const kodeTerminal = (
+      await this.tenantDb.query<{ code: string }>(
+        schemaName,
+        `SELECT code FROM "${schemaName}".pos_terminal WHERE id = $1`,
+        [dto.terminalId],
+      )
+    )[0]?.code;
+
     return this.tenantDb.transaction(schemaName, async (client) => {
-      const nomor = await client.query<{ n: string }>(
-        // shift_number bertipe teks pada skema yang ada; dikonversi lebih dahulu
-        // supaya penomoran tetap urut angka, bukan urut leksikografis (yang akan
-        // menempatkan "10" sebelum "9").
-        `SELECT COALESCE(MAX(NULLIF(shift_number, '')::integer), 0) + 1 AS n
+      /*
+       * `ux_pos_shift_number` unik pada `shift_number` SAJA — bukan per terminal,
+       * bukan per tanggal. Penomoran "1, 2, 3" per terminal per hari karena itu
+       * bertabrakan pada register kedua yang membuka shift pertamanya, dan
+       * kasirnya melihat galat 500 tanpa keterangan apa pun.
+       *
+       * Nomornya kini `YYYYMMDD-<kode register>-NNN`: unik secara global,
+       * sekaligus terbaca. Nomor shift muncul pada laporan selisih kas dan pada
+       * penelusuran audit, dan "1" tidak memberitahu siapa pun hari apa dan
+       * register mana.
+       */
+      const urutan = await client.query<{ n: string }>(
+        `SELECT COALESCE(
+                  MAX(NULLIF(split_part(shift_number, '-', 3), '')::integer), 0
+                ) + 1 AS n
            FROM "${schemaName}".pos_shift
           WHERE terminal_id = $1 AND business_date = $2`,
         [dto.terminalId, businessDate],
       );
+      const kodeRegister = String(kodeTerminal ?? dto.terminalId.slice(0, 6))
+        .replace(/[^A-Za-z0-9]/g, '')
+        .toUpperCase()
+        .slice(0, 12);
+      const nomorShift =
+        `${String(businessDate).replace(/-/g, '')}-${kodeRegister}-` +
+        String(Number(urutan.rows[0].n)).padStart(3, '0');
 
       const hasil = await client.query<{ id: string }>(
         `INSERT INTO "${schemaName}".pos_shift
@@ -163,7 +195,7 @@ export class PosContextService {
           dto.terminalId,
           register.outletId,
           subject,
-          Number(nomor.rows[0].n),
+          nomorShift,
           businessDate,
           dto.openingCash,
           user.activeRoleId ?? null,
@@ -193,7 +225,7 @@ export class PosContextService {
         terminalId: dto.terminalId,
         outletId: register.outletId,
         businessDate,
-        shiftNumber: Number(nomor.rows[0].n),
+        shiftNumber: nomorShift,
         openingCash: dto.openingCash,
         status: 'OPEN' as const,
       };

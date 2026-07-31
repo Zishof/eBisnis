@@ -190,6 +190,13 @@
       "file": "V027__pos_sale_detail.sql",
       "name": "Rincian penjualan, struk, kas, retur, dan refund kasir",
       "description": "pos_sale_line_tax, pos_sale_line_discount, pos_sale_discount, pos_sale_status_history, pos_sale_snapshot, pos_sale_receipt, pos_cash_count, pos_return, pos_return_line, pos_refund, plus kolom pelengkap pada pos_sale_line. pos_sale_line yang ada menyimpan tax_amount dan discount_amount sebagai satu angka — cukup untuk mencetak struk, tetapi tidak cukup untuk menjawab tarif mana yang dipakai saat pemeriksaan pajak atau siapa yang menyetujui diskon saat angka penjualan dipersoalkan. Tarif disimpan sebagai cuplikan karena tarif pajak berubah dan struk yang dicetak ulang tahun depan harus menunjukkan tarif saat transaksi terjadi. Dua aturan ditegakkan basis data: penyetuju retur tidak boleh sama dengan pemohonnya, dan jumlah yang diretur tidak pernah melebihi yang dijual — retur yang menghitung sendiri sisanya akan salah begitu dua retur atas transaksi yang sama diproses bersamaan."
+    },
+    {
+      "version": "V028",
+      "sequence": 28,
+      "file": "V028__pos_receipt_number_nullable.sql",
+      "name": "Nomor struk boleh kosong selama transaksi belum selesai",
+      "description": "pos_sale.receipt_number dilonggarkan dari NOT NULL. Jalur kasir menyimpan keranjang sebagai baris pos_sale berstatus DRAFT jauh sebelum ada struk. Menerbitkan nomor saat keranjang dibuka akan membuat setiap keranjang yang ditinggalkan memakan satu nomor, dan deret nomor struk pun berlubang — hal pertama yang ditanyakan pemeriksa pajak. Nomor kini diterbitkan hanya pada batas penyelesaian. Keunikannya tetap dijaga indeks unik parsial dari V024 yang memang sudah mengecualikan nilai kosong. Melonggarkan NOT NULL tidak pernah membatalkan baris yang sudah ada."
     }
   ]
 }

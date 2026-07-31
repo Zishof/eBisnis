@@ -40,9 +40,12 @@ export class PosStockService {
   async gudangOutlet(schemaName: string, outletId: string): Promise<string | null> {
     const rows = await this.tenantDb.query<{ id: string }>(
       schemaName,
+      // Gudang anak didahulukan atas gudang induk: outlet menyimpan barangnya
+      // di gudang outlet, sedangkan gudang induk adalah gudang pusat yang
+      // kebetulan juga tertaut ke outlet itu.
       `SELECT id FROM "${schemaName}".warehouse
         WHERE outlet_id = $1 AND deleted_at IS NULL AND is_active = TRUE
-        ORDER BY is_default DESC NULLS LAST, created_at
+        ORDER BY is_parent ASC, level DESC, created_at
         LIMIT 1`,
       [outletId],
     );

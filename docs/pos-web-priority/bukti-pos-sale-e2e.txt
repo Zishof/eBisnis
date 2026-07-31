@@ -1,0 +1,77 @@
+==============================================================================
+BUKTI POS-5 dan POS-6 — SATU TRANSAKSI KASIR DARI UJUNG KE UJUNG
+Waktu   : 2026-07-31T15:31:11.525Z
+Schema  : demo
+==============================================================================
+
+Disiapkan: produk harga 10.000, HPP 6.000, stok 100 pada gudang outlet.
+
+1. Membuka shift
+  LULUS  shift terbuka
+
+2. Membuka keranjang dan memindai produk
+  LULUS  keranjang terbuka
+  LULUS  baris ditambahkan
+  LULUS  keranjang berisi satu baris
+  LULUS  subtotal dihitung peladen: 3 × 10.000
+  LULUS  stok ditahan, bukan dipotong
+
+3. Mengubah jumlah
+  LULUS  jumlah berubah
+  LULUS  subtotal ikut berubah menjadi 50.000
+  LULUS  penahanan stok disesuaikan, bukan ditambah reservasi kedua
+
+4. Menahan lalu melanjutkan keranjang
+  LULUS  keranjang ditahan
+  LULUS  keranjang dilanjutkan
+
+5. Pembayaran
+   total tagihan 50000
+  LULUS  pembayaran kurang tetap diterima sebagai cicilan
+  LULUS  penyelesaian dengan pembayaran kurang DITOLAK
+  LULUS  penolakannya menyebut berapa kurangnya
+  LULUS  sisa pembayaran diterima
+  LULUS  pembayaran dengan kunci yang sama tidak dicatat dua kali
+  LULUS  tercatat tepat dua pembayaran
+  LULUS  jumlahnya sama dengan tagihan
+
+6. Keranjang yang menunggu pembayaran tidak dapat disunting
+  LULUS  menambah baris sesudah pembayaran ditolak
+
+7. Menyelesaikan transaksi
+  LULUS  transaksi selesai
+  LULUS  memperoleh nomor struk
+   nomor struk: 20260731-4F68-00001
+  LULUS  stok berkurang 5 dari 100
+  LULUS  penahanan dilepas
+  LULUS  ketersediaan cocok dengan on-hand
+  LULUS  satu pergerakan stok tercatat
+   peristiwa akuntansi: POS_CASH_RECEIPT, POS_COGS, POS_INVENTORY_RELEASE, POS_SALE
+  LULUS  peristiwa POS_SALE terbentuk
+  LULUS  peristiwa POS_CASH_RECEIPT terbentuk
+  LULUS  peristiwa POS_COGS terbentuk
+  LULUS  HPP tercatat 5 × 6.000
+  LULUS  struk tercatat pada tabelnya sendiri
+
+8. Penyelesaian yang terulang
+  LULUS  penyelesaian ulang tidak menghasilkan galat
+  LULUS  dilaporkan sebagai duplikat
+  LULUS  stok TIDAK berkurang dua kali
+  LULUS  pergerakan stok tetap satu
+
+9. Keranjang yang dibatalkan melepaskan stoknya
+  LULUS  stok tertahan sebelum pembatalan
+  LULUS  penahanan dilepas seluruhnya
+  LULUS  stok kembali tersedia
+
+10. Stok tidak cukup
+  LULUS  penjualan melebihi stok ditolak
+  LULUS  penolakannya menyebutkan jumlah yang tersedia
+  LULUS  baris yang gagal ditahan tidak tertinggal di keranjang
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Data sementara dibersihkan.
+Buku besar pergerakan stok sengaja tidak dihapus — penjaga immutability V008 menolaknya, dan itu memang perilaku yang benar. Produk bukti dinonaktifkan, bukan dihapus permanen.
