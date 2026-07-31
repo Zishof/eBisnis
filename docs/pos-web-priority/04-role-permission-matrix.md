@@ -1,5 +1,13 @@
 # POS-0 · Matriks Peran dan Hak Akses
 
+> **Diperbarui setelah POS-1 dikerjakan.** Rancangan awal dokumen ini
+> mengandaikan peran POS memakai profil umum P1–P12. Saat diterapkan, ternyata
+> itu tidak dapat dilakukan tanpa merusak modul lain: profil berlaku lintas
+> modul, sehingga menambahkan `REFUND_APPROVE` atau `CASH_MOVE` ke profil
+> manajer modul akan memberikannya pula pada marketplace. Lima profil kasir
+> **K1–K5** dibuat sebagai gantinya, mengikuti jalan yang sudah ditempuh Versi 9
+> untuk marketplace (M1–M9). Bagian "Lima profil kasir" di bawah menjelaskannya.
+
 ---
 
 ## Bentuk hak akses di eBisnis
@@ -69,6 +77,42 @@ Tiga sudah ada (`POS`, `POS_SHIFT`, `POS_TERMINAL`). Yang perlu ditambahkan:
 | `POS_REGISTER_ASSIGN` | Penugasan Register | `/app/pos/penugasan` |
 
 ---
+
+## Lima profil kasir (K1–K5)
+
+Profil adalah cetakan: peran menyatakan profil apa yang berlaku pada modul apa,
+lalu penyemai menurunkannya menjadi baris izin. Aksinya kemudian **diiris**
+dengan aksi yang benar-benar ditawarkan menu — sehingga sebuah peran tidak
+pernah tercatat memiliki izin pada halaman yang tidak menyediakannya.
+
+| Profil | Untuk | Ciri utama |
+|---|---|---|
+| `K1` | Kasir POS | Menjual, menahan, melanjutkan, diskon baris, buka/tutup shift sendiri. **Tanpa** persetujuan, kas, harga pokok, dan penggantian harga |
+| `K2` | Supervisor Kasir | K1 + persetujuan, pembatalan transaksi selesai, diskon keranjang, penggantian harga, kas, rekonsiliasi. **Tanpa** harga pokok dan tanpa `DELETE` |
+| `K3` | Kepala Toko | K2 + harga pokok, margin, `DELETE`, posting, dan pembacaan audit |
+| `K4` | Auditor POS | Membaca segalanya termasuk biaya. **Tanpa** satu pun aksi yang mengubah |
+| `K5` | Administrator Master POS | Terminal, penugasan register, setelan struk. **Tanpa** satu pun aksi yang menyentuh uang |
+
+Empat keputusan yang layak disebut alasannya:
+
+**K2 tanpa `DELETE`.** Supervisor menjalankan shift; menghapus terminal adalah
+pekerjaan administrator toko. Ada akibat kedua yang tidak langsung terlihat:
+syarat munculnya tombol Unggah adalah memiliki `UPDATE` dan `DELETE` sekaligus,
+sehingga memberi `DELETE` di sini akan membuat supervisor terhitung berhak
+mengunggah data massal di tengah shift.
+
+**K2 tanpa `VIEW_COST`.** Inilah yang membedakannya dari kepala toko. Supervisor
+mengawasi jalannya kas dan transaksi; margin adalah urusan tingkat di atasnya.
+
+**K3 memuat seluruh isi K2.** Peran yang lebih tinggi namun lebih tidak berdaya
+mendorong orang berbagi kata sandi, dan itu lebih buruk daripada memberi izinnya
+secara terbuka. Sebuah pengujian menjaga agar K3 tidak pernah kehilangan aksi
+yang dimiliki K2.
+
+**K5 bukan `P7`.** Profil manajer modul umum membawa `APPROVE`, `CANCEL`, dan
+`REVERSE` — yang pada layar kasir berarti menyetujui diskon dan membatalkan
+transaksi yang sudah dibayar. Orang yang memasang mesin kasir tidak seharusnya
+berada di dalam rantai persetujuan transaksinya.
 
 ## Enam peran bawaan
 

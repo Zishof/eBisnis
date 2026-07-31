@@ -162,6 +162,20 @@
       "file": "V023__knowledge_embedding.sql",
       "name": "Penyimpanan embedding dan kesamaan kosinus",
       "description": "knowledge_chunk bertambah embedding float8[], embedding_model, embedding_dim, dan embedded_at, beserta fungsi cosine_similarity. Memakai float8[] bukan pgvector karena ekstensi vector TIDAK ADA pada daftar ekstensi yang dapat dipasang di server ini — memasangnya menuntut paket sistem operasi, bukan wewenang aplikasi. Pemindaian penuh berlangsung puluhan milidetik untuk beberapa ribu potongan dan mulai terasa di sekitar 20.000 potongan per tenant; angka itu ditulis supaya keputusan memasang pgvector kelak dapat ditinjau dengan ukuran, bukan firasat. Kolom embedding_model wajib karena vektor dari model berbeda tidak dapat dibandingkan."
+    },
+    {
+      "version": "V024",
+      "sequence": 24,
+      "file": "V024__pos_context.sql",
+      "name": "Konteks POS: penugasan register dan kolom pelengkap",
+      "description": "pos_register_assignment beserta kolom pelengkap pada pos_terminal, pos_shift, pos_sale, pos_payment, dan cash_drawer_movement. Dua hal ditegakkan basis data dan bukan layanan: satu shift terbuka per terminal (indeks unik parsial pada status='OPEN') dan nomor struk yang tidak dapat kembar. Keduanya tidak dapat dijamin pemeriksaan di lapisan aplikasi ketika dua kasir bertransaksi pada milidetik yang sama. pos_terminal memperoleh register_status tersendiri karena kolom status yang ada dipakai untuk siklus hidup master; menumpangkan status operasional harian di atasnya membuat penonaktifan terminal dan penutupan register saling tertukar. Indeks unik penugasan memakai COALESCE, bukan NULLS NOT DISTINCT, karena produksi masih PostgreSQL 13."
+    },
+    {
+      "version": "V025",
+      "sequence": 25,
+      "file": "V025__pos_profiles.sql",
+      "name": "Profil hak kasir pada constraint role",
+      "description": "Memperluas ck_role_module_profile_code agar menerima profil kasir K1-K5 di samping P0-P12 dan M1-M9. Menyusul V012 yang melakukan hal sama untuk marketplace. Profil kasir dibuat tersendiri karena profil berlaku lintas modul: menambahkan REFUND_APPROVE atau CASH_MOVE ke profil manajer modul umum akan memberikannya pula pada modul lain yang menawarkan aksi itu."
     }
   ]
 }

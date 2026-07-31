@@ -5,6 +5,72 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## POS-1 — Konteks kasir, hak akses, dan peran
+
+### Ditambahkan
+- **Migrasi `V024__pos_context.sql`** (aditif): tabel `pos_register_assignment`
+  beserta kolom pelengkap pada `pos_terminal`, `pos_shift`, `pos_sale`,
+  `pos_payment`, dan `cash_drawer_movement`.
+- **Migrasi `V025__pos_profiles.sql`**: memperluas `ck_role_module_profile_code`
+  agar menerima profil kasir K1–K5, menyusul V012 yang melakukan hal sama untuk
+  marketplace.
+- **Sembilan aksi hak akses kasir**: `SELL`, `HOLD`, `RESUME`, `DISCOUNT_LINE`,
+  `DISCOUNT_CART`, `PRICE_OVERRIDE`, `OPEN_SHIFT`, `CLOSE_SHIFT`, `CASH_MOVE`.
+- **Enam menu POS baru** — katalog tumbuh dari 133 menjadi 139. Seluruh menu POS
+  kehilangan penanda "segera hadir".
+- **Lima profil kasir K1–K5** dan **tiga peran baru**: `ADMIN_TOKO`,
+  `PETUGAS_GUDANG_OUTLET`, `AUDITOR_POS`.
+- **Aturan pemisahan wewenang `POS_CASH`** — penyiap mesin kasir bukan pemeriksa
+  kasnya.
+- **Lima ambang kasir** pada `app_setting`, dapat diatur tiap tenant.
+- `modules/pos/pos-context.ts` — aturan konteks transaksi sebagai fungsi murni,
+  beserta 30 pengujiannya. Termasuk penentuan tanggal usaha menurut zona waktu
+  outlet dan jam pergantian harinya.
+- `modules/pos/pos-rbac.spec.ts` — 36 pengujian yang mengikat matriks hak akses
+  pada dokumen agar tidak dapat menyimpang diam-diam.
+
+### Ditegakkan basis data, bukan layanan
+- **Satu shift terbuka per terminal.** Indeks unik parsial pada `status='OPEN'`.
+- **Nomor struk tidak dapat kembar.** Indeks unik parsial.
+
+Keduanya tidak dapat dijamin pemeriksaan di lapisan aplikasi ketika dua kasir
+bertransaksi pada milidetik yang sama.
+
+### Keputusan yang perlu dicatat
+- **Profil kasir dibuat tersendiri (K1–K5), bukan dengan memperluas P1–P12.**
+  Profil berlaku lintas modul: menambahkan `REFUND_APPROVE` atau `CASH_MOVE` ke
+  profil manajer modul umum akan memberikannya pula pada marketplace. Hak
+  menyetujui refund tidak boleh merembes karena seseorang manajer modul di
+  tempat lain.
+- **`VOID_LINE`, `VOID_SALE`, dan `VIEW_OTHER_CASHIER` sengaja tidak dibuat**
+  meskipun perintah prioritas menyebutkannya. Pembatalan baris adalah `UPDATE`,
+  pembatalan transaksi selesai adalah `CANCEL`, dan melihat kasir lain adalah
+  persoalan cakupan data yang sudah punya mekanismenya sendiri. Aksi yang
+  artinya sama dengan aksi lain membuat matriks hak akses lebih sulit dibaca,
+  dan matriks yang sulit dibaca adalah matriks yang salah dikonfigurasi.
+- **`pos_terminal` memperoleh `register_status` tersendiri.** Kolom `status`
+  yang ada dipakai untuk siklus hidup master; menumpangkan status operasional
+  harian di atasnya membuat penonaktifan terminal dan penutupan register saling
+  tertukar.
+
+### Diperbaiki
+- Profil `K2` kehilangan `DELETE` setelah pengujian menyingkap akibat yang tidak
+  langsung terlihat: syarat munculnya tombol Unggah adalah memiliki `UPDATE` dan
+  `DELETE` sekaligus, sehingga supervisor kasir akan terhitung berhak mengunggah
+  data massal di tengah shift.
+- Kelompok pemisahan wewenang tanpa keterangan dilewati diam-diam saat
+  penyemaian. `POS_CASH` sempat terkena; keterangannya ditambahkan dan
+  aturannya kini benar-benar tersemai pada ketujuh belas skema.
+
+### Bukti
+- Migrasi diterapkan ke **17 skema tenant**, seluruhnya berhasil.
+- Diperiksa langsung pada basis data: 9 menu POS, 9 aksi baru, 6 peran, 2 aturan
+  SoD, 5 setelan, profil K1–K5 terpakai, dan `pos_register_assignment` ada.
+- Izin `KASIR_POS` pada `POS_SALE`: `CREATE, DISCOUNT_LINE, HOLD, PRINT, READ,
+  RESUME, SELL, UPDATE` — tanpa `APPROVE`, `CANCEL`, `PRICE_OVERRIDE`,
+  `DISCOUNT_CART`, maupun `VIEW_COST`.
+- `jest` 1114 tes lulus (bertambah 66).
+
 ## POS-0 — Audit jalur kritis POS Web
 
 ### Ditambahkan

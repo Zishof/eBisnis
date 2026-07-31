@@ -208,8 +208,14 @@ describe('syarat tombol unggah', () => {
     // menghapus. Keduanya batas hak yang dinyatakan blueprint Versi 9.
     expect(profileAllowsUpload('M4')).toBe(false);
     expect(profileAllowsUpload('M5')).toBe(false);
+    // K1 kasir dan K2 supervisor kasir sengaja tidak memenuhi syarat: keduanya
+    // tanpa DELETE. Menghapus master POS adalah pekerjaan administrator toko,
+    // dan unggah massal di tengah shift bukan sesuatu yang perlu ada.
+    expect(profileAllowsUpload('K1')).toBe(false);
+    expect(profileAllowsUpload('K2')).toBe(false);
+    expect(profileAllowsUpload('K4')).toBe(false); // auditor tidak menulis
     expect(UPLOAD_CAPABLE_PROFILES).toEqual([
-      'P3', 'P5', 'P6', 'P7', 'P8', 'M3', 'M6', 'M7', 'M8', 'M9',
+      'P3', 'P5', 'P6', 'P7', 'P8', 'M3', 'M6', 'M7', 'M8', 'M9', 'K3', 'K5',
     ]);
   });
 
