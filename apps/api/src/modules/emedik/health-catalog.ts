@@ -173,12 +173,55 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     sortOrder: 8,
   },
 
+  // Farmasi — H-4. Empat menu, bukan satu, karena hak aksesnya memang berbeda.
+  //
+  // Yang meresepkan bukan yang menelaah, dan yang menelaah bukan yang
+  // menyerahkan. Menyatukannya menjadi satu menu "Farmasi" dengan satu hak akses
+  // akan menghapus pemisahan itu pada hari pertama seseorang memberikan peran
+  // kepada stafnya — dan pemisahan yang hanya ada di dalam kode, tidak di dalam
+  // daftar hak akses, tidak menahan siapa pun.
+  {
+    code: 'HEALTH_PRESCRIPTION',
+    parentCode: 'HEALTH',
+    label: 'Resep',
+    route: '/app/emedik/resep',
+    icon: 'pill',
+    actions: ['READ', 'CREATE', 'REVIEW'],
+    sortOrder: 30,
+  },
+  {
+    code: 'HEALTH_DISPENSING',
+    parentCode: 'HEALTH',
+    label: 'Penyerahan Obat',
+    route: '/app/emedik/penyerahan',
+    icon: 'package-check',
+    actions: ['READ', 'CREATE'],
+    sortOrder: 31,
+  },
+  {
+    code: 'HEALTH_ADMINISTRATION',
+    parentCode: 'HEALTH',
+    label: 'Pemberian Obat',
+    route: '/app/emedik/pemberian',
+    icon: 'syringe',
+    actions: ['READ', 'CREATE'],
+    sortOrder: 32,
+  },
+  {
+    code: 'HEALTH_DRUG_MASTER',
+    parentCode: 'HEALTH',
+    label: 'Formularium',
+    route: '/app/emedik/formularium',
+    icon: 'book-marked',
+    actions: ['READ', 'CREATE', 'UPDATE'],
+    sortOrder: 33,
+  },
+
   // Fase berikutnya — ditandai jujur
   { code: 'HEALTH_APPOINTMENT', parentCode: 'HEALTH', label: 'Janji Temu', icon: 'calendar', actions: ['READ'], sortOrder: 10, comingSoon: true },
   { code: 'HEALTH_REGISTRATION', parentCode: 'HEALTH', label: 'Pendaftaran', icon: 'clipboard-list', actions: ['READ'], sortOrder: 11, comingSoon: true },
   { code: 'HEALTH_QUEUE', parentCode: 'HEALTH', label: 'Antrean', icon: 'list-ordered', actions: ['READ'], sortOrder: 12, comingSoon: true },
   { code: 'HEALTH_OUTPATIENT', parentCode: 'HEALTH', label: 'Rawat Jalan', icon: 'activity', actions: ['READ'], sortOrder: 20, comingSoon: true },
-  { code: 'HEALTH_PHARMACY', parentCode: 'HEALTH', label: 'Farmasi', icon: 'pill', actions: ['READ'], sortOrder: 30, comingSoon: true },
   { code: 'HEALTH_LABORATORY', parentCode: 'HEALTH', label: 'Laboratorium', icon: 'flask-conical', actions: ['READ'], sortOrder: 40, comingSoon: true },
   { code: 'HEALTH_RADIOLOGY', parentCode: 'HEALTH', label: 'Radiologi', icon: 'scan', actions: ['READ'], sortOrder: 41, comingSoon: true },
   { code: 'HEALTH_INPATIENT', parentCode: 'HEALTH', label: 'Rawat Inap', icon: 'bed-double', actions: ['READ'], sortOrder: 50, comingSoon: true },
@@ -278,15 +321,61 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     code: 'HEALTH_DOCTOR',
     name: 'Dokter',
     description: 'Memberi layanan klinis kepada pasien yang dirawatnya.',
-    permissions: [...BACA_PASIEN, 'HEALTH_PATIENT.BREAK_GLASS'],
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_PATIENT.BREAK_GLASS',
+      // Meresepkan, ya. Menelaah dan menyerahkan, tidak — telaah apoteker
+      // kehilangan seluruh gunanya bila peresepnya boleh menelaah sendiri.
+      'HEALTH_PRESCRIPTION.READ',
+      'HEALTH_PRESCRIPTION.CREATE',
+      'HEALTH_DRUG_MASTER.READ',
+    ],
     sortOrder: 5,
   },
   {
     code: 'HEALTH_NURSE',
     name: 'Perawat',
     description: 'Memberi asuhan keperawatan kepada pasien yang dirawatnya.',
-    permissions: [...BACA_PASIEN],
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_PRESCRIPTION.READ',
+      // Memberikan obat, bukan menyerahkannya dari apotek. Keduanya berbeda:
+      // yang satu memindahkan obat dari rak ke pasien, yang lain memasukkannya
+      // ke tubuh pasien — dan kekeliruannya berbeda pula.
+      'HEALTH_ADMINISTRATION.READ',
+      'HEALTH_ADMINISTRATION.CREATE',
+      'HEALTH_DRUG_MASTER.READ',
+    ],
     sortOrder: 6,
+  },
+  {
+    code: 'HEALTH_PHARMACIST',
+    name: 'Apoteker',
+    description: 'Menelaah resep, menyerahkan obat, dan mengelola formularium.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_PRESCRIPTION.READ',
+      'HEALTH_PRESCRIPTION.REVIEW',
+      'HEALTH_DISPENSING.READ',
+      'HEALTH_DISPENSING.CREATE',
+      'HEALTH_DRUG_MASTER.READ',
+      'HEALTH_DRUG_MASTER.CREATE',
+      'HEALTH_DRUG_MASTER.UPDATE',
+    ],
+    sortOrder: 7,
+  },
+  {
+    code: 'HEALTH_PHARMACY_TECHNICIAN',
+    name: 'Tenaga Teknis Kefarmasian',
+    description: 'Menyerahkan obat yang sudah ditelaah apoteker.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_PRESCRIPTION.READ',
+      'HEALTH_DISPENSING.READ',
+      'HEALTH_DISPENSING.CREATE',
+      'HEALTH_DRUG_MASTER.READ',
+    ],
+    sortOrder: 8,
   },
   {
     code: 'HEALTH_QUALITY_MANAGER',
@@ -333,6 +422,26 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'Yang menelaah break-glass tidak boleh sama dengan yang memakainya. Telaah oleh pelakunya ' +
       'sendiri bukan telaah.',
     conflictingPermissions: ['HEALTH_PATIENT.BREAK_GLASS', 'HEALTH_ACCESS_LOG.EXPORT'],
+  },
+  {
+    code: 'HEALTH_SOD_PRESCRIBE_REVIEW',
+    name: 'Peresep tidak menelaah resepnya sendiri',
+    description:
+      'Telaah apoteker adalah pemeriksaan oleh orang kedua, dan itulah satu-satunya penahan yang ' +
+      'benar-benar bekerja ketika dosisnya salah ketik. Orang yang menulis angkanya adalah orang ' +
+      'yang paling sulit melihat kekeliruannya. Basis data menegakkannya pula lewat constraint ' +
+      'rx_prescription_review_not_self — aturan yang hanya ada di satu lapisan berhenti berlaku ' +
+      'begitu ada jalan kedua menuju tabelnya.',
+    conflictingPermissions: ['HEALTH_PRESCRIPTION.CREATE', 'HEALTH_PRESCRIPTION.REVIEW'],
+  },
+  {
+    code: 'HEALTH_SOD_PRESCRIBE_DISPENSE',
+    name: 'Peresep tidak menyerahkan obatnya sendiri',
+    description:
+      'Pemisahan yang paling tua dalam keselamatan obat. Yang menulis resep tidak mengambilkan ' +
+      'obatnya dari rak: keliru memilih tempat obat pada rak tidak akan tertangkap oleh orang ' +
+      'yang sejak awal sudah yakin obat apa yang dimaksudnya.',
+    conflictingPermissions: ['HEALTH_PRESCRIPTION.CREATE', 'HEALTH_DISPENSING.CREATE'],
   },
 ];
 

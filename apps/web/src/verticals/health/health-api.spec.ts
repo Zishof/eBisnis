@@ -9,7 +9,16 @@
  */
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { healthApi, umurDari, LABEL_KEYAKINAN, TUJUAN_LABEL, type PurposeOfUse } from './health-api';
+import {
+  healthApi,
+  umurDari,
+  LABEL_GOLONGAN_OBAT,
+  LABEL_KEYAKINAN,
+  LABEL_STATUS_RESEP,
+  RUPA_PERINGATAN,
+  TUJUAN_LABEL,
+  type PurposeOfUse,
+} from './health-api';
 import * as apiModule from '../../lib/api';
 
 const ctx = { purpose: 'TREATMENT' as PurposeOfUse, facilityId: 'F1' };
@@ -86,6 +95,22 @@ describe('tujuan penggunaan pada pembacaan rekam medis', () => {
       ['saveDiagnosis', () => healthApi.saveDiagnosis({}, ctx)],
       ['saveOrder', () => healthApi.saveOrder({}, ctx)],
       ['notDuplicate', () => healthApi.notDuplicate('D1', 'catatan', ctx)],
+      // Farmasi. `checkDrug` termasuk meski tidak menyimpan apa pun: ia membaca
+      // alergi dan riwayat obat pasien, dan pembacaan yang tidak berujung pada
+      // penyimpanan tetap pembacaan.
+      [
+        'checkDrug',
+        () => healthApi.checkDrug({ patientId: 'P1', drugId: 'D1', doseValue: 500, doseUnit: 'mg' }, ctx),
+      ],
+      ['createPrescription', () => healthApi.createPrescription({}, ctx)],
+      ['prescription', () => healthApi.prescription('R1', ctx)],
+      ['reviewPrescription', () => healthApi.reviewPrescription('R1', { approve: true }, ctx)],
+      ['dispense', () => healthApi.dispense({}, ctx)],
+      ['administer', () => healthApi.administer({}, ctx)],
+      [
+        'skipAdministration',
+        () => healthApi.skipAdministration({ administrationId: 'A1', status: 'OMITTED', reason: 'x' }, ctx),
+      ],
     ];
 
     const tanpaTujuan: string[] = [];
@@ -159,5 +184,37 @@ describe('bantuan tampilan', () => {
       expect(label.length).toBeGreaterThan(4);
       expect(label).not.toBe(kode);
     }
+  });
+});
+
+describe('rupa peringatan obat', () => {
+  it('setiap tingkat peringatan punya rupa dan labelnya sendiri', () => {
+    for (const tingkat of ['BLOCKING', 'CRITICAL', 'WARNING', 'INFO']) {
+      expect(RUPA_PERINGATAN[tingkat]?.label).toBeTruthy();
+      expect(RUPA_PERINGATAN[tingkat]?.kelas).toContain('border-');
+    }
+  });
+
+  it('HANYA tingkat yang menahan yang berwarna merah', () => {
+    /*
+     * Bila semua peringatan tampak sama mendesak, tidak ada yang tampak
+     * mendesak — dan yang benar-benar berbahaya tenggelam di antara pengingat
+     * biasa. Warna merah disimpan untuk satu tingkat saja supaya ia tetap
+     * berarti ketika muncul.
+     */
+    const merah = Object.entries(RUPA_PERINGATAN).filter(([, r]) => r.kelas.includes('rose'));
+    expect(merah.map(([k]) => k)).toEqual(['BLOCKING']);
+  });
+
+  it('setiap status resep punya label yang dapat dibaca petugas', () => {
+    for (const [kode, label] of Object.entries(LABEL_STATUS_RESEP)) {
+      expect(label).not.toBe(kode);
+      expect(label).not.toMatch(/_/);
+    }
+  });
+
+  it('golongan obat dinyatakan dengan istilah Indonesia yang dipakai apoteker', () => {
+    expect(LABEL_GOLONGAN_OBAT.NARCOTIC).toBe('Narkotika');
+    expect(LABEL_GOLONGAN_OBAT.PRESCRIPTION).toBe('Keras');
   });
 });

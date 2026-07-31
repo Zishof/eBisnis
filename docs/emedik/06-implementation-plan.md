@@ -64,12 +64,57 @@ peringatan klinis, `ClinicalOrder`, `OrderSet`, surat keterangan medis.
 
 Uji ≥ 30. **Invarian:** catatan bertanda tangan tidak dapat diubah.
 
-### H-4 · Farmasi, obat, adapter persediaan, billing
+### H-4 · Farmasi, obat, adapter persediaan, billing — **SELESAI**
 
 Resep, telaah apoteker, penyerahan, substitusi, obat terkendali, peringatan
-interaksi dan alergi, rekonsiliasi obat, eMAR dengan enam benar.
+interaksi dan alergi, eMAR dengan enam benar.
 
-Uji ≥ 35. **Integration request** untuk kode peristiwa akuntansi `HEALTH_*`.
+Uji ≥ 35 → **60 tercapai**, ditambah naskah bukti 44 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H006__health__pharmacy.sql`, `H007__health__pharmacy_permissions.sql` |
+| Aturan murni | `health-medication.ts` + 60 pengujian |
+| Layanan | `health-pharmacy.service.ts` |
+| Adapter persediaan | `adapters/inventory.adapter.ts` |
+| Endpoint | `health-pharmacy.controller.ts` — 8 jalan di `/api/v1/health/pharmacy/**` |
+| Layar | `apps/web/src/verticals/health/PharmacyPage.tsx` |
+| Bukti | `scripts/prove-health-pharmacy.mjs` → [bukti-h4-farmasi.txt](bukti-h4-farmasi.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **Aturan keselamatan obat dipisahkan sebagai fungsi murni.** Enam benar dan
+  pemeriksaan alergi harus dapat diuji dalam hitungan milidetik dan dalam
+  puluhan kombinasi. Aturan yang hanya dapat diuji lewat basis data akan diuji
+  tiga kali, bukan enam puluh.
+
+- **Adapter persediaan memakai ulang `applyBalanceDelta` milik Core, tetapi
+  TIDAK memakai ulang `consumeAvailable`.** Yang terakhir mengurutkan lot dengan
+  FEFO tanpa menyaring: lot yang sudah kedaluwarsa berada di urutan paling
+  depan. Untuk barang dagangan itu benar; untuk obat itu berarti obat
+  kedaluwarsa akan menjadi yang pertama diserahkan kepada pasien.
+
+- **Peringatan pemblokir boleh dilewati dengan alasan tertulis.** Menolak
+  seluruhnya akan memindahkan peresepan ke kertas — di luar sistem, tanpa jejak
+  sama sekali. Yang dicapai bukan keselamatan, melainkan kebutaan. Alasannya
+  tersimpan bersama peringatan yang dilewati pada `override_alerts`.
+
+- **Hanya peringatan yang benar-benar berbahaya yang memblokir.** Alergi berat
+  dan fatal, kontraindikasi, dan dosis dua kali lipat batas. Alergi ringan,
+  interaksi mayor, dan penandaan obat memperingatkan tanpa menahan. Sistem yang
+  memperingatkan segalanya sama tidak amannya dengan yang tidak memperingatkan
+  apa pun — bedanya, yang pertama merasa aman.
+
+- **Empat menu, bukan satu.** Meresepkan, menelaah, menyerahkan, memberikan.
+  Pemisahan yang hanya ada di dalam kode, tidak di dalam daftar hak akses yang
+  dilihat administrator, tidak menahan siapa pun.
+
+**Yang belum:** substitusi otomatis menurut formularium, rekonsiliasi obat saat
+masuk dan pulang (menunggu H-6), penarikan sediaan, dan pelaporan narkotika ke
+SIPNAP. Kode peristiwa akuntansi `HEALTH_*` masih menunggu keputusan Core, jadi
+penyerahan obat belum memicu pencatatan harga pokok.
 
 ### H-5 · Laboratorium, radiologi, hasil
 

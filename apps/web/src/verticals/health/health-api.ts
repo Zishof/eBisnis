@@ -178,6 +178,79 @@ export interface JejakAkses {
   occurred_at: string;
 }
 
+// --- Farmasi -----------------------------------------------------------------
+
+export interface PeringatanObat {
+  type:
+    | 'ALLERGY'
+    | 'INTERACTION'
+    | 'DOSE_HIGH'
+    | 'DOSE_LOW'
+    | 'DUPLICATE_THERAPY'
+    | 'HIGH_ALERT'
+    | 'LASA'
+    | 'CONTROLLED';
+  severity: 'INFO' | 'WARNING' | 'CRITICAL' | 'BLOCKING';
+  message: string;
+  blocking: boolean;
+  detail?: Record<string, unknown>;
+}
+
+export interface HasilPeriksaObat {
+  alerts: PeringatanObat[];
+  blocked: boolean;
+}
+
+export interface AntrianResep {
+  id: string;
+  prescription_number: string;
+  status: string;
+  prescribed_at: string;
+  patient_name: string;
+  medical_record_number: string | null;
+  line_count: number;
+  has_controlled: boolean | null;
+  has_high_alert: boolean | null;
+}
+
+export interface BarisResep {
+  id: string;
+  line_no: number;
+  dose_value: number;
+  dose_unit: string;
+  route: string;
+  frequency_code: string;
+  frequency_per_day: number | null;
+  duration_days: number | null;
+  quantity: number;
+  dispensed_qty: number;
+  instruction: string | null;
+  is_prn: boolean;
+  override_alerts: { alerts: PeringatanObat[]; overrideReason: string | null } | null;
+  drug_id: string;
+  generic_name: string;
+  brand_name: string | null;
+  active_ingredient: string;
+  drug_class: string;
+  is_controlled: boolean;
+  is_high_alert: boolean;
+  is_lasa: boolean;
+}
+
+export interface ResepLengkap {
+  id: string;
+  prescription_number: string;
+  status: string;
+  prescribed_at: string;
+  reviewed_at: string | null;
+  review_note: string | null;
+  note: string | null;
+  patient_name: string;
+  medical_record_number: string | null;
+  birth_date: string | null;
+  lines: BarisResep[];
+}
+
 // --- Panggilan ---------------------------------------------------------------
 
 export const healthApi = {
@@ -300,6 +373,68 @@ export const healthApi = {
 
   completeEncounter: (id: string, disposition?: string) =>
     api.post(`/health/encounters/${id}/complete`, { disposition }),
+
+  // --- Farmasi --------------------------------------------------------------
+  //
+  // Semuanya membawa tujuan penggunaan — termasuk `checkDrug`, yang tidak
+  // menyimpan apa pun tetapi membaca alergi dan riwayat obat pasien. Pembacaan
+  // yang tidak berujung pada penyimpanan tetap pembacaan.
+  checkDrug: (
+    body: {
+      patientId: string;
+      drugId: string;
+      doseValue: number;
+      doseUnit: string;
+      frequencyPerDay?: number;
+      prescriptionId?: string;
+    },
+    ctx: KonteksAkses,
+  ) => api.post<HasilPeriksaObat>('/health/pharmacy/check', body, { headers: tajuk(ctx) }),
+
+  createPrescription: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{
+      id: string;
+      prescriptionNumber: string;
+      alerts: Array<HasilPeriksaObat & { line: number }>;
+    }>('/health/pharmacy/prescriptions', body, { headers: tajuk(ctx) }),
+
+  pharmacyQueue: (facilityId: string, status?: string) =>
+    api.get<AntrianResep[]>(
+      `/health/pharmacy/prescriptions?facilityId=${facilityId}${status ? `&status=${status}` : ''}`,
+    ),
+
+  prescription: (id: string, ctx: KonteksAkses) =>
+    api.get<ResepLengkap>(`/health/pharmacy/prescriptions/${id}`, { headers: tajuk(ctx) }),
+
+  reviewPrescription: (id: string, body: { approve: boolean; note?: string }, ctx: KonteksAkses) =>
+    api.post<{ id: string; status: string }>(`/health/pharmacy/prescriptions/${id}/review`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  dispense: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; movementId: string; replayed: boolean; substitution: boolean }>(
+      '/health/pharmacy/dispensings',
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  administer: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; status: string }>('/health/pharmacy/administrations', body, {
+      headers: tajuk(ctx),
+    }),
+
+  skipAdministration: (
+    body: {
+      administrationId: string;
+      status: 'OMITTED' | 'REFUSED' | 'HELD';
+      reason: string;
+      note?: string;
+    },
+    ctx: KonteksAkses,
+  ) =>
+    api.post<{ id: string; status: string }>('/health/pharmacy/administrations/skip', body, {
+      headers: tajuk(ctx),
+    }),
 };
 
 // --- Bantuan tampilan --------------------------------------------------------
@@ -327,6 +462,51 @@ export const LABEL_KEYAKINAN: Record<string, { teks: string; kelas: string }> = 
     teks: 'Rendah',
     kelas: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200',
   },
+};
+
+/**
+ * Rupa peringatan obat menurut tingkatnya.
+ *
+ * Sengaja hanya tingkat BLOCKING yang berwarna merah pekat. Bila semua
+ * peringatan tampak sama mendesak, tidak ada yang tampak mendesak — dan yang
+ * benar-benar berbahaya tenggelam di antara pengingat biasa.
+ */
+export const RUPA_PERINGATAN: Record<string, { kelas: string; label: string }> = {
+  BLOCKING: {
+    kelas: 'border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-950/50 dark:text-rose-100',
+    label: 'Ditahan',
+  },
+  CRITICAL: {
+    kelas: 'border-orange-400 bg-orange-50 text-orange-900 dark:bg-orange-950/40 dark:text-orange-100',
+    label: 'Perlu perhatian',
+  },
+  WARNING: {
+    kelas: 'border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-100',
+    label: 'Peringatan',
+  },
+  INFO: {
+    kelas: 'border-slate-300 bg-slate-50 text-slate-700 dark:bg-slate-900/40 dark:text-slate-200',
+    label: 'Catatan',
+  },
+};
+
+export const LABEL_STATUS_RESEP: Record<string, string> = {
+  DRAFT: 'Draf',
+  PRESCRIBED: 'Menunggu telaah',
+  UNDER_REVIEW: 'Sedang ditelaah',
+  REVIEWED: 'Siap diserahkan',
+  PARTIALLY_DISPENSED: 'Sebagian diserahkan',
+  DISPENSED: 'Selesai diserahkan',
+  CANCELLED: 'Dibatalkan',
+  REJECTED: 'Ditolak apoteker',
+};
+
+export const LABEL_GOLONGAN_OBAT: Record<string, string> = {
+  OTC: 'Bebas',
+  OTC_LIMITED: 'Bebas terbatas',
+  PRESCRIPTION: 'Keras',
+  PSYCHOTROPIC: 'Psikotropika',
+  NARCOTIC: 'Narkotika',
 };
 
 export const LABEL_KEGAWATAN: Record<string, string> = {

@@ -83,6 +83,9 @@ const HealthQueuePage = lazy(() =>
 const HealthEncounterPage = lazy(() =>
   import('../verticals/health/EncounterPage').then((m) => ({ default: m.EncounterPage })),
 );
+const HealthPharmacyPage = lazy(() =>
+  import('../verticals/health/PharmacyPage').then((m) => ({ default: m.PharmacyPage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -188,6 +191,8 @@ export function App() {
             <Route path="pasien" element={<HealthPatientPage />} />
             <Route path="pendaftaran" element={<HealthQueuePage />} />
             <Route path="kunjungan/:id" element={<HealthEncounterPage />} />
+            <Route path="resep" element={<HealthPharmacyPage />} />
+            <Route path="penyerahan" element={<HealthPharmacyPage />} />
           </Route>
           <Route path="*" element={<ComingSoonPage />} />
         </Route>

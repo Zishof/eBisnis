@@ -33,13 +33,16 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { HealthFacilityService } from './health-facility.service';
 import { HealthPatientService } from './health-patient.service';
 import { HealthVisitService } from './health-visit.service';
+import { HealthPharmacyService } from './health-pharmacy.service';
 import { HealthClinicalController } from './health-clinical.controller';
+import { HealthPharmacyController } from './health-pharmacy.controller';
 import {
   CoreAuditAdapter,
   CoreIdentityAdapter,
   CoreNotificationAdapter,
 } from './adapters/core.adapters';
-import { AUDIT_PORT, IDENTITY_PORT, NOTIFICATION_PORT } from './ports';
+import { CoreInventoryAdapter } from './adapters/inventory.adapter';
+import { AUDIT_PORT, IDENTITY_PORT, INVENTORY_PORT, NOTIFICATION_PORT } from './ports';
 import { HEALTH_MENU, HEALTH_ROLES, HEALTH_SOD_RULES } from './health-catalog';
 import { JENJANG_BAWAAN, hitungTarifHarian, periksaJenjang } from './health-billing';
 
@@ -370,21 +373,33 @@ export class HealthController {
 
 @Module({
   imports: [InfrastructureModule, AuthModule],
-  controllers: [HealthController, HealthClinicalController],
+  controllers: [HealthController, HealthClinicalController, HealthPharmacyController],
   providers: [
     HealthFacilityService,
     HealthPatientService,
     HealthVisitService,
+    HealthPharmacyService,
     CoreIdentityAdapter,
     CoreAuditAdapter,
     CoreNotificationAdapter,
+    CoreInventoryAdapter,
     // Port disediakan lewat token supaya layanan kesehatan bergantung pada
     // antarmuka, bukan pada adapter. Mengganti adapter kelak — misalnya ketika
     // Core menyediakan layanan resmi — tidak menyentuh satu pun layanan.
     { provide: IDENTITY_PORT, useExisting: CoreIdentityAdapter },
     { provide: AUDIT_PORT, useExisting: CoreAuditAdapter },
     { provide: NOTIFICATION_PORT, useExisting: CoreNotificationAdapter },
+    { provide: INVENTORY_PORT, useExisting: CoreInventoryAdapter },
   ],
-  exports: [HealthFacilityService, HealthPatientService, HealthVisitService, IDENTITY_PORT, AUDIT_PORT, NOTIFICATION_PORT],
+  exports: [
+    HealthFacilityService,
+    HealthPatientService,
+    HealthVisitService,
+    HealthPharmacyService,
+    IDENTITY_PORT,
+    AUDIT_PORT,
+    NOTIFICATION_PORT,
+    INVENTORY_PORT,
+  ],
 })
 export class EmedikModule {}

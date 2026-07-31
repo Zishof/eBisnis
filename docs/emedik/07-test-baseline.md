@@ -59,6 +59,50 @@ Angka minimum yang diharapkan bertambah pada tiap fase. Disebutkan di muka agar
 
 Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 
+## Yang sudah tercapai
+
+| Fase | Sasaran | Tercapai | Berkas |
+|---|---|---|---|
+| H-1 | 20 | 56 | `health-catalog.spec.ts` (23), `health-billing.spec.ts` (33) |
+| H-2 | 40 | 42 | `health-patient-identity.spec.ts` |
+| H-3 | 30 | 37 | `health-front-office.spec.ts` |
+| H-4 | 35 | **60** | `health-medication.spec.ts` |
+
+API keseluruhan: **1243** pengujian pada 50 berkas. Web: **54** pada 5 berkas,
+19 di antaranya pada `health-api.spec.ts`.
+
+### Naskah bukti
+
+Pengujian unit tidak dapat membuktikan bahwa hak akses, migrasi, dan penjaga
+basis data benar-benar terpasang — semuanya tetap lulus sekalipun tabelnya
+kosong. Karena itu tiap fase ditutup naskah bukti lewat HTTP, memakai hak akses
+sungguhan, pada basis data sungguhan:
+
+| Fase | Naskah | Hasil |
+|---|---|---|
+| H-2/H-3 | `prove-health-flow-e2e.mjs` | [bukti-h2-h3-alur.txt](bukti-h2-h3-alur.txt) |
+| H-3 | `prove-health-clinical.mjs` | [bukti-h3-klinis.txt](bukti-h3-klinis.txt) |
+| H-4 | `prove-health-pharmacy.mjs` | 44 pemeriksaan, seluruhnya lulus — [bukti-h4-farmasi.txt](bukti-h4-farmasi.txt) |
+
+Naskah H-4 menemukan dua cacat yang tidak tertangkap satu pun pengujian unit,
+dan keduanya menyangkut keselamatan pasien:
+
+1. **Pemilihan lot memakai FEFO polos.** Lot yang *sudah* kedaluwarsa berada di
+   urutan paling depan, sehingga penyerahan yang sah pun ditolak dengan alasan
+   kedaluwarsa — dan pada jalur yang tidak menyebut lot, obat kedaluwarsalah
+   yang akan terpilih lebih dahulu. Aturan yang benar untuk barang dagangan
+   ternyata berbahaya untuk obat.
+2. **Catatan nyaris cedera ikut terhapus saat penolakan.** Pencatatannya berada
+   di dalam transaksi yang kemudian dibatalkan oleh galat penolakannya sendiri.
+   Kejadiannya terjadi, ditolak dengan benar di layar perawat, tetapi tidak
+   meninggalkan jejak sama sekali — padahal justru catatan itulah yang paling
+   berharga dalam keselamatan obat: ia menunjukkan celah sebelum ada yang
+   terluka.
+
+Naskah bukti H-4 dijalankan dengan **tiga pengguna berbeda** — dokter, apoteker,
+perawat — masing-masing dengan hak akses sendiri. Dijalankan satu pengguna saja,
+seluruh pemeriksaan pemisahan wewenangnya akan lulus tanpa membuktikan apa pun.
+
 ## Yang belum dapat diukur
 
 - **Uji E2E.** `pnpm test:e2e` belum dijalankan pada garis dasar ini karena

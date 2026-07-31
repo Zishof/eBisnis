@@ -5,6 +5,99 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-4 — Farmasi: resep, telaah apoteker, penyerahan, dan pemberian obat
+
+### Ditambahkan
+
+- **`H006__health__pharmacy.sql`** — tujuh tabel: `rx_drug_master`,
+  `rx_interaction`, `rx_prescription`, `rx_prescription_line`, `rx_dispensing`,
+  `rx_administration`, `rx_incident`.
+- **`H007__health__pharmacy_permissions.sql`** — aksi `ADMINISTER`, empat menu
+  farmasi, dua peran baru (Apoteker, Tenaga Teknis Kefarmasian), serta dua
+  aturan pemisahan wewenang beserta sisi perannya.
+- **`health-medication.ts`** — aturan keselamatan obat sebagai fungsi murni:
+  pencocokan alergi terhadap zat aktif, interaksi, kewajaran dosis, terapi
+  ganda, penandaan obat, kelayakan penyerahan, dan enam benar. **60 pengujian.**
+- **`health-pharmacy.service.ts`** dan **`health-pharmacy.controller.ts`** —
+  delapan jalan pada `/api/v1/health/pharmacy/**`.
+- **`adapters/inventory.adapter.ts`** — satu-satunya tempat modul kesehatan
+  menyentuh persediaan.
+- **`PharmacyPage.tsx`** — antrian farmasi dan telaah apoteker pada web.
+- **`prove-health-pharmacy.mjs`** — naskah bukti, 44 pemeriksaan, seluruhnya
+  lulus. Dijalankan dengan tiga pengguna berbeda: dokter, apoteker, perawat.
+
+Uji: API 1183 → **1243**. Web 50 → **54**.
+
+### Keputusan yang perlu dicatat
+
+- **Alergi dan interaksi dicocokkan terhadap ZAT AKTIF, bukan nama dagang.**
+  Pasien yang alergi amoksisilin alergi terhadap seluruh merek yang
+  mengandungnya. Mencocokkan nama dagang akan melewatkan hampir semuanya.
+
+- **Hanya yang benar-benar berbahaya yang memblokir.** Alergi berat dan fatal,
+  kontraindikasi, dan dosis dua kali lipat batas — yang terakhir karena hampir
+  selalu salah ketik. Alergi ringan, interaksi mayor, obat berisiko tinggi, dan
+  LASA memperingatkan tanpa menahan. Sistem yang memperingatkan segalanya sama
+  tidak amannya dengan yang tidak memperingatkan apa pun; bedanya, yang pertama
+  merasa aman sampai orang berhenti membaca peringatannya.
+
+- **Peringatan pemblokir boleh dilewati dengan alasan tertulis**, dan alasannya
+  tersimpan bersama peringatannya pada `override_alerts`. Menolak seluruhnya
+  akan memindahkan peresepan ke kertas — di luar sistem, tanpa jejak sama
+  sekali. Bila kelak ada kejadian tidak diharapkan, pertanyaan "apakah sistem
+  memperingatkan?" harus terjawab dari catatan, bukan disimpulkan.
+
+- **Adapter memakai ulang `applyBalanceDelta` milik Core, tetapi TIDAK memakai
+  ulang `consumeAvailable`.** Yang terakhir mengurutkan lot dengan FEFO tanpa
+  menyaring lebih dahulu, sehingga lot yang *sudah* kedaluwarsa berada di urutan
+  paling depan. Untuk barang dagangan itu benar — habiskan yang paling cepat
+  basi. Untuk obat itu berarti obat kedaluwarsa akan menjadi yang pertama
+  diserahkan kepada pasien.
+
+- **Empat menu, bukan satu "Farmasi".** Meresepkan, menelaah, menyerahkan, dan
+  memberikan adalah empat wewenang yang berbeda. Menyatukannya akan menghapus
+  seluruh pemisahan pada hari pertama seseorang memberikan peran kepada stafnya.
+  Menu penampung lama ditutup; tidak ada peran yang pernah diberi hak atasnya,
+  sehingga penutupannya tidak mencabut wewenang siapa pun.
+
+- **Tiga aturan pemisahan wewenang ditegakkan basis data, bukan hanya layanan.**
+  Penelaah ≠ peresep, pemeriksa kedua ≠ penyerah, saksi ≠ pemberi. Aturan yang
+  hanya ada di satu lapisan berhenti berlaku begitu ada jalan kedua menuju
+  tabelnya.
+
+- **Obat biasa yang belum ditelaah TETAP dapat diserahkan; obat terkendali
+  tidak.** Menahan seluruhnya akan menghentikan apotek kecil yang apotekernya
+  merangkap penyerah — dan aturan yang menghentikan pekerjaan akan dilanggar,
+  bukan dipatuhi.
+
+- **Penyerahan idempoten terhadap `idempotencyKey`.** Stok obat yang berkurang
+  ganda menampakkan kekurangan yang tidak nyata, dan kekurangan yang tidak nyata
+  memicu pengadaan yang tidak perlu sekaligus menyembunyikan kehilangan yang
+  nyata.
+
+### Dua cacat yang ditemukan naskah bukti, bukan pengujian unit
+
+1. **Pemilihan lot pada layanan memakai FEFO polos**, sehingga penyerahan yang
+   sah pun ditolak dengan alasan kedaluwarsa. Kini: lot yang disebut pemanggil
+   dikembalikan apa adanya agar penolakannya menyebut tanggal kedaluwarsanya;
+   lot yang tidak disebut dipilih di antara yang layak saja.
+
+2. **Catatan nyaris cedera ikut terhapus saat penolakan.** Pencatatannya berada
+   di dalam transaksi yang kemudian dibatalkan oleh galat penolakannya sendiri —
+   kejadiannya terjadi, ditolak dengan benar di layar perawat, tetapi tidak
+   meninggalkan jejak sama sekali. Pemeriksaan enam benar kini dilakukan di luar
+   transaksi penulisan, dan transaksinya membaca ulang status dengan penguncian
+   supaya dua perawat yang menekan bersamaan tidak saling menimpa.
+
+### Belum dikerjakan
+
+Substitusi otomatis menurut formularium, rekonsiliasi obat saat masuk dan pulang
+(menunggu H-6), penarikan sediaan, dan pelaporan narkotika ke SIPNAP. Kode
+peristiwa akuntansi `HEALTH_*` masih menunggu keputusan Core, sehingga penyerahan
+obat belum memicu pencatatan harga pokok.
+
+---
+
 ## Web vertical kesehatan — layar pertama yang dapat diklik
 
 ### Ditambahkan
