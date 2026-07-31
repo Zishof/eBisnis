@@ -9,6 +9,16 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Added
 
+- **Keperluan AI untuk sebelas modul (V11-5).** 18 keperluan mencakup
+  Eksekutif/BI, Penjualan, CRM, Pembelian, Persediaan, Mutu, Marketplace,
+  Keuangan, SDM, Ticketing, Surat, dan Observability. Yang berisiko tinggi
+  menyatakan batasnya terang-terangan: ringkasan kehadiran TIDAK dipakai menilai
+  orang maupun mengusulkan sanksi, dan penjelasan selisih keuangan adalah dugaan
+  yang wajib diperiksa terhadap buku besar.
+- **Registri AI diuji terhadap katalog menu yang sebenarnya.** Uji itu langsung
+  menangkap dua keperluan yang menunjuk menu root beraksi READ saja — izinnya
+  tidak akan pernah dapat diberikan kepada siapa pun, sehingga keduanya menjadi
+  tombol yang selalu ditolak.
 - **Panel Copilot pada bilah atas (V11-4).** Tersedia di setiap halaman portal
   tenant, dengan aksi yang menyesuaikan halaman yang sedang dibuka. Jawaban AI
   tidak pernah disajikan seperti kebenaran: peringatan tampil SEBELUM jawaban,
