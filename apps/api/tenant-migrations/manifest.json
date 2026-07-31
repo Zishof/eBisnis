@@ -246,6 +246,13 @@
       "file": "V035__cooperative_profiles.sql",
       "name": "Profil hak koperasi pada constraint role",
       "description": "Menyusul V012 (marketplace M1-M9) dan V025 (kasir K1-K5). Profil koperasi C1-C4 dibuat tersendiri, bukan dengan menambahkan ANALYZE, DISBURSE, dan WRITE_OFF ke P1-P12, karena profil berlaku lintas modul: menambahkan DISBURSE ke profil manajer modul umum akan memberikannya pula pada setiap modul lain yang kebetulan menawarkan aksi itu, dan hak mencairkan dana bukan sesuatu yang boleh merembes karena seseorang manajer modul di tempat lain. Yang dijaga keluarga ini adalah pemisahan yang paling menentukan pada koperasi simpan pinjam: C1 memuat ANALYZE dan TIDAK memuat APPROVE sehingga petugas pinjaman menganalisis tetapi tidak menyetujui, sedangkan C2 memuat APPROVE dan DISBURSE tetapi TIDAK memuat CREATE sehingga penyetuju tidak mencatat. Pemisahan itu karena itu tidak dijaga daftar izin yang dapat disusun keliru, melainkan oleh bentuk profilnya sendiri. Additive: hanya daftar nilai yang sah diperluas, dan perluasan tidak pernah membatalkan baris yang sudah ada."
+    },
+    {
+      "version": "V036",
+      "sequence": 36,
+      "file": "V036__pos_external_balance_payment.sql",
+      "name": "Pembayaran bersaldo eksternal pada kasir",
+      "description": "Menyelesaikan IR-002. Registri penangannya sudah ada; yang belum ada adalah tempat menyimpan siapa penangannya dan apa rujukan penahanannya. Alur berjalan dua langkah — authorize() menahan dana saat kasir memasukkan pembayaran, capture() mewujudkannya saat transaksi diselesaikan — dan di antara keduanya kasir dapat menutup layar, jaringan dapat putus, atau transaksi dapat dibatalkan. Tanpa rujukan yang tersimpan, penahanan tidak dapat diwujudkan maupun dilepaskan, dan saldo anggota tertahan selamanya untuk transaksi yang tidak pernah terjadi. external_state dipisahkan dari status pembayaran karena keduanya menjawab pertanyaan berbeda: status menjawab apakah kasir sudah menerima pembayarannya, external_state menjawab apakah dana di modul lain sudah benar-benar berpindah; menggabungkannya menyembunyikan keadaan yang justru paling perlu terlihat. Jenis EXTERNAL_BALANCE sengaja bukan menumpang pada DEPOSIT: DEPOSIT adalah titipan pelanggan yang dikelola Core sendiri, sedangkan EXTERNAL_BALANCE adalah saldo yang dikelola modul lain dan Core tidak boleh memotongnya langsung. Constraint menutup keadaan yang tidak dapat dijelaskan: metode EXTERNAL_BALANCE wajib menyebut penangannya (tanpa itu metode tampil di layar kasir dan pembayarannya tidak diproses siapa pun, sehingga penjualan tercatat lunas tanpa dana berpindah), rujukan wajib disertai penangannya, dan pembayaran yang sudah diwujudkan wajib punya rujukan."
     }
   ]
 }

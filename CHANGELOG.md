@@ -5,6 +5,54 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Kasir menerima pembayaran bersaldo eksternal
+
+Menyelesaikan IR-002. Registri penangannya sudah ada sejak penggabungan
+sebelumnya; kini alur kasir benar-benar memanggilnya.
+
+### Ditambahkan
+- **`V036`** — `payment_method.external_handler`, dan pada `pos_payment`:
+  `external_handler`, `external_reference`, `external_state`,
+  `external_captured_at`. Jenis metode baru `EXTERNAL_BALANCE`.
+- **Tiga titik pemanggilan** pada alur kasir: `authorize()` sebelum baris
+  pembayaran disimpan, `capture()` di dalam transaksi penyelesaian sesudah
+  stok dipotong, `reverse()` saat penjualan dibatalkan.
+- **`pos-external-payment.ts`** — aturan sebagai fungsi murni, 32 pengujian.
+- **`prove-pos-external-payment.mjs`** — 22 pemeriksaan pada basis data.
+
+### Keputusan yang perlu dicatat
+- **`authorize()` menahan, tidak memotong.** Pemotongan hanya terjadi pada
+  `capture()`. Kasir yang menutup layar di tengah pembayaran tidak boleh
+  meninggalkan saldo anggota yang berkurang tanpa transaksi.
+- **`authorize()` dipanggil SESUDAH pemeriksaan idempotensi.** Klik ganda pada
+  layar yang lambat adalah keadaan yang pasti terjadi di lapangan; menahan dana
+  dua kali berarti saldo anggota berkurang dua kali untuk satu transaksi.
+- **`capture()` berada di dalam transaksi penyelesaian, sesudah stok dipotong.**
+  Pemotongan saldo yang berhasil tanpa penjualan yang menaunginya adalah uang
+  anggota yang hilang tanpa jejak; penjualan yang selesai tanpa saldo terpotong
+  adalah barang yang keluar tanpa dibayar.
+- **Kegagalan `reverse()` dicatat, tidak dilempar.** Pembatalan penjualan sudah
+  selesai dan tidak boleh digagalkan oleh modul lain yang sedang tidak dapat
+  dihubungi. Barisnya tetap `AUTHORIZED`, dan indeks parsial
+  `ix_pos_payment_external_pending` menyediakannya bagi penjadwal pelepas.
+- **Penahanan yang sudah `CAPTURED` tidak pernah dilepaskan.** Dana yang sudah
+  berpindah dikembalikan lewat retur, yang punya jejaknya sendiri; melepaskannya
+  di sini akan mengembalikan uang tanpa dokumen yang menjelaskannya.
+- **Metode `EXTERNAL_BALANCE` tanpa penangan menggagalkan pembayaran**, bukan
+  berjalan sebagai tunai. Penjualan yang tercatat lunas tanpa dana yang
+  berpindah jauh lebih sulit diperbaiki daripada pembayaran yang gagal saat
+  pelanggan masih di depan kasir.
+- **Pembayaran bersaldo tidak pernah memberi kembalian.** Saldo yang ditahan
+  sebesar nilai transaksi tidak menghasilkan uang tunai di laci.
+- **`EXTERNAL_BALANCE` sengaja bukan menumpang pada `DEPOSIT`.** `DEPOSIT`
+  adalah titipan pelanggan yang dikelola Core sendiri dan boleh dipotong
+  langsung; `EXTERNAL_BALANCE` adalah saldo milik modul lain.
+- **`authToken`, bukan PIN.** Spesifikasi eKoperasi §14: PIN anggota tidak
+  boleh terlihat kasir — dan sesuatu yang melewati layar kasir adalah sesuatu
+  yang terlihat kasir. Anggota memasukkan PIN pada perangkatnya sendiri; yang
+  sampai ke POS hanya bukti bahwa ia sudah melakukannya, sekali pakai, dan
+  tidak pernah disimpan.
+
 ## Menu, peran, dan hak akses koperasi tersemai ke penyewa
 
 ### Ditambahkan
