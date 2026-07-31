@@ -1,0 +1,15 @@
+{
+  "$comment": "Katalog migrasi vertikal info-desa. TERPISAH dari tenant-migrations/manifest.json dengan sengaja: manifes utama adalah file bersama berkonflik tinggi yang disunting sesi Core dan tiga sesi vertikal sekaligus, dan penambahan pada satu array JSON dari empat cabang pasti bentrok. Versi memakai awalan waktu UTC sesuai panduan koordinasi §7, sehingga tidak dapat bertabrakan dengan V001-Vxxx milik Core maupun dengan vertikal lain. Bookkeeping tetap memakai tabel schema_migration yang sama; baris VD tidak dikenal runner Core dan diabaikannya dengan aman. Integration request 003 meminta Core menyatukan penerapannya.",
+  "schemaVersion": 1,
+  "vertical": "village",
+  "versionPrefix": "20260731",
+  "migrations": [
+    {
+      "version": "20260731000001",
+      "sequence": 1,
+      "file": "20260731000001__village__region_and_profile.sql",
+      "name": "Unit pemerintahan, profil wilayah, dan domain",
+      "description": "village_unit (dengan profile_type DESA/KELURAHAN sebagai tumpuan seluruh vertikal), village_profile_change, village_sub_area (dusun untuk desa, lingkungan untuk kelurahan — satu tabel dibedakan kind, sebab dua tabel berbentuk sama memaksa setiap kueri kependudukan menggabungkan keduanya), village_rw, village_rt, village_boundary, village_geo_area (GeoJSON sebagai JSONB, bukan PostGIS, karena ekstensi itu belum tentu ada dan kebutuhannya hanya menampilkan peta), village_potential, village_indicator, village_domain. Kode wilayah administratif disimpan sebagai teks karena nol di depan bermakna. Domain sendiri wajib diverifikasi kepemilikannya; subdomain info-desa.id tidak. Memakai fungsi pemicu audit generik dari V008, tidak membangun mekanisme audit sendiri."
+    }
+  ]
+}

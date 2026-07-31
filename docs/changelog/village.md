@@ -81,3 +81,80 @@ Diverifikasi di dalam worktree village:
 - `eslint --max-warnings=0` — bersih
 
 Sasaran D-1 sampai D-12: **sekurang-kurangnya 210 pengujian baru**.
+
+---
+
+## D-1 — Portal, profil wilayah, dan domain
+
+### Ditambahkan
+
+- **`village-profile.ts`** — katalog kelayakan **77 fitur** di seluruh dua belas
+  fase, beserta fungsi `layak()` yang dipakai menu, layanan, dan data contoh.
+  Satu berkas, bukan tersebar: aturan yang tersebar di puluhan berkas akan
+  menyimpang di salah satunya tanpa ketahuan.
+- **Migrasi `20260731000001__village__region_and_profile.sql`** — sepuluh tabel:
+  `village_unit`, `village_profile_change`, `village_sub_area`, `village_rw`,
+  `village_rt`, `village_boundary`, `village_geo_area`, `village_potential`,
+  `village_indicator`, `village_domain`.
+- **`VillageMigrationService`** dengan manifes sendiri di
+  `tenant-migrations/village/`.
+- **`VillageUnitService`** dan sebelas endpoint `/village/*`.
+- **Katalog modular**: 40 menu, 29 peran, ~130 hak akses `VILLAGE.*`.
+- **79 pengujian** baru (54 unit + proof 16 pemeriksaan pada basis data nyata).
+
+### Keputusan yang dicatat
+
+- **Manifes migrasi terpisah.** `tenant-migrations/manifest.json` adalah berkas
+  bersama berkonflik tinggi yang disunting empat sesi; penambahan pada satu
+  array JSON dari empat cabang pasti bentrok. Village memakai manifes sendiri
+  dengan versi berawalan waktu UTC. Bookkeeping tetap menumpang tabel
+  `schema_migration` yang sama — runner Core mengiterasi manifesnya sendiri dan
+  mengabaikan baris yang tidak dikenalnya.
+- **Satu tabel untuk dusun dan lingkungan**, dibedakan `kind`. Dua tabel
+  berbentuk sama akan memaksa setiap kueri kependudukan menggabungkan keduanya.
+  `kind` ditentukan dari profil penyewa, bukan dari permintaan — membiarkan
+  pemanggil menentukannya akan memungkinkan kelurahan membuat dusun hanya
+  dengan mengirim nilai yang lain.
+- **GeoJSON sebagai JSONB, bukan PostGIS.** Ekstensi itu belum tentu ada pada
+  setiap pemasangan, dan kebutuhan village hanya menampilkan peta.
+- **Kode wilayah administratif disimpan sebagai teks.** Nol di depan bermakna
+  dan akan hilang bila disimpan sebagai bilangan.
+- **Perubahan profil menuntut dasar hukum.** Desa berubah status menjadi
+  kelurahan ketika wilayahnya menjadi perkotaan — itu peristiwa hukum, dan
+  APBDes yang tersusun sebelumnya tetap harus dapat dipertanggungjawabkan.
+- **Fitur `CONFIGURABLE` bawaannya MATI.** Kewenangan yang tidak dinyatakan
+  tidak boleh dianggap ada.
+- **Domain sendiri wajib diverifikasi**; subdomain `info-desa.id` tidak, dan
+  hanya boleh yang sesuai slug penyewa — tanpa itu, satu desa dapat mengambil
+  subdomain bernama desa lain.
+
+### Cacat yang ditangkap pengujian sendiri
+
+Katalog peran memberikan `REJECT` pada enam menu yang tidak mendeklarasikan
+aksi itu. Hak akses yang menunjuk aksi tak bernama tidak akan pernah dapat
+diberikan kepada siapa pun, dan kegagalannya senyap — peran tampak punya
+wewenang yang sesungguhnya tidak berlaku. Cacat sejenis pernah ditemukan pada
+Core (`CRM.CREATE` menunjuk menu root yang hanya punya `READ`).
+
+Diperbaiki dengan menambahkan `REJECT` pada keenam menu, dan aturannya
+dinyatakan: **setiap menu yang punya `APPROVE` wajib punya `REJECT`.**
+Persetujuan yang tidak dapat ditolak bukan persetujuan melainkan formalitas.
+
+### Berkas bersama yang disentuh
+
+`apps/api/src/app.module.ts` — dua baris (satu impor, satu daftar). Titik sentuh
+terkecil yang mungkin; konflik dengan sesi eMedik dan eKoperasi yang menambahkan
+barisnya sendiri mudah diselesaikan.
+
+### Bukti
+
+`docs/info-desa/bukti-d1-profile-isolation.txt` — 16 pemeriksaan pada dua skema
+sungguhan, seluruhnya lulus. Termasuk: `profile_type` menolak nilai ketiga,
+jenis sub-wilayah menolak nilai di luar dua, domain sendiri tanpa token
+ditolak, hanya satu domain utama per unit, RT unik per RW, dan perubahan profil
+tanpa dasar hukum ditolak.
+
+### Gerbang mutu
+
+- `jest` — **1102 tes lulus** (bertambah 54)
+- `tsc --noEmit` dan `eslint --max-warnings=0` — bersih

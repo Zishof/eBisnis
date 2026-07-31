@@ -28,6 +28,10 @@ import { ActivityModule } from './modules/activity/activity.module';
 import { SuratModule } from './modules/surat/surat.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { AiModule } from './modules/ai/ai.module';
+// Vertikal info-desa. Satu baris impor dan satu baris daftar — titik sentuh
+// terkecil yang mungkin pada berkas bersama ini, supaya konflik dengan sesi
+// eMedik dan eKoperasi yang menambahkan barisnya sendiri mudah diselesaikan.
+import { VillageModule } from './modules/village/village.module';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
@@ -79,6 +83,7 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
     SuratModule,
     NotificationModule,
     AiModule,
+    VillageModule,
     // TenantModule didaftarkan TERAKHIR: MasterController memakai route
     // wildcard `:resource`, sehingga harus dicocokkan setelah seluruh route
     // spesifik seperti /devices, /sample-data, dan /billing.
