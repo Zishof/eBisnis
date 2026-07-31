@@ -71,6 +71,9 @@ const PenawaranPage = lazy(() =>
 // Layar kasir dimuat terpisah: berkasnya besar dan hanya dipakai peran kasir,
 // sementara pengguna lain tidak perlu ikut menunggunya diunduh.
 const PosPage = lazy(() => import('../pages/pos/PosPage').then((m) => ({ default: m.PosPage })));
+const PosReportPage = lazy(() =>
+  import('../pages/pos/PosReportPage').then((m) => ({ default: m.PosReportPage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -160,6 +163,7 @@ export function App() {
           <Route path="internal-transfers" element={<InternalTransferPage />} />
           <Route path="stock-tree" element={<StockTreePage />} />
           <Route path="pos" element={<PosPage />} />
+          <Route path="pos/laporan" element={<PosReportPage />} />
           <Route path="sample-data" element={<SampleDataPage />} />
           <Route path="devices" element={<SubscriptionPage tab="devices" />} />
           <Route path="subscription/checkout" element={<SubscriptionPage tab="checkout" />} />

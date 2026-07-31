@@ -21,6 +21,10 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 - **`V032__pos_transaction_sample_flags.sql`** — `is_sample` dan
   `sample_batch_id` pada `pos_sale`, `pos_shift`, `pos_return`, `pos_refund`.
 - **`prove-pos-report-sample.mjs`** — **40 pemeriksaan, seluruhnya lulus**.
+- **Halaman `/app/pos/laporan`** — satu halaman untuk seluruh laporan, dengan
+  pemilih laporan dan rentang tanggal. Kolomnya dirakit dari jawaban peladen
+  alih-alih dipetakan satu per satu; lima belas laporan berarti ratusan kolom,
+  dan peta sebesar itu akan tertinggal lebih dahulu daripada dipakai.
 
 ### Keputusan yang perlu dicatat
 - **Kolom biaya DIHAPUS, bukan ditolkan.** Menolkan membuat laporan tampak
