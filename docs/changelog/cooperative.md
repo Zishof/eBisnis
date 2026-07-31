@@ -5,6 +5,86 @@ menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
 ---
 
+## K-1 — Profil koperasi, legalitas, dan kebijakan
+
+**Cabang:** `feature/v12-ekoperasi`
+
+### Ditambahkan
+
+- **Migrasi modul** `20260731T160000__cooperative__profile_and_legality.sql`:
+  delapan tabel — `cooperative_type`, `cooperative`,
+  `cooperative_legal_document`, `cooperative_address`,
+  `cooperative_service_area`, `cooperative_policy`, `cooperative_domain`,
+  `cooperative_account_mapping`.
+- **`cooperative-profile.ts`** — aturan sebagai fungsi murni: transisi status,
+  daftar periksa kesiapan go-live, penyusunan dan pemeriksaan slug, masa
+  berlaku berversi, dan kesesuaian jenis koperasi. **39 pengujian.**
+- **`cooperative-profile.service.ts`** dan **`cooperative.module.ts`** —
+  14 endpoint di bawah `/cooperative/*`.
+- **`ports/index.ts`** — delapan port yang didefinisikan koperasi sendiri.
+- **`scripts/apply-cooperative-migrations.mjs`** — penerap migrasi modul
+  sementara, idempoten, mencatat pada tabel modulnya sendiri.
+- **`scripts/prove-cooperative-k1.mjs`** dan buktinya di
+  `docs/ekoperasi/bukti-k1-profil.txt` — **22 pemeriksaan, seluruhnya lulus.**
+
+### Keputusan yang perlu dicatat
+
+- **Satu ruang kerja hanya untuk satu koperasi**, ditegakkan indeks unik
+  parsial. Dua koperasi pada satu tenant berarti dua bagan akun, dua RAT, dan
+  dua SHU yang harus dipisahkan pada setiap kueri.
+- **Koperasi berstatus ACTIVE wajib punya nomor badan hukum**, ditegakkan
+  constraint. Itulah pembeda antara koperasi sah dan perkumpulan biasa, dan
+  koperasi tidak sah tidak boleh menghimpun simpanan anggota.
+- **Kebijakan aktif wajib menyebutkan persetujuannya.** Kebijakan yang berlaku
+  tanpa persetujuan adalah kebijakan yang dibuat seseorang sendirian atas hak
+  seluruh anggota.
+- **AD/ART, aturan keanggotaan, dan kebijakan SHU sah hanya setelah diputuskan
+  Rapat Anggota.** Ditegakkan layanan; tautan keputusannya diisi pada K-5.
+- **Kebijakan baru selalu membentuk versi baru**, tidak pernah menyunting versi
+  lama. SHU dihitung menurut kebijakan yang berlaku pada periode bukunya;
+  kebijakan yang disunting di tempat membuat perhitungan tahun lalu tidak dapat
+  diulang.
+- **Kekurangan go-live dilaporkan seluruhnya sekaligus.** Pemilik koperasi yang
+  diberi tahu satu kekurangan lalu satu lagi setelah memperbaikinya akan
+  melalui banyak putaran untuk hal yang muat dalam satu layar.
+- **Pembubaran bersifat akhir.** Menghidupkan kembali koperasi yang bubar
+  berarti mendirikan koperasi baru dengan badan hukum baru, bukan mengubah
+  status baris yang sama.
+
+### Temuan baru untuk IR-001
+
+`schema_migration.version` bertipe **`VARCHAR(16)`**, sedangkan id migrasi
+modular yang diminta panduan §7 panjangnya 49 aksara. Kolom itu secara
+struktural tidak dapat menampungnya — katalog modular tidak dapat berjalan
+tanpa pelebaran kolom ini. Ditambahkan ke IR-001 sebagai bagian wajib dari
+perubahan Core, beserta galat sungguhannya sebagai bukti.
+
+### Berkas bersama yang disentuh
+
+Satu: `apps/api/src/app.module.ts` — satu baris impor dan satu entri pada
+`imports`. Sengaja sekecil mungkin, sebab berkas itu disentuh empat sesi
+paralel. Tidak ada berkas bersama lain, tidak ada dependensi baru, lockfile
+tidak berubah.
+
+### Gerbang mutu
+
+| | |
+|---|---|
+| `tsc --noEmit` (API dan web) | bersih |
+| `eslint --max-warnings=0` | bersih |
+| `jest` | 46 suite, **1087 tes lulus** (bertambah 39) |
+| Bukti K-1 | **22 pemeriksaan lulus** |
+
+### Belum dikerjakan pada K-1
+
+- **Antarmuka `/ekoperasi/*`** ditunda ke K-9 bersama portal anggota, supaya
+  seluruh layar koperasi dirancang sekaligus alih-alih sepotong per fase.
+- **Langganan Rp 500.000/bulan** memerlukan paket pada control plane; menunggu
+  keputusan sesi Core apakah paket vertikal masuk katalog paket yang sama.
+- **Menu dan hak akses koperasi** belum disemai — menunggu IR-004. Endpoint
+  sudah ada dan berpenjaga, tetapi penyewa sungguhan belum dapat memanggilnya.
+  Itu keadaan yang benar, bukan yang perlu diakali.
+
 ## K-0 — Audit dan batas konteks
 
 **Cabang:** `feature/v12-ekoperasi` · **Titik tolak:** `origin/main` @ `4f7ab88`

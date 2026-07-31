@@ -101,6 +101,35 @@ Aturan penggabungan:
 - `id` menggantikan `version` sebagai kunci pada `schema_migration`. Karena
   bertimestamp dan berkode modul, tabrakan praktis mustahil.
 
+## Temuan tambahan dari K-1: `schema_migration.version` bertipe `VARCHAR(16)`
+
+Ditemukan saat menerapkan migrasi koperasi pertama, dan **wajib menjadi bagian
+dari perubahan ini**:
+
+```
+version character varying(16)
+```
+
+Id migrasi modular yang diminta panduan §7 —
+`20260731T160000__cooperative__profile_and_legality` — panjangnya **49 aksara**.
+Kolom itu secara struktural tidak dapat menampungnya:
+
+```
+error: value too long for type character varying(16)
+```
+
+Artinya katalog modular tidak dapat berjalan tanpa pelebaran kolom ini, sebaik
+apa pun rancangan penggabungan manifestnya. Usulan: `VARCHAR(128)`, cukup untuk
+timestamp + kode modul + keterangan yang berarti.
+
+Pelebaran `VARCHAR` tidak pernah membatalkan baris yang ada, sehingga aman
+diterapkan pada 17 skema yang sudah berisi data.
+
+Sementara menunggu, naskah lokal koperasi mencatat penerapannya pada tabel
+modulnya sendiri (`cooperative_schema_migration`, `VARCHAR(128)`) yang dibuat
+naskah itu sendiri — bukan menambah migrasi yang kelak perlu dicabut. Saat IR
+ini disetujui, isinya dipindahkan sekali dan tabelnya dibuang.
+
 ## Kompatibilitas mundur
 
 Ada, dan penting: 23 migrasi yang sudah diterapkan pada 17 skema tidak boleh
@@ -127,6 +156,7 @@ migrasi inti selalu mendahului migrasi modul
 dua modul dengan id sama ditolak saat pemuatan, bukan saat penerapan
 modul dengan dependsOn yang tidak ada ditolak
 checksum migrasi inti tidak berubah setelah perubahan ini
+id sepanjang 49 aksara dapat disimpan dan dibaca kembali
 skema yang sudah berisi V001-V023 tidak menjalankan apa pun saat migrasi diulang
 ```
 

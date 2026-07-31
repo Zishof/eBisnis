@@ -1,0 +1,14 @@
+{
+  "$comment": "Manifest migrasi modul koperasi. BELUM digabungkan ke manifest global — menunggu IR-001 (katalog migrasi modular). Sampai saat itu diterapkan ke skema uji lewat scripts/apply-cooperative-migrations.mjs. Bentuknya sengaja mengikuti usulan pada IR-001 supaya penggabungannya kelak hanya perlu mendaftarkan berkas ini.",
+  "module": "cooperative",
+  "schemaVersion": 2,
+  "dependsOn": ["core"],
+  "migrations": [
+    {
+      "id": "20260731T160000__cooperative__profile_and_legality",
+      "file": "20260731T160000__cooperative__profile_and_legality.sql",
+      "name": "Profil koperasi, legalitas, dan kebijakan",
+      "description": "cooperative_type, cooperative, cooperative_legal_document, cooperative_address, cooperative_service_area, cooperative_policy, cooperative_domain, cooperative_account_mapping. Satu koperasi per tenant ditegakkan indeks unik parsial — dua koperasi pada satu tenant berarti dua bagan akun, dua RAT, dan dua SHU yang harus dipisahkan pada setiap kueri. Koperasi berstatus ACTIVE wajib punya nomor badan hukum, sebab itulah pembeda antara koperasi sah dan perkumpulan biasa, dan koperasi tidak sah tidak boleh menghimpun simpanan anggota. Kebijakan berversi dan bertanggal berlaku karena SHU dihitung menurut kebijakan yang berlaku pada periode bukunya; kebijakan yang disunting di tempat membuat perhitungan tahun lalu tidak dapat diulang. Pemetaan akun bertanggal berlaku supaya jurnal lama tetap menunjuk akun yang berlaku saat itu."
+    }
+  ]
+}
