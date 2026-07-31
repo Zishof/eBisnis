@@ -1,0 +1,41 @@
+-- =============================================================================
+-- V034 · Melebarkan kunci versi pada jejak audit migrasi
+-- =============================================================================
+--
+-- Melengkapi V033, dan memperbaiki cacat yang lolos darinya.
+--
+-- ## Cacatnya
+--
+-- V033 melebarkan `schema_migration.version` pada skema penyewa, dan migrasi
+-- platform yang menyertainya melebarkan dua kolom di control plane. Ada
+-- **kolom ketiga** yang menyimpan versi migrasi dan terlewat:
+--
+--     {{AUDIT_SCHEMA}}.audit_schema_migration.migration_version   VARCHAR(16)
+--
+-- Setiap migrasi yang berhasil menuliskan jejaknya ke sana. Jadi begitu
+-- migrasi modul pertama dijalankan pada penyewa baru, penerapannya berhasil,
+-- pembukuannya berhasil, lalu **jejak auditnya gagal** — dan seluruh
+-- provisioning batal.
+--
+-- ## Mengapa tidak tertangkap lebih awal
+--
+-- Bukti V033 memeriksa penyimpanan id panjang pada `schema_migration`, dan
+-- penerapan ke penyewa yang sudah ada hanya menjalankan V033 sendiri —
+-- id yang pendek. Jalur yang gagal hanya dilalui penyewa **baru** yang
+-- menjalankan migrasi modul dari nol, dan tidak ada penyewa baru yang dibuat
+-- sampai E2E melakukannya.
+--
+-- Pelajarannya: melebarkan satu kolom kunci berarti mencari **seluruh** kolom
+-- yang menyimpan nilai yang sama. Tiga tempat, dan yang ketiga adalah jejak
+-- audit — tempat yang justru paling mudah terlupakan karena ia tidak pernah
+-- dibaca aplikasi.
+--
+-- ## Aman pada skema berisi data
+--
+-- Pelebaran `VARCHAR` tidak menulis ulang tabel dan tidak dapat membatalkan
+-- baris yang ada. Tabel audit bersifat hanya-tambah; pelebaran kolom tidak
+-- mengubah satu pun baris yang sudah tercatat.
+-- =============================================================================
+
+ALTER TABLE "{{AUDIT_SCHEMA}}".audit_schema_migration
+  ALTER COLUMN migration_version TYPE VARCHAR(128);

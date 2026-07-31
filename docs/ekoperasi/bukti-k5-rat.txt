@@ -1,0 +1,61 @@
+==============================================================================
+BUKTI K-5 — RAPAT ANGGOTA, VOTING, DAN PEMISAHAN DATA ANTAR KOPERASI
+Waktu  : 2026-07-31T17:08:39.498Z
+==============================================================================
+
+A. Pemisahan data antar koperasi
+   17 penyewa terdaftar, masing-masing pada skema tersendiri.
+  LULUS  setiap penyewa punya skema sendiri
+  LULUS  tidak ada dua penyewa berbagi satu skema
+  LULUS  tidak ada dua skema menunjuk satu penyewa
+  LULUS  setiap skema terdaftar benar-benar ada di basis data
+  LULUS  indeks penjaga satu koperasi per skema terpasang
+  LULUS  tabel anggota tidak memakai kolom penyaring penyewa — pemisahannya di skema
+
+B. Tabel K-5 terpasang
+  LULUS  tabel cooperative_meeting
+  LULUS  tabel cooperative_meeting_agenda
+  LULUS  tabel cooperative_meeting_invitation
+  LULUS  tabel cooperative_meeting_attendance
+  LULUS  tabel cooperative_meeting_vote
+  LULUS  tabel cooperative_meeting_decision
+  LULUS  tabel cooperative_meeting_follow_up
+  LULUS  tabel cooperative_meeting_minutes
+
+C. Tabel suara TIDAK memiliki kolom bobot
+  LULUS  tidak ada kolom bobot, simpanan, maupun modal pada tabel suara
+
+D. Rapat dan mata acara
+  LULUS  rapat dibuka dengan kuorum tercatat
+  LULUS  rapat QUORUM_REACHED tanpa angka pembuktinya DITOLAK
+  LULUS  kuorum rapat kedua yang lebih berat daripada rapat pertama DITOLAK
+
+E. Kehadiran
+  LULUS  empat kehadiran tercatat
+  LULUS  anggota tercatat hadir dua kali DITOLAK
+  LULUS  kuasa kepada diri sendiri DITOLAK
+  LULUS  kehadiran berkuasa tanpa pemegang kuasa DITOLAK
+
+F. Satu anggota satu suara per mata acara
+  LULUS  anggota memilih dua kali pada mata acara yang sama DITOLAK
+  LULUS  tiga setuju, satu menolak
+
+G. Keputusan
+  LULUS  keputusan SAH padahal suaranya belum mencapai ambang DITOLAK
+  LULUS  suara sah yang tidak sama dengan setuju + tidak setuju DITOLAK
+  LULUS  keputusan sah dengan angka yang membuktikannya DITERIMA
+
+H. Keputusan tanpa kuorum DITANDAI tidak sah, bukan dihilangkan
+  LULUS  keputusan tidak sah tanpa keterangan sebabnya DITOLAK
+  LULUS  keputusan tanpa kuorum TERSIMPAN dan ditandai tidak sah
+
+I. Notulen susunan AI wajib diperiksa manusia
+  LULUS  notulen AI disahkan tanpa pemeriksaan manusia DITOLAK
+  LULUS  notulen AI yang sudah diperiksa manusia DITERIMA
+  LULUS  notulen disahkan tanpa menyebut pengesahnya DITOLAK
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Perubahan bagian B digulung balik — basis data tidak berubah.

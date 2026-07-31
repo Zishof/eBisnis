@@ -1,0 +1,52 @@
+==============================================================================
+BUKTI K-10 — PERAN, HAK AKSES, DATA CONTOH, DAN AI
+Waktu  : 2026-07-31T18:27:14.821Z
+Schema : demo
+==============================================================================
+
+1. Katalog peran dan hak akses
+  LULUS  74 hak akses tersusun
+  LULUS  9 peran tersusun
+  LULUS  tidak ada izin DELETE sama sekali
+  LULUS  tidak ada peran bawaan yang melanggar pemisahan wewenang
+  LULUS  peran anggota hanya memuat izin portal
+  LULUS  tidak ada peran petugas yang memegang izin portal
+
+2. Data contoh dan data sungguhan disiapkan berdampingan
+  LULUS  6 anggota contoh dan 4 anggota sungguhan tersimpan
+
+3. Pembersihan data contoh dijalankan sungguhan
+  LULUS  rencana mempertahankan seluruh kelompok acuan
+  LULUS  rencana TIDAK memuat COOPERATIVE_RBAC
+  LULUS  10 anggota sebelum pembersihan
+  LULUS  penyaring memilih tepat 6 baris
+  LULUS  4 anggota tersisa setelah pembersihan
+  LULUS  SELURUH anggota sungguhan masih ada
+  LULUS  seluruh anggota contoh benar-benar terhapus
+  LULUS  baris berkode "TOKO-CONTOH-RASA" TIDAK terhapus
+  LULUS  baris berawalan huruf kecil "contoh-" TIDAK terhapus
+
+4. Data acuan menolak dibersihkan
+  LULUS  Jenis Koperasi menolak dibersihkan
+  LULUS  Peran, Menu, dan Hak Akses menolak dibersihkan
+  LULUS  Pemetaan Akun Bawaan menolak dibersihkan
+  LULUS  Komponen SHU Bawaan menolak dibersihkan
+  LULUS  jenis koperasi tetap ada setelah pembersihan anggota
+
+5. Batas keperluan AI
+  LULUS  8 keperluan AI tersusun
+  LULUS  setiap keluaran hanya draf, analisis, atau usulan
+  LULUS  setiap keperluan hanya membaca
+  LULUS  tidak satu pun menyimpan isi prompt
+  LULUS  setiap keperluan bersandar pada izin yang ada di katalog
+  LULUS  keperluan berisiko tinggi seluruhnya menuntut bukti
+
+6. Notulen yang disusun AI wajib melewati manusia — ditegakkan basis data
+  LULUS  notulen AI yang BELUM diperiksa manusia tidak dapat disahkan
+  LULUS  notulen AI yang SUDAH diperiksa manusia dapat disahkan
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.

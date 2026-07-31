@@ -25,8 +25,12 @@ import { OrderModule } from './modules/order/order.module';
 import { FulfillmentModule } from './modules/fulfillment/fulfillment.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
 import { ActivityModule } from './modules/activity/activity.module';
+import { AccountingModule } from './modules/accounting/accounting.module';
 import { PosModule } from './modules/pos/pos.module';
 import { SuratModule } from './modules/surat/surat.module';
+// Vertikal koperasi (eKoperasi). Satu baris impor dan satu entri — sengaja
+// sekecil mungkin, sebab berkas ini disentuh empat sesi paralel.
+import { CooperativeModule } from './modules/cooperative/cooperative.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { AiModule } from './modules/ai/ai.module';
 // Vertikal info-desa. Satu baris impor dan satu baris daftar — titik sentuh
@@ -81,8 +85,10 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
     FulfillmentModule,
     ObservabilityModule,
     ActivityModule,
+    AccountingModule,
     PosModule,
     SuratModule,
+    CooperativeModule,
     NotificationModule,
     AiModule,
     VillageModule,

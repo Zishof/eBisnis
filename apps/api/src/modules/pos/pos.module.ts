@@ -1130,10 +1130,13 @@ export class PosController {
   }
 }
 
+import { ExternalPaymentRegistry } from './external-payment.registry';
+
 @Module({
   imports: [InfrastructureModule, AuthModule],
   controllers: [PosController],
   providers: [
+    ExternalPaymentRegistry,
     PosCatalogService,
     PosContextService,
     PosSaleService,
@@ -1144,6 +1147,7 @@ export class PosController {
     PosSampleService,
   ],
   exports: [
+    ExternalPaymentRegistry,
     PosCatalogService,
     PosContextService,
     PosSaleService,

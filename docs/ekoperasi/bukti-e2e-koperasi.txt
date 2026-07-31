@@ -1,0 +1,97 @@
+==============================================================================
+BUKTI MENYELURUH — SATU KOPERASI DARI BERDIRI SAMPAI MEMBAGIKAN SHU
+Waktu  : 2026-07-31T19:00:37.036Z
+Schema : demo
+==============================================================================
+
+BABAK 1 — Koperasi berdiri
+  LULUS  koperasi terbentuk berstatus DRAFT
+  LULUS  koperasi TANPA badan hukum tidak dapat diaktifkan
+  LULUS  koperasi aktif SETELAH badan hukumnya tercatat
+
+BABAK 2 — Anggota masuk
+  LULUS  11 anggota aktif
+  LULUS  calon anggota tidak boleh punya tanggal aktif
+
+BABAK 3 — Simpanan dihimpun
+  LULUS  tiga produk simpanan dibuat
+  LULUS  simpanan wajib yang DAPAT DITARIK ditolak
+  LULUS  simpanan pokok TANPA besarannya ditolak
+  LULUS  simpanan sukarela yang ditandai EKUITAS ditolak
+         Total simpanan terhimpun: Rp27.438.000
+  LULUS  total simpanan lebih dari nol
+  LULUS  saldo simpanan tidak boleh negatif
+
+BABAK 4 — Pinjaman disalurkan
+  LULUS  akad syariah tidak boleh membawa tarif bunga
+  LULUS  pinjaman Rp12.000.000 tersalurkan kepada Budi Santoso
+  LULUS  jumlah pokok pada jadwal sama dengan pokok pinjaman
+         Jasa pinjaman setahun: Rp1.170.000
+
+BABAK 5 — Rapat Anggota Tahunan
+  LULUS  RAT dibuka dengan kehadiran 9 dari 11 anggota — kuorum tercapai
+  LULUS  rapat CLOSED yang menyatakan kuorum TANPA angkanya ditolak
+  LULUS  rapat yang menyatakan kuorum padahal hadirnya KURANG dari syarat ditolak
+  LULUS  rapat yang MENYANGKAL kuorum padahal hadirnya cukup ditolak
+  LULUS  satu anggota TIDAK dapat memberikan suara dua kali
+  LULUS  8 setuju, 1 tidak setuju
+  LULUS  keputusan SAH yang suaranya kurang dari ambang ditolak
+  LULUS  keputusan RAT tercatat dan SAH
+
+BABAK 6 — SHU dihitung dan dibagikan
+  LULUS  cuplikan memuat 11 anggota
+  LULUS  perhitungan SHU utuh
+  LULUS  perhitungan tersimpan menunjuk keputusan RAT
+  LULUS  DUA perhitungan hidup atas tahun buku yang sama ditolak
+  LULUS  perhitungan yang TIDAK utuh tidak dapat disetujui
+  LULUS  jumlah seluruh komponen SAMA PERSIS dengan surplus
+  LULUS  SHU dibagikan kepada 11 anggota
+         Jasa modal + jasa usaha dibagikan: Rp24.750.000
+  LULUS  jumlah di basis data SAMA PERSIS dengan hasil perhitungan
+  LULUS  jumlah pembagian SAMA PERSIS dengan komponen jasa modal + jasa usaha
+  LULUS  pemotongan yang MELEBIHI hak anggota ditolak
+  LULUS  perhitungan ulang menghasilkan angka yang sama, baris demi baris
+  LULUS  sidik jari masukannya sama
+
+BABAK 7 — Anggota melihat portalnya
+  LULUS  Siti melihat 3 rekeningnya sendiri, bukan 33
+  LULUS  tidak satu pun rekening anggota lain lolos
+  LULUS  saldo di portal SAMA dengan saldo di buku
+  LULUS  SHU yang dilihat Siti sama dengan yang dihitung untuknya
+  LULUS  rinciannya pun cocok — jasa modal dan jasa usaha terpisah
+  LULUS  Siti TIDAK dapat melihat pinjaman Budi
+  LULUS  penolakannya tidak menyebutkan bahwa pinjamannya ada
+  LULUS  Siti DAPAT melihat RAT — rapat milik bersama
+
+BABAK 8 — Pengaduan dan penutupnya
+  LULUS  Siti mengajukan pengaduan
+  LULUS  pengaduan tidak dapat dinyatakan selesai tanpa keterangan
+  LULUS  pengurus menjawab dengan keterangan
+  LULUS  pengaduan tidak dapat DIHAPUS
+  LULUS  — dan itulah maksudnya: pengaduan hanya berpindah status
+
+BABAK 9 — Pemisahan wewenang bertahan sampai akhir
+  LULUS  peran yang menggabungkan pengaju dan penyetuju DITOLAK
+  LULUS  2 pasangan terlarang terdeteksi
+  LULUS  anggota yang masih punya pengaduan tidak dapat dihapus
+
+------------------------------------------------------------------------------
+RINGKASAN ANGKA YANG BERSAMBUNG
+------------------------------------------------------------------------------
+  Anggota aktif               : 11
+  Total simpanan terhimpun    : Rp27.438.000
+  Pinjaman tersalurkan        : Rp12.000.000
+  Jasa pinjaman setahun       : Rp1.170.000
+  Surplus tahun buku 2026     : Rp45.000.000
+  Kehadiran RAT               : 9 dari 11 (kuorum tercapai)
+  Suara setuju                : 8 dari 9
+  SHU dibagikan ke anggota    : Rp24.750.000
+  Alokasi tersimpan           : Rp24.750.000  (cocok)
+  Saldo Siti di portal        : Rp2.000.000  (cocok dengan buku)
+  SHU Siti di portal          : Rp1.866.652  (cocok dengan hitungan)
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.
