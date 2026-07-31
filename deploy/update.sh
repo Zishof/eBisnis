@@ -4,6 +4,7 @@
 #
 #   sudo bash /opt/ebisnis/app/deploy/update.sh              # ke ujung branch main
 #   sudo bash /opt/ebisnis/app/deploy/update.sh v7.0.0       # ke tag tertentu
+#   sudo bash /opt/ebisnis/app/deploy/update.sh --force      # bangun ulang meski commit sama
 #
 # Urutan: backup database -> ambil source -> build -> migration -> restart ->
 # health check. Bila health check gagal, aplikasi otomatis dikembalikan ke
@@ -22,8 +23,26 @@ APP_USER=ebisnis
 APP_DIR=/opt/ebisnis/app
 ENV_FILE=/etc/ebisnis/ebisnis.env
 BACKUP_DIR=/var/backups/ebisnis
-TARGET=${1:-}
 KEEP_BACKUPS=10
+
+# Commit yang terakhir SELESAI dipasang — bukan sekadar yang ada di working tree.
+#
+# Keduanya berbeda persis ketika seseorang menjalankan `git pull` manual: source
+# maju, tetapi build, `db:generate`, dan `migrate deploy` belum dijalankan. Bila
+# perbandingan memakai HEAD, skrip menyimpulkan tidak ada yang perlu dikerjakan
+# dan melewatkan seluruh langkah itu — meninggalkan aplikasi yang sudah lama
+# dengan source yang sudah baru.
+DEPLOY_STAMP=/var/lib/ebisnis/deployed-commit
+
+FORCE=0
+TARGET=
+for arg in "$@"; do
+  case "$arg" in
+    --force) FORCE=1 ;;
+    -*)      echo "Argumen tidak dikenal: $arg" >&2; exit 2 ;;
+    *)       TARGET=$arg ;;
+  esac
+done
 
 log()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m[!] %s\033[0m\n' "$*"; }
@@ -124,9 +143,20 @@ else
 fi
 
 NEW=$(as_app "git -C '$APP_DIR' rev-parse HEAD")
-if [[ "$PREVIOUS" == "$NEW" ]]; then
-  echo "    Sudah pada versi terbaru ($(as_app "git -C '$APP_DIR' rev-parse --short HEAD")). Tidak ada yang dikerjakan."
+
+DEPLOYED=$(cat "$DEPLOY_STAMP" 2>/dev/null || true)
+if [[ -z "$DEPLOYED" ]]; then
+  # Belum pernah ada penanda: instalasi lama, atau penanda terhapus. Yang
+  # terpasang tidak dapat dipastikan, jadi dibangun ulang. Membangun ulang
+  # tanpa perlu hanya memakan waktu; melewatinya tanpa perlu meninggalkan
+  # aplikasi yang tidak sesuai sourcenya.
+  echo "    Penanda deployment belum ada — dibangun ulang untuk memastikan."
+elif [[ "$DEPLOYED" == "$NEW" && $FORCE -eq 0 ]]; then
+  echo "    ${NEW:0:7} sudah terpasang seutuhnya. Tidak ada yang dikerjakan."
+  echo "    Untuk membangun ulang: sudo bash $0 --force"
   exit 0
+elif [[ "$DEPLOYED" == "$NEW" ]]; then
+  echo "    ${NEW:0:7} sudah terpasang, dibangun ulang atas permintaan (--force)."
 fi
 echo "    ${PREVIOUS:0:7} -> ${NEW:0:7}"
 as_app "git -C '$APP_DIR' log --oneline '$PREVIOUS'..'$NEW'" | sed 's/^/      /' || true
@@ -136,8 +166,13 @@ ln -sfn "$ENV_FILE" "$APP_DIR/apps/api/.env"
 chown -h "$APP_USER":"$APP_USER" "$APP_DIR/apps/api/.env"
 
 rollback() {
-  warn "Mengembalikan aplikasi ke ${PREVIOUS:0:7}"
-  as_app "git -C '$APP_DIR' checkout --quiet '$PREVIOUS'"
+  # Sasaran pengembalian adalah commit yang terakhir benar-benar berjalan sehat,
+  # bukan HEAD sebelum proses ini. Keduanya berbeda setelah `git pull` manual —
+  # dan di situ HEAD sebelumnya justru commit yang sedang gagal, sehingga
+  # mengembalikannya ke sana tidak memperbaiki apa pun.
+  local target=${DEPLOYED:-$PREVIOUS}
+  warn "Mengembalikan aplikasi ke ${target:0:7}"
+  as_app "git -C '$APP_DIR' checkout --quiet '$target'"
   as_app "cd '$APP_DIR' && pnpm install --frozen-lockfile && pnpm db:generate && pnpm build" || true
   systemctl restart ebisnis-api || true
   cat <<EOF
@@ -189,6 +224,13 @@ curl -s http://127.0.0.1:3000/health | sed 's/^/    /'
 
 as_app "cd '$APP_DIR' && pnpm seed:verify" || warn "Verifikasi seed melaporkan masalah — periksa keluarannya."
 
+# Penanda ditulis SETELAH health check lulus, bukan setelah build. Build yang
+# menghasilkan aplikasi yang tidak mau menyala bukan deployment yang selesai,
+# dan menandainya selesai akan membuat percobaan berikutnya dilewati.
+install -d -m 755 "$(dirname "$DEPLOY_STAMP")"
+printf '%s
+' "$NEW" > "$DEPLOY_STAMP"
+
 # ---------------------------------------------------------------------------
 log "7/7  Apache"
 # ---------------------------------------------------------------------------
@@ -206,6 +248,6 @@ cat <<EOF
   Backup    : $BACKUP_FILE
 
   Kembali ke versi sebelumnya bila diperlukan:
-      sudo bash $APP_DIR/deploy/update.sh $PREVIOUS
+      sudo bash $APP_DIR/deploy/update.sh ${DEPLOYED:-$PREVIOUS}
 
 EOF
