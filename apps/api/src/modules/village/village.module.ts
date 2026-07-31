@@ -2799,6 +2799,52 @@ class TerbitkanKodeDto {
   complaintId?: string;
 }
 
+
+class PortalAjukanSuratDto {
+  @ApiProperty()
+  @IsUUID()
+  serviceCatalogId!: string;
+
+  @ApiPropertyOptional({ example: 'Untuk melamar pekerjaan' })
+  @IsOptional()
+  @IsString()
+  purpose?: string;
+}
+
+class PortalLaporDto {
+  @ApiProperty({ example: 'Jalan berlubang depan masjid' })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(300)
+  title!: string;
+
+  @ApiProperty({ description: 'Sekurang-kurangnya sepuluh huruf.' })
+  @IsString()
+  @MinLength(10)
+  description!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Bawaan benar. Bila salah, nama pelapor tidak muncul pada daftar yang dilihat warga lain ' +
+      '— tetapi ini BUKAN anonim: aplikasi memakai akun, sehingga petugas tetap dapat ' +
+      'melihatnya. Yang benar-benar tanpa identitas adalah jalur anjungan.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  showReporterName?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'Depan masjid RT 03',
+    description:
+      'Tempat KEJADIAN yang ditunjuk warga, bukan posisi ponselnya. Melampirkan GPS otomatis ' +
+      'berarti melacak di mana warga berada setiap kali ia melapor — dan salah, sebab orang ' +
+      'biasanya melapor sesudah sampai rumah.',
+  })
+  @IsOptional()
+  @IsString()
+  locationNote?: string;
+}
+
 // --- Controller publik ---------------------------------------------------------
 
 /**
@@ -4866,6 +4912,68 @@ export class VillageController {
   })
   terbitkanKode(@Body() dto: TerbitkanKodeDto, @CurrentUser() user: AuthenticatedUser) {
     return this.anjungan.terbitkanKode(requireSchema(user), dto, user);
+  }
+
+
+  // --- Portal warga: aplikasi mobile ----------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Get('portal/services')
+  @ApiOperation({ summary: 'Jenis surat yang dapat diajukan warga dari aplikasi' })
+  portalJenisLayanan(@CurrentUser() user: AuthenticatedUser) {
+    return this.situs.portalJenisLayanan(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Post('portal/requests')
+  @ApiOperation({
+    summary: 'Mengajukan surat sebagai diri sendiri',
+    description:
+      'TIDAK ADA parameter pemohon. Pemohonnya adalah pemilik akun, ditentukan dari tautan ' +
+      'sesinya — endpoint yang menerima residentId akan dicoba dengan nilai lain oleh orang ' +
+      'pertama yang menyadarinya.',
+  })
+  portalAjukanSurat(
+    @Body() dto: PortalAjukanSuratDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.situs.portalAjukanSurat(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Post('portal/complaints')
+  @ApiOperation({
+    summary: 'Menyampaikan pengaduan dari aplikasi warga',
+    description:
+      'showReporterName=false menyembunyikan nama dari warga lain, TETAPI BUKAN ANONIM: ' +
+      'aplikasi memakai akun, sehingga peladen selalu tahu siapa yang mengirim, dan tautannya ' +
+      'tetap disimpan. Menyebutnya anonim berarti menjanjikan sesuatu yang tidak dapat ditepati ' +
+      'aplikasi mana pun yang memakai akun — dan warga yang mengadukan perangkat desa ' +
+      'mempercayai janji itu. Yang benar-benar tanpa identitas adalah jalur anjungan.',
+  })
+  portalLapor(@Body() dto: PortalLaporDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.situs.portalLapor(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Get('health/posyandu-schedule')
+  @ApiOperation({
+    summary: 'Jadwal Posyandu',
+    description:
+      'Diteruskan apa adanya dari HealthAggregatePort. Sampai eMedik tersambung, ia menyatakan ' +
+      '"belum tersambung" — bukan jadwal karangan. Jadwal palsu pada aplikasi warga berarti ' +
+      'ibu-ibu datang ke Posyandu yang tidak ada.',
+  })
+  portalPosyandu(
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.situs.portalPosyandu(requireSchema(user), from, to);
   }
 
   // --- Penyiapan ------------------------------------------------------------

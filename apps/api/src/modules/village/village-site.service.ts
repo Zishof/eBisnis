@@ -20,6 +20,7 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { AuthenticatedUser } from '../../common/decorators';
 import { VillageUnitService } from './village-unit.service';
 import { BROADCAST_PORT, type BroadcastPort } from './ports/broadcast.port';
+import { HEALTH_PORT, type HealthAggregatePort } from './ports/external.ports';
 import {
   bolehLihatDiPortal,
   bolehPindahTayang,
@@ -41,6 +42,7 @@ export class VillageSiteService {
     private readonly tenantDb: TenantConnectionService,
     private readonly unit: VillageUnitService,
     @Inject(BROADCAST_PORT) private readonly siaran: BroadcastPort,
+    @Inject(HEALTH_PORT) private readonly kesehatan: HealthAggregatePort,
   ) {}
 
   // --- Situs publik (hanya membaca) -----------------------------------------
@@ -375,6 +377,172 @@ export class VillageSiteService {
         ORDER BY submitted_at DESC NULLS LAST LIMIT 50`,
       [t.residentId],
     );
+  }
+
+  /** Jenis layanan yang dapat diajukan warga dari aplikasi. */
+  async portalJenisLayanan(schemaName: string) {
+    const u = await this.unit.pastikanLayak(schemaName, 'LAYANAN.KATALOG');
+    return this.tenantDb.query(
+      schemaName,
+      `SELECT id, code, name FROM "${schemaName}".village_service_catalog
+        WHERE village_unit_id = $1 AND is_active = TRUE AND deleted_at IS NULL
+        ORDER BY name`,
+      [u.id],
+    );
+  }
+
+  /**
+   * Mengajukan surat sebagai diri sendiri.
+   *
+   * Tidak ada parameter pemohon. Pemohonnya adalah pemilik akun, ditentukan
+   * dari tautan sesinya — endpoint yang menerima `residentId` akan dicoba
+   * dengan nilai lain oleh orang pertama yang menyadarinya.
+   */
+  async portalAjukanSurat(
+    schemaName: string,
+    input: { serviceCatalogId: string; purpose?: string },
+    user: AuthenticatedUser,
+  ) {
+    const u = await this.unit.pastikanLayak(schemaName, 'LAYANAN.PERMOHONAN');
+    const t = await this.tautanPortal(schemaName, user.userId);
+    if (!t.residentId) {
+      throw AppError.forbidden(
+        ErrorCodes.FORBIDDEN,
+        'Akun Anda belum tertaut ke data kependudukan desa. Datang sekali ke kantor desa ' +
+          'dengan membawa KTP; petugas akan menautkannya.',
+      );
+    }
+
+    const w = await this.tenantDb.query<{ full_name: string; phone: string | null }>(
+      schemaName,
+      `SELECT full_name, phone FROM "${schemaName}".village_resident WHERE id = $1`,
+      [t.residentId],
+    );
+    if (!w.length) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Data penduduk tidak ditemukan.');
+
+    const rows = await this.tenantDb.query<{ id: string }>(
+      schemaName,
+      `INSERT INTO "${schemaName}".village_service_request
+         (village_unit_id, service_catalog_id, village_resident_id, applicant_name,
+          applicant_phone, applicant_user_id, purpose, status, submitted_at, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'DIAJUKAN', now(), $6) RETURNING id`,
+      [
+        u.id,
+        input.serviceCatalogId,
+        t.residentId,
+        w[0].full_name,
+        w[0].phone,
+        user.userId,
+        input.purpose ?? null,
+      ],
+    );
+
+    return {
+      id: rows[0].id,
+      status: 'DIAJUKAN',
+      note:
+        'Permohonan Anda sudah masuk. Pantau perkembangannya dari aplikasi; bila berkas ' +
+        'persyaratan diperlukan, petugas akan memberi tahu melalui aplikasi ini.',
+    };
+  }
+
+  /**
+   * Menyampaikan pengaduan dari aplikasi.
+   *
+   * `showReporterName` menentukan apakah nama pelapor muncul pada daftar yang
+   * dilihat warga lain. Ia **bukan** anonim, dan tidak boleh disebut begitu:
+   * aplikasi memakai akun, sehingga peladen selalu tahu siapa yang mengirim.
+   * Yang benar-benar tanpa identitas adalah jalur anjungan di kantor desa, yang
+   * tidak menyimpan identitas sama sekali.
+   *
+   * Menyebut ini "anonim" berarti menjanjikan sesuatu yang tidak dapat ditepati
+   * aplikasi mana pun yang memakai akun — dan warga yang mengadukan perangkat
+   * desa mempercayai janji itu.
+   */
+  async portalLapor(
+    schemaName: string,
+    input: {
+      title: string;
+      description: string;
+      showReporterName?: boolean;
+      locationNote?: string;
+    },
+    user: AuthenticatedUser,
+  ) {
+    const u = await this.unit.pastikanLayak(schemaName, 'PARTISIPASI.PENGADUAN');
+    const t = await this.tautanPortal(schemaName, user.userId);
+
+    if ((input.description ?? '').trim().length < 10) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Ceritakan laporan Anda sedikit lebih panjang agar dapat ditindaklanjuti.',
+      );
+    }
+
+    const tampilkanNama = input.showReporterName !== false;
+    let nama: string | null = null;
+    if (tampilkanNama && t.residentId) {
+      const w = await this.tenantDb.query<{ full_name: string }>(
+        schemaName,
+        `SELECT full_name FROM "${schemaName}".village_resident WHERE id = $1`,
+        [t.residentId],
+      );
+      nama = w[0]?.full_name ?? null;
+    }
+
+    const nomor = `ADU/${new Date().getFullYear()}/${Date.now().toString().slice(-6)}`;
+    const rows = await this.tenantDb.query<{ id: string }>(
+      schemaName,
+      `INSERT INTO "${schemaName}".village_complaint
+         (village_unit_id, ticket_number, title, description, location_note,
+          reporter_mode, reporter_resident_id, reporter_user_id, reporter_name,
+          status, created_by)
+       VALUES ($1,$2,$3,$4,$5,'TERBUKA',$6,$7,$8,'DITERIMA',$7) RETURNING id`,
+      [
+        u.id,
+        nomor,
+        input.title?.trim() || input.description.trim().slice(0, 80),
+        input.description.trim(),
+        input.locationNote ?? null,
+        // Tautan penduduk dan pengguna TETAP disimpan meskipun namanya tidak
+        // ditampilkan. Menghapusnya akan membuat aplikasi seolah-olah anonim
+        // padahal peladen mencatat pemanggilnya pada jejak audit — janji
+        // setengah yang lebih buruk daripada tidak berjanji.
+        t.residentId,
+        user.userId,
+        nama,
+      ],
+    );
+
+    return {
+      id: rows[0].id,
+      ticketNumber: nomor,
+      nameShown: tampilkanNama,
+      note: tampilkanNama
+        ? 'Laporan Anda tersimpan. Petugas dapat menghubungi Anda untuk keterangan tambahan.'
+        : 'Laporan Anda tersimpan tanpa menampilkan nama kepada warga lain. Petugas desa ' +
+          'tetap dapat melihatnya — untuk pelaporan yang benar-benar tanpa identitas, ' +
+          'gunakan anjungan di kantor desa.',
+    };
+  }
+
+  /**
+   * Jadwal Posyandu.
+   *
+   * Diteruskan apa adanya dari `HealthAggregatePort`. Sampai eMedik tersambung,
+   * ia menyatakan "belum tersambung" — dan aplikasi menampilkan itu, bukan
+   * jadwal karangan. Jadwal palsu pada aplikasi warga berarti ibu-ibu datang ke
+   * Posyandu yang tidak ada.
+   */
+  async portalPosyandu(schemaName: string, from?: string, to?: string) {
+    const u = await this.unit.unit(schemaName);
+    const hariIni = new Date().toISOString().slice(0, 10);
+    const hasil = await this.kesehatan.jadwalPosyandu({
+      villageUnitId: u.id,
+      from: from ?? hariIni,
+      to: to ?? hariIni,
+    });
+    return { available: hasil.tersedia, note: hasil.keterangan ?? null, data: hasil.data };
   }
 
   /** Menautkan akun ke penduduk. Dilakukan petugas, bukan pemilik akun. */

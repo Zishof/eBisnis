@@ -1,0 +1,215 @@
+/// Endpoint yang dipakai Aplikasi Warga Desa.
+///
+/// ## Tidak satu pun memuat pencarian warga
+///
+/// Aturan yang sama dengan portal warga dan anjungan: yang ditampilkan
+/// ditentukan **sesinya**, bukan permintaannya. Tidak ada metode yang menerima
+/// `residentId`, `nik`, maupun nama untuk dicari — endpoint yang menerimanya
+/// akan dicoba dengan nilai lain oleh orang pertama yang menyadarinya.
+library;
+
+import 'api_client.dart';
+
+class ProfilWarga {
+  ProfilWarga({required this.nama, this.rt, this.rw, this.alamat, this.statusPenduduk});
+  final String nama;
+  final String? rt;
+  final String? rw;
+  final String? alamat;
+  final String? statusPenduduk;
+
+  factory ProfilWarga.dariJson(Map<String, dynamic> j) => ProfilWarga(
+        nama: (j['full_name'] ?? j['fullName'] ?? '-') as String,
+        rt: j['rt_number'] as String?,
+        rw: j['rw_number'] as String?,
+        alamat: j['address'] as String?,
+        statusPenduduk: j['resident_status'] as String?,
+      );
+}
+
+class AnggotaKeluarga {
+  AnggotaKeluarga({required this.nama, this.hubungan});
+  final String nama;
+  final String? hubungan;
+
+  factory AnggotaKeluarga.dariJson(Map<String, dynamic> j) => AnggotaKeluarga(
+        nama: (j['full_name'] ?? '-') as String,
+        hubungan: j['family_relation'] as String?,
+      );
+}
+
+class Permohonan {
+  Permohonan({required this.id, this.nomor, this.status, this.diajukanPada});
+  final String id;
+  final String? nomor;
+  final String? status;
+  final String? diajukanPada;
+
+  factory Permohonan.dariJson(Map<String, dynamic> j) => Permohonan(
+        id: (j['id'] ?? '') as String,
+        nomor: j['request_number'] as String?,
+        status: j['status'] as String?,
+        diajukanPada: j['submitted_at']?.toString(),
+      );
+}
+
+class Berita {
+  Berita({required this.judul, this.ringkas, this.tayangPada});
+  final String judul;
+  final String? ringkas;
+  final String? tayangPada;
+
+  factory Berita.dariJson(Map<String, dynamic> j) => Berita(
+        judul: (j['title'] ?? '-') as String,
+        ringkas: j['summary'] as String?,
+        tayangPada: j['publishedAt']?.toString(),
+      );
+}
+
+class Agenda {
+  Agenda({required this.judul, required this.mulai, this.tempat});
+  final String judul;
+  final String mulai;
+  final String? tempat;
+
+  factory Agenda.dariJson(Map<String, dynamic> j) => Agenda(
+        judul: (j['title'] ?? '-') as String,
+        mulai: (j['startAt'] ?? '') as String,
+        tempat: j['location'] as String?,
+      );
+}
+
+class ProgramBantuan {
+  ProgramBantuan({required this.nama, required this.jenis, this.mulai, this.selesai});
+  final String nama;
+  final String jenis;
+  final String? mulai;
+  final String? selesai;
+
+  factory ProgramBantuan.dariJson(Map<String, dynamic> j) => ProgramBantuan(
+        nama: (j['programName'] ?? '-') as String,
+        jenis: (j['aidCategory'] ?? '-') as String,
+        mulai: j['periodStart']?.toString(),
+        selesai: j['periodEnd']?.toString(),
+      );
+}
+
+class JenisLayanan {
+  JenisLayanan({required this.id, required this.nama});
+  final String id;
+  final String nama;
+
+  factory JenisLayanan.dariJson(Map<String, dynamic> j) =>
+      JenisLayanan(id: (j['id'] ?? '') as String, nama: (j['name'] ?? '-') as String);
+}
+
+/// Jadwal Posyandu.
+///
+/// Datang dari `HealthAggregatePort` milik vertikal info-desa, yang sampai
+/// eMedik tersambung mengembalikan **"belum tersambung"** dengan jujur — bukan
+/// jadwal karangan. Aplikasi meneruskan keadaan itu apa adanya; jadwal palsu
+/// pada aplikasi warga berarti ibu-ibu datang ke Posyandu yang tidak ada.
+class JadwalPosyandu {
+  JadwalPosyandu({required this.tersedia, required this.keterangan, required this.jadwal});
+  final bool tersedia;
+  final String? keterangan;
+  final List<Map<String, dynamic>> jadwal;
+}
+
+class VillageApi {
+  VillageApi(this.klien);
+  final ApiClient klien;
+
+  // --- Diri dan keluarga ----------------------------------------------------
+
+  Future<ProfilWarga> profil() async =>
+      ProfilWarga.dariJson(await klien.get('/village/portal/me'));
+
+  Future<List<AnggotaKeluarga>> keluarga() async {
+    final r = await klien.get('/village/portal/family');
+    final anggota = r['members'];
+    if (anggota is! List) return const [];
+    return anggota
+        .whereType<Map<String, dynamic>>()
+        .map(AnggotaKeluarga.dariJson)
+        .toList();
+  }
+
+  Future<List<Permohonan>> permohonanSaya() async {
+    final r = await klien.getList('/village/portal/requests');
+    return r.whereType<Map<String, dynamic>>().map(Permohonan.dariJson).toList();
+  }
+
+  // --- Pengumuman -----------------------------------------------------------
+  //
+  // Memakai jalur publik situs desa: pengumuman memang terbuka, dan
+  // membacanya tidak menuntut akun yang tertaut.
+
+  Future<List<Berita>> berita(String slugDesa) async {
+    final r = await klien.getList('/village/public/$slugDesa/news?limit=10');
+    return r.whereType<Map<String, dynamic>>().map(Berita.dariJson).toList();
+  }
+
+  Future<List<Agenda>> agenda(String slugDesa) async {
+    final r = await klien.getList('/village/public/$slugDesa/agenda');
+    return r.whereType<Map<String, dynamic>>().map(Agenda.dariJson).toList();
+  }
+
+  // --- Bantuan dan Posyandu -------------------------------------------------
+
+  Future<List<ProgramBantuan>> programBantuan() async {
+    final r = await klien.get('/village/kiosk/announcements');
+    final p = r['aidPrograms'];
+    if (p is! List) return const [];
+    return p.whereType<Map<String, dynamic>>().map(ProgramBantuan.dariJson).toList();
+  }
+
+  Future<JadwalPosyandu> posyandu() async {
+    final r = await klien.get('/village/health/posyandu-schedule');
+    final data = r['data'];
+    return JadwalPosyandu(
+      tersedia: r['available'] == true,
+      keterangan: r['note'] as String?,
+      jadwal: data is List ? data.whereType<Map<String, dynamic>>().toList() : const [],
+    );
+  }
+
+  // --- Pengajuan ------------------------------------------------------------
+
+  Future<List<JenisLayanan>> jenisLayanan() async {
+    final r = await klien.getList('/village/portal/services');
+    return r.whereType<Map<String, dynamic>>().map(JenisLayanan.dariJson).toList();
+  }
+
+  /// Mengajukan surat sebagai diri sendiri.
+  ///
+  /// Tidak ada parameter pemohon: pemohonnya adalah pemilik akun, ditentukan
+  /// peladen dari tautan sesinya.
+  Future<Map<String, dynamic>> ajukanSurat({
+    required String jenisLayananId,
+    String? keperluan,
+  }) =>
+      klien.post('/village/portal/requests', {
+        'serviceCatalogId': jenisLayananId,
+        if (keperluan != null) 'purpose': keperluan,
+      });
+
+  /// Menyampaikan pengaduan.
+  ///
+  /// `tampilkanNama` menentukan apakah nama pelapor muncul pada daftar yang
+  /// dilihat warga lain. Ia **bukan** anonim: aplikasi ini memakai akun,
+  /// sehingga petugas tetap dapat melihat siapa yang melapor. Yang benar-benar
+  /// tanpa identitas adalah jalur anjungan di kantor desa.
+  Future<Map<String, dynamic>> lapor({
+    required String judul,
+    required String uraian,
+    required bool tampilkanNama,
+    String? keteranganTempat,
+  }) =>
+      klien.post('/village/portal/complaints', {
+        'title': judul,
+        'description': uraian,
+        'showReporterName': tampilkanNama,
+        if (keteranganTempat != null) 'locationNote': keteranganTempat,
+      });
+}
