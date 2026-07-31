@@ -54,6 +54,7 @@ import { VillageBusinessService } from './village-business.service';
 import { VillageSafetyService } from './village-safety.service';
 import { VillageSiteService } from './village-site.service';
 import { VillageTransparencyService } from './village-transparency.service';
+import { VillageSampleService } from './village-sample.service';
 import { VillagePublicResolver } from './village-public.resolver';
 import { BROADCAST_PORT, BroadcastBlockedAdapter } from './ports/broadcast.port';
 import {
@@ -2766,6 +2767,7 @@ export class VillageController {
     private readonly keamanan: VillageSafetyService,
     private readonly situs: VillageSiteService,
     private readonly transparansi: VillageTransparencyService,
+    private readonly contoh: VillageSampleService,
   ) {}
 
 
@@ -4474,6 +4476,58 @@ export class VillageController {
     );
   }
 
+
+  // --- Data contoh ----------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_UNIT.READ')
+  @Get('sample/plan')
+  @ApiOperation({
+    summary: 'Rencana data contoh untuk profil penyewa ini',
+    description:
+      'Bagian yang tidak layak DILEWATI beserta alasannya, bukan dihilangkan diam-diam. ' +
+      'Peran dan hak akses tidak termasuk data contoh — ia data acuan yang tetap ada setelah ' +
+      'pembersihan.',
+  })
+  rencanaContoh(@CurrentUser() user: AuthenticatedUser) {
+    return this.contoh.rencana(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_UNIT.READ')
+  @Get('sample/batches')
+  @ApiOperation({ summary: 'Batch data contoh yang ada pada ruang kerja ini' })
+  batchContoh(@CurrentUser() user: AuthenticatedUser) {
+    return this.contoh.batchAktif(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_UNIT.UPDATE')
+  @Post('sample/seed')
+  @ApiOperation({
+    summary: 'Menyemai data contoh',
+    description:
+      'Seluruhnya bertanda is_sample dan sample_batch_id, di dalam satu transaksi. Kelayakan ' +
+      'profil dihormati: kelurahan tidak memperoleh APBDes, BPD, maupun BUMDes contoh.',
+  })
+  semaiContoh(@CurrentUser() user: AuthenticatedUser) {
+    return this.contoh.semai(requireSchema(user), user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_UNIT.UPDATE')
+  @Post('sample/purge')
+  @ApiOperation({
+    summary: 'Membersihkan satu batch data contoh',
+    description:
+      'Hanya baris bertanda contoh dari batch yang disebut. Cakupannya diperiksa sebelum ' +
+      'dijalankan: bila penghapusan akan menyentuh lebih banyak daripada jumlah baris contoh, ' +
+      'seluruh transaksi dibatalkan.',
+  })
+  bersihkanContoh(@Query('batch') batchId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.contoh.bersihkan(requireSchema(user), batchId);
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -4525,6 +4579,7 @@ export class VillageController {
     VillageSafetyService,
     VillageSiteService,
     VillageTransparencyService,
+    VillageSampleService,
     VillagePublicResolver,
     // Mitra vertikal yang belum ada. Adapter tiruan menyatakan "belum
     // tersambung" dengan jujur dan tidak mengembalikan satu pun angka karangan.
@@ -4552,6 +4607,7 @@ export class VillageController {
     VillageSafetyService,
     VillageSiteService,
     VillageTransparencyService,
+    VillageSampleService,
   ],
 })
 export class VillageModule {}

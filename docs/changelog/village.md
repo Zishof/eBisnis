@@ -1446,3 +1446,130 @@ lulus.
 - `jest` — **1558 tes lulus** (bertambah 39)
 - `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
 - Migrasi diverifikasi: 101 tabel village terbentuk
+
+---
+
+## D-12 — Data contoh, batas vertikal, dan penutup
+
+### Ditambahkan
+
+- **`village-boundary.spec.ts`** — pemindai batas vertikal. **15 pengujian.**
+- **`village-sample.ts`** — rencana data contoh yang mengikuti kelayakan profil.
+  **15 pengujian.**
+- **`VillageSampleService`** dan **empat endpoint.**
+- **`docs/info-desa/10-penutup-dan-uat.md`** — penutup, daftar periksa UAT, dan
+  daftar yang **tidak** selesai.
+
+### Batas vertikal akhirnya diuji, bukan disepakati
+
+Dijanjikan sejak D-0 beserta alasannya: *"Aturan yang hanya tertulis di dokumen
+akan dilanggar suatu hari oleh orang yang belum pernah membacanya."* Sekarang
+ada berkas yang memindainya pada setiap kali pengujian dijalankan.
+
+Hasil pemindaiannya:
+
+| Yang diperiksa | Hasil |
+|---|---|
+| Impor dari modul vertikal lain | **nol** |
+| Tabel di luar awalan `village_` | **lima**, seluruhnya Core dan beralasan |
+| Tabel kesehatan atau simpan-pinjam yang disalin | **nol** |
+| Nama skema dari badan permintaan | **nol** |
+| Rute di luar awalan `village` | **nol** |
+| Hak akses di luar awalan `VILLAGE_` | **nol** |
+| Hak akses yang tidak ada pada katalog | **nol** |
+
+Batasnya bertahan dua belas tahap tanpa satu pelanggaran pun — tetapi itu baru
+diketahui setelah ada yang memeriksanya. Sebelum berkas ini, keyakinannya
+bersandar pada ingatan.
+
+Daftar tabel Core dibatasi **delapan**. Bukan angka keramat: ia pagar yang
+memaksa penambahan kesembilan menjadi keputusan yang disengaja, bukan satu baris
+lagi pada daftar yang sudah panjang. Setiap tabel wajib menyebutkan alasannya,
+dan pengujian menolak alasan yang terlalu pendek untuk berarti.
+
+Satu pengujian menemukan cacat pada berkas ini sendiri saat ditulis: rute data
+contoh menuntut `VILLAGE_SETTINGS.READ`, sebuah menu yang **tidak ada** pada
+katalog. Rute seperti itu tidak akan pernah dapat dipanggil siapa pun — haknya
+tidak dapat diberikan kepada peran mana pun, dan kekeliruannya tidak terlihat
+sampai seseorang mencobanya. Pengujian "setiap hak akses yang dipakai rute
+benar-benar ada pada katalog" ditambahkan karena itu.
+
+### Data contoh mengikuti kelayakan, bukan mengabaikannya
+
+Penyewa berprofil kelurahan yang menemukan APBDes contoh pada ruang kerjanya
+akan menyimpulkan fitur itu tersedia baginya. Ia lalu menyusun anggaran, dan
+kekeliruannya baru ketahuan pada penetapan — setelah pekerjaannya terlanjur
+dilakukan. **Data contoh yang melanggar kelayakan bukan sekadar salah; ia
+mengajarkan hal yang salah.**
+
+Karena itu rencana semai disaring `layak()` yang sama dengan yang menjaga
+endpoint. Desa memperoleh APBDes, BPD, dan BUMDes; kelurahan tidak.
+
+Bagian yang dilewati **menyebutkan alasannya**. Petugas yang melihat "APBDes —
+dilewati: kelurahan menerima pagu dari daerah" belajar sesuatu tentang
+sistemnya; yang melihat daftar yang lebih pendek tanpa keterangan hanya mengira
+ada yang tidak berjalan.
+
+Satu hal yang hampir terlewat: **kelurahan menyelenggarakan Musrenbang.** Kode
+fiturnya berbeda (`PARTISIPASI.MUSRENBANG_KELURAHAN`), dan memakai satu kode
+saja akan membuat kelurahan kehilangan musrenbang contohnya padahal ia
+menyelenggarakannya. Bagian ini karena itu punya fitur per profil, bukan satu.
+
+### Peran dan hak akses BUKAN data contoh
+
+Ini permintaan yang dinyatakan sejak awal, dan alasannya menjadi jelas saat
+membangun pembersihannya: peran adalah data acuan. Menandainya sebagai contoh
+berarti pembersihan menghapus seluruh hak akses penyewa — dan penyewa itu
+terkunci dari sistemnya sendiri karena menekan tombol yang menjanjikan
+kebalikannya.
+
+Dijaga pengujian yang memindai migrasi: `village_scope_assignment` tidak
+memiliki kolom `is_sample`.
+
+### Pembersihan tidak menyentuh data sungguhan
+
+Tiga syarat sekaligus pada setiap `DELETE`: unit yang benar, benar bertanda
+contoh, dan batch yang disebut. Melepas salah satunya membuat penghapusan
+menyentuh data yang bukan sasarannya.
+
+Di atasnya ada pemeriksaan cakupan: jumlah baris yang terhapus dibandingkan
+dengan jumlah baris bertanda contoh, dan bila yang terhapus lebih banyak,
+**seluruh transaksi dibatalkan**. Yang salah pada kondisi penghapusan tidak
+boleh dijalankan lalu diperbaiki.
+
+Menyemai dua kali ditolak: dua salinan penduduk contoh dengan NIK yang sama
+membuat penyewa yang membersihkan salah satunya mengira sisanya adalah data
+sungguhan.
+
+### Yang TIDAK selesai — dicatat sejelas yang selesai
+
+Vertikal yang menyatakan dirinya selesai padahal belum adalah vertikal yang
+cacatnya ditemukan penyewa pertama. Karena itu `10-penutup-dan-uat.md` memuat
+daftarnya:
+
+1. **Antarmuka administrasi D-1 sampai D-9 belum ada.** Yang ada baru situs desa
+   publik dari D-10. Sekitar tiga puluh halaman, dengan pondasi D-10 yang dapat
+   dipakai kembali.
+2. **Pusat Bantuan `BLOCKED`** — V8-1/V8-2 tidak pernah dibangun pada Core.
+3. **Ekspor Excel dan cetak PDF `BLOCKED`** — V8-5/6 dan V8-7. Surat tidak dapat
+   diunduh sebagai PDF, penghalang yang paling menyakitkan bagi vertikal ini.
+4. **Empat kontrak integrasi menunggu jawaban** — eMedik, eKoperasi, POS,
+   marketplace.
+5. **AI: yang ada baru batasnya, bukan pemakaiannya.** Penyaringan berhenti pada
+   calon; tidak ada jalur menuju pembayaran, penetapan, persetujuan,
+   penghapusan, maupun hak akses. Pemakaian yang sesungguhnya belum dibangun —
+   batasnya lebih dahulu, dan itu urutan yang benar.
+
+### Daftar periksa UAT
+
+Dua puluh empat butir yang harus diperiksa manusia pada penyewa sungguhan,
+dikelompokkan per bidang, dengan yang wajib lulus ditandai terpisah dari yang
+boleh ditunda.
+
+### Gerbang mutu penutupan
+
+- `jest` — **1781 tes lulus** (bertambah 30)
+- `vitest` — 35 tes lulus
+- `tsc --noEmit` dan `eslint --max-warnings=0` API dan web — bersih
+- Migrasi diverifikasi: **101 tabel village** pada tiga belas migrasi
+- Sepuluh berkas bukti, **273 pemeriksaan** terhadap PostgreSQL sungguhan
