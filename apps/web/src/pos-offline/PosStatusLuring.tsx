@@ -17,11 +17,23 @@
  * memberi tahu siapa pun apa yang harus dilakukan berikutnya.
  */
 
-import { AlertTriangle, CloudOff, Download, Loader2, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import {
+  AlertTriangle,
+  CloudOff,
+  Download,
+  ListChecks,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  Upload,
+  Wifi,
+  WifiOff,
+} from 'lucide-react';
 import { warnaKoneksi, type KeadaanKoneksi } from './koneksi';
 import { jam } from './katalog';
 import type { HasilKatalogLuring } from './useKatalogLuring';
 import type { HasilServiceWorker } from './useServiceWorker';
+import type { HasilBukuLokal } from './useBukuLokal';
 
 const KELAS: Record<ReturnType<typeof warnaKoneksi>, string> = {
   hijau: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900',
@@ -41,10 +53,13 @@ export function PosStatusLuring({
   koneksi,
   katalog,
   sw,
+  buku,
 }: {
   koneksi: { state: KeadaanKoneksi; message: string; periksaSekarang: () => void };
   katalog: HasilKatalogLuring;
   sw: HasilServiceWorker;
+  /** Buku besar lokal; tidak ada bila layar dipakai tanpa konteks register. */
+  buku?: HasilBukuLokal;
 }) {
   const warna = warnaKoneksi(koneksi.state);
   const salinan = katalog.salinan;
@@ -136,6 +151,112 @@ export function PosStatusLuring({
       {katalog.galat && (
         <p className="text-xs text-rose-700 dark:text-rose-300">{katalog.galat}</p>
       )}
+
+      {/*
+        Buku besar lokal.
+
+        Angka antrean ditampilkan bahkan ketika nol, dan itu disengaja: kasir
+        yang hanya melihat angka ketika ada masalah tidak punya cara membedakan
+        "semuanya terkirim" dari "layarnya sedang tidak menampilkan apa-apa".
+      */}
+      {buku && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span
+            className={
+              buku.pending > 0
+                ? 'inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-800 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900'
+                : 'inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700'
+            }
+            role="status"
+          >
+            <ListChecks className="h-3.5 w-3.5" aria-hidden />
+            Antrean kirim: <strong className="tabular-nums">{buku.pending}</strong>
+            {buku.pending > 0 && <> · {buku.pendingValue}</>}
+          </span>
+
+          {/*
+            Transaksi yang ditolak TIDAK dihapus dari buku besar, jadi angkanya
+            tidak pernah turun sendiri. Menyembunyikannya akan membuat kasir
+            mengira semuanya beres padahal ada transaksi yang tidak pernah masuk
+            pembukuan.
+          */}
+          {buku.rejected > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 font-medium text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900">
+              <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+              Perlu diperiksa: <strong className="tabular-nums">{buku.rejected}</strong>
+            </span>
+          )}
+
+          {buku.blok && (
+            <span className="text-slate-600 dark:text-slate-400">
+              Jatah nomor struk: <strong className="tabular-nums">{buku.penilaianBlok.remaining}</strong>
+            </span>
+          )}
+
+          <button
+            type="button"
+            className="btn-outline h-7 px-2 py-0 text-xs"
+            onClick={() => void buku.kirimAntrean()}
+            disabled={buku.mengirim || koneksi.state !== 'DARING' || buku.pending === 0}
+          >
+            {buku.mengirim ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Upload className="h-3.5 w-3.5" aria-hidden />
+            )}
+            Kirim sekarang
+          </button>
+
+          <button
+            type="button"
+            className="btn-outline h-7 px-2 py-0 text-xs"
+            onClick={() => void buku.ambilJatah()}
+            disabled={koneksi.state !== 'DARING'}
+          >
+            Ambil jatah nomor
+          </button>
+
+          <button
+            type="button"
+            className="btn-outline h-7 px-2 py-0 text-xs"
+            onClick={() => void buku.periksaRantaiSekarang()}
+            disabled={buku.memeriksa}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+            Periksa keutuhan
+          </button>
+
+          <button
+            type="button"
+            className="btn-outline h-7 px-2 py-0 text-xs"
+            onClick={() => void buku.unduhBukti()}
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            Unduh bukti
+          </button>
+        </div>
+      )}
+
+      {/*
+        Hasil pemeriksaan keutuhan disebut apa adanya — termasuk ketika bersih.
+        Pemeriksaan yang tidak pernah mengatakan "utuh" tidak dapat dipakai
+        sebagai bukti apa pun.
+      */}
+      {buku?.temuan && (
+        <p
+          className={
+            buku.temuan.length === 0
+              ? 'rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+              : 'rounded-md bg-rose-50 px-2.5 py-1.5 text-xs text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+          }
+        >
+          {buku.temuan.length === 0
+            ? `Rantai buku besar utuh: ${buku.baris.length} baris diperiksa, tidak ada yang berubah setelah dicatat.`
+            : `${buku.temuan.length} baris bermasalah. Yang pertama: ${buku.temuan[0].message}`}
+        </p>
+      )}
+
+      {buku?.galat && <p className="text-xs text-rose-700 dark:text-rose-300">{buku.galat}</p>}
 
       {sw.state !== 'TIDAK_ADA' && (
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-slate-100 px-2.5 py-1.5 text-xs dark:bg-slate-800">

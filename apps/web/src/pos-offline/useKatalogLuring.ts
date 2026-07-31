@@ -45,6 +45,7 @@ interface SnapshotApi {
   productCount: number;
   productTotal: number;
   truncated: boolean;
+  offlineSaleEnabled: boolean;
   products: Array<{
     productId: string;
     code: string;
@@ -127,6 +128,7 @@ export function useKatalogLuring(opsi: {
         timezone: snap.timezone,
         productTotal: snap.productTotal,
         truncated: snap.truncated,
+        offlineSaleEnabled: snap.offlineSaleEnabled === true,
         produk: snap.products.map((p) => ({
           productId: p.productId,
           code: p.code,

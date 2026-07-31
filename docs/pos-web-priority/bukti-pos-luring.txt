@@ -1,0 +1,37 @@
+(urutan POS_RECEIPT sementara dibuat untuk bukti ini: b9b6b73c-0bdd-4f7f-b6be-b76048fe7bb1)
+
+1. Saklar mati berarti tertutup
+  OK   jatah ditolak saat saklar mati — status 403
+  OK   penolakannya menyebutkan apa yang harus dilakukan — Penjualan luring belum diaktifkan untuk tenant ini. Aktifkan setelan P
+
+2. Jatah nomor struk dipesan dari urutan yang sama
+  OK   jatah diberikan — 1000–1199
+  OK   urutan nomor dimajukan MELEWATI seluruh rentang — 1000 → 1200
+  OK   satu jatah aktif per register
+
+3. Transaksi luring yang cocok dibukukan
+  OK   transaksi luring dibukukan — BOOKED BKT-001000
+  OK   nomor struk yang dipakai adalah nomor yang SUDAH tercetak — BKT-001000 vs BKT-001000
+  OK   penjualan tercatat di basis data
+  OK   ditandai berasal dari luring — sync_status=SYNCED
+
+4. Pengiriman ulang tidak membuat penjualan kedua
+  OK   pengiriman ulang dikenali — DUPLICATE
+  OK   tetap satu penjualan di basis data
+
+5. Selisih harga DITAHAN, bukan dibukukan dan bukan ditolak
+  OK   ditahan, bukan ditolak — QUARANTINED / PRICE_MISMATCH
+  OK   alasannya menyebut KEDUA angka — Struk menyebut 15000, peladen menghitung 10000.0000. Harga yang dipakai berasal dari salin
+  OK   tidak ada penjualan yang terbentuk darinya
+  OK   muatannya tersimpan utuh di karantina
+
+6. Nomor di luar jatah ditahan
+  OK   nomor di luar jatah ditahan — RECEIPT_OUT_OF_BLOCK
+
+7. Karantina dapat dibaca
+  OK   daftar karantina terbaca — 6 baris
+
+Saklar dikembalikan: {"value":false} (semula {"value":false})
+Urutan POS_RECEIPT sementara dihapus, jatah aktif dilepaskan.
+
+17 lulus, 0 gagal.

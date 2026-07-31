@@ -14,12 +14,11 @@ begitu**, dan **apa yang belum boleh dijanjikan**.
 | --- | --- | --- |
 | 1 | Dapat dipasang, cangkang aplikasi tercache, indikator sambungan jujur | **Selesai** |
 | 2 | Katalog luring: produk, barcode, harga, pajak, metode bayar di IndexedDB | **Selesai** |
-| 3 | Buku transaksi lokal berantai hash | Ada pada PR #47, belum digabung |
-| 4 | **Menjual saat luring** | **Belum** — menunggu tiga keputusan usaha (§6) |
+| 3 | Buku transaksi lokal berantai hash, tersambung ke layar kasir | **Selesai** |
+| 4 | **Menjual saat luring** — jatah nomor struk, penerimaan, karantina | **Selesai, saklarnya MATI** |
 
-Fase 1–2 membuat kasir dapat **memeriksa harga dan menemukan barang** tanpa
-peladen. Ia belum membuat kasir dapat **menjual** tanpa peladen, dan layar
-mengatakannya apa adanya.
+Kemampuannya sudah ada seluruhnya. **Kapan dinyalakan adalah keputusan usaha**,
+dan setelan `POS_OFFLINE_SALE_ENABLED` bawaannya mati (§6).
 
 ---
 
@@ -143,29 +142,66 @@ untuk bergantung pada tata letak.
 
 ---
 
-## 6. Yang menghalangi fase 4 — dan ini keputusan usaha, bukan keputusan teknis
+## 6. Menjual saat luring — dan mengapa saklarnya tetap mati
 
-Menjual saat luring belum dibuka karena tiga hal berikut belum dijawab. Ketiganya
-menyangkut uang dan tanggung jawab, jadi jawabannya bukan milik pengembang.
+Fase 4 sudah dibangun. Yang belum terjadi adalah **keputusan untuk
+menyalakannya**, dan itu memang bukan keputusan pengembang.
 
-1. **Kebijakan stok saat luring.** Mesin kasir yang tidak terhubung tidak tahu
-   sisa stok yang sebenarnya. Boleh menjual melebihi stok lalu diselisihkan
-   kemudian, atau menolak? Menjual berarti kemungkinan menjanjikan barang yang
-   sudah habis; menolak berarti kehilangan penjualan yang sebenarnya bisa
-   dilayani.
+### Bagaimana ketiga pertanyaan itu dijawab
 
-2. **Blok nomor struk per register.** Nomor struk harus unik dan tidak boleh
-   bertabrakan antar-register yang sama-sama luring. Cara lazimnya membagi blok
-   di muka (misalnya register 1 memegang 1–1000). Yang harus diputuskan: berapa
-   besar bloknya, dan apa yang dilakukan bila habis sebelum peladen kembali.
+Ketiga hal yang semula menghalangi kini punya jawaban yang **aman di bawah
+kebijakan mana pun** — sehingga membangunnya tidak menuntut keputusan lebih
+dahulu, dan menyalakannya tetap menuntutnya.
 
-3. **Pembekuan harga.** Harga mana yang mengikat ketika luring — harga pada
-   salinan, atau harga peladen saat transaksi akhirnya terkirim? Bila keduanya
-   berbeda, pembeli sudah membayar angka yang tercetak pada struknya.
+| Pertanyaan | Jawaban yang dibangun | Yang masih milik Anda |
+| --- | --- | --- |
+| **Stok saat luring** | Mesin kasir tidak memutuskan apa pun tentang stok. Saat transaksi diterima, peladen memeriksanya seperti biasa; bila tidak cukup dan tenant tidak mengizinkan minus, transaksinya **ditahan** — tidak dipaksa dan tidak dibuang. | Apakah menahan cukup, atau perlu batas nilai transaksi luring per shift. |
+| **Nomor struk** | Register memesan **jatah** dari `number_sequence` yang sudah ada. Urutannya dimajukan melewati seluruh rentang, jadi penjualan daring tidak akan pernah menyentuhnya. Tidak ada sumber penomoran kedua. | Ukuran jatah (`POS_OFFLINE_RECEIPT_BLOCK_SIZE`, bawaan 200). |
+| **Pembekuan harga** | Harga yang mengikat adalah harga pada salinan — itu yang tercetak dan itu yang dibayar. Bila peladen menghitung berbeda, transaksinya **ditahan beserta kedua angkanya**. | Apa yang dilakukan terhadap selisihnya: ditanggung, ditagihkan, atau transaksinya dikoreksi. |
 
-Sampai ketiganya dijawab, layar kasir mengatakan apa adanya: salinan lokal
-dipakai untuk memeriksa harga dan nama barang, dan memasukkan barang ke
-keranjang masih memerlukan peladen.
+### Mengapa "ditahan", bukan "ditolak" atau "diterima diam-diam"
+
+Pembeli sudah membayar dan pulang. Ada tiga kemungkinan tindakan, dan dua di
+antaranya salah:
+
+- **Menolak** tidak membuat transaksinya tidak pernah terjadi. Uangnya sudah
+  berpindah tangan dan barangnya sudah keluar dari rak; menolak hanya membuat
+  pembukuan tidak menunjukkan keduanya.
+- **Menerima diam-diam dengan angka peladen** membuat catatan tidak sesuai
+  dengan kertas yang dipegang pembeli. Tidak ada galat, tidak ada yang tahu, dan
+  selisihnya muncul belakangan sebagai kas yang tidak cocok tanpa sebab yang
+  dapat ditelusuri.
+- **Menahan** menyimpan transaksinya utuh beserta alasan dan kedua angkanya,
+  menunggu keputusan manusia.
+
+Tujuh sebab penahanan dibedakan, sebab tindak lanjutnya berbeda:
+`PRICE_MISMATCH`, `STOCK_SHORT`, `SHIFT_CLOSED`, `PRODUCT_INACTIVE`,
+`RECEIPT_OUT_OF_BLOCK`, `PAYMENT_MISMATCH`, `REPLAY_FAILED`.
+
+### Menyalakannya
+
+```sql
+UPDATE "<schema>".app_setting
+   SET value_json = '{"value": true}'::jsonb
+ WHERE code = 'POS_OFFLINE_SALE_ENABLED';
+```
+
+Sesudah itu setiap register perlu **mengambil jatah nomor struk** sekali selagi
+daring (tombolnya ada pada batang status kasir). Tanpa jatah, penjualan luring
+tetap tertutup — dan layar mengatakannya.
+
+Prasyarat: outlet harus punya urutan `POS_RECEIPT` pada `number_sequence`.
+Tenant yang memakai penomoran cadangan berbasis tanggal tidak dapat memesan
+jatah, sebab nomor cadangan dihitung dari banyaknya penjualan hari itu dan tidak
+dapat dipesan di muka. Permintaan jatahnya ditolak dengan keterangan itu.
+
+### Yang tetap tidak tersedia saat luring
+
+Diskon manual, penggantian harga, promosi, dan buku harga **tidak dievaluasi**.
+Harga yang tertagih adalah harga pada salinan katalog, yang umurnya dibatasi 12
+jam. Kasir yang memerlukan diskon menunggu peladen kembali, dan layar
+mengatakannya. Menirukan kebijakan harga di peramban berarti menulis aturan uang
+untuk kedua kalinya — dan dua implementasi aturan uang tidak pernah tetap sama.
 
 ---
 
@@ -173,9 +209,24 @@ keranjang masih memerlukan peladen.
 
 | Apa | Di mana |
 | --- | --- |
-| Aturan sambungan, kesegaran katalog, penerapan pembaruan | `apps/web/src/pos-offline/*.spec.ts` — 34 uji |
+| Aturan sambungan, kesegaran katalog, penerapan pembaruan, aritmetika uang, jatah nomor, keutuhan rantai | `apps/web/src/pos-offline/*.spec.ts` — 90 uji |
+| Aturan penerimaan transaksi luring | `apps/api/src/modules/pos/pos-offline.spec.ts` — 28 uji |
+| Seluruh jalur luring lewat HTTP dan basis data sungguhan | `apps/api/scripts/prove-pos-offline.mjs` — 17 pemeriksaan, hasilnya di `bukti-pos-luring.txt` |
 | Service worker terdaftar, katalog mendarat di IndexedDB, layar berubah saat peladen mati | `apps/web/e2e/pos-luring.spec.ts` — 6 uji peramban |
 | Layar kasir tidak berubah perilakunya saat daring | `apps/web/e2e/pos-cashier.spec.ts` — 9 uji, tetap hijau |
+
+Dua cacat sungguhan ditemukan oleh naskah bukti, bukan oleh uji satuan — keduanya
+pada SQL, bukan pada aturannya:
+
+1. **`produkNonaktif` mengembalikan seluruh produk.** Kueri mengambil `p.id` dari
+   baris yang justru tidak punya pasangan, sehingga isinya selalu NULL. Setiap
+   transaksi luring akan ditahan dengan alasan "produk tidak aktif" — alasan yang
+   keliru, dan yang akan membuat orang mencari masalah di master produk.
+2. **Percobaan migrasi yang GAGAL ikut mengunci checksumnya.** Migrasi yang
+   diperbaiki lalu ditolak dengan "tidak boleh diubah", padahal ia belum pernah
+   berhasil diterapkan. Diperbaiki pada `tenant-migration.service.ts`: hanya
+   baris `SUCCEEDED` yang mengunci, dan riwayatnya di-`upsert` supaya percobaan
+   ulang yang berhasil dapat mencatat hasilnya.
 
 Uji luring hanya berjalan terhadap hasil build (`vite preview` atau CI), sebab
 service worker sengaja dimatikan pada server pengembangan — service worker yang

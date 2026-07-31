@@ -39,6 +39,8 @@ import { PosStatusLuring } from '../../pos-offline/PosStatusLuring';
 import { useKatalogLuring } from '../../pos-offline/useKatalogLuring';
 import { useKoneksi } from '../../pos-offline/useKoneksi';
 import { useServiceWorker } from '../../pos-offline/useServiceWorker';
+import { useBukuLokal } from '../../pos-offline/useBukuLokal';
+import { PosLuringPanel, type Pindaian } from '../../pos-offline/PosLuringPanel';
 import type { KeranjangPos, KonteksPos, ProdukPos } from './pos-types';
 
 /**
@@ -65,6 +67,8 @@ export function PosPage() {
   const [kataKunci, setKataKunci] = useState('');
   const [pindai, setPindai] = useState('');
   const [bukaBayar, setBukaBayar] = useState(false);
+  /** Peristiwa pindaian untuk keranjang luring; token berubah tiap kali. */
+  const [pindaian, setPindaian] = useState<Pindaian | null>(null);
 
   const galat = useCallback(
     (e: unknown) => toast.push(pesanGalat(e, (k, f) => t(k, f ?? k)), 'error'),
@@ -90,13 +94,36 @@ export function PosPage() {
     daring,
     aktif: true,
   });
+  const buku = useBukuLokal({
+    konteks:
+      outletId && terminalId && shiftId && konteks.data
+        ? {
+            outletId,
+            terminalId,
+            shiftId,
+            businessDate: konteks.data.businessDate,
+          }
+        : null,
+    daring,
+    diizinkan: katalog.salinan?.offlineSaleEnabled === true,
+  });
+
+  const pakaiLokal = !daring && Boolean(katalog.salinan) && katalog.siap;
+
   /*
-   * `antreanBelumTerkirim` masih nol karena penjualan luring belum diaktifkan —
-   * tiga keputusan usaha (kebijakan stok, blok nomor struk, pembekuan harga)
-   * masih menunggu jawaban. Nilainya tetap dilewatkan, bukan dihilangkan, supaya
-   * aturan penundaan pembaruan sudah terpasang sebelum antrean itu ada.
+   * Menjual saat luring: hanya bila tenant mengizinkannya DAN register ini
+   * memegang jatah nomor struk yang masih ada isinya. Keduanya harus benar —
+   * izin tanpa jatah berarti struk tanpa nomor, dan jatah tanpa izin berarti
+   * kebijakan usahanya belum disepakati.
    */
-  const sw = useServiceWorker({ keranjangTerbuka: Boolean(saleId), antreanBelumTerkirim: 0 });
+  const jualLuring = pakaiLokal && buku.bolehJualLuring;
+
+  const sw = useServiceWorker({
+    keranjangTerbuka: Boolean(saleId),
+    // Antrean yang belum terkirim menunda pembaruan aplikasi: yang tahu cara
+    // membaca antrean itu adalah versi yang menulisnya.
+    antreanBelumTerkirim: buku.pending,
+  });
 
   // Outlet dan register dipilih otomatis bila hanya ada satu. Kasir yang setiap
   // pagi memilih dari daftar berisi satu pilihan hanya diperlambat.
@@ -241,6 +268,13 @@ export function PosPage() {
     (kode: string) => {
       const p = katalog.barcodeLokal(kode);
       if (p) {
+        if (jualLuring) {
+          // Penjualan luring aktif: barangnya benar-benar masuk keranjang luring.
+          setPindaian({ produk: p, token: Date.now() + Math.random() });
+          setPindai('');
+          fokusPindai();
+          return;
+        }
         toast.push(
           `${p.name} — ${formatMoney(Number(p.price ?? 0), p.currencyCode ?? 'IDR')}. ` +
             'Peladen belum menjawab, jadi barang ini BELUM masuk keranjang.',
@@ -256,7 +290,7 @@ export function PosPage() {
       setPindai('');
       fokusPindai();
     },
-    [katalog, toast, fokusPindai],
+    [katalog, toast, fokusPindai, jualLuring],
   );
 
   // Pintasan papan ketik. F9 membayar, F6 menahan, Esc menutup dialog.
@@ -289,7 +323,6 @@ export function PosPage() {
    * dapat dipertanggungjawabkan — angka yang salah tidak menimbulkan galat apa
    * pun, dan itulah yang membuatnya berbahaya.
    */
-  const pakaiLokal = !daring && Boolean(katalog.salinan) && katalog.siap;
 
   /*
    * Katalog boleh dicari tanpa keranjang terbuka ketika salinan lokal yang
@@ -335,7 +368,7 @@ export function PosPage() {
       />
 
       <div className="border-b border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-        <PosStatusLuring koneksi={koneksi} katalog={katalog} sw={sw} />
+        <PosStatusLuring koneksi={koneksi} katalog={katalog} sw={sw} buku={buku} />
       </div>
 
       <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 lg:grid-cols-[1fr_26rem]">
@@ -403,17 +436,18 @@ export function PosPage() {
 
           {pakaiLokal && (
             /*
-              Disebutkan terang-terangan bahwa daftar ini berasal dari salinan,
-              dan bahwa memasukkannya ke keranjang masih menuntut peladen.
-              Kasir yang mengetuk ubin lalu tidak terjadi apa-apa akan mengira
-              layarnya rusak; kalimat ini mendahului kebingungan itu.
+              Disebutkan terang-terangan dari mana daftar ini berasal, dan apa
+              yang boleh dilakukan dengannya. Kasir yang mengetuk ubin lalu tidak
+              terjadi apa-apa akan mengira layarnya rusak; kalimat ini mendahului
+              kebingungan itu.
             */
             <p className="mt-3 rounded-md bg-slate-100 px-2.5 py-1.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              Daftar ini dari salinan di mesin ini, dipakai untuk memeriksa harga dan
-              ketersediaan nama barang.{' '}
-              {saleId
-                ? 'Memasukkannya ke keranjang masih memerlukan peladen.'
-                : 'Keranjang baru belum dapat dibuka selama peladen tidak menjawab.'}
+              Daftar ini dari salinan di mesin ini.{' '}
+              {jualLuring
+                ? 'Penjualan luring aktif — barang masuk ke keranjang luring di sebelah kanan.'
+                : saleId
+                  ? 'Memasukkannya ke keranjang masih memerlukan peladen.'
+                  : 'Keranjang baru belum dapat dibuka selama peladen tidak menjawab.'}
             </p>
           )}
 
@@ -430,8 +464,17 @@ export function PosPage() {
                 <button
                   key={p.productId}
                   type="button"
-                  onClick={() => tambah.mutate({ productId: p.productId, quantity: 1 })}
-                  disabled={tambah.isPending || pakaiLokal}
+                  onClick={() => {
+                    if (jualLuring) {
+                      const lokal = (katalog.salinan?.produk ?? []).find(
+                        (x) => x.productId === p.productId,
+                      );
+                      if (lokal) setPindaian({ produk: lokal, token: Date.now() + Math.random() });
+                      return;
+                    }
+                    tambah.mutate({ productId: p.productId, quantity: 1 });
+                  }}
+                  disabled={tambah.isPending || (pakaiLokal && !jualLuring)}
                   className="flex min-h-[5.5rem] flex-col justify-between rounded-lg border border-slate-200 p-3 text-start transition hover:border-brand-400 hover:bg-brand-50 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-brand-950/30"
                 >
                   <span className="line-clamp-2 text-sm font-medium">{p.name}</span>
@@ -450,7 +493,31 @@ export function PosPage() {
           )}
         </section>
 
-        {/* --- Keranjang ---------------------------------------------------- */}
+        {/*
+          --- Keranjang ------------------------------------------------------
+
+          Saat penjualan luring aktif, keranjang peladen digantikan seluruhnya
+          oleh keranjang luring — bukan ditampilkan berdampingan. Dua keranjang
+          yang terlihat bersamaan akan membuat kasir memasukkan barang ke yang
+          salah, dan salahnya baru ketahuan saat menagih.
+        */}
+        {jualLuring && katalog.salinan ? (
+          <PosLuringPanel
+            salinan={katalog.salinan}
+            buku={buku}
+            pindaian={pindaian}
+            onSelesai={(struk) => {
+              toast.push(
+                `Struk ${struk.receiptNumber} tercatat di mesin ini. Kembalian ` +
+                  `${formatMoney(Number(struk.change), katalog.salinan?.currency ?? 'IDR')}. ` +
+                  'Akan dikirim ke peladen otomatis begitu tersambung.',
+                'success',
+              );
+              setPindaian(null);
+              fokusPindai();
+            }}
+          />
+        ) : (
         <section className="flex min-h-0 flex-col rounded-xl bg-white shadow-sm dark:bg-slate-900">
           <header className="flex items-center justify-between border-b border-slate-200 p-3 dark:border-slate-800">
             <h2 className="flex items-center gap-2 font-semibold">
@@ -594,6 +661,7 @@ export function PosPage() {
             </button>
           </footer>
         </section>
+        )}
       </div>
 
       {bukaBayar && saleId && keranjang.data && (

@@ -5,6 +5,83 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Kasir dapat menjual saat internet putus
+
+Fase 3 dan 4 dari rencana kasir luring. Kemampuannya sudah lengkap; **saklarnya
+mati secara bawaan**, dan menyalakannya adalah keputusan usaha.
+
+### Ditambahkan
+- **Buku transaksi lokal tersambung ke layar kasir.** Antrean kirim, pemeriksaan
+  keutuhan rantai, dan unduh bukti kini ada pada batang status — modulnya sudah
+  masuk lewat #47 tetapi belum dipakai layar mana pun.
+- **Rincian barang masuk ke rantai hash.** Semula buku besar hanya menyimpan
+  total, cukup untuk membuktikan transaksinya ada tetapi tidak cukup untuk
+  membukukannya. Ditambahkan lewat `payloadHash` di ujung bahan hash dengan
+  cadangan string kosong, sehingga **rantai yang sudah ada tetap sah** dan tidak
+  perlu dibangun ulang.
+- **`pos_receipt_block` (V037)** — register memesan jatah nomor struk selagi
+  daring. `number_sequence` dimajukan melewati seluruh rentang, jadi penjualan
+  daring tidak akan pernah menyentuhnya. Tidak ada sumber penomoran kedua.
+- **`pos_offline_quarantine` (V037)** — transaksi luring yang tidak dapat
+  dibukukan apa adanya ditahan beserta **kedua angkanya** dan muatan lengkapnya.
+  Tujuh sebab dibedakan karena tindak lanjutnya berbeda.
+- **`POST /pos/offline/sales`** — idempoten pada `offlineId`, memutar ulang
+  transaksi lewat jalur penjualan yang sama dengan transaksi daring.
+- **`harga-luring.ts`** — aritmetika uang dalam bilangan bulat satuan terkecil.
+- **90 uji satuan web** (35 → 158 total) dan **28 uji API** (1873 → 1901).
+- **`scripts/prove-pos-offline.mjs`** — 17 pemeriksaan terhadap peladen dan basis
+  data sungguhan. Menyalakan saklarnya sendiri lalu **mengembalikannya**,
+  termasuk bila gagal di tengah jalan.
+
+### Keputusan
+- **Peramban tidak menghitung harga.** Ia mengalikan harga yang sudah dibekukan
+  peladen di dalam salinan katalog. Memindahkan mesin harga ke peramban berarti
+  kebijakan harga punya dua implementasi, dan dua implementasi aturan uang tidak
+  pernah tetap sama — yang pertama menyadarinya adalah pembeli yang ditagih
+  berbeda dari struk sebelumnya. Akibatnya promosi dan buku harga **tidak
+  dievaluasi saat luring**, dan layar mengatakannya.
+- **Penerimaan luring memakai jalur penjualan yang sudah ada**, bukan `INSERT`
+  tersendiri. Jalur kedua akan menyimpang: setiap perubahan pada kuotasi,
+  pemesanan stok, atau peristiwa akuntansi akan memperbaiki jalur keranjang yang
+  terlihat dan melupakan jalur luring yang tersembunyi.
+- **Selisih ditahan, tidak ditolak dan tidak diterima diam-diam.** Menolak tidak
+  membuat transaksinya tidak pernah terjadi — uangnya sudah berpindah tangan.
+  Menerima dengan angka peladen membuat catatan tidak sesuai kertas yang dipegang
+  pembeli, tanpa satu pun galat yang muncul.
+- **Uang dihitung sebagai bilangan bulat satuan terkecil.** `Math.round(1.005 * 100)`
+  bernilai 100, bukan 101; selisih sepersekian sen yang menumpuk sepanjang hari
+  menjadi selisih laci kas yang tidak dapat dijelaskan siapa pun.
+- **Jatah disimpan sebelum nomornya dipakai.** Urutan sebaliknya membuat mesin
+  yang mati di antara keduanya menerbitkan nomor yang sama dua kali.
+
+### Diperbaiki
+- **Percobaan migrasi yang GAGAL ikut mengunci checksumnya.** Migrasi yang
+  diperbaiki lalu ditolak dengan "tidak boleh diubah", padahal ia belum pernah
+  berhasil diterapkan dan tidak ada satu pun objek yang terbentuk darinya.
+  Penjagaan itu ada untuk melindungi migrasi yang sudah mengubah basis data;
+  memperlakukan kegagalan sama membuat setiap kesalahan ketik menjadi buntu
+  permanen yang hanya dapat dibuka dengan menyunting tabel riwayat secara manual.
+- **Riwayat migrasi ditulis dengan `create`, bukan `upsert`.** Penjalanan ulang
+  yang berhasil menabrak baris `FAILED` dan melempar galat **sesudah seluruh DDL
+  terlanjur diterapkan** — basis datanya sudah berubah, pembukuannya mengatakan
+  gagal.
+- **`produkNonaktif` mengembalikan seluruh produk.** Kueri mengambil `p.id` dari
+  baris yang justru tidak punya pasangan, sehingga isinya selalu NULL. Setiap
+  transaksi luring akan ditahan dengan alasan yang keliru. Tertangkap naskah
+  bukti, bukan uji satuan: yang salah SQL-nya, bukan aturannya.
+- **Uji pohon gudang gagal karena pemilih yang ambigu**, bukan karena aplikasinya.
+  Dasbor juga memuat pintasan "Monitoring Stok", dan kartu itu hanya muncul ketika
+  ringkasan stoknya berhasil dimuat — sehingga ambiguitasnya bergantung pada isi
+  basis data dan baru menampakkan diri sewaktu-waktu.
+
+### Catatan penerapan
+- Migrasi ini **V037, bukan V035**: sesi paralel eKoperasi sudah memakai V035 dan
+  V036 pada basis data bersama sebelum berkasnya masuk Git.
+- Prasyarat menyalakan: outlet harus punya urutan `POS_RECEIPT`. Tenant yang
+  memakai penomoran cadangan berbasis tanggal tidak dapat memesan jatah — nomor
+  cadangan dihitung dari banyaknya penjualan hari itu dan tidak dapat dipesan di
+  muka. Permintaannya ditolak dengan keterangan itu.
+
 ## Layar kasir dapat dipasang dan katalognya tersalin ke mesin kasir
 
 Fase 1 dan 2 dari rencana kasir luring: aplikasi dapat dipasang seperti aplikasi

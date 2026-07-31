@@ -65,6 +65,8 @@ export interface SalinanKatalog {
   timezone: string;
   productTotal: number;
   truncated: boolean;
+  /** Tenant mengizinkan penjualan luring. Disalin supaya terbaca saat luring. */
+  offlineSaleEnabled: boolean;
   produk: ProdukLokal[];
   taxRates: TarifLokal[];
   paymentMethods: MetodeLokal[];

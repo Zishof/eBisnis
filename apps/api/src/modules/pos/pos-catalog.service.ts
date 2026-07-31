@@ -59,6 +59,13 @@ export interface ProdukSnapshot extends ProdukKasir {
 
 export interface SnapshotLuring {
   generatedAt: string;
+  /**
+   * Apakah tenant ini mengizinkan penjualan saat luring.
+   *
+   * Ikut ke dalam salinan, bukan hanya tersedia lewat jalan tersendiri: yang
+   * membutuhkannya adalah mesin kasir yang justru sedang tidak dapat bertanya.
+   */
+  offlineSaleEnabled: boolean;
   currency: string;
   timezone: string;
   productCount: number;
@@ -669,8 +676,17 @@ export class PosCatalogService {
     const metode = await this.metodePembayaran(schemaName);
     const setelan = await this.setelanPos(schemaName);
 
+    const saklar = await this.tenantDb.query<{ value_json: unknown }>(
+      schemaName,
+      `SELECT value_json FROM "${schemaName}".app_setting
+        WHERE code = 'POS_OFFLINE_SALE_ENABLED' AND deleted_at IS NULL`,
+    );
+
     return {
       generatedAt: new Date().toISOString(),
+      // Hanya `true` yang menyalakan; setelan yang hilang berarti mati.
+      offlineSaleEnabled:
+        (saklar[0]?.value_json as { value?: unknown } | undefined)?.value === true,
       currency: setelan.currency,
       timezone: setelan.timezone,
       productCount: produk.length,

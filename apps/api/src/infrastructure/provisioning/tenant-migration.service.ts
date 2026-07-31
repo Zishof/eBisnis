@@ -175,8 +175,29 @@ export class TenantMigrationService {
       );
     }
 
+    /*
+     * Hanya percobaan yang BERHASIL yang mengunci checksum.
+     *
+     * Semula seluruh riwayat dibaca, termasuk baris berstatus `FAILED`.
+     * Akibatnya satu migrasi yang gagal — misalnya karena salah menulis
+     * `ON CONFLICT` — mengunci checksumnya sendiri: berkasnya diperbaiki,
+     * checksumnya ikut berubah, dan penjalanan ulang ditolak dengan pesan
+     * "migration yang telah dipakai tidak boleh diubah". Padahal ia justru
+     * belum pernah dipakai; tidak ada satu pun objek yang terbentuk darinya.
+     *
+     * Penjagaan ini ada untuk melindungi migrasi yang SUDAH mengubah basis
+     * data. Percobaan yang gagal dijalankan di dalam transaksi yang dibatalkan
+     * dan tidak mengubah apa pun, sehingga memperlakukannya sama membuat setiap
+     * kesalahan ketik menjadi buntu permanen yang hanya dapat dibuka dengan
+     * menyunting tabel riwayat secara manual — persis tindakan yang paling
+     * tidak ingin dibiasakan pada basis data produksi.
+     */
     const applied = await this.prisma.tenantSchemaMigrationHistory.findMany({
-      where: { schemaName },
+      // `SUCCEEDED`, sesuai nilai bawaan pada `tenancy.prisma`. Menuliskannya
+      // keliru tidak akan menghasilkan galat apa pun — penjagaannya hanya
+      // berhenti bekerja, diam-diam, dan migrasi yang sudah diterapkan menjadi
+      // boleh disunting tanpa ada yang tahu.
+      where: { schemaName, status: 'SUCCEEDED' },
       select: { migrationVersion: true, checksum: true },
     });
     const appliedMap = new Map(applied.map((row) => [row.migrationVersion, row.checksum]));
@@ -250,8 +271,28 @@ export class TenantMigrationService {
         select: { id: true },
       });
 
-      await this.prisma.tenantSchemaMigrationHistory.create({
-        data: {
+      /*
+       * `upsert`, bukan `create`.
+       *
+       * Kuncinya unik pada `(schema_name, migration_version)`, dan percobaan
+       * yang gagal sudah menempatkan baris `FAILED` di sana. Dengan `create`,
+       * penjalanan ulang yang BERHASIL menabrak kunci itu dan melempar galat —
+       * sesudah seluruh DDL-nya terlanjur diterapkan. Hasilnya keadaan yang
+       * paling menyesatkan yang mungkin terjadi pada migrasi: basis datanya
+       * sudah berubah, tetapi pembukuannya mengatakan migrasinya gagal.
+       *
+       * Baris riwayat menjawab "bagaimana akhirnya migrasi ini pada skema ini",
+       * bukan "berapa kali ia dicoba". Percobaan yang gagal tetap tercatat pada
+       * `audit_schema_migration`, yang memang append-only.
+       */
+      await this.prisma.tenantSchemaMigrationHistory.upsert({
+        where: {
+          schemaName_migrationVersion: {
+            schemaName,
+            migrationVersion: definition.version,
+          },
+        },
+        create: {
           tenantId: options.tenantId ?? null,
           schemaName,
           migrationVersion: definition.version,
@@ -259,6 +300,15 @@ export class TenantMigrationService {
           checksum,
           durationMs,
           status: 'SUCCEEDED',
+        },
+        update: {
+          tenantId: options.tenantId ?? null,
+          catalogId: catalog?.id ?? null,
+          checksum,
+          durationMs,
+          status: 'SUCCEEDED',
+          errorMessage: null,
+          appliedAt: new Date(),
         },
       });
 

@@ -84,9 +84,21 @@ test.describe('Sandbox demo', () => {
     await page.getByRole('button', { name: /coba demo/i }).click();
     await page.waitForURL(/\/app/, { timeout: 20_000 });
 
-    // Navigasi memakai routing sisi klien. Sesi demo sengaja TIDAK menyimpan
-    // refresh token, sehingga muat ulang halaman penuh mengakhiri sesi.
-    await page.getByRole('link', { name: 'Monitoring Stok' }).click();
+    /*
+     * Navigasi memakai routing sisi klien. Sesi demo sengaja TIDAK menyimpan
+     * refresh token, sehingga muat ulang halaman penuh mengakhiri sesi.
+     *
+     * Ditunjuk ke bilah navigasi, bukan ke seluruh halaman: dasbor juga memuat
+     * pintasan "Monitoring Stok", dan pemilih yang cocok dengan keduanya gagal
+     * dengan "strict mode violation" — kegagalan yang berbunyi seperti cacat
+     * aplikasi padahal yang kurang jelas adalah ujinya. Kartu pintasan itu hanya
+     * muncul ketika ringkasan stoknya berhasil dimuat, sehingga ambiguitasnya
+     * bergantung pada isi basis data dan baru menampakkan diri sewaktu-waktu.
+     */
+    await page
+      .getByLabel('Navigasi aplikasi')
+      .getByRole('link', { name: 'Monitoring Stok' })
+      .click();
     await expect(page).toHaveURL(/\/app\/stock-tree/);
     await expect(page.getByTestId('stock-tree')).toBeVisible({ timeout: 15_000 });
   });
