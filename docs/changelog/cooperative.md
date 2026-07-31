@@ -5,6 +5,82 @@ menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
 ---
 
+## K-5 — Rapat anggota, kuorum, voting, dan keputusan
+
+### Ditambahkan
+
+- **Migrasi modul** `20260731T200000__cooperative__meetings_and_voting.sql`:
+  delapan tabel — rapat, mata acara, undangan, kehadiran, suara, keputusan,
+  tindak lanjut, dan notulen.
+- **`cooperative-meeting.ts`** — aturan sebagai fungsi murni: penyaringan
+  kuasa, perhitungan kuorum, penghitungan suara empat aturan keputusan, hak
+  memilih, keabsahan keputusan, dan ambang per jenis mata acara.
+  **43 pengujian.**
+- **`scripts/prove-cooperative-k5.mjs`** dan buktinya di
+  `docs/ekoperasi/bukti-k5-rat.txt` — **32 pemeriksaan, seluruhnya lulus.**
+- **`docs/ekoperasi/09-isolasi-data-antar-koperasi.md`** — keterangan tiga
+  lapis pemisahan data antar koperasi, beserta cara memeriksanya sendiri.
+
+### Keputusan yang perlu dicatat
+
+- **Tabel suara TIDAK memiliki kolom bobot, dan tidak boleh memilikinya.** Satu
+  anggota satu suara, berapa pun besar simpanannya — pembeda koperasi dari
+  perseroan. Pengujian memeriksa ketiadaan kolom `weight`, `bobot`, `share`,
+  `saving`, dan `capital` pada tabelnya, supaya penambahan pembobotan kelak
+  tertangkap. Indeks unik menegakkannya: satu anggota satu suara per mata acara.
+- **Keputusan tanpa kuorum DITANDAI tidak sah, bukan ditolak diam-diam.**
+  Keputusan itu terjadi, tercatat pada notulen, dan mungkin sudah dilaksanakan.
+  Menghilangkannya dari catatan membuat pelaksanaannya tidak dapat dijelaskan
+  kemudian; menandainya tidak sah membuatnya terlihat dan dapat diperbaiki
+  lewat rapat berikutnya.
+- **Keputusan SAH wajib benar-benar memenuhi ambangnya**, ditegakkan
+  constraint. Menutup jalan mencatat keputusan sebagai sah padahal angkanya
+  menunjukkan sebaliknya.
+- **Abstain tidak dihitung sebagai penolak.** Anggota yang abstain menyatakan
+  dirinya tidak mengambil sikap; memperlakukannya sebagai penolak berarti
+  memberinya sikap yang tidak dinyatakannya. Pengecualiannya keputusan bulat,
+  yang menuntut seluruh yang hadir menyetujui.
+- **Kuasa dibatasi jumlahnya per pemegang.** Tanpa batas, seseorang dapat
+  mengumpulkan kuasa dari puluhan anggota dan memutuskan sendiri hal yang
+  seharusnya diputuskan bersama.
+- **Syarat kuorum dicuplik ke rapat saat dibuka**, tidak dibaca ulang dari
+  AD/ART. Membacanya ulang membuat kuorum rapat tahun lalu ikut berubah bila
+  AD/ART kelak diubah.
+- **Notulen susunan AI ditandai jelas dan wajib melalui pemeriksaan manusia
+  sebelum disahkan**, ditegakkan constraint. Konsep yang tidak diperiksa tidak
+  boleh tampak seperti catatan resmi rapat.
+- **Perubahan AD/ART menuntut dua per tiga; pembubaran dan penggabungan tiga
+  per empat.** Pemberhentian pengurus dua per tiga — lebih tinggi daripada
+  pemilihannya, sebab memberhentikan orang yang dipilih rapat sebelumnya
+  menuntut kesepakatan yang lebih kuat.
+
+### Pemisahan data antar koperasi — diperiksa, bukan diasumsikan
+
+Bukti K-5 bagian A memeriksa enam hal terhadap basis data sungguhan:
+
+```
+17 penyewa terdaftar, masing-masing pada skema tersendiri
+tidak ada dua penyewa berbagi satu skema
+tidak ada dua skema menunjuk satu penyewa
+setiap skema terdaftar benar-benar ada sebagai skema PostgreSQL
+indeks penjaga satu koperasi per skema terpasang
+tabel anggota tidak memakai kolom penyaring penyewa — pemisahannya di skema
+```
+
+Yang terakhir disengaja: pada model satu tabel bersama dengan kolom `tenant_id`,
+**satu kueri yang lupa menyaring sudah cukup** untuk membocorkan data penyewa
+lain — tanpa galat, tanpa catatan log, dan biasanya baru ketahuan ketika seorang
+anggota melihat nama yang tidak dikenalnya pada laporannya sendiri.
+
+### Gerbang mutu
+
+| | |
+|---|---|
+| `tsc --noEmit` | bersih |
+| `eslint --max-warnings=0` | bersih |
+| `jest` | 50 suite, **1295 tes lulus** (bertambah 43) |
+| Bukti K-5 | **32 pemeriksaan lulus** |
+
 ## K-4 — Pinjaman, pembiayaan, angsuran, dan penagihan
 
 ### Ditambahkan
