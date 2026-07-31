@@ -219,6 +219,27 @@ describe('pembersihan jejak tumpukan', () => {
     expect(result).toMatch(/apps\//);
   });
 
+  it('membuang jalur pustaka yang tidak punya penanda proyek', () => {
+    // Jejak dari node_modules tidak memuat apps/packages/src, sehingga aturan
+    // penanda proyek tidak menyentuhnya — dan jalur absolutnya lolos membawa
+    // struktur direktori server. Ditemukan pada bukti V10-2.
+    const stack =
+      '    at GuardsConsumer.tryActivate (C:/opt/eBisnisGithub/node_modules/.pnpm/x/node_modules/@nestjs/core/guards/guards-consumer.js:15:34)';
+    const result = sanitizeStack(stack) ?? '';
+    expect(result).not.toMatch(/C:/);
+    expect(result).toMatch(/node_modules/);
+    // Nama fungsi tetap terjaga; itu bagian yang berguna.
+    expect(result).toMatch(/tryActivate/);
+  });
+
+  it('memotong sisa jalur absolut yang masih lolos', () => {
+    const stack = '    at fn (/home/zishof/rahasia/proyek/lib/util.js:9:1)';
+    const result = sanitizeStack(stack) ?? '';
+    expect(result).not.toMatch(/zishof/);
+    expect(result).not.toMatch(/rahasia/);
+    expect(result).toMatch(/util\.js/);
+  });
+
   it('membatasi jumlah baris', () => {
     const stack = Array.from({ length: 100 }, (_, i) => `at fn${i}`).join('\n');
     expect(sanitizeStack(stack)!.split('\n').length).toBe(30);

@@ -228,6 +228,20 @@ export const PLATFORM_PERMISSION_SEED = [
   'PLATFORM.MARKETPLACE.APPROVE',
   'PLATFORM.MARKETPLACE.SUSPEND',
   'PLATFORM.MARKETPLACE.MODERATE',
+  // --- Versi 10: observability ---
+  //
+  // Sengaja TIDAK diberikan kepada satu pun role selain Super Admin, termasuk
+  // Auditor dan Support. Observability memuat jejak seluruh tenant; siapa pun
+  // yang dapat membacanya dapat melihat data tenant mana pun tanpa melewati
+  // support session yang tercatat.
+  //
+  // Super Admin memperolehnya lewat `permissions: '*'`, bukan lewat daftar —
+  // sehingga menambah permission observability baru tidak menuntut mengubah
+  // definisi rolenya.
+  'PLATFORM.OBSERVABILITY.READ',
+  'PLATFORM.OBSERVABILITY.EXPORT',
+  'PLATFORM.OBSERVABILITY.MANAGE',
+  'PLATFORM.OBSERVABILITY.PURGE',
 ];
 
 export const PLATFORM_ROLE_SEED = [
