@@ -1,0 +1,213 @@
+// eBisnis.id Versi 9 — Pesanan marketplace dan penahanan stok.
+//
+// ## Pesanan tinggal di platform, stok tinggal di tenant
+//
+// Pesanan dibaca pembeli (yang tidak punya tenant) dan penjual (yang punya).
+// Stok tinggal di schema tenant karena ia bagian dari persediaan ERP, bukan
+// bagian dari marketplace.
+//
+// Penahanan stok karena itu menjadi catatan pada platform yang **menunjuk**
+// baris stok tenant. Menyalin stok ke platform akan menghasilkan dua angka
+// stok yang segera menyimpang; menyimpan pesanan di tenant akan membuat
+// pembeli tidak dapat melihat pesanannya sendiri tanpa menembus schema.
+
+/// Sekumpulan pesanan dari satu checkout.
+///
+/// Satu checkout dengan tiga penjual menghasilkan satu grup dan tiga pesanan.
+/// Grup ada supaya pembeli melihat "belanjaan saya" sebagai satu kesatuan,
+/// sedangkan setiap penjual hanya melihat pesanannya sendiri.
+model MarketplaceOrderGroup {
+  id         String @id @default(uuid()) @db.Uuid
+  buyerId    String @map("buyer_id") @db.Uuid
+  checkoutId String @map("checkout_id") @db.Uuid
+
+  groupNumber String @map("group_number") @db.VarChar(32)
+
+  subtotal      Decimal @default(0) @db.Decimal(19, 4)
+  shippingTotal Decimal @default(0) @map("shipping_total") @db.Decimal(19, 4)
+  discountTotal Decimal @default(0) @map("discount_total") @db.Decimal(19, 4)
+  grandTotal    Decimal @default(0) @map("grand_total") @db.Decimal(19, 4)
+  currencyCode  String  @default("IDR") @map("currency_code") @db.VarChar(8)
+
+  /// Alamat kirim disalin dari checkout. Grup menyimpannya sekali; pesanan
+  /// menyalinnya lagi karena penjual hanya boleh melihat alamat pesanannya.
+  addressSnapshot Json @map("address_snapshot")
+
+  status String @default("AWAITING_PAYMENT") @db.VarChar(32)
+
+  placedAt  DateTime  @default(now()) @map("placed_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  orders MarketplaceOrder[]
+
+  @@unique([groupNumber])
+  @@unique([checkoutId])
+  @@index([buyerId, placedAt])
+  @@map("marketplace_order_group")
+  @@schema("platform")
+}
+
+/// Pesanan kepada satu penjual.
+///
+/// Inilah satuan yang dikerjakan penjual: satu pesanan, satu pembayaran, satu
+/// pengiriman.
+model MarketplaceOrder {
+  id       String @id @default(uuid()) @db.Uuid
+  groupId  String @map("group_id") @db.Uuid
+  sellerId String @map("seller_id") @db.Uuid
+  storeId  String @map("store_id") @db.Uuid
+  buyerId  String @map("buyer_id") @db.Uuid
+
+  /// Nomor yang dilihat manusia. Dibentuk berurutan per hari agar dapat
+  /// disebutkan lewat telepon tanpa membaca tiga puluh enam karakter.
+  orderNumber String @map("order_number") @db.VarChar(32)
+
+  /// Tenant pemilik barang. Diperlukan menahan dan memotong stok.
+  tenantId     String @map("tenant_id") @db.Uuid
+  tenantSchema String @map("tenant_schema") @db.VarChar(72)
+
+  status String @default("AWAITING_PAYMENT") @db.VarChar(32)
+
+  subtotal      Decimal @default(0) @db.Decimal(19, 4)
+  shippingCost  Decimal @default(0) @map("shipping_cost") @db.Decimal(19, 4)
+  discountTotal Decimal @default(0) @map("discount_total") @db.Decimal(19, 4)
+  total         Decimal @default(0) @db.Decimal(19, 4)
+  currencyCode  String  @default("IDR") @map("currency_code") @db.VarChar(8)
+
+  shippingMethodCode String? @map("shipping_method_code") @db.VarChar(48)
+  shippingEtaText    String? @map("shipping_eta_text") @db.VarChar(120)
+  addressSnapshot    Json    @map("address_snapshot")
+  buyerNote          String? @map("buyer_note") @db.Text
+
+  paidAt      DateTime? @map("paid_at") @db.Timestamptz(6)
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason String?  @map("cancel_reason") @db.Text
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  group        MarketplaceOrderGroup        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  seller       MarketplaceSeller            @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  store        MarketplaceStore             @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  lines        MarketplaceOrderLine[]
+  reservations MarketplaceStockReservation[]
+  history      MarketplaceOrderStatusHistory[]
+
+  @@unique([orderNumber])
+  @@index([sellerId, status])
+  @@index([buyerId, createdAt])
+  @@index([status, createdAt])
+  @@map("marketplace_order")
+  @@schema("platform")
+}
+
+/// Satu baris pesanan.
+///
+/// Seluruh nilai adalah salinan pada saat pesanan dibuat. Penjual yang mengubah
+/// harga atau judul setelah pesanan masuk tidak mengubah apa yang disepakati.
+model MarketplaceOrderLine {
+  id      String @id @default(uuid()) @db.Uuid
+  orderId String @map("order_id") @db.Uuid
+
+  tenantListingId String  @map("tenant_listing_id") @db.Uuid
+  variantRef      String? @map("variant_ref") @db.Uuid
+
+  titleSnapshot String  @map("title_snapshot") @db.VarChar(200)
+  skuSnapshot   String? @map("sku_snapshot") @db.VarChar(64)
+
+  quantity  Int
+  unitPrice Decimal @map("unit_price") @db.Decimal(19, 4)
+  lineTotal Decimal @map("line_total") @db.Decimal(19, 4)
+
+  weightGram Int @default(0) @map("weight_gram")
+
+  /// Berapa yang benar-benar terkirim. Berbeda dari `quantity` bila pesanan
+  /// dipenuhi sebagian.
+  shippedQuantity Int @default(0) @map("shipped_quantity")
+  returnedQuantity Int @default(0) @map("returned_quantity")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order MarketplaceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([tenantListingId])
+  @@map("marketplace_order_line")
+  @@schema("platform")
+}
+
+/// Penahanan stok.
+///
+/// Pesanan yang belum dibayar **menahan** stok, tidak memotongnya. Memotong
+/// lebih dulu berarti barang hilang dari persediaan karena pembeli yang tidak
+/// jadi membayar; menunggu sampai lunas berarti dua pembeli dapat membeli
+/// barang terakhir yang sama.
+///
+/// Penahanan punya batas waktu. Yang kedaluwarsa dilepas penjadwal, dan
+/// pelepasan itu harus dapat dijalankan berulang tanpa melepas dua kali —
+/// karena itu status disimpan, bukan disimpulkan dari waktu.
+model MarketplaceStockReservation {
+  id      String @id @default(uuid()) @db.Uuid
+  orderId String @map("order_id") @db.Uuid
+
+  tenantId        String  @map("tenant_id") @db.Uuid
+  tenantSchema    String  @map("tenant_schema") @db.VarChar(72)
+  tenantListingId String  @map("tenant_listing_id") @db.Uuid
+  variantRef      String? @map("variant_ref") @db.Uuid
+
+  quantity Decimal @db.Decimal(19, 6)
+
+  /// HELD, COMMITTED, RELEASED, atau EXPIRED.
+  status String @default("HELD") @db.VarChar(16)
+
+  /// Kunci yang membuat penahanan tidak terjadi dua kali untuk peristiwa yang
+  /// sama. Peristiwa pembayaran dapat sampai lebih dari sekali.
+  idempotencyKey String @map("idempotency_key") @db.VarChar(128)
+
+  heldAt      DateTime  @default(now()) @map("held_at") @db.Timestamptz(6)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  committedAt DateTime? @map("committed_at") @db.Timestamptz(6)
+  releasedAt  DateTime? @map("released_at") @db.Timestamptz(6)
+  releaseReason String? @map("release_reason") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order MarketplaceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([idempotencyKey])
+  @@index([status, expiresAt])
+  @@index([tenantId, tenantListingId, status])
+  @@index([orderId])
+  @@map("marketplace_stock_reservation")
+  @@schema("platform")
+}
+
+/// Riwayat perpindahan status pesanan.
+///
+/// Append-only. Pertanyaan "kapan pesanan ini dibatalkan dan oleh siapa" tidak
+/// dapat dijawab dari kolom status yang ditimpa.
+model MarketplaceOrderStatusHistory {
+  id      String @id @default(uuid()) @db.Uuid
+  orderId String @map("order_id") @db.Uuid
+
+  fromStatus String? @map("from_status") @db.VarChar(32)
+  toStatus   String  @map("to_status") @db.VarChar(32)
+  reason     String? @db.Text
+
+  /// Siapa yang menyebabkannya: BUYER, SELLER, PLATFORM, atau SYSTEM.
+  actorType String  @map("actor_type") @db.VarChar(16)
+  actorId   String? @map("actor_id") @db.Uuid
+  requestId String? @map("request_id") @db.VarChar(64)
+
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  order MarketplaceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, occurredAt])
+  @@map("marketplace_order_status_history")
+  @@schema("platform")
+}
