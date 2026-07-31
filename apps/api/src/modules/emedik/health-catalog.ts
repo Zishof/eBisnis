@@ -327,8 +327,57 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'UPDATE'],
     sortOrder: 62,
   },
-  { code: 'HEALTH_PUSKESMAS', parentCode: 'HEALTH', label: 'Puskesmas', icon: 'building-2', actions: ['READ'], sortOrder: 70, comingSoon: true },
-  { code: 'HEALTH_POSYANDU', parentCode: 'HEALTH', label: 'Posyandu', icon: 'baby', actions: ['READ'], sortOrder: 71, comingSoon: true },
+  // Puskesmas dan Posyandu — H-8.
+  //
+  // Lima menu, dan pemisahannya bekerja lewat HEALTH_FAMILY: kader melihat
+  // anak-anak pada folder keluarganya, bukan lewat pencarian pasien seluruh
+  // fasilitas. Yang pertama menampilkan empat puluh anak di desanya; yang kedua
+  // menampilkan seluruh rekam medis kabupaten.
+  {
+    code: 'HEALTH_FAMILY',
+    parentCode: 'HEALTH',
+    label: 'Folder Keluarga',
+    route: '/app/emedik/keluarga',
+    icon: 'house',
+    actions: ['READ', 'CREATE', 'UPDATE'],
+    sortOrder: 70,
+  },
+  {
+    code: 'HEALTH_GROWTH',
+    parentCode: 'HEALTH',
+    label: 'Pertumbuhan Anak',
+    route: '/app/emedik/pertumbuhan',
+    icon: 'trending-up',
+    actions: ['READ', 'CREATE'],
+    sortOrder: 71,
+  },
+  {
+    code: 'HEALTH_IMMUNIZATION',
+    parentCode: 'HEALTH',
+    label: 'Imunisasi',
+    route: '/app/emedik/imunisasi',
+    icon: 'syringe',
+    actions: ['READ', 'CREATE', 'IMMUNIZE'],
+    sortOrder: 72,
+  },
+  {
+    code: 'HEALTH_HOME_VISIT',
+    parentCode: 'HEALTH',
+    label: 'Kunjungan Rumah',
+    route: '/app/emedik/kunjungan',
+    icon: 'map-pin',
+    actions: ['READ', 'CREATE'],
+    sortOrder: 73,
+  },
+  {
+    code: 'HEALTH_PROGRAM',
+    parentCode: 'HEALTH',
+    label: 'Cakupan Program',
+    route: '/app/emedik/cakupan',
+    icon: 'target',
+    actions: ['READ', 'UPDATE', 'EXPORT'],
+    sortOrder: 74,
+  },
   { code: 'HEALTH_CLAIM', parentCode: 'HEALTH', label: 'Klaim', icon: 'file-text', actions: ['READ'], sortOrder: 80, comingSoon: true },
 ];
 
@@ -604,6 +653,62 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_LAB_CATALOG.READ',
     ],
     sortOrder: 11,
+  },
+  {
+    code: 'HEALTH_CADRE',
+    name: 'Kader Posyandu',
+    description:
+      'Menimbang, mengukur, dan mencatat pertumbuhan anak. TIDAK membaca rekam medis lengkap ' +
+      'dan TIDAK memberikan imunisasi.',
+    // Sengaja TANPA HEALTH_PATIENT.READ. Ia melihat anak-anak lewat folder
+    // keluarganya, bukan lewat pencarian pasien seluruh fasilitas.
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_FAMILY.READ',
+      'HEALTH_GROWTH.READ',
+      'HEALTH_GROWTH.CREATE',
+      'HEALTH_IMMUNIZATION.READ',
+      'HEALTH_HOME_VISIT.READ',
+      'HEALTH_HOME_VISIT.CREATE',
+    ],
+    sortOrder: 17,
+  },
+  {
+    code: 'HEALTH_PHC_OFFICER',
+    name: 'Petugas Puskesmas',
+    description: 'Mengelola folder keluarga, imunisasi, kunjungan rumah, dan cakupan program.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_PATIENT.CREATE',
+      'HEALTH_FAMILY.READ',
+      'HEALTH_FAMILY.CREATE',
+      'HEALTH_FAMILY.UPDATE',
+      'HEALTH_GROWTH.READ',
+      'HEALTH_GROWTH.CREATE',
+      'HEALTH_IMMUNIZATION.READ',
+      'HEALTH_IMMUNIZATION.CREATE',
+      'HEALTH_IMMUNIZATION.IMMUNIZE',
+      'HEALTH_HOME_VISIT.READ',
+      'HEALTH_HOME_VISIT.CREATE',
+      'HEALTH_PROGRAM.READ',
+      'HEALTH_PROGRAM.UPDATE',
+    ],
+    sortOrder: 18,
+  },
+  {
+    code: 'HEALTH_NUTRITIONIST',
+    name: 'Tenaga Gizi',
+    description: 'Menilai status gizi dan menindaklanjuti anak berisiko.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_FAMILY.READ',
+      'HEALTH_GROWTH.READ',
+      'HEALTH_GROWTH.CREATE',
+      'HEALTH_HOME_VISIT.READ',
+      'HEALTH_HOME_VISIT.CREATE',
+      'HEALTH_PROGRAM.READ',
+    ],
+    sortOrder: 19,
   },
   {
     code: 'HEALTH_QUALITY_MANAGER',

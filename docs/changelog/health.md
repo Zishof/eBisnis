@@ -5,6 +5,92 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-8 — Puskesmas dan Posyandu: pertumbuhan anak, imunisasi, dan cakupan
+
+### Ditambahkan
+
+- **`H014__health__community.sql`** — `family_folder`, `family_member`,
+  `growth_reference`, `growth_measurement`, `immunization_schedule`,
+  `immunization_record`, `community_program_target`, `home_visit`.
+- **`H015__health__community_permissions.sql`** — aksi `IMMUNIZE`, lima menu,
+  tiga peran baru, dan **jadwal imunisasi nasional sebagai data**.
+- **`health-community.ts`** — aturan sebagai fungsi murni: z-score LMS,
+  pemilihan baris rujukan, penilaian gizi, cara pengukuran tinggi, berat tidak
+  naik, kelayakan imunisasi, tunggakan, cakupan, dan urutan kunjungan rumah.
+  **54 pengujian.**
+- **`health-community.service.ts`** dan **`health-community.controller.ts`** —
+  sembilan jalan pada `/api/v1/health/community/**`.
+- **`prove-health-community.mjs`** — naskah bukti, 45 pemeriksaan, seluruhnya
+  lulus.
+
+Uji: API 1420 → **1474**.
+
+### Keputusan yang perlu dicatat
+
+- **Tabel rujukan pertumbuhan WHO adalah DATA, bukan kode.** Disimpan sebagai
+  LMS dan dimuat saat menghitung. Menanam angka hasil taksiran di dalam kode
+  akan menghasilkan klasifikasi stunting yang tampak resmi dan sebenarnya
+  karangan — dan klasifikasi itu dipakai menentukan siapa menerima bantuan
+  pangan. Tanpa baris yang berlaku, jawabannya "belum dapat dinilai", bukan
+  "normal".
+
+- **Stunting menahun, wasting akut**, dan pesannya menyebutkan perbedaan itu
+  dengan tegas. Anak pendek karena kurang gizi bertahun-tahun menuntut
+  perbaikan pangan keluarga; anak kurus karena sakit pekan lalu menuntut
+  pengobatan sekarang.
+
+- **Cara pengukuran tinggi wajib disebutkan.** Berbaring dan berdiri berselisih
+  sekitar 0,7 cm — cukup untuk memindahkan anak melintasi ambang stunting.
+  Pengukuran yang tidak sesuai umur **dibetulkan, bukan ditolak**: menolaknya
+  akan membuat kader mengulang pengukuran pada bayi yang sudah menangis, dan
+  yang lebih sering terjadi, membuat kader mengubah umurnya supaya lewat.
+
+- **Vaksin yang terlalu cepat DITOLAK, bukan diperingatkan**, dengan tanggal
+  paling awalnya disebutkan. Ia tidak membentuk kekebalan yang cukup — dan yang
+  lebih berbahaya, ia akan tercatat sebagai diberikan; anak itu lalu tampak
+  lengkap di laporan cakupan dan tidak akan dikejar siapa pun.
+
+- **Kader bukan petugas Puskesmas.** `HEALTH_CADRE` sengaja tanpa
+  `HEALTH_PATIENT.READ` dan tanpa `IMMUNIZE`. Ia melihat anak-anak lewat folder
+  keluarganya — empat puluh anak di desanya, bukan seluruh rekam medis
+  kabupaten.
+
+- **"Berat tidak naik dua kali berturut-turut" dipertahankan** di samping
+  z-score. Ia tidak menuntut tabel rujukan, tidak menuntut umur yang tepat, dan
+  dapat dilihat kader dari buku KMS di tangannya.
+
+- **Penyebut cakupan adalah SASARAN, bukan yang datang.**
+
+- **Satu orang hanya menjadi anggota aktif pada satu folder keluarga.** Anak yang
+  pindah rumah dan terhitung dua kali membuat cakupan tampak lebih baik. Anggota
+  yang sudah terdaftar di tempat lain dilaporkan namanya, tanpa menggagalkan
+  pembuatan folder barunya.
+
+- **Catatan pertumbuhan dan imunisasi tidak dapat diubah maupun dihapus.**
+  Grafik pertumbuhan yang dapat disunting bukan grafik pertumbuhan; ia gambar.
+  Catatan imunisasi adalah dasar keputusan memberikan dosis berikutnya.
+
+### Yang ditemukan naskah bukti
+
+Naskah ini lulus pada percobaan pertama tetapi **gagal pada percobaan kedua**:
+langkah "tanpa tabel rujukan" menyemai barisnya sendiri, sehingga jalannya kedua
+kali tidak lagi menemui keadaan yang hendak diujinya. Naskah bukti yang hanya
+lulus sekali bukan naskah bukti — ia kebetulan. Kini langkah itu memakai anak
+berumur 36 bulan pada tabel yang hanya memuat umur 24 bulan.
+
+### Belum dikerjakan
+
+Layar web Posyandu, penyakit menular dan tidak menular, KIA, kesehatan
+lingkungan dan sekolah, jadwal Posyandu beserta meja layanannya, serta **tabel
+rujukan WHO yang lengkap** — strukturnya ada, isinya menunggu penyemaian resmi.
+
+Layar webnya sengaja belum dibuat: Posyandu dijalankan kader, sering tanpa
+internet, dan sasarannya populasi bukan pasien yang datang. Membuatnya sebagai
+salinan layar rumah sakit akan lebih buruk daripada belum membuatnya sama
+sekali.
+
+---
+
 ## H-7 — Gawat darurat, kamar operasi, dan perawatan intensif
 
 ### Ditambahkan

@@ -320,19 +320,81 @@ Aldrete, dialisis, onkologi, rehabilitasi, gigi, kesehatan jiwa, serta kebidanan
 dan neonatal. Kelima yang terakhir menuntut model datanya sendiri dan lebih
 tepat menjadi fase tersendiri daripada disisipkan di sini.
 
-### H-8 · Puskesmas dan Posyandu
+### H-8 · Puskesmas dan Posyandu — **SELESAI**
 
 UKP, UKM, wilayah kerja, folder keluarga, sasaran program, penyakit menular dan
 tidak menular, KIA, imunisasi, gizi, kesehatan lingkungan dan sekolah, kunjungan
 rumah; jadwal Posyandu, kader, meja layanan, pengukuran pertumbuhan, KMS
 digital, risiko stunting.
 
-Uji ≥ 30.
+Uji ≥ 30 → **54 tercapai**, ditambah naskah bukti 45 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H014__health__community.sql`, `H015__health__community_permissions.sql` |
+| Aturan murni | `health-community.ts` + 54 pengujian |
+| Layanan | `health-community.service.ts` |
+| Endpoint | `health-community.controller.ts` — 9 jalan di `/api/v1/health/community/**` |
+| Bukti | `scripts/prove-health-community.mjs` → [bukti-h8-puskesmas.txt](bukti-h8-puskesmas.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **Tabel rujukan pertumbuhan WHO adalah DATA, bukan kode.** Disimpan sebagai
+  LMS pada `growth_reference` dan dimuat layanan saat menghitung. Menanam angka
+  hasil taksiran di dalam kode akan menghasilkan klasifikasi stunting yang
+  tampak resmi dan sebenarnya karangan — dan klasifikasi itu dipakai menentukan
+  siapa menerima bantuan pangan. Tanpa baris yang berlaku, jawabannya "belum
+  dapat dinilai", bukan "normal".
+
+- **Stunting menahun, wasting akut**, dan pesannya menyebutkan perbedaan itu.
+  Anak pendek karena kurang gizi bertahun-tahun menuntut perbaikan pangan
+  keluarga; anak kurus karena sakit pekan lalu menuntut pengobatan sekarang.
+  Menukar keduanya berarti mengirim bantuan yang keliru kepada anak yang keliru.
+
+- **Cara pengukuran tinggi wajib disebutkan, dan dibetulkan bila tidak sesuai
+  umur.** Berbaring dan berdiri berselisih sekitar 0,7 cm — cukup untuk
+  memindahkan anak melintasi ambang −2 simpangan baku. Pembetulannya dilaporkan,
+  dan nilai aslinya tetap disimpan.
+
+- **Vaksin yang terlalu cepat DITOLAK, bukan diperingatkan**, dan penolakannya
+  menyebut tanggal paling awalnya. Vaksin sebelum umur minimum tidak membentuk
+  kekebalan yang cukup — dan yang lebih berbahaya, ia akan tercatat sebagai
+  diberikan; anak itu lalu tampak lengkap di laporan cakupan dan tidak akan
+  dikejar siapa pun.
+
+- **Kader bukan petugas Puskesmas.** Peran `HEALTH_CADRE` sengaja TIDAK diberi
+  `HEALTH_PATIENT.READ` dan tidak diberi `IMMUNIZE`. Ia melihat anak-anak lewat
+  folder keluarganya, bukan lewat pencarian pasien seluruh fasilitas —
+  perbedaannya menentukan: yang pertama menampilkan empat puluh anak di desanya,
+  yang kedua menampilkan seluruh rekam medis kabupaten.
+
+- **"Berat tidak naik dua kali berturut-turut" dipertahankan** di samping
+  z-score. Ia penanda yang dipakai Posyandu jauh sebelum z-score mana pun, dan
+  masih yang paling berguna: tidak menuntut tabel rujukan, tidak menuntut umur
+  yang tepat, dan dapat dilihat kader dari buku KMS di tangannya.
+
+- **Penyebut cakupan adalah SASARAN, bukan yang datang.** Menghitung "berapa
+  persen yang datang sudah diimunisasi" akan selalu mendekati seratus persen dan
+  tidak memberi tahu apa pun.
+
+- **Jadwal imunisasi nasional disemai sebagai baris tabel**, supaya penyesuaian
+  kelak menjadi perubahan data — bukan penerbitan versi aplikasi.
+
+**Yang belum:** layar web Posyandu (yang menuntut rancangan luring tersendiri —
+lihat catatan di bawah), penyakit menular dan tidak menular, KIA, kesehatan
+lingkungan dan sekolah, jadwal Posyandu beserta meja layanannya, dan **tabel
+rujukan WHO yang lengkap** — strukturnya sudah ada, isinya menunggu penyemaian
+resmi. Sampai itu terjadi, anak di luar umur yang tersemai akan dinyatakan
+"belum dapat dinilai", dan itu memang jawaban yang benar.
 
 **Catatan yang perlu diingat saat merancang antarmukanya:** Posyandu dijalankan
 kader — bukan tenaga medis — sering tanpa internet, dan sasarannya populasi,
 bukan pasien yang datang. Antarmukanya tidak boleh sekadar versi kecil dari
-layar rumah sakit.
+layar rumah sakit. Karena itu layar webnya sengaja belum dibuat pada fase ini:
+membuatnya sebagai salinan layar rumah sakit akan lebih buruk daripada belum
+membuatnya sama sekali.
 
 ### H-9 · Klaim, rekam medis, koding, mutu, keselamatan
 

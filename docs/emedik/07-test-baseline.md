@@ -70,8 +70,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-5 | 30 | **64** | `health-lab.spec.ts` |
 | H-6 | 30 | **53** | `health-inpatient.spec.ts` |
 | H-7 | 35 | **60** | `health-acute.spec.ts` |
+| H-8 | 30 | **54** | `health-community.spec.ts` |
 
-API keseluruhan: **1420** pengujian pada 53 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **1474** pengujian pada 54 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 ### Naskah bukti
@@ -89,6 +90,15 @@ sungguhan, pada basis data sungguhan:
 | H-5 | `prove-health-lab.mjs` | 44 pemeriksaan, seluruhnya lulus — [bukti-h5-laboratorium.txt](bukti-h5-laboratorium.txt) |
 | H-6 | `prove-health-inpatient.mjs` | 41 pemeriksaan, seluruhnya lulus — [bukti-h6-rawat-inap.txt](bukti-h6-rawat-inap.txt) |
 | H-7 | `prove-health-acute.mjs` | 55 pemeriksaan, seluruhnya lulus — [bukti-h7-akut.txt](bukti-h7-akut.txt) |
+| H-8 | `prove-health-community.mjs` | 45 pemeriksaan, seluruhnya lulus — [bukti-h8-puskesmas.txt](bukti-h8-puskesmas.txt) |
+
+Naskah H-8 sempat gagal pada percobaan kedua meski lulus pada percobaan pertama:
+langkah "tanpa tabel rujukan" menyemai barisnya sendiri, sehingga jalannya kedua
+kali tidak lagi menemui keadaan yang hendak diujinya. Naskah bukti yang hanya
+lulus sekali bukan naskah bukti — ia kebetulan. Kini langkah itu memakai anak
+berumur 36 bulan pada tabel yang hanya memuat umur 24 bulan, yaitu keadaan yang
+sesungguhnya terjadi di lapangan: tabelnya ada, tetapi barisnya tidak
+menjangkau umur anak yang ditimbang.
 
 Naskah H-7 menembus dua invarian dari jalur basis data langsung, dan keduanya
 ditolak: penjadwalan kamar operasi yang bertumpang tindih (constraint
