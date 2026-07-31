@@ -84,6 +84,7 @@ model MarketplaceSeller {
   enrollments MarketplaceSellerEnrollment[]
   stores      MarketplaceStore[]
   listings    MarketplaceListingProjection[]
+  checkoutGroups MarketplaceCheckoutGroup[]
 
   @@unique([programId, tenantId])
   @@unique([sellerCode])
@@ -193,6 +194,7 @@ model MarketplaceStore {
   policies MarketplaceStorePolicy[]
   domains  MarketplaceStoreDomain[]
   listings MarketplaceListingProjection[]
+  checkoutGroups MarketplaceCheckoutGroup[]
 
   @@unique([storeSlug])
   @@index([sellerId, status])

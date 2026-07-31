@@ -24,6 +24,14 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   berharga bertingkat, sehingga penyaringan dan pengurutan katalog dapat dicoba
   sungguhan. Produk contoh melewati gerbang penerbitan yang sama dengan produk
   penjual sungguhan — tidak ada yang diistimewakan.
+- **Keranjang belanja dan checkout marketplace.** Pengunjung dapat memilih
+  barang tanpa mendaftar lebih dahulu, dan keranjangnya terbawa saat ia masuk.
+  Barang dari beberapa penjual dikelompokkan menjadi pesanan terpisah per
+  penjual, karena penyedia pembayaran belum dapat membagi setoran ke beberapa
+  rekening.
+- **Peringatan perubahan harga di keranjang.** Bila harga berubah setelah barang
+  dimasukkan, pembeli diberi tahu di keranjang dan diminta menyetujuinya —
+  bukan baru mengetahuinya di layar pembayaran.
 - **Halaman Produk contoh pada Platform Admin.** Administrator dapat
   menyembunyikan seluruh produk contoh dari katalog publik dengan satu tombol,
   atau menyembunyikan satu per satu. Menyembunyikan tidak menghapus datanya,

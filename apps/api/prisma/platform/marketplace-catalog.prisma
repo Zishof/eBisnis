@@ -111,9 +111,11 @@ model MarketplaceListingProjection {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  seller   MarketplaceSeller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  store    MarketplaceStore    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  category MarketplaceCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  seller        MarketplaceSeller         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  store         MarketplaceStore          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category      MarketplaceCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  cartItems     MarketplaceCartItem[]
+  checkoutLines MarketplaceCheckoutLine[]
 
   /// Satu listing tenant menghasilkan tepat satu baris projection.
   @@unique([tenantId, tenantListingId])
