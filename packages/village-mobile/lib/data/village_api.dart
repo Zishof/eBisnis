@@ -116,6 +116,20 @@ class JadwalPosyandu {
   final List<Map<String, dynamic>> jadwal;
 }
 
+/// Isi layar Pengumuman.
+class Pengumuman {
+  Pengumuman({
+    required this.namaDesa,
+    required this.berita,
+    required this.agenda,
+    required this.programBantuan,
+  });
+  final String namaDesa;
+  final List<Berita> berita;
+  final List<Agenda> agenda;
+  final List<ProgramBantuan> programBantuan;
+}
+
 class VillageApi {
   VillageApi(this.klien);
   final ApiClient klien;
@@ -141,28 +155,33 @@ class VillageApi {
   }
 
   // --- Pengumuman -----------------------------------------------------------
-  //
-  // Memakai jalur publik situs desa: pengumuman memang terbuka, dan
-  // membacanya tidak menuntut akun yang tertaut.
 
-  Future<List<Berita>> berita(String slugDesa) async {
-    final r = await klien.getList('/village/public/$slugDesa/news?limit=10');
-    return r.whereType<Map<String, dynamic>>().map(Berita.dariJson).toList();
+  /// Berita, agenda, dan program bantuan sekaligus.
+  ///
+  /// Satu pemanggilan, bukan tiga. Sinyal desa putus-putus, dan tiga
+  /// pemanggilan berarti tiga kesempatan untuk gagal pada satu layar.
+  ///
+  /// Memakai jalur portal yang menentukan desanya dari **sesi**, bukan jalur
+  /// publik yang menuntut slug. Aplikasi yang membawa slug akan menampilkan
+  /// desa lain begitu slugnya salah sekali — dan warga tidak akan menyadarinya,
+  /// sebab pengumuman desa tetangga terlihat sama masuk akalnya.
+  Future<Pengumuman> pengumuman() async {
+    final r = await klien.get('/village/portal/announcements');
+    List<T> ambil<T>(String kunci, T Function(Map<String, dynamic>) urai) {
+      final d = r[kunci];
+      if (d is! List) return const [];
+      return d.whereType<Map<String, dynamic>>().map(urai).toList();
+    }
+
+    return Pengumuman(
+      namaDesa: (r['unitName'] ?? '') as String,
+      berita: ambil('news', Berita.dariJson),
+      agenda: ambil('agenda', Agenda.dariJson),
+      programBantuan: ambil('aidPrograms', ProgramBantuan.dariJson),
+    );
   }
 
-  Future<List<Agenda>> agenda(String slugDesa) async {
-    final r = await klien.getList('/village/public/$slugDesa/agenda');
-    return r.whereType<Map<String, dynamic>>().map(Agenda.dariJson).toList();
-  }
-
-  // --- Bantuan dan Posyandu -------------------------------------------------
-
-  Future<List<ProgramBantuan>> programBantuan() async {
-    final r = await klien.get('/village/kiosk/announcements');
-    final p = r['aidPrograms'];
-    if (p is! List) return const [];
-    return p.whereType<Map<String, dynamic>>().map(ProgramBantuan.dariJson).toList();
-  }
+  // --- Posyandu -------------------------------------------------------------
 
   Future<JadwalPosyandu> posyandu() async {
     final r = await klien.get('/village/health/posyandu-schedule');

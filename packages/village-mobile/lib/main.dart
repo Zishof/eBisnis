@@ -14,12 +14,15 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'data/api_client.dart';
 import 'data/village_api.dart';
 import 'domain/rules.dart';
+import 'ui/ajukan_surat.dart';
 import 'ui/beranda.dart';
 import 'ui/lapor.dart';
+import 'ui/pengumuman.dart';
 import 'ui/shared.dart';
 
 /// Alamat API. Diisi saat build:
@@ -29,7 +32,11 @@ const kApiBaseUrl = String.fromEnvironment(
   defaultValue: 'http://10.0.2.2:3100/api/v1',
 );
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Nama bulan dan hari dalam bahasa Indonesia. Tanpa ini, agenda desa
+  // menampilkan "Monday, 3 March" kepada warga yang tidak membaca Inggris.
+  await initializeDateFormatting('id_ID');
   runApp(const AplikasiWarga());
 }
 
@@ -249,6 +256,20 @@ class _LayarUtamaState extends State<LayarUtama> {
   }
 
   Future<void> _buka(String kodeMenu) async {
+    if (kodeMenu == 'PERMOHONAN_SURAT') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LayarAjukanSurat(api: widget.api)),
+      );
+      return;
+    }
+
+    if (kodeMenu == 'PENGUMUMAN') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LayarPengumuman(api: widget.api)),
+      );
+      return;
+    }
+
     if (kodeMenu == 'PENGADUAN') {
       await Navigator.of(context).push(
         MaterialPageRoute(

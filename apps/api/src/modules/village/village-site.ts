@@ -107,6 +107,8 @@ export const RUAS_PUBLIK = {
            'managerName', 'managerContact', 'facilities'],
   UMKM: ['id', 'businessName', 'businessSector', 'description', 'phone', 'address'],
   APBDES: ['fiscalYear', 'totalRevenue', 'totalExpenditure', 'regulationNumber', 'establishedAt'],
+  // Programnya boleh tampil; penerimanya tidak, dan tidak akan pernah.
+  BANTUAN: ['programName', 'aidCategory', 'periodStart', 'periodEnd', 'quota'],
 } as const;
 
 export type JenisPublik = keyof typeof RUAS_PUBLIK;

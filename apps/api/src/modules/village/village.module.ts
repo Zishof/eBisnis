@@ -4976,6 +4976,22 @@ export class VillageController {
     return this.situs.portalPosyandu(requireSchema(user), from, to);
   }
 
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Get('portal/announcements')
+  @ApiOperation({
+    summary: 'Pengumuman, agenda, dan program bantuan untuk aplikasi warga',
+    description:
+      'Memakai skema dari SESINYA, bukan slug pada alamat. Aplikasi yang membawa slug pada tiap ' +
+      'pemanggilan akan menampilkan desa lain begitu slugnya salah ketik sekali — dan warga ' +
+      'tidak akan menyadarinya, sebab pengumuman desa tetangga terlihat sama masuk akalnya. ' +
+      'Program bantuan ditampilkan; penerimanya tidak.',
+  })
+  portalPengumuman(@CurrentUser() user: AuthenticatedUser) {
+    return this.situs.portalPengumuman(requireSchema(user));
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')

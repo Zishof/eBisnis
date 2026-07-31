@@ -21,6 +21,7 @@ import { AuthenticatedUser } from '../../common/decorators';
 import { VillageUnitService } from './village-unit.service';
 import { BROADCAST_PORT, type BroadcastPort } from './ports/broadcast.port';
 import { HEALTH_PORT, type HealthAggregatePort } from './ports/external.ports';
+import { VillageKioskService } from './village-kiosk.service';
 import {
   bolehLihatDiPortal,
   bolehPindahTayang,
@@ -43,6 +44,7 @@ export class VillageSiteService {
     private readonly unit: VillageUnitService,
     @Inject(BROADCAST_PORT) private readonly siaran: BroadcastPort,
     @Inject(HEALTH_PORT) private readonly kesehatan: HealthAggregatePort,
+    private readonly anjungan: VillageKioskService,
   ) {}
 
   // --- Situs publik (hanya membaca) -----------------------------------------
@@ -437,12 +439,23 @@ export class VillageSiteService {
       ],
     );
 
+    // Kode ambil diterbitkan sekalian. Inilah yang menyambungkan "ajukan dari
+    // rumah" dengan "cetak sendiri di anjungan": warga yang mengajukan lewat
+    // aplikasi tidak perlu mengantre dua kali.
+    const kode = await this.anjungan.terbitkanKode(
+      schemaName,
+      { serviceRequestId: rows[0].id },
+      user,
+    );
+
     return {
       id: rows[0].id,
       status: 'DIAJUKAN',
+      claimCode: kode.claimCode,
+      claimDisplay: kode.display,
       note:
-        'Permohonan Anda sudah masuk. Pantau perkembangannya dari aplikasi; bila berkas ' +
-        'persyaratan diperlukan, petugas akan memberi tahu melalui aplikasi ini.',
+        'Permohonan Anda sudah masuk. Simpan kode ambil ini — setelah surat terbit, Anda ' +
+        'dapat mencetaknya sendiri di anjungan kantor desa tanpa mengantre.',
     };
   }
 
@@ -543,6 +556,60 @@ export class VillageSiteService {
       to: to ?? hariIni,
     });
     return { available: hasil.tersedia, note: hasil.keterangan ?? null, data: hasil.data };
+  }
+
+  /**
+   * Pengumuman, agenda, dan program bantuan untuk aplikasi warga.
+   *
+   * Memakai skema dari **sesinya**, bukan slug pada alamat. Aplikasi yang
+   * membawa slug pada tiap pemanggilan akan menampilkan desa lain begitu
+   * slugnya salah ketik sekali — dan warga tidak akan menyadarinya, sebab
+   * pengumuman desa tetangga terlihat sama masuk akalnya.
+   *
+   * Program bantuan ditampilkan; penerimanya tidak. Aturan yang sama dengan
+   * anjungan dan situs publik.
+   */
+  async portalPengumuman(schemaName: string) {
+    const u = await this.unit.unit(schemaName);
+
+    const [berita, agenda, bantuan] = await Promise.all([
+      this.tenantDb.query<Record<string, unknown>>(
+        schemaName,
+        `SELECT title, summary, published_at AS "publishedAt"
+           FROM "${schemaName}".village_news
+          WHERE village_unit_id = $1 AND status = 'TAYANG' AND deleted_at IS NULL
+            AND published_at <= now()
+          ORDER BY published_at DESC LIMIT 20`,
+        [u.id],
+      ),
+      this.tenantDb.query<Record<string, unknown>>(
+        schemaName,
+        `SELECT title, description, start_at AS "startAt", end_at AS "endAt", location,
+                is_public AS "isPublic"
+           FROM "${schemaName}".village_agenda
+          WHERE village_unit_id = $1 AND is_public = TRUE AND deleted_at IS NULL
+            AND (end_at IS NULL OR end_at >= now() - interval '1 day')
+          ORDER BY start_at LIMIT 20`,
+        [u.id],
+      ),
+      this.tenantDb.query<Record<string, unknown>>(
+        schemaName,
+        `SELECT name AS "programName", aid_category AS "aidCategory",
+                period_start AS "periodStart", period_end AS "periodEnd", quota
+           FROM "${schemaName}".village_aid_program
+          WHERE village_unit_id = $1 AND is_published = TRUE AND deleted_at IS NULL
+            AND status IN ('DIBUKA','DISALURKAN')
+          ORDER BY period_start DESC LIMIT 20`,
+        [u.id],
+      ),
+    ]);
+
+    return {
+      unitName: u.name,
+      news: berita.map((b) => proyeksikan('BERITA', b)),
+      agenda: agenda.map((a) => proyeksikan('AGENDA', a)),
+      aidPrograms: bantuan.map((b) => proyeksikan('BANTUAN', b)),
+    };
   }
 
   /** Menautkan akun ke penduduk. Dilakukan petugas, bukan pemilik akun. */

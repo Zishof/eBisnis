@@ -93,13 +93,46 @@ diperbaiki warga sendiri dengan pindah tempat, yang kedua tidak.
 
 | Menu | Keadaan |
 |---|---|
+| Ajukan Surat | **Jalan** — dua tab: ajukan baru, dan pantau statusnya |
 | Lapor / Aduan | **Jalan** — kirim, pilih mode nama, keterangan tempat |
+| Pengumuman | **Jalan** — berita, agenda, dan program bantuan |
+| Info Bantuan | **Jalan** — tergabung pada layar Pengumuman |
 | Masuk & pulihkan sesi | **Jalan** — token aman, rotasi refresh, perpanjang otomatis |
 | Beranda & tautan akun | **Jalan** — menu terkunci menjelaskan syaratnya |
-| Ajukan Surat | Endpoint siap (`POST /village/portal/requests`); layar menyusul |
 | Jadwal Posyandu | Endpoint siap; **menunggu eMedik** — sampai tersambung ia menyatakan "belum tersambung", bukan jadwal karangan |
-| Info Bantuan | Endpoint siap; layar menyusul |
-| Pengumuman | Endpoint siap; layar menyusul |
+
+### Ajukan Surat
+
+Dua tab, sebab presentasi menjanjikan dua hal sekaligus: *"Ajukan surat &
+pantau statusnya."*
+
+Pengajuan langsung menerbitkan **kode ambil**. Inilah yang menyambungkan
+"ajukan dari rumah" dengan "cetak sendiri di anjungan" — warga yang mengajukan
+lewat aplikasi tidak perlu mengantre dua kali. Kodenya ditampilkan sebesar
+mungkin dan dapat disalin: yang kehilangannya harus mengantre, persis yang
+hendak dihindari aplikasi ini.
+
+Daftar permohonan menampilkan **label yang dapat dibaca**, bukan kode dalam
+huruf besar, dan status yang menuntut warga bertindak menyebutkan tindakannya.
+"Berkas belum lengkap" tanpa keterangan membuat warga menunggu sesuatu yang
+tidak akan datang.
+
+### Pengumuman
+
+Berita, agenda, dan program bantuan dalam **satu pemanggilan**, bukan tiga:
+sinyal desa putus-putus, dan tiga pemanggilan berarti tiga kesempatan gagal pada
+satu layar.
+
+Memakai jalur portal yang menentukan desanya dari **sesi**, bukan slug pada
+alamat. Aplikasi yang membawa slug akan menampilkan desa lain begitu slugnya
+salah sekali — dan warga tidak akan menyadarinya, sebab pengumuman desa tetangga
+terlihat sama masuk akalnya.
+
+**Program bantuan ditampilkan; penerimanya tidak.** Daftar penerima pada
+aplikasi yang dipegang seluruh warga adalah pengumuman siapa yang miskin di desa
+ini — dan pada aplikasi, ia dapat difoto layar lalu disebarkan. Layar menyatakan
+hal itu terus terang alih-alih membiarkan warga menebak mengapa namanya tidak
+ada di mana pun.
 
 Menu yang layarnya belum ada **tidak disembunyikan** dan tidak diam ketika
 ditekan — ia mengatakan sedang disiapkan. Tombol yang tidak bereaksi membuat
