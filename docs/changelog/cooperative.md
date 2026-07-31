@@ -5,6 +5,82 @@ menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
 ---
 
+## K-6 — SHU dan patronage
+
+### Ditambahkan
+
+- **Migrasi modul** `20260731T210000__cooperative__shu_and_patronage.sql`:
+  enam tabel — komponen kebijakan, perhitungan, alokasi, patronage anggota,
+  pembagian, dan rincian untuk anggota.
+- **`cooperative-shu.ts`** — aturan sebagai fungsi murni: pemeriksaan
+  kebijakan, alokasi surplus, pembagian metode sisa terbesar, keutuhan,
+  sidik jari masukan, bagian masa keanggotaan, dan gerbang RAT.
+  **53 pengujian.**
+- **`scripts/prove-cooperative-k6.mjs`** dan buktinya di
+  `docs/ekoperasi/bukti-k6-shu.txt` — **24 pemeriksaan, seluruhnya lulus.**
+
+### Cacat yang ditemukan bukti K-6, dan perbaikannya
+
+Bukti K-6 menjalankan perhitungan, menyimpannya, lalu **menghitung ulang dari
+cuplikan yang tersimpan** dan membandingkannya baris demi baris. Pada jalannya
+yang pertama:
+
+```
+LULUS  sidik jari perhitungan ulang SAMA dengan yang tersimpan
+GAGAL  bagian 3 anggota SAMA PERSIS sampai ke rupiah terakhir  (8 berbeda)
+```
+
+Sebabnya: bagian masa keanggotaan dihitung pada presisi penuh tetapi disimpan
+sebagai `NUMERIC(9,6)`. Perhitungan ulang dari data tersimpan memakai angka yang
+sedikit berbeda, dan pada metode sisa terbesar selisih sekecil apa pun dapat
+memindahkan satu rupiah dari seorang anggota ke anggota lain.
+
+Yang membuatnya berbahaya bukan selisih satu rupiahnya, melainkan **sidik
+jarinya**: ia membulatkan ke empat angka di belakang koma, sehingga menyatakan
+"masukan sama" atas masukan yang sesungguhnya berbeda. Sidik jari yang memberi
+keyakinan palsu lebih buruk daripada tidak ada sidik jari sama sekali.
+
+Perbaikannya: presisi cuplikan dinyatakan sebagai tetapan `PRESISI_FRAKSI`, dan
+**perhitungan memakai presisi yang sama dengan penyimpanannya** — pembulatan
+terjadi saat menghitung, bukan saat menyimpan. Tiga pengujian regresi
+ditambahkan, termasuk yang memastikan sidik jari peka sampai digit keenam.
+
+### Keputusan lain yang perlu dicatat
+
+- **Angka masukan DICUPLIK, bukan dibaca ulang.** Simpanan anggota hari ini
+  berbeda dari simpanannya saat periode buku ditutup; membaca ulang berarti
+  menghitung SHU tahun lalu memakai angka tahun ini.
+- **Jumlah komponen kebijakan wajib tepat 100%.** Kurang berarti ada surplus
+  yang tidak diketahui ke mana perginya; lebih berarti membagikan uang yang
+  tidak ada. Dibandingkan dalam basis per sepuluh ribu supaya kebijakan yang
+  benar tidak ditolak karena pecahan biner.
+- **Selisih pembulatan alokasi dibebankan pada CADANGAN**, bukan disebar.
+  Cadangan milik koperasi, bukan milik anggota perorangan, jadi selisih di sana
+  tidak mengubah hak siapa pun.
+- **Pembagian sisa memakai metode sisa terbesar dengan pemutus seri `memberId`**
+  — bukan urutan baris dari basis data, yang dapat berbeda antar pemanggilan.
+- **Dasar jasa modal hanya simpanan ekuitas.** Simpanan sukarela tidak ikut: ia
+  kewajiban koperasi kepada anggota, bukan modal anggota pada koperasi, dan
+  memperoleh bagi hasil tersendiri.
+- **Bagian masa keanggotaan dihitung dari HARI, bukan bulan.** Anggota yang
+  masuk 20 Januari memperoleh bagian berbeda dari yang masuk 1 Januari.
+- **Perhitungan yang disetujui wajib menunjuk keputusan RAT dan wajib utuh**,
+  ditegakkan constraint. Pembagian SHU tanpa keputusan RAT yang sah adalah
+  pengurus membagikan uang anggota atas keputusannya sendiri.
+- **Satu perhitungan hidup per tahun buku.** Dua perhitungan atas tahun yang
+  sama berarti dua angka SHU, dan tidak ada yang tahu mana yang dibagikan.
+- **Pemotongan tidak boleh melebihi hak anggota dan wajib beralasan.** SHU
+  tidak dapat menjadi utang.
+
+### Gerbang mutu
+
+| | |
+|---|---|
+| `tsc --noEmit` | bersih |
+| `eslint --max-warnings=0` | bersih |
+| `jest` | 51 suite, **1348 tes lulus** (bertambah 53) |
+| Bukti K-6 | **24 pemeriksaan lulus** |
+
 ## K-5 — Rapat anggota, kuorum, voting, dan keputusan
 
 ### Ditambahkan

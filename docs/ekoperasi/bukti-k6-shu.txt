@@ -1,0 +1,53 @@
+==============================================================================
+BUKTI K-6 — SHU DAN PATRONAGE
+Waktu  : 2026-07-31T17:22:00.837Z
+Schema : demo
+==============================================================================
+
+1. Tabel K-6 terpasang
+  LULUS  tabel cooperative_shu_component
+  LULUS  tabel cooperative_shu_calculation
+  LULUS  tabel cooperative_shu_allocation
+  LULUS  tabel cooperative_member_patronage
+  LULUS  tabel cooperative_shu_distribution
+  LULUS  tabel cooperative_shu_statement
+
+2. Kebijakan SHU wajib berjumlah tepat 100%
+  LULUS  kebijakan enam komponen berjumlah 100%
+  LULUS  komponen yang tercantum dua kali DITOLAK
+
+3. Menghitung SHU dan menyimpan cuplikannya
+  LULUS  perhitungan utuh
+   sidik jari masukan: f30e89ae
+  LULUS  jumlah alokasi komponen persis sama dengan surplus
+
+4. PERHITUNGAN ULANG DARI CUPLIKAN MENGHASILKAN ANGKA YANG SAMA
+  LULUS  sidik jari perhitungan ulang SAMA dengan yang tersimpan
+  LULUS  bagian 11 anggota SAMA PERSIS sampai ke rupiah terakhir
+
+5. Dua anggota yang masuk pertengahan tahun memperoleh bagian lebih kecil
+  LULUS  anggota setahun penuh memperoleh jasa modal lebih besar per rupiah simpanannya
+
+6. Satu perhitungan hidup per tahun buku
+  LULUS  perhitungan kedua atas tahun buku yang sama DITOLAK
+
+7. Pembagian SHU menuntut keputusan RAT yang sah
+  LULUS  perhitungan APPROVED tanpa keputusan RAT DITOLAK
+  LULUS  perhitungan dengan keputusan RAT DITERIMA
+
+8. Perhitungan yang tidak utuh tidak dapat disetujui
+  LULUS  perhitungan integrity_ok = FALSE berstatus APPROVED DITOLAK
+
+9. Pemotongan tidak boleh melebihi hak anggota
+  LULUS  pemotongan melebihi hak DITOLAK
+  LULUS  pemotongan tanpa alasan DITOLAK
+  LULUS  pemotongan beralasan dan dalam batas DITERIMA
+
+10. Rincian patronage wajib menjelaskan totalnya
+  LULUS  rincian patronage yang tidak berjumlah totalnya DITOLAK
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.
