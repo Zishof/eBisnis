@@ -9,6 +9,14 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Added
 
+- **Panel Copilot pada bilah atas (V11-4).** Tersedia di setiap halaman portal
+  tenant, dengan aksi yang menyesuaikan halaman yang sedang dibuka. Jawaban AI
+  tidak pernah disajikan seperti kebenaran: peringatan tampil SEBELUM jawaban,
+  bukti selalu ada dan dapat dibuka, jenis pencarian disebutkan beserta cara
+  gagalnya, penyamaran data dilaporkan, dan penilaian diminta.
+- **Peringatan kunci environment baru pada update.sh.** Rilis yang menambah
+  kunci env tidak gagal saat dijalankan — ia berjalan dengan fitur barunya mati,
+  dan itu tidak terlihat sampai ada yang mencoba memakainya lalu bingung.
 - **Pencarian semantik dan hibrida (V11-3b).** Penyimpanan vektor memakai
   float8[] beserta fungsi kesamaan kosinus, karena pgvector TIDAK TERSEDIA pada
   server basis data ini — bukan sekadar belum dipasang. Penggabungan hasil

@@ -165,6 +165,28 @@ as_app "git -C '$APP_DIR' log --oneline '$PREVIOUS'..'$NEW'" | sed 's/^/      /'
 ln -sfn "$ENV_FILE" "$APP_DIR/apps/api/.env"
 chown -h "$APP_USER":"$APP_USER" "$APP_DIR/apps/api/.env"
 
+# Kunci environment baru diperiksa terhadap contoh.
+#
+# Rilis yang menambah kunci env tidak akan gagal saat dijalankan — ia berjalan
+# dengan fitur barunya mati. Kegagalan seperti itu tidak terlihat sampai ada
+# yang mencoba memakainya lalu bingung mengapa tidak bekerja. Yang diperiksa
+# hanya keberadaan kuncinya; nilainya tetap urusan operator.
+CONTOH_ENV="$APP_DIR/deploy/env.production.example"
+if [[ -f "$CONTOH_ENV" ]]; then
+  KURANG=()
+  while IFS= read -r KUNCI; do
+    grep -qE "^${KUNCI}=" "$ENV_FILE" || KURANG+=("$KUNCI")
+  done < <(grep -oE '^[A-Z][A-Z0-9_]*=' "$CONTOH_ENV" | tr -d '=' | sort -u)
+
+  if [[ ${#KURANG[@]} -gt 0 ]]; then
+    echo "    PERHATIAN: ${#KURANG[@]} kunci environment ada pada contoh tetapi tidak pada $ENV_FILE:"
+    printf '      %s
+' "${KURANG[@]}"
+    echo "    Fitur yang bergantung padanya akan mati tanpa pesan galat."
+    echo "    Lihat $CONTOH_ENV untuk keterangan masing-masing."
+  fi
+fi
+
 rollback() {
   # Sasaran pengembalian adalah commit yang terakhir benar-benar berjalan sehat,
   # bukan HEAD sebelum proses ini. Keduanya berbeda setelah `git pull` manual —

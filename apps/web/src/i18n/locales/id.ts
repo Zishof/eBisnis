@@ -351,6 +351,31 @@ export const id = {
     QUOTE_ALREADY_ACCEPTED: 'Penawaran harga sudah diterima.',
     INTERNAL_ERROR: 'Terjadi kesalahan pada server.',
   },
+  ai: {
+    title: 'Asisten AI',
+    open: 'Buka asisten AI',
+    action: 'Aksi',
+    question: 'Pertanyaan',
+    questionPlaceholder: 'Apa yang ingin Anda ketahui?',
+    context: 'Data yang disertakan (opsional)',
+    contextPlaceholder:
+      'Tempel angka atau catatan yang ingin dianalisis. Data sensitif disamarkan otomatis sebelum dikirim.',
+    ask: 'Tanyakan',
+    thinking: 'Sedang berpikir…',
+    slowNotice: 'Model berjalan di server sendiri; jawaban biasanya belasan detik.',
+    evidenceRequired:
+      'Aksi ini wajib berbukti. Tanpa data yang disertakan, jawabannya hanya tebakan — dan akan ditolak.',
+    evidenceCount: '{{count}} bukti dipakai',
+    evidenceDropped: '{{count}} bukti dibuang karena melampaui batas panjang.',
+    redactedNotice: 'Data sensitif yang disamarkan sebelum dikirim:',
+    rate: 'Berguna?',
+    accept: 'Jawaban dipakai',
+    reject: 'Jawaban tidak dipakai',
+    rated: 'Terima kasih.',
+    rejectReasonPrompt: 'Mengapa jawaban ini tidak dipakai? (minimal 5 huruf)',
+    pastedContext: 'Data yang ditempel pengguna',
+    loadFailed: 'Daftar aksi AI gagal dimuat.',
+  },
 };
 
 export type TranslationSchema = typeof id;
