@@ -5,6 +5,66 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## Web vertical kesehatan — layar pertama yang dapat diklik
+
+### Ditambahkan
+- **`apps/web/src/verticals/health/`** — direktori vertical pertama pada
+  antarmuka web. Sebelumnya `apps/web/src/verticals/` belum ada sama sekali.
+- **`health-api.ts`** — klien API kesehatan beserta bentuk datanya.
+- **`PurposeGate.tsx`** — gerbang tujuan penggunaan dan dialog akses darurat.
+- **Empat layar**: Fasilitas, Pasien, Pendaftaran dan Antrean, serta ruang
+  kerja Kunjungan.
+- **15 pengujian** (35 → 50 pada web).
+
+### Keputusan yang perlu dicatat
+
+- **Tujuan penggunaan dibungkus di klien, bukan diserahkan ke setiap halaman.**
+  Tajuk yang harus diingat di dua puluh tempat adalah tajuk yang akan terlupa
+  di salah satunya — dan yang terlupa menjadi lubang pada jejak audit. Sebuah
+  pengujian memeriksa **seluruh** jalan yang menyentuh rekam medis sekaligus,
+  sehingga jalan baru yang lupa membawanya akan gagal di sini, bukan di hadapan
+  petugas yang sedang melayani pasien.
+
+- **Daftar fasilitas sengaja TIDAK menuntut tujuan penggunaan.** Menuntutnya
+  pada hal yang tidak menyentuh pasien akan membuat pengguna memilih apa pun
+  demi lewat, dan pilihan yang asal justru merusak nilai jejaknya pada tempat
+  yang penting.
+
+- **Cakupan pencarian dikatakan di layar.** Hasil pencarian selalu disertai
+  keterangan bahwa ia hanya mencakup fasilitas ini. Petugas yang mengira sudah
+  melihat seluruh riwayat pasien akan menyimpulkan hal yang salah tentang
+  alerginya.
+
+- **Dugaan rekam medis ganda ditampilkan sebagai halangan**, lengkap dengan
+  calon rekam medisnya, skor kemiripan, dan alasannya — bukan sebagai
+  peringatan yang dapat dilewati tanpa dibaca. Tombol melanjutkannya berbunyi
+  "Saya sudah memeriksa — ini orang yang berbeda", bukan "Lanjutkan".
+
+- **Alergi berat ditampilkan sebelum apa pun yang lain** pada kartu pasien,
+  dengan bingkai mencolok.
+
+- **Tanda tangan diperingatkan SEBELUM ditekan.** Dialog menyebutkan bahwa
+  isinya terkunci permanen dan perubahan hanya lewat amandemen yang catatan
+  aslinya tetap terbaca.
+
+- **Catatan ditampilkan sebagai rantai**: yang asli lebih dahulu, amandemennya
+  menyusul dengan garis tepi berbeda dan alasannya terlihat. Pembaca melihat
+  apa yang semula ditulis dan apa yang kemudian dikoreksi, bukan hanya versi
+  terakhirnya.
+
+- **Rekap penagihan harian ada di layar antrean.** Petugas yang melihat
+  "12 dari 14 tertagih" akan bertanya soal dua sisanya hari itu juga, bukan
+  pada akhir bulan ketika tagihannya sudah terbit.
+
+### Diverifikasi di peramban
+Masuk sebagai pengguna dengan peran kesehatan, lalu:
+- layar Pasien memuat, pencarian sungguhan mengembalikan tujuh rekam medis
+  beserta nomor rekam medis, umur, dan tingkat keyakinan identitasnya;
+- keterangan cakupan pencarian tampil sebagaimana dimaksud;
+- layar Antrean memuat beserta rekap penagihan harian.
+
+Pengguna demo dan datanya dibersihkan sesudahnya.
+
 ## H-2/H-3 lanjutan — Endpoint, penyemaian menu, dan bukti alur
 
 Melengkapi H-2 dan H-3 agar benar-benar dapat dipakai, bukan hanya berupa skema.

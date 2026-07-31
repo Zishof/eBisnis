@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, Outlet} from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { PublicLayout } from '../pages/public/PublicLayout';
 import { HomePage } from '../pages/public/HomePage';
@@ -26,6 +26,7 @@ import { InternalTransferPage } from '../pages/app/InternalTransferPage';
 import { SampleDataPage } from '../pages/app/SampleDataPage';
 import { SubscriptionPage } from '../pages/app/SubscriptionPage';
 import { ComingSoonPage } from '../pages/app/ComingSoonPage';
+import { PurposeProvider } from '../verticals/health/PurposeGate';
 import { RequireAuth } from './RequireAuth';
 import { LoadingState } from '../components/ui';
 
@@ -66,6 +67,21 @@ const ProposalPage = lazy(() =>
 const PksPage = lazy(() => import('../pages/public/PksPage').then((m) => ({ default: m.PksPage })));
 const PenawaranPage = lazy(() =>
   import('../pages/public/PenawaranPage').then((m) => ({ default: m.PenawaranPage })),
+);
+
+// Vertical kesehatan. Dimuat terpisah: sebagian besar penyewa bukan fasilitas
+// kesehatan, dan tidak ada alasan mereka mengunduh layar rekam medis.
+const HealthFacilityPage = lazy(() =>
+  import('../verticals/health/FacilityPage').then((m) => ({ default: m.FacilityPage })),
+);
+const HealthPatientPage = lazy(() =>
+  import('../verticals/health/PatientPage').then((m) => ({ default: m.PatientPage })),
+);
+const HealthQueuePage = lazy(() =>
+  import('../verticals/health/QueuePage').then((m) => ({ default: m.QueuePage })),
+);
+const HealthEncounterPage = lazy(() =>
+  import('../verticals/health/EncounterPage').then((m) => ({ default: m.EncounterPage })),
 );
 
 const BelanjaHomePage = lazy(() =>
@@ -160,6 +176,19 @@ export function App() {
           <Route path="subscription/checkout" element={<SubscriptionPage tab="checkout" />} />
           <Route path="subscription/invoices" element={<SubscriptionPage tab="invoices" />} />
           <Route path="marketplace/aktivasi" element={<MarketplaceActivationPage />} />
+
+          {/*
+            eMedik. Seluruh layar yang menyentuh rekam medis berada di bawah
+            PurposeProvider, sehingga tujuan penggunaan selalu terbawa pada
+            setiap pembacaan — tajuk yang harus diingat di dua puluh tempat
+            adalah tajuk yang akan terlupa di salah satunya.
+          */}
+          <Route path="emedik" element={<PurposeProvider><Outlet /></PurposeProvider>}>
+            <Route path="fasilitas" element={<HealthFacilityPage />} />
+            <Route path="pasien" element={<HealthPatientPage />} />
+            <Route path="pendaftaran" element={<HealthQueuePage />} />
+            <Route path="kunjungan/:id" element={<HealthEncounterPage />} />
+          </Route>
           <Route path="*" element={<ComingSoonPage />} />
         </Route>
 
