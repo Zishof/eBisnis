@@ -47,6 +47,8 @@ export const ar: TranslationSchema = {
   },
   nav: {
     ...en.nav,
+    presentation: 'العرض التقديمي',
+    proposal: 'المقترح',
     home: 'الرئيسية',
     features: 'المزايا',
     modules: 'الوحدات',

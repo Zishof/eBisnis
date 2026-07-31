@@ -55,6 +55,19 @@ const PlatformSamplePage = lazy(() =>
   import('../pages/platform/PlatformSamplePage').then((m) => ({ default: m.PlatformSamplePage })),
 );
 
+// Empat dokumen penawaran dimuat terpisah: isinya panjang, dan sebagian besar
+// pengunjung beranda tidak membukanya.
+const PresentasiPage = lazy(() =>
+  import('../pages/public/PresentasiPage').then((m) => ({ default: m.PresentasiPage })),
+);
+const ProposalPage = lazy(() =>
+  import('../pages/public/ProposalPage').then((m) => ({ default: m.ProposalPage })),
+);
+const PksPage = lazy(() => import('../pages/public/PksPage').then((m) => ({ default: m.PksPage })));
+const PenawaranPage = lazy(() =>
+  import('../pages/public/PenawaranPage').then((m) => ({ default: m.PenawaranPage })),
+);
+
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
 );
@@ -78,6 +91,10 @@ export function App() {
             element={isMarketplaceHost() ? <Navigate to="/belanja" replace /> : <HomePage />}
           />
           <Route path="/harga" element={<PricingPage />} />
+          <Route path="/presentasi" element={<PresentasiPage />} />
+          <Route path="/proposal" element={<ProposalPage />} />
+          <Route path="/pks" element={<PksPage />} />
+          <Route path="/penawaran" element={<PenawaranPage />} />
           <Route path="/berita" element={<NewsListPage />} />
           <Route path="/berita/:slug" element={<NewsDetailPage />} />
           <Route path="/kontak" element={<ContactPage />} />

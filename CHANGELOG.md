@@ -5,6 +5,40 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Beranda rinci dan empat dokumen penawaran
+
+### Ditambahkan
+- **Beranda** kini menjelaskan produknya, bukan hanya menyapa. Sepuluh bagian
+  baru: empat masalah yang hendak diselesaikan, kemampuan per modul dengan
+  penanda tahap, tiga aplikasi pendamping yang sudah dirilis, tabel perbandingan
+  dengan pendekatan lain, skema harga lengkap beserta simulasinya, dua pola
+  pemanfaatan, peta jalan, metodologi, dan indikator keberhasilan.
+- **`/presentasi`** — presentasi daring 23 slide yang dapat dijalankan langsung di
+  layar rapat. Panah kiri-kanan berpindah slide, F membuka layar penuh, titik
+  penunjuk dapat diklik untuk melompat.
+- **`/proposal`** — proposal delapan bab, siap cetak.
+- **`/pks`** — draf Perjanjian Kerja Sama sebelas pasal, siap dibahas tim legal.
+  Bagian yang perlu diisi ditampilkan sebagai isian kosong, bukan diisi otomatis
+  dengan data penyewa — perjanjian yang terisi otomatis mudah ditandatangani
+  tanpa dibaca.
+- **`/penawaran`** — surat penawaran resmi satu halaman, siap cetak.
+- `content/solusi.ts` sebagai sumber tunggal bagi kelima halaman itu, dan
+  `content/solusi.spec.ts` (13 pengujian) yang menjaganya.
+
+### Catatan
+- Setiap kemampuan menyatakan tahapnya: **sudah berjalan**, **sedang dibangun**,
+  atau **rencana**. POS Web disebut sebagai sedang dibangun, bukan sebagai yang
+  sudah tersedia. Sebuah pengujian gagal bila suatu saat seluruh butir berubah
+  menjadi "sudah berjalan" sekaligus, supaya perubahan seperti itu harus
+  dilakukan secara sadar.
+- Angka simulasi biaya diuji terhadap tarif berjenjangnya (`s.pos === outlet ×
+  (POS pertama + POS tambahan)`), sehingga harga yang disunting tanpa
+  memperbarui simulasinya akan tertangkap sebelum sampai ke calon penyewa.
+
+### Diperbaiki
+- Beranda tidak lagi menjadi halaman galat kosong ketika API CMS bermasalah.
+  Galatnya disebutkan di atas, dan keterangan produk di bawahnya tetap terbaca.
+
 ## Pilihan data contoh saat mendaftar dan pengelolaannya
 
 ### Ditambahkan

@@ -71,8 +71,10 @@ export function PublicLayout() {
     site?.navigation.find((nav) => nav.location === 'HEADER')?.items ?? [
       { labelKey: 'nav.home', label: t('nav.home'), url: '/', sortOrder: 1 },
       { labelKey: 'nav.pricing', label: t('nav.pricing'), url: '/harga', sortOrder: 2 },
-      { labelKey: 'nav.news', label: t('nav.news'), url: '/berita', sortOrder: 3 },
-      { labelKey: 'nav.contact', label: t('nav.contact'), url: '/kontak', sortOrder: 4 },
+      { labelKey: 'nav.presentation', label: t('nav.presentation'), url: '/presentasi', sortOrder: 3 },
+      { labelKey: 'nav.proposal', label: t('nav.proposal'), url: '/proposal', sortOrder: 4 },
+      { labelKey: 'nav.news', label: t('nav.news'), url: '/berita', sortOrder: 5 },
+      { labelKey: 'nav.contact', label: t('nav.contact'), url: '/kontak', sortOrder: 6 },
     ];
 
   const currentLocale =

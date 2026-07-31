@@ -37,6 +37,8 @@ export const en: TranslationSchema = {
     required: 'Required',
   },
   nav: {
+    presentation: 'Presentation',
+    proposal: 'Proposal',
     home: 'Home',
     features: 'Features',
     modules: 'Modules',
