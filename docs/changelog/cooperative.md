@@ -5,6 +5,95 @@ menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
 ---
 
+## K-10 — Peran, bantuan, data contoh, dan AI
+
+### Ditambahkan
+
+- **`rbac/cooperative-rbac.catalog.ts`** — 19 menu, **74 hak akses**, 9 peran,
+  dan 6 pasangan pemisahan wewenang. Bentuknya mengikuti usulan IR-004.
+  **29 pengujian.**
+- **`cooperative-sample.ts`** — pemisahan data acuan dari data contoh beserta
+  urutan penghapusannya. **20 pengujian.**
+- **`ai/cooperative-ai.catalog.ts`** — 8 keperluan AI dalam bentuk `AiUseCase`
+  milik Core, beserta **6 keperluan yang sengaja ditolak** dan alasannya.
+  **29 pengujian.**
+- **`apps/web/src/verticals/cooperative/bantuan.ts`** + `PanelBantuan.tsx` —
+  bantuan untuk 11 layar koperasi. **16 pengujian.**
+- **`prove-cooperative-k10.mjs`** — **33 pemeriksaan** pada basis data
+  sungguhan, seluruhnya lulus.
+
+### Keputusan yang perlu dicatat
+
+- **Tidak ada izin `DELETE` di seluruh katalog.** Bukan kelalaian: tidak ada
+  satu pun catatan koperasi yang boleh dihapus. Anggota berhenti, pinjaman
+  dihapusbukukan, pengaduan ditutup, kebijakan diganti versinya — semuanya
+  perubahan status yang menyisakan barisnya. Izin `DELETE` adalah izin
+  menghilangkan jejak, dan koperasi tempat yang jejaknya paling perlu bertahan.
+- **Pemisahan wewenang dinyatakan sebagai data, bukan sebagai kebiasaan.**
+  Enam pasangan izin yang tidak boleh dipegang satu orang tercatat di
+  `KONFLIK_WEWENANG` beserta alasannya, dan pengujian memeriksa bahwa tidak
+  satu pun peran bawaan melanggarnya. Koperasi mengelola uang anggotanya
+  sendiri dengan petugas yang sedikit dan saling mengenal — di sanalah
+  pemisahan paling mudah luntur, dan "sementara saja, orangnya sedang cuti"
+  adalah kalimat yang mendahului sebagian besar penyimpangan koperasi.
+- **Peran anggota terpisah sama sekali dari peran petugas, dua arah.** Portal
+  dibuka kepada ratusan orang; satu izin pengurus yang bocor ke sana bocor
+  kepada mereka semua sekaligus. Sebaliknya, petugas yang memegang
+  `COOPERATIVE_PORTAL.READ` akan lolos pemeriksaan portal — dan portal
+  menganggap pemanggilnya adalah anggota.
+- **Pengawas hanya `READ` dan `EXPORT`.** Pengawas yang dapat mengubah data
+  tidak lagi dapat mengawasinya; ia menjadi pihak yang perlu diawasi.
+- **Peran dan hak akses bertanda `REFERENCE`, tidak pernah ikut terhapus.**
+  Menghapusnya mengunci pengurus keluar dari koperasinya sendiri, dan tidak
+  ada yang tersisa untuk memulihkannya.
+- **Pembersihan data contoh menyaring pada awalan kode, bukan pada tanggal
+  maupun tanda `is_sample`.** Tanggal tidak membedakan apa pun bila penyewa
+  mulai memakai sistemnya pada hari yang sama, dan `is_sample` dapat tertulis
+  pada baris sungguhan karena kekeliruan — sekali itu terjadi, pembersihan
+  berikutnya menghapus data sungguhan tanpa ada yang menyadarinya. Dibuktikan
+  pada basis data dengan menyelipkan empat baris sungguhan berkode mirip
+  (`TOKO-CONTOH-RASA`, `contoh-` huruf kecil) di antara enam baris contoh:
+  keempatnya bertahan.
+- **AI tidak pernah bertindak, dan itu ditegakkan bentuk.** `outputKind` hanya
+  mengenal `DRAFT`, `ANALYSIS`, `RECOMMENDATION`; tidak ada nilai yang berarti
+  "kerjakan". Seluruh keperluan beraksi `READ` dan tidak satu pun menyimpan
+  isi promptnya.
+- **Enam keperluan AI sengaja ditolak dan alasannya dicatat**, supaya tidak
+  diusulkan lagi setiap beberapa bulan. Yang terpenting: **keputusan kelayakan
+  pinjaman** — penolakan pinjaman menyangkut penghidupan seseorang, dan
+  alasannya harus dapat dijelaskan pengurus kepada anggota yang menanyakannya;
+  "menurut sistem" bukan penjelasan. Dan **penilaian karakter anggota** —
+  menyimpulkan sifat seseorang dari riwayat pembayarannya adalah penilaian
+  tentang orang, bukan tentang angka, sedangkan koperasi dibangun di atas
+  kepercayaan antaranggota.
+- **Ringkasan berkas pinjaman diuji agar TIDAK menyimpulkan kelayakan** —
+  skema keluarannya diperiksa tidak memuat kata "layak", "disetujui",
+  "ditolak", maupun "skor".
+- **Bantuan menjawab tiga hal, dan yang ketiga paling sering dilewatkan:**
+  layar ini untuk apa, bagaimana memakainya, dan **apa yang tidak dapat diubah
+  setelah dikerjakan**. Bagian ketiga itu selalu terbuka di panelnya sementara
+  langkahnya dapat dilipat — yang menyebabkan kerugian bukan orang yang tidak
+  tahu caranya (ia akan bertanya) melainkan orang yang mengerjakan sesuatu
+  tanpa tahu bahwa hal itu tidak dapat ditarik kembali.
+- **Bantuan diuji agar tidak memakai istilah teknis perangkat lunak.**
+  Pengurus koperasi berganti tiap periode kepengurusan, dan yang baru mewarisi
+  sistem tanpa mewarisi orang yang tahu cara memakainya.
+
+### Yang TIDAK dikerjakan, dan alasannya
+
+- **Katalog RBAC belum disemai ke basis data** — menunggu IR-004. Sampai saat
+  itu setiap endpoint `COOPERATIVE_*` menolak permintaan dari penyewa
+  sungguhan. Itu keadaan yang benar; melonggarkan penjaganya "sementara" akan
+  menghasilkan kelonggaran yang tetap tinggal setelah IR disetujui.
+- **Keperluan AI belum terdaftar** pada `AI_USE_CASES` milik Core — berkas
+  bersama yang dilarang disunting sesi ini (§3). Penggabungannya cukup satu
+  sebaran `...COOPERATIVE_AI_USE_CASES`.
+- **Data contoh belum benar-benar disemai.** Yang dibuat adalah definisi
+  kelompok, sifat, urutan, dan penyaringnya — bagian yang salahnya paling
+  mahal. Penyemaian barisnya menunggu IR-001 (migrasi diterapkan ke penyewa).
+
+---
+
 ## K-9 — Situs koperasi dan portal anggota
 
 Fase pertama yang menghasilkan layar, dan fase pertama yang permukaannya
