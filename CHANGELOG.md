@@ -5,6 +5,66 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Layar kasir dapat dipasang dan katalognya tersalin ke mesin kasir
+
+Fase 1 dan 2 dari rencana kasir luring: aplikasi dapat dipasang seperti aplikasi
+biasa, dan katalog produk disalin ke mesin kasir supaya pencarian serta
+pemindaian tetap bekerja ketika peladen tidak menjawab.
+
+### Ditambahkan
+- **Layar kasir dapat dipasang** (`vite-plugin-pwa`, mode `generateSW`). Manifest
+  membuka langsung pada `/app/pos`, berorientasi mendatar, dengan cangkang
+  aplikasi tercache — 35 berkas, 817 KiB. Mesin kasir yang kehilangan internet
+  kini tetap membuka layar kasir, bukan halaman galat peramban.
+- **`GET /pos/catalog/snapshot`** — produk beserta **seluruh** barcode (utama dan
+  alternatif dalam satu larik), tarif pajak, dan metode pembayaran dalam satu
+  jawaban. `catalog/search` yang sudah ada hanya mengembalikan barcode utama;
+  salinan yang dibangun darinya akan menolak barang yang di peladen dikenali,
+  dan kasir tidak akan pernah tahu bahwa penyebabnya salinan, bukan barangnya.
+- **Indikator sambungan yang membedakan empat keadaan**, bukan dua. `TERBATAS` —
+  jaringan tersambung tetapi peladen tidak menjawab — dipisahkan dari `LURING`
+  karena keduanya menuntut tindakan berbeda dari kasir, dan `navigator.onLine`
+  tidak dapat membedakannya.
+- **Salinan katalog di IndexedDB**, pada basis data tersendiri
+  (`ebisnis-pos-katalog`), terpisah dari buku transaksi lokal. Katalog boleh
+  hilang dan tinggal disalin ulang; buku transaksi tidak. Menyatukannya berarti
+  setiap pembersihan cache mengancam yang tidak tergantikan demi membereskan
+  yang tergantikan. Salinan membawa `tenantId` dan dibuang bila mesin yang sama
+  dipakai masuk ke tenant lain.
+- **Batas umur per jenis data**, dipilih menurut akibat bila salah, bukan menurut
+  seberapa sering datanya berubah: harga dan pajak 12 jam, produk dan barcode 7
+  hari. Salinan yang melewati batasnya **tidak dipakai sama sekali**.
+- **34 uji baru** pada aturan sambungan, kesegaran katalog, dan penerapan
+  pembaruan (web: 35 → 69).
+- **`apps/web/scripts/buat-ikon-pwa.mjs`** — ikon dibuat dari kode, bukan berkas
+  biner yang dilempar ke repositori, supaya perubahannya terbaca pada permintaan
+  tarik dan mudah diganti ketika logo resmi tersedia.
+
+### Keputusan
+- **Permintaan API tidak pernah di-cache service worker** (`runtimeCaching: []`,
+  `navigateFallbackDenylist` untuk `/api` dan `/health`). Harga atau stok yang
+  dilayani dari cache membuat kasir menjual dengan angka yang sudah tidak
+  berlaku, dan tidak ada satu pun galat yang muncul saat itu terjadi.
+- **Pembaruan aplikasi ditunda selama keranjang terbuka.** Memuat ulang di tengah
+  transaksi menghapus keranjang yang barangnya sudah dipindai satu per satu, di
+  depan pembeli yang sedang menunggu. Juga ditunda selama masih ada transaksi
+  yang belum terkirim ke peladen: yang tahu cara membaca antrean itu adalah versi
+  yang menulisnya.
+- **Katalog yang terpotong disebutkan dengan angkanya** — "4.999 dari 12.480",
+  bukan "sebagian produk tidak tersalin". Katalog yang dipotong diam-diam membuat
+  barang tampak tidak ada tanpa satu pun keterangan di layar.
+- **Salinan lokal hanya dipakai saat peladen tidak menjawab.** Selama daring,
+  peladen tetap satu-satunya sumber harga.
+- **Ikon maskable memakai berkas tersendiri** yang penuh sampai ke tepi. Peluncur
+  Android memotong sendiri ikon maskable; ikon yang sudah membulat akan dipotong
+  dua kali dan mengambang di dalam bentuk potongan peluncur.
+
+### Belum termasuk
+- **Menjual saat luring belum aktif.** Salinan katalog dipakai untuk memeriksa
+  harga dan nama barang; memasukkannya ke keranjang masih memerlukan peladen, dan
+  layar mengatakannya apa adanya. Tiga keputusan usaha masih menunggu jawaban
+  sebelum penjualan luring dapat dibuka: kebijakan stok saat luring, pembagian
+  blok nomor struk per register, dan pembekuan harga.
 ## Kasir menerima pembayaran bersaldo eksternal
 
 Menyelesaikan IR-002. Registri penangannya sudah ada sejak penggabungan

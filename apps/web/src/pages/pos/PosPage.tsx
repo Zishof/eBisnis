@@ -31,11 +31,25 @@ import {
   X,
 } from 'lucide-react';
 import { api, formatMoney } from '../../lib/api';
-import { useErrorMessage } from '../../app/auth-context';
+import { useAuth, useErrorMessage } from '../../app/auth-context';
 import { LoadingState, useToast } from '../../components/ui';
 import { PosShiftBar } from './PosShiftBar';
 import { PosPaymentDialog } from './PosPaymentDialog';
+import { PosStatusLuring } from '../../pos-offline/PosStatusLuring';
+import { useKatalogLuring } from '../../pos-offline/useKatalogLuring';
+import { useKoneksi } from '../../pos-offline/useKoneksi';
+import { useServiceWorker } from '../../pos-offline/useServiceWorker';
 import type { KeranjangPos, KonteksPos, ProdukPos } from './pos-types';
+
+/**
+ * Medan yang dibutuhkan satu ubin produk.
+ *
+ * Dipakai supaya hasil dari peladen dan hasil dari salinan lokal dapat mengisi
+ * kisi yang sama tanpa salah satunya dipaksa menyerupai yang lain — keduanya
+ * memang membawa medan yang berbeda, dan menyamakannya hanya akan menyembunyikan
+ * perbedaan yang justru penting (salinan lokal tidak tahu sisa stok).
+ */
+type UbinProduk = Pick<ProdukPos, 'productId' | 'name' | 'sku' | 'price' | 'currencyCode'>;
 
 export function PosPage() {
   const { t } = useTranslation();
@@ -66,6 +80,23 @@ export function PosPage() {
     queryKey: ['pos', 'context'],
     queryFn: () => api.get<KonteksPos>('/pos/context'),
   });
+
+  // --- Luring --------------------------------------------------------------
+  const { user } = useAuth();
+  const koneksi = useKoneksi();
+  const daring = koneksi.state === 'DARING';
+  const katalog = useKatalogLuring({
+    tenantId: user?.tenant?.tenantId ?? null,
+    daring,
+    aktif: true,
+  });
+  /*
+   * `antreanBelumTerkirim` masih nol karena penjualan luring belum diaktifkan —
+   * tiga keputusan usaha (kebijakan stok, blok nomor struk, pembekuan harga)
+   * masih menunggu jawaban. Nilainya tetap dilewatkan, bukan dihilangkan, supaya
+   * aturan penundaan pembaruan sudah terpasang sebelum antrean itu ada.
+   */
+  const sw = useServiceWorker({ keranjangTerbuka: Boolean(saleId), antreanBelumTerkirim: 0 });
 
   // Outlet dan register dipilih otomatis bila hanya ada satu. Kasir yang setiap
   // pagi memilih dari daftar berisi satu pilihan hanya diperlambat.
@@ -198,6 +229,36 @@ export function PosPage() {
     },
   });
 
+  /**
+   * Pindaian saat peladen tidak menjawab.
+   *
+   * Tidak mencoba mengirim permintaan yang sudah pasti gagal. Kasir mendapat
+   * nama dan harga barangnya dari salinan lokal — itu yang sebenarnya sering
+   * ditanyakan pembeli — beserta kalimat yang menyebutkan bahwa barangnya belum
+   * masuk keranjang, supaya tidak ada yang mengira transaksinya sudah tercatat.
+   */
+  const pindaiLokal = useCallback(
+    (kode: string) => {
+      const p = katalog.barcodeLokal(kode);
+      if (p) {
+        toast.push(
+          `${p.name} — ${formatMoney(Number(p.price ?? 0), p.currencyCode ?? 'IDR')}. ` +
+            'Peladen belum menjawab, jadi barang ini BELUM masuk keranjang.',
+          'info',
+        );
+      } else {
+        toast.push(
+          `Barcode ${kode} tidak ada pada salinan di mesin ini. Bisa jadi barangnya ada di ` +
+            'peladen tetapi belum tersalin; coba lagi setelah peladen menjawab.',
+          'error',
+        );
+      }
+      setPindai('');
+      fokusPindai();
+    },
+    [katalog, toast, fokusPindai],
+  );
+
   // Pintasan papan ketik. F9 membayar, F6 menahan, Esc menutup dialog.
   useEffect(() => {
     const pada = (e: KeyboardEvent) => {
@@ -217,7 +278,39 @@ export function PosPage() {
   }, [saleId, tahan]);
 
   const baris = keranjang.data?.lines ?? [];
-  const daftarProduk = kataKunci.trim().length >= 2 ? cari.data : favorit.data;
+
+  /*
+   * Salinan lokal dipakai **hanya** ketika peladen tidak menjawab. Selama
+   * daring, peladen tetap satu-satunya sumber: harga yang terlihat kasir harus
+   * harga yang berlaku, bukan harga yang kebetulan tersalin pagi tadi.
+   *
+   * Salinan yang sudah melewati batas umurnya tidak dipakai sama sekali. Lebih
+   * baik layar mengatakan katalognya basi daripada menampilkan angka yang tidak
+   * dapat dipertanggungjawabkan — angka yang salah tidak menimbulkan galat apa
+   * pun, dan itulah yang membuatnya berbahaya.
+   */
+  const pakaiLokal = !daring && Boolean(katalog.salinan) && katalog.siap;
+
+  /*
+   * Katalog boleh dicari tanpa keranjang terbuka ketika salinan lokal yang
+   * dipakai.
+   *
+   * Semula seluruh area katalog terkunci di balik keranjang, dan itu masuk akal
+   * selama segalanya menuntut peladen. Dengan salinan lokal ia tidak lagi masuk
+   * akal — dan akibatnya justru terbalik: ketika peladen mati, keranjang tidak
+   * dapat dibuka, sehingga kasir bahkan tidak dapat menjawab "berapa harga ini?"
+   * padahal jawabannya ada di mesin di depannya. Pertanyaan itulah yang paling
+   * sering datang justru saat sistemnya sedang bermasalah.
+   */
+  const bolehCari = Boolean(saleId) || pakaiLokal;
+  const adaKunci = kataKunci.trim().length >= 2;
+  const daftarProduk: UbinProduk[] | undefined = pakaiLokal
+    ? adaKunci
+      ? katalog.cariLokal(kataKunci)
+      : (katalog.salinan?.produk ?? []).slice(0, 18)
+    : adaKunci
+      ? cari.data
+      : favorit.data;
   const siapBayar = useMemo(
     () => Boolean(saleId) && baris.length > 0 && Number(keranjang.data?.grand_total ?? 0) > 0,
     [saleId, baris.length, keranjang.data],
@@ -241,6 +334,10 @@ export function PosPage() {
         }}
       />
 
+      <div className="border-b border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+        <PosStatusLuring koneksi={koneksi} katalog={katalog} sw={sw} />
+      </div>
+
       <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 lg:grid-cols-[1fr_26rem]">
         {/* --- Katalog ------------------------------------------------------ */}
         <section className="flex min-h-0 flex-col rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900">
@@ -257,14 +354,14 @@ export function PosPage() {
                 value={pindai}
                 onChange={(e) => setPindai(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && pindai.trim() && saleId) {
-                    e.preventDefault();
-                    denganBarcode.mutate(pindai.trim());
-                  }
+                  if (e.key !== 'Enter' || !pindai.trim()) return;
+                  e.preventDefault();
+                  if (pakaiLokal) pindaiLokal(pindai.trim());
+                  else if (saleId) denganBarcode.mutate(pindai.trim());
                 }}
                 placeholder="Pindai barcode di sini (F2)"
                 autoFocus
-                disabled={!saleId}
+                disabled={!bolehCari}
                 className="field-input w-full ps-9 text-lg"
                 aria-label="Kotak pindai barcode"
               />
@@ -274,13 +371,13 @@ export function PosPage() {
               value={kataKunci}
               onChange={(e) => setKataKunci(e.target.value)}
               placeholder="Cari nama atau SKU"
-              disabled={!saleId}
+              disabled={!bolehCari}
               className="field-input w-56"
               aria-label="Cari produk"
             />
           </div>
 
-          {!saleId && (
+          {!saleId && !pakaiLokal && (
             <div className="mt-6 flex flex-1 flex-col items-center justify-center gap-3 text-center">
               <ShoppingCart className="h-10 w-10 text-slate-300" aria-hidden />
               <p className="text-slate-500 dark:text-slate-400">
@@ -304,14 +401,37 @@ export function PosPage() {
             </div>
           )}
 
-          {saleId && (
+          {pakaiLokal && (
+            /*
+              Disebutkan terang-terangan bahwa daftar ini berasal dari salinan,
+              dan bahwa memasukkannya ke keranjang masih menuntut peladen.
+              Kasir yang mengetuk ubin lalu tidak terjadi apa-apa akan mengira
+              layarnya rusak; kalimat ini mendahului kebingungan itu.
+            */
+            <p className="mt-3 rounded-md bg-slate-100 px-2.5 py-1.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              Daftar ini dari salinan di mesin ini, dipakai untuk memeriksa harga dan
+              ketersediaan nama barang.{' '}
+              {saleId
+                ? 'Memasukkannya ke keranjang masih memerlukan peladen.'
+                : 'Keranjang baru belum dapat dibuka selama peladen tidak menjawab.'}
+            </p>
+          )}
+
+          {!daring && !pakaiLokal && (
+            <p className="mt-3 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+              Peladen tidak menjawab dan salinan katalog di mesin ini belum dapat dipakai.
+              Lihat keterangannya pada batang status di atas.
+            </p>
+          )}
+
+          {bolehCari && (
             <div className="mt-3 grid flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 xl:grid-cols-4">
               {(daftarProduk ?? []).map((p) => (
                 <button
                   key={p.productId}
                   type="button"
                   onClick={() => tambah.mutate({ productId: p.productId, quantity: 1 })}
-                  disabled={tambah.isPending}
+                  disabled={tambah.isPending || pakaiLokal}
                   className="flex min-h-[5.5rem] flex-col justify-between rounded-lg border border-slate-200 p-3 text-start transition hover:border-brand-400 hover:bg-brand-50 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-brand-950/30"
                 >
                   <span className="line-clamp-2 text-sm font-medium">{p.name}</span>
