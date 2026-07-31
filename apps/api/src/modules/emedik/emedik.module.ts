@@ -40,6 +40,7 @@ import { HealthAcuteService } from './health-acute.service';
 import { HealthCommunityService } from './health-community.service';
 import { HealthHimService } from './health-him.service';
 import { HealthMasterDataService } from './health-master-data.service';
+import { HealthAccountingService } from './health-accounting.service';
 import { HealthClinicalController } from './health-clinical.controller';
 import { HealthPharmacyController } from './health-pharmacy.controller';
 import { HealthLabController } from './health-lab.controller';
@@ -48,6 +49,7 @@ import { HealthAcuteController } from './health-acute.controller';
 import { HealthCommunityController } from './health-community.controller';
 import { HealthHimController } from './health-him.controller';
 import { HealthMasterDataController } from './health-master-data.controller';
+import { HealthAccountingController } from './health-accounting.controller';
 import {
   CoreAuditAdapter,
   CoreIdentityAdapter,
@@ -385,7 +387,7 @@ export class HealthController {
 
 @Module({
   imports: [InfrastructureModule, AuthModule],
-  controllers: [HealthController, HealthClinicalController, HealthPharmacyController, HealthLabController, HealthInpatientController, HealthAcuteController, HealthCommunityController, HealthHimController, HealthMasterDataController],
+  controllers: [HealthController, HealthClinicalController, HealthPharmacyController, HealthLabController, HealthInpatientController, HealthAcuteController, HealthCommunityController, HealthHimController, HealthMasterDataController, HealthAccountingController],
   providers: [
     HealthFacilityService,
     HealthPatientService,
@@ -397,6 +399,7 @@ export class HealthController {
     HealthCommunityService,
     HealthHimService,
     HealthMasterDataService,
+    HealthAccountingService,
     CoreIdentityAdapter,
     CoreAuditAdapter,
     CoreNotificationAdapter,
@@ -420,6 +423,7 @@ export class HealthController {
     HealthCommunityService,
     HealthHimService,
     HealthMasterDataService,
+    HealthAccountingService,
     IDENTITY_PORT,
     AUDIT_PORT,
     NOTIFICATION_PORT,

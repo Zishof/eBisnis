@@ -235,6 +235,29 @@ describe('peran kesehatan', () => {
     expect(mengaktifkan).toEqual(['HEALTH_ADMIN']);
   });
 
+  it('petugas keuangan TIDAK dapat membaca rekam medis pasien', () => {
+    /*
+     * Ia perlu tahu bahwa pendapatan laboratorium masuk ke akun 4160; ia tidak
+     * perlu tahu siapa yang diperiksa. Menggabungkan keduanya adalah cara
+     * paling sunyi untuk membocorkan seluruh riwayat pasien: jejaknya tenggelam
+     * di antara ribuan pembacaan yang sah.
+     */
+    const keuangan = HEALTH_ROLES.find((r) => r.code === 'HEALTH_FINANCE_OFFICER');
+    expect(keuangan?.permissions).toContain('HEALTH_ACCOUNTING_MAP.UPDATE');
+    expect(keuangan?.permissions.some((p) => p.startsWith('HEALTH_PATIENT'))).toBe(false);
+  });
+
+  it('yang memetakan akuntansi bukan yang mengaktifkan profilnya', () => {
+    const memetakan = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_ACCOUNTING_MAP.UPDATE'),
+    ).map((r) => r.code);
+    const mengaktifkan = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_ACCOUNTING_MAP.ACTIVATE'),
+    ).map((r) => r.code);
+    expect(memetakan).toEqual(['HEALTH_FINANCE_OFFICER']);
+    expect(mengaktifkan).toEqual(['HEALTH_ADMIN']);
+  });
+
   it('penghapusan data contoh hanya dipegang administrator', () => {
     // Penghapusannya menolak bila ada data nyata yang merujuknya, dan keputusan
     // atas penolakan itu harus diambil orang yang dapat menilai akibatnya.

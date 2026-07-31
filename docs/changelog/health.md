@@ -5,6 +5,67 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9N — Pemetaan akuntansi kesehatan
+
+### Ditambahkan
+
+- **`H020__health__accounting_map.sql`** — `health_accounting_profile`,
+  `health_account_link`, `health_accounting_rule`, `health_coa_template`.
+  Beserta trigger `check_health_account_link` dan constraint
+  `health_rule_amount_key_plain`, `health_rule_sides_differ`. Templat bagan akun
+  kesehatan disemai sebagai **data**: 36 akun beserta peran dan saldo normalnya.
+- **`H021__health__accounting_permissions.sql`** — satu menu, satu peran baru
+  (Petugas Keuangan Rumah Sakit), satu aturan pemisahan wewenang.
+- **`health-accounting.ts`** — aturan sebagai fungsi murni: golongan dan saldo
+  normal peran, katalog tiga belas peristiwa kesehatan, kelengkapan profil,
+  kelayakan penautan akun, kelayakan aturan, kesiapan menjurnal, dan selisih
+  klaim. **45 pengujian.**
+- **`health-accounting.service.ts`** dan **`health-accounting.controller.ts`** —
+  sepuluh jalan pada `/api/v1/health/accounting/**`.
+- **`prove-health-accounting.mjs`** — naskah bukti, **56 pemeriksaan**,
+  seluruhnya lulus dan lulus pula pada pengulangan.
+
+Uji: API 1602 → **1649**.
+
+### Keputusan yang perlu dicatat
+
+- **Aturan pertama: jangan membuat buku besar kedua.** Tidak ada tabel jurnal,
+  saldo, maupun neraca di sini. Naskah buktinya memeriksa hal itu secara
+  harfiah — ia menghitung tabel `health*journal*`, `health*ledger*`,
+  `health*balance*` dan menuntut nol, lalu memakai seluruh modul dan menuntut
+  `journal_entry` serta `accounting_event` tidak bertambah satu baris pun.
+
+- **Peran akun, bukan nomor akun.** Rumah sakit yang memakai bagan akun berbeda
+  mengubah tautannya, bukan kodenya.
+
+- **Saldo normal akun harus cocok dengan golongan perannya**, ditegakkan
+  trigger. Menautkan pendapatan ke akun bersaldo normal debit akan menghasilkan
+  pendapatan bernilai negatif pada setiap laporan. Akun induk pun ditolak.
+
+- **Medan nilai adalah nama medan, bukan rumus.** Larangan `eval` berlaku pada
+  data pula.
+
+- **Selisih klaim adalah BEBAN**, bukan pendapatan yang hilang begitu saja — ia
+  ukuran mutu pengkodean dan kelengkapan berkas. Disetujui lebih besar daripada
+  yang diajukan bukan keuntungan melainkan tanda pengajuannya keliru: ditelaah,
+  tidak dijurnal.
+
+- **Laporan kesiapan memisahkan pekerjaan kami dari yang menunggu Core.**
+
+- **Petugas keuangan tidak membaca rekam medis.** Menggabungkan keduanya adalah
+  cara paling sunyi untuk membocorkan seluruh riwayat pasien.
+
+### Masih terhalang
+
+Kode peristiwa `HEALTH_*` menunggu keputusan Core — diajukan sejak H-4. Sampai
+ia ada, penyerahan obat belum memicu pencatatan harga pokok, pendapatan layanan
+belum masuk jurnal, dan pembagian jasa belum menghasilkan utang. Konstanta
+`PERISTIWA_DITERIMA_CORE` sengaja **kosong**; mengisinya dengan tebakan akan
+membuat laporan kesiapan berkata siap sementara jurnalnya tidak akan pernah
+terbentuk.
+
+---
+
 ## H-9L — Katalog layanan, pemetaan unit, dan sumber master data
 
 ### Ditambahkan

@@ -537,6 +537,19 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'UPDATE'],
     sortOrder: 98,
   },
+  // Pemetaan akuntansi — H-9N.
+  //
+  // Bukan buku besar kedua. Menu ini menyimpan pemetaan peristiwa klinis ke
+  // akun; jurnalnya milik mesin akuntansi bersama.
+  {
+    code: 'HEALTH_ACCOUNTING_MAP',
+    parentCode: 'HEALTH',
+    label: 'Pemetaan Akuntansi',
+    route: '/app/emedik/akuntansi',
+    icon: 'calculator',
+    actions: ['READ', 'CREATE', 'UPDATE', 'ACTIVATE'],
+    sortOrder: 99,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -594,6 +607,8 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_MASTER_DATA.READ', 'HEALTH_MASTER_DATA.CREATE',
       'HEALTH_MASTER_DATA.IMPORT', 'HEALTH_MASTER_DATA.DELETE',
       'HEALTH_CODE_MAPPING.READ',
+      // Meninjau dan mengaktifkan profil akuntansi; ia tidak memetakannya.
+      'HEALTH_ACCOUNTING_MAP.READ', 'HEALTH_ACCOUNTING_MAP.ACTIVATE',
       // Administrator TIDAK diberi hak membaca rekam medis pasien. Mengelola
       // sistem tidak menuntut membaca diagnosis siapa pun, dan hak yang tidak
       // dibutuhkan adalah hak yang akan disalahgunakan.
@@ -621,6 +636,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_HIM_CODING.READ',
       'HEALTH_SERVICE_CATALOG.READ',
       'HEALTH_MASTER_DATA.READ',
+      'HEALTH_ACCOUNTING_MAP.READ',
     ],
     sortOrder: 2,
   },
@@ -1021,6 +1037,29 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_MASTER_DATA.READ',
     ],
     sortOrder: 24,
+  },
+  {
+    code: 'HEALTH_FINANCE_OFFICER',
+    name: 'Petugas Keuangan Rumah Sakit',
+    description:
+      'Memetakan peristiwa kesehatan ke akun pada bagan akun bersama. TIDAK membaca rekam ' +
+      'medis pasien dan TIDAK membuat jurnal.',
+    /*
+     * Sengaja TANPA HEALTH_PATIENT.READ.
+     *
+     * Ia perlu tahu bahwa pendapatan laboratorium masuk ke akun 4160; ia tidak
+     * perlu tahu siapa yang diperiksa. Menggabungkan wewenang keuangan dengan
+     * pembacaan rekam medis adalah cara paling sunyi untuk membocorkan seluruh
+     * riwayat pasien — jejaknya tenggelam di antara ribuan pembacaan yang sah.
+     */
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_ACCOUNTING_MAP.READ',
+      'HEALTH_ACCOUNTING_MAP.CREATE',
+      'HEALTH_ACCOUNTING_MAP.UPDATE',
+      'HEALTH_SERVICE_CATALOG.READ',
+    ],
+    sortOrder: 25,
   },
   {
     code: 'HEALTH_LEGAL_OFFICER',

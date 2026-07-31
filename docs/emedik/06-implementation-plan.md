@@ -616,6 +616,83 @@ terhalang akses resmi; volume data contoh penuh menurut profil `STANDARD`
 (1.000 obat, 1.500 tindakan, dan seterusnya) yang menunggu katalog per
 domainnya; serta layar web.
 
+### H-9N · COA dan pemetaan akuntansi — **SELESAI (strukturnya)**
+
+Templat bagan akun kesehatan, penautan peran akun ke bagan akun bersama,
+pemetaan tiga belas peristiwa kesehatan ke sisi debit dan kredit, laporan
+kesiapan, dan perhitungan selisih klaim.
+
+**Penjurnalannya tetap terhalang** — kode peristiwa `HEALTH_*` menunggu
+keputusan Core. Itu memang keadaannya, dan laporan kesiapannya mengatakannya
+terus terang alih-alih menyamarkannya.
+
+Uji ≥ 20 → **45 tercapai**, ditambah naskah bukti 56 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H020__health__accounting_map.sql`, `H021__health__accounting_permissions.sql` |
+| Aturan murni | `health-accounting.ts` + 45 pengujian |
+| Layanan | `health-accounting.service.ts` |
+| Endpoint | `health-accounting.controller.ts` — 10 jalan di `/api/v1/health/accounting/**` |
+| Katalog | `health-catalog.ts` — 1 menu, 1 peran |
+| Bukti | `scripts/prove-health-accounting.mjs` → [bukti-h9n-akuntansi.txt](bukti-h9n-akuntansi.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **Aturan pertama: jangan membuat buku besar kedua.** Tidak ada tabel jurnal,
+  tidak ada tabel saldo, tidak ada tabel neraca. Membangun buku besar kesehatan
+  tersendiri akan menghasilkan dua neraca yang tidak pernah cocok — dan yang
+  lebih buruk, dua-duanya akan tampak benar. Naskah bukti memeriksanya secara
+  harfiah: ia menghitung tabel bernama `health*journal*`, `health*ledger*`, dan
+  `health*balance*` pada skema tenant, dan menuntut hasilnya nol; lalu memakai
+  seluruh modul dari ujung ke ujung dan menuntut jumlah baris `journal_entry`
+  serta `accounting_event` tidak bertambah satu pun.
+
+- **Peran akun, bukan nomor akun.** `REVENUE_LAB` ditautkan ke akun sungguhan
+  per fasilitas. Rumah sakit yang memakai bagan akun berbeda mengubah
+  tautannya, bukan kodenya.
+
+- **Saldo normal akun harus cocok dengan golongan perannya**, ditegakkan
+  trigger. Menautkan `REVENUE_LAB` ke akun bersaldo normal debit akan
+  menghasilkan pendapatan bernilai negatif pada setiap laporan — dan yang
+  membacanya akan menyimpulkan laboratoriumnya merugi. Akun induk pun ditolak:
+  jurnal pada akun induk membuat rincian per unit hilang seluruhnya.
+
+- **Medan nilai adalah NAMA MEDAN, bukan rumus.** Ditegakkan constraint
+  `health_rule_amount_key_plain`. Rumus bebas pada data adalah pintu masuk
+  eksekusi kode yang tidak diinginkan; larangan `eval` berlaku di sini pula.
+
+- **Klaim yang disetujui kurang dari yang diajukan menghasilkan BEBAN.**
+  Selisihnya bukan pendapatan yang hilang begitu saja. Ia harus terlihat, sebab
+  ia ukuran mutu pengkodean dan kelengkapan berkas — dan yang tidak terlihat
+  tidak pernah diperbaiki. Disetujui **lebih besar** daripada yang diajukan
+  bukan keuntungan melainkan tanda pengajuannya keliru: dilaporkan untuk
+  ditelaah, tidak dijurnal diam-diam.
+
+- **Laporan kesiapan memisahkan yang belum KAMI kerjakan dari yang menunggu
+  Core.** Laporan yang menyatukan keduanya akan membuat orang menghabiskan
+  pekan mencoba mengerjakan hal yang memang tidak dapat dikerjakannya.
+
+- **Peristiwa yang tidak dipakai tidak menuntut penautan akun.** Menuntutnya
+  bagi fee sistem yang bawaannya `NONE` akan membuat seluruh daftar kekurangan
+  diabaikan.
+
+- **Petugas keuangan tidak membaca rekam medis.** Ia perlu tahu bahwa
+  pendapatan laboratorium masuk ke akun 4160; ia tidak perlu tahu siapa yang
+  diperiksa. Menggabungkan keduanya adalah cara paling sunyi untuk membocorkan
+  seluruh riwayat pasien: jejaknya akan tenggelam di antara ribuan pembacaan
+  yang sah.
+
+**Yang belum:** penjurnalannya sendiri. Kode peristiwa `HEALTH_*` sudah
+diajukan lewat [integration request 001](../integration-requests/health/) sejak
+H-4 dan belum terjawab. Sampai ia ada, penyerahan obat belum memicu pencatatan
+harga pokok, pendapatan layanan belum masuk jurnal, dan pembagian jasa belum
+menghasilkan utang. Ini penghalang yang **tidak dapat diselesaikan sesi eMedik
+sendiri**, dan menyelesaikannya dengan membuat buku besar kedua akan melanggar
+aturan pertama fase ini.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -679,7 +756,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 ```text
 1.  H-9    HIM, koding, mutu — seluruhnya milik kami          [SELESAI]
 2.  H-9L   Master data dan pemetaan unit — pondasi bagi tarif  [SELESAI]
-3.  H-9N   COA dan pemetaan akuntansi — strukturnya; jurnal menunggu port
+3.  H-9N   COA dan pemetaan akuntansi — strukturnya          [SELESAI]
 4.  H-9D   Struktur tarif berversi — isinya menunggu terbitan resmi
 5.  H-9E   Kebijakan jasa dan kontributor
 6.  H-9F   Simulasi, settlement, reversal

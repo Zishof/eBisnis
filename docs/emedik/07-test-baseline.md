@@ -73,8 +73,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-8 | 30 | **54** | `health-community.spec.ts` |
 | H-9 | 30 | **67** | `health-him.spec.ts` |
 | H-9L | 25 | **53** | `health-master-data.spec.ts` |
+| H-9N | 20 | **45** | `health-accounting.spec.ts` |
 
-API keseluruhan: **1602** pengujian pada 56 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **1649** pengujian pada 57 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -99,6 +100,16 @@ sungguhan, pada basis data sungguhan:
 | H-8 | `prove-health-community.mjs` | 45 pemeriksaan, seluruhnya lulus — [bukti-h8-puskesmas.txt](bukti-h8-puskesmas.txt) |
 | H-9 | `prove-health-him.mjs` | 74 pemeriksaan, seluruhnya lulus — [bukti-h9-rekam-medis.txt](bukti-h9-rekam-medis.txt) |
 | H-9L | `prove-health-master-data.mjs` | 61 pemeriksaan, seluruhnya lulus — [bukti-h9l-master-data.txt](bukti-h9l-master-data.txt) |
+| H-9N | `prove-health-accounting.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9n-akuntansi.txt](bukti-h9n-akuntansi.txt) |
+
+Naskah H-9N membuktikan satu hal yang tidak lazim: **ketiadaan.** Ia menghitung
+tabel bernama `health*journal*`, `health*ledger*`, dan `health*balance*` pada
+skema tenant dan menuntut hasilnya nol; lalu memakai seluruh modul dari ujung ke
+ujung — menyemai aturan, membaca kesiapan, membaca peta, menghitung selisih
+klaim — dan menuntut jumlah baris `journal_entry` serta `accounting_event` tidak
+bertambah satu pun. Aturan "jangan membuat buku besar kedua" adalah aturan yang
+paling mudah dilanggar tanpa sengaja, dan pelanggarannya tidak pernah menimbulkan
+galat: ia hanya menghasilkan neraca kedua yang tampak benar.
 
 Naskah H-9L menemukan cacat yang **sekelas dengan cacat H-9 pada hari yang
 sama**: pengenal yang dihitung per lingkup sempit di bawah batasan unik yang

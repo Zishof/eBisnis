@@ -295,6 +295,20 @@
       "file": "H019__health__master_data_permissions.sql",
       "name": "eMedik: menu, hak akses, dan peran katalog layanan dan master data",
       "description": "Aksi ACTIVATE; tiga menu (HEALTH_SERVICE_CATALOG, HEALTH_MASTER_DATA, HEALTH_CODE_MAPPING); satu peran baru (Petugas Katalog Layanan); dan satu aturan pemisahan wewenang. Satu pemisahan menentukan bentuknya: YANG MEMETAKAN BUKAN YANG MENGAKTIFKAN. Pemetaan adalah pekerjaan harian — ratusan baris, sering keliru, sering diperbaiki. Aktivasi adalah keputusan yang membuat layanan itu dapat dipesan, ditagihkan, dan dibagi jasanya. Menyatukan keduanya berarti orang yang sedang mengetik baris keseratus akan mengaktifkan layanan yang belum pernah dilihat siapa pun, dan yang pertama menyadarinya adalah pasien yang menerima tagihan atas layanan yang tarifnya salah ketik. Petugas Katalog Layanan memperoleh CREATE dan UPDATE tetapi tidak ACTIVATE; administrator eMedik sebaliknya. Penghapusan data contoh diberikan kepada administrator saja, sebab penghapusannya menolak bila ada data nyata yang merujuknya dan keputusan atas penolakan itu harus diambil orang yang dapat menilai akibatnya."
+    },
+    {
+      "version": "H020",
+      "sequence": 1020,
+      "file": "H020__health__accounting_map.sql",
+      "name": "eMedik: pemetaan akuntansi kesehatan",
+      "description": "health_accounting_profile, health_account_link, health_accounting_rule, health_coa_template. ATURAN PERTAMA: JANGAN MEMBUAT BUKU BESAR KEDUA. Tidak ada tabel jurnal di sini, tidak ada tabel saldo, tidak ada tabel neraca. Rumah sakit memakai mesin akuntansi bersama milik Core — accounting_event, accounting_posting_rule, journal_entry, chart_of_account — dan membangun buku besar kesehatan tersendiri akan menghasilkan dua neraca yang tidak pernah cocok; yang lebih buruk, dua-duanya akan tampak benar. Yang dibangun hanya pemetaannya: peristiwa klinis apa menjadi jurnal apa, dan peran akun apa menunjuk akun yang mana. Peran, bukan nomor akun: rumah sakit yang memakai bagan akun berbeda menautkan perannya ke nomor akunnya sendiri dan kodenya tidak berubah. Trigger check_health_account_link menolak penautan yang saldo normalnya tidak cocok dengan golongan perannya — menautkan REVENUE_LAB ke akun bersaldo normal debit akan menghasilkan pendapatan bernilai negatif pada setiap laporan, dan yang membacanya akan menyimpulkan laboratoriumnya merugi. Akun induk pun ditolak sebab jurnal pada akun induk membuat rincian per unit hilang seluruhnya. Satu peran satu akun per fasilitas, ditegakkan indeks unik. Debit dan kredit tidak boleh peran yang sama: jurnal yang mendebit dan mengkredit akun yang sama tidak mengubah apa pun tetapi tampak seperti pekerjaan yang selesai. amount_key wajib nama medan polos, bukan rumus — rumus bebas pada data adalah pintu masuk eksekusi kode yang tidak diinginkan. Templat bagan akun disemai sebagai DATA beserta peran dan saldo normalnya, termasuk Beban Penyesuaian Klaim: selisih antara yang diajukan dan yang disetujui bukan pendapatan yang hilang begitu saja melainkan beban yang harus terlihat, sebab ia ukuran mutu pengkodean dan kelengkapan berkas."
+    },
+    {
+      "version": "H021",
+      "sequence": 1021,
+      "file": "H021__health__accounting_permissions.sql",
+      "name": "eMedik: menu, hak akses, dan peran pemetaan akuntansi",
+      "description": "Satu menu (HEALTH_ACCOUNTING_MAP), satu peran baru (Petugas Keuangan Rumah Sakit), dan satu aturan pemisahan wewenang. Satu pemisahan menentukan bentuknya: YANG MEMETAKAN AKUN BUKAN YANG MEMBACA REKAM MEDIS. Petugas keuangan perlu tahu bahwa pendapatan laboratorium masuk ke akun 4160; ia tidak perlu tahu siapa yang diperiksa. Peran HEALTH_FINANCE_OFFICER sengaja TIDAK diberi HEALTH_PATIENT.READ — menggabungkan wewenang keuangan dengan pembacaan rekam medis adalah cara paling sunyi untuk membocorkan seluruh riwayat pasien: tidak ada yang akan menyadarinya sebab tidak ada yang mengira bagian keuangan membacanya, dan jejaknya akan tenggelam di antara ribuan pembacaan yang sah. Administrator meninjau dan mengaktifkan profil akuntansi; ia tidak memetakannya."
     }
   ]
 }
