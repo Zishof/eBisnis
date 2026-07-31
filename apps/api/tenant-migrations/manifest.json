@@ -92,6 +92,13 @@
       "file": "V013__online_listing.sql",
       "name": "Listing produk online dan medianya",
       "description": "online_listing, online_listing_variant, online_listing_media, online_listing_publication beserta batasan satu gambar utama per listing, satu listing per produk, dan pola id video YouTube; trigger audit untuk ketiga tabel utama."
+    },
+    {
+      "version": "V014",
+      "sequence": 14,
+      "file": "V014__fulfillment.sql",
+      "name": "Pemenuhan pesanan: picking, packing, paket, dan pengiriman",
+      "description": "fulfillment_order, fulfillment_order_line, pick_task, package, package_line, shipment, dan shipment_tracking_event. Memuat batasan bahwa jumlah dikemas tidak melebihi jumlah diambil, selisih pengambilan wajib beralasan, nomor resi tidak dipakai dua kali per ekspedisi, dan peristiwa pelacakan yang sama tidak tercatat berulang; trigger audit untuk enam tabel utama."
     }
   ]
 }
