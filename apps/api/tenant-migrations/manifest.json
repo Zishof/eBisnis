@@ -99,6 +99,13 @@
       "file": "V014__fulfillment.sql",
       "name": "Pemenuhan pesanan: picking, packing, paket, dan pengiriman",
       "description": "fulfillment_order, fulfillment_order_line, pick_task, package, package_line, shipment, dan shipment_tracking_event. Memuat batasan bahwa jumlah dikemas tidak melebihi jumlah diambil, selisih pengambilan wajib beralasan, nomor resi tidak dipakai dua kali per ekspedisi, dan peristiwa pelacakan yang sama tidak tercatat berulang; trigger audit untuk enam tabel utama."
+    },
+    {
+      "version": "V015",
+      "sequence": 15,
+      "file": "V015__accounting_events.sql",
+      "name": "Peristiwa akuntansi dan aturan posting",
+      "description": "accounting_event dan accounting_posting_rule. Pemetaan peristiwa ke akun tinggal di data, bukan di kode, sehingga debit dan kredit tidak ditulis di controller. Memakai journal_entry yang sudah ada sejak V006; tidak ada buku besar kedua. Memuat batasan bahwa peristiwa berstatus POSTED wajib menunjuk jurnalnya, dan kunci idempotensi agar peristiwa yang sama tidak tercatat dua kali."
     }
   ]
 }
