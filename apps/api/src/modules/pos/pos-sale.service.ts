@@ -355,17 +355,19 @@ export class PosSaleService {
     input: { paymentMethodId: string; amount: number; tenderedAmount?: number; reference?: string },
     idempotencyKey: string,
     /*
-     * Penerima pembayaran sengaja TIDAK diteruskan ke sini.
+     * Siapa yang benar-benar menerima uangnya, dicatat pada barisnya sendiri
+     * sejak V029.
      *
-     * `pos_payment` tidak punya kolom `received_by`, dan menambahkannya sekarang
-     * berarti menyimpan identitas yang sama di dua tempat — pada shift, pada
-     * `pos_sale.cashier_id`, dan pada barisnya sendiri. Dua tempat yang menyimpan
-     * hal yang sama adalah dua tempat yang dapat berbeda.
-     *
-     * Yang belum terjawab: supervisor yang mengambil alih di tengah transaksi.
-     * Bila keadaan itu perlu dibedakan, kolomnya ditambahkan lewat migrasi
-     * tersendiri beserta alasannya — bukan lewat parameter yang tidak dipakai.
+     * Ini memang menyimpan identitas yang mirip dengan `pos_sale.cashier_id`,
+     * dan duplikasi seperti itu biasanya patut dihindari. Di sini tidak:
+     * keduanya menjawab pertanyaan yang berbeda. `cashier_id` menjawab siapa
+     * yang membuka keranjangnya; `received_by` menjawab siapa yang memegang
+     * uangnya. Supervisor yang mengambil alih di tengah transaksi, atau kasir
+     * pengganti yang masuk saat kasir pertama izin keluar, membuat keduanya
+     * berbeda — dan ketika kas akhir shift selisih, yang ditanyakan adalah yang
+     * kedua.
      */
+    subjectId: string,
   ) {
     const sale = await this.ambilKepala(schemaName, saleId);
     if (sale.status !== 'DRAFT' && sale.status !== 'PAYMENT_PENDING') {

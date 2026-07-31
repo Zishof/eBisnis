@@ -5,6 +5,48 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## POS-5 dan POS-6 — Keranjang, pembayaran, dan batas penyelesaian
+
+### Ditambahkan
+- **`PosSaleService`** — keranjang kasir dari buka sampai selesai: tambah/ubah/
+  hapus baris, tahan/lanjutkan, batal, terima pembayaran, dan **batas
+  penyelesaian sepuluh langkah dalam satu transaksi basis data**: validasi
+  penjualan, shift, persetujuan, dan total pembayaran; nomor struk; potong
+  persediaan; peristiwa akuntansi; terbitkan struk; tandai selesai; titipkan ke
+  outbox.
+- **Empat belas endpoint** `/pos/sales/*`, `/pos/stock/check`.
+- **`V029__pos_payment_received_by.sql`** — `pos_payment` bertambah
+  `received_by` dan `received_at`.
+- **`prove-pos-sale-e2e.mjs`** — bukti satu transaksi dari ujung ke ujung,
+  **39 pemeriksaan, seluruhnya lulus** (`docs/pos-web-priority/bukti-pos-sale-e2e.txt`).
+
+### Diperbaiki
+- **`V028`** melonggarkan `pos_sale.receipt_number` dari NOT NULL. Keranjang
+  disimpan sebagai baris `pos_sale` berstatus DRAFT jauh sebelum ada struk;
+  menerbitkan nomor saat keranjang dibuka akan membuat setiap keranjang yang
+  ditinggalkan memakan satu nomor, dan **deret nomor struk pun berlubang** —
+  hal pertama yang ditanyakan pemeriksa pajak.
+- **Penomoran shift** memakai `SH-YYYYMMDD-<register>-NN`. `ux_pos_shift_number`
+  unik pada `shift_number` saja — bukan per terminal — sehingga penomoran
+  "1, 2, 3" bertabrakan pada register kedua yang membuka shift pertamanya.
+- **Gudang outlet** tidak lagi memakai kolom `is_default` yang tidak ada;
+  gudang anak didahulukan atas gudang induk.
+- **Parameter `$2` pada perpindahan status** diberi tipe tegas. Dipakai dua kali
+  dengan tipe yang disimpulkan berbeda, dan PostgreSQL menolak menyimpulkannya.
+
+### Keputusan yang perlu dicatat
+- **`received_by` sengaja menduplikasi identitas yang mirip `cashier_id`.**
+  Keduanya menjawab pertanyaan berbeda: `cashier_id` siapa yang membuka
+  keranjangnya, `received_by` siapa yang memegang uangnya. Supervisor yang
+  mengambil alih di tengah transaksi membuat keduanya berbeda — dan ketika kas
+  akhir shift selisih, yang ditanyakan adalah yang kedua.
+- **Metode non-tunai menolak lebih bayar.** Kelebihan pada kartu berarti
+  kesalahan ketik, dan menerimanya diam-diam menghasilkan selisih yang baru
+  ketahuan saat rekonsiliasi bank berminggu-minggu kemudian.
+- **Naskah bukti tunduk pada penjaga immutability V008** dan tidak menghapus
+  buku besar pergerakan stok. Memaksanya lewat berarti menguji sistem yang
+  berbeda dari yang dijalankan penyewa.
+
 ## POS-3, POS-5a, POS-6a — Stok, mesin status, dan peristiwa akuntansi kasir
 
 ### Ditambahkan
