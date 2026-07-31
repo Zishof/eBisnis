@@ -1,0 +1,276 @@
+// eBisnis.id Versi 9 — Pembeli, keranjang, dan checkout.
+//
+// Pembeli tinggal di schema platform, bukan schema tenant. Alasannya menentukan
+// bentuk seluruh berkas ini: seorang pembeli berbelanja dari banyak penjual
+// dalam satu keranjang. Menempatkannya pada schema tenant berarti keranjangnya
+// terpecah menurut penjual sejak awal, dan tidak ada satu pun tempat yang tahu
+// isi keranjangnya secara utuh.
+//
+// Konsekuensinya harus dijaga: data pembeli tidak boleh bocor antar penjual.
+// Penjual hanya melihat pembeli yang memesan kepadanya, dan hanya lewat
+// pesanan — bukan lewat tabel pembeli.
+
+/// Pembeli marketplace.
+///
+/// Terpisah dari `PlatformUser` (staf platform) maupun `user_subject` (pengguna
+/// tenant). Ketiganya masuk lewat pintu berbeda dan berhak atas hal yang
+/// berbeda; menyatukannya akan membuat satu kesalahan otorisasi berakibat pada
+/// ketiganya sekaligus.
+model MarketplaceBuyer {
+  id String @id @default(uuid()) @db.Uuid
+
+  email           String  @db.VarChar(255)
+  normalizedEmail String  @map("normalized_email") @db.VarChar(255)
+  displayName     String  @map("display_name") @db.VarChar(160)
+  phone           String? @db.VarChar(48)
+
+  /// Argon2. Kosong bila pembeli hanya memakai Google.
+  passwordHash String? @map("password_hash") @db.Text
+  googleSub    String? @map("google_sub") @db.VarChar(128)
+
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
+  phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz(6)
+
+  status String @default("ACTIVE") @db.VarChar(24)
+
+  preferredLocale String @default("id") @map("preferred_locale") @db.VarChar(12)
+
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  addresses MarketplaceBuyerAddress[]
+  carts     MarketplaceCart[]
+  checkouts MarketplaceCheckout[]
+
+  @@unique([normalizedEmail])
+  @@unique([googleSub])
+  @@index([status])
+  @@map("marketplace_buyer")
+  @@schema("platform")
+}
+
+/// Alamat kirim milik pembeli.
+model MarketplaceBuyerAddress {
+  id      String @id @default(uuid()) @db.Uuid
+  buyerId String @map("buyer_id") @db.Uuid
+
+  label        String  @db.VarChar(64)
+  recipientName String @map("recipient_name") @db.VarChar(160)
+  phone        String  @db.VarChar(48)
+
+  addressLine  String  @map("address_line") @db.Text
+  district     String? @db.VarChar(120)
+  city         String  @db.VarChar(120)
+  province     String  @db.VarChar(120)
+  postalCode   String  @map("postal_code") @db.VarChar(16)
+  countryCode  String  @default("ID") @map("country_code") @db.VarChar(4)
+
+  /// Titik koordinat untuk perhitungan ongkos kirim yang lebih tepat.
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+
+  notes String? @db.Text
+
+  isDefault Boolean   @default(false) @map("is_default")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  buyer     MarketplaceBuyer      @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  checkouts MarketplaceCheckout[]
+
+  @@index([buyerId, isDefault])
+  @@map("marketplace_buyer_address")
+  @@schema("platform")
+}
+
+/// Keranjang belanja.
+///
+/// Satu pembeli punya satu keranjang aktif. Keranjang menampung barang dari
+/// banyak penjual sekaligus; pengelompokan menurut penjual terjadi saat
+/// checkout, bukan saat menambah barang — pembeli tidak berpikir dalam satuan
+/// penjual ketika berbelanja.
+model MarketplaceCart {
+  id      String  @id @default(uuid()) @db.Uuid
+  buyerId String? @map("buyer_id") @db.Uuid
+
+  /// Keranjang tamu dikenali lewat token ini, bukan lewat sesi.
+  /// Dibutuhkan agar pengunjung dapat memilih barang sebelum mendaftar.
+  guestToken String? @map("guest_token") @db.VarChar(64)
+
+  status String @default("ACTIVE") @db.VarChar(24)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Keranjang yang lama tak disentuh dibersihkan penjadwal.
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  buyer MarketplaceBuyer?     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  items MarketplaceCartItem[]
+
+  @@unique([guestToken])
+  @@index([buyerId, status])
+  @@index([status, expiresAt])
+  @@map("marketplace_cart")
+  @@schema("platform")
+}
+
+/// Satu baris keranjang.
+///
+/// Harga **tidak** disimpan sebagai kebenaran. Yang disimpan hanya harga saat
+/// barang dimasukkan, untuk dibandingkan dengan harga sekarang saat checkout.
+/// Menyimpan harga sebagai kebenaran berarti pembeli membayar harga lama
+/// setelah penjual menaikkannya — dan penjual yang menanggung selisihnya.
+model MarketplaceCartItem {
+  id     String @id @default(uuid()) @db.Uuid
+  cartId String @map("cart_id") @db.Uuid
+
+  /// Menunjuk projection, bukan listing tenant. Keranjang hanya boleh berisi
+  /// barang yang memang terlihat publik.
+  listingProjectionId String @map("listing_projection_id") @db.Uuid
+
+  /// Varian yang dipilih. Disimpan sebagai id tenant karena varian tidak
+  /// diproyeksikan satu per satu.
+  variantRef String? @map("variant_ref") @db.Uuid
+
+  quantity Int @default(1)
+
+  /// Harga saat dimasukkan. Pembanding, bukan kebenaran.
+  priceAtAdd Decimal @map("price_at_add") @db.Decimal(19, 4)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cart    MarketplaceCart              @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  listing MarketplaceListingProjection @relation(fields: [listingProjectionId], references: [id], onDelete: Cascade)
+
+  /// Barang yang sama ditambah dua kali menambah jumlah, bukan baris.
+  @@unique([cartId, listingProjectionId, variantRef])
+  @@index([listingProjectionId])
+  @@map("marketplace_cart_item")
+  @@schema("platform")
+}
+
+/// Sesi checkout.
+///
+/// Dibuat sebagai catatan tersendiri, bukan sekadar layar. Checkout menahan
+/// harga, ongkos kirim, dan ketersediaan pada satu titik waktu — tanpa catatan
+/// itu, pembeli yang membuka halaman pembayaran selama sepuluh menit dapat
+/// menemukan totalnya berubah saat menekan bayar.
+model MarketplaceCheckout {
+  id      String  @id @default(uuid()) @db.Uuid
+  buyerId String  @map("buyer_id") @db.Uuid
+  addressId String? @map("address_id") @db.Uuid
+
+  status String @default("DRAFT") @db.VarChar(24)
+
+  /// Alamat disalin, bukan dirujuk. Pembeli yang mengubah alamatnya setelah
+  /// memesan tidak boleh mengubah tujuan kiriman yang sedang berjalan.
+  addressSnapshot Json? @map("address_snapshot")
+
+  subtotal     Decimal @default(0) @db.Decimal(19, 4)
+  shippingTotal Decimal @default(0) @map("shipping_total") @db.Decimal(19, 4)
+  discountTotal Decimal @default(0) @map("discount_total") @db.Decimal(19, 4)
+  grandTotal   Decimal @default(0) @map("grand_total") @db.Decimal(19, 4)
+  currencyCode String  @default("IDR") @map("currency_code") @db.VarChar(8)
+
+  /// Hasil pemeriksaan terakhir. Disimpan agar pembeli melihat alasan yang
+  /// sama dengan yang dilihat sistem.
+  validationSnapshot Json?     @map("validation_snapshot")
+  validatedAt        DateTime? @map("validated_at") @db.Timestamptz(6)
+
+  /// Checkout yang menganggur dilepas agar stok yang ditahan kembali.
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(6)
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(6)
+
+  buyer   MarketplaceBuyer         @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  address MarketplaceBuyerAddress? @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  groups  MarketplaceCheckoutGroup[]
+
+  @@index([buyerId, status])
+  @@index([status, expiresAt])
+  @@map("marketplace_checkout")
+  @@schema("platform")
+}
+
+/// Kelompok checkout per penjual.
+///
+/// Inilah yang menjadi satu pesanan dan satu perintah bayar. Keranjang berisi
+/// tiga penjual menghasilkan tiga kelompok, tiga pesanan, dan tiga pembayaran.
+///
+/// Satu pembayaran untuk banyak penjual menuntut penyedia membagi setelmen ke
+/// beberapa rekening. eSmartlink belum terbukti mendukungnya, dan membuat
+/// pembagian sendiri berarti platform menampung uang penjual — yang menuntut
+/// izin yang tidak dimiliki.
+model MarketplaceCheckoutGroup {
+  id         String @id @default(uuid()) @db.Uuid
+  checkoutId String @map("checkout_id") @db.Uuid
+  sellerId   String @map("seller_id") @db.Uuid
+  storeId    String @map("store_id") @db.Uuid
+
+  subtotal      Decimal @default(0) @db.Decimal(19, 4)
+  shippingCost  Decimal @default(0) @map("shipping_cost") @db.Decimal(19, 4)
+  discountTotal Decimal @default(0) @map("discount_total") @db.Decimal(19, 4)
+  total         Decimal @default(0) @db.Decimal(19, 4)
+
+  /// Layanan kirim yang dipilih pembeli untuk penjual ini.
+  shippingMethodCode String? @map("shipping_method_code") @db.VarChar(48)
+  shippingEtaText    String? @map("shipping_eta_text") @db.VarChar(120)
+
+  buyerNote String? @map("buyer_note") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  checkout MarketplaceCheckout        @relation(fields: [checkoutId], references: [id], onDelete: Cascade)
+  seller   MarketplaceSeller          @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  store    MarketplaceStore           @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  lines    MarketplaceCheckoutLine[]
+
+  @@unique([checkoutId, sellerId])
+  @@index([sellerId])
+  @@map("marketplace_checkout_group")
+  @@schema("platform")
+}
+
+/// Satu baris barang pada checkout.
+///
+/// Seluruh nilai di sini adalah salinan pada saat checkout dibuat. Menunjuk
+/// balik ke projection hanya untuk penelusuran; harga dan judul yang berlaku
+/// adalah yang tersimpan di sini.
+model MarketplaceCheckoutLine {
+  id      String @id @default(uuid()) @db.Uuid
+  groupId String @map("group_id") @db.Uuid
+
+  listingProjectionId String  @map("listing_projection_id") @db.Uuid
+  variantRef          String? @map("variant_ref") @db.Uuid
+
+  /// Penunjuk balik ke listing tenant, dipakai saat pesanan dibuat.
+  tenantId        String @map("tenant_id") @db.Uuid
+  tenantListingId String @map("tenant_listing_id") @db.Uuid
+
+  titleSnapshot String  @map("title_snapshot") @db.VarChar(200)
+  skuSnapshot   String? @map("sku_snapshot") @db.VarChar(64)
+
+  quantity  Int
+  unitPrice Decimal @map("unit_price") @db.Decimal(19, 4)
+  lineTotal Decimal @map("line_total") @db.Decimal(19, 4)
+
+  weightGram Int @default(0) @map("weight_gram")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  group   MarketplaceCheckoutGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  listing MarketplaceListingProjection @relation(fields: [listingProjectionId], references: [id], onDelete: Restrict)
+
+  @@index([groupId])
+  @@index([listingProjectionId])
+  @@map("marketplace_checkout_line")
+  @@schema("platform")
+}
