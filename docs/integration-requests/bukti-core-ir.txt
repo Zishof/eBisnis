@@ -1,0 +1,57 @@
+==============================================================================
+BUKTI SISI CORE — IR-001 SAMPAI IR-005
+Waktu : 2026-07-31T19:53:33.688Z
+==============================================================================
+
+IR-001 · Katalog migrasi modular
+  LULUS  17 skema penyewa ditemukan
+  LULUS  schema_migration.version kini VARCHAR(128)
+  LULUS  kolom module tersedia
+  LULUS  seluruh 17 skema masih memuat 33 migrasi inti
+  LULUS  tidak ada versi yang tercatat dua kali
+  LULUS  id modular 50 aksara tersimpan dan terbaca kembali
+  LULUS  katalog tanpa modul sama persis dengan manifest inti
+  LULUS  versi inti tertinggi V033
+  LULUS  katalog gabungan bertambah tepat satu
+  LULUS  seluruh migrasi inti tetap mendahului migrasi modul
+  LULUS  versi inti tertinggi TIDAK berubah oleh kehadiran modul
+  LULUS  manifest modul ditemukan dari sistem berkas
+
+IR-003 · Katalog peristiwa akuntansi modular
+  LULUS  seluruh 24 peristiwa inti tetap dikenal
+  LULUS  peristiwa koperasi kini dikenal mesin akuntansi
+  LULUS  peristiwa inti tidak terganggu
+  LULUS  angsuran koperasi menuntut pokok dan jasa terpisah
+  LULUS  modul lain TIDAK dapat merebut peristiwa POS_SALE
+
+IR-004 · Katalog menu, peran, dan hak akses modular
+  LULUS  dua katalog terdaftar
+  LULUS  menu koperasi tercatat milik koperasi
+  LULUS  menu POS tetap milik inti
+  LULUS  vertikal lain TIDAK dapat mendaftarkan menu POS
+  LULUS  pohon menu gabungan sah — tidak ada menu yatim
+
+IR-005 · Resolusi tenant untuk situs publik
+  LULUS  tabel platform.vertical_site_domain terpasang
+  LULUS  ada penyewa aktif untuk diuji
+  LULUS  host AKTIF tanpa bukti kepemilikan DITOLAK basis data
+  LULUS  host berhuruf besar DITOLAK — penormalan wajib saat menyimpan
+  LULUS  host terdaftar dapat ditemukan kembali
+  LULUS  pencocokan atas baris sungguhan diterima
+  LULUS  skema yang diperoleh "joni_utama_4i087s" — dari registry, bukan dari alamat
+  LULUS  penyewa lain TIDAK dapat merebut host yang sama
+  LULUS  host "localhost" ditolak sebelum menyentuh basis data
+  LULUS  host "169.254.169.254" ditolak sebelum menyentuh basis data
+  LULUS  host "203.0.113.10" ditolak sebelum menyentuh basis data
+  LULUS  host "koperasi" ditolak sebelum menyentuh basis data
+
+IR-002 · Penangan pembayaran bersaldo eksternal
+  LULUS  penangan koperasi terdaftar
+  LULUS  metode pembayaran tanpa penangan MELEMPAR, bukan lolos diam-diam
+  LULUS  payment_method siap menampung penangan eksternal
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan uji digulung balik — basis data tidak berubah.

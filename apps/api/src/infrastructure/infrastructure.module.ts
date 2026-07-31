@@ -18,6 +18,8 @@ import { QueryStatsAdapter } from './observability/query-stats.adapter';
 import { OllamaAdapter } from './ai/ollama.adapter';
 import { ModelCatalogService } from './ai/model-catalog.service';
 import { EmbeddingService } from './ai/embedding.service';
+import { VerticalCatalogRegistry } from './provisioning/vertical-catalog.registry';
+import { PublicTenantResolver } from './tenant/public-tenant-resolver.service';
 
 /**
  * Modul infrastruktur global: akses database platform, akses schema tenant,
@@ -26,6 +28,8 @@ import { EmbeddingService } from './ai/embedding.service';
 @Global()
 @Module({
   providers: [
+    VerticalCatalogRegistry,
+    PublicTenantResolver,
     OllamaAdapter,
     ModelCatalogService,
     EmbeddingService,
@@ -47,6 +51,8 @@ import { EmbeddingService } from './ai/embedding.service';
     CmsSeedService,
   ],
   exports: [
+    VerticalCatalogRegistry,
+    PublicTenantResolver,
     OllamaAdapter,
     ModelCatalogService,
     EmbeddingService,
