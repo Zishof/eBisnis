@@ -5,6 +5,58 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Uji Playwright layar kasir
+
+### Ditambahkan
+- **`e2e/pos-cashier.spec.ts`** — **9 uji** yang benar-benar menekan tombol:
+  pindai barcode, ubah jumlah, tahan keranjang, bayar tunai, struk terbit,
+  barcode tak dikenal, tombol yang seharusnya mati, dan halaman laporan.
+- **`apps/api/scripts/e2e-pos-fixture.mjs`** — menyiapkan kasir beserta
+  penugasan register, produk berbarcode, dan stok; membersihkannya lagi
+  sesudahnya. Kata sandi dibangkitkan acak setiap kali dan ditulis ke berkas di
+  luar repositori.
+- **`API_PROXY_TARGET`** pada `vite.config.ts` — sasaran proxy API dapat diatur,
+  karena port 3000 tidak selalu bebas dan suntingan lokal pada berkas ini mudah
+  ikut ter-commit.
+
+### Diperbaiki — ketiganya ditemukan justru oleh uji peramban
+- **Layar kasir tidak dapat membuka keranjang sama sekali.** Antarmuka membaca
+  `outlets[0].outletId`, sedangkan peladen mengirim `outlets[0].id`. Medan yang
+  tidak ada menghasilkan `undefined`, tombolnya mati, dan **tidak ada pesan
+  galat apa pun** — tidak ada yang gagal, hanya tidak terjadi. Jenis cacat yang
+  tidak akan pernah tertangkap uji API.
+- **Batang konteks berbunyi "Shift undefined · kas awal -".** `openShift` tidak
+  membawa nomor shift, kas awal, maupun tanggal usaha; pemilih register tidak
+  membawa nama. Ditambahkan pada jawaban peladen.
+- **Barcode tak dikenal menampilkan "Data tidak ditemukan."** Terjemahan umum
+  `error.NOT_FOUND` menggantikan pesan peladen yang jauh lebih berguna —
+  "Barcode 899… tidak dikenali. Cari produk menurut namanya, atau daftarkan
+  barcode ini pada master produk." Pesan peladen kini ditampilkan apa adanya
+  pada jalur pindai.
+
+### Diperbaiki — naskah bukti
+- **Naskah bukti POS-10 merusak data schema bersama.** Pembersihan data contoh
+  menghapus SELURUH data contoh pada schema — perilaku yang benar bagi penyewa,
+  tetapi `demo` dipakai uji lain, dan produk contoh bawaannya ikut terhapus
+  sampai uji "daftar produk memuat master dari schema tenant" merah. Naskah kini
+  mencatat keadaan sebelum pembersihan dan memulihkannya sesudahnya.
+- **Rentang laporan pada naskah bukti memakai tanggal UTC.** Menjelang tengah
+  malam WIB, tanggal UTC sudah mundur satu hari dan penjualan yang baru dibangun
+  jatuh di luar rentang. Rentang kini dihitung dari `CURRENT_DATE` basis data.
+
+### Keputusan yang perlu dicatat
+- **Satu sesi untuk seluruh berkas uji.** Semula setiap uji masuk
+  sendiri-sendiri, dan uji ketujuh mulai gagal: pembatas laju masuk menolak
+  percobaan kesebelas dalam satu menit. Pembatasnya benar; ujinya yang keliru.
+  Sesi tunggal juga lebih menyerupai kenyataan — kasir masuk sekali pada awal
+  shift.
+- **Uji dilewati pada ponsel dengan keterangan.** Perintah prioritas §20
+  menyasar desktop dan tablet lanskap. Dilewati apa adanya, bukan dipaksa lulus
+  dengan tata letak yang tidak pernah dipakai siapa pun.
+- **Tanpa fixture, berkasnya dilewati — bukan gagal.** Uji yang merah karena
+  datanya belum disiapkan tidak memberitahu apa pun tentang mutu kodenya, dan
+  lama-lama membuat orang mengabaikan warna merah.
+
 ## POS-9 dan POS-10 — Laporan operasional dan data contoh kasir
 
 ### Ditambahkan

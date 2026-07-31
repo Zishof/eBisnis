@@ -23,6 +23,8 @@ const reg = (over: Partial<RegisterInfo> = {}): RegisterInfo => ({
   outletActive: true,
   terminalActive: true,
   registerStatus: 'READY',
+  code: 'REG-1',
+  name: 'Kasir 1',
   ...over,
 });
 
@@ -30,6 +32,7 @@ const tugas = (over: Partial<AssignmentInfo> = {}): AssignmentInfo => ({
   terminalId: 'T1',
   userSubjectId: 'U1',
   isActive: true,
+  isPrimary: false,
   validFrom: '2026-01-01',
   validUntil: null,
   ...over,

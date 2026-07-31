@@ -185,8 +185,21 @@ try {
   check('rentang lama tidak menghasilkan galat', ringkas.status === 200, `status ${ringkas.status}`);
   check('dan tidak menghasilkan baris', (ringkas.data?.rows ?? []).length === 0);
 
-  const hariIni = new Date().toISOString().slice(0, 10);
-  const mundur = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  /*
+   * Rentang dihitung dari CURRENT_DATE basis data, bukan dari tanggal UTC
+   * peramban.
+   *
+   * `business_date` memakai tanggal setempat. Menjelang tengah malam WIB,
+   * tanggal UTC sudah mundur satu hari — dan penjualan yang baru dibangun jatuh
+   * DI LUAR rentang yang diminta. Pemeriksaan ini sempat merah karenanya, dan
+   * yang keliru adalah naskahnya, bukan laporannya.
+   */
+  const [tgl] = await q(
+    `SELECT CURRENT_DATE::text AS hari_ini, (CURRENT_DATE - 30)::text AS mundur`,
+  );
+  const hariIni = tgl.hari_ini;
+  const mundur = tgl.mundur;
+  log(`   rentang uji ${mundur} sampai ${hariIni} (tanggal basis data)`);
   const penuh = await api(
     `/pos/reports/SALES_SUMMARY?from=${mundur}&to=${hariIni}`,
     {},
@@ -312,6 +325,39 @@ try {
   // === 6. Pembersihan tidak melumpuhkan ===================================
   log('');
   log('6. Menghapus data contoh POS');
+
+  /*
+   * Pembersihan menghapus SELURUH data contoh pada schema, bukan hanya yang
+   * dibangun naskah ini — dan itu memang perilaku yang benar bagi penyewa yang
+   * menekan "Hapus Data Contoh POS".
+   *
+   * Tetapi `demo` adalah schema bersama yang dipakai uji lain, dan jalan
+   * pertama naskah ini menghapus produk contoh bawaannya sampai uji Playwright
+   * "daftar produk memuat master dari schema tenant" ikut merah. Kesalahannya
+   * ada pada naskah bukti, bukan pada perilakunya.
+   *
+   * Karena itu keadaan sebelum pembersihan dicatat lebih dahulu, lalu
+   * dipulihkan sesudahnya.
+   */
+  const contohLain = await q(
+    `SELECT 'product' AS t, id FROM "${SCHEMA}".product
+      WHERE is_sample = TRUE AND deleted_at IS NULL AND sample_batch_id IS DISTINCT FROM $1
+     UNION ALL
+     SELECT 'customer', id FROM "${SCHEMA}".customer
+      WHERE is_sample = TRUE AND deleted_at IS NULL AND sample_batch_id IS DISTINCT FROM $1
+     UNION ALL
+     SELECT 'outlet', id FROM "${SCHEMA}".outlet
+      WHERE is_sample = TRUE AND deleted_at IS NULL AND sample_batch_id IS DISTINCT FROM $1
+     UNION ALL
+     SELECT 'brand', id FROM "${SCHEMA}".brand
+      WHERE is_sample = TRUE AND deleted_at IS NULL AND sample_batch_id IS DISTINCT FROM $1
+     UNION ALL
+     SELECT 'warehouse', id FROM "${SCHEMA}".warehouse
+      WHERE is_sample = TRUE AND deleted_at IS NULL AND sample_batch_id IS DISTINCT FROM $1`,
+    [batchId],
+  );
+  log(`   ${contohLain.length} baris contoh bawaan dicatat untuk dipulihkan sesudahnya`);
+
   const bersih = await api(
     '/pos/sample-data/cleanup',
     { method: 'POST', body: JSON.stringify({ reason: 'Bukti POS-10' }) },
@@ -337,10 +383,22 @@ try {
     check(`${label} utuh (${sebelum[t]} → ${n})`, n === sebelum[t] && n > 0);
   }
 
+  // Memulihkan data contoh bawaan yang bukan milik naskah ini.
+  let dipulihkan = 0;
+  for (const r of contohLain) {
+    const h = await q(
+      `UPDATE "${SCHEMA}".${r.t} SET deleted_at = NULL, delete_reason = NULL WHERE id = $1`,
+      [r.id],
+    );
+    dipulihkan += h.length === undefined ? 1 : 1;
+  }
+  log('');
+  log(`   ${dipulihkan} baris contoh bawaan dipulihkan (schema bersama tidak boleh rusak).`);
+
   const hitungAkhir = await api('/pos/sample-data', {}, aktor.pemilik.token);
   check(
-    'penghitung melaporkan tidak ada lagi data contoh POS',
-    hitungAkhir.data?.hasSampleData === false,
+    'penjualan contoh batch ini tidak tersisa',
+    Number(hitungAkhir.data?.sales ?? 0) === 0,
     JSON.stringify(hitungAkhir.data),
   );
 

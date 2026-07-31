@@ -91,6 +91,12 @@ export class PosContextService {
         terminalId: r.terminalId,
         outletId: r.outletId,
         registerStatus: r.registerStatus,
+        // Kode dan nama disertakan karena layar kasir menampilkannya pada
+        // pemilih register — pemilih berisi pilihan tanpa label tidak dapat
+        // dipakai siapa pun.
+        code: r.code,
+        name: r.name,
+        isPrimary: assignments.some((a) => a.terminalId === r.terminalId && a.isPrimary),
       })),
       openShift: shift,
       /*
@@ -333,9 +339,11 @@ export class PosContextService {
       outlet_active: boolean;
       terminal_active: boolean;
       register_status: string;
+      code: string;
+      name: string;
     }>(
       schemaName,
-      `SELECT t.id, t.outlet_id,
+      `SELECT t.code, t.name, t.id, t.outlet_id,
               (o.is_active AND o.deleted_at IS NULL) AS outlet_active,
               (t.is_active AND t.deleted_at IS NULL) AS terminal_active,
               t.register_status
@@ -350,6 +358,8 @@ export class PosContextService {
       outletId: r.outlet_id,
       outletActive: r.outlet_active,
       terminalActive: r.terminal_active,
+      code: r.code,
+      name: r.name,
       registerStatus: r.register_status as RegisterInfo['registerStatus'],
     }));
   }
@@ -359,11 +369,12 @@ export class PosContextService {
       terminal_id: string;
       user_subject_id: string;
       is_active: boolean;
+      is_primary: boolean;
       valid_from: string;
       valid_until: string | null;
     }>(
       schemaName,
-      `SELECT terminal_id, user_subject_id, is_active,
+      `SELECT terminal_id, user_subject_id, is_active, is_primary,
               to_char(valid_from, 'YYYY-MM-DD') AS valid_from,
               to_char(valid_until, 'YYYY-MM-DD') AS valid_until
          FROM "${schemaName}".pos_register_assignment
@@ -374,26 +385,46 @@ export class PosContextService {
       terminalId: r.terminal_id,
       userSubjectId: r.user_subject_id,
       isActive: r.is_active,
+      isPrimary: r.is_primary,
       validFrom: r.valid_from,
       validUntil: r.valid_until,
     }));
   }
 
   private async shiftTerbuka(schemaName: string, userId: string): Promise<OpenShiftInfo | null> {
+    /*
+     * Nomor shift, kas awal, dan tanggal usaha ikut dibaca karena batang
+     * konteks kasir menampilkannya. Tanpa itu layar berbunyi "Shift undefined ·
+     * kas awal -", dan kasir yang membacanya tidak dapat tahu apakah shiftnya
+     * benar-benar terbuka.
+     */
     const rows = await this.tenantDb.query<{
       id: string;
       terminal_id: string;
       cashier_id: string;
+      shift_number: string;
+      opened_at: string;
+      opening_cash: string;
+      business_date: string;
     }>(
       schemaName,
-      `SELECT id, terminal_id, cashier_id
+      `SELECT id, terminal_id, cashier_id, shift_number, opened_at,
+              opening_cash::text, business_date::text
          FROM "${schemaName}".pos_shift
         WHERE cashier_id = $1 AND status = 'OPEN'
         ORDER BY opened_at DESC LIMIT 1`,
       [userId],
     );
     if (!rows.length) return null;
-    return { shiftId: rows[0].id, terminalId: rows[0].terminal_id, cashierId: rows[0].cashier_id };
+    return {
+      shiftId: rows[0].id,
+      terminalId: rows[0].terminal_id,
+      cashierId: rows[0].cashier_id,
+      shiftNumber: rows[0].shift_number,
+      openedAt: rows[0].opened_at,
+      openingCash: rows[0].opening_cash,
+      businessDate: rows[0].business_date,
+    };
   }
 
   private async shiftTerbukaTerminal(

@@ -2,6 +2,15 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
+/**
+ * Sasaran proxy API.
+ *
+ * Dapat diatur lewat `API_PROXY_TARGET` karena port 3000 tidak selalu bebas —
+ * pengembang yang menjalankan proyek lain pada port itu sebelumnya harus
+ * menyunting berkas ini, dan suntingan seperti itu mudah ikut ter-commit.
+ */
+const API_TARGET = process.env.API_PROXY_TARGET ?? 'http://localhost:3000';
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -12,8 +21,8 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       // Proxy API agar frontend dan backend satu origin saat development.
-      '/api': { target: 'http://localhost:3000', changeOrigin: true },
-      '/health': { target: 'http://localhost:3000', changeOrigin: true },
+      '/api': { target: API_TARGET, changeOrigin: true },
+      '/health': { target: API_TARGET, changeOrigin: true },
     },
   },
   preview: { port: 5173, strictPort: true },

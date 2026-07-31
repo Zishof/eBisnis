@@ -9,9 +9,11 @@ Delapan belas butir pada perintah prioritas §25, diperiksa apa adanya.
 
 | | Jumlah |
 |---|---|
-| ✅ Lulus | 14 |
-| ⚠️ Lulus sebagian | 2 |
-| ⛔ Terhalang prasyarat | 2 |
+| ✅ Lulus | 17 |
+| ⚠️ Lulus sebagian | 1 |
+| ⛔ Terhalang prasyarat | 0 |
+
+*Diperbarui 1 Agustus 2026 sesudah POS-9, POS-10, dan uji Playwright.*
 
 **Kasir dapat berjualan dari ujung ke ujung.** Yang tersisa tidak menghentikan
 penjualan; masing-masing menurunkan mutu operasional, dan disebutkan apa adanya
@@ -37,10 +39,10 @@ di bawah.
 | 12 | hold/resume berjalan | ✅ | `bukti-pos-sale-e2e.txt` §4 |
 | 13 | void/return/refund berjalan | ✅ | `bukti-pos-return-e2e.txt` §2–5 |
 | 14 | close shift/reconciliation berjalan | ✅ | `PosShiftService`, ambang selisih, `PENDING_APPROVAL` |
-| 15 | reports berjalan | ⚠️ | Ringkasan kas dan penjualan per shift ada. **Empat belas laporan POS-9 belum dibangun**, dan ekspor Excel terhalang V8-5/6 |
+| 15 | reports berjalan | ⚠️ | **Lima belas laporan dan dasbor sudah ada** beserta halaman `/app/pos/laporan`. Yang tersisa hanya ekspor Excel, yang terhalang V8-5/6 |
 | 16 | permissions/SoD berjalan | ✅ | Larangan menyetujui sendiri diuji pada tiga lapisan |
 | 17 | audit/observability berjalan | ✅ | Audit V008 pada seluruh tabel POS; galat, kinerja, aktivitas dari V10 |
-| 18 | E2E lulus | ⚠️ | **73 pemeriksaan e2e lulus** lewat dua naskah bukti terhadap API sungguhan. Uji Playwright yang menjalankan layar kasir di peramban belum ditulis |
+| 18 | E2E lulus | ✅ | **153 pemeriksaan** lewat empat naskah bukti terhadap API sungguhan, **plus 9 uji Playwright** yang benar-benar menekan tombol pada layar kasir: pindai, ubah jumlah, tahan, bayar tunai, struk terbit |
 | — | CI green | ✅ | 1209 uji API + 35 uji web; lint dan build bersih |
 | — | tidak ada isu keamanan kritis | ✅ | Tidak ada `eval`, tidak ada skema dari permintaan, nomor kartu tidak pernah disimpan |
 
@@ -73,10 +75,21 @@ Sesuai perintah §3, keduanya boleh ditunda dan memang ditunda:
 
 ## Yang tersisa sebelum gate penuh
 
-1. **POS-9 — empat belas laporan operasional.** Yang paling dibutuhkan lebih
-   dahulu: penjualan harian per kasir, per outlet, dan rekapitulasi selisih kas.
-2. **Uji Playwright layar kasir.** Kedua naskah bukti menguji API dengan
-   sungguh-sungguh, tetapi tidak menekan tombol di peramban. Alur pindai →
-   bayar → struk perlu diuji sebagaimana kasir mengalaminya.
-3. **POS-10 — profil data contoh POS** (3 merek, 10 outlet, 500 produk, 500
-   penjualan) supaya penyewa baru dapat mencoba kasir tanpa menyiapkan data.
+**Satu butir**, dan ia terhalang prasyarat di luar jalur POS:
+
+1. **Ekspor Excel laporan** — terhalang V8-5/6 yang belum pernah dibangun.
+   Laporan dapat dilihat di layar; yang belum ada adalah mengunduhnya.
+
+## Catatan yang perlu dibaca sebelum meluncurkan
+
+- **CI belum menjalankan Playwright.** Tidak ada langkah e2e pada
+  `.github/workflows`, sehingga sembilan uji layar kasir hanya berjalan bila
+  dijalankan orang. Menambahkannya ke CI adalah langkah berikutnya yang paling
+  murah dan paling berdampak.
+- **Uji layar kasir dilewati pada ponsel dengan sengaja.** Perintah prioritas
+  §20 menyasar meja kasir desktop dan tablet lanskap; pada lebar 375 piksel
+  keranjang tidak dapat tetap terlihat bersamaan dengan katalog, dan keduanya
+  harus terlihat bersamaan.
+- **Satu uji lama gagal pada ponsel** — `auth-and-erp.spec.ts:178`, halaman
+  "Segera Hadir". Pre-existing, tidak berhubungan dengan POS, dan tidak pernah
+  tertangkap karena CI tidak menjalankan e2e.

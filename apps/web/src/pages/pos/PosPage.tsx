@@ -72,7 +72,7 @@ export function PosPage() {
   useEffect(() => {
     const d = konteks.data;
     if (!d) return;
-    if (!outletId && d.outlets.length >= 1) setOutletId(d.outlets[0].outletId);
+    if (!outletId && d.outlets.length >= 1) setOutletId(d.outlets[0].id);
     if (!terminalId && d.registers.length >= 1) setTerminalId(d.registers[0].terminalId);
     if (d.openShift) {
       setShiftId(d.openShift.shiftId);
@@ -180,7 +180,19 @@ export function PosPage() {
       fokusPindai();
     },
     onError: (e) => {
-      galat(e);
+      /*
+       * Pesan peladen ditampilkan apa adanya, bukan terjemahan umum dari kode
+       * galatnya.
+       *
+       * `useErrorMessage` mendahulukan terjemahan `error.NOT_FOUND`, yang
+       * berbunyi "Data tidak ditemukan." Bagi kasir yang barusan memindai,
+       * kalimat itu tidak memberitahu apa pun — sedangkan peladen sudah
+       * mengirim "Barcode 899… tidak dikenali. Cari produk menurut namanya,
+       * atau daftarkan barcode ini pada master produk," yang menyebutkan apa
+       * yang harus dilakukan berikutnya.
+       */
+      const pesan = (e as { message?: string })?.message;
+      toast.push(pesan || pesanGalat(e, (k, f) => t(k, f ?? k)), 'error');
       setPindai('');
       fokusPindai();
     },

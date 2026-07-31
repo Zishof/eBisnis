@@ -96,7 +96,7 @@ export function PosShiftBar({
           disabled={Boolean(shiftId)}
         >
           {(konteks?.outlets ?? []).map((o) => (
-            <option key={o.outletId} value={o.outletId}>
+            <option key={o.id} value={o.id}>
               {o.name}
             </option>
           ))}
