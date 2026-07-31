@@ -118,6 +118,8 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     label: 'Kamar dan Tempat Tidur',
     route: '/app/emedik/tempat-tidur',
     icon: 'bed',
+    // UPDATE dipakai menyatakan tempat tidur sudah bersih — langkah tersendiri,
+    // dan itu inti dari keseluruhannya.
     actions: ['READ', 'CREATE', 'UPDATE', 'DELETE'],
     sortOrder: 3,
   },
@@ -273,7 +275,27 @@ export const HEALTH_MENU: HealthMenuNode[] = [
   { code: 'HEALTH_REGISTRATION', parentCode: 'HEALTH', label: 'Pendaftaran', icon: 'clipboard-list', actions: ['READ'], sortOrder: 11, comingSoon: true },
   { code: 'HEALTH_QUEUE', parentCode: 'HEALTH', label: 'Antrean', icon: 'list-ordered', actions: ['READ'], sortOrder: 12, comingSoon: true },
   { code: 'HEALTH_OUTPATIENT', parentCode: 'HEALTH', label: 'Rawat Jalan', icon: 'activity', actions: ['READ'], sortOrder: 20, comingSoon: true },
-  { code: 'HEALTH_INPATIENT', parentCode: 'HEALTH', label: 'Rawat Inap', icon: 'bed-double', actions: ['READ'], sortOrder: 50, comingSoon: true },
+  // Rawat inap — H-6. ADMIT dan DISCHARGE terpisah dari CREATE dan UPDATE:
+  // memutuskan pasien dirawat dan memutuskan pasien boleh pulang adalah
+  // keputusan klinis, bukan penutupan berkas.
+  {
+    code: 'HEALTH_ADMISSION',
+    parentCode: 'HEALTH',
+    label: 'Rawat Inap',
+    route: '/app/emedik/rawat-inap',
+    icon: 'bed-double',
+    actions: ['READ', 'ADMIT', 'DISCHARGE', 'UPDATE'],
+    sortOrder: 50,
+  },
+  {
+    code: 'HEALTH_NURSING',
+    parentCode: 'HEALTH',
+    label: 'Asuhan Keperawatan',
+    route: '/app/emedik/keperawatan',
+    icon: 'heart-pulse',
+    actions: ['READ', 'CREATE'],
+    sortOrder: 51,
+  },
   { code: 'HEALTH_EMERGENCY', parentCode: 'HEALTH', label: 'IGD', icon: 'siren', actions: ['READ'], sortOrder: 60, comingSoon: true },
   { code: 'HEALTH_PUSKESMAS', parentCode: 'HEALTH', label: 'Puskesmas', icon: 'building-2', actions: ['READ'], sortOrder: 70, comingSoon: true },
   { code: 'HEALTH_POSYANDU', parentCode: 'HEALTH', label: 'Posyandu', icon: 'baby', actions: ['READ'], sortOrder: 71, comingSoon: true },
@@ -378,6 +400,20 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_PRESCRIPTION.READ',
       'HEALTH_PRESCRIPTION.CREATE',
       'HEALTH_DRUG_MASTER.READ',
+      // Memutuskan pasien dirawat inap dan memutuskan pasien boleh pulang.
+      // Keduanya keputusan klinis, bukan penutupan berkas.
+      'HEALTH_ADMISSION.READ',
+      'HEALTH_ADMISSION.ADMIT',
+      'HEALTH_ADMISSION.DISCHARGE',
+      'HEALTH_ADMISSION.UPDATE',
+      'HEALTH_NURSING.READ',
+      'HEALTH_BED.READ',
+      'HEALTH_LAB_ORDER.READ',
+      'HEALTH_LAB_ORDER.CREATE',
+      'HEALTH_LAB_RESULT.READ',
+      'HEALTH_LAB_CRITICAL.READ',
+      'HEALTH_LAB_CRITICAL.ACKNOWLEDGE_CRITICAL',
+      'HEALTH_LAB_CATALOG.READ',
     ],
     sortOrder: 5,
   },
@@ -394,8 +430,23 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_ADMINISTRATION.READ',
       'HEALTH_ADMINISTRATION.CREATE',
       'HEALTH_DRUG_MASTER.READ',
+      // Rawat inap: mencatat pengamatan dan memindahkan tempat tidur, tetapi
+      // TIDAK memutuskan penerimaan maupun pemulangan.
+      'HEALTH_ADMISSION.READ',
+      'HEALTH_ADMISSION.UPDATE',
+      'HEALTH_NURSING.READ',
+      'HEALTH_NURSING.CREATE',
+      'HEALTH_BED.READ',
+      'HEALTH_BED.UPDATE',
     ],
     sortOrder: 6,
+  },
+  {
+    code: 'HEALTH_WARD_CLERK',
+    name: 'Petugas Bangsal',
+    description: 'Mengelola tempat tidur dan pembersihannya.',
+    permissions: ['HEALTH.READ', 'HEALTH_BED.READ', 'HEALTH_BED.UPDATE', 'HEALTH_ADMISSION.READ'],
+    sortOrder: 12,
   },
   {
     code: 'HEALTH_PHARMACIST',

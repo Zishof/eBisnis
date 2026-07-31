@@ -14,7 +14,11 @@ import {
   umurDari,
   LABEL_GOLONGAN_OBAT,
   LABEL_KEYAKINAN,
+  LABEL_CARA_PULANG,
+  LABEL_ISOLASI,
   LABEL_PRIORITAS_LAB,
+  LABEL_STATUS_TEMPAT_TIDUR,
+  RUPA_RISIKO,
   LABEL_STATUS_RESEP,
   LABEL_TOLAK_SPESIMEN,
   RUPA_HASIL,
@@ -125,6 +129,13 @@ describe('tujuan penggunaan pada pembacaan rekam medis', () => {
       ['patientLabResults', () => healthApi.patientLabResults('P1', ctx)],
       ['notifyCritical', () => healthApi.notifyCritical('C1', { channel: 'PHONE', notifiedTo: 'x' }, ctx)],
       ['acknowledgeCritical', () => healthApi.acknowledgeCritical('C1', { readBackValue: '7.2' }, ctx)],
+      // Rawat inap.
+      ['admit', () => healthApi.admit({}, ctx)],
+      ['transferBed', () => healthApi.transferBed('A1', { bedId: 'B1' }, ctx)],
+      ['discharge', () => healthApi.discharge('A1', { disposition: 'ROUTINE' }, ctx)],
+      ['dischargeSummary', () => healthApi.dischargeSummary('A1', {}, ctx)],
+      ['recordObservation', () => healthApi.recordObservation({}, ctx)],
+      ['setBedStatus', () => healthApi.setBedStatus('B1', { status: 'AVAILABLE' }, ctx)],
     ];
 
     const tanpaTujuan: string[] = [];
@@ -267,5 +278,50 @@ describe('rupa hasil laboratorium', () => {
   it('prioritas laboratorium dinyatakan dengan kata yang dipahami petugas', () => {
     expect(LABEL_PRIORITAS_LAB.STAT).toBe('Segera');
     expect(LABEL_PRIORITAS_LAB.ROUTINE).toBe('Rutin');
+  });
+});
+
+describe('rupa rawat inap', () => {
+  it('label risiko menyebut TINDAKAN yang dituntut, bukan sekadar tingkatnya', () => {
+    /*
+     * Skornya bukan diagnosis; ia penentu seberapa sering pasien dilihat lagi.
+     * "Tinggi" tidak memberi tahu perawat apa yang harus dilakukan; "Amati tiap
+     * 30 menit" memberi tahu.
+     */
+    for (const t of ['HIGH', 'MEDIUM', 'LOW']) {
+      expect(RUPA_RISIKO[t]?.label).toMatch(/Amati/);
+    }
+    expect(RUPA_RISIKO.HIGH.label).toContain('30');
+  });
+
+  it('hanya risiko tinggi yang berwarna merah pekat', () => {
+    const pekat = Object.entries(RUPA_RISIKO).filter(([, r]) => r.kelas.includes('rose-6'));
+    expect(pekat.map(([k]) => k)).toEqual(['HIGH']);
+  });
+
+  it('tempat tidur yang baru ditinggalkan TIDAK disebut kosong', () => {
+    /*
+     * Menyebutnya kosong akan membuat orang menempatkan pasien di sana — dan
+     * itulah cara paling langsung memindahkan infeksi dari pasien yang sudah
+     * pulang kepada pasien yang baru masuk.
+     */
+    expect(LABEL_STATUS_TEMPAT_TIDUR.CLEANING).toBe('Menunggu pembersihan');
+    expect(LABEL_STATUS_TEMPAT_TIDUR.CLEANING).not.toContain('osong');
+    expect(LABEL_STATUS_TEMPAT_TIDUR.AVAILABLE).toBe('Siap dipakai');
+  });
+
+  it('setiap jenis isolasi dan cara pulang punya label Indonesia', () => {
+    for (const peta of [LABEL_ISOLASI, LABEL_CARA_PULANG]) {
+      for (const [kode, label] of Object.entries(peta)) {
+        expect(label).not.toBe(kode);
+        expect(label).not.toMatch(/_/);
+      }
+    }
+  });
+
+  it('pulang paksa disebut apa adanya, bukan diperhalus', () => {
+    // Laporan yang tidak dapat membedakan pulang paksa dari pulang biasa tidak
+    // dapat memperbaiki sebabnya.
+    expect(LABEL_CARA_PULANG.AGAINST_MEDICAL_ADVICE).toBe('Pulang paksa');
   });
 });

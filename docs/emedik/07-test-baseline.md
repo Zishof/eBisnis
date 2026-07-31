@@ -68,9 +68,10 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-3 | 30 | 37 | `health-front-office.spec.ts` |
 | H-4 | 35 | **60** | `health-medication.spec.ts` |
 | H-5 | 30 | **64** | `health-lab.spec.ts` |
+| H-6 | 30 | **53** | `health-inpatient.spec.ts` |
 
-API keseluruhan: **1307** pengujian pada 51 berkas. Web: **59** pada 5 berkas,
-24 di antaranya pada `health-api.spec.ts`.
+API keseluruhan: **1360** pengujian pada 52 berkas. Web: **64** pada 5 berkas,
+29 di antaranya pada `health-api.spec.ts`.
 
 ### Naskah bukti
 
@@ -85,6 +86,19 @@ sungguhan, pada basis data sungguhan:
 | H-3 | `prove-health-clinical.mjs` | [bukti-h3-klinis.txt](bukti-h3-klinis.txt) |
 | H-4 | `prove-health-pharmacy.mjs` | 44 pemeriksaan, seluruhnya lulus — [bukti-h4-farmasi.txt](bukti-h4-farmasi.txt) |
 | H-5 | `prove-health-lab.mjs` | 44 pemeriksaan, seluruhnya lulus — [bukti-h5-laboratorium.txt](bukti-h5-laboratorium.txt) |
+| H-6 | `prove-health-inpatient.mjs` | 41 pemeriksaan, seluruhnya lulus — [bukti-h6-rawat-inap.txt](bukti-h6-rawat-inap.txt) |
+
+Naskah H-6 menembus invarian "satu tempat tidur satu pasien" dari **dua arah**:
+lewat API, dan lewat `INSERT` langsung ke tabel penempatan. Keduanya ditolak —
+yang kedua oleh indeks unik parsial. Itulah maksud menegakkannya di basis data:
+aturan yang hanya ada di layanan berhenti berlaku begitu ada jalan kedua menuju
+tabelnya, dan pada tabel penempatan selalu ada jalan kedua.
+
+Ia juga menemukan satu cacat yang tidak dapat ditemukan pengujian unit: satu
+parameter dipakai sebagai nilai kolom sekaligus pembanding di dalam `CASE`,
+sehingga Postgres menolak dengan "inconsistent types deduced for parameter $2"
+dan tempat tidur tidak pernah dapat dinyatakan bersih. Seluruh pengujian
+unitnya lulus — aturannya memang benar; yang salah adalah SQL-nya.
 
 Naskah H-5 menemukan satu cacat yang akan mengenai **setiap** penerimaan nilai
 kritis di lapangan: basis data menyimpan hasil sebagai `NUMERIC(18,6)` dan

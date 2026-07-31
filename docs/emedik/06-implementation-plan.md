@@ -179,13 +179,69 @@ Uji ≥ 30 → **64 tercapai**, ditambah naskah bukti 44 pemeriksaan.
 berpaket (order set), dan PACS/DICOM. Yang terakhir tetap **terhalang** — yang
 disimpan baru rujukan citra; arsitektur penyimpanannya menunggu keputusan Core.
 
-### H-6 · Rawat inap, ADT, tempat tidur, keperawatan
+### H-6 · Rawat inap, ADT, tempat tidur, keperawatan — **SELESAI**
 
 Masuk, pindah, pulang, permintaan dan penetapan tempat tidur, ronde, rencana
 asuhan, ringkasan pulang, pulang paksa, kematian, pembersihan tempat tidur;
 seluruh asesmen dan intervensi keperawatan.
 
-Uji ≥ 30. **Invarian:** satu tempat tidur, satu pasien, ditegakkan basis data.
+Uji ≥ 30 → **53 tercapai**, ditambah naskah bukti 41 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H010__health__inpatient.sql`, `H011__health__inpatient_permissions.sql` |
+| Aturan murni | `health-inpatient.ts` + 53 pengujian |
+| Layanan | `health-inpatient.service.ts` |
+| Endpoint | `health-inpatient.controller.ts` — 8 jalan di `/api/v1/health/inpatient/**` |
+| Layar | `apps/web/src/verticals/health/WardPage.tsx` |
+| Bukti | `scripts/prove-health-inpatient.mjs` → [bukti-h6-rawat-inap.txt](bukti-h6-rawat-inap.txt) |
+
+**Invarian yang ditegakkan basis data**
+
+- **Satu tempat tidur, satu pasien** — indeks unik parsial
+  `ux_health_bed_one_patient` pada `health_bed_assignment (bed_id) WHERE
+  released_at IS NULL`. Naskah bukti menembusnya dari dua arah: lewat API, dan
+  lewat `INSERT` langsung. Keduanya ditolak.
+- **Satu perawatan, satu tempat tidur** — indeks kedua ke arah sebaliknya.
+- **Satu pasien, satu perawatan inap aktif** — pasien yang tercatat dirawat di
+  dua tempat akan memperoleh dua jadwal obat, dua daftar pemeriksaan, dan dua
+  tagihan tanpa ada bagian sistem yang dapat memutuskan mana yang benar.
+- **Tempat tidur yang baru ditinggalkan bukan tempat tidur yang kosong** —
+  perpindahan `OCCUPIED → AVAILABLE` sengaja tidak ada pada peta status; ia
+  wajib melewati `CLEANING`.
+
+**Keputusan lain yang menentukan bentuknya**
+
+- **Nilai kritis yang belum diterima menahan pemulangan** — kecuali pada
+  kematian, di mana menahannya tidak lagi menolong siapa pun dan hanya membuat
+  keluarga menunggu. Inilah sambungan nyata pertama antara H-5 dan H-6.
+- **Pulang paksa TIDAK ditolak.** Menolaknya berarti menahan orang di rumah
+  sakit di luar kehendaknya, dan itu bukan wewenang sistem. Yang dituntut adalah
+  alasannya tercatat, supaya kelak dapat dibedakan dari pasien yang pulang
+  karena sudah sembuh.
+- **Isolasi diperiksa sebelum jenis kelamin.** Bila keduanya bermasalah, yang
+  disebut haruslah yang membahayakan pasien lain, bukan yang membuat tidak
+  nyaman.
+- **Pasien biasa mengisi kamar yang sudah berpenghuni; pasien isolasi justru
+  diberi kamar kosong.** Menyebar pasien ke kamar-kamar kosong terdengar ramah,
+  tetapi menghabiskan kamar yang esok hari dibutuhkan pasien isolasi — dan
+  pasien isolasi yang tidak memperoleh kamar akan ditolak masuk.
+- **Skor peringatan dini disimpan, bukan dihitung ulang saat dibaca.** Rumusnya
+  kelak disesuaikan, dan pengamatan bulan lalu harus tetap dapat dijelaskan
+  dengan rumus bulan lalu. Tanda vital yang tidak diukur dilaporkan sebagai
+  tidak diukur — menganggapnya normal menghasilkan skor rendah pada pasien yang
+  justru belum diperiksa.
+- **`health_room` dan `health_bed` DIPERLUAS, bukan dibuat ulang.** H001 sudah
+  membuat keduanya, dan komentarnya sendiri menyebut bahwa penetapan pasien
+  menyusul pada H-6. Nama kolomnya diikuti apa adanya — `bed_status`, bukan
+  `status` — karena mengganti nama kolom yang sudah applied berarti mengubah
+  migrasi yang sudah berjalan.
+
+**Yang belum:** permintaan tempat tidur berantre, ronde terjadwal, rencana
+asuhan keperawatan berbasis diagnosis keperawatan, dan rekonsiliasi obat saat
+masuk dan pulang.
 
 ### H-7 · IGD, operasi, ICU, layanan khusus
 

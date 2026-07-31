@@ -5,6 +5,101 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-6 — Rawat inap: penerimaan, tempat tidur, keperawatan, dan pemulangan
+
+### Ditambahkan
+
+- **`H010__health__inpatient.sql`** — `health_admission`,
+  `health_bed_assignment`, `health_nursing_observation`,
+  `health_discharge_summary`; `health_room` dan `health_bed` diperluas.
+- **`H011__health__inpatient_permissions.sql`** — dua menu, satu peran baru
+  (Petugas Bangsal), dan aksi `UPDATE` pada `HEALTH_BED`.
+- **`health-inpatient.ts`** — aturan sebagai fungsi murni: penempatan tempat
+  tidur, isolasi, jenis kelamin kamar bersama, peta status tempat tidur,
+  perpindahan, pemulangan, lama rawat, skor peringatan dini, dan keterlambatan
+  pengamatan. **53 pengujian.**
+- **`health-inpatient.service.ts`** dan **`health-inpatient.controller.ts`** —
+  delapan jalan pada `/api/v1/health/inpatient/**`.
+- **`WardPage.tsx`** — papan bangsal dan pembersihan tempat tidur pada web.
+- **`prove-health-inpatient.mjs`** — naskah bukti, 41 pemeriksaan, seluruhnya
+  lulus.
+
+Uji: API 1307 → **1360**. Web 59 → **64**.
+
+### Invarian yang ditegakkan basis data
+
+- **Satu tempat tidur, satu pasien** — indeks unik parsial pada
+  `health_bed_assignment (bed_id) WHERE released_at IS NULL`. Naskah bukti
+  menembusnya dari dua arah: lewat API, dan lewat `INSERT` langsung. Keduanya
+  ditolak. Itulah maksud menegakkannya di basis data — aturan yang hanya ada di
+  layanan berhenti berlaku begitu ada jalan kedua menuju tabelnya, dan pada
+  tabel penempatan selalu ada jalan kedua.
+- **Satu perawatan, satu tempat tidur.**
+- **Satu pasien, satu perawatan inap aktif** — pasien yang tercatat dirawat di
+  dua tempat akan memperoleh dua jadwal obat, dua daftar pemeriksaan, dan dua
+  tagihan tanpa ada bagian sistem yang dapat memutuskan mana yang benar.
+
+### Keputusan yang perlu dicatat
+
+- **Tempat tidur yang baru ditinggalkan bukan tempat tidur yang kosong.**
+  Perpindahan `OCCUPIED → AVAILABLE` sengaja tidak ada pada peta status; ia
+  wajib melewati `CLEANING`. Menempatkan pasien baru di tempat tidur yang belum
+  dibersihkan adalah cara paling langsung memindahkan infeksi dari pasien yang
+  sudah pulang kepada pasien yang baru masuk — dan yang kedua tidak akan pernah
+  tahu dari mana ia mendapatkannya. Pada layar, statusnya disebut "menunggu
+  pembersihan", bukan "kosong".
+
+- **Nilai kritis yang belum diterima menahan pemulangan** — kecuali pada
+  kematian. Sambungan nyata pertama antara H-5 dan H-6: pasien yang pulang
+  membawa kalium 7,2 yang belum pernah dibaca adalah kejadian yang berakhir di
+  ruang gawat darurat pada malam yang sama.
+
+- **Pulang paksa TIDAK ditolak.** Menolaknya berarti menahan orang di rumah
+  sakit di luar kehendaknya, dan itu bukan wewenang sistem. Yang dituntut adalah
+  alasannya tercatat, ditegakkan constraint, supaya kelak dapat dibedakan dari
+  pasien yang pulang karena sudah sembuh.
+
+- **Isolasi diperiksa sebelum jenis kelamin.** Bila keduanya bermasalah, yang
+  disebut haruslah yang membahayakan pasien lain, bukan yang membuat tidak
+  nyaman. Isolasi udara menuntut kamar tanpa penghuni lain.
+
+- **Pasien biasa mengisi kamar berpenghuni; pasien isolasi diberi kamar
+  kosong.** Menyebar pasien ke kamar-kamar kosong terdengar ramah, tetapi
+  menghabiskan kamar yang esok hari dibutuhkan pasien isolasi.
+
+- **Skor peringatan dini disimpan, bukan dihitung ulang saat dibaca.** Tanda
+  vital yang tidak diukur dilaporkan sebagai tidak diukur — menganggapnya normal
+  menghasilkan skor rendah pada pasien yang justru belum diperiksa. Pada layar,
+  labelnya menyebut tindakan yang dituntut ("Amati tiap 30 menit"), bukan
+  sekadar tingkatnya.
+
+- **Lama rawat dihitung per hari kalender yang DILEWATI**, bukan per 24 jam.
+  Pasien yang masuk pukul 23.00 dan pulang pukul 08.00 memakai tempat tidur pada
+  dua hari, dan dua hari itulah yang tidak dapat dijual kepada orang lain.
+
+- **`health_room` dan `health_bed` diperluas, bukan dibuat ulang.** H001 sudah
+  membuat keduanya; nama kolomnya diikuti apa adanya (`bed_status`, bukan
+  `status`) karena mengganti nama kolom yang sudah applied berarti mengubah
+  migrasi yang sudah berjalan.
+
+- **Pengamatan keperawatan tidak dapat diubah maupun dihapus.** Ia catatan
+  keadaan pasien pada satu saat, dan menjadi dasar keputusan berikutnya.
+
+### Cacat yang ditemukan naskah bukti
+
+Satu parameter dipakai sebagai nilai kolom sekaligus pembanding di dalam `CASE`,
+sehingga Postgres menolak dengan "inconsistent types deduced for parameter $2"
+dan tempat tidur tidak pernah dapat dinyatakan bersih — yang berarti tidak ada
+tempat tidur yang pernah dapat dipakai kedua kalinya. Seluruh pengujian unitnya
+lulus; aturannya memang benar, yang salah SQL-nya.
+
+### Belum dikerjakan
+
+Permintaan tempat tidur berantre, ronde terjadwal, rencana asuhan keperawatan
+berbasis diagnosis keperawatan, dan rekonsiliasi obat saat masuk dan pulang.
+
+---
+
 ## H-5 — Laboratorium dan radiologi: pesanan, spesimen, hasil, dan nilai kritis
 
 ### Ditambahkan

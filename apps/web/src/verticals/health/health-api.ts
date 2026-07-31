@@ -345,6 +345,48 @@ export interface NilaiKritis {
   };
 }
 
+// --- Rawat inap --------------------------------------------------------------
+
+export interface BarisPapanBangsal {
+  admission_id: string;
+  admission_number: string;
+  patient_name: string;
+  bed_code: string | null;
+  room_name: string | null;
+  admitted_at: string;
+  isolation_type: string;
+  status: string;
+  early_warning_score: number | null;
+  risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | null;
+  last_observed_at: string | null;
+  next_due_at: string | null;
+  observation: { overdue: boolean; minutesLate: number };
+}
+
+export interface TempatTidurBaris {
+  id: string;
+  code: string;
+  status: string;
+  care_class: string | null;
+  last_cleaned_at: string | null;
+  room_id: string;
+  room_name: string;
+  capacity: number;
+  isolation_capability: string[];
+  current_sex: string | null;
+  patient_name: string | null;
+  admission_number: string | null;
+}
+
+export interface HasilPengamatan {
+  id: string;
+  score: number;
+  risk: 'LOW' | 'MEDIUM' | 'HIGH';
+  observationMinutes: number;
+  nextDueAt: string;
+  missing: string[];
+}
+
 // --- Panggilan ---------------------------------------------------------------
 
 export const healthApi = {
@@ -600,6 +642,55 @@ export const healthApi = {
     api.post<{ id: string; acknowledged: boolean }>(`/health/lab/critical/${id}/acknowledge`, body, {
       headers: tajuk(ctx),
     }),
+
+  // --- Rawat inap -----------------------------------------------------------
+  admit: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; admissionNumber: string; bedId: string; bedCode: string }>(
+      '/health/inpatient/admissions',
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  transferBed: (id: string, body: { bedId: string; note?: string }, ctx: KonteksAkses) =>
+    api.post<{ id: string; bedId: string; bedCode: string }>(
+      `/health/inpatient/admissions/${id}/transfer`,
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  discharge: (
+    id: string,
+    body: { disposition: string; reason?: string; deathAt?: string },
+    ctx: KonteksAkses,
+  ) =>
+    api.post<{ id: string; disposition: string; lengthOfStay: number }>(
+      `/health/inpatient/admissions/${id}/discharge`,
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  dischargeSummary: (id: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; admissionId: string }>(
+      `/health/inpatient/admissions/${id}/summary`,
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  recordObservation: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<HasilPengamatan>('/health/inpatient/observations', body, { headers: tajuk(ctx) }),
+
+  wardBoard: (facilityId: string) =>
+    api.get<BarisPapanBangsal[]>(`/health/inpatient/board?facilityId=${facilityId}`),
+
+  beds: (facilityId: string) =>
+    api.get<TempatTidurBaris[]>(`/health/inpatient/beds?facilityId=${facilityId}`),
+
+  setBedStatus: (id: string, body: { status: string }, ctx: KonteksAkses) =>
+    api.post<{ id: string; code: string; status: string }>(
+      `/health/inpatient/beds/${id}/status`,
+      body,
+      { headers: tajuk(ctx) },
+    ),
 };
 
 // --- Bantuan tampilan --------------------------------------------------------
@@ -750,6 +841,54 @@ export const LABEL_TOLAK_SPESIMEN: Record<string, string> = {
   EXPIRED_TUBE: 'Tabung kedaluwarsa',
   DELAYED_TRANSPORT: 'Terlambat tiba',
   LEAKED: 'Bocor',
+};
+
+/**
+ * Rupa tingkat risiko keperawatan.
+ *
+ * Angkanya bukan diagnosis; ia penentu seberapa sering pasien dilihat lagi.
+ * Karena itu labelnya menyebut tindakan yang dituntut, bukan sekadar tingkatnya.
+ */
+export const RUPA_RISIKO: Record<string, { kelas: string; label: string }> = {
+  HIGH: {
+    kelas: 'bg-rose-600 text-white dark:bg-rose-700',
+    label: 'Amati tiap 30 menit',
+  },
+  MEDIUM: {
+    kelas: 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200',
+    label: 'Amati tiap jam',
+  },
+  LOW: {
+    kelas: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200',
+    label: 'Amati tiap 4 jam',
+  },
+};
+
+export const LABEL_ISOLASI: Record<string, string> = {
+  NONE: 'Tanpa isolasi',
+  CONTACT: 'Isolasi kontak',
+  DROPLET: 'Isolasi droplet',
+  AIRBORNE: 'Isolasi udara',
+  PROTECTIVE: 'Isolasi protektif',
+};
+
+export const LABEL_STATUS_TEMPAT_TIDUR: Record<string, string> = {
+  AVAILABLE: 'Siap dipakai',
+  OCCUPIED: 'Ditempati',
+  RESERVED: 'Dipesan',
+  // Bukan "kosong". Tempat tidur yang baru ditinggalkan belum siap dipakai, dan
+  // menyebutnya kosong akan membuat orang menempatkan pasien di sana.
+  CLEANING: 'Menunggu pembersihan',
+  MAINTENANCE: 'Dalam perbaikan',
+  CLOSED: 'Ditutup',
+};
+
+export const LABEL_CARA_PULANG: Record<string, string> = {
+  ROUTINE: 'Pulang biasa',
+  TRANSFER_OUT: 'Dirujuk keluar',
+  AGAINST_MEDICAL_ADVICE: 'Pulang paksa',
+  ABSCONDED: 'Menghilang',
+  DECEASED: 'Meninggal',
 };
 
 export const LABEL_KEGAWATAN: Record<string, string> = {
