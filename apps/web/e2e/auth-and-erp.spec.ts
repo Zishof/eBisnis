@@ -88,15 +88,28 @@ test.describe('Sandbox demo', () => {
      * Navigasi memakai routing sisi klien. Sesi demo sengaja TIDAK menyimpan
      * refresh token, sehingga muat ulang halaman penuh mengakhiri sesi.
      *
-     * Ditunjuk ke bilah navigasi, bukan ke seluruh halaman: dasbor juga memuat
-     * pintasan "Monitoring Stok", dan pemilih yang cocok dengan keduanya gagal
-     * dengan "strict mode violation" — kegagalan yang berbunyi seperti cacat
-     * aplikasi padahal yang kurang jelas adalah ujinya. Kartu pintasan itu hanya
-     * muncul ketika ringkasan stoknya berhasil dimuat, sehingga ambiguitasnya
-     * bergantung pada isi basis data dan baru menampakkan diri sewaktu-waktu.
+     * Tiga hal harus ditangani sekaligus, dan mengabaikan salah satunya membuat
+     * uji ini gagal pada salah satu lebar layar:
+     *
+     * 1. **Dasbor juga memuat pintasan "Monitoring Stok".** Pemilih yang cocok
+     *    dengan keduanya gagal "strict mode violation" — kegagalan yang berbunyi
+     *    seperti cacat aplikasi padahal yang kurang jelas adalah ujinya. Kartu
+     *    itu hanya muncul ketika ringkasan stoknya berhasil dimuat, sehingga
+     *    ambiguitasnya bergantung pada isi basis data.
+     * 2. **Pada ponsel navigasinya ada di balik laci** dan belum terlihat sampai
+     *    tombol Menu ditekan. Menunggu tautan di dalamnya tanpa membuka lacinya
+     *    berakhir sebagai timeout dua menit — yang terbaca seperti aplikasi
+     *    menggantung, padahal ia hanya menunggu sesuatu yang memang tersembunyi.
+     * 3. **`<nav>` yang sama digambar dua kali** — sekali di laci ponsel, sekali
+     *    di sidebar desktop — sehingga menunjuknya menurut label saja kembali
+     *    ambigu. Yang diambil adalah yang benar-benar terlihat.
      */
+    const laci = page.getByRole('button', { name: 'Menu', exact: true });
+    if (await laci.isVisible().catch(() => false)) await laci.click();
+
     await page
       .getByLabel('Navigasi aplikasi')
+      .filter({ visible: true })
       .getByRole('link', { name: 'Monitoring Stok' })
       .click();
     await expect(page).toHaveURL(/\/app\/stock-tree/);
