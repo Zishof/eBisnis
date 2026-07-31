@@ -87,6 +87,8 @@ model MarketplaceSeller {
   checkoutGroups MarketplaceCheckoutGroup[]
   orders         MarketplaceOrder[]
   vouchers       MarketplaceVoucher[]
+  feeSchedules   MarketplaceFeeSchedule[]
+  violations     MarketplaceViolation[]
 
   @@unique([programId, tenantId])
   @@unique([sellerCode])
