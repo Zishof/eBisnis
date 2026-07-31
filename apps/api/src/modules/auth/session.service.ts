@@ -13,6 +13,7 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { TenantPermissionService } from './tenant-permission.service';
 import type { AuthenticatedUser } from '../../common/decorators';
@@ -27,6 +28,7 @@ export class SessionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tenantPermissions: TenantPermissionService,
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -241,6 +243,27 @@ export class SessionService {
         ipAddress: meta.ipAddress ?? null,
         requestId: meta.requestId ?? null,
       },
+    });
+
+    // Berganti kapasitas adalah perbuatan yang perlu dicatat, bukan sekadar
+    // penyetelan tampilan: seluruh perbuatan berikutnya akan dinilai menurut
+    // kapasitas ini.
+    //
+    // Dicatat SETELAH sesi diperbarui, sehingga kapasitas yang terisi sendiri
+    // dari konteks masih menunjuk peran LAMA — dan memang itulah yang benar:
+    // keputusan berganti diambil selagi masih memakai topi sebelumnya.
+    await this.audit.record({
+      moduleCode: 'AUTH',
+      actionCode: 'ACTIVE_ROLE_CHANGED',
+      entityType: 'PlatformSession',
+      entityId: user.sessionId,
+      metadata: {
+        fromRoleCode: user.activeRoleCode ?? null,
+        toRoleCode: target?.code ?? null,
+        permissionsBefore: sebelum.size,
+        permissionsAfter: sesudah.size,
+      },
+      reason: meta.reason,
     });
 
     return {

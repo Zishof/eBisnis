@@ -14,6 +14,12 @@ model AuditEvent {
   actorUserId    String?     @map("actor_user_id") @db.Uuid
   actorUsername  String?     @map("actor_username") @db.VarChar(64)
   actorRoleCodes Json?       @map("actor_role_codes")
+  /// Peran yang sedang dipakai pelaku saat peristiwa terjadi.
+  ///
+  /// `audit_event` sudah mencatat SIAPA sejak awal; kolom ini menjawab DALAM
+  /// KAPASITAS APA. `null` berarti pelakunya belum memilih peran dan bertindak
+  /// dengan gabungan seluruh perannya — keadaan yang sah, bukan data hilang.
+  activeRoleCode String?     @map("active_role_code") @db.VarChar(64)
   sessionId      String?     @map("session_id") @db.Uuid
   supportSessionId String?   @map("support_session_id") @db.Uuid
   deviceId       String?     @map("device_id") @db.Uuid

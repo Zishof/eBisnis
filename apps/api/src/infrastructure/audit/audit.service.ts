@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, AuditResult } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { withRequestScope } from '../../common/context/request-context';
 
 export interface AuditEventInput {
   moduleCode: string;
@@ -18,6 +19,13 @@ export interface AuditEventInput {
   actorUserId?: string;
   actorUsername?: string;
   actorRoleCodes?: string[];
+  /**
+   * Peran yang sedang dipakai pelaku.
+   *
+   * Terisi sendiri dari konteks permintaan; menyebutkannya di sini hanya perlu
+   * bila mencatat perbuatan atas nama orang lain.
+   */
+  activeRoleCode?: string;
   sessionId?: string;
   supportSessionId?: string;
   ipAddress?: string;
@@ -49,8 +57,18 @@ export class AuditService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Menulis audit event pada `platform__audit`. Kegagalan audit tidak menggagalkan request. */
-  async record(input: AuditEventInput): Promise<string | null> {
+  /**
+   * Menulis audit event pada `platform__audit`. Kegagalan audit tidak
+   * menggagalkan request.
+   *
+   * Bidang pelaku — siapa, dari sesi mana, dalam kapasitas apa — dilengkapi
+   * sendiri dari konteks permintaan bila pemanggil tidak menyebutkannya.
+   * Sebelum V10-5 bidang itu bergantung pada ingatan penulis tujuh puluh enam
+   * pemanggilan, dan akibatnya `actor_role_codes` kosong pada seluruh 258 baris
+   * yang pernah ditulis.
+   */
+  async record(rawInput: AuditEventInput): Promise<string | null> {
+    const input = withRequestScope(rawInput);
     try {
       const event = await this.prisma.auditEvent.create({
         data: {
@@ -69,6 +87,7 @@ export class AuditService {
           actorUserId: input.actorUserId ?? null,
           actorUsername: input.actorUsername ?? null,
           actorRoleCodes: (input.actorRoleCodes ?? undefined) as Prisma.InputJsonValue | undefined,
+          activeRoleCode: input.activeRoleCode ?? null,
           sessionId: input.sessionId ?? null,
           supportSessionId: input.supportSessionId ?? null,
           ipAddress: input.ipAddress ?? null,
@@ -86,7 +105,7 @@ export class AuditService {
     }
   }
 
-  async recordSecurity(input: {
+  async recordSecurity(rawSecurityInput: {
     eventCode: string;
     severity?: string;
     actorUserId?: string;
@@ -97,6 +116,9 @@ export class AuditService {
     result?: AuditResult;
     detail?: Record<string, unknown>;
   }): Promise<void> {
+    // Peristiwa keamanan pun melengkapi diri dari konteks — kecuali pelakunya
+    // memang belum diketahui, seperti pada percobaan masuk yang gagal.
+    const input = withRequestScope(rawSecurityInput);
     try {
       await this.prisma.auditSecurityEvent.create({
         data: {
