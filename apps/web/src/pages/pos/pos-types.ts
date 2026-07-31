@@ -8,7 +8,20 @@
  */
 
 export interface KonteksPos {
-  outlets: Array<{ outletId: string; code: string; name: string; brandName: string | null }>;
+  /*
+   * Outlet memakai `id`, bukan `outletId`. Perbedaan ini sempat membuat layar
+   * kasir tidak dapat membuka keranjang sama sekali: medan yang tidak ada
+   * menghasilkan `undefined`, tombolnya mati, dan tidak ada pesan galat apa pun
+   * karena tidak ada yang gagal — hanya tidak terjadi.
+   */
+  outlets: Array<{
+    id: string;
+    code: string;
+    name: string;
+    timezone: string | null;
+    brand_id: string | null;
+    brand_name: string | null;
+  }>;
   registers: Array<{
     terminalId: string;
     code: string;
@@ -20,13 +33,16 @@ export interface KonteksPos {
   openShift: {
     shiftId: string;
     terminalId: string;
-    shiftNumber: string;
-    openedAt: string;
-    openingCash: string;
-    businessDate: string;
+    cashierId: string;
+    shiftNumber?: string;
+    openedAt?: string;
+    openingCash?: string;
+    businessDate?: string;
   } | null;
   currency: string;
   timezone: string | null;
+  businessDate: string;
+  hasAssignments: boolean;
 }
 
 export interface BarisKeranjang {

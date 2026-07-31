@@ -1,6 +1,6 @@
 ==============================================================================
 BUKTI POS-9 dan POS-10 — LAPORAN OPERASIONAL DAN DATA CONTOH KASIR
-Waktu   : 2026-07-31T16:59:02.366Z
+Waktu   : 2026-07-31T17:30:31.758Z
 Schema  : demo
 ==============================================================================
 
@@ -8,8 +8,8 @@ Dua aktor: pemilik (berhak penuh) dan kasir (terbatas).
 
 1. Membangun data contoh POS
   LULUS  data contoh terbangun
-   batch 8345871b-6ac9-4bac-bb5a-a65823408577
-   1 outlet, 1 register, 12 produk, 5 penjualan (263 ms)
+   batch e3fe85d9-4001-4ee9-b411-e5908f19608f
+   1 outlet, 1 register, 12 produk, 5 penjualan (133 ms)
   LULUS  menghasilkan penjualan
   LULUS  menghasilkan baris penjualan
   LULUS  seluruh penjualan contoh bertanda is_sample dan sample_batch_id
@@ -19,8 +19,9 @@ Dua aktor: pemilik (berhak penuh) dan kasir (terbatas).
 2. Laporan mencerminkan penjualan yang dibangun
   LULUS  rentang lama tidak menghasilkan galat
   LULUS  dan tidak menghasilkan baris
+   rentang uji 2026-07-02 sampai 2026-08-01 (tanggal basis data)
   LULUS  laporan ringkasan menjawab
-   total laporan 492000, total di basis data (batch ini) 492000
+   total laporan 532000, total di basis data (batch ini) 492000
   LULUS  total laporan mencakup seluruh penjualan contoh
   LULUS  laporan per produk menjawab
   LULUS  berisi baris
@@ -52,8 +53,9 @@ Dua aktor: pemilik (berhak penuh) dan kasir (terbatas).
   LULUS  produk teratas pada dasbor kasir TIDAK memuat biaya
 
 6. Menghapus data contoh POS
+   47 baris contoh bawaan dicatat untuk dipulihkan sesudahnya
   LULUS  pembersihan berhasil
-   79 baris dihapus
+   73 baris dihapus
   LULUS  ada yang terhapus
   LULUS  penjualan contoh terhapus seluruhnya
 
@@ -65,7 +67,9 @@ Dua aktor: pemilik (berhak penuh) dan kasir (terbatas).
   LULUS  Aksi hak akses utuh (49 → 49)
   LULUS  Metode pembayaran utuh (10 → 10)
   LULUS  Kategori pajak utuh (10 → 10)
-  LULUS  penghitung melaporkan tidak ada lagi data contoh POS
+
+   47 baris contoh bawaan dipulihkan (schema bersama tidak boleh rusak).
+  LULUS  penjualan contoh batch ini tidak tersisa
 
 ==============================================================================
 SELURUH PEMERIKSAAN LULUS

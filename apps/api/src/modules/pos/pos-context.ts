@@ -31,6 +31,9 @@ export interface RegisterInfo {
   outletActive: boolean;
   terminalActive: boolean;
   registerStatus: RegisterStatus;
+  /** Kode dan nama ditampilkan pada pemilih register di layar kasir. */
+  code: string;
+  name: string;
 }
 
 export interface AssignmentInfo {
@@ -39,12 +42,23 @@ export interface AssignmentInfo {
   isActive: boolean;
   validFrom: string;
   validUntil?: string | null;
+  /** Register utama kasir ini; dipakai memilih bawaan pada layar. */
+  isPrimary: boolean;
 }
 
 export interface OpenShiftInfo {
   shiftId: string;
   terminalId: string;
   cashierId: string;
+  /**
+   * Keterangan yang ditampilkan batang konteks kasir. Tanpa ketiganya layar
+   * berbunyi "Shift undefined · kas awal -", dan kasir yang membacanya tidak
+   * dapat tahu apakah shiftnya benar-benar terbuka.
+   */
+  shiftNumber?: string;
+  openedAt?: string;
+  openingCash?: string;
+  businessDate?: string;
 }
 
 /** Alasan penolakan. Kode dipakai antarmuka; pesannya dibaca kasir. */
