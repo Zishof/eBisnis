@@ -596,13 +596,7 @@ export class PosController {
     // Siapa yang menerima pembayaran tidak diteruskan tersendiri: ia sudah
     // melekat pada shift dan pada `pos_sale.cashier_id`, dan menyimpannya lagi
     // di sini hanya menciptakan tempat kedua yang dapat berbeda.
-    return this.jual.tambahPembayaran(
-      schema,
-      id,
-      dto,
-      kunci.trim(),
-      await this.subjek(schema, user),
-    );
+    return this.jual.tambahPembayaran(schema, id, dto, kunci.trim());
   }
 
   @ApiBearerAuth('access-token')

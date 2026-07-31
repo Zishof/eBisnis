@@ -197,6 +197,13 @@
       "file": "V028__pos_receipt_number_nullable.sql",
       "name": "Nomor struk boleh kosong selama transaksi belum selesai",
       "description": "pos_sale.receipt_number dilonggarkan dari NOT NULL. Jalur kasir menyimpan keranjang sebagai baris pos_sale berstatus DRAFT jauh sebelum ada struk. Menerbitkan nomor saat keranjang dibuka akan membuat setiap keranjang yang ditinggalkan memakan satu nomor, dan deret nomor struk pun berlubang — hal pertama yang ditanyakan pemeriksa pajak. Nomor kini diterbitkan hanya pada batas penyelesaian. Keunikannya tetap dijaga indeks unik parsial dari V024 yang memang sudah mengecualikan nilai kosong. Melonggarkan NOT NULL tidak pernah membatalkan baris yang sudah ada."
+    },
+    {
+      "version": "V029",
+      "sequence": 29,
+      "file": "V029__pos_payment_received_by.sql",
+      "name": "Siapa yang menerima pembayaran",
+      "description": "pos_payment bertambah received_by dan received_at. Selama ini penerima pembayaran disimpulkan dari pos_sale.cashier_id — benar pada keadaan biasa, salah pada keadaan yang justru paling perlu dijawab: supervisor yang mengambil alih di tengah transaksi, atau kasir pengganti. Ketika kas akhir shift selisih, pertanyaan pertama adalah siapa yang memegang uangnya. Nullable dengan sengaja; baris lama tidak diisi mundur karena penerima yang tidak tercatat tidak boleh dikarang."
     }
   ]
 }

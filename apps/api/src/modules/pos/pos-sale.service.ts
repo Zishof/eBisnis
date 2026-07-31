@@ -434,8 +434,8 @@ export class PosSaleService {
       const baru = await client.query<{ id: string }>(
         `INSERT INTO "${schemaName}".pos_payment
            (pos_sale_id, payment_method_id, amount, tendered_amount, change_amount,
-            reference, status, idempotency_key, sequence_no)
-         VALUES ($1, $2, $3, $4, $5, $6, 'RECEIVED', $7, $8)
+            reference, status, idempotency_key, sequence_no, received_by)
+         VALUES ($1, $2, $3, $4, $5, $6, 'RECEIVED', $7, $8, $9)
          RETURNING id`,
         [
           saleId,
@@ -446,6 +446,7 @@ export class PosSaleService {
           input.reference ?? null,
           idempotencyKey,
           Number(urut.rows[0].n),
+          subjectId,
         ],
       );
 
