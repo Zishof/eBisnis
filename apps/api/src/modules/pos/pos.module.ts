@@ -30,9 +30,12 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsIn,
   IsISO8601,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -49,6 +52,7 @@ import { PosCatalogService } from './pos-catalog.service';
 import { PosContextService } from './pos-context.service';
 import { PosSaleService } from './pos-sale.service';
 import { PosStockService } from './pos-stock.service';
+import { PosReturnService } from './pos-return.service';
 import { AuthModule } from '../auth/auth.module';
 import { TenantPermissionService } from '../auth/tenant-permission.service';
 
@@ -276,6 +280,74 @@ class AlasanDto {
   reason?: string;
 }
 
+class BarisReturDto {
+  @ApiProperty()
+  @IsUUID()
+  saleLineId!: string;
+
+  @ApiProperty({ example: 1 })
+  @IsNumber()
+  @IsPositive()
+  quantity!: number;
+
+  @ApiPropertyOptional({
+    enum: ['RESTOCK', 'DAMAGED', 'DISPOSED'],
+    description:
+      'Ke mana barang kembali. Mengembalikan seluruh barang retur ke stok jual adalah cara ' +
+      'tercepat membuat catatan stok berbeda dari kenyataan di rak.',
+  })
+  @IsOptional()
+  @IsIn(['RESTOCK', 'DAMAGED', 'DISPOSED'])
+  disposition?: 'RESTOCK' | 'DAMAGED' | 'DISPOSED';
+}
+
+class ReturDto {
+  @ApiProperty({ type: [BarisReturDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => BarisReturDto)
+  lines!: BarisReturDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  reasonCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
+class RefundDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  paymentMethodId?: string;
+
+  @ApiProperty({ example: 25000 })
+  @IsNumber()
+  @IsPositive()
+  amount!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  reference?: string;
+}
+
+class VoidDto {
+  @ApiProperty({ description: 'Alasan wajib: pembatalan yang tidak dapat ditelusuri tidak dapat dipertanggungjawabkan.' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason!: string;
+}
+
 // --- Controller -------------------------------------------------------------
 
 @ApiTags('POS')
@@ -287,6 +359,7 @@ export class PosController {
     private readonly izin: TenantPermissionService,
     private readonly jual: PosSaleService,
     private readonly stokLayanan: PosStockService,
+    private readonly retur: PosReturnService,
   ) {}
 
   /**
@@ -631,6 +704,146 @@ export class PosController {
     );
   }
 
+  // --- Struk -----------------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.READ')
+  @Get('sales/:id/receipt')
+  @ApiOperation({ summary: 'Membaca struk satu transaksi' })
+  struk(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.jual.struk(requireSchema(user), id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.PRINT')
+  @Post('sales/:id/receipt/reprint')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Mencetak ulang struk',
+    description:
+      'Setiap cetak ulang tercatat. Struk kedua atas transaksi yang sama dapat dipakai menuntut ' +
+      'barang dua kali, sehingga cetak ulang yang tidak tercatat adalah celah yang nyata.',
+  })
+  async cetakUlang(
+    @Param('id') id: string,
+    @Body() dto: AlasanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    return this.jual.cetakUlangStruk(
+      schema,
+      id,
+      dto.reason ?? 'Cetak ulang',
+      await this.subjek(schema, user),
+    );
+  }
+
+  // --- Pembatalan, retur, refund ---------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.CANCEL')
+  @Post('sales/:id/void-request')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mengajukan pembatalan transaksi yang sudah selesai' })
+  async mintaVoid(
+    @Param('id') id: string,
+    @Body() dto: VoidDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    return this.retur.ajukanVoid(schema, id, dto.reason, user, await this.subjek(schema, user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.APPROVE')
+  @Post('sales/:id/void-approve')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menyetujui pembatalan',
+    description:
+      'Stok dikembalikan dan peristiwa akuntansi pembalik dibentuk — barisnya TIDAK dihapus. ' +
+      'Pemohon tidak dapat menyetujui permintaannya sendiri.',
+  })
+  async setujuiVoid(
+    @Param('id') id: string,
+    @Body() dto: AlasanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    return this.retur.setujuiVoid(
+      schema,
+      id,
+      dto.reason ?? 'Pembatalan disetujui',
+      user,
+      await this.subjek(schema, user),
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_RETURN.RETURN')
+  @Post('sales/:id/returns')
+  @ApiOperation({ summary: 'Mengajukan retur sebagian atau seluruhnya' })
+  async buatRetur(
+    @Param('id') id: string,
+    @Body() dto: ReturDto,
+    @Headers('idempotency-key') kunci: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    if (!kunci?.trim()) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Tajuk Idempotency-Key wajib disertakan pada pengajuan retur.',
+      );
+    }
+    return this.retur.buatRetur(
+      schema,
+      id,
+      dto,
+      kunci.trim(),
+      user,
+      await this.subjek(schema, user),
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_RETURN.RETURN_APPROVE')
+  @Post('returns/:id/approve')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Menyetujui retur; barang kembali sesuai disposisinya' })
+  async setujuiRetur(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const schema = requireSchema(user);
+    return this.retur.setujuiRetur(schema, id, user, await this.subjek(schema, user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_RETURN.REFUND_APPROVE')
+  @Post('returns/:id/refund')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Membayarkan refund atas retur yang sudah disetujui' })
+  async refund(
+    @Param('id') id: string,
+    @Body() dto: RefundDto,
+    @Headers('idempotency-key') kunci: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    if (!kunci?.trim()) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Tajuk Idempotency-Key wajib disertakan pada pembayaran refund.',
+      );
+    }
+    return this.retur.refund(
+      schema,
+      id,
+      dto,
+      kunci.trim(),
+      user,
+      await this.subjek(schema, user),
+    );
+  }
+
   // --- Stok ------------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -664,7 +877,19 @@ export class PosController {
 @Module({
   imports: [InfrastructureModule, AuthModule],
   controllers: [PosController],
-  providers: [PosCatalogService, PosContextService, PosSaleService, PosStockService],
-  exports: [PosCatalogService, PosContextService, PosSaleService, PosStockService],
+  providers: [
+    PosCatalogService,
+    PosContextService,
+    PosSaleService,
+    PosStockService,
+    PosReturnService,
+  ],
+  exports: [
+    PosCatalogService,
+    PosContextService,
+    PosSaleService,
+    PosStockService,
+    PosReturnService,
+  ],
 })
 export class PosModule {}

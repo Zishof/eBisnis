@@ -5,6 +5,42 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## POS-7 dan POS-8 — Struk, pembatalan, retur, dan refund
+
+### Ditambahkan
+- **`PosReturnService`** — pengajuan dan persetujuan pembatalan, retur sebagian
+  dan penuh dengan disposisi barang, serta pembayaran refund.
+- **Sepuluh endpoint**: struk, cetak ulang, void-request, void-approve, returns,
+  approve, refund.
+- **`V030__pos_void_columns.sql`** — `void_requested_by/at`, `void_approved_by/at`,
+  `void_reason`, dan constraint `pos_sale_no_self_void_approval`.
+- **`prove-pos-return-e2e.mjs`** — **34 pemeriksaan, seluruhnya lulus**
+  (`docs/pos-web-priority/bukti-pos-return-e2e.txt`).
+
+### Diperbaiki
+- **Retur lanjutan tidak lagi tertolak karena refund sebelumnya masih tertunda.**
+  Sesudah retur pertama disetujui, status penjualan menjadi `REFUND_PENDING`,
+  dan retur kedua atas barang yang masih di tangan pembeli ikut tertolak.
+  Pembeli yang mengembalikan dua barang pada dua hari berbeda adalah keadaan
+  biasa, bukan keadaan yang perlu dilarang. Yang menentukan boleh-tidaknya retur
+  adalah sisa unit yang belum dikembalikan — dijaga constraint.
+- **Idempotensi refund diperiksa sebelum status.** Sebelumnya percobaan ulang
+  atas refund yang sudah berhasil dijawab "retur belum disetujui", karena
+  statusnya sudah berubah menjadi `REFUNDED`. Kasir yang membaca itu akan
+  mengira refundnya gagal lalu membayar tunai dari laci — **uangnya keluar dua
+  kali.** Pelajaran yang sama pernah diambil pada penomoran surat V10-6.
+
+### Keputusan yang perlu dicatat
+- **Pembatalan membalik, bukan menghapus.** Peristiwa akuntansi pembalik
+  bernilai negatif dan stoknya dikembalikan; barisnya tetap ada. Transaksi yang
+  lenyap dari riwayat adalah cara termudah menghilangkan uang tanpa jejak.
+- **Larangan menyetujui permintaan sendiri berlaku di tiga lapisan** — mesin
+  transisi status, layanan, dan constraint basis data. Naskah bukti menguji
+  ketiganya, termasuk dengan melewati layanan sama sekali.
+- **Nilai retur dihitung proporsional** terhadap baris aslinya, termasuk
+  diskonnya. Memakai harga satuan penuh akan mengembalikan lebih banyak uang
+  daripada yang pernah diterima atas barang itu.
+
 ## POS-5 dan POS-6 — Keranjang, pembayaran, dan batas penyelesaian
 
 ### Ditambahkan

@@ -204,6 +204,13 @@
       "file": "V029__pos_payment_received_by.sql",
       "name": "Siapa yang menerima pembayaran",
       "description": "pos_payment bertambah received_by dan received_at. Selama ini penerima pembayaran disimpulkan dari pos_sale.cashier_id — benar pada keadaan biasa, salah pada keadaan yang justru paling perlu dijawab: supervisor yang mengambil alih di tengah transaksi, atau kasir pengganti. Ketika kas akhir shift selisih, pertanyaan pertama adalah siapa yang memegang uangnya. Nullable dengan sengaja; baris lama tidak diisi mundur karena penerima yang tidak tercatat tidak boleh dikarang."
+    },
+    {
+      "version": "V030",
+      "sequence": 30,
+      "file": "V030__pos_void_columns.sql",
+      "name": "Jejak pembatalan transaksi kasir",
+      "description": "pos_sale bertambah void_requested_by/at, void_approved_by/at, dan void_reason, beserta constraint pos_sale_no_self_void_approval. Disimpan pada pos_sale — bukan hanya pada riwayat status — karena pemeriksaan pemisahan wewenang membutuhkannya SEBELUM perpindahan status terjadi: layanan harus tahu siapa pemohonnya untuk menolak penyetujuan oleh orang yang sama. Membacanya dari riwayat berarti mengurai teks alasan, dan aturan yang bergantung pada penguraian teks bukan aturan. Constraint adalah lapisan ketiga setelah mesin transisi status dan layanan — yang tetap berlaku ketika kelak ada jalan keempat menuju tabel ini."
     }
   ]
 }

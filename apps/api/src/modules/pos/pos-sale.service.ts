@@ -638,6 +638,94 @@ export class PosSaleService {
     });
   }
 
+
+  // --- Struk -----------------------------------------------------------------
+
+  /** Struk satu transaksi, lengkap dengan barisnya. */
+  async struk(schemaName: string, saleId: string) {
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT r.receipt_number, r.issued_at, r.print_count, r.last_printed_at,
+              s.business_date::text AS business_date, s.sale_at, s.currency_code,
+              s.subtotal::text, s.discount_total::text, s.tax_total::text,
+              s.grand_total::text, s.paid_total::text, s.change_total::text,
+              s.status, o.name AS outlet_name, o.address_id, b.name AS brand_name,
+              t.name AS terminal_name, c.name AS customer_name
+         FROM "${schemaName}".pos_sale_receipt r
+         JOIN "${schemaName}".pos_sale s ON s.id = r.pos_sale_id
+    LEFT JOIN "${schemaName}".outlet o ON o.id = s.outlet_id
+    LEFT JOIN "${schemaName}".brand b ON b.id = s.brand_id
+    LEFT JOIN "${schemaName}".pos_terminal t ON t.id = s.terminal_id
+    LEFT JOIN "${schemaName}".customer c ON c.id = s.customer_id
+        WHERE r.pos_sale_id = $1`,
+      [saleId],
+    );
+    if (!rows.length) {
+      throw AppError.notFound(
+        ErrorCodes.NOT_FOUND,
+        'Struk belum terbit. Struk hanya ada setelah transaksi diselesaikan.',
+      );
+    }
+
+    const [baris, bayar] = await Promise.all([
+      this.tenantDb.query<Record<string, unknown>>(
+        schemaName,
+        `SELECT l.line_no, p.name AS product_name, p.sku, l.quantity::text,
+                l.unit_price::text, l.discount_amount::text, l.tax_amount::text,
+                l.line_total::text, l.returned_qty::text
+           FROM "${schemaName}".pos_sale_line l
+      LEFT JOIN "${schemaName}".product p ON p.id = l.product_id
+          WHERE l.pos_sale_id = $1 ORDER BY l.line_no`,
+        [saleId],
+      ),
+      this.tenantDb.query<Record<string, unknown>>(
+        schemaName,
+        // Nomor rujukan mesin EDC ditampilkan; nomor kartu tidak pernah
+        // disimpan, jadi tidak ada yang perlu disamarkan di sini.
+        `SELECT m.name AS method_name, p.amount::text, p.tendered_amount::text,
+                p.change_amount::text, p.reference
+           FROM "${schemaName}".pos_payment p
+      LEFT JOIN "${schemaName}".payment_method m ON m.id = p.payment_method_id
+          WHERE p.pos_sale_id = $1 AND p.status = 'RECEIVED'
+          ORDER BY p.sequence_no`,
+        [saleId],
+      ),
+    ]);
+
+    return { ...rows[0], lines: baris, payments: bayar };
+  }
+
+  /**
+   * Mencetak ulang struk.
+   *
+   * Setiap cetak ulang menaikkan penghitungnya dan tercatat pada audit. Struk
+   * kedua atas transaksi yang sama dapat dipakai menuntut barang dua kali —
+   * cetak ulang yang tidak tercatat karena itu adalah celah yang nyata, bukan
+   * ketidaknyamanan administratif.
+   */
+  async cetakUlangStruk(schemaName: string, saleId: string, alasan: string, subjectId: string) {
+    const hasil = await this.tenantDb.query<{ receipt_number: string; print_count: number }>(
+      schemaName,
+      `UPDATE "${schemaName}".pos_sale_receipt
+          SET print_count = print_count + 1, last_printed_at = now(),
+              last_printed_by = $2, version = version + 1
+        WHERE pos_sale_id = $1
+      RETURNING receipt_number, print_count`,
+      [saleId, subjectId],
+    );
+    if (!hasil.length) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Struk belum terbit.');
+    }
+    this.logger.log(
+      `Struk ${hasil[0].receipt_number} dicetak ulang (ke-${hasil[0].print_count}): ${alasan}`,
+    );
+    return {
+      receiptNumber: hasil[0].receipt_number,
+      printCount: hasil[0].print_count,
+      reason: alasan,
+    };
+  }
+
   // --- Bagian dalam ----------------------------------------------------------
 
   private pastikanBolehDisunting(status: string) {
