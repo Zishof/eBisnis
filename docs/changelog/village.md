@@ -816,3 +816,168 @@ membangun situs dan portal warga.
 - `jest` — **1368 tes lulus** (bertambah 70)
 - `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
 - Migrasi diverifikasi: 67 tabel village terbentuk
+
+---
+
+## D-8 — BUMDes, UMKM, wisata, dan kontrak integrasi
+
+### Ditambahkan
+
+- **`ports/external.ports.ts`** — empat kontrak konsumen: `HealthAggregatePort`,
+  `CooperativeIntegrationPort`, `PosIntegrationPort`, `MarketplaceLinkPort`.
+- **`ports/unavailable.adapter.ts`** — adapter tiruan yang jujur.
+  **16 pengujian.**
+- **`village-business.ts`** — aturan BUMDes, UMKM, dan wisata sebagai fungsi
+  murni. **40 pengujian.**
+- **Migrasi `20260731000010`** — delapan tabel: `village_bumdes`,
+  `village_bumdes_unit`, `village_bumdes_capital`, `village_bumdes_result`,
+  `village_umkm`, `village_umkm_product`, `village_tourism_site`,
+  `village_cooperative_presence`.
+- **`VillageBusinessService`** dan **empat belas endpoint.**
+- **`docs/integration-requests/village/004-external-contracts.md`**
+
+### Kerugian BUMDes tidak menjadi beban APBDes
+
+BUMDes adalah badan hukum tersendiri. Desa menyertakan modal; ia tidak "punya
+kas BUMDes". Yang membedakan bukan istilah melainkan akibatnya — dan akibat yang
+paling mudah hilang adalah yang ini:
+
+```
+CHECK (village_share_amount >= 0)
+CHECK (net_result > 0 OR village_share_amount = 0)
+```
+
+Begitu kerugian dapat mengalir kembali sebagai angka negatif pada bagian desa,
+pemisahan badan hukumnya sudah runtuh — bukan lewat keputusan, melainkan lewat
+satu baris pembukuan, tanpa seorang pun memutuskannya. Kerugian tetap dicatat
+apa adanya pada `net_result` yang boleh negatif; menyembunyikannya tidak membuat
+uangnya kembali. Yang tidak boleh negatif adalah yang **mengalir ke desa**.
+
+Sisi lainnya: `GET /village/bumdes/:id/capital` menyebutkan jumlah penyertaan
+modal beserta kalimat bahwa itulah seluruh paparan desa. Angka yang harus
+disimpulkan sendiri adalah angka yang disimpulkan keliru.
+
+### Bagi hasil dicuplik, bukan dirujuk
+
+`village_share_pct` disalin ke tiap laporan hasil usaha saat laporan itu
+ditetapkan. **Dibuktikan:** persentase pada BUMDes diubah dari 30 menjadi 60,
+dan laporan tahun 2027 tetap menyebut 30. Laporan yang hanya merujuk anggaran
+dasar akan berubah artinya ketika anggaran dasarnya diubah, dan laporan tahun
+lalu yang berubah artinya bukan laporan.
+
+Bagian desa tidak boleh 100 persen. BUMDes yang seluruh labanya disetor tidak
+menyisakan apa pun untuk pemupukan modal, cadangan, dan jasa pengurus — ia tidak
+akan tumbuh, dan tahun berikutnya desa menyertakan modal lagi untuk hal yang
+sama.
+
+### Penyertaan modal menunjuk uangnya
+
+Wajib menunjuk `village_budget_transaction` yang **sudah direalisasi** dengan
+nilai yang sama, dan menyebut peraturan desanya. Modal yang tercatat pada BUMDes
+tanpa padanan pada APBDes berarti salah satu dari dua hal — uangnya belum
+keluar, atau uangnya keluar tanpa dicatat — dan keduanya perlu ketahuan
+sekarang, bukan saat pemeriksaan.
+
+Satu transaksi menjadi satu penyertaan, ditegakkan indeks unik. Uang yang keluar
+sekali tidak dapat dicatat dua kali sebagai modal.
+
+### Larangan ditegakkan dengan tidak menyediakan metodenya
+
+Keempat port tidak memiliki metode untuk rekam medis, diagnosis, riwayat
+kunjungan, saldo simpanan, riwayat pinjaman, tunggakan, membuat listing,
+menjual, membuka shift, maupun menyesuaikan stok. Antarmuka yang tidak punya
+metode tidak dapat dipanggil, dan itu jauh lebih kuat daripada metode yang ada
+tetapi diberi pemeriksaan izin — pemeriksaan izin dapat dilonggarkan oleh orang
+yang sedang terburu-buru, metode yang tidak ada tidak dapat.
+
+Dijaga pengujian dari dua arah: daftar metode tiap port harus **sama persis**
+dengan daftar sahnya, dan tidak satu pun boleh muncul pada daftar terlarang.
+Aturan yang hanya tertulis pada dokumen akan dilanggar suatu hari oleh orang
+yang belum pernah membacanya; daftar yang diuji menggagalkan berkasnya pada hari
+yang sama.
+
+`village_cooperative_presence` diperiksa dari sisi basis datanya: bukti D-8
+memindai nama kolomnya dan menolak yang menyerupai simpanan, pinjaman, atau
+tunggakan. Desa tidak berkepentingan mengetahuinya, dan kepentingan yang tidak
+ada tidak boleh diberi jalan.
+
+### "Kosong" dan "belum tersambung" tidak pernah disamakan
+
+eMedik dan eKoperasi belum dibuat; POS belum masuk `main`. Adapter tiruan
+menyatakan keadaan itu apa adanya dan **tidak mengembalikan satu pun angka
+karangan**.
+
+Godaannya besar: mengisi jadwal Posyandu dengan tiga baris contoh membuat
+halaman tampak selesai, demo berjalan mulus, dan tidak seorang pun bertanya.
+Lalu vertikal kesehatannya jadi, datanya berbeda, dan yang berubah bukan hanya
+angkanya — kepercayaan pada seluruh halaman itu ikut hilang.
+
+Karena itu setiap metode mengembalikan `HasilLuar<T>` — `{ tersedia,
+keterangan?, data }` — dan layanan meneruskannya apa adanya. Halaman yang
+menampilkan "0 koperasi di desa ini" padahal eKoperasi belum tersambung
+menyampaikan kebohongan yang akan diulang pemerintah desa kepada warganya.
+
+Satu turunannya patut disebut: `apakahAnggota` yang tidak tersedia **tidak boleh
+dibaca sebagai "bukan anggota"**. Pemeriksaan bantuan ganda yang mengabaikan
+`tersedia` akan meloloskan penerima ganda persis ketika sistemnya sedang tidak
+dapat memeriksa.
+
+### Rujukan lintas vertikal tanpa foreign key
+
+`pos_outlet_id`, `marketplace_listing_id`, dan `external_cooperative_id`
+menunjuk entitas milik sistem lain dan sengaja tidak berelasi. Foreign key yang
+melintasi batas vertikal membuat migrasi satu vertikal dapat mematahkan vertikal
+lain — persis yang dilarang §3. Keabsahannya diperiksa lewat port. **Dibuktikan
+dengan memindai `pg_constraint`:** nol foreign key pada ketiga kolom itu.
+
+Yang tetap ditegakkan: satu outlet POS untuk satu unit usaha (dua unit yang
+menunjuk outlet yang sama akan melaporkan penjualan yang sama dua kali), satu
+listing untuk satu produk, dan tautan yang tercatat wajib menyebut kapan serta
+oleh siapa.
+
+### Desa menautkan produk, tidak mendaftarkannya
+
+Tidak ada metode untuk membuat listing. Produk yang didaftarkan pemerintah desa
+atas nama warga menimbulkan pertanyaan siapa yang bertanggung jawab bila
+produknya bermasalah — dan pertanyaan itu muncul justru ketika keadaannya sedang
+buruk.
+
+`periksaListing` menggabungkan keberadaan dan kepemilikan menjadi satu jawaban.
+Metode terpisah yang mengembalikan listing lalu membiarkan pemanggil
+membandingkan pemiliknya akan dilewati oleh pemanggil yang lupa
+membandingkannya.
+
+Skala UMKM **dihitung dari omzet, bukan diketik.** Skala yang diisi sendiri
+pelaku usaha akan mengikuti syarat bantuan yang sedang dibuka, bukan mengikuti
+usahanya.
+
+### Penayangan adalah janji kepada orang yang belum pernah datang
+
+Destinasi wisata yang ditayangkan wajib menyebut pengelola, kontaknya,
+sekurang-kurangnya satu foto, dan tarifnya — termasuk bila gratis. Ditegakkan
+constraint, bukan pemeriksaan layanan, sehingga jalan tulis mana pun tertahan.
+
+- Destinasi tanpa pengelola mengirim pengunjung ke tempat yang tidak ada
+  penanggung jawabnya.
+- Destinasi yang ditayangkan tanpa tarif adalah destinasi yang tarifnya
+  ditentukan di pintu masuk, berbeda-beda menurut penampilan yang datang.
+- Gratis dan bertarif tidak dapat keduanya. Nol berbeda dari belum diisi.
+
+### Bukti
+
+`docs/info-desa/bukti-d8-usaha-desa.txt` — **34 pemeriksaan**, seluruhnya lulus.
+
+### Yang belum dikerjakan
+
+**Antarmuka web masih belum ada**, kini delapan tahap. Dicatat kembali di sini
+supaya tidak menjadi kelalaian yang disepakati diam-diam.
+
+Keempat kontrak menunggu jawaban pihak lain — lihat integration request 004.
+Sampai dijawab, adapter tiruan berlaku dan tidak satu pun data karangan
+tersimpan.
+
+### Gerbang mutu
+
+- `jest` — **1424 tes lulus** (bertambah 56)
+- `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
+- Migrasi diverifikasi: 75 tabel village terbentuk

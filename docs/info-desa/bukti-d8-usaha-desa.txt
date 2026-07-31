@@ -1,0 +1,61 @@
+==============================================================================
+BUKTI D-8 — BUMDes, UMKM, DAN WISATA
+Waktu : 2026-07-31T18:54:14.110Z
+==============================================================================
+
+1. Migrasi D-8
+  LULUS  delapan tabel D-8 terbentuk
+  LULUS  rujukan ke vertikal lain disimpan TANPA foreign key
+  LULUS  pemicu audit terpasang pada tabel D-8
+
+2. Pendirian BUMDes
+  LULUS  BUMDes berdiri tanpa peraturan desa ditolak
+  LULUS  bagian desa seratus persen ditolak
+  LULUS  BUMDes yang lengkap tersimpan
+  LULUS  satu desa satu BUMDes
+  LULUS  pembubaran BUMDes tanpa alasan ditolak
+
+3. Penyertaan modal menunjuk APBDes-nya
+  LULUS  penyertaan modal tanpa transaksi APBDes ditolak
+  LULUS  penyertaan modal yang menunjuk transaksinya tersimpan
+  LULUS  satu transaksi APBDes tidak dapat menjadi dua penyertaan modal
+  LULUS  penyertaan modal nol ditolak
+
+4. Kerugian BUMDes tidak mengurangi APBDes
+  LULUS  bagian desa yang NEGATIF ditolak basis data
+  LULUS  BUMDes yang rugi tetapi menyetor bagian desa ditolak
+  LULUS  kerugian tercatat apa adanya dengan bagian desa nol
+  LULUS  laba dibagi menurut persentase yang dicuplik
+  LULUS  laporan lama TIDAK berubah ketika persentase anggaran dasar diubah
+  LULUS  satu laporan hasil usaha per tahun
+
+5. Unit usaha dan outlet POS
+  LULUS  unit usaha tertaut ke outlet POS
+  LULUS  satu outlet POS tidak dapat ditautkan ke dua unit usaha
+  LULUS  tautan POS tanpa tanggal ditolak
+
+6. UMKM menautkan listing, tidak membuatnya
+  LULUS  tautan listing tanpa jejak siapa dan kapan ditolak
+  LULUS  satu listing tidak dapat ditautkan ke dua produk
+  LULUS  skala usaha di luar daftar ditolak
+
+7. Destinasi wisata tidak ditayangkan setengah jadi
+  LULUS  penayangan tanpa pengelola, kontak, foto, dan tarif ditolak
+  LULUS  penayangan tanpa tarif yang dinyatakan ditolak
+  LULUS  destinasi yang lengkap dapat ditayangkan
+  LULUS  destinasi gratis sekaligus bertarif ditolak
+  LULUS  destinasi gratis yang dinyatakan gratis dapat ditayangkan
+
+8. Koperasi: desa mencatat keberadaan, bukan datanya
+  LULUS  tidak ada kolom simpanan, pinjaman, maupun tunggakan
+  LULUS  keberadaan koperasi tercatat beserta rujukan buramnya
+  LULUS  rujukan ke eKoperasi tanpa tanggal penautan ditolak
+
+9. Jejak audit
+  LULUS  perubahan pada tabel usaha desa tercatat pada skema audit
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

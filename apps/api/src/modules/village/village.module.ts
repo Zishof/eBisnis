@@ -41,6 +41,19 @@ import { VillageParticipationService } from './village-participation.service';
 import { VillageBudgetService } from './village-budget.service';
 import { VillageAssetService } from './village-asset.service';
 import { VillageAidService } from './village-aid.service';
+import { VillageBusinessService } from './village-business.service';
+import {
+  COOPERATIVE_PORT,
+  HEALTH_PORT,
+  MARKETPLACE_PORT,
+  POS_PORT,
+} from './ports/external.ports';
+import {
+  CooperativeUnavailableAdapter,
+  HealthUnavailableAdapter,
+  MarketplaceUnavailableAdapter,
+  PosUnavailableAdapter,
+} from './ports/unavailable.adapter';
 import { KATALOG_KELAYAKAN, layak, type KodeFitur } from './village-profile';
 
 function requireSchema(user: AuthenticatedUser): string {
@@ -1298,6 +1311,383 @@ class PendataanKeluargaDto {
   note?: string;
 }
 
+
+class DirikanBumdesDto {
+  @ApiProperty({ example: 'BUMDes Krajan Makmur' })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(300)
+  name!: string;
+
+  @ApiProperty({
+    example: 'Perdes Nomor 5 Tahun 2027',
+    description:
+      'WAJIB. BUMDes tanpa perdes bukan badan usaha milik desa melainkan usaha yang kebetulan ' +
+      'dikelola perangkat desa.',
+  })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(160)
+  regulationNumber!: string;
+
+  @ApiProperty({
+    example: 30,
+    description:
+      'Persentase laba yang menjadi pendapatan asli desa, dari anggaran dasar. Tidak boleh 100: ' +
+      'BUMDes yang seluruh labanya disetor tidak akan tumbuh.',
+  })
+  @IsNumber()
+  @Min(0)
+  villageSharePct!: number;
+
+  @ApiProperty({ description: 'AD/ART harus ditetapkan sebelum BUMDes berdiri.' })
+  @IsBoolean()
+  adArtEstablished!: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  establishedAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  legalEntityNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  directorName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  directorResidentId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string;
+}
+
+const STATUS_BUMDES = ['DIRENCANAKAN', 'BERDIRI', 'AKTIF', 'TIDAK_AKTIF', 'BUBAR'] as const;
+
+class StatusBumdesDto {
+  @ApiProperty({ enum: STATUS_BUMDES })
+  @IsIn(STATUS_BUMDES as unknown as string[])
+  status!: (typeof STATUS_BUMDES)[number];
+
+  @ApiPropertyOptional({ description: 'Wajib bila membubarkan.' })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+class PenyertaanModalDto {
+  @ApiProperty({ example: 2027 })
+  @IsInt()
+  @Min(2000)
+  fiscalYear!: number;
+
+  @ApiProperty({ example: 150000000 })
+  @IsNumber()
+  @IsPositive()
+  amount!: number;
+
+  @ApiProperty({ example: 'Perdes Nomor 6 Tahun 2027' })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(160)
+  regulationNumber!: string;
+
+  @ApiProperty({
+    description:
+      'WAJIB. Modal yang tercatat pada BUMDes tanpa padanan pada APBDes berarti uangnya belum ' +
+      'keluar, atau keluar tanpa dicatat.',
+  })
+  @IsUUID()
+  budgetTransactionId!: string;
+
+  @ApiProperty({ example: '2027-03-15' })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  transferredAt!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+class HasilUsahaDto {
+  @ApiProperty({ example: 2027 })
+  @IsInt()
+  @Min(2000)
+  fiscalYear!: number;
+
+  @ApiProperty({ example: 500000000 })
+  @IsNumber()
+  @Min(0)
+  revenueAmount!: number;
+
+  @ApiProperty({ example: 380000000 })
+  @IsNumber()
+  @Min(0)
+  expenseAmount!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reportDocument?: string;
+}
+
+class UnitUsahaDto {
+  @ApiProperty({ example: 'UNIT-01' })
+  @IsString()
+  @MaxLength(48)
+  code!: string;
+
+  @ApiProperty({ example: 'Toko Sembako Desa' })
+  @IsString()
+  @MaxLength(300)
+  name!: string;
+
+  @ApiPropertyOptional({ example: 'PERDAGANGAN' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  businessType?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  managerName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  startedAt?: string;
+}
+
+class TautOutletDto {
+  @ApiProperty({ description: 'Outlet POS yang sudah ada. Village tidak membuatnya.' })
+  @IsUUID()
+  outletId!: string;
+}
+
+class DaftarUmkmDto {
+  @ApiProperty({ example: 'UMKM-014' })
+  @IsString()
+  @MaxLength(48)
+  code!: string;
+
+  @ApiProperty({ example: 'Keripik Singkong Bu Sari' })
+  @IsString()
+  @MaxLength(300)
+  businessName!: string;
+
+  @ApiProperty({ example: 'Sari Wulandari' })
+  @IsString()
+  @MaxLength(200)
+  ownerName!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  ownerResidentId?: string;
+
+  @ApiPropertyOptional({ description: 'Akun pelaku usaha, untuk menautkan listing miliknya sendiri.' })
+  @IsOptional()
+  @IsUUID()
+  ownerUserId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  businessSector?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  villageRtId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  nib?: string;
+
+  @ApiPropertyOptional({
+    example: 450000000,
+    description: 'Skala usaha dihitung dari omzet ini, bukan diketik.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  annualTurnover?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  employeeCount?: number;
+}
+
+class TautListingDto {
+  @ApiProperty({ description: 'Listing yang sudah dibuat pelaku usahanya sendiri.' })
+  @IsUUID()
+  listingId!: string;
+}
+
+const KATEGORI_WISATA = ['ALAM', 'BUDAYA', 'BUATAN', 'RELIGI', 'KULINER', 'EDUKASI'] as const;
+
+class DestinasiWisataDto {
+  @ApiProperty({ example: 'WIS-01' })
+  @IsString()
+  @MaxLength(48)
+  code!: string;
+
+  @ApiProperty({ example: 'Curug Krajan' })
+  @IsString()
+  @MaxLength(300)
+  name!: string;
+
+  @ApiPropertyOptional({ enum: KATEGORI_WISATA })
+  @IsOptional()
+  @IsIn(KATEGORI_WISATA as unknown as string[])
+  category?: (typeof KATEGORI_WISATA)[number];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  subAreaId?: string;
+
+  @ApiPropertyOptional({ description: 'Wajib sebelum ditayangkan.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  managerName?: string;
+
+  @ApiPropertyOptional({ description: 'Wajib sebelum ditayangkan.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  managerContact?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  managerBumdesUnitId?: string;
+
+  @ApiPropertyOptional({ description: 'Tandai gratis, atau isi tarifnya. Salah satu wajib sebelum ditayangkan.' })
+  @IsOptional()
+  @IsBoolean()
+  isFree?: boolean;
+
+  @ApiPropertyOptional({ example: 5000 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  entryFee?: number;
+
+  @ApiPropertyOptional({ example: '08.00 - 17.00' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  openHours?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  facilities?: string;
+
+  @ApiPropertyOptional({ description: 'Sekurang-kurangnya satu foto sebelum ditayangkan.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  photoCount?: number;
+}
+
+class KoperasiDesaDto {
+  @ApiProperty({ example: 'Koperasi Simpan Pinjam Sejahtera' })
+  @IsString()
+  @MaxLength(300)
+  name!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  cooperativeType?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  legalNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  contactPerson?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string;
+}
+
 // --- Controller ---------------------------------------------------------------
 
 @ApiTags('village')
@@ -1313,6 +1703,7 @@ export class VillageController {
     private readonly anggaran: VillageBudgetService,
     private readonly aset: VillageAssetService,
     private readonly bantuan: VillageAidService,
+    private readonly usaha: VillageBusinessService,
   ) {}
 
 
@@ -2244,6 +2635,215 @@ export class VillageController {
     return this.bantuan.catatPendataan(requireSchema(user), dto, user);
   }
 
+
+  // --- Usaha desa -----------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BUMDES.CREATE')
+  @Post('bumdes')
+  @ApiOperation({
+    summary: 'Mendirikan BUMDes',
+    description:
+      'Kelurahan tidak dapat mendirikan BUMDes — ia perangkat daerah dan tidak berwenang ' +
+      'mendirikan badan usaha atas namanya sendiri. Satu desa satu BUMDes.',
+  })
+  dirikanBumdes(@Body() dto: DirikanBumdesDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.usaha.dirikanBumdes(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BUMDES.UPDATE')
+  @Post('bumdes/:id/status')
+  @ApiOperation({
+    summary: 'Mengubah status BUMDes',
+    description: 'BUMDes yang sudah bubar tidak dapat diaktifkan kembali.',
+  })
+  ubahStatusBumdes(
+    @Param('id') id: string,
+    @Body() dto: StatusBumdesDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usaha.ubahStatusBumdes(requireSchema(user), id, dto);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BUMDES.UPDATE')
+  @Post('bumdes/:id/capital')
+  @ApiOperation({
+    summary: 'Menyertakan modal desa',
+    description:
+      'Wajib menunjuk transaksi APBDes yang sudah DIREALISASI dengan nilai yang sama, dan ' +
+      'menyebut peraturan desanya. Satu transaksi menjadi satu penyertaan.',
+  })
+  sertakanModal(
+    @Param('id') id: string,
+    @Body() dto: PenyertaanModalDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usaha.sertakanModal(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BUMDES.READ')
+  @Get('bumdes/:id/capital')
+  @ApiOperation({
+    summary: 'Paparan modal desa atas BUMDes',
+    description:
+      'Jumlahnya adalah seluruh paparan desa. Kerugian BUMDes terbatas pada modal yang ' +
+      'disertakan dan tidak menjadi utang desa.',
+  })
+  paparanModal(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.usaha.paparanModal(requireSchema(user), id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BUMDES.UPDATE')
+  @Post('bumdes/:id/results')
+  @ApiOperation({
+    summary: 'Menetapkan laporan hasil usaha tahunan',
+    description:
+      'Persentase bagian desa DICUPLIK ke laporan, bukan dirujuk. Kerugian tidak pernah menjadi ' +
+      'bagian desa yang negatif: kerugian BUMDes ditanggung modalnya sendiri, tidak mengurangi ' +
+      'APBDes.',
+  })
+  tetapkanHasilUsaha(
+    @Param('id') id: string,
+    @Body() dto: HasilUsahaDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usaha.tetapkanHasilUsaha(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BUMDES.CREATE')
+  @Post('bumdes/:id/units')
+  @ApiOperation({ summary: 'Membuat unit usaha BUMDes' })
+  buatUnitUsaha(
+    @Param('id') id: string,
+    @Body() dto: UnitUsahaDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usaha.buatUnitUsaha(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BUMDES.UPDATE')
+  @Post('bumdes/units/:id/pos-outlet')
+  @ApiOperation({
+    summary: 'Menautkan unit usaha ke outlet POS',
+    description:
+      'Village tidak membuat outlet, tidak membuka shift, dan tidak menyentuh stok. Yang ' +
+      'ditautkan adalah outlet yang sudah ada; yang dibaca kemudian hanyalah ringkasannya.',
+  })
+  tautkanOutlet(
+    @Param('id') id: string,
+    @Body() dto: TautOutletDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usaha.tautkanOutlet(requireSchema(user), id, dto.outletId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BUMDES.READ')
+  @Get('bumdes/units/:id/sales')
+  @ApiOperation({
+    summary: 'Ringkasan penjualan unit usaha',
+    description:
+      'Meneruskan ketersediaan apa adanya. "Penjualan Rp 0" dan "POS belum tersambung" tidak ' +
+      'pernah disamakan.',
+  })
+  penjualanUnit(
+    @Param('id') id: string,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usaha.penjualanUnit(requireSchema(user), id, from, to);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_UMKM.CREATE')
+  @Post('umkm')
+  @ApiOperation({
+    summary: 'Mendaftarkan UMKM',
+    description:
+      'Skala usaha dihitung dari omzetnya, bukan diketik. Skala yang diisi sendiri akan ' +
+      'mengikuti syarat bantuan yang sedang dibuka, bukan mengikuti usahanya.',
+  })
+  daftarkanUmkm(@Body() dto: DaftarUmkmDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.usaha.daftarkanUmkm(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_UMKM.UPDATE')
+  @Post('umkm/products/:id/marketplace-link')
+  @ApiOperation({
+    summary: 'Menautkan listing marketplace ke produk UMKM',
+    description:
+      'Desa MENAUTKAN, tidak membuat. Produk yang didaftarkan pemerintah desa atas nama warga ' +
+      'menimbulkan pertanyaan siapa yang bertanggung jawab bila produknya bermasalah. Listing ' +
+      'hanya dapat ditautkan bila pemiliknya menurut marketplace sama dengan pemilik profil UMKM.',
+  })
+  tautkanListing(
+    @Param('id') id: string,
+    @Body() dto: TautListingDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usaha.tautkanListing(requireSchema(user), id, dto.listingId, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_TOURISM.CREATE')
+  @Post('tourism')
+  @ApiOperation({ summary: 'Mencatat destinasi wisata' })
+  catatWisata(@Body() dto: DestinasiWisataDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.usaha.catatWisata(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_TOURISM.PUBLISH')
+  @Post('tourism/:id/publish')
+  @ApiOperation({
+    summary: 'Menayangkan destinasi pada situs desa',
+    description:
+      'Penayangan adalah janji kepada orang yang belum pernah datang. Wajib menyebut pengelola, ' +
+      'kontaknya, sekurang-kurangnya satu foto, dan tarifnya — termasuk bila gratis. Destinasi ' +
+      'yang ditayangkan tanpa tarif adalah destinasi yang tarifnya ditentukan di pintu masuk.',
+  })
+  tayangkanWisata(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.usaha.tayangkanWisata(requireSchema(user), id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BUSINESS.READ')
+  @Get('cooperatives')
+  @ApiOperation({
+    summary: 'Koperasi yang beroperasi di desa',
+    description:
+      'Menggabungkan catatan desa dengan laporan eKoperasi, dan menyatakan ketersediaan yang ' +
+      'kedua secara terpisah. Tidak memuat simpanan, pinjaman, maupun tunggakan — desa tidak ' +
+      'berkepentingan mengetahuinya.',
+  })
+  koperasiDiDesa(@CurrentUser() user: AuthenticatedUser) {
+    return this.usaha.koperasiDiDesa(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BUSINESS.READ')
+  @Post('cooperatives')
+  @ApiOperation({ summary: 'Mencatat keberadaan koperasi di wilayah desa' })
+  catatKoperasi(@Body() dto: KoperasiDesaDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.usaha.catatKoperasi(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BUSINESS.READ')
+  @Get('business/summary')
+  @ApiOperation({ summary: 'Ringkasan usaha desa' })
+  ringkasanUsaha(@CurrentUser() user: AuthenticatedUser) {
+    return this.usaha.ringkasanUsaha(requireSchema(user));
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -2291,6 +2891,14 @@ export class VillageController {
     VillageBudgetService,
     VillageAssetService,
     VillageAidService,
+    VillageBusinessService,
+    // Mitra vertikal yang belum ada. Adapter tiruan menyatakan "belum
+    // tersambung" dengan jujur dan tidak mengembalikan satu pun angka karangan.
+    // Ketika mitranya siap, yang berubah hanya empat baris di bawah ini.
+    { provide: HEALTH_PORT, useClass: HealthUnavailableAdapter },
+    { provide: COOPERATIVE_PORT, useClass: CooperativeUnavailableAdapter },
+    { provide: POS_PORT, useClass: PosUnavailableAdapter },
+    { provide: MARKETPLACE_PORT, useClass: MarketplaceUnavailableAdapter },
   ],
   exports: [
     VillageUnitService,
@@ -2303,6 +2911,7 @@ export class VillageController {
     VillageBudgetService,
     VillageAssetService,
     VillageAidService,
+    VillageBusinessService,
   ],
 })
 export class VillageModule {}
