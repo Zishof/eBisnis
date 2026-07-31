@@ -1,0 +1,73 @@
+==============================================================================
+BUKTI K-4 — PINJAMAN, ANGSURAN, DAN PENAGIHAN
+Waktu  : 2026-07-31T16:59:36.799Z
+Schema : demo
+==============================================================================
+
+1. Tabel K-4 terpasang
+  LULUS  tabel cooperative_loan_product
+  LULUS  tabel cooperative_loan_application
+  LULUS  tabel cooperative_collateral
+  LULUS  tabel cooperative_guarantor
+  LULUS  tabel cooperative_credit_analysis
+  LULUS  tabel cooperative_loan
+  LULUS  tabel cooperative_loan_disbursement
+  LULUS  tabel cooperative_installment_schedule
+  LULUS  tabel cooperative_installment_payment
+  LULUS  tabel cooperative_loan_restructuring
+  LULUS  tabel cooperative_collection_case
+  LULUS  tabel cooperative_collection_activity
+
+2. Akad syariah tidak boleh membawa bunga, dan sebaliknya
+  LULUS  produk MURABAHA dengan annual_rate DITOLAK
+  LULUS  produk EFFECTIVE dengan nisbah DITOLAK
+  LULUS  produk QARDH berimbalan DITOLAK
+  LULUS  produk pinjaman yang sah dibuat
+
+3. Pemisahan wewenang pada pengajuan
+  LULUS  penyurvei menganalisis surveinya sendiri DITOLAK
+  LULUS  penganalisis yang berbeda dari penyurvei DITERIMA
+  LULUS  penganalisis menyetujui analisisnya sendiri DITOLAK
+  LULUS  penyetuju yang berbeda dari penganalisis DITERIMA
+
+4. Persetujuan wajib menyebutkan nilai, penolakan wajib beralasan
+  LULUS  status APPROVED tanpa approved_amount DITOLAK
+  LULUS  status REJECTED tanpa alasan DITOLAK
+
+5. Pinjaman cair dengan jadwal yang dibekukan
+  LULUS  jumlah pokok seluruh angsuran persis sama dengan pinjamannya
+  LULUS  jumlah bunga sesuai flat 12% setahun
+  LULUS  total angsuran = pokok + bunga
+
+6. Baris jadwal wajib seimbang
+  LULUS  total_due yang tidak sama dengan pokok + bunga DITOLAK
+
+7. Alokasi pembayaran wajib berjumlah sama dengan nilainya
+  LULUS  alokasi yang tidak seimbang DITOLAK
+  LULUS  pembayaran dengan alokasi seimbang DITERIMA
+  LULUS  pembayaran dengan idempotency_key yang sama DITOLAK
+
+8. Penghapusbukuan menuntut DUA orang berbeda
+  LULUS  penghapusbukuan oleh satu orang saja DITOLAK
+  LULUS  status WRITTEN_OFF tanpa penyetuju DITOLAK
+  LULUS  penghapusbukuan dengan dua orang berbeda DITERIMA
+
+9. Restrukturisasi tidak disetujui pemohonnya sendiri
+  LULUS  restrukturisasi disetujui pemohonnya sendiri DITOLAK
+  LULUS  restrukturisasi dengan penyetuju berbeda DITERIMA
+
+10. Pencairan: nilai bersih wajib sama dengan nilai dikurangi biaya
+  LULUS  net_amount yang tidak cocok DITOLAK
+  LULUS  pencairan dengan nilai bersih yang cocok DITERIMA
+
+11. Janji bayar wajib menyebutkan tanggal DAN nilainya
+  LULUS  janji bayar tanpa nilai DITOLAK
+  LULUS  janji bayar bernilai nol DITOLAK
+  LULUS  janji bayar lengkap DITERIMA
+  LULUS  kunjungan tanpa janji bayar tetap dapat dicatat
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.

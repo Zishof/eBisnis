@@ -5,6 +5,74 @@ menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
 ---
 
+## K-4 — Pinjaman, pembiayaan, angsuran, dan penagihan
+
+### Ditambahkan
+
+- **Migrasi modul** `20260731T190000__cooperative__loans_and_collection.sql`:
+  dua belas tabel — produk, pengajuan, agunan, penjamin, analisis kredit,
+  pinjaman, pencairan, jadwal angsuran, pembayaran, restrukturisasi, kasus
+  penagihan, dan aktivitas penagihan.
+- **`cooperative-loan.ts`** — aturan sebagai fungsi murni: kesesuaian metode
+  dengan jenis koperasi, kelayakan mengajukan, pembentukan jadwal untuk tujuh
+  metode (flat, efektif, anuitas, murabahah, mudharabah, ijarah, qardh),
+  alokasi pembayaran, denda, golongan risiko, penyisihan, PAR, pelunasan
+  dipercepat, transisi empat belas status, dan pemisahan wewenang.
+  **68 pengujian.**
+- **`scripts/prove-cooperative-k4.mjs`** dan buktinya di
+  `docs/ekoperasi/bukti-k4-pinjaman.txt` — **38 pemeriksaan, seluruhnya lulus.**
+
+### Keputusan yang perlu dicatat
+
+- **Pemisahan wewenang ditegakkan basis data**, bukan hanya layanan.
+  Penganalisis tidak boleh sama dengan penyurvei; penyetuju tidak boleh sama
+  dengan penganalisis. Aturan yang hanya ada di satu lapisan berhenti berlaku
+  begitu ada jalan kedua menuju tabelnya.
+- **Penghapusbukuan menuntut DUA orang berbeda.** Perbuatan ini yang paling
+  mudah dipakai menghapus jejak pinjaman bermasalah, dan satu tanda tangan
+  tidak cukup untuknya.
+- **Selisih pembulatan jadwal dibebankan pada angsuran TERAKHIR.**
+  Membebankannya di awal membuat angsuran pertama berbeda dari yang disebutkan
+  saat akad — dan itulah angka yang diingat anggota. Diuji atas 108 kombinasi
+  metode × tenor × pokok; jumlah pokok selalu persis sama dengan pinjamannya.
+- **Alokasi pembayaran: denda → jasa → pokok.** Mendahulukan pokok membuat
+  denda dan jasa menumpuk tanpa pernah terbayar, dan tunggakan terus bertambah
+  meskipun anggota membayar tiap bulan. Jumlah seluruh alokasi wajib sama
+  dengan nilai yang diterima — selisih di sini berarti uang yang masuk tidak
+  sampai ke mana pun.
+- **Denda dibatasi kelipatan nilai tertunggak.** Tanpa batas, denda pada
+  pinjaman yang lama menunggak dapat melampaui pokoknya sendiri, dan tagihan
+  yang mustahil dibayar tidak menolong siapa pun.
+- **PAR dihitung dari SELURUH sisa pinjaman yang menunggak**, bukan dari
+  angsuran yang tertunggak saja. Anggota yang menunggak satu angsuran dari dua
+  puluh tetap membawa risiko atas seluruh sisanya.
+- **Murabahah: margin tetap terutang pada pelunasan dipercepat.** Ia bagian
+  harga jual yang disepakati saat akad, bukan bunga berjalan. Potongan
+  sukarela disebut *muqasah* dan tidak diperjanjikan di muka.
+- **Qardh tidak boleh membawa imbalan apa pun**, ditegakkan constraint.
+- **Janji bayar wajib menyebutkan tanggal DAN nilainya.** Janji tanpa angka
+  tidak dapat dipantau kepatuhannya, dan janji yang tidak dapat dipantau sama
+  saja dengan tidak ada janji.
+- **Jadwal angsuran dibekukan saat pencairan.** Restrukturisasi membentuk
+  pinjaman baru yang menunjuk yang lama, bukan menyunting jadwalnya — jadwal
+  yang disunting membuat riwayat tunggakan tidak dapat dipertanggungjawabkan,
+  dan riwayat itulah dasar penilaian kelayakan pinjaman berikutnya.
+
+### Gerbang mutu
+
+| | |
+|---|---|
+| `tsc --noEmit` | bersih |
+| `eslint --max-warnings=0` | bersih |
+| `jest` | 49 suite, **1252 tes lulus** (bertambah 68) |
+| Bukti K-4 | **38 pemeriksaan lulus** |
+
+### Belum dikerjakan pada K-4
+
+- **Peristiwa akuntansi pinjaman belum dijurnal** — menunggu IR-003, sama
+  dengan simpanan pada K-3.
+- **Penjadwal denda harian** belum dipasang; denda dihitung saat pembayaran.
+
 ## K-3 — Simpanan dan buku pembantu anggota
 
 ### Ditambahkan
