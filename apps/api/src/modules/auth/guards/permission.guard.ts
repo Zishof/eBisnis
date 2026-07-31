@@ -133,11 +133,19 @@ export class PermissionGuard implements CanActivate {
         user.schemaName,
         user.userId,
         requiredTenantPermissions,
-        { isDemo: user.isDemo },
+        // Peran aktif ikut menentukan. Tanpa baris ini, penyempitan yang dipilih
+        // pengguna hanya mengubah tampilan menu sementara penjaganya tetap
+        // memakai gabungan seluruh peran — pembatasan yang tidak membatasi apa
+        // pun.
+        { isDemo: user.isDemo, activeRoleId: user.activeRoleId },
       );
       if (missing.length) {
         throw AppError.forbidden(ErrorCodes.PERMISSION_DENIED, 'Hak akses tidak mencukupi.', {
           missing,
+          // Disebutkan supaya penolakan dapat dipahami. Ditolak karena peran
+          // yang sedang dipakai memang berbeda dari ditolak karena tidak berhak
+          // sama sekali, dan penyelesaiannya juga berbeda.
+          ...(user.activeRoleCode ? { activeRole: user.activeRoleCode } : {}),
         });
       }
     }

@@ -1,0 +1,80 @@
+=========================================================================
+BUKTI V10-4 — SESI, PERANGKAT, DAN PERAN AKTIF
+=========================================================================
+
+Menyiapkan pengguna bukti.v104b6b83a dengan dua peran pada skema demo:
+  Peran A mengizinkan ADMIN.READ, ADMIN.CREATE dan MELARANG ADMIN_AUDIT.APPROVE
+  Peran B mengizinkan ADMIN_AUDIT.READ, ADMIN_AUDIT.APPROVE
+
+1. PERANGKAT DIKENALI TANPA MENYIMPAN SIDIK MENTAH
+   Label: Chrome di Windows
+  LULUS  label perangkat terbaca manusia
+  LULUS  sidik bukan user agent mentah
+  LULUS  sidik berupa hash heksadesimal
+
+2. BELUM MEMILIH BERARTI TIDAK ADA YANG BERUBAH
+   Menebakkan satu peran saat masuk akan mengejutkan pengguna yang selama
+   ini memakai gabungan seluruh perannya. Pemilihan harus disengaja.
+  LULUS  tidak ada peran aktif saat baru masuk
+  LULUS  dua peran terbaca
+  LULUS  penyempitan ditawarkan karena perannya lebih dari satu
+  LULUS  izin efektif sama dengan izin penuh sebelum memilih
+   Izin penuh: 3
+
+3. LARANGAN PERAN LAIN TETAP BERLAKU — MEMILIH TIDAK PERNAH MENAMBAH
+   Peran A melarang ADMIN_AUDIT.APPROVE, peran B mengizinkannya. Gabungannya
+   menolak karena DENY menang. Bila penyempitan hanya melihat peran B,
+   larangan peran A ikut hilang dan memilih peran justru MEMBERI izin.
+  LULUS  gabungan menolak APPROVE karena DENY menang
+  LULUS  peran B terpilih
+  LULUS  APPROVE TETAP ditolak setelah menyempit ke peran B
+   Izin sebelum 3 -> sesudah 1
+  LULUS  menyempit mengurangi izin, tidak menambah
+
+4. PENJAGANYA IKUT MENYEMPIT, BUKAN HANYA TAMPILANNYA
+   Penyempitan yang hanya mengubah menu tetapi membiarkan penjaganya
+   memakai gabungan seluruh peran adalah pembatasan yang tidak membatasi.
+  LULUS  peran A terpilih
+  LULUS  memegang ADMIN.READ dari peran A
+  LULUS  TIDAK memegang ADMIN_AUDIT.READ milik peran B
+  LULUS  menu milik peran B tidak muncul saat peran A dipakai
+
+5. BERLAKU SEKETIKA — TOKEN LAMA LANGSUNG MENGIKUTI
+   Peran aktif dibaca dari baris sesi, bukan dari klaim token. Bila ia
+   disimpan di dalam token, pergantian baru berlaku setelah token
+   berikutnya terbit — dan sepanjang jeda itu izin lama masih dipegang.
+  LULUS  kembali ke gabungan seluruh peran
+  LULUS  token yang SAMA langsung melihat izin penuh lagi
+   Token tidak diterbitkan ulang sama sekali sepanjang bagian ini.
+
+6. PERAN YANG TIDAK DIPEGANG DITOLAK
+   Tanpa pemeriksaan ini, sesi dapat menyebut kapasitas yang tidak pernah
+   dimiliki — dan jejak auditnya berbohong.
+  LULUS  peran asing ditolak
+
+7. RIWAYAT PERGANTIAN TERCATAT
+   (gabungan) -> BUKTI_B_v104b6b83a  3 -> 1 izin  alasan: uji bukti
+   BUKTI_B_v104b6b83a -> BUKTI_A_v104b6b83a  1 -> 2 izin
+   BUKTI_A_v104b6b83a -> (gabungan)  2 -> 3 izin
+  LULUS  tiga pergantian tercatat
+  LULUS  peran asing yang ditolak TIDAK tercatat sebagai pergantian
+
+8. DAFTAR SESI DAN PENCABUTAN
+   2 sesi: Safari di iOS, Chrome di Windows
+  LULUS  dua perangkat terlihat
+  LULUS  tepat satu ditandai sebagai sesi berjalan
+  LULUS  sesi lain tercabut
+  LULUS  token dari sesi yang tercabut langsung tidak berlaku
+  LULUS  sesi yang sedang dipakai tetap berjalan
+
+9. SESI ORANG LAIN TIDAK DAPAT DISENTUH
+  LULUS  sesi milik orang lain dijawab 404, bukan 403
+   Dijawab sama seperti sesi yang tidak ada — membedakannya akan memberi
+   tahu penebak bahwa suatu id memang dipakai orang.
+  LULUS  sesi orang lain tidak tersentuh
+
+=========================================================================
+SELURUH PEMERIKSAAN LULUS
+=========================================================================
+
+Pembersihan: sisa petugas bukti = 0

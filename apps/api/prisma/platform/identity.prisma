@@ -196,13 +196,82 @@ model PlatformSession {
   userAgent     String?   @map("user_agent") @db.Text
   lastSeenAt    DateTime? @map("last_seen_at") @db.Timestamptz(6)
 
+  /// Peran yang sedang dipakai pada sesi ini.
+  ///
+  /// Disimpan sebagai uuid biasa TANPA foreign key: perannya berada pada skema
+  /// tenant, sedangkan tabel ini pada skema platform. Foreign key lintas skema
+  /// tenant tidak mungkin dibuat karena setiap tenant punya tabel `role`
+  /// sendiri.
+  ///
+  /// `null` berarti pengguna belum memilih — dan itu keadaan yang sah. Izinnya
+  /// tetap gabungan seluruh peran, persis seperti sebelum V10-4.
+  activeRoleId   String?   @map("active_role_id") @db.Uuid
+  /// Salinan kode peran saat dipilih.
+  ///
+  /// Disimpan terpisah supaya riwayat tetap terbaca bila perannya kelak
+  /// diubah namanya atau dihapus. Tanpa salinan ini, sesi lama akan menunjuk
+  /// peran yang tidak dapat lagi dijelaskan.
+  activeRoleCode String?   @map("active_role_code") @db.VarChar(64)
+
+  /// Sidik perangkat — hasil hash, bukan nilai mentahnya.
+  ///
+  /// Dipakai mengenali "peramban yang sama" pada daftar sesi. Nilai mentahnya
+  /// tidak pernah disimpan karena gabungan user agent dan bahasa cukup untuk
+  /// melacak seseorang lintas tenant.
+  deviceFingerprint String? @map("device_fingerprint") @db.VarChar(64)
+  /// Label yang dapat dibaca manusia, mis. "Chrome di Windows".
+  deviceLabel       String? @map("device_label") @db.VarChar(128)
+
   user          PlatformUser           @relation(fields: [userId], references: [id], onDelete: Cascade)
   refreshTokens PlatformRefreshToken[]
 
   @@index([userId, revokedAt])
   @@index([tokenFamilyId])
   @@index([expiresAt])
+  @@index([userId, deviceFingerprint])
   @@map("platform_session")
+  @@schema("platform")
+}
+
+/// Riwayat pergantian peran aktif.
+///
+/// Menjawab pertanyaan yang tidak dapat dijawab tabel sesi: *dalam kapasitas
+/// apa* seseorang bertindak pada suatu saat. Seorang yang memegang peran Buyer
+/// sekaligus Bendahara meninggalkan jejak berbeda tergantung topi mana yang
+/// sedang dipakainya, dan tanpa catatan ini perbedaan itu hilang.
+///
+/// Append-only: tidak ada kolom untuk mengubah atau menghapus baris.
+model PlatformRoleSwitchLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  sessionId      String   @map("session_id") @db.Uuid
+  tenantId       String?  @map("tenant_id") @db.Uuid
+  schemaName     String?  @map("schema_name") @db.VarChar(64)
+
+  /// Peran sebelumnya; `null` bila sebelumnya belum memilih.
+  fromRoleId     String?  @map("from_role_id") @db.Uuid
+  fromRoleCode   String?  @map("from_role_code") @db.VarChar(64)
+  /// Peran sesudahnya; `null` bila pengguna kembali ke gabungan seluruh peran.
+  toRoleId       String?  @map("to_role_id") @db.Uuid
+  toRoleCode     String?  @map("to_role_code") @db.VarChar(64)
+
+  /// Jumlah izin sebelum dan sesudah.
+  ///
+  /// Disimpan karena inilah akibat yang sebenarnya dirasakan pengguna: memilih
+  /// satu peran hampir selalu MENGURANGI izin, dan angka ini membuat pengurangan
+  /// itu terlihat tanpa perlu menghitung ulang di kemudian hari.
+  permissionsBefore Int   @map("permissions_before")
+  permissionsAfter  Int   @map("permissions_after")
+
+  reason         String?  @db.VarChar(500)
+  ipAddress      String?  @map("ip_address") @db.VarChar(64)
+  requestId      String?  @map("request_id") @db.VarChar(64)
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([userId, occurredAt])
+  @@index([sessionId])
+  @@index([tenantId, occurredAt])
+  @@map("platform_role_switch_log")
   @@schema("platform")
 }
 

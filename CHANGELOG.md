@@ -27,6 +27,22 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   dirasakan pengguna. Analisis kebocoran memori menjawab `INSUFFICIENT_EVIDENCE`
   bila sampelnya belum cukup, dan statistik kueri melaporkan `EXTENSION_MISSING`
   apa adanya alih-alih mengarang angka.
+- **Peran aktif per sesi (V10-4).** Pengguna yang memegang beberapa peran dapat
+  memilih satu peran untuk dipakai, dan izinnya menyempit mengikuti pilihan itu.
+  Aturan yang menjaganya: memilih peran hanya MENGURANGI izin, tidak pernah
+  menambah — larangan dari peran lain tetap berlaku, sehingga memilih peran
+  tidak dapat diam-diam menjadi peningkatan hak. Sesi baru selalu dimulai tanpa
+  peran aktif, jadi pengguna yang ada tidak merasakan perubahan apa pun sampai
+  ia sendiri memilih. Pergantian berlaku seketika tanpa token baru karena peran
+  aktif dibaca dari baris sesi, bukan dari klaim token.
+- **Daftar sesi dan pencabutan (V10-4).** "Di mana saja saya sedang masuk",
+  lengkap dengan perangkat, alamat IP, dan waktu terakhir dipakai. Sesi dapat
+  dicabut satu per satu atau seluruhnya kecuali yang sedang berjalan. Sesi milik
+  orang lain dijawab sama seperti sesi yang tidak ada.
+- **Pengenalan perangkat (V10-4).** Sesi ditandai "Chrome di Windows" atau
+  "Safari di iOS" supaya pemiliknya dapat mengenali mana yang miliknya. Sidiknya
+  hash, bukan user agent mentah, dan sengaja TIDAK dipakai sebagai penjaga:
+  peramban mengubah user agent setiap kali memperbarui diri.
 - **Marketplace publik `belanja.ebisnis.id`.** Katalog yang dapat dibuka siapa
   pun tanpa masuk: penelusuran kategori, pencarian, penyaringan harga dan
   ketersediaan, serta halaman produk. Pemesanan belum dibuka — tombol beli

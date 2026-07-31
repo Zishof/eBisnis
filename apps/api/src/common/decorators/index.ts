@@ -63,6 +63,15 @@ export interface AuthenticatedUser {
   auditSchemaName?: string;
   isDemo: boolean;
   localeCode: string;
+  /**
+   * Peran yang sedang dipakai, bila pengguna memilih satu.
+   *
+   * `undefined` berarti belum memilih — izinnya gabungan seluruh peran, persis
+   * seperti sebelum V10-4. Nilainya berasal dari baris sesi, bukan dari klaim
+   * token, supaya pergantian peran berlaku seketika.
+   */
+  activeRoleId?: string;
+  activeRoleCode?: string;
 }
 
 export const CurrentUser = createParamDecorator(

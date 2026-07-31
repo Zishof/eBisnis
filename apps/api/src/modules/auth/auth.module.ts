@@ -4,8 +4,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
-import { AuthController, MeController } from './auth.controller';
+import {
+  AuthController,
+  MeController,
+  SecurityAuditController,
+  SessionController,
+} from './auth.controller';
 import { TenantPermissionService } from './tenant-permission.service';
+import { SessionService } from './session.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { PermissionGuard } from './guards/permission.guard';
 
@@ -21,14 +27,15 @@ import { PermissionGuard } from './guards/permission.guard';
       }),
     }),
   ],
-  controllers: [AuthController, MeController],
+  controllers: [AuthController, MeController, SessionController, SecurityAuditController],
   providers: [
     AuthService,
     TenantPermissionService,
+    SessionService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionGuard },
   ],
-  exports: [AuthService, TenantPermissionService],
+  exports: [AuthService, TenantPermissionService, SessionService],
 })
 export class AuthModule {}
