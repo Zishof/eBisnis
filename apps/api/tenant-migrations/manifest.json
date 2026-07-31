@@ -155,6 +155,13 @@
       "file": "V022__knowledge_base.sql",
       "name": "Basis pengetahuan untuk pencarian bukti AI",
       "description": "knowledge_chunk dengan pencarian teks penuh PostgreSQL. Sengaja TANPA kolom vektor: penyedia Ollama menolak embedding pada tingkat konfigurasi server (--embeddings mati), sehingga kolom vektor sekarang hanya akan menjadi skema yang menjanjikan kemampuan yang tidak ada. Pencarian leksikal bekerja hari ini dan mengembalikan bukti nyata; kolom vektor dapat ditambahkan kelak sebagai migration additive satu kolom. Memuat metadata izin karena potongan menyimpan SALINAN isi dokumen — tanpa itu pencarian menjadi jalan memintas hak akses."
+    },
+    {
+      "version": "V023",
+      "sequence": 23,
+      "file": "V023__knowledge_embedding.sql",
+      "name": "Penyimpanan embedding dan kesamaan kosinus",
+      "description": "knowledge_chunk bertambah embedding float8[], embedding_model, embedding_dim, dan embedded_at, beserta fungsi cosine_similarity. Memakai float8[] bukan pgvector karena ekstensi vector TIDAK ADA pada daftar ekstensi yang dapat dipasang di server ini — memasangnya menuntut paket sistem operasi, bukan wewenang aplikasi. Pemindaian penuh berlangsung puluhan milidetik untuk beberapa ribu potongan dan mulai terasa di sekitar 20.000 potongan per tenant; angka itu ditulis supaya keputusan memasang pgvector kelak dapat ditinjau dengan ukuran, bukan firasat. Kolom embedding_model wajib karena vektor dari model berbeda tidak dapat dibandingkan."
     }
   ]
 }

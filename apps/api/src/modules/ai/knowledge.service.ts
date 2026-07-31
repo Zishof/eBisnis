@@ -20,8 +20,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { TenantPermissionService } from '../auth/tenant-permission.service';
+import { EmbeddingService } from '../../infrastructure/ai/embedding.service';
 import type { AuthenticatedUser } from '../../common/decorators';
 import type { Evidence } from './prompt-builder';
+import {
+  describeRetriever,
+  reciprocalRankFusion,
+  type RetrieverKind,
+} from './retrieval-fusion';
 
 export interface RetrievedChunk {
   id: string;
@@ -58,13 +64,253 @@ const TUMPANG_TINDIH = 150;
 
 @Injectable()
 export class KnowledgeService implements Retriever {
+  /** Cara pencarian dasar; hibrida dipilih saat berjalan bila memungkinkan. */
   readonly kind = 'LEXICAL' as const;
   private readonly logger = new Logger(KnowledgeService.name);
 
   constructor(
     private readonly tenantDb: TenantConnectionService,
     private readonly permissions: TenantPermissionService,
+    private readonly embeddings: EmbeddingService,
   ) {}
+
+  /**
+   * Menentukan cara pencarian yang dipakai sekarang.
+   *
+   * Bukan disetel lewat konfigurasi melainkan disimpulkan dari kenyataan: bila
+   * ada model embedding DAN ada potongan yang sudah bervektor, pencariannya
+   * hibrida. Konfigurasi yang menyatakan "semantik" padahal tidak ada model
+   * embeddingnya hanya menghasilkan pencarian yang gagal diam-diam.
+   */
+  async activeRetriever(schema: string): Promise<{
+    kind: RetrieverKind;
+    model: string | null;
+    note: string;
+    reason: string;
+    remedy: string | null;
+  }> {
+    const keadaan = await this.embeddings.availability();
+    if (!keadaan.available || !keadaan.model) {
+      return {
+        kind: 'LEXICAL',
+        model: null,
+        note: describeRetriever('LEXICAL'),
+        reason: keadaan.reason,
+        remedy: keadaan.remedy,
+      };
+    }
+
+    const bervektor = await this.tenantDb.query<{ n: string }>(
+      schema,
+      `SELECT count(*) AS n FROM "${schema}".knowledge_chunk
+        WHERE is_active AND embedding IS NOT NULL AND embedding_model = $1`,
+      [keadaan.model],
+    );
+
+    if (Number(bervektor[0]?.n ?? 0) === 0) {
+      return {
+        kind: 'LEXICAL',
+        model: keadaan.model,
+        note: describeRetriever('LEXICAL'),
+        reason: `Model ${keadaan.model} tersedia, tetapi belum ada potongan yang bervektor.`,
+        remedy: 'Jalankan POST /ai/knowledge/embed untuk membuat vektornya.',
+      };
+    }
+
+    return {
+      kind: 'HYBRID',
+      model: keadaan.model,
+      note: describeRetriever('HYBRID'),
+      reason: `${bervektor[0].n} potongan bervektor dengan model ${keadaan.model}.`,
+      remedy: null,
+    };
+  }
+
+  /**
+   * Pencarian semantik.
+   *
+   * Kesamaan dihitung oleh fungsi SQL, bukan di sisi aplikasi: menarik seluruh
+   * vektor ke memori untuk membandingkannya akan memindahkan pekerjaan basis
+   * data ke proses aplikasi yang jauh lebih sempit memorinya.
+   *
+   * `cosine_similarity` mengembalikan NULL untuk vektor yang dimensinya
+   * berbeda, dan NULL tersaring sendiri oleh perbandingan. Potongan dari model
+   * lain karena itu tidak pernah ikut — bukan karena disaring, melainkan karena
+   * tidak dapat dibandingkan.
+   */
+  async searchSemantic(
+    schema: string,
+    query: string,
+    options: {
+      limit: number;
+      allowedMenuCodes: string[];
+      maxConfidentiality: string;
+      model: string;
+      minSimilarity?: number;
+    },
+  ): Promise<RetrievedChunk[]> {
+    if (options.allowedMenuCodes.length === 0) return [];
+
+    const vektor = await this.embeddings.embedWith(options.model, query);
+    const batasRahasia = TINGKAT_RAHASIA.indexOf(options.maxConfidentiality);
+    const bolehRahasia = TINGKAT_RAHASIA.slice(0, batasRahasia + 1);
+
+    const rows = await this.tenantDb.query<{
+      id: string;
+      source_type: string;
+      source_ref: string | null;
+      title: string;
+      content: string;
+      score: number;
+      confidentiality: string;
+    }>(
+      schema,
+      `SELECT id::text, source_type, source_ref, title, content, confidentiality,
+              "${schema}".cosine_similarity(embedding, $1::float8[]) AS score
+         FROM "${schema}".knowledge_chunk
+        WHERE is_active
+          AND embedding IS NOT NULL
+          AND embedding_model = $2
+          AND required_menu_code = ANY($3::text[])
+          AND confidentiality = ANY($4::text[])
+          AND "${schema}".cosine_similarity(embedding, $1::float8[]) > $5
+        ORDER BY score DESC
+        LIMIT $6`,
+      [
+        vektor.vector,
+        options.model,
+        options.allowedMenuCodes,
+        bolehRahasia,
+        // Ambang bawaan menyaring potongan yang kemiripannya kebetulan. Tanpa
+        // ambang, pencarian semantik SELALU mengembalikan hasil sebanyak limit
+        // — termasuk untuk pertanyaan yang tidak ada jawabannya sama sekali,
+        // dan bukti yang tidak relevan lebih buruk daripada tidak ada bukti
+        // karena model akan tetap berusaha memakainya.
+        options.minSimilarity ?? 0.35,
+        options.limit,
+      ],
+    );
+
+    return rows.map((r) => ({
+      id: r.id,
+      sourceType: r.source_type,
+      sourceRef: r.source_ref,
+      title: r.title,
+      content: r.content,
+      score: Number(r.score),
+      confidentiality: r.confidentiality,
+    }));
+  }
+
+  /**
+   * Pencarian hibrida.
+   *
+   * Menjalankan keduanya lalu menggabungkannya dengan RRF. Kegagalan sisi
+   * semantik tidak menggagalkan pencarian: hasil leksikal tetap dikembalikan,
+   * karena bukti yang kurang lengkap tetap lebih berguna daripada galat.
+   */
+  async searchHybrid(
+    schema: string,
+    query: string,
+    options: {
+      limit: number;
+      allowedMenuCodes: string[];
+      maxConfidentiality: string;
+      model: string;
+    },
+  ): Promise<RetrievedChunk[]> {
+    // Masing-masing mengambil lebih banyak daripada yang akhirnya dipakai,
+    // supaya penggabungan punya bahan untuk menaikkan yang disepakati keduanya.
+    const ambil = Math.max(options.limit * 3, 10);
+
+    const [leksikal, semantik] = await Promise.all([
+      this.search(schema, query, { ...options, limit: ambil }),
+      this.searchSemantic(schema, query, { ...options, limit: ambil }).catch((error: Error) => {
+        this.logger.warn(`Sisi semantik gagal, memakai leksikal saja: ${error.message}`);
+        return [] as RetrievedChunk[];
+      }),
+    ]);
+
+    const gabungan = reciprocalRankFusion([
+      // Leksikal sedikit lebih berat: pada data ERP, yang dicari orang sering
+      // berupa nomor dan kode yang justru tidak punya makna untuk didekati.
+      { weight: 1.0, items: leksikal.map((c) => ({ id: c.id, score: c.score })) },
+      { weight: 0.9, items: semantik.map((c) => ({ id: c.id, score: c.score })) },
+    ]);
+
+    const peta = new Map<string, RetrievedChunk>();
+    for (const c of [...leksikal, ...semantik]) peta.set(c.id, c);
+
+    return gabungan.slice(0, options.limit).map((g) => {
+      const chunk = peta.get(g.id)!;
+      // Skor yang dikembalikan adalah skor GABUNGAN, bukan skor salah satu
+      // sisi — mencampurnya akan membuat angka pada jawaban tidak berarti.
+      return { ...chunk, score: Math.round(g.score * 10_000) / 10_000 };
+    });
+  }
+
+  /**
+   * Membuat vektor untuk potongan yang belum punya.
+   *
+   * Dikerjakan bertahap dan dapat diulang: potongan yang sudah bervektor dengan
+   * model yang sama dilewati, sehingga pemanggilan kedua hanya mengerjakan
+   * sisanya. Pekerjaan yang harus selesai sekali jalan akan selalu gagal pada
+   * korpus yang cukup besar.
+   */
+  async embedPending(
+    schema: string,
+    batchSize = 50,
+  ): Promise<{ embedded: number; failed: number; remaining: number; model: string | null }> {
+    const keadaan = await this.embeddings.availability();
+    if (!keadaan.available || !keadaan.model) {
+      throw new Error(`${keadaan.reason} ${keadaan.remedy ?? ''}`.trim());
+    }
+
+    const tertunda = await this.tenantDb.query<{ id: string; title: string; content: string }>(
+      schema,
+      `SELECT id::text, title, content FROM "${schema}".knowledge_chunk
+        WHERE is_active
+          AND (embedding IS NULL OR embedding_model IS DISTINCT FROM $1)
+        ORDER BY indexed_at
+        LIMIT $2`,
+      [keadaan.model, batchSize],
+    );
+
+    let embedded = 0;
+    let failed = 0;
+
+    for (const potongan of tertunda) {
+      try {
+        // Judul ikut disertakan: ia sering memuat kata kunci yang tidak muncul
+        // pada isinya.
+        const hasil = await this.embeddings.embedWith(
+          keadaan.model,
+          `${potongan.title}\n${potongan.content}`,
+        );
+        await this.tenantDb.query(
+          schema,
+          `UPDATE "${schema}".knowledge_chunk
+              SET embedding = $2::float8[], embedding_model = $3,
+                  embedding_dim = $4, embedded_at = now()
+            WHERE id = $1::uuid`,
+          [potongan.id, hasil.vector, hasil.model, hasil.dimensions],
+        );
+        embedded += 1;
+      } catch (error) {
+        failed += 1;
+        this.logger.warn(`Vektor potongan ${potongan.id} gagal: ${(error as Error).message}`);
+      }
+    }
+
+    const sisa = await this.tenantDb.query<{ n: string }>(
+      schema,
+      `SELECT count(*) AS n FROM "${schema}".knowledge_chunk
+        WHERE is_active AND (embedding IS NULL OR embedding_model IS DISTINCT FROM $1)`,
+      [keadaan.model],
+    );
+
+    return { embedded, failed, remaining: Number(sisa[0]?.n ?? 0), model: keadaan.model };
+  }
 
   /**
    * Mencari potongan yang relevan.
@@ -138,7 +384,7 @@ export class KnowledgeService implements Retriever {
       .filter((p) => p.endsWith('.READ'))
       .map((p) => p.split('.')[0]);
 
-    const chunks = await this.search(user.schemaName, query, {
+    const opsi = {
       limit,
       allowedMenuCodes: menuBoleh,
       // Kerahasiaan tertinggi yang boleh terbaca lewat AI sengaja dibatasi
@@ -146,7 +392,14 @@ export class KnowledgeService implements Retriever {
       // untuk pemiliknya — sekali isinya keluar dari server, ia tidak dapat
       // ditarik kembali.
       maxConfidentiality: 'TERBATAS',
-    });
+    };
+
+    // Cara pencariannya ditentukan oleh kenyataan, bukan oleh konfigurasi.
+    const pencari = await this.activeRetriever(user.schemaName);
+    const chunks =
+      pencari.kind === 'HYBRID' && pencari.model
+        ? await this.searchHybrid(user.schemaName, query, { ...opsi, model: pencari.model })
+        : await this.search(user.schemaName, query, opsi);
 
     return {
       evidence: chunks.map((c) => ({
@@ -155,7 +408,7 @@ export class KnowledgeService implements Retriever {
         content: c.content,
       })),
       chunks,
-      retriever: this.kind,
+      retriever: pencari.kind,
     };
   }
 
@@ -291,14 +544,24 @@ export class KnowledgeService implements Retriever {
         GROUP BY source_type ORDER BY source_type`,
     );
 
+    const pencari = await this.activeRetriever(schema);
+    const vektor = await this.tenantDb.query<{ n: string; model: string | null }>(
+      schema,
+      `SELECT count(*) AS n, embedding_model AS model
+         FROM "${schema}".knowledge_chunk
+        WHERE is_active AND embedding IS NOT NULL
+        GROUP BY embedding_model`,
+    );
+
     return {
-      retriever: this.kind,
       // Dinyatakan terang-terangan supaya tidak ada yang mengira pencariannya
-      // semantik.
-      note:
-        'Pencarian bersifat LEKSIKAL (kata kunci), bukan semantik. Penyedia AI menolak ' +
-        'embedding pada tingkat konfigurasi server; nyalakan `--embeddings` pada Ollama ' +
-        'untuk memungkinkan pencarian semantik.',
+      // semantik padahal bukan, maupun sebaliknya.
+      retriever: pencari.kind,
+      retrieverModel: pencari.model,
+      note: pencari.note,
+      reason: pencari.reason,
+      remedy: pencari.remedy,
+      embedded: vektor.map((v) => ({ model: v.model, chunks: Number(v.n) })),
       bySource: rows.map((r) => ({
         sourceType: r.source_type,
         chunks: Number(r.n),

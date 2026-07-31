@@ -314,6 +314,34 @@ export class OllamaAdapter {
     }
   }
 
+  /**
+   * Membuat embedding untuk sebuah teks.
+   *
+   * Galat penyedia diteruskan apa adanya — di sanalah keterangan seperti
+   * "does not support embeddings" berada, dan itulah yang dibutuhkan operator.
+   */
+  async embed(model: string, input: string): Promise<number[]> {
+    if (this.isCircuitOpen()) {
+      throw new Error('Penyedia AI sedang tidak dapat dihubungi.');
+    }
+    try {
+      const respons = await this.fetchJson<{ embeddings?: number[][] }>('/api/embed', {
+        method: 'POST',
+        body: { model, input },
+        timeoutMs: 60_000,
+      });
+      const vektor = respons.embeddings?.[0];
+      if (!Array.isArray(vektor) || vektor.length === 0) {
+        throw new Error('Penyedia menjawab tanpa vektor.');
+      }
+      this.consecutiveFailures = 0;
+      return vektor;
+    } catch (error) {
+      this.recordFailure();
+      throw error;
+    }
+  }
+
   private recordFailure(): void {
     this.consecutiveFailures += 1;
     if (this.consecutiveFailures >= CIRCUIT_FAILURE_THRESHOLD && this.circuitOpenedAt === null) {

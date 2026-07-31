@@ -1,0 +1,64 @@
+=========================================================================
+BUKTI V11-3b — PENCARIAN SEMANTIK DAN HIBRIDA
+=========================================================================
+
+1. PENYIMPANAN VEKTOR SIAP TANPA EKSTENSI pgvector
+   embedding: ARRAY
+   embedding_dim: integer
+   embedding_model: character varying
+  LULUS  tiga kolom vektor ada
+  LULUS  memakai array, bukan tipe vector
+  LULUS  pgvector memang tidak tersedia di server ini
+   Memasang pgvector menuntut paket sistem operasi pada server basis data —
+   bukan wewenang aplikasi. float8[] bekerja hari ini tanpa ekstensi apa pun.
+
+2. KESAMAAN KOSINUS DIHITUNG DI BASIS DATA
+   identik=1  tegak lurus=0  dimensi beda=null  vektor nol=null
+  LULUS  vektor identik menghasilkan 1
+  LULUS  vektor tegak lurus menghasilkan 0
+  LULUS  dimensi berbeda menghasilkan NULL, bukan 0
+  LULUS  vektor nol menghasilkan NULL
+   NULL, bukan 0: "tidak dapat dibandingkan" bukan hal yang sama dengan
+   "tidak mirip". Memakai 0 membuat potongan dari model lain tampak
+   sebagai potongan yang tidak relevan, sehingga sebabnya tak terlihat.
+
+3. KEADAAN EMBEDDING DILAPORKAN DENGAN TEPAT
+   Pencari aktif : LEXICAL
+   Sebab         : Tidak ada satu pun model berkemampuan embedding pada penyedia. Ollama melaporkan kemampuan model sebagai "completion" dan "tools" saja.
+   Saran         : Unduh model embedding pada server penyedia: `ollama pull bge-m3` (multibahasa, baik untuk bahasa Indonesia) atau `ollama pull nomic-embed-text` (lebih kecil). Menambahkan bendera --embeddings TIDAK menyelesaikan ini — pesan galat dari llama.cpp itu menyesatkan.
+  LULUS  jenis pencari dilaporkan
+  LULUS  sebabnya dijelaskan
+
+   Penyedia BELUM punya model embedding. Yang diuji sekarang adalah
+   apakah sistem gagal dengan jujur — bukan apakah semantiknya bekerja.
+  LULUS  ada saran yang dapat ditindaklanjuti
+  LULUS  saran menyebut pengunduhan model, bukan bendera server
+  LULUS  saran menyanggah petunjuk --embeddings yang menyesatkan
+   Pesan galat llama.cpp menyarankan bendera --embeddings, dan itu SALAH
+   sasaran. Saran yang salah membuat operator mengerjakan yang sia-sia.
+
+4. PERMINTAAN VEKTOR TANPA MODEL GAGAL DENGAN KETERANGAN
+  LULUS  ditolak, bukan diam-diam berhasil
+   Tidak ada satu pun model berkemampuan embedding pada penyedia. Ollama melaporkan kemampuan model sebagai "completion" dan "tools" saja. Unduh model embedding pa
+  LULUS  keterangannya menyebut cara memperbaiki
+
+5. PENCARIAN TETAP BEKERJA APA PUN KEADAAN PENYEDIANYA
+  LULUS  pencarian berjalan
+   Pencari: LEXICAL
+   Ditemukan: SEM-A-v11b2f207c
+  LULUS  dokumen yang kata kuncinya cocok ditemukan
+  LULUS  jenis pencari dilaporkan pada jawaban
+
+6. VEKTOR DARI MODEL LAIN TIDAK PERNAH TERCAMPUR
+   Vektor dari model berbeda tidak dapat dibandingkan; mencampurnya
+   menghasilkan kemiripan yang tampak masuk akal namun tidak berarti.
+  LULUS  dibandingkan dengan dimensi berbeda menghasilkan NULL
+   Potongan itu tidak akan pernah muncul pada pencarian semantik model
+   lain — bukan karena disaring, melainkan karena tidak dapat dibandingkan.
+
+=========================================================================
+SELURUH PEMERIKSAAN LULUS
+=========================================================================
+
+Keadaan: model embedding BELUM ADA — pencarian leksikal, dengan sebab dan
+saran yang tepat dilaporkan pada setiap jawaban.
