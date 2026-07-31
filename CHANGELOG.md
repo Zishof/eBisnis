@@ -5,6 +5,53 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## POS-9 dan POS-10 — Laporan operasional dan data contoh kasir
+
+### Ditambahkan
+- **`pos-report.ts`** — aturan laporan sebagai fungsi murni, **32 pengujian**:
+  batas rentang, penyembunyian biaya, persentase, dan sorotan kasir.
+- **`PosReportService`** — **lima belas laporan** (ringkasan, rincian, per
+  produk/kategori/kasir/register/shift, komposisi pembayaran, pajak, diskon,
+  void, retur, refund, pergerakan kas, selisih kas) plus dasbor satu tanggal.
+- **`PosSampleService`** — pabrik data contoh POS: merek, outlet, gudang,
+  register, produk berbarcode, pelanggan, stok, shift tertutup, dan penjualan
+  yang sudah selesai. Deterministik terhadap seed.
+- **Enam endpoint**: `reports`, `reports/dashboard`, `reports/:code`,
+  `sample-data` (baca dan bangun), `sample-data/cleanup`.
+- **`V032__pos_transaction_sample_flags.sql`** — `is_sample` dan
+  `sample_batch_id` pada `pos_sale`, `pos_shift`, `pos_return`, `pos_refund`.
+- **`prove-pos-report-sample.mjs`** — **40 pemeriksaan, seluruhnya lulus**.
+- **Halaman `/app/pos/laporan`** — satu halaman untuk seluruh laporan, dengan
+  pemilih laporan dan rentang tanggal. Kolomnya dirakit dari jawaban peladen
+  alih-alih dipetakan satu per satu; lima belas laporan berarti ratusan kolom,
+  dan peta sebesar itu akan tertinggal lebih dahulu daripada dipakai.
+
+### Keputusan yang perlu dicatat
+- **Kolom biaya DIHAPUS, bukan ditolkan.** Menolkan membuat laporan tampak
+  seolah untungnya nol — angka yang salah lebih buruk daripada angka yang tidak
+  ada. Jawaban juga menyertakan `costHidden` supaya pembaca tahu ada yang
+  disembunyikan, dan tidak menyimpulkan margin usahanya memang tidak tercatat.
+- **Kasir yang meminta laporan kasir lain tetap disaring ke dirinya sendiri**,
+  dan jawabannya menyatakan `scopedToSelf` alih-alih diam-diam memotong.
+- **Rentang laporan dibatasi 92 hari.** Laporan tanpa batas akan memindai
+  seluruh riwayat penjualan begitu sebuah outlet berjalan setahun, dan yang
+  menanggungnya adalah kasir yang sedang melayani antrean pada basis data yang
+  sama. Penolakannya menyebutkan batasnya, bukan hanya menolak.
+- **Laporan membaca `business_date`, bukan cap waktu.** Kasir yang bekerja
+  melewati tengah malam tetap berada pada tanggal usaha yang sama; laporan yang
+  memotong pada pukul 00.00 akan membelah satu shift menjadi dua hari, lalu kas
+  kedua hari itu tidak akan pernah cocok.
+- **Sorotan mengajak memeriksa, bukan menuduh.** Angka yang menonjol hampir
+  selalu punya penjelasan biasa. Alat yang dipakai memarahi orang akan dihindari
+  orang.
+- **Pengacak deterministik, bukan `Math.random()`.** Dua kali membangun data
+  contoh dengan seed yang sama menghasilkan angka yang sama, supaya laporan yang
+  dibandingkan sebelum dan sesudah sebuah perubahan benar-benar membandingkan
+  perubahannya.
+- **Outlet contoh yang telanjur menaungi penjualan sungguhan tidak dihapus**,
+  dan dilaporkan sebagai tertahan. Penyewa yang mencoba data contoh lalu mulai
+  berjualan sungguhan pada outlet yang sama bukan keadaan yang mustahil.
+
 ## POS-4 dan POS-5 UI — Layar kasir, shift, dan rekonsiliasi kas
 
 ### Ditambahkan

@@ -288,6 +288,44 @@ export class PosContextService {
 
   // --- Pengambilan keadaan ---------------------------------------------------
 
+
+  /**
+   * Outlet yang boleh dilihat seorang pengguna.
+   *
+   * Kosong berarti **tidak ada batasan** — pemilik dan administrator melihat
+   * seluruh outlet. Membedakan "tidak dibatasi" dari "dibatasi pada nol outlet"
+   * penting: yang kedua seharusnya tidak melihat apa pun, dan menyamakan
+   * keduanya akan membuka seluruh jaringan kepada pengguna yang justru tidak
+   * ditugaskan ke mana pun.
+   */
+  async outletTerjangkau(schemaName: string, subjectId: string): Promise<string[]> {
+    const rows = await this.tenantDb.query<{ outlet_id: string }>(
+      schemaName,
+      `SELECT DISTINCT t.outlet_id
+         FROM "${schemaName}".pos_register_assignment a
+         JOIN "${schemaName}".pos_terminal t ON t.id = a.terminal_id
+        WHERE a.user_subject_id = $1
+          AND (a.valid_from IS NULL OR a.valid_from <= CURRENT_DATE)
+          AND (a.valid_until IS NULL OR a.valid_until >= CURRENT_DATE)
+          AND t.deleted_at IS NULL`,
+      [subjectId],
+    );
+    if (rows.length) return rows.map((r) => r.outlet_id);
+
+    // Tidak ditugaskan ke register mana pun. Cakupan data penggunanya yang
+    // menentukan — dan bila itu pun kosong, ia memang tidak dibatasi.
+    const cakupan = await this.tenantDb.query<{ scope_id: string }>(
+      schemaName,
+      `SELECT scope_id FROM "${schemaName}".user_scope_assignment
+        WHERE user_subject_id = $1 AND scope_type = 'OUTLET'
+          AND revoked_at IS NULL
+          AND (valid_from IS NULL OR valid_from <= CURRENT_DATE)
+          AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)`,
+      [subjectId],
+    );
+    return cakupan.map((c) => c.scope_id).filter(Boolean);
+  }
+
   private async registers(schemaName: string, terminalId?: string): Promise<RegisterInfo[]> {
     const rows = await this.tenantDb.query<{
       id: string;

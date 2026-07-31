@@ -46,7 +46,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { InfrastructureModule } from '../../infrastructure/infrastructure.module';
-import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
+import { AuthenticatedUser, BlockDemo, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { PosCatalogService } from './pos-catalog.service';
 import { PosContextService } from './pos-context.service';
@@ -54,6 +54,8 @@ import { PosSaleService } from './pos-sale.service';
 import { PosStockService } from './pos-stock.service';
 import { PosReturnService } from './pos-return.service';
 import { PosShiftService } from './pos-shift.service';
+import { PosReportService } from './pos-report.service';
+import { PosSampleService, PROFIL_BAWAAN, PROFIL_RINGKAS } from './pos-sample.service';
 import { AuthModule } from '../auth/auth.module';
 import { TenantPermissionService } from '../auth/tenant-permission.service';
 
@@ -379,6 +381,17 @@ class GerakanKasDto {
   reason!: string;
 }
 
+class DataContohDto {
+  @ApiPropertyOptional({
+    enum: ['LENGKAP', 'RINGKAS'],
+    description:
+      'RINGKAS untuk sekadar melihat bentuknya; LENGKAP untuk mencoba laporan dengan angka yang ramai.',
+  })
+  @IsOptional()
+  @IsIn(['LENGKAP', 'RINGKAS'])
+  profile?: 'LENGKAP' | 'RINGKAS';
+}
+
 // --- Controller -------------------------------------------------------------
 
 @ApiTags('POS')
@@ -392,6 +405,8 @@ export class PosController {
     private readonly stokLayanan: PosStockService,
     private readonly retur: PosReturnService,
     private readonly shift: PosShiftService,
+    private readonly laporan: PosReportService,
+    private readonly contoh: PosSampleService,
   ) {}
 
   /**
@@ -762,7 +777,7 @@ export class PosController {
   }
 
   @ApiBearerAuth('access-token')
-  @Permissions('POS_SHIFT.CASH_MOVE')
+  @Permissions('POS_CASH.CASH_MOVE')
   @Post('shifts/:id/cash-movement')
   @HttpCode(200)
   @ApiOperation({ summary: 'Mencatat kas masuk atau keluar di tengah shift' })
@@ -776,7 +791,7 @@ export class PosController {
   }
 
   @ApiBearerAuth('access-token')
-  @Permissions('POS_SHIFT.CLOSE')
+  @Permissions('POS_SHIFT.CLOSE_SHIFT')
   @Post('shifts/:id/close')
   @HttpCode(200)
   @ApiOperation({
@@ -813,6 +828,135 @@ export class PosController {
       id,
       dto.reason ?? 'Selisih kas disetujui',
       await this.subjek(schema, user),
+    );
+  }
+
+  // --- Data contoh POS -------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.READ')
+  @Get('sample-data')
+  @ApiOperation({
+    summary: 'Berapa data contoh POS yang masih ada',
+    description: 'Tombol hapus hanya perlu ditampilkan bila `hasSampleData` benar.',
+  })
+  hitungContoh(@CurrentUser() user: AuthenticatedUser) {
+    return this.contoh.hitung(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('MASTER_SEED_TOOLS.CREATE')
+  @BlockDemo()
+  @Post('sample-data')
+  @ApiOperation({
+    summary: 'Membangun data contoh POS',
+    description:
+      'Merek, outlet, gudang, register, produk berbarcode, pelanggan, stok, dan penjualan yang ' +
+      'sudah selesai. Seluruhnya bertanda is_sample dan sample_batch_id. Data acuan — satuan, ' +
+      'bagan akun, peran — tidak disentuh sama sekali.',
+  })
+  async bangunContoh(@Body() dto: DataContohDto, @CurrentUser() user: AuthenticatedUser) {
+    const schema = requireSchema(user);
+    const profil = dto.profile === 'RINGKAS' ? PROFIL_RINGKAS : PROFIL_BAWAAN;
+    return this.contoh.bangun(schema, profil, await this.subjek(schema, user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('MASTER_SEED_TOOLS.DELETE')
+  @BlockDemo()
+  @Post('sample-data/cleanup')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menghapus seluruh data contoh POS',
+    description:
+      'Hanya baris bertanda is_sample. Outlet contoh yang telanjur menaungi penjualan sungguhan ' +
+      'TIDAK dihapus dan dilaporkan sebagai tertahan.',
+  })
+  async bersihkanContoh(@Body() dto: AlasanDto, @CurrentUser() user: AuthenticatedUser) {
+    const schema = requireSchema(user);
+    return this.contoh.bersihkan(
+      schema,
+      dto.reason ?? 'Hapus data contoh POS',
+      await this.subjek(schema, user),
+    );
+  }
+
+  // --- Laporan ---------------------------------------------------------------
+
+  /**
+   * Konteks laporan seorang pengguna.
+   *
+   * Cakupan outlet, hak melihat biaya, dan hak melihat kasir lain dihitung
+   * SEKALI di sini dan diteruskan ke layanan. Menghitungnya di dalam setiap
+   * laporan berarti lima belas kesempatan untuk lupa memeriksanya.
+   */
+  private async konteksLaporan(schema: string, user: AuthenticatedUser) {
+    const subjectId = await this.subjek(schema, user);
+    const kurang = await this.izin.findMissing(
+      schema,
+      user.userId,
+      ['POS_REPORT.VIEW_COST', 'POS_REPORT.AUDIT_READ'],
+      { isDemo: user.isDemo, activeRoleId: user.activeRoleId ?? null },
+    );
+    return {
+      outletIds: await this.konteks.outletTerjangkau(schema, subjectId),
+      bolehLihatBiaya: !kurang.includes('POS_REPORT.VIEW_COST'),
+      // Melihat penjualan kasir lain adalah persoalan audit — melihat melampaui
+      // aktivitas sendiri — dan POS_REPORT.AUDIT_READ sudah menyatakan itu.
+      bolehLihatKasirLain: !kurang.includes('POS_REPORT.AUDIT_READ'),
+      subjectId,
+    };
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_REPORT.READ')
+  @Get('reports')
+  @ApiOperation({
+    summary: 'Daftar laporan yang tersedia',
+    description: 'Sudah disaring menurut hak pengguna; laporan berbiaya tidak muncul bagi kasir.',
+  })
+  async daftarLaporan(@CurrentUser() user: AuthenticatedUser) {
+    const schema = requireSchema(user);
+    return this.laporan.daftarLaporan(await this.konteksLaporan(schema, user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_REPORT.READ')
+  @Get('reports/dashboard')
+  @ApiOperation({
+    summary: 'Dasbor satu tanggal usaha',
+    description:
+      'Menggabungkan ringkasan, per kasir, komposisi pembayaran, produk teratas, dan shift ' +
+      'dalam satu permintaan — layar dasbor memanggilnya sekaligus.',
+  })
+  async dasbor(@CurrentUser() user: AuthenticatedUser, @Query('date') date?: string) {
+    const schema = requireSchema(user);
+    return this.laporan.dasbor(schema, date, await this.konteksLaporan(schema, user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_REPORT.READ')
+  @Get('reports/:code')
+  @ApiOperation({
+    summary: 'Menjalankan satu laporan',
+    description:
+      'Rentang tanggal wajib dan dibatasi. Membaca business_date, bukan cap waktu: kasir yang ' +
+      'bekerja melewati tengah malam tetap berada pada tanggal usaha yang sama.',
+  })
+  async jalankanLaporan(
+    @Param('code') code: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('outletId') outletId?: string,
+    @Query('cashierId') cashierId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const schema = requireSchema(user);
+    return this.laporan.jalankan(
+      schema,
+      { code, from, to, outletId, cashierId, limit: limit ? Number(limit) : undefined },
+      await this.konteksLaporan(schema, user),
     );
   }
 
@@ -996,6 +1140,8 @@ export class PosController {
     PosStockService,
     PosReturnService,
     PosShiftService,
+    PosReportService,
+    PosSampleService,
   ],
   exports: [
     PosCatalogService,
@@ -1004,6 +1150,8 @@ export class PosController {
     PosStockService,
     PosReturnService,
     PosShiftService,
+    PosReportService,
+    PosSampleService,
   ],
 })
 export class PosModule {}

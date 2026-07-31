@@ -1,0 +1,74 @@
+==============================================================================
+BUKTI POS-9 dan POS-10 — LAPORAN OPERASIONAL DAN DATA CONTOH KASIR
+Waktu   : 2026-07-31T16:59:02.366Z
+Schema  : demo
+==============================================================================
+
+Dua aktor: pemilik (berhak penuh) dan kasir (terbatas).
+
+1. Membangun data contoh POS
+  LULUS  data contoh terbangun
+   batch 8345871b-6ac9-4bac-bb5a-a65823408577
+   1 outlet, 1 register, 12 produk, 5 penjualan (263 ms)
+  LULUS  menghasilkan penjualan
+  LULUS  menghasilkan baris penjualan
+  LULUS  seluruh penjualan contoh bertanda is_sample dan sample_batch_id
+  LULUS  setiap produk contoh punya barcode
+  LULUS  penghitung melaporkan ada data contoh
+
+2. Laporan mencerminkan penjualan yang dibangun
+  LULUS  rentang lama tidak menghasilkan galat
+  LULUS  dan tidak menghasilkan baris
+  LULUS  laporan ringkasan menjawab
+   total laporan 492000, total di basis data (batch ini) 492000
+  LULUS  total laporan mencakup seluruh penjualan contoh
+  LULUS  laporan per produk menjawab
+  LULUS  berisi baris
+  LULUS  pemilik MELIHAT kolom biaya
+  LULUS  dan kolom margin
+
+3. Kasir tidak melihat harga pokok maupun kasir lain
+  LULUS  daftar laporan kasir tidak memuat laporan berbiaya
+  LULUS  tetapi memuat laporan biasa
+  LULUS  kasir DITOLAK membuka laporan berbiaya
+  LULUS  penolakannya menerangkan sebabnya
+  LULUS  kasir dapat membuka laporan per kasir
+  LULUS  tetapi jawabannya menyatakan disaring ke dirinya sendiri
+  LULUS  dan TIDAK memuat kasir lain, meski memintanya secara tegas
+
+4. Batas rentang tanggal
+  LULUS  rentang terlalu lebar ditolak
+  LULUS  penolakannya menyebut batasnya
+  LULUS  tanggal terbalik ditolak
+  LULUS  laporan yang tidak terdaftar ditolak
+
+5. Dasbor
+  LULUS  dasbor menjawab
+  LULUS  memuat totals
+  LULUS  memuat komposisi pembayaran
+  LULUS  memuat sorotan
+  LULUS  dasbor kasir menjawab
+  LULUS  dan menyatakan biaya disembunyikan
+  LULUS  produk teratas pada dasbor kasir TIDAK memuat biaya
+
+6. Menghapus data contoh POS
+  LULUS  pembersihan berhasil
+   79 baris dihapus
+  LULUS  ada yang terhapus
+  LULUS  penjualan contoh terhapus seluruhnya
+
+   Yang HARUS selamat:
+  LULUS  Satuan utuh (10 → 10)
+  LULUS  Bagan akun utuh (12 → 12)
+  LULUS  Peran utuh (158 → 158)
+  LULUS  Menu utuh (139 → 139)
+  LULUS  Aksi hak akses utuh (49 → 49)
+  LULUS  Metode pembayaran utuh (10 → 10)
+  LULUS  Kategori pajak utuh (10 → 10)
+  LULUS  penghitung melaporkan tidak ada lagi data contoh POS
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Data sementara dibersihkan.
