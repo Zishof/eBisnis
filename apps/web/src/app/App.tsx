@@ -105,9 +105,9 @@ export function App() {
           <Route path="/berita" element={<NewsListPage />} />
           <Route path="/berita/:slug" element={<NewsDetailPage />} />
           <Route path="/kontak" element={<ContactPage />} />
-          <Route path="/tentang" element={<CmsPage slug="tentang" />} />
-          <Route path="/syarat" element={<CmsPage slug="syarat" />} />
-          <Route path="/privasi" element={<CmsPage slug="privasi" />} />
+          <Route path="/tentang" element={<CmsPage slug="tentang" fallbackTitle="Tentang Kami" />} />
+          <Route path="/syarat" element={<CmsPage slug="syarat" fallbackTitle="Syarat dan Ketentuan" />} />
+          <Route path="/privasi" element={<CmsPage slug="privasi" fallbackTitle="Kebijakan Privasi" />} />
           <Route path="/masuk" element={<LoginPage />} />
           <Route path="/daftar" element={<RegisterPage />} />
           <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
