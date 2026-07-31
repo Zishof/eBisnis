@@ -5,6 +5,33 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Provisioning penyewa baru gagal pada migrasi modul pertama
+
+### Diperbaiki
+- **Kolom ketiga yang menyimpan versi migrasi terlewat dari pelebaran V033.**
+  `audit_schema_migration.migration_version` masih `VARCHAR(16)`, baik pada
+  skema audit tiap penyewa maupun pada `platform__audit`. Setiap migrasi yang
+  berhasil menuliskan jejaknya ke sana, sehingga begitu migrasi modul pertama
+  dijalankan pada penyewa **baru**, penerapannya berhasil, pembukuannya
+  berhasil, lalu jejak auditnya gagal — dan seluruh provisioning batal.
+
+  Tidak tertangkap V033 karena buktinya memeriksa penyimpanan id panjang pada
+  `schema_migration` saja, dan penerapan ke penyewa yang sudah ada hanya
+  menjalankan V033 sendiri, yang idnya pendek. Jalur yang gagal hanya dilalui
+  penyewa baru yang menjalankan migrasi modul dari nol — dan tidak ada penyewa
+  baru yang dibuat sampai E2E melakukannya.
+
+  `V034` melebarkannya pada skema audit penyewa; satu migrasi platform
+  melebarkannya pada `platform__audit`.
+
+### Keputusan yang perlu dicatat
+- **Melebarkan satu kolom kunci berarti mencari SELURUH kolom yang menyimpan
+  nilai yang sama.** Yang paling mudah terlupakan adalah jejak audit, sebab ia
+  tidak pernah dibaca aplikasi — hanya ditulis. `prove-core-ir.mjs` kini
+  memeriksa lebar setiap kolom penyimpan versi migrasi dengan **mencarinya
+  sendiri** lewat `information_schema`, bukan dari daftar yang ditulis tangan.
+  Daftar yang ditulis tangan persis yang gagal.
+
 ## Registri modular: migrasi, akuntansi, menu, pembayaran, dan situs publik
 
 Menjawab lima permintaan integrasi dari sesi eKoperasi (IR-001 sampai IR-005).
