@@ -2,16 +2,16 @@
 BUKTI V10-2 — ERRORLOG TERPUSAT
 =========================================================================
 
-Keadaan awal: 0 kejadian pada 0 kelompok
+Keadaan awal: 52 kejadian pada 18 kelompok
 
 1. GALAT YANG SAMA DIKELOMPOKKAN
-  kelompok "AppError": 3 kejadian
+  kelompok "AppError": 15 kejadian
   LULUS  tiga galat sama menjadi satu kelompok
   LULUS  ditandai WARNING, bukan ERROR
   LULUS  kelompok baru berstatus NEW
 
 2. KEJADIAN TETAP TERSIMPAN, BUKAN HANYA RINGKASANNYA
-  kelompok mengklaim 3, tersimpan 3 baris
+  kelompok mengklaim 15, tersimpan 15 baris
   LULUS  setiap kejadian punya barisnya sendiri
 
 3. GALAT YANG TIDAK BERGUNA TIDAK DISIMPAN
@@ -26,7 +26,7 @@ Keadaan awal: 0 kejadian pada 0 kelompok
   header tersimpan: {"user-agent":"bukti-v10-2","accept-language":"*"}
 
 5. BENTUK DATA YANG TERSIMPAN
-  total 4 kejadian
+  total 56 kejadian
   LULUS  tidak ada jalur absolut pada jejak tumpukan
   LULUS  tidak ada alamat IP tersimpan utuh
   LULUS  id sesi hanya tersimpan sebagai hash

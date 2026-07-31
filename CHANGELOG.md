@@ -9,6 +9,14 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Added
 
+- **Empat peran surat dengan pemisahan tugas (V10-8).** Sekretaris, Penyetuju
+  Surat, Arsiparis, dan Administrator Tata Kelola Surat — bukan satu peran
+  "Administrator Surat". Tata kelola surat memisahkan yang MENYUSUN dari yang
+  MENYETUJUI; satu peran yang dapat melakukan keduanya membuat seluruh alur
+  persetujuan menjadi hiasan. Sekretaris dan Penyetuju berada pada kelompok
+  pemisahan tugas SURAT_APPROVAL sehingga tidak dapat dipegang orang yang sama.
+- **Enam templat pemberitahuan surat (V10-8)**, menaikkan katalog templat dari
+  10 menjadi 16.
 - **Notification Hub (V10-7).** Tabel notifikasi sudah ada sejak V004 dan berisi
   NOL baris — tidak ada satu pun kode yang menulisinya. Kini ia berisi: disposisi
   surat, giliran persetujuan, dan eskalasi batas waktu semuanya menerbitkan

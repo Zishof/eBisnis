@@ -644,6 +644,14 @@ export const TENANT_MASTER_SEEDS: MasterSeedDefinition[] = [
       { code: 'TRANSFER_DISPATCHED', name: 'Transfer Dikirim', channel: 'IN_APP', subject_template: 'Transfer {{number}} dikirim', body_template: 'Transfer {{number}} dalam perjalanan menuju {{destination}}.', sort_order: 8 },
       { code: 'TRANSFER_RECEIVED', name: 'Transfer Diterima', channel: 'IN_APP', subject_template: 'Transfer {{number}} diterima', body_template: 'Transfer {{number}} telah divalidasi tujuan.', sort_order: 9 },
       { code: 'SUBSCRIPTION_EXPIRING', name: 'Langganan Akan Berakhir', channel: 'IN_APP', subject_template: 'Langganan berakhir {{date}}', body_template: 'Langganan perangkat {{device}} berakhir pada {{date}}.', sort_order: 10 },
+
+      // Versi 10 — tata kelola surat.
+      { code: 'SURAT_MASUK_DIDISPOSISI', name: 'Disposisi Surat Masuk', channel: 'IN_APP', subject_template: 'Disposisi surat {{agenda}}', body_template: '{{instruction}} Batas waktu: {{dueDate}}.', sort_order: 11 },
+      { code: 'SURAT_MENUNGGU_PERSETUJUAN', name: 'Surat Menunggu Persetujuan', channel: 'IN_APP', subject_template: 'Surat menunggu persetujuan Anda', body_template: '{{subject}} menunggu keputusan pada langkah {{step}} ({{stepName}}).', sort_order: 12 },
+      { code: 'SURAT_DISETUJUI', name: 'Surat Keluar Disetujui', channel: 'IN_APP', subject_template: 'Surat {{subject}} disetujui', body_template: 'Surat telah disetujui dan siap diterbitkan nomornya.', sort_order: 13 },
+      { code: 'SURAT_DIKEMBALIKAN', name: 'Surat Keluar Dikembalikan', channel: 'IN_APP', subject_template: 'Surat {{subject}} dikembalikan', body_template: 'Alasan: {{note}}. Perbaiki lalu ajukan kembali.', sort_order: 14 },
+      { code: 'SURAT_DITERBITKAN', name: 'Surat Keluar Diterbitkan', channel: 'IN_APP', subject_template: 'Surat {{number}} diterbitkan', body_template: 'Nomor resmi {{number}} telah diberikan untuk surat {{subject}}.', sort_order: 15 },
+      { code: 'SURAT_SLA_TERLAMPAUI', name: 'Batas Waktu Persetujuan Terlampaui', channel: 'IN_APP', subject_template: 'Persetujuan surat terlambat {{hours}} jam', body_template: '{{subject}} menunggu keputusan pada langkah {{step}} sejak {{dueAt}}.', sort_order: 16 },
     ],
   }),
 

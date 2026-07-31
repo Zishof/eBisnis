@@ -68,6 +68,14 @@ const SOD_RULE_META: Record<string, { name: string; description: string; severit
     description: 'Anggaran yang disusun dan disetujui orang yang sama menghilangkan kontrol perencanaan.',
     severity: 'MEDIUM',
   },
+  SURAT_APPROVAL: {
+    name: 'Penyusun surat bukan penyetujunya',
+    description:
+      'Surat resmi yang disusun dan disetujui orang yang sama membuat seluruh alur ' +
+      'persetujuan menjadi hiasan — dan nomor resmi yang keluar dari organisasi ' +
+      'tidak dapat ditarik kembali.',
+    severity: 'HIGH',
+  },
   WORKFLOW_APPROVAL: {
     name: 'Pengaju workflow bukan penyetujunya',
     description: 'Aturan umum yang berlaku pada seluruh alur persetujuan.',

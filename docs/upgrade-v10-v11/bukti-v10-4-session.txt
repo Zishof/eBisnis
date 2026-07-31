@@ -2,7 +2,7 @@
 BUKTI V10-4 — SESI, PERANGKAT, DAN PERAN AKTIF
 =========================================================================
 
-Menyiapkan pengguna bukti.v104b6b83a dengan dua peran pada skema demo:
+Menyiapkan pengguna bukti.v104ede0bb dengan dua peran pada skema demo:
   Peran A mengizinkan ADMIN.READ, ADMIN.CREATE dan MELARANG ADMIN_AUDIT.APPROVE
   Peran B mengizinkan ADMIN_AUDIT.READ, ADMIN_AUDIT.APPROVE
 
@@ -53,9 +53,9 @@ Menyiapkan pengguna bukti.v104b6b83a dengan dua peran pada skema demo:
   LULUS  peran asing ditolak
 
 7. RIWAYAT PERGANTIAN TERCATAT
-   (gabungan) -> BUKTI_B_v104b6b83a  3 -> 1 izin  alasan: uji bukti
-   BUKTI_B_v104b6b83a -> BUKTI_A_v104b6b83a  1 -> 2 izin
-   BUKTI_A_v104b6b83a -> (gabungan)  2 -> 3 izin
+   (gabungan) -> BUKTI_B_v104ede0bb  3 -> 1 izin  alasan: uji bukti
+   BUKTI_B_v104ede0bb -> BUKTI_A_v104ede0bb  1 -> 2 izin
+   BUKTI_A_v104ede0bb -> (gabungan)  2 -> 3 izin
   LULUS  tiga pergantian tercatat
   LULUS  peran asing yang ditolak TIDAK tercatat sebagai pergantian
 

@@ -2,7 +2,7 @@
 BUKTI V10-7 — NOTIFICATION HUB
 =========================================================================
 
-Keadaan awal: 0 pemberitahuan pada demo.notification
+Keadaan awal: 2 pemberitahuan pada demo.notification
 Tabel ini ada sejak V004 dan tidak pernah terisi — tidak ada satu pun kode
 yang menulisinya, dan tidak ada satu pun endpoint yang membacanya.
 
@@ -23,7 +23,7 @@ yang menulisinya, dan tidak ada satu pun endpoint yang membacanya.
    Lonceng: 1 belum dibaca, 1 menunggu tindakan
   LULUS  disposisi muncul pada lonceng
   LULUS  disposisi menuntut tindakan
-   Tautan: /app/surat/masuk/13695b0e-e8df-4b9f-8da2-08ff68cd5273
+   Tautan: /app/surat/masuk/530981c5-971c-44e5-b4a3-b169468f4aa5
   LULUS  ada tautan menuju suratnya
 
 3. LANGKAH PERSETUJUAN MEMBERI TAHU PENYETUJUNYA
@@ -50,7 +50,7 @@ yang menulisinya, dan tidak ada satu pun endpoint yang membacanya.
    segala hal lain dan membuat lonceng itu diabaikan.
    Tiga kali pemeriksaan menerbitkan 3 eskalasi.
    Baris eskalasi pada lonceng: 1
-     SLA_SURAT:f691dc74-c5bf-4675-a4ca-bccfe2ecba7 -> 3 kejadian, CRITICAL
+     SLA_SURAT:1c078171-c7ab-4ab9-8694-bb9322d7163 -> 3 kejadian, CRITICAL
   LULUS  tiga pemeriksaan menghasilkan SATU baris, bukan tiga
   LULUS  penghitung kejadian eskalasi naik menjadi tiga
   LULUS  terlambat lebih dari sehari menjadi CRITICAL

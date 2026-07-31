@@ -7,8 +7,16 @@ BUKTI V10-5 — JEJAK PEMAKAIAN, JEJAK PERUBAHAN, DAN KAPASITAS PELAKU
    seluruh 258 baris yang pernah ditulis — karena mengisinya bergantung
    pada ingatan penulis 76 pemanggilan audit. active_role_code tidak
    bergantung pada siapa pun: ia terisi dari konteks permintaan.
-   LOGIN  pelaku=bukti.v10552f120  kapasitas=(gabungan)
+   LOGIN                pelaku=bukti.v105da8447  kapasitas=(gabungan)
+   ACTIVE_ROLE_CHANGED  pelaku=bukti.v105da8447  kapasitas=(gabungan)
+   ACTIVE_ROLE_CHANGED  pelaku=bukti.v105da8447  kapasitas=BUKTI_v105da8447
+   ACTIVE_ROLE_CHANGED  pelaku=bukti.v105da8447  kapasitas=(gabungan)
   LULUS  ada baris audit untuk petugas ini
+  LULUS  ada baris audit yang membawa kapasitas
+  LULUS  kapasitasnya benar
+  LULUS  baris LOGIN tetap tanpa kapasitas
+   Baris LOGIN sengaja tetap kosong — saat masuk memang belum memilih peran.
+   actor_role_codes terisi pada 0 baris — sengaja tidak diisi mundur.
 
    Melakukan perubahan data setelah peran dipilih:
 2. JEJAK PEMAKAIAN: IDENTITAS DARI SESI, BUKAN DARI BADAN PERMINTAAN
@@ -27,7 +35,7 @@ BUKTI V10-5 — JEJAK PEMAKAIAN, JEJAK PERUBAHAN, DAN KAPASITAS PELAKU
   LULUS  endpoint pemakaian menu terbaca
    Menu ADMIN: 2 pembukaan oleh 1 orang
   LULUS  pembukaan menu ADMIN tercatat
-   Menu tidak pernah dibuka: 123 dari 124
+   Menu tidak pernah dibuka: 132 dari 133
   LULUS  daftar menu tak terpakai disertakan
    Tindakan EKSPOR: 1 dibatalkan dari 1 (100%)
   LULUS  pembatalan tercatat
@@ -37,7 +45,7 @@ BUKTI V10-5 — JEJAK PEMAKAIAN, JEJAK PERUBAHAN, DAN KAPASITAS PELAKU
    satu baris pun kode aplikasi. Ia tetap tercatat — itulah bedanya
    trigger basis data dari pencatatan di dalam kode.
   LULUS  ringkasan per tabel terbaca
-   Tabel role: 153 sisip, 9 ubah, 7 hapus
+   Tabel role: 170 sisip, 14 ubah, 24 hapus
   LULUS  perubahan lewat SQL langsung tetap tercatat
   LULUS  riwayat baris terbaca
    Riwayat peran uji: 2 perubahan
