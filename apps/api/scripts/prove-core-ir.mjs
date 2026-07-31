@@ -82,6 +82,32 @@ try {
     `sekarang ${kolom[0].len}`,
   );
 
+  /*
+   * SELURUH kolom yang menyimpan versi migrasi, di mana pun letaknya.
+   *
+   * V033 melebarkan dua dari tiga, dan yang ketiga —
+   * audit_schema_migration.migration_version — baru ketahuan saat E2E
+   * menyiapkan penyewa baru: migrasinya berhasil, pembukuannya berhasil, lalu
+   * jejak auditnya gagal dan seluruh provisioning batal.
+   *
+   * Pemeriksaan ini mencari kolomnya sendiri alih-alih memakai daftar yang
+   * ditulis tangan. Daftar yang ditulis tangan persis yang gagal kemarin.
+   */
+  const kolomVersi = await q(
+    `SELECT table_schema, table_name, column_name, character_maximum_length AS len
+       FROM information_schema.columns
+      WHERE column_name IN ('version', 'migration_version')
+        AND table_name IN ('schema_migration', 'audit_schema_migration',
+                           'schema_migration_catalog', 'tenant_schema_migration_history')
+        AND data_type = 'character varying'`,
+  );
+  const sempit = kolomVersi.filter((k) => Number(k.len) < MAX_MIGRATION_ID_LENGTH);
+  check(
+    `seluruh ${kolomVersi.length} kolom penyimpan versi migrasi cukup lebar`,
+    sempit.length === 0,
+    sempit.map((k) => `${k.table_schema}.${k.table_name}.${k.column_name}=${k.len}`).join(', '),
+  );
+
   const kolomModul = await q(
     `SELECT 1 FROM information_schema.columns
       WHERE table_schema = $1 AND table_name = 'schema_migration' AND column_name = 'module'`,
@@ -115,7 +141,9 @@ try {
   check('tidak ada versi yang tercatat dua kali', ganda.length === 0);
 
   // Panjang id modular sungguhan benar-benar muat sekarang.
-  const idPanjang = '20260731T160000__cooperative__profile_and_legality';
+  // Sepanjang id koperasi sungguhan, tetapi bertanda uji supaya tidak
+  // bertabrakan dengan yang sudah benar-benar diterapkan.
+  const idPanjang = `20260731T160000__cooperative__uji_${tag}_and_legality`;
   await client.query('BEGIN');
   await client.query(
     `INSERT INTO "${skema[0].table_schema}".schema_migration
@@ -139,7 +167,17 @@ try {
     'katalog tanpa modul sama persis dengan manifest inti',
     hanyaInti.migrations.length === manifestInti.migrations.length,
   );
-  check('versi inti tertinggi V033', versiIntiTertinggi(hanyaInti.migrations) === 'V033');
+  /*
+   * Diturunkan dari manifest, bukan ditulis tetap. Nilai tetap di sini harus
+   * disunting setiap ada migrasi inti baru, dan pemeriksaan yang menuntut
+   * penyuntingan rutin akan disesuaikan tanpa dibaca.
+   */
+  const versiTerakhirManifest =
+    manifestInti.migrations[manifestInti.migrations.length - 1].version;
+  check(
+    `versi inti tertinggi ${versiTerakhirManifest}`,
+    versiIntiTertinggi(hanyaInti.migrations) === versiTerakhirManifest,
+  );
 
   const modulUji = {
     module: `uji${tag}`,
@@ -164,7 +202,7 @@ try {
   );
   check(
     'versi inti tertinggi TIDAK berubah oleh kehadiran modul',
-    versiIntiTertinggi(gabung.migrations) === 'V033',
+    versiIntiTertinggi(gabung.migrations) === versiTerakhirManifest,
   );
 
   // --- Penemuan manifest modul dari sistem berkas sungguhan --------------

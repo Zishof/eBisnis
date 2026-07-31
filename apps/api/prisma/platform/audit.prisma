@@ -126,7 +126,7 @@ model AuditSchemaMigration {
   id             String   @id @default(uuid()) @db.Uuid
   occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
   schemaName     String   @map("schema_name") @db.VarChar(64)
-  migrationVersion String @map("migration_version") @db.VarChar(16)
+  migrationVersion String @map("migration_version") @db.VarChar(128)
   checksum       String   @db.VarChar(64)
   status         String   @db.VarChar(24)
   durationMs     Int      @default(0) @map("duration_ms")
