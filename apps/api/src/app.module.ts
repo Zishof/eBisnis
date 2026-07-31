@@ -7,6 +7,9 @@ import { appConfig } from './config/configuration';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { HealthModule } from './modules/health/health.module';
+// Vertical kesehatan. Namanya `emedik`, bukan `health`, karena `modules/health`
+// sudah dipakai pemeriksa ketersediaan di atas — lihat integration request 001.
+import { EmedikModule } from './modules/emedik/emedik.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PublicModule } from './modules/public/public.module';
 import { PlatformAdminModule } from './modules/platform-admin/platform-admin.module';
@@ -59,6 +62,7 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
     }),
     InfrastructureModule,
     HealthModule,
+    EmedikModule,
     AuthModule,
     PublicModule,
     PlatformAdminModule,

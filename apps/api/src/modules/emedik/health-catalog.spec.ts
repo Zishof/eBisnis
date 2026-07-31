@@ -1,0 +1,226 @@
+/**
+ * Pengujian katalog menu, peran, dan hak akses kesehatan.
+ *
+ * Yang dijaga di sini adalah kesalahan yang tidak menimbulkan galat: peran yang
+ * menunjuk hak akses yang tidak ada tetap dapat disimpan, tetapi hak itu tidak
+ * pernah berlaku — dan tidak ada yang menyadarinya sampai seseorang mengeluh
+ * tidak dapat membuka menu yang seharusnya boleh.
+ */
+
+import {
+  HEALTH_MENU,
+  HEALTH_PERMISSION_ACTIONS,
+  HEALTH_ROLES,
+  HEALTH_SOD_RULES,
+  daftarHakAkses,
+} from './health-catalog';
+
+describe('menu kesehatan', () => {
+  it('kode menu unik', () => {
+    const kode = HEALTH_MENU.map((m) => m.code);
+    expect(new Set(kode).size).toBe(kode.length);
+  });
+
+  it('seluruhnya berawalan HEALTH', () => {
+    // Panduan koordinasi §4 menetapkan awalan per vertical. Menu tanpa awalan
+    // akan bertabrakan dengan menu vertical lain saat digabungkan Core.
+    for (const m of HEALTH_MENU) {
+      expect(m.code.startsWith('HEALTH')).toBe(true);
+    }
+  });
+
+  it('setiap induk yang ditunjuk benar-benar ada', () => {
+    const kode = new Set(HEALTH_MENU.map((m) => m.code));
+    for (const m of HEALTH_MENU) {
+      if (m.parentCode) expect(kode.has(m.parentCode)).toBe(true);
+    }
+  });
+
+  it('hanya ada satu akar', () => {
+    const akar = HEALTH_MENU.filter((m) => !m.parentCode);
+    expect(akar).toHaveLength(1);
+    expect(akar[0].code).toBe('HEALTH');
+  });
+
+  it('setiap menu punya sekurang-kurangnya aksi READ', () => {
+    // Menu tanpa READ tidak dapat dibuka siapa pun, sehingga aksi lainnya
+    // tidak pernah terpakai.
+    for (const m of HEALTH_MENU) {
+      expect(m.actions).toContain('READ');
+    }
+  });
+
+  it('menu yang punya rute tidak ditandai sedang dibangun', () => {
+    for (const m of HEALTH_MENU) {
+      if (m.route) expect(m.comingSoon ?? false).toBe(false);
+    }
+  });
+
+  it('menu yang belum punya rute ditandai sedang dibangun', () => {
+    /*
+     * Ditandai, bukan disembunyikan. Menu yang diklik lalu tidak menampilkan
+     * apa pun jauh lebih buruk daripada menu yang mengatakan sedang dibangun —
+     * yang pertama terasa seperti kerusakan.
+     */
+    for (const m of HEALTH_MENU) {
+      if (!m.route && m.parentCode) expect(m.comingSoon).toBe(true);
+    }
+  });
+
+  it('jejak pembacaan hanya dapat dibaca dan diekspor', () => {
+    // Jejak yang dapat disunting pihak yang diaudit tidak membuktikan apa pun
+    // ketika benar-benar dibutuhkan.
+    const jejak = HEALTH_MENU.find((m) => m.code === 'HEALTH_ACCESS_LOG');
+    expect(jejak?.actions.sort()).toEqual(['EXPORT', 'READ']);
+  });
+});
+
+describe('aksi hak akses kesehatan', () => {
+  it('kode aksi unik', () => {
+    const kode = HEALTH_PERMISSION_ACTIONS.map((a) => a.code);
+    expect(new Set(kode).size).toBe(kode.length);
+  });
+
+  it('setiap aksi baru menyertakan alasan keberadaannya', () => {
+    /*
+     * Aksi tanpa alasan adalah aksi yang tidak dapat dinilai apakah memang
+     * perlu, dan daftar hak akses yang membengkak tanpa alasan adalah daftar
+     * yang akhirnya diberikan seluruhnya kepada semua orang.
+     */
+    for (const a of HEALTH_PERMISSION_ACTIONS) {
+      expect(a.reason.length).toBeGreaterThan(30);
+    }
+  });
+
+  it('meresepkan dan menyerahkan obat adalah dua aksi berbeda', () => {
+    // Supaya peresep tidak menyerahkan obatnya sendiri.
+    const kode = HEALTH_PERMISSION_ACTIONS.map((a) => a.code);
+    expect(kode).toContain('PRESCRIBE');
+    expect(kode).toContain('DISPENSE');
+  });
+});
+
+describe('peran kesehatan', () => {
+  it('kode peran unik', () => {
+    const kode = HEALTH_ROLES.map((r) => r.code);
+    expect(new Set(kode).size).toBe(kode.length);
+  });
+
+  it('setiap hak akses yang ditunjuk peran benar-benar ada pada katalog menu', () => {
+    /*
+     * Inilah kesalahan yang tidak menimbulkan galat. Peran yang menunjuk
+     * `HEALTH_PATIENT.PRESCRIBE` tetap tersimpan, tetapi haknya tidak pernah
+     * berlaku karena menu itu tidak punya aksi tersebut — dan yang mengeluh
+     * kemudian adalah dokter yang tidak dapat bekerja.
+     */
+    const sah = daftarHakAkses();
+    const salah: string[] = [];
+    for (const r of HEALTH_ROLES) {
+      for (const p of r.permissions) {
+        if (!sah.has(p)) salah.push(`${r.code} -> ${p}`);
+      }
+    }
+    expect(salah).toEqual([]);
+  });
+
+  it('setiap peran punya keterangan yang bermakna', () => {
+    for (const r of HEALTH_ROLES) {
+      expect(r.description.length).toBeGreaterThan(25);
+    }
+  });
+
+  it('administrator TIDAK dapat membaca rekam medis pasien', () => {
+    /*
+     * Mengelola sistem tidak menuntut membaca diagnosis siapa pun. Hak yang
+     * tidak dibutuhkan adalah hak yang akan disalahgunakan — dan administrator
+     * adalah peran yang paling sering diberikan kepada orang yang paling
+     * banyak dimintai tolong.
+     */
+    const admin = HEALTH_ROLES.find((r) => r.code === 'HEALTH_ADMIN');
+    expect(admin?.permissions).not.toContain('HEALTH_PATIENT.READ');
+    expect(admin?.permissions.some((p) => p.startsWith('HEALTH_PATIENT.'))).toBe(false);
+  });
+
+  it('petugas pendaftaran tidak dapat menggabungkan rekam medis', () => {
+    // Menandai dugaan ganda dan menggabungkannya adalah dua wewenang berbeda.
+    const clerk = HEALTH_ROLES.find((r) => r.code === 'HEALTH_REGISTRATION_CLERK');
+    expect(clerk?.permissions).toContain('HEALTH_PATIENT_DUPLICATE.REVIEW');
+    expect(clerk?.permissions.some((p) => p.endsWith('.MERGE_PATIENT'))).toBe(false);
+  });
+
+  it('hanya petugas rekam medis yang dapat menggabungkan', () => {
+    const boleh = HEALTH_ROLES.filter((r) =>
+      r.permissions.some((p) => p.endsWith('.MERGE_PATIENT')),
+    ).map((r) => r.code);
+    expect(boleh).toEqual(['HEALTH_MEDICAL_RECORD_OFFICER']);
+  });
+
+  it('hanya dokter yang punya akses darurat', () => {
+    const boleh = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_PATIENT.BREAK_GLASS'),
+    ).map((r) => r.code);
+    expect(boleh).toEqual(['HEALTH_DOCTOR']);
+  });
+
+  it('tidak ada peran yang memiliki hak atas menu yang belum dibangun', () => {
+    /*
+     * Peran yang sudah diberi hak atas modul yang belum ada akan tampak
+     * berfungsi sampai modulnya jadi, lalu tiba-tiba memberi akses yang tidak
+     * pernah ditinjau siapa pun.
+     */
+    const belumJadi = new Set(
+      HEALTH_MENU.filter((m) => m.comingSoon).map((m) => m.code),
+    );
+    const salah: string[] = [];
+    for (const r of HEALTH_ROLES) {
+      for (const p of r.permissions) {
+        const menu = p.split('.')[0];
+        if (belumJadi.has(menu)) salah.push(`${r.code} -> ${p}`);
+      }
+    }
+    expect(salah).toEqual([]);
+  });
+});
+
+describe('pemisahan wewenang', () => {
+  it('kode aturan unik', () => {
+    const kode = HEALTH_SOD_RULES.map((r) => r.code);
+    expect(new Set(kode).size).toBe(kode.length);
+  });
+
+  it('setiap aturan menyebut dua hak akses yang benar-benar ada', () => {
+    const sah = daftarHakAkses();
+    for (const r of HEALTH_SOD_RULES) {
+      expect(r.conflictingPermissions).toHaveLength(2);
+      for (const p of r.conflictingPermissions) {
+        expect(sah.has(p)).toBe(true);
+      }
+    }
+  });
+
+  it('setiap aturan menjelaskan mengapa keduanya berbahaya bila digabung', () => {
+    // Aturan pemisahan wewenang tanpa alasan akan dinonaktifkan orang pertama
+    // yang merasa terhalang olehnya.
+    for (const r of HEALTH_SOD_RULES) {
+      expect(r.description.length).toBeGreaterThan(60);
+    }
+  });
+
+  it('tidak ada peran bawaan yang melanggar aturannya sendiri', () => {
+    /*
+     * Peran bawaan yang melanggar aturan SoD bawaan berarti aturannya akan
+     * dilanggar sejak tenant pertama dibuat — lalu dinonaktifkan karena
+     * dianggap mengganggu.
+     */
+    const pelanggaran: string[] = [];
+    for (const role of HEALTH_ROLES) {
+      for (const rule of HEALTH_SOD_RULES) {
+        const [a, b] = rule.conflictingPermissions;
+        if (role.permissions.includes(a) && role.permissions.includes(b)) {
+          pelanggaran.push(`${role.code} melanggar ${rule.code}`);
+        }
+      }
+    }
+    expect(pelanggaran).toEqual([]);
+  });
+});

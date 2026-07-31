@@ -5,6 +5,77 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-1 — Fasilitas, profil tenant, penagihan, dan identitas pasien inti
+
+### Ditambahkan
+- **Migrasi `H001__health__facility.sql`** — `health_tenant_profile`,
+  `health_facility_type`, `health_facility`, `health_service_unit`,
+  `health_room`, `health_bed`, `health_provider`,
+  `health_clinical_privilege`.
+- **Migrasi `H002__health__patient_identity.sql`** — `patient`,
+  `patient_identifier`, `patient_name_history`,
+  `patient_potential_duplicate`, `patient_merge`, `health_access_log`.
+- **Delapan port** di `modules/emedik/ports/` beserta tiga adapter pertama
+  (identitas, audit, notifikasi).
+- **Katalog modular** menu, peran, dan aturan pemisahan wewenang kesehatan,
+  terpisah dari registri global sesuai panduan koordinasi §9.
+- **Sepuluh endpoint** `/api/v1/health/**`.
+- **98 pengujian baru** (1048 → 1146).
+
+### Keputusan yang perlu dicatat
+
+- **`modules/emedik/`, bukan `modules/health/`.** Rute tetap
+  `/api/v1/health/**` sesuai perintah §6; yang berbeda hanya nama direktori.
+  Diverifikasi saat API dijalankan: sepuluh rute terpasang di bawah
+  `/api/v1/health/**` sementara pemeriksa ketersediaan di `/health` tetap
+  menjawab 200.
+
+- **`health_facility.outlet_id` nullable.** Apotek dengan kasir menautkan diri
+  ke outlet agar POS dan gudangnya berjalan di atas mesin yang sudah ada;
+  Posyandu tidak punya outlet sama sekali. Mewajibkannya akan memaksa
+  pembuatan outlet palsu yang muncul di laporan penjualan sebagai toko yang
+  tidak pernah menjual apa pun.
+
+- **`health_provider.user_subject_id` dan `employee_id` keduanya nullable.**
+  Dokter tamu punya kewenangan klinis tanpa menjadi pegawai; kader Posyandu
+  memberi layanan tanpa akun sistem.
+
+- **Kewenangan klinis dipisahkan dari peran.** Peran menentukan menu apa yang
+  terbuka; kewenangan klinis menentukan tindakan apa yang boleh dilakukan.
+  Dokter umum dan dokter bedah memakai peran yang sama.
+
+- **Administrator eMedik tidak diberi hak membaca rekam medis.** Mengelola
+  sistem tidak menuntut membaca diagnosis siapa pun, dan hak yang tidak
+  dibutuhkan adalah hak yang akan disalahgunakan.
+
+- **Petugas pendaftaran tidak dapat menggabungkan rekam medis.** Menandai
+  dugaan ganda dan menggabungkannya adalah dua wewenang berbeda; yang kedua
+  menempelkan riwayat medis dan tidak boleh dilakukan sendirian.
+
+- **`health_access_log` tidak dapat diubah maupun dihapus**, ditegakkan pemicu
+  basis data. Break-glass diizinkan tetapi constraint menuntut alasan
+  sekurang-kurangnya sepuluh huruf — yang tidak dapat ditelaah sama saja
+  dengan tidak dicatat.
+
+- **Jenjang tertinggi tarif bernilai `null`, bukan angka.** Spesifikasi §4
+  menyebutnya dinegosiasikan; menaruh angka apa pun berarti menagihkan tarif
+  yang tidak pernah disepakati. Perhitungannya menandai tagihan sebagai belum
+  lengkap alih-alih mengarang nominal.
+
+### Yang diuji
+
+Aritmetika jenjang dihitung tangan lebih dahulu, bukan disalin dari keluaran
+program. Yang paling mudah salah — dan diuji khusus — adalah bedanya marginal
+bertingkat dari jenjang biasa: 50 pendaftaran berbiaya Rp497.500
+(49×10.000 + 1×7.500), bukan Rp375.000 (50×7.500).
+
+Penilaian penggandaan diuji setangkup, dan NIK yang sama memutuskan mutlak
+tanpa pertimbangan lain — satu NIK memang hanya milik satu orang, sehingga nama
+yang berbeda berarti salah satu berkas salah tulis, bukan dua orang.
+
+Penggabungan ditolak bila NIK berbeda: menggabungkannya akan menempelkan
+riwayat medis satu orang kepada orang lain.
+
 ## H-0 — Audit dan bounded context
 
 ### Ditambahkan

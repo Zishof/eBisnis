@@ -162,6 +162,20 @@
       "file": "V023__knowledge_embedding.sql",
       "name": "Penyimpanan embedding dan kesamaan kosinus",
       "description": "knowledge_chunk bertambah embedding float8[], embedding_model, embedding_dim, dan embedded_at, beserta fungsi cosine_similarity. Memakai float8[] bukan pgvector karena ekstensi vector TIDAK ADA pada daftar ekstensi yang dapat dipasang di server ini — memasangnya menuntut paket sistem operasi, bukan wewenang aplikasi. Pemindaian penuh berlangsung puluhan milidetik untuk beberapa ribu potongan dan mulai terasa di sekitar 20.000 potongan per tenant; angka itu ditulis supaya keputusan memasang pgvector kelak dapat ditinjau dengan ukuran, bukan firasat. Kolom embedding_model wajib karena vektor dari model berbeda tidak dapat dibandingkan."
+    },
+    {
+      "version": "H001",
+      "sequence": 1001,
+      "file": "H001__health__facility.sql",
+      "name": "eMedik: fasilitas kesehatan, profil tenant, pemberi layanan",
+      "description": "health_tenant_profile, health_facility_type, health_facility, health_service_unit, health_room, health_bed, health_provider, health_clinical_privilege. health_facility.outlet_id NULLABLE dengan sengaja: apotek dengan kasir menautkan diri ke outlet agar POS dan gudangnya berjalan di atas mesin yang sudah ada, sedangkan Posyandu tidak punya outlet sama sekali — mewajibkannya akan memaksa pembuatan outlet palsu yang muncul di laporan penjualan sebagai toko yang tidak pernah menjual apa pun. health_provider.user_subject_id dan employee_id keduanya NULLABLE karena dokter tamu punya kewenangan klinis tanpa menjadi pegawai, dan kader Posyandu memberi layanan tanpa akun sistem. Kewenangan klinis dipisahkan dari peran: peran menentukan menu apa yang terbuka, kewenangan klinis menentukan tindakan apa yang boleh dilakukan — dokter umum dan dokter bedah memakai peran yang sama tetapi hanya satu boleh mengoperasi. Satu tabel health_service_unit untuk seluruh jenis unit; delapan belas tabel berbentuk sama hanya memperbanyak kode tanpa menambah apa pun. Awalan H dipakai karena TenantModuleMigrationCatalog yang diperintahkan panduan koordinasi belum ada, sementara panduan itu juga melarang nomor urut global manual. Lihat docs/integration-requests/health/002-modular-migration-catalog.md."
+    },
+    {
+      "version": "H002",
+      "sequence": 1002,
+      "file": "H002__health__patient_identity.sql",
+      "name": "eMedik: identitas pasien, pengenal, penggandaan, dan jejak pembacaan",
+      "description": "patient, patient_identifier, patient_name_history, patient_potential_duplicate, patient_merge, health_access_log. Pasien BUKAN pelanggan: customer sudah ada dan punya nama serta telepon, tetapi identitas ganda pada pelanggan hanya merepotkan sedangkan identitas ganda pada pasien berarti alergi yang tercatat pada satu berkas tidak terlihat saat obat diresepkan dari berkas lain. patient.customer_id nullable dan searah, diisi hanya bila pasien menjadi pihak tertagih. enterprise_patient_id menyatukan satu orang lintas fasilitas; indeks unik pada NIK adalah penjaga penggandaan terkuat yang dapat ditegakkan basis data. Penggabungan tidak menghapus baris melainkan menandainya dan menunjuk induk, sehingga rujukan lama tetap dapat diikuti dan penggabungan dapat dibatalkan. health_access_log mencatat siapa MEMBACA rekam medis apa dan untuk tujuan apa — tidak ada padanannya di inti karena perdagangan tidak mencatat pembacaan. Ancaman tersering bukan peretasan luar melainkan tenaga kesehatan yang membuka rekam medis orang yang tidak dirawatnya, dan hak akses berbasis peran tidak menahannya. Terpisah dari audit_event karena volumenya jauh lebih besar dan mencampurnya akan menenggelamkan jejak perubahan. Tabelnya tidak dapat diubah maupun dihapus. Break-glass diizinkan — menolaknya akan membunuh orang di IGD — tetapi constraint menuntut alasan sekurang-kurangnya sepuluh huruf, karena yang tidak dapat ditelaah sama saja dengan tidak dicatat."
     }
   ]
 }
