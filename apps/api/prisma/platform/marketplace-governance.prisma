@@ -1,0 +1,237 @@
+// eBisnis.id Versi 9 — Tata kelola platform: moderasi, pelanggaran, dan biaya.
+//
+// ## Biaya marketplace: akrual, bukan potongan setelmen
+//
+// Memotong biaya dari setelmen menuntut penyedia pembayaran membagi dana ke
+// beberapa rekening. eSmartlink belum terbukti mendukungnya, dan membuat
+// pembagian sendiri berarti platform menampung uang penjual — kegiatan yang
+// menuntut izin yang tidak dimiliki.
+//
+// Karena itu biaya **diakrualkan**: dicatat sebagai kewajiban penjual, lalu
+// ditagihkan lewat faktur platform yang sudah ada. Penjual menerima uang penuh
+// dari pembeli, dan membayar biaya secara terpisah.
+//
+// Bentuk ini juga lebih jujur secara akuntansi: pendapatan penjual dan biaya
+// platform adalah dua peristiwa berbeda, bukan satu angka bersih.
+
+/// Kebijakan biaya marketplace.
+///
+/// Berversi. Biaya yang berubah tidak boleh mengubah tagihan yang sudah
+/// terbentuk — penjual berhak tahu tarif apa yang berlaku saat ia berjualan.
+model MarketplaceFeeSchedule {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @db.VarChar(48)
+  name String @db.VarChar(160)
+
+  /// Kosong berarti berlaku untuk seluruh penjual.
+  sellerId String? @map("seller_id") @db.Uuid
+  /// Kosong berarti berlaku untuk seluruh kategori.
+  categoryId String? @map("category_id") @db.Uuid
+
+  /// PERCENT atau FIXED_PER_ORDER.
+  feeType String @map("fee_type") @db.VarChar(24)
+  /// Persen dari nilai barang, atau nominal per pesanan.
+  feeValue Decimal @default(0) @map("fee_value") @db.Decimal(19, 4)
+
+  /// Batas atas per pesanan. Tanpa ini, biaya persen pada pesanan besar
+  /// menjadi angka yang tidak sebanding dengan layanan yang diberikan.
+  maxFeePerOrder Decimal? @map("max_fee_per_order") @db.Decimal(19, 4)
+  minFeePerOrder Decimal  @default(0) @map("min_fee_per_order") @db.Decimal(19, 4)
+
+  effectiveFrom DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo   DateTime? @map("effective_to") @db.Timestamptz(6)
+
+  version Int    @default(1)
+  status  String @default("DRAFT") @db.VarChar(24)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  seller  MarketplaceSeller?  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  accruals MarketplaceFeeAccrual[]
+
+  @@unique([code, version])
+  @@index([sellerId, status])
+  @@index([status, effectiveFrom])
+  @@map("marketplace_fee_schedule")
+  @@schema("platform")
+}
+
+/// Biaya yang terutang atas satu pesanan.
+///
+/// Dibentuk saat pesanan lunas, bukan saat dipesan — biaya atas pesanan yang
+/// tidak jadi dibayar bukan pendapatan platform.
+model MarketplaceFeeAccrual {
+  id         String @id @default(uuid()) @db.Uuid
+  orderId    String @map("order_id") @db.Uuid
+  sellerId   String @map("seller_id") @db.Uuid
+  scheduleId String @map("schedule_id") @db.Uuid
+
+  /// Nilai yang menjadi dasar perhitungan. Disimpan agar tagihan dapat
+  /// dijelaskan tanpa menghitung ulang dari pesanan yang mungkin sudah berubah.
+  baseAmount Decimal @map("base_amount") @db.Decimal(19, 4)
+  feeAmount  Decimal @map("fee_amount") @db.Decimal(19, 4)
+  currencyCode String @default("IDR") @map("currency_code") @db.VarChar(8)
+
+  /// Salinan tarif yang berlaku saat itu, agar tagihan dapat diperiksa
+  /// meski kebijakannya sudah berganti versi.
+  rateSnapshot Json @map("rate_snapshot")
+
+  /// ACCRUED, INVOICED, WAIVED, atau REVERSED.
+  status String @default("ACCRUED") @db.VarChar(16)
+
+  /// Faktur platform yang menagihnya, bila sudah ditagihkan.
+  invoiceId String? @map("invoice_id") @db.Uuid
+
+  /// Alasan pembebasan atau pembalikan. Wajib bila statusnya WAIVED atau
+  /// REVERSED — biaya yang dihapus tanpa alasan tidak dapat diaudit.
+  adjustmentReason String? @map("adjustment_reason") @db.Text
+
+  accruedAt   DateTime  @default(now()) @map("accrued_at") @db.Timestamptz(6)
+  invoicedAt  DateTime? @map("invoiced_at") @db.Timestamptz(6)
+  adjustedAt  DateTime? @map("adjusted_at") @db.Timestamptz(6)
+  adjustedBy  String?   @map("adjusted_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order    MarketplaceOrder       @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  schedule MarketplaceFeeSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+
+  /// Satu pesanan diakrualkan sekali. Peristiwa pembayaran dapat sampai
+  /// berulang, dan tanpa batasan ini setiap kiriman ulang menambah tagihan.
+  @@unique([orderId])
+  @@index([sellerId, status])
+  @@index([status, accruedAt])
+  @@map("marketplace_fee_accrual")
+  @@schema("platform")
+}
+
+/// Kebijakan produk terlarang dan terbatas.
+model MarketplaceProductPolicy {
+  id String @id @default(uuid()) @db.Uuid
+
+  code String @db.VarChar(48)
+  name String @db.VarChar(160)
+
+  /// PROHIBITED atau RESTRICTED.
+  /// Terlarang tidak boleh dijual sama sekali; terbatas menuntut dokumen.
+  policyType String @map("policy_type") @db.VarChar(16)
+
+  description   String  @db.Text
+  requiredDocs  String? @map("required_docs") @db.Text
+
+  /// Kata kunci yang memicu peninjauan. Bukan pemblokiran otomatis — kata
+  /// "pisau" muncul pada pisau dapur maupun pada barang terlarang.
+  keywordPatterns String[] @map("keyword_patterns")
+
+  categoryId String? @map("category_id") @db.Uuid
+
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  violations MarketplaceViolation[]
+
+  @@unique([code])
+  @@index([policyType, isActive])
+  @@map("marketplace_product_policy")
+  @@schema("platform")
+}
+
+/// Pelanggaran yang dicatat platform.
+model MarketplaceViolation {
+  id       String @id @default(uuid()) @db.Uuid
+  sellerId String @map("seller_id") @db.Uuid
+  policyId String? @map("policy_id") @db.Uuid
+
+  violationNumber String @map("violation_number") @db.VarChar(32)
+
+  /// LISTING, ORDER, REVIEW, CONVERSATION, atau SELLER.
+  subjectType String  @map("subject_type") @db.VarChar(24)
+  subjectId   String? @map("subject_id") @db.Uuid
+
+  severity String @db.VarChar(16)
+  summary  String @db.Text
+  evidence String? @db.Text
+
+  /// Poin pelanggaran. Diakumulasikan; penangguhan terjadi pada ambang
+  /// tertentu, bukan pada satu pelanggaran.
+  points Int @default(0)
+
+  /// NONE, WARNING, LISTING_REMOVED, LISTING_SUSPENDED, SELLER_SUSPENDED.
+  penalty String @default("NONE") @db.VarChar(24)
+
+  /// OPEN, ACKNOWLEDGED, APPEALED, UPHELD, OVERTURNED, CLOSED.
+  status String @default("OPEN") @db.VarChar(24)
+
+  /// Banding penjual. Pelanggaran tanpa jalan banding membuat kesalahan
+  /// moderator menjadi permanen.
+  appealSubmittedAt DateTime? @map("appeal_submitted_at") @db.Timestamptz(6)
+  appealReason      String?   @map("appeal_reason") @db.Text
+  appealDecidedAt   DateTime? @map("appeal_decided_at") @db.Timestamptz(6)
+  appealDecidedBy   String?   @map("appeal_decided_by") @db.Uuid
+  appealDecision    String?   @map("appeal_decision") @db.Text
+
+  recordedAt DateTime  @default(now()) @map("recorded_at") @db.Timestamptz(6)
+  recordedBy String?   @map("recorded_by") @db.Uuid
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  seller MarketplaceSeller         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  policy MarketplaceProductPolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+
+  @@unique([violationNumber])
+  @@index([sellerId, status])
+  @@index([status, recordedAt])
+  @@map("marketplace_violation")
+  @@schema("platform")
+}
+
+/// Antrean moderasi.
+///
+/// Satu tabel untuk seluruh jenis objek yang perlu ditinjau. Antrean terpisah
+/// per jenis akan membuat moderator berpindah-pindah layar dan kehilangan
+/// gambaran beban keseluruhan.
+model MarketplaceModerationTask {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// LISTING, MEDIA, REVIEW, CONVERSATION, SELLER, atau STORE.
+  subjectType String @map("subject_type") @db.VarChar(24)
+  subjectId   String @map("subject_id") @db.Uuid
+  sellerId    String? @map("seller_id") @db.Uuid
+
+  /// AUTOMATIC bila dipicu penyaring, REPORTED bila dilaporkan orang,
+  /// ROUTINE bila bagian pemeriksaan berkala.
+  triggerType String  @map("trigger_type") @db.VarChar(16)
+  triggerNote String? @map("trigger_note") @db.Text
+
+  priority Int @default(100)
+
+  /// PENDING, IN_REVIEW, APPROVED, REJECTED, ESCALATED.
+  status String @default("PENDING") @db.VarChar(16)
+
+  assignedTo String?   @map("assigned_to") @db.Uuid
+  assignedAt DateTime? @map("assigned_at") @db.Timestamptz(6)
+
+  decision       String?   @db.VarChar(24)
+  decisionReason String?   @map("decision_reason") @db.Text
+  decidedAt      DateTime? @map("decided_at") @db.Timestamptz(6)
+  decidedBy      String?   @map("decided_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  /// Objek yang sama tidak masuk antrean dua kali selagi belum diputus.
+  @@index([subjectType, subjectId, status])
+  @@index([status, priority, createdAt])
+  @@index([assignedTo, status])
+  @@map("marketplace_moderation_task")
+  @@schema("platform")
+}

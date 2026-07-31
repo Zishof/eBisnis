@@ -99,6 +99,7 @@ model MarketplaceOrder {
   disputes     MarketplaceDispute[]
   redemptions  MarketplaceVoucherRedemption[]
   reviews      MarketplaceReview[]
+  feeAccrual   MarketplaceFeeAccrual?
 
   @@unique([orderNumber])
   @@index([sellerId, status])
