@@ -238,8 +238,42 @@ export const MARKETPLACE_EVENTS = [
 
 export type MarketplaceEventCode = (typeof MARKETPLACE_EVENTS)[number];
 
-export function isKnownEvent(code: string): code is MarketplaceEventCode {
-  return (MARKETPLACE_EVENTS as readonly string[]).includes(code);
+/**
+ * Peristiwa akuntansi kasir.
+ *
+ * Ditambahkan pada berkas yang sama dengan peristiwa marketplace, bukan pada
+ * berkas kedua, supaya mesin postingnya tetap satu. Uji kelengkapan di bawah
+ * berlaku bagi keduanya: kode yang ditambahkan tanpa aturan posting dan tanpa
+ * daftar nilai wajibnya akan menggagalkan pengujian, bukan diam-diam
+ * menghasilkan jurnal kosong.
+ */
+export const POS_EVENTS = [
+  'POS_SALE',
+  'POS_CASH_RECEIPT',
+  'POS_NONCASH_RECEIPT',
+  'POS_TAX_OUTPUT',
+  'POS_COGS',
+  'POS_INVENTORY_RELEASE',
+  'POS_DISCOUNT',
+  'POS_RETURN',
+  'POS_REFUND',
+  'POS_CASH_VARIANCE',
+  'POS_CASH_IN',
+  'POS_CASH_OUT',
+] as const;
+
+export type PosEventCode = (typeof POS_EVENTS)[number];
+
+export const ALL_EVENTS = [...MARKETPLACE_EVENTS, ...POS_EVENTS] as const;
+
+export type KnownEventCode = MarketplaceEventCode | PosEventCode;
+
+export function isKnownEvent(code: string): code is KnownEventCode {
+  return (ALL_EVENTS as readonly string[]).includes(code);
+}
+
+export function isPosEvent(code: string): code is PosEventCode {
+  return (POS_EVENTS as readonly string[]).includes(code);
 }
 
 /**
@@ -249,7 +283,7 @@ export function isKnownEvent(code: string): code is MarketplaceEventCode {
  * kurang nilainya akan gagal saat dijurnal, dan lebih baik ditolak saat dibuat
  * ketika konteksnya masih ada.
  */
-export const REQUIRED_AMOUNTS: Record<MarketplaceEventCode, string[]> = {
+export const REQUIRED_AMOUNTS: Record<KnownEventCode, string[]> = {
   MARKETPLACE_SALE_RECOGNIZED: ['netSales', 'tax', 'gross'],
   MARKETPLACE_PAYMENT_RECEIVED: ['amount'],
   MARKETPLACE_PLATFORM_FEE_ACCRUED: ['feeAmount'],
@@ -262,6 +296,27 @@ export const REQUIRED_AMOUNTS: Record<MarketplaceEventCode, string[]> = {
   MARKETPLACE_REFUND: ['refundAmount'],
   MARKETPLACE_COGS: ['cogsAmount'],
   MARKETPLACE_INVENTORY_RELEASE: ['inventoryValue'],
+
+  // --- Kasir --------------------------------------------------------------
+  //
+  // `POS_SALE` menuntut ketiganya sekaligus dengan sengaja. Penjualan yang
+  // hanya membawa nilai kotor tidak dapat dijurnal: pendapatan dan pajak
+  // keluaran masuk ke akun yang berbeda, dan menebak pembagiannya kemudian
+  // berarti menebak berapa pajak yang terutang.
+  POS_SALE: ['gross', 'net', 'tax'],
+  POS_CASH_RECEIPT: ['amount'],
+  POS_NONCASH_RECEIPT: ['amount'],
+  POS_TAX_OUTPUT: ['taxBase', 'taxAmount'],
+  POS_COGS: ['cost'],
+  POS_INVENTORY_RELEASE: ['inventoryValue'],
+  POS_DISCOUNT: ['discountAmount'],
+  POS_RETURN: ['returnValue', 'tax'],
+  POS_REFUND: ['refundAmount'],
+  // Selisih kas membawa ketiganya supaya jurnalnya dapat menyebutkan bukan
+  // hanya berapa selisihnya, melainkan terhadap apa.
+  POS_CASH_VARIANCE: ['expected', 'counted', 'variance'],
+  POS_CASH_IN: ['amount'],
+  POS_CASH_OUT: ['amount'],
 };
 
 export function checkRequiredAmounts(

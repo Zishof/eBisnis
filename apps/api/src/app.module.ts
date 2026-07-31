@@ -25,6 +25,7 @@ import { OrderModule } from './modules/order/order.module';
 import { FulfillmentModule } from './modules/fulfillment/fulfillment.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
 import { ActivityModule } from './modules/activity/activity.module';
+import { PosModule } from './modules/pos/pos.module';
 import { SuratModule } from './modules/surat/surat.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { AiModule } from './modules/ai/ai.module';
@@ -80,6 +81,7 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
     FulfillmentModule,
     ObservabilityModule,
     ActivityModule,
+    PosModule,
     SuratModule,
     NotificationModule,
     AiModule,

@@ -162,6 +162,69 @@
       "file": "V023__knowledge_embedding.sql",
       "name": "Penyimpanan embedding dan kesamaan kosinus",
       "description": "knowledge_chunk bertambah embedding float8[], embedding_model, embedding_dim, dan embedded_at, beserta fungsi cosine_similarity. Memakai float8[] bukan pgvector karena ekstensi vector TIDAK ADA pada daftar ekstensi yang dapat dipasang di server ini — memasangnya menuntut paket sistem operasi, bukan wewenang aplikasi. Pemindaian penuh berlangsung puluhan milidetik untuk beberapa ribu potongan dan mulai terasa di sekitar 20.000 potongan per tenant; angka itu ditulis supaya keputusan memasang pgvector kelak dapat ditinjau dengan ukuran, bukan firasat. Kolom embedding_model wajib karena vektor dari model berbeda tidak dapat dibandingkan."
+    },
+    {
+      "version": "V024",
+      "sequence": 24,
+      "file": "V024__pos_context.sql",
+      "name": "Konteks POS: penugasan register dan kolom pelengkap",
+      "description": "pos_register_assignment beserta kolom pelengkap pada pos_terminal, pos_shift, pos_sale, pos_payment, dan cash_drawer_movement. Dua hal ditegakkan basis data dan bukan layanan: satu shift terbuka per terminal (indeks unik parsial pada status='OPEN') dan nomor struk yang tidak dapat kembar. Keduanya tidak dapat dijamin pemeriksaan di lapisan aplikasi ketika dua kasir bertransaksi pada milidetik yang sama. pos_terminal memperoleh register_status tersendiri karena kolom status yang ada dipakai untuk siklus hidup master; menumpangkan status operasional harian di atasnya membuat penonaktifan terminal dan penutupan register saling tertukar. Indeks unik penugasan memakai COALESCE, bukan NULLS NOT DISTINCT, karena produksi masih PostgreSQL 13."
+    },
+    {
+      "version": "V025",
+      "sequence": 25,
+      "file": "V025__pos_profiles.sql",
+      "name": "Profil hak kasir pada constraint role",
+      "description": "Memperluas ck_role_module_profile_code agar menerima profil kasir K1-K5 di samping P0-P12 dan M1-M9. Menyusul V012 yang melakukan hal sama untuk marketplace. Profil kasir dibuat tersendiri karena profil berlaku lintas modul: menambahkan REFUND_APPROVE atau CASH_MOVE ke profil manajer modul umum akan memberikannya pula pada modul lain yang menawarkan aksi itu."
+    },
+    {
+      "version": "V026",
+      "sequence": 26,
+      "file": "V026__pos_catalog_pricing.sql",
+      "name": "Penugasan buku harga dan promosi kasir",
+      "description": "pos_price_book_assignment, pos_promotion, pos_promotion_product, beserta indeks pencarian barcode dan SKU. price_book yang ada sudah punya scope_type tetapi TIDAK punya prioritas; tanpa prioritas, dua buku harga yang sama-sama berlaku pada satu outlet tidak dapat diputuskan mana yang menang, dan urutannya bergantung pada urutan baris di basis data — berarti harga yang muncul di kasir dapat berubah tanpa ada yang mengubah apa pun. condition_tree pada promosi adalah pohon kondisi terstruktur yang dievaluasi kode, TIDAK PERNAH dengan eval, Function, maupun SQL bebas: promosi adalah data yang boleh disunting pengguna tenant, dan ekspresi yang dapat mengeksekusi kode sembarang adalah lubang keamanan pada jalur uang. Constraint menolak diskon persen di atas seratus persen pada tingkat basis data."
+    },
+    {
+      "version": "V027",
+      "sequence": 27,
+      "file": "V027__pos_sale_detail.sql",
+      "name": "Rincian penjualan, struk, kas, retur, dan refund kasir",
+      "description": "pos_sale_line_tax, pos_sale_line_discount, pos_sale_discount, pos_sale_status_history, pos_sale_snapshot, pos_sale_receipt, pos_cash_count, pos_return, pos_return_line, pos_refund, plus kolom pelengkap pada pos_sale_line. pos_sale_line yang ada menyimpan tax_amount dan discount_amount sebagai satu angka — cukup untuk mencetak struk, tetapi tidak cukup untuk menjawab tarif mana yang dipakai saat pemeriksaan pajak atau siapa yang menyetujui diskon saat angka penjualan dipersoalkan. Tarif disimpan sebagai cuplikan karena tarif pajak berubah dan struk yang dicetak ulang tahun depan harus menunjukkan tarif saat transaksi terjadi. Dua aturan ditegakkan basis data: penyetuju retur tidak boleh sama dengan pemohonnya, dan jumlah yang diretur tidak pernah melebihi yang dijual — retur yang menghitung sendiri sisanya akan salah begitu dua retur atas transaksi yang sama diproses bersamaan."
+    },
+    {
+      "version": "V028",
+      "sequence": 28,
+      "file": "V028__pos_receipt_number_nullable.sql",
+      "name": "Nomor struk boleh kosong selama transaksi belum selesai",
+      "description": "pos_sale.receipt_number dilonggarkan dari NOT NULL. Jalur kasir menyimpan keranjang sebagai baris pos_sale berstatus DRAFT jauh sebelum ada struk. Menerbitkan nomor saat keranjang dibuka akan membuat setiap keranjang yang ditinggalkan memakan satu nomor, dan deret nomor struk pun berlubang — hal pertama yang ditanyakan pemeriksa pajak. Nomor kini diterbitkan hanya pada batas penyelesaian. Keunikannya tetap dijaga indeks unik parsial dari V024 yang memang sudah mengecualikan nilai kosong. Melonggarkan NOT NULL tidak pernah membatalkan baris yang sudah ada."
+    },
+    {
+      "version": "V029",
+      "sequence": 29,
+      "file": "V029__pos_payment_received_by.sql",
+      "name": "Siapa yang menerima pembayaran",
+      "description": "pos_payment bertambah received_by dan received_at. Selama ini penerima pembayaran disimpulkan dari pos_sale.cashier_id — benar pada keadaan biasa, salah pada keadaan yang justru paling perlu dijawab: supervisor yang mengambil alih di tengah transaksi, atau kasir pengganti. Ketika kas akhir shift selisih, pertanyaan pertama adalah siapa yang memegang uangnya. Nullable dengan sengaja; baris lama tidak diisi mundur karena penerima yang tidak tercatat tidak boleh dikarang."
+    },
+    {
+      "version": "V030",
+      "sequence": 30,
+      "file": "V030__pos_void_columns.sql",
+      "name": "Jejak pembatalan transaksi kasir",
+      "description": "pos_sale bertambah void_requested_by/at, void_approved_by/at, dan void_reason, beserta constraint pos_sale_no_self_void_approval. Disimpan pada pos_sale — bukan hanya pada riwayat status — karena pemeriksaan pemisahan wewenang membutuhkannya SEBELUM perpindahan status terjadi: layanan harus tahu siapa pemohonnya untuk menolak penyetujuan oleh orang yang sama. Membacanya dari riwayat berarti mengurai teks alasan, dan aturan yang bergantung pada penguraian teks bukan aturan. Constraint adalah lapisan ketiga setelah mesin transisi status dan layanan — yang tetap berlaku ketika kelak ada jalan keempat menuju tabel ini."
+    },
+    {
+      "version": "V031",
+      "sequence": 31,
+      "file": "V031__pos_shift_closing.sql",
+      "name": "Penutupan shift dan rekonsiliasi kas",
+      "description": "pos_shift bertambah opened_by, closed_by, approved_by/at, variance_reason, approval_note, beserta constraint pos_shift_no_self_variance_approval dan status PENDING_APPROVAL. closing_cash, expected_cash, dan variance sudah ada sejak V006, tetapi tidak ada yang mencatat SIAPA yang menutup dan siapa yang menyetujui selisihnya — justru yang ditanyakan ketika kas tidak cocok. Selisih kas menyangkut kepercayaan kepada orang, dan menjawabnya dengan 'sistem tidak mencatat itu' merugikan kasir yang jujur lebih dahulu. PENDING_APPROVAL ada supaya selisih di atas ambang tidak langsung menutup shift, tetapi juga tidak menahan kasir pulang: shift ditutup, kasnya terkunci, persetujuannya menyusul."
+    },
+    {
+      "version": "V032",
+      "sequence": 32,
+      "file": "V032__pos_transaction_sample_flags.sql",
+      "name": "Penanda data contoh pada tabel transaksi kasir",
+      "description": "pos_sale, pos_shift, pos_return, dan pos_refund bertambah is_sample dan sample_batch_id; pos_sale juga deleted_at dan delete_reason. Tabel master sudah punya penanda ini sejak awal, tabel transaksi tidak — masuk akal ketika transaksi hanya dibuat pemakaian sungguhan. Profil data contoh POS mengubahnya: penjualan contoh harus dapat dikenali dan dihapus. Tanpa penanda ini pembersihan akan melewatkannya, dan penyewa yang mengira sudah membersihkan ruang kerjanya akan menemukan penjualan karangan pada laporan keuangannya berbulan-bulan kemudian. Bawaannya FALSE: baris yang sudah ada adalah transaksi sungguhan."
     }
   ]
 }

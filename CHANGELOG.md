@@ -5,6 +5,455 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Halaman CMS tetap berjudul meski isinya gagal dimuat
+
+### Diperbaiki
+- **`/tentang`, `/syarat`, dan `/privasi` tidak memiliki `<h1>` sama sekali saat
+  isinya sedang dimuat atau gagal dimuat.** Keduanya menampilkan pesan tanpa
+  judul apa pun, sehingga pembaca layar yang melompat antar heading tidak
+  menemukan apa-apa dan tidak dapat tahu halaman apa yang sedang dibukanya —
+  justru pada saat pengguna paling membutuhkan keterangan tentang di mana ia
+  berada.
+
+  `CmsPage` kini menerima `fallbackTitle` yang wajib. Judul dari CMS dipakai
+  bila sudah tiba; bila belum, judul cadangan yang dipakai. Keduanya tetap satu
+  `<h1>`.
+
+### Ditambahkan
+- **Uji regresi** yang memalsukan galat API lalu menegaskan judulnya tetap ada.
+  Diverifikasi gagal tanpa perbaikannya dan lulus dengannya — uji regresi yang
+  tidak pernah merah tidak membuktikan apa pun.
+- Uji "tepat satu heading tingkat 1" kini mencakup `/syarat` dan `/privasi`,
+  yang sebelumnya tidak pernah diperiksa sama sekali.
+
+### Catatan
+- Cacat ini ditemukan oleh alur CI E2E yang baru, dan **tidak pernah tampak
+  pada basis data yang sudah lama dipakai** — isinya selalu ada di sana.
+  Ia hanya menampakkan diri pada basis data yang baru disemai. Inilah gunanya
+  menjalankan uji peramban terhadap lingkungan yang bersih.
+
+## Uji Playwright layar kasir
+
+### Ditambahkan
+- **`e2e/pos-cashier.spec.ts`** — **9 uji** yang benar-benar menekan tombol:
+  pindai barcode, ubah jumlah, tahan keranjang, bayar tunai, struk terbit,
+  barcode tak dikenal, tombol yang seharusnya mati, dan halaman laporan.
+- **`apps/api/scripts/e2e-pos-fixture.mjs`** — menyiapkan kasir beserta
+  penugasan register, produk berbarcode, dan stok; membersihkannya lagi
+  sesudahnya. Kata sandi dibangkitkan acak setiap kali dan ditulis ke berkas di
+  luar repositori.
+- **`API_PROXY_TARGET`** pada `vite.config.ts` — sasaran proxy API dapat diatur,
+  karena port 3000 tidak selalu bebas dan suntingan lokal pada berkas ini mudah
+  ikut ter-commit.
+
+### Diperbaiki — ketiganya ditemukan justru oleh uji peramban
+- **Layar kasir tidak dapat membuka keranjang sama sekali.** Antarmuka membaca
+  `outlets[0].outletId`, sedangkan peladen mengirim `outlets[0].id`. Medan yang
+  tidak ada menghasilkan `undefined`, tombolnya mati, dan **tidak ada pesan
+  galat apa pun** — tidak ada yang gagal, hanya tidak terjadi. Jenis cacat yang
+  tidak akan pernah tertangkap uji API.
+- **Batang konteks berbunyi "Shift undefined · kas awal -".** `openShift` tidak
+  membawa nomor shift, kas awal, maupun tanggal usaha; pemilih register tidak
+  membawa nama. Ditambahkan pada jawaban peladen.
+- **Barcode tak dikenal menampilkan "Data tidak ditemukan."** Terjemahan umum
+  `error.NOT_FOUND` menggantikan pesan peladen yang jauh lebih berguna —
+  "Barcode 899… tidak dikenali. Cari produk menurut namanya, atau daftarkan
+  barcode ini pada master produk." Pesan peladen kini ditampilkan apa adanya
+  pada jalur pindai.
+
+### Diperbaiki — naskah bukti
+- **Naskah bukti POS-10 merusak data schema bersama.** Pembersihan data contoh
+  menghapus SELURUH data contoh pada schema — perilaku yang benar bagi penyewa,
+  tetapi `demo` dipakai uji lain, dan produk contoh bawaannya ikut terhapus
+  sampai uji "daftar produk memuat master dari schema tenant" merah. Naskah kini
+  mencatat keadaan sebelum pembersihan dan memulihkannya sesudahnya.
+- **Rentang laporan pada naskah bukti memakai tanggal UTC.** Menjelang tengah
+  malam WIB, tanggal UTC sudah mundur satu hari dan penjualan yang baru dibangun
+  jatuh di luar rentang. Rentang kini dihitung dari `CURRENT_DATE` basis data.
+
+### Keputusan yang perlu dicatat
+- **Satu sesi untuk seluruh berkas uji.** Semula setiap uji masuk
+  sendiri-sendiri, dan uji ketujuh mulai gagal: pembatas laju masuk menolak
+  percobaan kesebelas dalam satu menit. Pembatasnya benar; ujinya yang keliru.
+  Sesi tunggal juga lebih menyerupai kenyataan — kasir masuk sekali pada awal
+  shift.
+- **Uji dilewati pada ponsel dengan keterangan.** Perintah prioritas §20
+  menyasar desktop dan tablet lanskap. Dilewati apa adanya, bukan dipaksa lulus
+  dengan tata letak yang tidak pernah dipakai siapa pun.
+- **Tanpa fixture, berkasnya dilewati — bukan gagal.** Uji yang merah karena
+  datanya belum disiapkan tidak memberitahu apa pun tentang mutu kodenya, dan
+  lama-lama membuat orang mengabaikan warna merah.
+
+## POS-9 dan POS-10 — Laporan operasional dan data contoh kasir
+
+### Ditambahkan
+- **`pos-report.ts`** — aturan laporan sebagai fungsi murni, **32 pengujian**:
+  batas rentang, penyembunyian biaya, persentase, dan sorotan kasir.
+- **`PosReportService`** — **lima belas laporan** (ringkasan, rincian, per
+  produk/kategori/kasir/register/shift, komposisi pembayaran, pajak, diskon,
+  void, retur, refund, pergerakan kas, selisih kas) plus dasbor satu tanggal.
+- **`PosSampleService`** — pabrik data contoh POS: merek, outlet, gudang,
+  register, produk berbarcode, pelanggan, stok, shift tertutup, dan penjualan
+  yang sudah selesai. Deterministik terhadap seed.
+- **Enam endpoint**: `reports`, `reports/dashboard`, `reports/:code`,
+  `sample-data` (baca dan bangun), `sample-data/cleanup`.
+- **`V032__pos_transaction_sample_flags.sql`** — `is_sample` dan
+  `sample_batch_id` pada `pos_sale`, `pos_shift`, `pos_return`, `pos_refund`.
+- **`prove-pos-report-sample.mjs`** — **40 pemeriksaan, seluruhnya lulus**.
+- **Halaman `/app/pos/laporan`** — satu halaman untuk seluruh laporan, dengan
+  pemilih laporan dan rentang tanggal. Kolomnya dirakit dari jawaban peladen
+  alih-alih dipetakan satu per satu; lima belas laporan berarti ratusan kolom,
+  dan peta sebesar itu akan tertinggal lebih dahulu daripada dipakai.
+
+### Keputusan yang perlu dicatat
+- **Kolom biaya DIHAPUS, bukan ditolkan.** Menolkan membuat laporan tampak
+  seolah untungnya nol — angka yang salah lebih buruk daripada angka yang tidak
+  ada. Jawaban juga menyertakan `costHidden` supaya pembaca tahu ada yang
+  disembunyikan, dan tidak menyimpulkan margin usahanya memang tidak tercatat.
+- **Kasir yang meminta laporan kasir lain tetap disaring ke dirinya sendiri**,
+  dan jawabannya menyatakan `scopedToSelf` alih-alih diam-diam memotong.
+- **Rentang laporan dibatasi 92 hari.** Laporan tanpa batas akan memindai
+  seluruh riwayat penjualan begitu sebuah outlet berjalan setahun, dan yang
+  menanggungnya adalah kasir yang sedang melayani antrean pada basis data yang
+  sama. Penolakannya menyebutkan batasnya, bukan hanya menolak.
+- **Laporan membaca `business_date`, bukan cap waktu.** Kasir yang bekerja
+  melewati tengah malam tetap berada pada tanggal usaha yang sama; laporan yang
+  memotong pada pukul 00.00 akan membelah satu shift menjadi dua hari, lalu kas
+  kedua hari itu tidak akan pernah cocok.
+- **Sorotan mengajak memeriksa, bukan menuduh.** Angka yang menonjol hampir
+  selalu punya penjelasan biasa. Alat yang dipakai memarahi orang akan dihindari
+  orang.
+- **Pengacak deterministik, bukan `Math.random()`.** Dua kali membangun data
+  contoh dengan seed yang sama menghasilkan angka yang sama, supaya laporan yang
+  dibandingkan sebelum dan sesudah sebuah perubahan benar-benar membandingkan
+  perubahannya.
+- **Outlet contoh yang telanjur menaungi penjualan sungguhan tidak dihapus**,
+  dan dilaporkan sebagai tertahan. Penyewa yang mencoba data contoh lalu mulai
+  berjualan sungguhan pada outlet yang sama bukan keadaan yang mustahil.
+
+## POS-4 dan POS-5 UI — Layar kasir, shift, dan rekonsiliasi kas
+
+### Ditambahkan
+- **Layar kasir `/app/pos`** — batang konteks (outlet, register, shift, kas),
+  kotak pindai barcode, pencarian produk, keranjang, dan dialog pembayaran.
+  Pintasan F2 (fokus pindai), F6 (tahan), F9 (bayar).
+- **`PosShiftService`** — ringkasan kas, pergerakan kas, penutupan shift dengan
+  rekonsiliasi, dan persetujuan selisih.
+- **Lima endpoint baru**: `payment-methods`, `shifts/:id/cash-summary`,
+  `shifts/:id/cash-movement`, `shifts/:id/close`, `shifts/:id/approve`.
+- **`V031__pos_shift_closing.sql`** — `opened_by`, `closed_by`, `approved_by/at`,
+  `variance_reason`, `approval_note`, constraint
+  `pos_shift_no_self_variance_approval`, dan status `PENDING_APPROVAL`.
+
+### Keputusan yang perlu dicatat
+- **Kas yang diharapkan dihitung peladen, bukan dilaporkan kasir.** Kasir
+  melaporkan berapa uang yang ada di laci; berapa yang seharusnya ada dihitung
+  dari kas awal, penjualan tunai, dan pergerakan kas. Membiarkan kasir
+  melaporkan keduanya berarti membiarkannya melaporkan bahwa tidak ada selisih.
+- **Ambang selisih Rp 50.000.** Menuntut persetujuan supervisor untuk setiap
+  rupiah akan membuat persetujuan itu diberikan tanpa dibaca, dan persetujuan
+  yang diberikan tanpa dibaca tidak menjaga apa pun.
+- **`PENDING_APPROVAL` ada supaya kasir tidak tertahan.** Selisih di atas ambang
+  tidak langsung menutup shift, tetapi juga tidak menahan kasir pulang: shift
+  ditutup, kasnya terkunci, persetujuannya menyusul.
+- **Shift tidak dapat ditutup di atas transaksi yang belum selesai.** Transaksi
+  tertunda menahan stok dan belum menghasilkan uang; kas yang diharapkan tidak
+  dapat dihitung benar di atasnya.
+- **Fokus layar kasir selalu kembali ke kotak pindai.** Pemindai barcode
+  mengetik lalu menekan Enter; bila fokus berpindah, pindaian berikutnya masuk
+  ke tempat yang salah dan kasir baru menyadarinya beberapa barang kemudian.
+- **`Idempotency-Key` dibuat sekali per dialog pembayaran**, bukan per klik.
+  Klik ganda pada layar yang lambat mengirim kunci yang sama, dan peladen
+  mengenalinya sebagai satu pembayaran.
+
+## POS-7 dan POS-8 — Struk, pembatalan, retur, dan refund
+
+### Ditambahkan
+- **`PosReturnService`** — pengajuan dan persetujuan pembatalan, retur sebagian
+  dan penuh dengan disposisi barang, serta pembayaran refund.
+- **Sepuluh endpoint**: struk, cetak ulang, void-request, void-approve, returns,
+  approve, refund.
+- **`V030__pos_void_columns.sql`** — `void_requested_by/at`, `void_approved_by/at`,
+  `void_reason`, dan constraint `pos_sale_no_self_void_approval`.
+- **`prove-pos-return-e2e.mjs`** — **34 pemeriksaan, seluruhnya lulus**
+  (`docs/pos-web-priority/bukti-pos-return-e2e.txt`).
+
+### Diperbaiki
+- **Retur lanjutan tidak lagi tertolak karena refund sebelumnya masih tertunda.**
+  Sesudah retur pertama disetujui, status penjualan menjadi `REFUND_PENDING`,
+  dan retur kedua atas barang yang masih di tangan pembeli ikut tertolak.
+  Pembeli yang mengembalikan dua barang pada dua hari berbeda adalah keadaan
+  biasa, bukan keadaan yang perlu dilarang. Yang menentukan boleh-tidaknya retur
+  adalah sisa unit yang belum dikembalikan — dijaga constraint.
+- **Idempotensi refund diperiksa sebelum status.** Sebelumnya percobaan ulang
+  atas refund yang sudah berhasil dijawab "retur belum disetujui", karena
+  statusnya sudah berubah menjadi `REFUNDED`. Kasir yang membaca itu akan
+  mengira refundnya gagal lalu membayar tunai dari laci — **uangnya keluar dua
+  kali.** Pelajaran yang sama pernah diambil pada penomoran surat V10-6.
+
+### Keputusan yang perlu dicatat
+- **Pembatalan membalik, bukan menghapus.** Peristiwa akuntansi pembalik
+  bernilai negatif dan stoknya dikembalikan; barisnya tetap ada. Transaksi yang
+  lenyap dari riwayat adalah cara termudah menghilangkan uang tanpa jejak.
+- **Larangan menyetujui permintaan sendiri berlaku di tiga lapisan** — mesin
+  transisi status, layanan, dan constraint basis data. Naskah bukti menguji
+  ketiganya, termasuk dengan melewati layanan sama sekali.
+- **Nilai retur dihitung proporsional** terhadap baris aslinya, termasuk
+  diskonnya. Memakai harga satuan penuh akan mengembalikan lebih banyak uang
+  daripada yang pernah diterima atas barang itu.
+
+## POS-5 dan POS-6 — Keranjang, pembayaran, dan batas penyelesaian
+
+### Ditambahkan
+- **`PosSaleService`** — keranjang kasir dari buka sampai selesai: tambah/ubah/
+  hapus baris, tahan/lanjutkan, batal, terima pembayaran, dan **batas
+  penyelesaian sepuluh langkah dalam satu transaksi basis data**: validasi
+  penjualan, shift, persetujuan, dan total pembayaran; nomor struk; potong
+  persediaan; peristiwa akuntansi; terbitkan struk; tandai selesai; titipkan ke
+  outbox.
+- **Empat belas endpoint** `/pos/sales/*`, `/pos/stock/check`.
+- **`V029__pos_payment_received_by.sql`** — `pos_payment` bertambah
+  `received_by` dan `received_at`.
+- **`prove-pos-sale-e2e.mjs`** — bukti satu transaksi dari ujung ke ujung,
+  **39 pemeriksaan, seluruhnya lulus** (`docs/pos-web-priority/bukti-pos-sale-e2e.txt`).
+
+### Diperbaiki
+- **`V028`** melonggarkan `pos_sale.receipt_number` dari NOT NULL. Keranjang
+  disimpan sebagai baris `pos_sale` berstatus DRAFT jauh sebelum ada struk;
+  menerbitkan nomor saat keranjang dibuka akan membuat setiap keranjang yang
+  ditinggalkan memakan satu nomor, dan **deret nomor struk pun berlubang** —
+  hal pertama yang ditanyakan pemeriksa pajak.
+- **Penomoran shift** memakai `SH-YYYYMMDD-<register>-NN`. `ux_pos_shift_number`
+  unik pada `shift_number` saja — bukan per terminal — sehingga penomoran
+  "1, 2, 3" bertabrakan pada register kedua yang membuka shift pertamanya.
+- **Gudang outlet** tidak lagi memakai kolom `is_default` yang tidak ada;
+  gudang anak didahulukan atas gudang induk.
+- **Parameter `$2` pada perpindahan status** diberi tipe tegas. Dipakai dua kali
+  dengan tipe yang disimpulkan berbeda, dan PostgreSQL menolak menyimpulkannya.
+
+### Keputusan yang perlu dicatat
+- **`received_by` sengaja menduplikasi identitas yang mirip `cashier_id`.**
+  Keduanya menjawab pertanyaan berbeda: `cashier_id` siapa yang membuka
+  keranjangnya, `received_by` siapa yang memegang uangnya. Supervisor yang
+  mengambil alih di tengah transaksi membuat keduanya berbeda — dan ketika kas
+  akhir shift selisih, yang ditanyakan adalah yang kedua.
+- **Metode non-tunai menolak lebih bayar.** Kelebihan pada kartu berarti
+  kesalahan ketik, dan menerimanya diam-diam menghasilkan selisih yang baru
+  ketahuan saat rekonsiliasi bank berminggu-minggu kemudian.
+- **Naskah bukti tunduk pada penjaga immutability V008** dan tidak menghapus
+  buku besar pergerakan stok. Memaksanya lewat berarti menguji sistem yang
+  berbeda dari yang dijalankan penyewa.
+
+## POS-3, POS-5a, POS-6a — Stok, mesin status, dan peristiwa akuntansi kasir
+
+### Ditambahkan
+- **`modules/pos/pos-stock.ts`** — aturan ketersediaan stok sebagai fungsi
+  murni, dengan **20 pengujian** termasuk aritmetika kelima ember stok.
+- **`modules/pos/pos-stock.service.ts`** — reservasi, pelepasan, dan
+  pengeluaran stok dengan kunci baris dan idempotensi.
+- **`modules/pos/pos-sale-state.ts`** — mesin transisi tiga belas status
+  penjualan, dengan **28 pengujian**.
+- **Dua belas kode peristiwa akuntansi `POS_*`** pada mesin posting yang sudah
+  ada, beserta daftar nilai wajibnya dan **7 pengujian** kelengkapan.
+- **Migrasi `V027__pos_sale_detail.sql`**: `pos_sale_line_tax`,
+  `pos_sale_line_discount`, `pos_sale_discount`, `pos_sale_status_history`,
+  `pos_sale_snapshot`, `pos_sale_receipt`, `pos_cash_count`, `pos_return`,
+  `pos_return_line`, `pos_refund`, plus kolom pelengkap pada `pos_sale_line`.
+
+### Koreksi audit POS-0
+- **`StockReservationService` TIDAK dapat dipakai untuk POS.** Audit POS-0
+  mencantumkannya sebagai dapat dipakai apa adanya; itu keliru. Kekeliruannya
+  berasal dari membaca nama metodenya — `hold`, `commit`, `release` — dan
+  komentar dokumennya, bukan kuerinya. Layanan itu bekerja seluruhnya pada
+  `online_listing_variant`, yaitu stok etalase marketplace, sementara kasir
+  bekerja pada `stock_balance` per gudang. Memakainya untuk POS akan membuat
+  penjualan kasir mengurangi stok etalase daring, dan sebaliknya.
+  Dokumen 02 dan 03 sudah dikoreksi.
+
+### Keputusan yang perlu dicatat
+- **Tarif pajak disimpan sebagai cuplikan pada baris penjualan**, bukan hanya
+  sebagai rujukan. Tarif berubah, dan struk yang dicetak ulang tahun depan
+  harus menunjukkan tarif yang berlaku saat transaksi terjadi.
+- **`PAID` hanya boleh maju ke `COMPLETED`.** Ia keadaan sesaat: uang sudah
+  diterima tetapi stok dan jurnal belum terbentuk. Membiarkannya kembali ke
+  `DRAFT` berarti uang yang sudah masuk tidak punya transaksi yang menaunginya.
+- **Pemisahan wewenang retur ditegakkan basis data pula**, lewat constraint
+  `approved_by <> requested_by`. Aturan yang hanya ada di satu lapisan berhenti
+  berlaku begitu ada jalan kedua menuju tabelnya.
+- **Jumlah yang diretur dibatasi constraint**, bukan dihitung layanan. Retur
+  yang menghitung sendiri sisanya akan salah begitu dua retur atas transaksi
+  yang sama diproses bersamaan.
+- **Disposisi retur** membedakan `RESTOCK`, `DAMAGED`, dan `DISPOSED`.
+  Mengembalikan seluruh barang retur ke stok jual adalah cara tercepat membuat
+  catatan stok berbeda dari kenyataan di rak.
+
+### Bukti
+- Migrasi V027 diterapkan ke 17 skema tenant.
+- `jest` 1209 tes lulus (bertambah 55).
+
+## POS-2 — Katalog, barcode, harga, dan pajak
+
+### Ditambahkan
+- **Migrasi `V026__pos_catalog_pricing.sql`**: `pos_price_book_assignment`,
+  `pos_promotion`, `pos_promotion_product`, dan indeks pencarian barcode/SKU.
+- **`modules/pos/pos-pricing.ts`** — mesin kuotasi harga kasir sebagai fungsi
+  murni, beserta **40 pengujian**. Angkanya dihitung tangan lebih dahulu, bukan
+  disalin dari keluaran program.
+- **`modules/pos/pos-catalog.service.ts`** — pencarian produk, pemindaian
+  barcode, dan kuotasi harga di atas basis data.
+- **Enam endpoint**: `GET /pos/context`, `GET /pos/catalog/search`,
+  `GET /pos/products/by-barcode`, `POST /pos/price/quote`,
+  `POST /pos/shifts/open`, `GET /pos/shifts/current`, ditambah pengelolaan
+  penugasan register.
+- `scripts/prove-pos-1-2.mjs` beserta buktinya di
+  `docs/pos-web-priority/bukti-pos-1-2.txt` — menyiapkan sendiri pengguna,
+  terminal, dan penugasannya, lalu membersihkannya, sehingga dapat dijalankan
+  berulang kali.
+
+### Keputusan yang perlu dicatat
+- **Mesin harga dibangun baru, bukan memakai `PricingEngineService`.** Mesin
+  yang ada menghitung tagihan langganan SaaS (`planCode`, `billingInterval`,
+  `deviceIds`) — berapa yang dibayar penyewa kepada kita, bukan berapa yang
+  dibayar pembeli kepada penyewa. Yang dipakai ulang hanyalah evaluator diskon
+  berbasis pohon kondisi.
+- **Pajak dihitung pada nilai sesudah diskon.** Menghitungnya atas bruto
+  membuat penyewa membayar pajak atas uang yang tidak pernah diterimanya.
+- **Pajak inklusif dikeluarkan dari dalam harga** (`harga ÷ (1 + tarif)`),
+  bukan dikalikan di atasnya. Kekeliruan ini tidak pernah terlihat pada satu
+  struk, tetapi menggerus angka penjualan bersih setiap hari.
+- **Kekhususan buku harga menang lebih dahulu daripada jumlah minimum.**
+  Membalik urutannya membuat harga grosir tingkat tenant mengalahkan harga
+  eceran khusus outlet — dan outlet kehilangan kendali atas harganya sendiri.
+- **Baris tidak pernah bernilai negatif.** Diskon yang melebihi harga dipotong;
+  menyerahkan uang kepada pembeli adalah pengeluaran kas, yang punya alur dan
+  hak aksesnya sendiri.
+- `condition_tree` promosi dievaluasi kode, **tidak pernah** dengan `eval`,
+  `Function`, maupun SQL bebas.
+
+### Diperbaiki — ditemukan oleh naskah bukti, bukan oleh pengujian unit
+- **Konteks kasir memakai id pengguna control plane pada tabel tenant.**
+  `AuthenticatedUser.userId` menunjuk `platform.platform_user`, sedangkan
+  penugasan register dan shift menunjuk `user_subject.id`. Keduanya berbeda,
+  dan memakai yang satu di tempat yang menuntut yang lain **tidak menghasilkan
+  galat**: kuerinya berhasil dan mengembalikan nol baris. Kasir yang sudah
+  ditugaskan tampak tidak punya register sama sekali, tanpa satu pun pesan yang
+  menjelaskan sebabnya.
+- **Produk berharga nol lolos tanpa peringatan.** `default_sale_price`
+  dikembalikan sebagai teks, dan teks `"0"` bernilai benar dalam JavaScript —
+  sehingga produk berharga nol terbaca sebagai produk yang berharga, peringatan
+  `NO_PRICE` tidak muncul, dan barang akan terjual gratis tanpa satu pun tanda
+  pada layar kasir.
+- Penomoran shift memakai `MAX(shift_number)` pada kolom bertipe teks;
+  dikonversi lebih dahulu supaya nomor 10 tidak mendahului nomor 9.
+
+### Bukti
+- 26 pemeriksaan ujung-ke-ujung terhadap API yang berjalan, seluruhnya lulus.
+- `jest` 1154 tes lulus (bertambah 40).
+
+## POS-1 — Konteks kasir, hak akses, dan peran
+
+### Ditambahkan
+- **Migrasi `V024__pos_context.sql`** (aditif): tabel `pos_register_assignment`
+  beserta kolom pelengkap pada `pos_terminal`, `pos_shift`, `pos_sale`,
+  `pos_payment`, dan `cash_drawer_movement`.
+- **Migrasi `V025__pos_profiles.sql`**: memperluas `ck_role_module_profile_code`
+  agar menerima profil kasir K1–K5, menyusul V012 yang melakukan hal sama untuk
+  marketplace.
+- **Sembilan aksi hak akses kasir**: `SELL`, `HOLD`, `RESUME`, `DISCOUNT_LINE`,
+  `DISCOUNT_CART`, `PRICE_OVERRIDE`, `OPEN_SHIFT`, `CLOSE_SHIFT`, `CASH_MOVE`.
+- **Enam menu POS baru** — katalog tumbuh dari 133 menjadi 139. Seluruh menu POS
+  kehilangan penanda "segera hadir".
+- **Lima profil kasir K1–K5** dan **tiga peran baru**: `ADMIN_TOKO`,
+  `PETUGAS_GUDANG_OUTLET`, `AUDITOR_POS`.
+- **Aturan pemisahan wewenang `POS_CASH`** — penyiap mesin kasir bukan pemeriksa
+  kasnya.
+- **Lima ambang kasir** pada `app_setting`, dapat diatur tiap tenant.
+- `modules/pos/pos-context.ts` — aturan konteks transaksi sebagai fungsi murni,
+  beserta 30 pengujiannya. Termasuk penentuan tanggal usaha menurut zona waktu
+  outlet dan jam pergantian harinya.
+- `modules/pos/pos-rbac.spec.ts` — 36 pengujian yang mengikat matriks hak akses
+  pada dokumen agar tidak dapat menyimpang diam-diam.
+
+### Ditegakkan basis data, bukan layanan
+- **Satu shift terbuka per terminal.** Indeks unik parsial pada `status='OPEN'`.
+- **Nomor struk tidak dapat kembar.** Indeks unik parsial.
+
+Keduanya tidak dapat dijamin pemeriksaan di lapisan aplikasi ketika dua kasir
+bertransaksi pada milidetik yang sama.
+
+### Keputusan yang perlu dicatat
+- **Profil kasir dibuat tersendiri (K1–K5), bukan dengan memperluas P1–P12.**
+  Profil berlaku lintas modul: menambahkan `REFUND_APPROVE` atau `CASH_MOVE` ke
+  profil manajer modul umum akan memberikannya pula pada marketplace. Hak
+  menyetujui refund tidak boleh merembes karena seseorang manajer modul di
+  tempat lain.
+- **`VOID_LINE`, `VOID_SALE`, dan `VIEW_OTHER_CASHIER` sengaja tidak dibuat**
+  meskipun perintah prioritas menyebutkannya. Pembatalan baris adalah `UPDATE`,
+  pembatalan transaksi selesai adalah `CANCEL`, dan melihat kasir lain adalah
+  persoalan cakupan data yang sudah punya mekanismenya sendiri. Aksi yang
+  artinya sama dengan aksi lain membuat matriks hak akses lebih sulit dibaca,
+  dan matriks yang sulit dibaca adalah matriks yang salah dikonfigurasi.
+- **`pos_terminal` memperoleh `register_status` tersendiri.** Kolom `status`
+  yang ada dipakai untuk siklus hidup master; menumpangkan status operasional
+  harian di atasnya membuat penonaktifan terminal dan penutupan register saling
+  tertukar.
+
+### Diperbaiki
+- Profil `K2` kehilangan `DELETE` setelah pengujian menyingkap akibat yang tidak
+  langsung terlihat: syarat munculnya tombol Unggah adalah memiliki `UPDATE` dan
+  `DELETE` sekaligus, sehingga supervisor kasir akan terhitung berhak mengunggah
+  data massal di tengah shift.
+- Kelompok pemisahan wewenang tanpa keterangan dilewati diam-diam saat
+  penyemaian. `POS_CASH` sempat terkena; keterangannya ditambahkan dan
+  aturannya kini benar-benar tersemai pada ketujuh belas skema.
+
+### Bukti
+- Migrasi diterapkan ke **17 skema tenant**, seluruhnya berhasil.
+- Diperiksa langsung pada basis data: 9 menu POS, 9 aksi baru, 6 peran, 2 aturan
+  SoD, 5 setelan, profil K1–K5 terpakai, dan `pos_register_assignment` ada.
+- Izin `KASIR_POS` pada `POS_SALE`: `CREATE, DISCOUNT_LINE, HOLD, PRINT, READ,
+  RESUME, SELL, UPDATE` — tanpa `APPROVE`, `CANCEL`, `PRICE_OVERRIDE`,
+  `DISCOUNT_CART`, maupun `VIEW_COST`.
+- `jest` 1114 tes lulus (bertambah 66).
+
+## POS-0 — Audit jalur kritis POS Web
+
+### Ditambahkan
+- `docs/pos-web-priority/` — tiga belas dokumen audit: keadaan saat ini, peta
+  dependensi kritis, peta pemakaian ulang modul, matriks celah, matriks peran
+  dan hak akses, peta model data, peta rute API dan UI, peta kemampuan
+  pembayaran, peta posting stok dan akuntansi, garis dasar pengujian, dan
+  rencana peluncuran.
+
+### Temuan utama
+- **Fondasi data POS sudah ada.** Sembilan belas tabel pada `V006`, termasuk
+  `pos_sale` yang sudah memiliki `idempotency_key`, `posting_key`, `offline_id`,
+  `sync_status`, dan `version`. Pekerjaan POS adalah membangun layanan dan
+  antarmuka di atasnya, bukan merancang ulang basis data.
+- **Tidak ada satu pun endpoint `/pos/*` maupun halaman `/app/pos`.** Menu POS
+  sudah terdaftar dan menunjuk ke `/app/pos`, tetapi rute itu jatuh ke
+  `ComingSoonPage`.
+- **`PricingEngineService` bukan untuk POS.** Namanya menyesatkan: mesin itu
+  menghitung tagihan langganan SaaS (`planCode`, `billingInterval`,
+  `deviceIds`), bukan harga produk di kasir. Mesin kuotasi harga POS harus
+  dibangun baru — hanya `DiscountEvaluatorService` yang dapat dipakai ulang.
+  Menyimpulkan sebaliknya akan membuat POS-2 diperkirakan jauh lebih ringan
+  daripada kenyataannya.
+- **Mesin posting akuntansi hanya mengenal dua belas kode `MARKETPLACE_*`.**
+  Dua belas kode `POS_*` beserta aturan postingnya perlu ditambahkan, dan akan
+  tunduk pada uji kelengkapan yang sama.
+- Matriks celah: 66 kemampuan diperiksa — 14 `DONE`, 21 `PARTIAL`, 28 `MISSING`,
+  3 `BLOCKED`. Tidak ada `BROKEN` maupun `CONFLICTING`.
+- Tiga penghalang berasal dari V8 yang belum pernah dibangun: Pusat Bantuan
+  menahan POS-11, ekspor Excel menahan laporan POS-9, dan job cetak PDF menahan
+  struk PDF POS-7. Ketiganya menurunkan mutu, bukan menghentikan kasir.
+
+### Garis dasar
+- `jest` 1048 tes lulus · `vitest` 35 tes lulus · lint dan `tsc` bersih ·
+  `vite build` berhasil.
+- **Cakupan pengujian POS saat ini: nol.** Sasaran minimum sepanjang POS-1
+  sampai POS-8 adalah 100 pengujian baru; sepanjang seluruh fase, 140.
+
 ## Beranda rinci dan empat dokumen penawaran
 
 ### Ditambahkan

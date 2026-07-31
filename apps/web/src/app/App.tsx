@@ -76,6 +76,14 @@ const VillageSitePage = lazy(() =>
 const VillageNewsPage = lazy(() =>
   import('../verticals/village/public/VillageNewsPage').then((m) => ({ default: m.VillageNewsPage })),
 );
+
+// Layar kasir dimuat terpisah: berkasnya besar dan hanya dipakai peran kasir,
+// sementara pengguna lain tidak perlu ikut menunggunya diunduh.
+const PosPage = lazy(() => import('../pages/pos/PosPage').then((m) => ({ default: m.PosPage })));
+const PosReportPage = lazy(() =>
+  import('../pages/pos/PosReportPage').then((m) => ({ default: m.PosReportPage })),
+);
+
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
 );
@@ -106,9 +114,9 @@ export function App() {
           <Route path="/berita" element={<NewsListPage />} />
           <Route path="/berita/:slug" element={<NewsDetailPage />} />
           <Route path="/kontak" element={<ContactPage />} />
-          <Route path="/tentang" element={<CmsPage slug="tentang" />} />
-          <Route path="/syarat" element={<CmsPage slug="syarat" />} />
-          <Route path="/privasi" element={<CmsPage slug="privasi" />} />
+          <Route path="/tentang" element={<CmsPage slug="tentang" fallbackTitle="Tentang Kami" />} />
+          <Route path="/syarat" element={<CmsPage slug="syarat" fallbackTitle="Syarat dan Ketentuan" />} />
+          <Route path="/privasi" element={<CmsPage slug="privasi" fallbackTitle="Kebijakan Privasi" />} />
           <Route path="/masuk" element={<LoginPage />} />
           <Route path="/daftar" element={<RegisterPage />} />
           <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
@@ -169,6 +177,8 @@ export function App() {
           <Route path="backorders" element={<BackorderPage />} />
           <Route path="internal-transfers" element={<InternalTransferPage />} />
           <Route path="stock-tree" element={<StockTreePage />} />
+          <Route path="pos" element={<PosPage />} />
+          <Route path="pos/laporan" element={<PosReportPage />} />
           <Route path="sample-data" element={<SampleDataPage />} />
           <Route path="devices" element={<SubscriptionPage tab="devices" />} />
           <Route path="subscription/checkout" element={<SubscriptionPage tab="checkout" />} />

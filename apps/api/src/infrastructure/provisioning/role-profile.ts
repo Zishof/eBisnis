@@ -20,7 +20,8 @@
 export type ProfileCode =
   | 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6'
   | 'P7' | 'P8' | 'P9' | 'P10' | 'P11' | 'P12'
-  | 'M1' | 'M2' | 'M3' | 'M4' | 'M5' | 'M6' | 'M7' | 'M8' | 'M9';
+  | 'M1' | 'M2' | 'M3' | 'M4' | 'M5' | 'M6' | 'M7' | 'M8' | 'M9'
+  | 'K1' | 'K2' | 'K3' | 'K4' | 'K5';
 
 /**
  * Tingkat pembatasan data. Menentukan baris mana yang terlihat, bukan tombol
@@ -152,6 +153,92 @@ const MP_PLATFORM = [
  */
 const MP_CREDENTIAL = [...MP_SELLER_ADMIN, 'MANAGE_CREDENTIAL'] as const;
 
+// --- Profil kasir (POS) ----------------------------------------------------
+
+/*
+ * Mengapa profil tersendiri, bukan menambah aksi POS ke P2/P6 yang sudah ada.
+ *
+ * Profil bersifat lintas modul: satu profil berlaku pada setiap modul yang
+ * ditugaskan kepada role. Menambahkan `REFUND_APPROVE` atau `RECONCILE` ke
+ * MODULE_MANAGER akan memberikannya pula pada modul lain yang kebetulan
+ * menawarkan aksi itu — hari ini modul marketplace. Hak menyetujui refund
+ * bukan sesuatu yang boleh merembes karena seseorang manajer modul di tempat
+ * lain.
+ *
+ * Versi 9 sudah menempuh jalan yang sama untuk marketplace (M1–M9), dengan
+ * alasan yang sama. K1–K4 mengikutinya.
+ */
+
+/**
+ * Kasir. Menjual, menahan, melanjutkan, membatalkan baris sebelum pembayaran,
+ * membuka dan menutup shiftnya sendiri, serta memberi diskon baris.
+ *
+ * Yang TIDAK dimilikinya, dan sengaja demikian: menyetujui apa pun, mengubah
+ * harga, memindahkan kas, melihat harga pokok, dan membatalkan transaksi yang
+ * sudah selesai. Kasir yang melihat margin akan tergoda memberi diskon "yang
+ * masih untung" — dan itu bukan wewenangnya.
+ */
+const POS_CASHIER = [
+  'READ', 'CREATE', 'UPDATE', 'PRINT',
+  'SELL', 'HOLD', 'RESUME', 'DISCOUNT_LINE',
+  'OPEN_SHIFT', 'CLOSE_SHIFT',
+  'RETURN',
+] as const;
+
+/**
+ * Supervisor kasir. Menambah persetujuan, pembatalan transaksi selesai, diskon
+ * keranjang, penggantian harga, pergerakan kas, dan rekonsiliasi.
+ *
+ * Memiliki hak menyetujui BUKAN berarti boleh menyetujui permintaannya sendiri:
+ * aturan pemisahan tugas menolaknya secara terpisah, dan penolakan itu tetap
+ * berlaku meskipun hak aksesnya ada.
+ */
+const POS_SUPERVISOR = [
+  ...POS_CASHIER,
+  // Tanpa DELETE dengan sengaja. Supervisor menjalankan shift; menghapus
+  // terminal adalah pekerjaan administrator toko. Memberi DELETE di sini juga
+  // akan membuat supervisor terhitung berhak mengunggah data massal, sebab
+  // syarat tombol Unggah adalah memiliki UPDATE dan DELETE sekaligus.
+  'CANCEL', 'APPROVE', 'REJECT', 'EXPORT', 'SUBMIT', 'REVIEW',
+  'DISCOUNT_CART', 'PRICE_OVERRIDE', 'CASH_MOVE', 'RECONCILE',
+  'RETURN_APPROVE', 'REFUND_APPROVE',
+  'VIEW_AMOUNT',
+] as const;
+
+/**
+ * Kepala toko. Seluruh hak supervisor ditambah harga pokok dan margin.
+ *
+ * Sengaja tidak dibuat sebagai peran yang lebih tinggi namun lebih tidak
+ * berdaya. Kepala toko yang harus memanggil supervisor untuk menyetujui refund
+ * akan mendorong orang berbagi kata sandi, dan itu lebih buruk daripada memberi
+ * izinnya secara terbuka.
+ */
+const POS_STORE_MANAGER = [
+  ...POS_SUPERVISOR,
+  'DELETE', 'RESTORE', 'IMPORT', 'POST', 'REVERSE', 'CHECK_ALL', 'DELEGATE',
+  'VIEW_COST', 'VIEW_PROFIT', 'AUDIT_READ',
+] as const;
+
+/** Auditor POS. Membaca segalanya, termasuk biaya; tidak mengubah apa pun. */
+const POS_AUDITOR = [
+  'READ', 'PRINT', 'EXPORT', 'AUDIT_READ', 'VIEW_AMOUNT', 'VIEW_COST', 'VIEW_PROFIT',
+] as const;
+
+/**
+ * Administrator master POS. Menyiapkan terminal, penugasan register, dan
+ * setelan struk — tanpa satu pun hak yang menyentuh uang.
+ *
+ * Sengaja bukan P7. Profil manajer modul umum memberi APPROVE, CANCEL, dan
+ * REVERSE, yang pada layar kasir berarti menyetujui diskon dan membatalkan
+ * transaksi yang sudah dibayar. Orang yang memasang mesin kasir tidak
+ * seharusnya berada di dalam rantai persetujuan transaksinya — itulah pemisahan
+ * antara yang menyiapkan alat dan yang memakainya.
+ */
+const POS_MASTER_ADMIN = [
+  'READ', 'CREATE', 'UPDATE', 'DELETE', 'RESTORE',
+  'EXPORT', 'IMPORT', 'PRINT', 'MANAGE_DEVICE', 'AUDIT_READ',
+] as const;
+
 /**
  * Aksi yang diberikan tiap profil.
  *
@@ -183,6 +270,11 @@ export const PROFILE_ACTIONS: Record<ProfileCode, readonly string[]> = {
   M7: MP_SELLER_ADMIN,
   M8: MP_PLATFORM,
   M9: MP_CREDENTIAL,
+  K1: POS_CASHIER,
+  K2: POS_SUPERVISOR,
+  K3: POS_STORE_MANAGER,
+  K4: POS_AUDITOR,
+  K5: POS_MASTER_ADMIN,
 };
 
 export const PROFILE_LABELS: Record<ProfileCode, string> = {
@@ -208,6 +300,11 @@ export const PROFILE_LABELS: Record<ProfileCode, string> = {
   M7: 'Manajer/Admin Seller',
   M8: 'Platform Marketplace',
   M9: 'Pemegang Credential Pembayaran',
+  K1: 'Kasir',
+  K2: 'Supervisor Kasir',
+  K3: 'Kepala Toko',
+  K4: 'Auditor POS',
+  K5: 'Administrator Master POS',
 };
 
 /**
