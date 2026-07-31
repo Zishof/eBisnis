@@ -1,0 +1,47 @@
+==============================================================================
+BUKTI ANJUNGAN MANDIRI DESA
+Waktu : 2026-07-31T21:32:45.678Z
+==============================================================================
+
+1. Migrasi anjungan
+  LULUS  tiga tabel anjungan terbentuk
+
+2. Kode ambil dibuat untuk dibaca orang
+  LULUS  kode yang memuat "O" ditolak
+  LULUS  kode yang memuat "0" ditolak
+  LULUS  kode yang memuat "1" ditolak
+  LULUS  kode yang memuat "I" ditolak
+  LULUS  kode yang memuat "L" ditolak
+  LULUS  kode yang panjangnya salah ditolak
+  LULUS  kode yang sah tersimpan
+
+3. Satu berkas, satu kode yang berlaku
+  LULUS  kode kedua atas berkas yang sama ditolak
+  LULUS  setelah yang lama dicabut, kode baru dapat terbit
+  LULUS  kode yang menunjuk dua berkas sekaligus ditolak
+  LULUS  kode bertanda PERMOHONAN yang menunjuk pengaduan ditolak
+
+4. Cetak mandiri dibatasi
+  LULUS  cetak mandiri keempat ditolak basis data
+  LULUS  penghitung percobaan tidak dapat menjadi negatif
+
+5. Buku tamu tidak meminta NIK
+  LULUS  tidak ada kolom NIK, alamat, maupun rujukan ke data penduduk
+  LULUS  yang ada hanyalah nama, keperluan, dan keterangan
+  LULUS  isian buku tamu tanpa nama ditolak
+  LULUS  keperluan di luar daftar ditolak
+  LULUS  isian buku tamu yang sah tersimpan
+
+6. Absensi ronda
+  LULUS  satu anggota satu kehadiran per jadwal
+  LULUS  kanal absensi di luar daftar ditolak
+
+7. Jejak audit
+  LULUS  kode ambil, buku tamu, dan absensi tercatat pada skema audit
+  LULUS  village_kiosk_session tetap TIDAK diaudit
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

@@ -55,6 +55,7 @@ import { VillageSafetyService } from './village-safety.service';
 import { VillageSiteService } from './village-site.service';
 import { VillageTransparencyService } from './village-transparency.service';
 import { VillageSampleService } from './village-sample.service';
+import { VillageKioskService } from './village-kiosk.service';
 import { VillagePublicResolver } from './village-public.resolver';
 import { BROADCAST_PORT, BroadcastBlockedAdapter } from './ports/broadcast.port';
 import {
@@ -2636,6 +2637,168 @@ class PutusanKeberatanDto {
   decisionNote!: string;
 }
 
+
+class KodeAmbilDto {
+  @ApiProperty({
+    example: 'A7K2-9MPQ',
+    description:
+      'Delapan huruf dari kertas pengajuan. Tanda hubung, spasi, dan huruf kecil dimaafkan — ' +
+      'warga mengetik apa yang dilihatnya, dan yang dilihatnya bertanda hubung.',
+  })
+  @IsString()
+  @MaxLength(20)
+  claimCode!: string;
+}
+
+class AntreanAnjunganDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  serviceCatalogId?: string;
+}
+
+class AjukanSuratAnjunganDto {
+  @ApiProperty()
+  @IsUUID()
+  serviceCatalogId!: string;
+
+  @ApiProperty({ example: 'Sumiati' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  applicantName!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  applicantPhone?: string;
+
+  @ApiPropertyOptional({ example: 'Untuk melamar pekerjaan' })
+  @IsOptional()
+  @IsString()
+  purpose?: string;
+}
+
+class LaporAnjunganDto {
+  @ApiProperty({ example: 'Jalan berlubang depan masjid' })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(300)
+  title!: string;
+
+  @ApiProperty({ description: 'Sekurang-kurangnya sepuluh huruf.' })
+  @IsString()
+  @MinLength(10)
+  description!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({ example: 'Depan masjid RT 03' })
+  @IsOptional()
+  @IsString()
+  locationNote?: string;
+
+  @ApiPropertyOptional({ description: 'Diabaikan bila laporan anonim.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  reporterName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  reporterPhone?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Laporan anonim BENAR-BENAR tidak menyimpan identitas pelapor, dan tetap memperoleh kode ' +
+      'ambil agar tindak lanjutnya dapat diperiksa tanpa menyebut nama.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isAnonymous?: boolean;
+}
+
+const KEPERLUAN_TAMU = [
+  'LAYANAN_SURAT', 'PENGADUAN', 'KONSULTASI', 'PEMBAYARAN', 'BERTAMU', 'LAINNYA',
+] as const;
+
+class BukuTamuDto {
+  @ApiProperty({ example: 'Sumiati' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  guestName!: string;
+
+  @ApiProperty({ enum: KEPERLUAN_TAMU })
+  @IsIn(KEPERLUAN_TAMU as unknown as string[])
+  purpose!: (typeof KEPERLUAN_TAMU)[number];
+
+  @ApiPropertyOptional({ description: 'Boleh dikosongkan.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  institution?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  kioskCode?: string;
+}
+
+class AbsenRondaDto {
+  @ApiProperty({ example: 'Karto' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  memberName!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  patrolScheduleId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  kioskCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+class TerbitkanKodeDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  serviceRequestId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  complaintId?: string;
+}
+
 // --- Controller publik ---------------------------------------------------------
 
 /**
@@ -2768,6 +2931,7 @@ export class VillageController {
     private readonly situs: VillageSiteService,
     private readonly transparansi: VillageTransparencyService,
     private readonly contoh: VillageSampleService,
+    private readonly anjungan: VillageKioskService,
   ) {}
 
 
@@ -4528,6 +4692,182 @@ export class VillageController {
     return this.contoh.bersihkan(requireSchema(user), batchId);
   }
 
+
+  // --- Anjungan Mandiri Desa ------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SITE.READ')
+  @Get('kiosk/menu')
+  @ApiOperation({
+    summary: 'Menu anjungan',
+    description:
+      'Sudah disaring kelayakan profil. TIDAK ada menu pencarian warga — anjungan yang dapat ' +
+      'dicari berdasarkan nama bukan anjungan layanan melainkan terminal kependudukan yang ' +
+      'diletakkan di ruang publik.',
+  })
+  menuAnjungan(@CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.menu(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SITE.READ')
+  @Get('kiosk/guides')
+  @ApiOperation({
+    summary: 'Panduan langkah demi langkah',
+    description:
+      'Ditulis untuk dibaca sambil berdiri: kalimat pendek, satu perintah per langkah, dan tanpa ' +
+      'istilah yang hanya dimengerti perangkat desa.',
+  })
+  panduanAnjungan(@Query('code') code: string | undefined) {
+    return this.anjungan.panduan(code);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.READ')
+  @Post('kiosk/status')
+  @ApiOperation({
+    summary: 'Cek status pengajuan dari kode ambil',
+    description:
+      'Yang dikembalikan sudah melewati proyeksi anjungan: nomor permohonan, jenis layanan, ' +
+      'status, dan perkiraan selesainya. BUKAN nama, bukan NIK, bukan alamat — layar anjungan ' +
+      'terlihat oleh orang yang mengantre di belakang. Percobaan dibatasi lima kali.',
+  })
+  cekStatusAnjungan(@Body() dto: KodeAmbilDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.cekStatus(requireSchema(user), dto.claimCode);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.PRINT')
+  @Post('kiosk/print')
+  @ApiOperation({
+    summary: 'Cetak surat secara mandiri',
+    description:
+      'Penghitung cetak dinaikkan SEBELUM isinya dikembalikan, di dalam transaksi yang sama: ' +
+      'menaikkannya sesudah berarti anjungan yang mati listrik di tengah pencetakan tidak ' +
+      'menghitungnya. Dibatasi tiga kali; selebihnya diarahkan ke loket.',
+  })
+  cetakSuratAnjungan(@Body() dto: KodeAmbilDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.cetakSurat(requireSchema(user), dto.claimCode);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_CATALOG.READ')
+  @Get('kiosk/services')
+  @ApiOperation({ summary: 'Jenis layanan yang tersedia di anjungan' })
+  layananAnjungan(@CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.layananTersedia(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_QUEUE.CREATE')
+  @Post('kiosk/queue')
+  @ApiOperation({
+    summary: 'Ambil nomor antrean',
+    description: 'Perkiraan waktu tunggu disebut perkiraan; angka yang tampak pasti lalu meleset membuat orang berhenti mempercayai layarnya.',
+  })
+  ambilAntreanAnjungan(@Body() dto: AntreanAnjunganDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.ambilAntrean(requireSchema(user), dto.serviceCatalogId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.CREATE')
+  @Post('kiosk/requests')
+  @ApiOperation({
+    summary: 'Mulai pengajuan surat dari anjungan',
+    description:
+      'Anjungan hanya membuat permohonan DRAF beserta kode ambilnya. Berkas persyaratan dan ' +
+      'verifikasi identitas tetap di loket: layar sentuh di ruang tunggu bukan tempat memastikan ' +
+      'siapa yang berdiri di depannya.',
+  })
+  ajukanSuratAnjungan(
+    @Body() dto: AjukanSuratAnjunganDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.anjungan.ajukanSurat(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SITE.READ')
+  @Get('kiosk/announcements')
+  @ApiOperation({
+    summary: 'Pengumuman, agenda, dan info bantuan',
+    description:
+      'Program bantuan ditampilkan, penerimanya TIDAK. Daftar penerima di layar ruang tunggu ' +
+      'adalah pengumuman siapa yang miskin di desa ini.',
+  })
+  pengumumanAnjungan(@CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.pengumuman(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_COMPLAINT.CREATE')
+  @Post('kiosk/complaints')
+  @ApiOperation({
+    summary: 'Sampaikan pengaduan dari anjungan',
+    description:
+      'Anonim tetap mungkin, dan bila anonim, identitas pelapor benar-benar tidak disimpan — ' +
+      'ditegakkan constraint D-5. Yang anonim tetap memperoleh kode ambil supaya tindak ' +
+      'lanjutnya dapat diperiksa tanpa menyebut nama.',
+  })
+  laporAnjungan(@Body() dto: LaporAnjunganDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.lapor(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_COMPLAINT.READ')
+  @Post('kiosk/complaints/status')
+  @ApiOperation({ summary: 'Cek tindak lanjut pengaduan dari kode ambil' })
+  cekLaporanAnjungan(@Body() dto: KodeAmbilDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.cekLaporan(requireSchema(user), dto.claimCode);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SITE.READ')
+  @Post('kiosk/guestbook')
+  @ApiOperation({
+    summary: 'Isi buku tamu',
+    description:
+      'Yang diwajibkan hanya nama dan keperluan. NIK TIDAK diminta: mengumpulkan nomor induk ' +
+      'warga pada layar terbuka di ruang tunggu berarti menaruhnya di tempat yang paling mudah ' +
+      'dilihat orang lain, untuk keperluan yang tidak memerlukannya.',
+  })
+  isiBukuTamu(@Body() dto: BukuTamuDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.isiBukuTamu(requireSchema(user), dto);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SITE.READ')
+  @Get('kiosk/guestbook')
+  @ApiOperation({ summary: 'Rekap kunjungan buku tamu' })
+  rekapBukuTamu(@Query('date') date: string | undefined, @CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.rekapBukuTamu(requireSchema(user), date);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_LINMAS.CREATE')
+  @Post('kiosk/patrol-attendance')
+  @ApiOperation({
+    summary: 'Absensi ronda dari anjungan',
+    description: 'Nama yang belum terdaftar sebagai anggota Linmas tetap dicatat, lalu dicocokkan petugas.',
+  })
+  absenRonda(@Body() dto: AbsenRondaDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.absenRonda(requireSchema(user), dto);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.UPDATE')
+  @Post('kiosk/claims')
+  @ApiOperation({
+    summary: 'Menerbitkan kode ambil untuk sebuah berkas',
+    description:
+      'Delapan huruf tanpa 0, O, 1, I, dan L — pasangan yang paling sering tertukar pada cetakan ' +
+      'kecil yang dibaca sambil berdiri. Dibuat dengan randomInt dari node:crypto, bukan ' +
+      'Math.random: kode yang dapat ditebak dari waktu penerbitannya bukan kode.',
+  })
+  terbitkanKode(@Body() dto: TerbitkanKodeDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.anjungan.terbitkanKode(requireSchema(user), dto, user);
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -4580,6 +4920,7 @@ export class VillageController {
     VillageSiteService,
     VillageTransparencyService,
     VillageSampleService,
+    VillageKioskService,
     VillagePublicResolver,
     // Mitra vertikal yang belum ada. Adapter tiruan menyatakan "belum
     // tersambung" dengan jujur dan tidak mengembalikan satu pun angka karangan.
@@ -4608,6 +4949,7 @@ export class VillageController {
     VillageSiteService,
     VillageTransparencyService,
     VillageSampleService,
+    VillageKioskService,
   ],
 })
 export class VillageModule {}

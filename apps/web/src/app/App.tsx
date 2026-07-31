@@ -73,6 +73,12 @@ const PenawaranPage = lazy(() =>
 const VillageSitePage = lazy(() =>
   import('../verticals/village/public/VillageSitePage').then((m) => ({ default: m.VillageSitePage })),
 );
+// Anjungan Mandiri Desa. Layar penuh tanpa kerangka aplikasi: kios di kantor
+// desa tidak punya bilah navigasi, tidak punya tombol keluar, dan tidak boleh
+// menampilkan apa pun selain layanannya sendiri.
+const KioskPage = lazy(() =>
+  import('../verticals/village/kiosk/KioskPage').then((m) => ({ default: m.KioskPage })),
+);
 const VillageNewsPage = lazy(() =>
   import('../verticals/village/public/VillageNewsPage').then((m) => ({ default: m.VillageNewsPage })),
 );
@@ -130,6 +136,18 @@ export function App() {
           <Route path="/demo" element={<DemoEntryPage />} />
           <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />
         </Route>
+
+        {/* Anjungan Mandiri Desa — layar penuh, di luar kerangka aplikasi.
+            Perangkatnya masuk sebagai akun anjungan; warga memakainya tanpa
+            masuk sendiri. */}
+        <Route
+          path="/anjungan"
+          element={
+            <RequireAuth>
+              <KioskPage />
+            </RequireAuth>
+          }
+        />
 
         {/* Situs desa — halaman publik satu desa, hanya membaca. */}
         <Route element={<PublicLayout />}>

@@ -1573,3 +1573,152 @@ boleh ditunda.
 - `tsc --noEmit` dan `eslint --max-warnings=0` API dan web — bersih
 - Migrasi diverifikasi: **101 tabel village** pada tiga belas migrasi
 - Sepuluh berkas bukti, **273 pemeriksaan** terhadap PostgreSQL sungguhan
+
+---
+
+## Anjungan Mandiri Desa
+
+Sesuai konsep pada presentasi Sistem Informasi Desa: *"Kios layar sentuh di
+kantor desa untuk mencetak surat dan mengakses informasi secara mandiri."*
+
+**Tautannya: `/anjungan`.**
+
+### Delapan fungsi, seluruhnya dari presentasi
+
+Slide "KANAL DESA" menyebut lima:
+
+| Fungsi | Layar |
+|---|---|
+| Cetak surat keterangan secara mandiri | `CETAK_SURAT` |
+| Cek status pengajuan & antrean | `CEK_STATUS`, `ANTREAN` |
+| Lihat pengumuman & info bantuan | `PENGUMUMAN` |
+| Isi buku tamu & kunjungan | `BUKU_TAMU` |
+| Panduan langkah demi langkah | `PANDUAN` |
+
+Tiga lagi tersebar di slide lain: *"Ajukan via mobile / anjungan"* pada alur
+surat, *"Dukungan kanal mobile & anjungan"* pada pengaduan, dan *"Absensi ronda
+via mobile/anjungan"* pada keamanan desa. Ketiganya ikut dibangun.
+
+### Anjungan tidak pernah mencari warga
+
+Aturan yang menentukan seluruh bentuk fitur ini.
+
+Anjungan adalah layar sentuh di ruang tunggu kantor desa: siapa pun dapat
+berdiri di depannya, dan tidak ada seorang pun yang menjaganya sepanjang hari.
+Karena itu ia **tidak menerima nama, tidak menerima NIK, dan tidak memiliki
+pencarian.** Ia hanya dapat membuka **satu** berkas, dan hanya bila pengunjung
+memegang **kode ambil** yang diberikan saat berkasnya diajukan.
+
+Anjungan yang dapat dicari berdasarkan nama bukan anjungan layanan; ia terminal
+kependudukan yang diletakkan di ruang publik.
+
+Bahkan **nama pemohon tidak ditampilkan kembali** di layar. Warga yang
+memasukkan kode ambil sudah tahu namanya sendiri; yang mengantre di belakangnya
+tidak perlu ikut tahu. Proyeksi anjungan mengeluarkan nomor permohonan, jenis
+layanan, status, dan perkiraan selesai — tidak lebih.
+
+### Kode ambil dibuat untuk dibaca orang, bukan untuk mesin
+
+Warga membacanya dari secarik kertas lalu mengetiknya pada layar sentuh, sering
+sambil berdiri dan membawa map. Karena itu abjadnya **tanpa `0`, `O`, `1`, `I`,
+dan `L`** — pasangan yang paling sering tertukar pada cetakan kecil. Ditegakkan
+constraint:
+
+```sql
+CHECK (claim_code ~ '^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$')
+```
+
+Papan ketiknya pun hanya menampilkan huruf yang mungkin. Warga tidak dapat
+mengetik huruf yang pasti salah, sehingga tidak perlu diberi tahu bahwa ia
+salah. Ketika ia tetap mengetik `O` lewat jalur lain, pesannya menyebutkan
+kemungkinan yang dimaksud — `Q` atau `8` — sebab warga yang salah huruf tidak
+akan menemukan kesalahannya sendiri.
+
+Tanda hubung, spasi, dan huruf kecil **dimaafkan**: warga mengetik apa yang
+dilihatnya, dan yang dilihatnya bertanda hubung.
+
+### Percobaan dibatasi, sebab anjungan pasti dicoba-coba
+
+Terminal di ruang publik akan ditekan-tekan orang yang menunggu. Tanpa batas
+percobaan, kode delapan huruf dapat ditebak oleh orang yang cukup sabar — dan
+orang yang menunggu di kantor desa punya banyak waktu.
+
+Lima percobaan, lalu terkunci lima belas menit. Penguncian disimpan **pada
+kolom**, bukan pada ingatan layanan: proses yang di-restart akan melupakan
+penghitung yang disimpan di memori.
+
+Pesan gagal **tidak membedakan** kode yang tidak ada dari kode yang salah.
+Membedakannya memberi tahu penebak bahwa tebakannya sudah mendekati — dan pada
+terminal publik, itu satu-satunya petunjuk yang ia butuhkan.
+
+### Cetak mandiri dibatasi tiga
+
+Bukan pelit: surat keterangan yang beredar dalam sepuluh salinan asli tidak lagi
+dapat dipakai membuktikan apa pun, sebab tidak ada yang tahu berapa yang masih
+berlaku. Yang memerlukan lebih diarahkan ke loket, dan di sana ada petugas yang
+mencatat alasannya. Ditegakkan `CHECK (kiosk_print_count <= 3)`.
+
+Penghitungnya dinaikkan **sebelum** isi suratnya dikembalikan, di dalam
+transaksi yang sama. Menaikkannya sesudah berarti anjungan yang mati listrik di
+tengah pencetakan tidak menghitungnya — dan orang yang tahu itu dapat mencetak
+berapa pun yang ia mau.
+
+### Buku tamu tidak meminta NIK
+
+Yang diwajibkan hanya **nama dan keperluan**. Kolom NIK, alamat, dan rujukan ke
+`village_resident` **tidak disediakan** — dibuktikan dengan memindai
+`information_schema`.
+
+Meminta NIK pada layar terbuka di ruang tunggu berarti mengumpulkan nomor induk
+warga di tempat yang paling mudah dilihat orang lain, untuk keperluan yang tidak
+memerlukannya. Buku tamu adalah catatan siapa yang datang hari ini, bukan
+pendaftaran kependudukan.
+
+### Layar yang dipakai berdiri, dengan jari
+
+- Tombol setinggi **64 piksel ke atas**, jarak antar tombol lebar. Jari orang
+  tua yang membawa map tidak dapat mengenai tombol 32 piksel.
+- Papan ketik sendiri, bukan papan ketik bawaan peramban — pada kios, papan
+  ketik sistem sering tidak muncul, menutup separuh layar bila muncul, dan
+  menyediakan huruf yang justru tidak dipakai.
+- **Sesi berakhir sendiri setelah dua menit**, dengan peringatan dua puluh
+  detik sebelumnya. Tanpa peringatan, warga yang sedang membaca surat akan
+  kehilangannya di tengah kalimat dan mengira anjungannya rusak.
+- Setiap kembali ke layar utama **mengosongkan seluruh isian dan hasil
+  pemanggilan** — bukan sekadar berpindah layar. Warga berikutnya berdiri di
+  depan layar yang sama kurang dari satu menit kemudian.
+- Panduan ditulis untuk dibaca sambil berdiri: kalimat pendek, satu perintah per
+  langkah, dan tanpa istilah seperti "unggah dokumen persyaratan". Warga yang
+  membaca itu akan berhenti; yang membaca "bawa fotokopi KTP dan KK" tidak.
+  Dijaga pengujian.
+
+### Keputusan lain
+
+- **Pengajuan dari anjungan hanya membuat permohonan draf** beserta kode
+  ambilnya. Berkas persyaratan dan verifikasi identitas tetap di loket: layar
+  sentuh di ruang tunggu bukan tempat memastikan siapa yang berdiri di
+  depannya.
+- **Pengaduan anonim tetap memperoleh kode ambil**, supaya tindak lanjutnya
+  dapat diperiksa tanpa menyebut nama. Yang anonim benar-benar tidak menyimpan
+  identitas — ditegakkan constraint D-5.
+- **Program bantuan ditampilkan, penerimanya tidak.** Daftar penerima di layar
+  ruang tunggu adalah pengumuman siapa yang miskin di desa ini.
+- **Satu berkas, satu kode yang berlaku.** Dua kode atas berkas yang sama
+  berarti warga yang kehilangan kertasnya memperoleh kode kedua sementara yang
+  pertama masih dapat dipakai orang yang menemukannya.
+- **Perkiraan waktu tunggu disebut perkiraan.** Angka yang tampak pasti lalu
+  meleset membuat orang berhenti mempercayai layarnya.
+- **`village_kiosk_claim` diaudit; `village_kiosk_session` tetap tidak.**
+  Pertanyaan "siapa mencetak surat ini tiga kali" harus dapat dijawab, sementara
+  sesi justru berisi jejak layar yang wajib dihapus.
+
+### Bukti
+
+`docs/info-desa/bukti-anjungan.txt` — **24 pemeriksaan**, seluruhnya lulus.
+
+### Gerbang mutu
+
+- `jest` — **2450 tes lulus** (bertambah 37)
+- `vite build` — berhasil; `KioskPage` 26,1 kB
+- `tsc --noEmit` dan `eslint --max-warnings=0` API dan web — bersih
+- Migrasi diverifikasi: 104 tabel village
