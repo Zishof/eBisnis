@@ -28,6 +28,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { TenantConnectionService } from '../../../infrastructure/database/tenant-connection.service';
 import { CooperativePosAdapter } from '../adapters/pos.adapter';
+import { CooperativeAccountingEventService } from '../accounting/cooperative-accounting-event.service';
 import type {
   ExternalPaymentAuthorization,
   ExternalPaymentContext,
@@ -71,6 +72,7 @@ export class MemberBalancePaymentHandler implements ExternalPaymentHandler {
      * `saleDescription()`.
      */
     private readonly pos: CooperativePosAdapter,
+    private readonly peristiwa: CooperativeAccountingEventService,
   ) {}
 
   /**
@@ -391,6 +393,27 @@ export class MemberBalancePaymentHandler implements ExternalPaymentHandler {
           WHERE id = $1 AND state = 'AUTHORIZED'`,
         [h.id, mutasi.rows[0].id],
       );
+
+      /*
+       * Peristiwa akuntansi, di dalam transaksi yang sama (IR-003).
+       *
+       * `COOPERATIVE_WALLET_PAYMENT` sengaja TIDAK menjurnal penjualannya.
+       * Penjualan di unit toko sudah dijurnal mesin POS lewat `POS_SALE`; yang
+       * dicatat di sini hanya perpindahan dari kewajiban simpanan ke kas —
+       * hal yang tidak diketahui POS. Bila keduanya sama-sama menjurnal
+       * penjualan, pendapatan koperasi tercatat dua kali.
+       *
+       * Terbit di dalam transaksi ini supaya tidak dapat bertahan bila
+       * penyelesaian penjualannya digulung balik. Peristiwa keuangan atas
+       * kejadian yang tidak jadi adalah catatan yang tidak dapat dijelaskan.
+       */
+      await this.peristiwa.terbitkan(client, S, {
+        eventCode: 'COOPERATIVE_WALLET_PAYMENT',
+        sourceType: 'COOPERATIVE_PAYMENT_HOLD',
+        sourceId: h.id,
+        sourceNumber: receiptNumber,
+        amounts: { amount: Number(h.amount) },
+      });
     });
   }
 
