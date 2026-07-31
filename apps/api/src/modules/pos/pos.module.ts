@@ -452,6 +452,24 @@ export class PosController {
 
   @ApiBearerAuth('access-token')
   @Permissions('POS_SALE.READ')
+  @Get('catalog/snapshot')
+  @ApiOperation({
+    summary: 'Salinan katalog untuk mesin kasir luring',
+    description:
+      'Produk beserta seluruh barcode (utama dan alternatif), tarif pajak, dan metode ' +
+      'pembayaran, dalam satu jawaban. Dipakai layar kasir agar pencarian dan pemindaian ' +
+      'tetap bekerja ketika peladen tidak terjangkau. Bila katalog lebih besar daripada ' +
+      'batas salin, medan `truncated` bernilai benar dan layar wajib memberitahu kasir — ' +
+      'katalog yang dipotong diam-diam membuat barang tampak "tidak ada" tanpa penjelasan.',
+  })
+  snapshotKatalog(@CurrentUser() user: AuthenticatedUser, @Query('limit') limit?: string) {
+    return this.katalog.snapshotLuring(requireSchema(user), {
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.READ')
   @Get('products/by-barcode')
   @ApiOperation({
     summary: 'Cari produk menurut barcode',
