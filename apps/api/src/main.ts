@@ -6,7 +6,6 @@ import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
 import { assertEveryRouteIsMarked } from './common/security/route-authorization.audit';
 
@@ -45,7 +44,8 @@ async function bootstrap(): Promise<void> {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
-  app.useGlobalFilters(new AllExceptionsFilter());
+  // Filter galat didaftarkan lewat APP_FILTER pada AppModule agar menerima
+  // dependensi; lihat catatan di sana.
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
   app.enableShutdownHooks();
 

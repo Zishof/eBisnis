@@ -1,0 +1,48 @@
+=========================================================================
+BUKTI V10-2 — ERRORLOG TERPUSAT
+=========================================================================
+
+Keadaan awal: 0 kejadian pada 0 kelompok
+
+1. GALAT YANG SAMA DIKELOMPOKKAN
+  kelompok "AppError": 3 kejadian
+  LULUS  tiga galat sama menjadi satu kelompok
+  LULUS  ditandai WARNING, bukan ERROR
+  LULUS  kelompok baru berstatus NEW
+
+2. KEJADIAN TETAP TERSIMPAN, BUKAN HANYA RINGKASANNYA
+  kelompok mengklaim 3, tersimpan 3 baris
+  LULUS  setiap kejadian punya barisnya sendiri
+
+3. GALAT YANG TIDAK BERGUNA TIDAK DISIMPAN
+  10 permintaan 404 dikirim; baris bertambah 0
+  LULUS  404 biasa tidak menambah baris
+
+4. TIDAK ADA RAHASIA YANG LOLOS KE PENYIMPANAN
+  LULUS  header rahasia tidak tersimpan sama sekali
+  query tersimpan: {"token":"***MASKED***","password":"***MASKED***"}
+  LULUS  nilai kata sandi pada query tersamar
+  LULUS  nama medannya tetap terlihat
+  header tersimpan: {"user-agent":"bukti-v10-2","accept-language":"*"}
+
+5. BENTUK DATA YANG TERSIMPAN
+  total 4 kejadian
+  LULUS  tidak ada jalur absolut pada jejak tumpukan
+  LULUS  tidak ada alamat IP tersimpan utuh
+  LULUS  id sesi hanya tersimpan sebagai hash
+
+6. SETIAP AKSES TERCATAT
+  LULUS  mencatat siapa yang mengakses
+  LULUS  mencatat tindakan apa
+  LULUS  mencatat alasannya
+  LULUS  mencatat tenant yang tersentuh
+
+7. HANYA SUPER ADMIN YANG BERHAK
+  role yang memiliki permission observability: PLATFORM_SUPER_ADMIN(4)
+  LULUS  hanya satu role yang memilikinya
+  LULUS  role itu adalah Super Admin
+  LULUS  anonim ditolak
+
+=========================================================================
+SELURUH PEMERIKSAAN LULUS
+=========================================================================

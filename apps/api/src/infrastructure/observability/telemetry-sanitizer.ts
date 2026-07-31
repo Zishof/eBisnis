@@ -224,7 +224,23 @@ export function sanitizeStack(stack: string | undefined, maxFrames = 30): string
         // Windows dan POSIX sama-sama ditangani.
         .replace(/[A-Za-z]:\\[^\s)]*?[\\/](apps|packages|src)[\\/]/g, '$1/')
         .replace(/\/(?:home|Users|opt|var)\/[^\s)]*?\/(apps|packages|src)\//g, '$1/')
-        .replace(/\\/g, '/'),
+        .replace(/\\/g, '/')
+        // Jalur pustaka tidak punya penanda proyek, sehingga dua aturan di atas
+        // tidak menyentuhnya — dan jalur absolutnya lolos membawa struktur
+        // direktori server. Yang disimpan cukup dari `node_modules/` ke kanan.
+        .replace(/[^\s(]*node_modules\//g, 'node_modules/')
+        // Sisa jalur absolut yang masih lolos dipotong sampai dua segmen
+        // terakhir. Lebih baik kehilangan konteks daripada menyimpan nama
+        // pengguna dan struktur direktori server.
+        //
+        // Wajib berawal tepat setelah kurung atau spasi DAN benar-benar
+        // absolut. Tanpa jangkar itu, aturan ini ikut memotong jalur yang sudah
+        // dibersihkan aturan sebelumnya — `apps/api/src/x.ts` menjadi
+        // `apps…/x.ts`, dan nama aplikasinya hilang.
+        .replace(
+          /(^|[\s(])((?:[A-Za-z]:)?\/(?:[^\s/):]+\/){2,})([^\s/):]+\/[^\s):]+)/g,
+          '$1…/$3',
+        ),
     )
     .join('\n');
 }

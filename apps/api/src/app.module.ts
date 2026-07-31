@@ -23,8 +23,12 @@ import { CatalogModule } from './modules/catalog/catalog.module';
 import { CheckoutModule } from './modules/checkout/checkout.module';
 import { OrderModule } from './modules/order/order.module';
 import { FulfillmentModule } from './modules/fulfillment/fulfillment.module';
+import { ObservabilityModule } from './modules/observability/observability.module';
+import { APP_FILTER } from '@nestjs/core';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 @Module({
+  providers: [{ provide: APP_FILTER, useClass: AllExceptionsFilter }],
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [appConfig], cache: true }),
     // Dipakai memeriksa bahwa setiap route menyatakan hak aksesnya saat aplikasi
@@ -58,6 +62,7 @@ import { FulfillmentModule } from './modules/fulfillment/fulfillment.module';
     CheckoutModule,
     OrderModule,
     FulfillmentModule,
+    ObservabilityModule,
     // TenantModule didaftarkan TERAKHIR: MasterController memakai route
     // wildcard `:resource`, sehingga harus dicocokkan setelah seluruh route
     // spesifik seperti /devices, /sample-data, dan /billing.

@@ -12,6 +12,7 @@ import { PlatformSeedService } from '../modules/master-seed/platform-seed.servic
 import { CmsSeedService } from '../modules/master-seed/cms-seed.service';
 import { DataScopeResolver } from './authorization/data-scope.resolver';
 import { SecretBoxService } from './crypto/secret-box.service';
+import { ErrorCaptureService } from './observability/error-capture.service';
 
 /**
  * Modul infrastruktur global: akses database platform, akses schema tenant,
@@ -20,6 +21,7 @@ import { SecretBoxService } from './crypto/secret-box.service';
 @Global()
 @Module({
   providers: [
+    ErrorCaptureService,
     PrismaService,
     TenantConnectionService,
     TenantMigrationService,
@@ -35,6 +37,7 @@ import { SecretBoxService } from './crypto/secret-box.service';
     CmsSeedService,
   ],
   exports: [
+    ErrorCaptureService,
     PrismaService,
     TenantConnectionService,
     TenantMigrationService,

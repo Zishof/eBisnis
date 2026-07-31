@@ -4,15 +4,28 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Injectable,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ErrorCodes } from '../errors/app-error';
+import { ErrorCaptureService } from '../../infrastructure/observability/error-capture.service';
 
 @Catch()
+@Injectable()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
   private readonly isProduction = process.env.NODE_ENV === 'production';
+
+  /**
+   * Penangkap galat bersifat opsional.
+   *
+   * Filter ini juga dipakai sebelum modul infrastruktur siap — mis. pada galat
+   * saat aplikasi menyala. Menuntut penangkap selalu ada akan membuat kegagalan
+   * penyalaan tidak terjawab sama sekali.
+   */
+  constructor(@Optional() private readonly capture?: ErrorCaptureService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -74,6 +87,37 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
     });
+
+    // Penyimpanan berjalan SETELAH respons dikirim, dan hasilnya sengaja tidak
+    // ditunggu. Permintaan tidak boleh melambat karena observability, dan tidak
+    // boleh gagal karena penyimpanannya bermasalah.
+    //
+    // Pesan yang dikirim ke penangkap adalah pesan ASLI, bukan pesan yang sudah
+    // disamarkan untuk produksi — observability memang ada untuk melihat
+    // penyebab sesungguhnya, dan penyamaran datanya dilakukan sanitizer.
+    void this.capture
+      ?.capture({
+        error: exception,
+        errorType: exception instanceof Error ? exception.name : typeof exception,
+        errorCode,
+        message: exception instanceof Error ? exception.message : String(exception),
+        stack: exception instanceof Error ? exception.stack : null,
+        httpStatus: status,
+        httpMethod: request.method,
+        routePath: request.url,
+        requestId: (request as Request & { requestId?: string }).requestId ?? null,
+        correlationId: (request as Request & { correlationId?: string }).correlationId ?? null,
+        tenantId: (request as Request & { user?: { tenantId?: string } }).user?.tenantId ?? null,
+        userId: (request as Request & { user?: { userId?: string } }).user?.userId ?? null,
+        headers: request.headers as Record<string, string | string[] | undefined>,
+        query: request.query as Record<string, unknown>,
+        ipAddress: request.ip,
+        // Galat yang bukan HttpException berarti tidak ada yang menanganinya
+        // dengan sengaja.
+        isHandled: exception instanceof HttpException,
+        source: 'API',
+      })
+      .catch(() => undefined);
   }
 }
 
