@@ -225,6 +225,13 @@
       "file": "V032__pos_transaction_sample_flags.sql",
       "name": "Penanda data contoh pada tabel transaksi kasir",
       "description": "pos_sale, pos_shift, pos_return, dan pos_refund bertambah is_sample dan sample_batch_id; pos_sale juga deleted_at dan delete_reason. Tabel master sudah punya penanda ini sejak awal, tabel transaksi tidak — masuk akal ketika transaksi hanya dibuat pemakaian sungguhan. Profil data contoh POS mengubahnya: penjualan contoh harus dapat dikenali dan dihapus. Tanpa penanda ini pembersihan akan melewatkannya, dan penyewa yang mengira sudah membersihkan ruang kerjanya akan menemukan penjualan karangan pada laporan keuangannya berbulan-bulan kemudian. Bawaannya FALSE: baris yang sudah ada adalah transaksi sungguhan."
+    },
+    {
+      "version": "V033",
+      "sequence": 33,
+      "file": "V033__modular_migration_catalog.sql",
+      "name": "Katalog migrasi modular",
+      "description": "Menjawab IR-001. Melebarkan schema_migration.version dari VARCHAR(16) ke VARCHAR(128) supaya id migrasi modular bertimestamp dan bernama modul dapat disimpan — id koperasi pertama panjangnya 50 aksara dan secara struktural tidak muat, sehingga katalog modular tidak dapat berjalan tanpa perubahan ini. Melebarkan name ke VARCHAR(255) dengan alasan yang sama, dan menambah kolom module agar sebuah skema dapat menjawab vertikal apa saja yang terpasang tanpa mencocokkan pola pada teks versinya. Aman pada skema berisi data: pelebaran VARCHAR tidak menulis ulang tabel dan tidak dapat membatalkan baris yang ada, dan karena kunci V001-V032 tidak berubah, tidak ada satu migrasi pun yang dijalankan ulang. Kolom module sengaja dibiarkan kosong pada 32 baris yang sudah ada — mengisinya berarti menulis ke tabel pembukuan migrasi dari dalam sebuah migrasi."
     }
   ]
 }

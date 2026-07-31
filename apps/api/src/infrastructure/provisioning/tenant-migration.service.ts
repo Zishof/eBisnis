@@ -1,20 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import {
+  gabungkanKatalog,
+  versiIntiTertinggi,
+  type CoreManifest,
+  type ModuleManifest,
+  type TenantMigrationDefinition,
+} from './migration-catalog';
 import { PrismaService } from '../database/prisma.service';
 import { TenantConnectionService } from '../database/tenant-connection.service';
 import { SCHEMA_NAME_REGEX } from '../database/schema-name.util';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 
-export interface TenantMigrationDefinition {
-  version: string;
-  sequence: number;
-  file: string;
-  name: string;
-  description: string;
-}
+export type { TenantMigrationDefinition } from './migration-catalog';
 
 interface Manifest {
   schemaVersion: number;
@@ -63,19 +64,60 @@ export class TenantMigrationService {
     this.migrationsDir = resolveMigrationsDir();
   }
 
+  /**
+   * Menemukan manifest milik tiap modul vertikal (IR-001).
+   *
+   * Setiap subdirektori `tenant-migrations/` yang memuat `manifest.json`
+   * dianggap sebuah modul. Tidak ada daftar modul yang perlu disunting saat
+   * vertikal baru ditambahkan — dan itu memang tujuannya: daftar semacam itu
+   * akan menjadi berkas bersama berikutnya yang diperebutkan tiga sesi.
+   */
+  private discoverModuleManifests(): ModuleManifest[] {
+    const hasil: ModuleManifest[] = [];
+    let entries: string[];
+    try {
+      entries = readdirSync(this.migrationsDir);
+    } catch {
+      return hasil;
+    }
+
+    for (const nama of entries.sort()) {
+      const dir = join(this.migrationsDir, nama);
+      if (!statSync(dir).isDirectory()) continue;
+      const manifestPath = join(dir, 'manifest.json');
+      if (!existsSync(manifestPath)) continue;
+
+      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as ModuleManifest;
+      if (manifest.module !== nama) {
+        throw AppError.internal(
+          ErrorCodes.PROVISIONING_FAILED,
+          `Manifest pada direktori "${nama}" menyebut modul "${manifest.module}". ` +
+            'Nama direktori dan nama modul harus sama, sebab jalur berkas SQL diturunkan darinya.',
+        );
+      }
+      hasil.push(manifest);
+    }
+    return hasil;
+  }
+
   getManifest(): Manifest {
     if (!this.manifest) {
       const manifestPath = join(this.migrationsDir, 'manifest.json');
-      this.manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Manifest;
-      this.manifest.migrations.sort((a, b) => a.sequence - b.sequence);
+      const core = JSON.parse(readFileSync(manifestPath, 'utf8')) as CoreManifest;
+      this.manifest = gabungkanKatalog(core, this.discoverModuleManifests());
     }
     return this.manifest;
   }
 
-  /** Versi migration tertinggi pada katalog canonical. */
+  /**
+   * Versi migration inti tertinggi.
+   *
+   * Sengaja mengabaikan migrasi modul. Angka ini dipakai health check dan
+   * dicatat sebagai versi skema penyewa; bila ia ikut berubah setiap kali ada
+   * vertikal baru, artinya bergeser tanpa ada yang memutuskannya.
+   */
   latestVersion(): string {
-    const migrations = this.getManifest().migrations;
-    return migrations[migrations.length - 1]?.version ?? 'V000';
+    return versiIntiTertinggi(this.getManifest().migrations);
   }
 
   private loadSql(definition: TenantMigrationDefinition): { sql: string; checksum: string } {

@@ -26,10 +26,37 @@ test.describe('Responsif dan aksesibilitas', () => {
   });
 
   test('setiap halaman publik memiliki tepat satu heading tingkat 1', async ({ page }) => {
-    for (const path of ['/harga', '/berita', '/kontak', '/tentang']) {
+    for (const path of ['/harga', '/berita', '/kontak', '/tentang', '/syarat', '/privasi']) {
       await page.goto(path);
       await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
     }
+  });
+
+  test('halaman CMS tetap berjudul meski isinya gagal dimuat', async ({ page }) => {
+    /*
+     * Keadaan galat pun harus punya satu heading tingkat satu.
+     *
+     * Semula tidak: `/tentang`, `/syarat`, dan `/privasi` menampilkan pesan
+     * galat tanpa judul apa pun, sehingga pembaca layar yang melompat antar
+     * heading tidak menemukan apa-apa dan tidak dapat tahu halaman apa yang
+     * sedang dibukanya.
+     *
+     * Cacatnya tidak pernah terlihat pada basis data yang sudah lama dipakai —
+     * isinya selalu ada di sana. Ia hanya menampakkan diri ketika isinya
+     * benar-benar tidak dapat diambil, dan justru saat itulah pengguna paling
+     * membutuhkan keterangan tentang di mana ia berada.
+     */
+    await page.route('**/api/v1/public/pages/**', (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: false, error: { code: 'INTERNAL_ERROR', message: 'gagal' } }),
+      }),
+    );
+
+    await page.goto('/tentang');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/tentang/i);
   });
 
   test('mode gelap dapat diaktifkan dan bertahan antar halaman', async ({ page }) => {

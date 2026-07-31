@@ -245,8 +245,8 @@ model ProvisioningStep {
 
 model SchemaMigrationCatalog {
   id          String   @id @default(uuid()) @db.Uuid
-  version     String   @db.VarChar(16)
-  name        String   @db.VarChar(160)
+  version     String   @db.VarChar(128)
+  name        String   @db.VarChar(255)
   checksum    String   @db.VarChar(64)
   scriptPath  String   @map("script_path") @db.VarChar(255)
   description String?  @db.Text
@@ -269,7 +269,7 @@ model TenantSchemaMigrationHistory {
   id               String    @id @default(uuid()) @db.Uuid
   tenantId         String?   @map("tenant_id") @db.Uuid
   schemaName       String    @map("schema_name") @db.VarChar(64)
-  migrationVersion String    @map("migration_version") @db.VarChar(16)
+  migrationVersion String    @map("migration_version") @db.VarChar(128)
   catalogId        String?   @map("catalog_id") @db.Uuid
   checksum         String    @db.VarChar(64)
   appliedAt        DateTime  @default(now()) @map("applied_at") @db.Timestamptz(6)
