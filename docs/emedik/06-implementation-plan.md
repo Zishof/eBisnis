@@ -396,14 +396,129 @@ layar rumah sakit. Karena itu layar webnya sengaja belum dibuat pada fase ini:
 membuatnya sebagai salinan layar rumah sakit akan lebih buruk daripada belum
 membuatnya sama sekali.
 
-### H-9 · Klaim, rekam medis, koding, mutu, keselamatan
+### H-9 · Rekam medis, koding, mutu, keselamatan — **SELESAI**
 
-Tangkap tagihan, tagihan pasien, deposit, penjamin, klaim, rekonsiliasi,
-casemix, koding; kelengkapan rekam medis, pelepasan informasi, retensi,
-penahanan hukum; indikator mutu, insiden keselamatan pasien, PPI, kredensial dan
-kewenangan klinis.
+Kelengkapan rekam medis, terminologi berversi, pengkodean dan verifikasinya,
+penahanan hukum, pelepasan informasi, insiden keselamatan pasien, dan indikator
+mutu.
 
-Uji ≥ 30.
+Klaim, casemix, rekonsiliasi, tagihan pasien, dan deposit **dipindahkan ke
+H-9C** oleh Revisi 2. Retensi, PPI, serta kredensial dan kewenangan klinis belum
+dijadwalkan.
+
+Uji ≥ 30 → **67 tercapai**, ditambah naskah bukti 74 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H016__health__him_quality.sql`, `H017__health__him_permissions.sql` |
+| Aturan murni | `health-him.ts` + 67 pengujian |
+| Layanan | `health-him.service.ts` |
+| Endpoint | `health-him.controller.ts` — 13 jalan di `/api/v1/health/him/**` |
+| Katalog | `health-catalog.ts` — 6 menu, 4 peran, 1 aturan SoD, 9 aksi hak akses |
+| Bukti | `scripts/prove-health-him.mjs` → [bukti-h9-rekam-medis.txt](bukti-h9-rekam-medis.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **Kekurangan berkas disimpan sebagai BARIS, bukan sebagai angka.** Satu baris
+  per kekurangan, bernama, beserta peran yang dapat memperbaikinya. Angka
+  "kelengkapan 82%" berguna bagi manajemen yang membandingkan bulan; ia tidak
+  berguna sama sekali bagi dokter yang harus memperbaiki berkasnya sore ini.
+  Dokter yang membaca "resume medis belum ditandatangani" akan
+  menandatanganinya; dokter yang membaca "82%" akan menutup layarnya. Skornya
+  tetap dihitung — oleh fungsi yang berbeda, untuk pembaca yang berbeda.
+
+- **Kekurangan yang sudah diperbaiki DITUTUP dengan waktunya, bukan dihapus.**
+  Laporan mutu yang tidak dapat menghitung berapa lama sebuah kekurangan
+  menggantung tidak dapat memperbaiki sebabnya. Dan daftar yang masih memuat
+  hal-hal yang sudah dikerjakan akan diabaikan seluruhnya — termasuk yang belum.
+
+- **"Diagnosis belum berkode" TIDAK menahan pengkodean.** Menahannya mengunci
+  berkas selamanya: pengkodean ditolak karena belum berkode, dan ia tidak akan
+  pernah berkode karena pengkodeannya ditolak. Ia tetap kekurangan yang nyata,
+  tetapi ia pekerjaan koder — yang ditahannya adalah pengajuan klaim.
+
+- **Kode terminologi yang dicabut tetap TERBACA, tetapi tidak dapat dipilih**,
+  dan dibandingkan dengan **tanggal layanan**, bukan tanggal pengkodean. Berkas
+  Maret yang dikode Juni tetap memakai terminologi Maret; memaksanya memakai
+  terminologi Juni akan mengubah arti diagnosis yang sudah ditegakkan. Versi
+  terminologinya **disalin ke tiap baris kode** — tanpa salinan itu, kode lama
+  tidak dapat ditafsirkan setelah terminologinya berganti dua kali.
+
+- **Tepat satu diagnosis utama, ditegakkan indeks unik parsial.** Pengelompokan
+  casemix memilih satu; bila ada dua, yang dipilih ditentukan urutan baris — dan
+  urutan baris bukan keputusan klinis.
+
+- **Penahanan hukum menahan PERUBAHAN, bukan pembacaan.** Ditegakkan trigger
+  pada `clinical_note` dan `encounter_diagnosis`, bukan hanya oleh layanan.
+  Menahan pembacaan akan menghentikan perawatan pasien yang rekamnya kebetulan
+  diperkarakan, dan pasien itu tetap sakit. Yang memasang penahanan tidak
+  mencabutnya sendiri — ditegakkan constraint `him_hold_release_not_self` pula.
+
+- **Yang menentukan pelepasan informasi adalah DASAR HUKUMNYA, bukan
+  pemintanya.** Kepolisian yang meminta tanpa nomor surat berkedudukan sama
+  dengan orang asing yang meminta — permintaan lisan tidak dapat dibedakan dari
+  permintaan yang dikarang, dan yang melepas rekamnya yang akan menanggungnya.
+  Pemberi kerja yang meminta dengan persetujuan pasien pun tetap menerima yang
+  tersamarkan. Yang **memutuskan** pelepasan bukan yang **menyerahkan**
+  berkasnya: petugas hukum memutuskan, petugas rekam medis menyerahkan.
+
+- **Yang dilepas dicatat terpisah dari yang diminta.** Keduanya sering berbeda,
+  dan yang penting bagi audit adalah yang kedua. Permintaan mencatat niat;
+  pelepasan mencatat perbuatan. Catatannya tidak dapat dihapus — ia satu-satunya
+  bukti bahwa rekam medis seseorang pernah keluar dari rumah sakit ini.
+
+- **Pelaporan insiden sengaja LONGGAR; penutupannya sengaja KETAT.** Enam belas
+  peran klinis memperoleh `HEALTH_SAFETY.CREATE`, termasuk petugas bangsal dan
+  kader; hanya dua peran dapat menutup, dan direktur bukan salah satunya. Yang
+  paling sering melihat kejadian bukan petugas mutu, melainkan perawat malam,
+  apoteker yang menerima resep aneh, dan analis yang menerima spesimen tanpa
+  label. **Pelapor boleh anonim** — sebagian orang tidak akan melapor bila
+  namanya tercatat, terutama ketika yang keliru adalah atasannya; bila anonim,
+  `reported_by` benar-benar kosong, bukan sekadar disembunyikan di layar.
+
+- **Nyaris cedera TETAP ditelaah.** Ia justru data yang paling berharga: ia
+  menunjukkan celah sebelum ada yang terluka, dan jauh lebih sering terjadi
+  daripada cedera sehingga polanya lebih cepat terlihat. Yang membedakan
+  tenggatnya bukan keberhargaannya, melainkan kemendesakannya.
+
+- **Insiden tidak dapat ditutup tanpa tindakan perbaikan**, dan **pelapor tidak
+  menutup laporannya sendiri** pada kejadian kuning dan merah. Insiden yang
+  ditutup tanpa tindakan perbaikan akan terjadi lagi — itulah satu-satunya hal
+  yang dapat dikatakan dengan pasti tentangnya. Telaah oleh pihak yang terlibat
+  bukan telaah. Keduanya ditegakkan constraint pula.
+
+- **Papan insiden mengutamakan yang LEWAT TENGGAT**, bukan yang paling berat.
+  Kejadian berat yang sedang dikerjakan bukan pekerjaan yang menumpuk; kejadian
+  ringan yang terlupa dua pekan adalah.
+
+- **Penyebut nol tidak menghasilkan nol**, melainkan "belum ada datanya". Nol
+  akan terbaca sebagai mutu terburuk. Pembilang yang melebihi penyebut ditolak
+  constraint: indikator yang melebihi seratus persen akan dilaporkan sebagai
+  prestasi.
+
+**Tiga cacat yang ditemukan naskah bukti, bukan pengujian satuan**
+
+| Cacat | Akibatnya di produksi |
+|---|---|
+| `ON CONFLICT (encounter_id)` pada indeks unik **parsial** tanpa menyebut predikatnya | Pemeriksaan kelengkapan — langkah pertama seluruh H-9 — gagal 500 pada setiap panggilan |
+| `$1` dan `$2` dipakai dua kali dengan tipe yang disimpulkan berbeda | Kekurangan berkas tidak pernah tersimpan |
+| Nomor insiden dihitung per fasilitas tetapi unik per tenant | Fasilitas kedua yang melapor pada hari yang sama gagal melapor sama sekali |
+
+Ditambah kunci mati "diagnosis belum berkode" di atas, yang juga hanya terlihat
+ketika alurnya dijalankan sungguhan.
+
+Cacat kelima ada pada naskah buktinya sendiri: uji penahanan hukum semula
+memakai catatan klinis yang **sudah ditandatangani**, yang sudah dikunci trigger
+H-3 dan berjalan lebih dahulu menurut urutan abjad. Naskah itu lulus tanpa
+penahanan hukum pernah diuji sama sekali. Kini setiap uji penahan memeriksa
+**bunyi penolakannya** — nama constraint atau kalimat triggernya — bukan sekadar
+bahwa pernyataannya gagal.
+
+**Yang belum:** retensi dan pemusnahan berkas, PPI, kredensial dan kewenangan
+klinis, layar web, dan penyemaian terminologi ICD-10/ICD-9-CM resmi —
+strukturnya sudah ada, isinya menunggu berkas sumber yang dapat ditelusuri.
 
 ### H-10 · Portal pasien, website, integrasi
 
@@ -466,7 +581,7 @@ menunggu pihak lain**, sebab fase yang selesai setengah karena menunggu
 kredensial tidak dapat ditunjukkan kepada siapa pun.
 
 ```text
-1.  H-9    HIM, koding, mutu — seluruhnya milik kami
+1.  H-9    HIM, koding, mutu — seluruhnya milik kami          [SELESAI]
 2.  H-9L   Master data dan pemetaan unit — pondasi bagi tarif dan jasa
 3.  H-9N   COA dan pemetaan akuntansi — strukturnya; jurnal menunggu port
 4.  H-9D   Struktur tarif berversi — isinya menunggu terbitan resmi

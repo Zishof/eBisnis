@@ -66,6 +66,62 @@ export const HEALTH_PERMISSION_ACTIONS = [
       'Penggabungan yang salah menempelkan riwayat orang lain. Wewenangnya dipisahkan dari ' +
       'penyuntingan data pasien biasa.',
   },
+  {
+    code: 'ADMINISTER',
+    name: 'Memberikan Obat',
+    reason:
+      'Menyerahkan obat dan memberikannya kepada pasien adalah dua perbuatan berbeda, dan yang ' +
+      'kedua dilakukan di samping tempat tidur oleh orang lain.',
+  },
+  {
+    code: 'RECEIVE',
+    name: 'Menerima Spesimen',
+    reason:
+      'Penerimaan spesimen menandai perpindahan tanggung jawab atas tabung itu. Tanpa aksi ' +
+      'tersendiri, spesimen yang hilang di perjalanan tidak dapat ditelusuri kepada siapa pun.',
+  },
+  {
+    code: 'AMEND',
+    name: 'Mengamandemen Hasil',
+    reason:
+      'Hasil yang sudah diverifikasi tidak disunting, melainkan diamandemen — dan amandemen ' +
+      'menuntut wewenang tersendiri karena klinisi mungkin sudah bertindak atas angka lamanya.',
+  },
+  {
+    code: 'TRIAGE',
+    name: 'Menriase',
+    reason:
+      'Menentukan urutan pelayanan gawat darurat. Dipisahkan dari disposisi supaya tekanan ' +
+      'antrean tidak berpindah langsung menjadi keputusan memulangkan.',
+  },
+  {
+    code: 'CHECKLIST',
+    name: 'Mengisi Daftar Periksa Bedah',
+    reason:
+      'Jeda sebelum sayatan adalah percakapan tim, bukan centang satu orang. Dipisahkan dari ' +
+      'INCISE supaya yang mengisinya bukan yang memulai sayatan.',
+  },
+  {
+    code: 'INCISE',
+    name: 'Memulai Sayatan',
+    reason:
+      'Menandai saat pisau menyentuh kulit — titik yang tidak dapat ditarik kembali. Menuntut ' +
+      'penegasan ulang identitas, dan tidak melekat pada wewenang bedah biasa.',
+  },
+  {
+    code: 'IMMUNIZE',
+    name: 'Memberikan Imunisasi',
+    reason:
+      'Mencatat jadwal dan benar-benar menyuntikkan adalah dua perbuatan berbeda. Kader mencatat ' +
+      'pertumbuhan tanpa pernah memegang jarum.',
+  },
+  {
+    code: 'VERIFY',
+    name: 'Memverifikasi',
+    reason:
+      'Pemeriksaan oleh orang kedua atas pekerjaan orang pertama. Dipisahkan dari APPROVE karena ' +
+      'yang diperiksa di sini adalah ketepatan pekerjaannya, bukan kelayakan keputusannya.',
+  },
 ] as const;
 
 // --- Menu --------------------------------------------------------------------
@@ -378,7 +434,68 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'UPDATE', 'EXPORT'],
     sortOrder: 74,
   },
-  { code: 'HEALTH_CLAIM', parentCode: 'HEALTH', label: 'Klaim', icon: 'file-text', actions: ['READ'], sortOrder: 80, comingSoon: true },
+  // Rekam medis, pengkodean, mutu, dan keselamatan — H-9.
+  //
+  // Dua keputusan hak akses yang berlawanan arah, dan keduanya disengaja:
+  // pelaporan insiden diberikan kepada hampir seluruh peran klinis, sedangkan
+  // penahanan hukum hanya kepada satu peran. Yang pertama karena program
+  // keselamatan pasien mati tanpa orang yang mau melapor; yang kedua karena
+  // menahan seluruh rekam medis seorang pasien adalah wewenang yang tidak boleh
+  // melekat pada peran yang dipegang puluhan orang.
+  {
+    code: 'HEALTH_HIM_CODING',
+    parentCode: 'HEALTH',
+    label: 'Pengkodean Rekam Medis',
+    route: '/app/emedik/koding',
+    icon: 'file-code',
+    actions: ['READ', 'CREATE', 'VERIFY'],
+    sortOrder: 90,
+  },
+  {
+    code: 'HEALTH_LEGAL_HOLD',
+    parentCode: 'HEALTH',
+    label: 'Penahanan Hukum',
+    route: '/app/emedik/penahanan',
+    icon: 'gavel',
+    actions: ['READ', 'CREATE', 'DELETE'],
+    sortOrder: 91,
+  },
+  {
+    code: 'HEALTH_INFO_RELEASE',
+    parentCode: 'HEALTH',
+    label: 'Pelepasan Informasi',
+    route: '/app/emedik/pelepasan',
+    icon: 'share-2',
+    actions: ['READ', 'CREATE', 'EXPORT'],
+    sortOrder: 92,
+  },
+  {
+    code: 'HEALTH_SAFETY',
+    parentCode: 'HEALTH',
+    label: 'Keselamatan Pasien',
+    route: '/app/emedik/keselamatan',
+    icon: 'shield-alert',
+    actions: ['READ', 'CREATE', 'UPDATE', 'APPROVE'],
+    sortOrder: 93,
+  },
+  {
+    code: 'HEALTH_QUALITY',
+    parentCode: 'HEALTH',
+    label: 'Indikator Mutu',
+    route: '/app/emedik/mutu',
+    icon: 'gauge',
+    actions: ['READ', 'CREATE', 'UPDATE', 'EXPORT'],
+    sortOrder: 94,
+  },
+  {
+    code: 'HEALTH_TERMINOLOGY',
+    parentCode: 'HEALTH',
+    label: 'Terminologi',
+    route: '/app/emedik/terminologi',
+    icon: 'book-open',
+    actions: ['READ', 'IMPORT', 'APPROVE'],
+    sortOrder: 95,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -393,6 +510,19 @@ export interface HealthRoleTemplate {
 }
 
 const BACA_PASIEN = ['HEALTH.READ', 'HEALTH_PATIENT.READ'];
+
+/**
+ * Melapor insiden keselamatan pasien, dan melihat papan laporannya.
+ *
+ * Sengaja dibagikan luas. Yang paling sering melihat kejadian bukan petugas
+ * mutu, melainkan perawat malam, apoteker yang menerima resep aneh, dan analis
+ * yang menerima spesimen tanpa label. Membatasi pelaporan kepada peran tertentu
+ * akan menghentikan laporan dari orang yang justru paling banyak melihat.
+ */
+const LAPOR_DAN_LIHAT_INSIDEN = ['HEALTH_SAFETY.READ', 'HEALTH_SAFETY.CREATE'];
+
+/** Melapor saja. Papan insiden bukan bacaan harian setiap peran. */
+const LAPOR_INSIDEN = ['HEALTH_SAFETY.CREATE'];
 
 /**
  * Peran bawaan kesehatan.
@@ -432,6 +562,13 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_PROVIDER.READ',
       'HEALTH_ACCESS_LOG.READ', 'HEALTH_ACCESS_LOG.EXPORT',
       'HEALTH_BILLING_TIER.READ',
+      // Melihat insiden dan mutu, tetapi TIDAK menutup laporan dan TIDAK
+      // melapor. Direktur yang dapat menutup laporan tentang fasilitasnya
+      // sendiri adalah pihak yang paling berkepentingan agar angkanya bagus.
+      'HEALTH_SAFETY.READ',
+      'HEALTH_QUALITY.READ',
+      'HEALTH_QUALITY.EXPORT',
+      'HEALTH_HIM_CODING.READ',
     ],
     sortOrder: 2,
   },
@@ -464,6 +601,14 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_PATIENT_DUPLICATE.MERGE_PATIENT',
       'HEALTH_PATIENT.MERGE_PATIENT',
       'HEALTH_ACCESS_LOG.READ',
+      // Kelengkapan berkas, terminologi, dan penyerahan berkas yang sudah
+      // diputuskan petugas hukum. Ia MENYERAHKAN; ia tidak memutuskan.
+      'HEALTH_HIM_CODING.READ',
+      'HEALTH_INFO_RELEASE.READ',
+      'HEALTH_INFO_RELEASE.EXPORT',
+      'HEALTH_TERMINOLOGY.READ',
+      'HEALTH_TERMINOLOGY.IMPORT',
+      'HEALTH_LEGAL_HOLD.READ',
     ],
     sortOrder: 4,
   },
@@ -493,6 +638,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_LAB_CRITICAL.READ',
       'HEALTH_LAB_CRITICAL.ACKNOWLEDGE_CRITICAL',
       'HEALTH_LAB_CATALOG.READ',
+      ...LAPOR_DAN_LIHAT_INSIDEN,
     ],
     sortOrder: 5,
   },
@@ -517,6 +663,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_NURSING.CREATE',
       'HEALTH_BED.READ',
       'HEALTH_BED.UPDATE',
+      ...LAPOR_DAN_LIHAT_INSIDEN,
     ],
     sortOrder: 6,
   },
@@ -524,7 +671,12 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     code: 'HEALTH_TRIAGE_NURSE',
     name: 'Perawat Triase',
     description: 'Menriase pasien gawat darurat. TIDAK menetapkan disposisi.',
-    permissions: [...BACA_PASIEN, 'HEALTH_EMERGENCY.READ', 'HEALTH_EMERGENCY.TRIAGE'],
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_EMERGENCY.READ',
+      'HEALTH_EMERGENCY.TRIAGE',
+      ...LAPOR_INSIDEN,
+    ],
     sortOrder: 13,
   },
   {
@@ -538,6 +690,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_SURGERY.UPDATE',
       'HEALTH_SURGERY.INCISE',
       'HEALTH_SURGERY.CANCEL',
+      ...LAPOR_INSIDEN,
     ],
     sortOrder: 14,
   },
@@ -550,6 +703,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_SURGERY.READ',
       'HEALTH_SURGERY.CHECKLIST',
       'HEALTH_SURGERY.UPDATE',
+      ...LAPOR_INSIDEN,
     ],
     sortOrder: 15,
   },
@@ -563,6 +717,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_ICU.CREATE',
       'HEALTH_ICU.UPDATE',
       'HEALTH_ADMISSION.READ',
+      ...LAPOR_INSIDEN,
     ],
     sortOrder: 16,
   },
@@ -570,7 +725,15 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     code: 'HEALTH_WARD_CLERK',
     name: 'Petugas Bangsal',
     description: 'Mengelola tempat tidur dan pembersihannya.',
-    permissions: ['HEALTH.READ', 'HEALTH_BED.READ', 'HEALTH_BED.UPDATE', 'HEALTH_ADMISSION.READ'],
+    // Termasuk melapor insiden. Yang melihat pasien jatuh dari tempat tidur
+    // sering justru orang yang sedang merapikan tempat tidur sebelahnya.
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_BED.READ',
+      'HEALTH_BED.UPDATE',
+      'HEALTH_ADMISSION.READ',
+      ...LAPOR_INSIDEN,
+    ],
     sortOrder: 12,
   },
   {
@@ -586,6 +749,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_DRUG_MASTER.READ',
       'HEALTH_DRUG_MASTER.CREATE',
       'HEALTH_DRUG_MASTER.UPDATE',
+      ...LAPOR_DAN_LIHAT_INSIDEN,
     ],
     sortOrder: 7,
   },
@@ -599,6 +763,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_DISPENSING.READ',
       'HEALTH_DISPENSING.CREATE',
       'HEALTH_DRUG_MASTER.READ',
+      ...LAPOR_INSIDEN,
     ],
     sortOrder: 8,
   },
@@ -619,6 +784,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       // hanya mencatat bahwa telepon berdering.
       'HEALTH_LAB_CRITICAL.READ',
       'HEALTH_LAB_CRITICAL.CREATE',
+      ...LAPOR_INSIDEN,
     ],
     sortOrder: 9,
   },
@@ -638,6 +804,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_LAB_CATALOG.UPDATE',
       'HEALTH_LAB_CRITICAL.READ',
       'HEALTH_LAB_CRITICAL.CREATE',
+      ...LAPOR_INSIDEN,
     ],
     sortOrder: 10,
   },
@@ -651,6 +818,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_LAB_RESULT.READ',
       'HEALTH_LAB_RESULT.CREATE',
       'HEALTH_LAB_CATALOG.READ',
+      ...LAPOR_INSIDEN,
     ],
     sortOrder: 11,
   },
@@ -670,6 +838,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_IMMUNIZATION.READ',
       'HEALTH_HOME_VISIT.READ',
       'HEALTH_HOME_VISIT.CREATE',
+      ...LAPOR_INSIDEN,
     ],
     sortOrder: 17,
   },
@@ -692,6 +861,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_HOME_VISIT.CREATE',
       'HEALTH_PROGRAM.READ',
       'HEALTH_PROGRAM.UPDATE',
+      ...LAPOR_INSIDEN,
     ],
     sortOrder: 18,
   },
@@ -713,14 +883,87 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
   {
     code: 'HEALTH_QUALITY_MANAGER',
     name: 'Manajer Mutu',
-    description: 'Menelaah akses darurat dan indikator mutu.',
+    description: 'Menelaah akses darurat, insiden keselamatan, dan indikator mutu.',
     permissions: [
       'HEALTH.READ',
       'HEALTH_ACCESS_LOG.READ',
       'HEALTH_ACCESS_LOG.EXPORT',
       'HEALTH_PATIENT_DUPLICATE.READ',
+      'HEALTH_SAFETY.READ',
+      'HEALTH_SAFETY.UPDATE',
+      'HEALTH_SAFETY.APPROVE',
+      'HEALTH_QUALITY.READ',
+      'HEALTH_QUALITY.CREATE',
+      'HEALTH_QUALITY.UPDATE',
+      'HEALTH_QUALITY.EXPORT',
+      'HEALTH_HIM_CODING.READ',
     ],
     sortOrder: 7,
+  },
+  {
+    code: 'HEALTH_CODER',
+    name: 'Koder Rekam Medis',
+    description:
+      'Mengode diagnosis dan tindakan menurut terminologi yang berlaku pada tanggal layanannya. ' +
+      'TIDAK memverifikasi pengkodeannya sendiri.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_HIM_CODING.READ',
+      'HEALTH_HIM_CODING.CREATE',
+      'HEALTH_TERMINOLOGY.READ',
+    ],
+    sortOrder: 20,
+  },
+  {
+    code: 'HEALTH_CODING_VERIFIER',
+    name: 'Verifikator Koding',
+    description:
+      'Memeriksa pengkodean orang lain sebelum berkasnya diajukan. TIDAK mengode, supaya yang ' +
+      'diperiksanya bukan pekerjaannya sendiri.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_HIM_CODING.READ',
+      'HEALTH_HIM_CODING.VERIFY',
+      'HEALTH_TERMINOLOGY.READ',
+    ],
+    sortOrder: 21,
+  },
+  {
+    code: 'HEALTH_PATIENT_SAFETY_OFFICER',
+    name: 'Petugas Keselamatan Pasien',
+    description:
+      'Menelaah dan menutup laporan insiden, menyusun tindakan perbaikan, serta mencatat ' +
+      'indikator mutu.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_SAFETY.READ',
+      'HEALTH_SAFETY.CREATE',
+      'HEALTH_SAFETY.UPDATE',
+      'HEALTH_SAFETY.APPROVE',
+      'HEALTH_QUALITY.READ',
+      'HEALTH_QUALITY.CREATE',
+      'HEALTH_QUALITY.UPDATE',
+      'HEALTH_HIM_CODING.READ',
+    ],
+    sortOrder: 22,
+  },
+  {
+    code: 'HEALTH_LEGAL_OFFICER',
+    name: 'Petugas Hukum Rumah Sakit',
+    description:
+      'Memasang penahanan hukum atas rekam medis dan memutuskan permintaan pelepasan informasi. ' +
+      'Sengaja sempit — ia tidak merawat siapa pun.',
+    // Sengaja TANPA HEALTH_INFO_RELEASE.EXPORT. Yang memutuskan pelepasan bukan
+    // yang menyerahkan berkasnya; itu pekerjaan petugas rekam medis.
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_LEGAL_HOLD.READ',
+      'HEALTH_LEGAL_HOLD.CREATE',
+      'HEALTH_LEGAL_HOLD.DELETE',
+      'HEALTH_INFO_RELEASE.READ',
+      'HEALTH_INFO_RELEASE.CREATE',
+    ],
+    sortOrder: 23,
   },
 ];
 
@@ -818,6 +1061,29 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'memulangkan.',
     conflictingPermissions: ['HEALTH_EMERGENCY.TRIAGE', 'HEALTH_EMERGENCY.DISCHARGE'],
   },
+  {
+    code: 'HEALTH_SOD_CODE_VERIFY',
+    name: 'Koder tidak memverifikasi pengkodeannya sendiri',
+    description:
+      'Pengkodean menentukan nilai klaim. Koder yang memverifikasi pengkodeannya sendiri tidak ' +
+      'memeriksa apa pun — ia hanya menekan tombol kedua. Fasilitas yang benar-benar hanya ' +
+      'memiliki satu koder dapat mematikan pemisahan ini secara sah dan tercatat lewat ' +
+      'kebijakan; yang dilarang adalah menyiasatinya dengan akun kedua.',
+    conflictingPermissions: ['HEALTH_HIM_CODING.CREATE', 'HEALTH_HIM_CODING.VERIFY'],
+  },
+  /*
+   * HEALTH_SOD_HOLD_RELEASE sengaja TIDAK ada di sini.
+   *
+   * "Pemasang penahanan tidak mencabutnya sendiri" adalah aturan PER BARIS,
+   * bukan per hak akses. Petugas hukum memang perlu memasang penahanan sekaligus
+   * mencabut penahanan yang dipasang rekannya; yang dilarang hanyalah mencabut
+   * yang dipasangnya sendiri. Mendaftarkannya sebagai pasangan hak akses yang
+   * bertentangan akan melarang pekerjaan yang sah, dan aturan yang melarang
+   * pekerjaan yang sah adalah aturan yang akan dimatikan seluruhnya.
+   *
+   * Ditegakkan constraint him_hold_release_not_self pada basis data, dan
+   * didaftarkan pada mesin SoD tenant lewat H017 dengan sisi PREPARER.
+   */
 ];
 
 // --- Pemeriksaan mandiri -----------------------------------------------------

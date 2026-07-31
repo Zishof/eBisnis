@@ -71,9 +71,14 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-6 | 30 | **53** | `health-inpatient.spec.ts` |
 | H-7 | 35 | **60** | `health-acute.spec.ts` |
 | H-8 | 30 | **54** | `health-community.spec.ts` |
+| H-9 | 30 | **67** | `health-him.spec.ts` |
 
-API keseluruhan: **1474** pengujian pada 54 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **1547** pengujian pada 55 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
+
+Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
+baru mengunci dua keputusan hak akses H-9 yang berlawanan arah — pelaporan
+insiden yang sengaja luas, dan penahanan hukum yang sengaja sempit.
 
 ### Naskah bukti
 
@@ -91,6 +96,33 @@ sungguhan, pada basis data sungguhan:
 | H-6 | `prove-health-inpatient.mjs` | 41 pemeriksaan, seluruhnya lulus — [bukti-h6-rawat-inap.txt](bukti-h6-rawat-inap.txt) |
 | H-7 | `prove-health-acute.mjs` | 55 pemeriksaan, seluruhnya lulus — [bukti-h7-akut.txt](bukti-h7-akut.txt) |
 | H-8 | `prove-health-community.mjs` | 45 pemeriksaan, seluruhnya lulus — [bukti-h8-puskesmas.txt](bukti-h8-puskesmas.txt) |
+| H-9 | `prove-health-him.mjs` | 74 pemeriksaan, seluruhnya lulus — [bukti-h9-rekam-medis.txt](bukti-h9-rekam-medis.txt) |
+
+**Naskah H-9 semula lulus karena penjaga yang keliru.** Uji "penahanan hukum
+menahan perubahan catatan klinis" memakai catatan yang sudah ditandatangani —
+yang sudah dikunci trigger `forbid_signed_note_mutation` sejak H-3. Kedua
+trigger duduk pada tabel yang sama, dan PostgreSQL menjalankannya menurut urutan
+abjad nama triggernya: `trg_clinical_note_immutable` mendahului
+`trg_legal_hold_clinical_note`. Perubahannya memang ditolak, tetapi bukan oleh
+penahanan hukum. Naskah itu akan tetap lulus sekalipun seluruh mekanisme
+penahanan hukum dicabut.
+
+Sejak itu, setiap pemeriksaan yang menembus invarian lewat SQL langsung
+memeriksa **bunyi penolakannya** — nama constraint atau kalimat triggernya —
+dan uji penahanan hukum memakai catatan yang belum ditandatangani, didahului
+satu uji kendali yang membuktikan catatan itu memang dapat diubah **sebelum**
+penahanannya dipasang. Satu tabel dapat memiliki beberapa penjaga; "gagal" saja
+tidak membuktikan penjaga yang mana yang bekerja.
+
+Naskah H-9 juga menemukan tiga cacat yang tidak tertangkap satu pun pengujian
+unit, seluruhnya pada jalur yang dipakai setiap hari: `ON CONFLICT` pada indeks
+unik **parsial** tanpa menyebut predikatnya (pemeriksaan kelengkapan gagal 500
+pada setiap panggilan), satu parameter dipakai dua kali dengan tipe yang
+disimpulkan berbeda (kekurangan berkas tidak pernah tersimpan), dan nomor
+insiden yang dihitung per fasilitas tetapi unik per tenant (fasilitas kedua yang
+melapor pada hari yang sama gagal melapor sama sekali). Ditambah satu kunci mati
+aturan: kekurangan "diagnosis belum berkode" menahan pengkodean, sehingga berkas
+tidak akan pernah dapat dikode.
 
 Naskah H-8 sempat gagal pada percobaan kedua meski lulus pada percobaan pertama:
 langkah "tanpa tabel rujukan" menyemai barisnya sendiri, sehingga jalannya kedua

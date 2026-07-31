@@ -1,0 +1,102 @@
+==============================================================================
+BUKTI H-9 — REKAM MEDIS, PENGKODEAN, PENAHANAN HUKUM, DAN KESELAMATAN
+Waktu   : 2026-07-31T22:12:58.898Z
+Schema  : demo
+==============================================================================
+
+Tujuh pengguna. Koder TIDAK diberi VERIFY, verifikator TIDAK diberi CREATE,
+petugas hukum TIDAK diberi EXPORT, perawat hanya diberi hak melapor insiden —
+keempatnya justru pemisahan yang hendak dibuktikan naskah ini.
+
+1. Kekurangan berkas dilaporkan NAMANYA, bukan sebagai persentase
+  LULUS  pemeriksaan kelengkapan berjalan
+  LULUS  berkas belum lengkap
+  LULUS  kekurangan disebut namanya
+  LULUS  catatan yang belum ditandatangani ikut dilaporkan
+  LULUS  setiap kekurangan menyebut siapa yang memperbaikinya
+  LULUS  mengode berkas yang belum lengkap DITOLAK
+  LULUS  penahannya disebutkan satu per satu
+
+2. Setelah berkas dilengkapi, kekurangannya ditutup — bukan menggantung
+  LULUS  tidak ada lagi yang MENAHAN pengkodean
+  LULUS  yang tersisa hanya pekerjaan koder itu sendiri
+  LULUS  dan pekerjaan koder tidak menahan koder bekerja
+  LULUS  kekurangan lama ditutup dengan waktunya, bukan dihapus
+
+3. Pengkodean — satu diagnosis utama, dan kode yang dicabut ditolak
+  LULUS  dua diagnosis utama DITOLAK
+  LULUS  penolakannya menyebut urutan baris bukan keputusan klinis
+  LULUS  kode yang sudah DICABUT ditolak
+  LULUS  penolakannya menyebut penggantinya
+  LULUS  pengkodean yang sah berhasil
+  LULUS  versi terminologi DISALIN ke tiap baris kode
+  LULUS  menembus dua diagnosis utama lewat basis data pun ditolak indeks unik
+  LULUS  setelah dikode, berkas dinyatakan lengkap
+
+4. Koder tidak memverifikasi pengkodeannya sendiri
+  LULUS  koder tidak berwenang memverifikasi sama sekali
+  LULUS  pengembalian tanpa keterangan ditolak
+  LULUS  verifikator memverifikasi
+
+5. Penahanan hukum menahan PERUBAHAN, bukan pembacaan
+  LULUS  sebelum penahanan, catatan itu memang dapat diubah
+  LULUS  penahanan dipasang
+  LULUS  kini catatan yang sama DITOLAK, dan justru oleh penahanannya
+  LULUS  mengubah diagnosis DITOLAK oleh penahanan pula
+  LULUS  menghapusnya pun ditolak
+  LULUS  PEMBACAAN tetap diizinkan
+  LULUS  status penahanan terbaca
+  LULUS  dan menyatakan rekamnya tidak dapat diubah
+  LULUS  yang memasang penahanan TIDAK mencabutnya sendiri
+  LULUS  petugas kedua mencabutnya
+  LULUS  setelah dicabut, perubahan kembali diizinkan
+
+6. Pelepasan informasi — yang menentukan dasar hukumnya, bukan pemintanya
+  LULUS  kepolisian tanpa nomor surat DITOLAK
+  LULUS  dengan nomor surat, disetujui
+  LULUS  pemberi kerja menerima yang TERSAMARKAN meski pasien menyetujui
+  LULUS  yang MEMUTUSKAN pelepasan tidak menyerahkan berkasnya sendiri
+  LULUS  petugas rekam medis menyerahkannya, dan mencatat apa yang BENAR-BENAR dilepas
+  LULUS  catatan pelepasan tidak dapat dihapus
+
+7. Keselamatan pasien — pelaporan longgar, penutupan ketat
+  LULUS  perawat dapat melaporkan insiden
+  LULUS  nyaris cedera bertingkat BLUE
+  LULUS  tetapi TETAP ditelaah
+  LULUS  dan sebabnya disebutkan
+  LULUS  pelaporan anonim diterima
+  LULUS  dan pelapornya benar-benar tidak tercatat
+  LULUS  cedera berat dinyatakan sentinel
+  LULUS  menuntut telaah akar masalah dalam 24 jam
+  LULUS  dan pelaporan ke luar
+  LULUS  menutup tanpa tindakan perbaikan DITOLAK
+  LULUS  penolakannya berkata akan terjadi lagi
+  LULUS  perawat pelapor tidak berwenang menutup
+  LULUS  petugas mutu melaporkan kejadiannya sendiri
+  LULUS  cedera sedang bertingkat YELLOW
+  LULUS  yang berwenang menutup pun ditolak bila ia PELAPORNYA
+  LULUS  penolakannya berkata telaah oleh pihak yang terlibat bukan telaah
+  LULUS  menembusnya lewat basis data pun ditolak constraint
+  LULUS  petugas mutu menutupnya
+  LULUS  laporan insiden tidak dapat dihapus
+  LULUS  nyaris cedera yang "sampai ke pasien" ditolak constraint
+
+8. Papan insiden dan indikator mutu
+  LULUS  papan insiden terbaca
+  LULUS  yang belum ditutup berada di atas
+  LULUS  pengukuran indikator tercatat
+  LULUS  target tercapai dinilai benar
+  LULUS  PENYEBUT NOL tidak menghasilkan nol
+  LULUS  melainkan menyatakan belum ada datanya
+  LULUS  pembilang melebihi penyebut ditolak constraint
+  LULUS  papan mutu terbaca
+  LULUS  kelengkapan rekam medis ikut dilaporkan
+
+9. Jejak dan tujuan penggunaan
+  LULUS  memeriksa berkas tanpa tujuan penggunaan ditolak
+  LULUS  jejak pembacaan tercatat
+  LULUS  pelepasan informasi tercatat sebagai EKSPOR, bukan pembacaan biasa
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

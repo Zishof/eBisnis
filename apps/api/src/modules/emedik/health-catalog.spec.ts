@@ -162,6 +162,77 @@ describe('peran kesehatan', () => {
     expect(boleh).toEqual(['HEALTH_DOCTOR']);
   });
 
+  it('pelaporan insiden diberikan LUAS kepada peran klinis', () => {
+    /*
+     * Sengaja longgar. Program keselamatan pasien bergantung pada orang yang mau
+     * melapor, dan yang paling sering melihat kejadian bukan petugas mutu —
+     * melainkan perawat malam, apoteker yang menerima resep aneh, dan analis
+     * yang menerima spesimen tanpa label.
+     */
+    const boleh = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_SAFETY.CREATE'),
+    ).map((r) => r.code);
+    expect(boleh.length).toBeGreaterThanOrEqual(12);
+    for (const wajib of [
+      'HEALTH_NURSE',
+      'HEALTH_DOCTOR',
+      'HEALTH_PHARMACIST',
+      'HEALTH_LAB_ANALYST',
+      'HEALTH_WARD_CLERK',
+      'HEALTH_CADRE',
+    ]) {
+      expect(boleh).toContain(wajib);
+    }
+  });
+
+  it('menutup laporan insiden diberikan SEMPIT', () => {
+    // Melapor dan menutup adalah dua wewenang yang berlawanan sifatnya.
+    const boleh = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_SAFETY.APPROVE'),
+    ).map((r) => r.code).sort();
+    expect(boleh).toEqual(['HEALTH_PATIENT_SAFETY_OFFICER', 'HEALTH_QUALITY_MANAGER']);
+  });
+
+  it('direktur melihat insiden tetapi tidak menutup dan tidak melapor', () => {
+    /*
+     * Direktur yang dapat menutup laporan tentang fasilitasnya sendiri adalah
+     * pihak yang paling berkepentingan agar angkanya bagus.
+     */
+    const direktur = HEALTH_ROLES.find((r) => r.code === 'HEALTH_DIRECTOR');
+    expect(direktur?.permissions).toContain('HEALTH_SAFETY.READ');
+    expect(direktur?.permissions).not.toContain('HEALTH_SAFETY.APPROVE');
+    expect(direktur?.permissions).not.toContain('HEALTH_SAFETY.CREATE');
+  });
+
+  it('penahanan hukum hanya dipegang petugas hukum', () => {
+    // Menahan seluruh rekam medis seorang pasien adalah wewenang yang tidak
+    // boleh melekat pada peran yang dipegang puluhan orang.
+    const boleh = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_LEGAL_HOLD.CREATE'),
+    ).map((r) => r.code);
+    expect(boleh).toEqual(['HEALTH_LEGAL_OFFICER']);
+  });
+
+  it('yang memutuskan pelepasan informasi bukan yang menyerahkan berkasnya', () => {
+    const memutuskan = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_INFO_RELEASE.CREATE'),
+    ).map((r) => r.code);
+    const menyerahkan = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_INFO_RELEASE.EXPORT'),
+    ).map((r) => r.code);
+    expect(memutuskan).toEqual(['HEALTH_LEGAL_OFFICER']);
+    expect(menyerahkan).toEqual(['HEALTH_MEDICAL_RECORD_OFFICER']);
+  });
+
+  it('koder tidak memverifikasi, verifikator tidak mengode', () => {
+    const koder = HEALTH_ROLES.find((r) => r.code === 'HEALTH_CODER');
+    const verifikator = HEALTH_ROLES.find((r) => r.code === 'HEALTH_CODING_VERIFIER');
+    expect(koder?.permissions).toContain('HEALTH_HIM_CODING.CREATE');
+    expect(koder?.permissions).not.toContain('HEALTH_HIM_CODING.VERIFY');
+    expect(verifikator?.permissions).toContain('HEALTH_HIM_CODING.VERIFY');
+    expect(verifikator?.permissions).not.toContain('HEALTH_HIM_CODING.CREATE');
+  });
+
   it('tidak ada peran yang memiliki hak atas menu yang belum dibangun', () => {
     /*
      * Peran yang sudah diberi hak atas modul yang belum ada akan tampak

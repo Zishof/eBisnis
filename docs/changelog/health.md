@@ -5,6 +5,99 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9 — Rekam medis, pengkodean, penahanan hukum, mutu, dan keselamatan pasien
+
+### Ditambahkan
+
+- **`H016__health__him_quality.sql`** — `terminology_snapshot`,
+  `terminology_code`, `him_coding`, `him_coded_item`, `him_deficiency`,
+  `him_legal_hold`, `him_information_release`, `safety_incident`,
+  `safety_corrective_action`, `quality_indicator`, `quality_measurement`.
+  Beserta trigger `forbid_change_under_legal_hold` pada `clinical_note` dan
+  `encounter_diagnosis`, larangan hapus pada catatan pelepasan dan laporan
+  insiden, serta indeks unik parsial "satu diagnosis utama".
+- **`H017__health__him_permissions.sql`** — aksi `VERIFY`, enam menu, empat
+  peran baru, dua aturan pemisahan wewenang. Pelaporan insiden diberikan kepada
+  enam belas peran klinis dengan sengaja.
+- **`health-him.ts`** — aturan sebagai fungsi murni: kelengkapan berkas, skor
+  kelengkapan, kelayakan kode terhadap tanggal layanan, kelayakan pengkodean,
+  pemisahan koder–verifikator, penahanan hukum, pelepasan informasi,
+  klasifikasi insiden, penutupan insiden, urutan papan, dan indikator mutu.
+  **67 pengujian.**
+- **`health-him.service.ts`** dan **`health-him.controller.ts`** — tiga belas
+  jalan pada `/api/v1/health/him/**`.
+- **`health-catalog.ts`** — enam menu H-9, empat peran, satu aturan SoD, dan
+  sembilan aksi hak akses yang selama ini ada di migrasi tetapi belum
+  terdaftar di katalog (`ADMINISTER`, `RECEIVE`, `AMEND`, `TRIAGE`,
+  `CHECKLIST`, `INCISE`, `IMMUNIZE`, `VERIFY`).
+- **`prove-health-him.mjs`** — naskah bukti, **74 pemeriksaan**, tujuh pengguna
+  berbeda, seluruhnya lulus dan lulus pula pada pengulangan.
+
+Uji: API 1474 → **1547**.
+
+### Diperbaiki
+
+Empat cacat yang ditemukan naskah bukti dan tidak tertangkap satu pun pengujian
+unit — seluruhnya pada jalur yang dipakai setiap hari:
+
+- **`ON CONFLICT` pada indeks unik parsial tanpa menyebut predikatnya.**
+  `ux_him_coding_encounter` parsial (`WHERE encounter_id IS NOT NULL`), dan
+  PostgreSQL menolak seluruh pernyataan bila predikatnya tidak disebutkan.
+  Pemeriksaan kelengkapan — langkah pertama seluruh H-9 — gagal 500 pada setiap
+  panggilan.
+- **Parameter dipakai dua kali dengan tipe yang disimpulkan berbeda.** `$1` dan
+  `$2` muncul di daftar `SELECT` sekaligus di klausa `WHERE`; Postgres menolak
+  dengan "inconsistent types deduced". Kekurangan berkas tidak pernah tersimpan.
+- **Nomor insiden dihitung per fasilitas tetapi unik per tenant.** Fasilitas
+  kedua yang melapor pada hari yang sama gagal melapor sama sekali. Kode
+  fasilitas kini disertakan, mengikuti pola yang sudah dipakai H-5 sampai H-7.
+- **Kunci mati "diagnosis belum berkode".** Kekurangan itu semula menahan
+  pengkodean, sehingga berkas terkunci selamanya: pengkodean ditolak karena
+  belum berkode, dan ia tidak akan pernah berkode karena pengkodeannya ditolak.
+
+### Keputusan yang perlu dicatat
+
+- **Kekurangan berkas disimpan sebagai BARIS, bukan sebagai angka.** Satu baris
+  per kekurangan, bernama, beserta peran yang dapat memperbaikinya. Dokter yang
+  membaca "resume medis belum ditandatangani" akan menandatanganinya; dokter
+  yang membaca "82%" akan menutup layarnya. Skornya tetap dihitung — oleh fungsi
+  yang berbeda, untuk pembaca yang berbeda.
+
+- **Kode yang dicabut tetap terbaca, tetapi tidak dapat dipilih**, dan
+  dibandingkan dengan **tanggal layanan**. Berkas Maret yang dikode Juni tetap
+  memakai terminologi Maret. Versinya disalin ke tiap baris kode — tanpa itu,
+  kode lama tidak dapat ditafsirkan setelah terminologinya berganti dua kali.
+
+- **Penahanan hukum menahan perubahan, bukan pembacaan.** Menahan pembacaan akan
+  menghentikan perawatan pasien yang rekamnya kebetulan diperkarakan, dan pasien
+  itu tetap sakit.
+
+- **Yang menentukan pelepasan informasi adalah dasar hukumnya, bukan
+  pemintanya.** Kepolisian tanpa nomor surat berkedudukan sama dengan orang
+  asing. Yang memutuskan pelepasan bukan yang menyerahkan berkasnya.
+
+- **Pelaporan insiden sengaja longgar, penutupannya sengaja ketat**, dan pelapor
+  boleh anonim — bila anonim, `reported_by` benar-benar kosong.
+
+- **Penyebut nol menghasilkan "belum ada datanya", bukan nol.** Nol akan
+  terbaca sebagai mutu terburuk.
+
+### Catatan bagi naskah bukti berikutnya
+
+Uji penahanan hukum semula memakai catatan klinis yang **sudah
+ditandatangani** — yang sudah dikunci trigger H-3, dan trigger itu berjalan
+lebih dahulu menurut urutan abjad namanya. Naskah itu lulus tanpa penahanan
+hukum pernah diuji sama sekali.
+
+Sejak H-9, setiap pemeriksaan yang menembus invarian lewat SQL langsung
+memeriksa **bunyi penolakannya** — nama constraint atau kalimat triggernya —
+bukan sekadar bahwa pernyataannya gagal. Satu tabel dapat memiliki beberapa
+penjaga; "gagal" saja tidak membuktikan penjaga yang mana yang bekerja, dan
+naskah bukti yang lulus karena penjaga yang keliru lebih berbahaya daripada
+tidak ada naskah bukti sama sekali.
+
+---
+
 ## H-8 — Puskesmas dan Posyandu: pertumbuhan anak, imunisasi, dan cakupan
 
 ### Ditambahkan
