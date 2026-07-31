@@ -210,6 +210,22 @@ memang belum berisi.
 
 Katalog kosong sampai ada produk yang benar-benar diterbitkan.
 
+### Instalasi dari sebelum Versi 9
+
+Program marketplace termasuk data dasar platform, dan instalasi yang menjalankan
+seed platform sebelum Versi 9 belum memilikinya. Tanpa itu penanaman produk
+contoh berhenti dengan "Belum ada program marketplace yang aktif":
+
+```bash
+sudo -u ebisnis bash -lc "cd /opt/ebisnis/app && pnpm --filter @ebisnis/api seed:platform"
+```
+
+Aman dijalankan pada instalasi yang sudah berisi: seluruh baris ditanam dengan
+`upsert`, dan super admin yang sudah ada **tidak disentuh sama sekali** —
+credentialnya tidak diubah dan kata sandinya tidak disetel ulang.
+
+### Kategori dan produk
+
 Kategori saja:
 
 ```bash

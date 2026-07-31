@@ -284,7 +284,8 @@ export class SampleCatalogService {
     if (!uom || !productCategory) {
       throw AppError.unprocessable(
         ErrorCodes.VALIDATION_FAILED,
-        'Tenant contoh belum memiliki satuan atau kategori produk. Jalankan seed tenant lebih dahulu.',
+        'Tenant contoh belum memiliki satuan atau kategori produk. Jalankan ' +
+          '"pnpm --filter @ebisnis/api seed:tenant" lebih dahulu.',
       );
     }
 
@@ -471,15 +472,23 @@ export class SampleCatalogService {
     if (!registry) {
       throw AppError.unprocessable(
         ErrorCodes.VALIDATION_FAILED,
-        'Tenant "demo" tidak ditemukan. Produk contoh memerlukannya.',
+        'Tenant "demo" tidak ditemukan pada registry. Produk contoh memerlukannya; ' +
+          'jalankan "pnpm --filter @ebisnis/api seed:tenant" lebih dahulu.',
       );
     }
 
+    // Program marketplace adalah data dasar platform, bukan data contoh: ia
+    // memuat kebijakan seperti jumlah gambar minimum dan syarat rekening
+    // pembayaran. Membuatnya di sini berarti mengarang kebijakan yang
+    // seharusnya ditentukan platform, jadi yang dilakukan hanya menolak —
+    // sambil menyebut perintah yang membuatnya.
     const program = await this.prisma.marketplaceProgram.findFirst({ where: { isActive: true } });
     if (!program) {
       throw AppError.unprocessable(
         ErrorCodes.VALIDATION_FAILED,
-        'Belum ada program marketplace yang aktif.',
+        'Belum ada program marketplace yang aktif. Jalankan "pnpm --filter @ebisnis/api ' +
+          'seed:platform" lebih dahulu — program marketplace termasuk data dasar platform ' +
+          'yang ditanam di sana, dan instalasi dari sebelum Versi 9 belum memilikinya.',
       );
     }
 
