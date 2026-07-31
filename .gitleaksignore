@@ -66,3 +66,21 @@ a463093a1f3b58c00d0fa628009edcb41dd82aaf:apps/api/src/modules/master-seed/platfo
 # baru dengan pola serupa tetap akan menggagalkan build.
 3080d7f275710e258f9d08a77ef1263156c00541:apps/api/src/infrastructure/crypto/secret-box.service.spec.ts:stripe-access-token:54
 428b27d04da4c589b07510f4ab5d7366efd554bb:apps/api/src/infrastructure/crypto/secret-box.service.spec.ts:generic-api-key:57
+
+# ---------------------------------------------------------------------------
+# Contoh berbentuk rahasia pada test sanitizer telemetri — BUKAN kebocoran
+#
+# Test `telemetry-sanitizer.spec.ts` membuktikan bahwa penyamar mengenali nilai
+# yang BERBENTUK rahasia meski nama medannya tidak dikenal. Untuk itu ia perlu
+# nilai yang benar-benar berbentuk JWT dan kunci penyedia.
+#
+# Nilainya bukan kredensial sungguhan: JWT-nya adalah contoh dari dokumentasi
+# jwt.io dengan payload `{"sub":"1234567890"}`, dan kunci penyedianya adalah
+# `abcdefghij123456` yang jelas bukan kunci.
+#
+# Pada commit berikutnya kedua nilai disusun saat berjalan dari potongan,
+# sehingga tidak ada lagi literal berbentuk rahasia pada source. Fingerprint di
+# bawah menunjuk commit 9cf9ac4 yang riwayatnya tidak dapat diubah tanpa
+# force-push.
+9cf9ac40776b64ccadf9d25562832b9599d92ff2:apps/api/src/infrastructure/observability/telemetry-sanitizer.spec.ts:jwt:55
+9cf9ac40776b64ccadf9d25562832b9599d92ff2:apps/api/src/infrastructure/observability/telemetry-sanitizer.spec.ts:stripe-access-token:70

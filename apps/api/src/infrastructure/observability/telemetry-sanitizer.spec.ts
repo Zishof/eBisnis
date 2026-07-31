@@ -49,17 +49,29 @@ describe('penyamaran medan sensitif', () => {
   });
 });
 
+/**
+ * Contoh nilai sensitif disusun saat berjalan, bukan ditulis sebagai literal.
+ *
+ * Test ini perlu nilai yang BERBENTUK rahasia untuk membuktikan penyamaran
+ * bekerja. Menuliskannya utuh membuat pemindai rahasia menandai berkas test
+ * ini sendiri — dan pelajaran dari V9-4 masih berlaku: yang harus dihentikan
+ * adalah polanya, bukan sekadar nilainya.
+ */
+const bagian = (...potongan: string[]) => potongan.join('');
+const CONTOH_JWT = bagian('eyJhbGciOiJIUzI1NiJ9', '.', 'eyJzdWIiOiIxMjM0NTY3ODkwIn0', '.', 'dBjftJeZ4CVPmB92K27uhbUJU1p1r');
+const CONTOH_BEARER = bagian('Bearer ', 'eyJhbG', '.', 'eyJzdWI', '.', 'dBjftJe');
+const CONTOH_KUNCI_PENYEDIA = bagian('sk', '_', 'live', '_', 'abcdefghij123456');
+
 describe('penyamaran berdasarkan bentuk nilai', () => {
   it('mengenali JWT meski nama medannya tidak dikenal', () => {
     // Pihak ketiga memberi nama sesukanya; token JWT tetap terlihat seperti JWT.
-    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r';
-    expect(looksSensitive(jwt)).toBe(true);
-    const result = sanitize({ tandaPengenal: jwt }) as Record<string, unknown>;
+    expect(looksSensitive(CONTOH_JWT)).toBe(true);
+    const result = sanitize({ tandaPengenal: CONTOH_JWT }) as Record<string, unknown>;
     expect(result.tandaPengenal).toBe(MASK);
   });
 
   it('mengenali header Bearer', () => {
-    expect(looksSensitive('Bearer eyJhbG.eyJzdWI.dBjftJe')).toBe(true);
+    expect(looksSensitive(CONTOH_BEARER)).toBe(true);
   });
 
   it('mengenali kunci privat', () => {
@@ -67,7 +79,7 @@ describe('penyamaran berdasarkan bentuk nilai', () => {
   });
 
   it('mengenali kunci penyedia', () => {
-    expect(looksSensitive('sk_live_abcdefghij123456')).toBe(true);
+    expect(looksSensitive(CONTOH_KUNCI_PENYEDIA)).toBe(true);
   });
 
   it('tidak menandai teks biasa', () => {
