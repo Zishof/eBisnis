@@ -5,6 +5,125 @@ menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
 ---
 
+## K-9 — Situs koperasi dan portal anggota
+
+Fase pertama yang menghasilkan layar, dan fase pertama yang permukaannya
+dibuka kepada orang di luar kantor koperasi. K-1 sampai K-8 dipakai belasan
+pengurus dan petugas yang dikenal namanya dan aksesnya diberikan satu per satu;
+portal dibuka kepada **ratusan anggota** sekaligus.
+
+### Ditambahkan
+
+- **`cooperative-portal.ts`** — aturan cakupan data sebagai fungsi murni:
+  `bolehMembaca`, `saring`, `bersihkan`, penyamaran nomor rekening dan
+  identitas, pembatasan percobaan PIN, alur status pengaduan, dan gerbang
+  pendaftaran calon anggota. **38 pengujian.**
+- **`cooperative-portal.service.ts`** — pelaksana aturan itu di atas basis
+  data, beserta pencatatan jejak portal.
+- **Migrasi `20260801T090000`** — 8 tabel: pengaturan situs, halaman,
+  pengumuman, lamaran publik, pengaduan, tanggapan pengaduan, pemberitahuan,
+  dan jejak aktivitas portal.
+- **14 endpoint `/cooperative/portal/*`** berpenjaga `COOPERATIVE_PORTAL.*`,
+  dan 2 endpoint `/cooperative/website/*` berpenjaga `COOPERATIVE_WEBSITE.*`.
+- **`apps/web/src/verticals/cooperative/`** — portal anggota: ringkasan,
+  simpanan beserta mutasinya, pinjaman beserta jadwal angsurannya, SHU, rapat
+  anggota, pengaduan, dan pemberitahuan. Dirancang untuk telepon genggam lebih
+  dahulu. **17 pengujian** atas menu dan aturan tampilannya.
+- **`prove-cooperative-k9.mjs`** — **54 pemeriksaan** pada basis data
+  sungguhan, seluruhnya lulus, di dalam `BEGIN … ROLLBACK`.
+
+### Keputusan yang perlu dicatat
+
+- **`memberId` tidak pernah datang dari permintaan.** Tidak dari badan, query,
+  parameter jalur, maupun header — selalu diturunkan dari sesi lewat satu
+  fungsi, `memberDiriSendiri()`. Endpoint yang menerima `?memberId=` adalah
+  endpoint yang dapat diubah angkanya oleh siapa pun yang sudah masuk.
+  Menyaring setelahnya membantu; tidak menerima angkanya sama sekali jauh
+  lebih sulit dilanggar tanpa sengaja. Berkas `portal-api.ts` di sisi peramban
+  pun tidak memiliki satu pun parameter itu, sengaja, sebagai petunjuk bagi
+  siapa pun yang kelak hendak menambahkannya.
+- **Penolakan tidak membocorkan bahwa barisnya ada.** Setiap penolakan
+  berbunyi "Data tidak ditemukan." "Anda tidak berhak membaca data anggota M2"
+  sudah memberitahu bahwa M2 ada dan punya data — keterangan sebanyak itu
+  tidak diperlukan siapa pun kecuali yang sedang mencari tahu.
+- **Lintas koperasi diperiksa lebih dahulu daripada kepemilikan**, supaya
+  kesamaan id anggota di dua koperasi tidak pernah menjadi celah.
+- **Rapat anggota satu-satunya sumber daya bersama.** Setiap anggota berhak
+  membaca agenda, kuorum, dan keputusannya — pengawasan koperasi ada pada
+  anggotanya. Yang tetap perorangan adalah suaranya.
+- **Kuorum yang TIDAK tercapai tetap ditampilkan kepada anggota.**
+  Menyembunyikannya menghilangkan justru hal yang paling perlu diketahui.
+- **Kiriman formulir dari internet berhenti pada tabel karantina.** Lamaran
+  calon anggota tidak pernah langsung menjadi baris `cooperative_member`;
+  tanpa itu siapa pun di internet dapat menumbuhkan daftar anggota koperasi
+  orang lain dengan nama orang yang tidak pernah mendaftar. Lamaran yang
+  DISETUJUI wajib menunjuk anggota yang diterbitkannya, yang DITOLAK wajib
+  beralasan, dan tidak ada yang dapat disimpan tanpa persetujuan pengolahan
+  data pribadi bertanggal.
+- **Jumlah anggota dan besar aset bawaannya tidak ditampilkan di situs.**
+  Keduanya angka yang meyakinkan calon anggota sekaligus angka yang dipakai
+  orang lain menilai apakah koperasi ini layak didekati. Menampilkannya
+  pilihan sadar pengurus, bukan bawaan yang baru disadari setelah terlanjur
+  tampil.
+- **Pengaduan tidak dapat dihapus, dan anggota tidak dapat menutupnya.**
+  Pengaduan yang dapat dihapus adalah pengaduan yang dapat dihilangkan oleh
+  orang yang isinya menegur dirinya; pengaduan yang dapat ditutup pelapornya
+  mudah ditutup dengan meminta pelapornya menutupnya. Yang selesai dapat
+  dibuka kembali cukup dengan menanggapinya.
+- **Pengaduan anonim tetap menyimpan pemiliknya**, dan hal itu **disebutkan
+  pada formulirnya**. Menjanjikan anonimitas penuh padahal sistemnya tetap
+  menyimpan pemiliknya adalah janji yang tidak dapat ditepati.
+- **Pemberitahuan ringkas dan tautannya wajib relatif.** Ia berjalan lewat
+  kanal yang tidak dikendalikan koperasi dan sering terbaca pada layar
+  terkunci; "Angsuran Anda jatuh tempo 5 Agustus" cukup. Tautan ke alamat luar
+  ditolak basis data — melatih anggota menekan tautan yang mengatasnamakan
+  koperasi adalah cara paling mudah membuat mereka menekan tautan berikutnya
+  yang bukan dari koperasi.
+- **Jejak portal mencatat kode penolakan, tetapi tidak menyalin isi bacaan.**
+  Jejak yang hanya berkata "ditolak" tidak dapat membedakan salah ketik dari
+  percobaan membaca data orang lain; jejak yang menyalin isinya menggandakan
+  justru data yang hendak dilindunginya.
+- **Bekas anggota kehilangan akses portal, bukan datanya.** Dibuktikan pada
+  basis data: setelah `TERMINATED` ia tidak melihat apa pun, tetapi barisnya
+  masih ada dan tidak dapat dihapus selama masih ada pengaduannya.
+- **Calon anggota hanya melihat menu yang sudah ada isinya.** Menu yang
+  seluruhnya kosong membuat portal terasa rusak, bukan terasa lengkap.
+- **Anggota yang dibekukan tetap dapat mengadu.** Pembekuan justru saat ia
+  paling mungkin ingin menyatakan keberatan; yang hilang hak suaranya, bukan
+  haknya bersuara.
+
+### Yang TIDAK dikerjakan, dan alasannya
+
+- **Situs koperasi belum dapat dibuka pengunjung.** Pengunjung tanpa sesi
+  tidak membawa konteks penyewa, dan satu-satunya jalan yang tersedia adalah
+  menerima nama skema dari alamat — hal yang dilarang tegas, sebab alamat
+  semacam itu dapat dicoba nama demi nama sampai menemukan skema yang ada.
+  Diajukan sebagai **IR-005**. Endpoint yang dibuat memakai jalur pratinjau
+  bersesi; pengurus dapat menyusun dan melihat situsnya sekarang.
+- **Lamaran belum dapat dikirim dari internet** — tertahan IR-005 yang sama.
+  Logikanya lengkap dan teruji lewat jalur bersesi.
+- **PIN anggota belum dapat diatur dari portal.** Aturannya sudah ada dan
+  diuji (`bolehVerifikasiPin`, `setelahPinSalah`, `bolehKasirMengaksesPin`),
+  tetapi pembuatannya menyentuh alur autentikasi bersama — dan §3 melarang
+  sesi ini menyunting shared auth. Menunggu koordinasi.
+- **Pemberitahuan belum benar-benar dikirim** lewat surel atau pesan singkat.
+  Tabelnya siap dan kanal tercatat; pengirimannya memakai layanan bersama.
+
+### Catatan bagi sesi Core
+
+- `App.tsx` disunting **dua baris**: satu impor `lazy` dan satu
+  `<Route path="/ekoperasi/*">`. Seluruh rute vertikal terkumpul di
+  `verticals/cooperative/routes.tsx`.
+- `cooperative.module.ts` menambah dua controller; tidak ada berkas Core lain
+  yang tersentuh.
+- Hak akses baru yang perlu disemai IR-004: `COOPERATIVE_PORTAL.READ`,
+  `COOPERATIVE_PORTAL.WRITE`, `COOPERATIVE_WEBSITE.READ`,
+  `COOPERATIVE_WEBSITE.WRITE`. **`COOPERATIVE_PORTAL.*` harus terpisah dari
+  hak akses pengurus** — memberi seseorang akses portal tidak boleh pernah
+  berarti memberinya akses ke layar pengurus.
+
+---
+
 ## K-8 — Akuntansi, pajak, dan laporan
 
 ### Ditambahkan

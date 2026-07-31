@@ -29,6 +29,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsIn,
   IsISO8601,
   IsObject,
@@ -39,6 +40,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { CooperativeProfileService } from './cooperative-profile.service';
+import { CooperativePortalService } from './cooperative-portal.service';
 import { CooperativePosAdapter } from './adapters/pos.adapter';
 import { InfrastructureModule } from '../../infrastructure/infrastructure.module';
 import {
@@ -54,6 +56,7 @@ import {
   MEMBERSHIP_SCOPES,
   type CooperativeStatus,
 } from './cooperative-profile';
+import { COMPLAINT_CATEGORIES } from './cooperative-portal';
 
 function requireSchema(user: AuthenticatedUser): string {
   if (!user.schemaName) {
@@ -201,7 +204,335 @@ class SahkanKebijakanDto {
   meetingDecisionId?: string;
 }
 
+class AjukanPengaduanDto {
+  @ApiProperty({ enum: COMPLAINT_CATEGORIES })
+  @IsIn(COMPLAINT_CATEGORIES)
+  category!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(5)
+  @MaxLength(255)
+  subject!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(10)
+  @MaxLength(5000)
+  body!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Menahan nama pelapor dari tampilan pengurus. Kepemilikannya tetap tersimpan — pengaduan tanpa pemilik tidak dapat ditindaklanjuti.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isAnonymous?: boolean;
+}
+
+class TanggapiPengaduanDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(5000)
+  body!: string;
+}
+
+class LamaranPublikDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(255)
+  fullName!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(40)
+  phone!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  occupation?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  address?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  motivation?: string;
+
+  @ApiProperty({
+    description:
+      'Persetujuan pengolahan data pribadi. Wajib true — tanpa ini koperasi menyimpan data orang yang tidak pernah menyatakan setuju.',
+  })
+  @IsBoolean()
+  consentGiven!: boolean;
+}
+
 // --- Controller -------------------------------------------------------------
+
+/**
+ * Portal anggota.
+ *
+ * Berbeda dari controller di bawahnya: yang ini melayani ANGGOTA, bukan
+ * pengurus. Karena itu tidak ada satu pun endpoint di sini yang menerima
+ * `memberId` — identitas selalu diturunkan dari sesi lewat
+ * `memberDiriSendiri()`. Lihat catatan panjang pada cooperative-portal.service.ts.
+ *
+ * Hak aksesnya pun terpisah (`COOPERATIVE_PORTAL.*`), supaya memberi seseorang
+ * akses portal tidak pernah berarti memberinya akses ke layar pengurus.
+ */
+@ApiTags('cooperative-portal')
+@Controller('cooperative/portal')
+export class CooperativePortalController {
+  constructor(private readonly portal: CooperativePortalService) {}
+
+  private async konteks(user: AuthenticatedUser) {
+    const schema = requireSchema(user);
+    return { schema, konteks: await this.portal.memberDiriSendiri(schema, user.userId) };
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('me')
+  @ApiOperation({
+    summary: 'Ringkasan portal anggota',
+    description: 'Identitas diambil dari sesi, tidak pernah dari permintaan.',
+  })
+  async ringkasan(@CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.ringkasan(schema, konteks);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('savings')
+  @ApiOperation({ summary: 'Simpanan milik anggota yang sedang masuk' })
+  async simpanan(@CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.simpanan(schema, konteks);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('savings/:id/transactions')
+  @ApiOperation({
+    summary: 'Mutasi satu rekening simpanan',
+    description: 'Menolak dengan 404 bila rekeningnya milik anggota lain — tanpa menyebut bahwa rekening itu ada.',
+  })
+  async mutasi(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.mutasiSimpanan(schema, konteks, id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('loans')
+  @ApiOperation({ summary: 'Pinjaman milik anggota yang sedang masuk' })
+  async pinjaman(@CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.pinjaman(schema, konteks);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('loans/:id/schedule')
+  @ApiOperation({ summary: 'Jadwal angsuran satu pinjaman' })
+  async jadwal(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.jadwalAngsuran(schema, konteks, id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('shu')
+  @ApiOperation({ summary: 'Rincian SHU yang diterima anggota' })
+  async shu(@CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.shu(schema, konteks);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('meetings')
+  @ApiOperation({
+    summary: 'Rapat anggota',
+    description:
+      'Satu-satunya sumber daya portal yang bersifat bersama — setiap anggota berhak mengawasi jalannya rapat. Suaranya sendiri tetap perorangan.',
+  })
+  async rapat(@CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.rapat(schema, konteks);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('meetings/:id/my-votes')
+  @ApiOperation({ summary: 'Suara yang saya berikan pada rapat itu' })
+  async suara(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.suaraSaya(schema, konteks, id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('complaints')
+  @ApiOperation({ summary: 'Pengaduan yang saya ajukan' })
+  async pengaduan(@CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.pengaduan(schema, konteks);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('complaints/:id/responses')
+  @ApiOperation({
+    summary: 'Tanggapan atas pengaduan',
+    description: 'Catatan internal pengurus tidak pernah termasuk.',
+  })
+  async tanggapan(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.tanggapanPengaduan(schema, konteks, id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.WRITE')
+  @BlockDemo()
+  @Post('complaints')
+  @ApiOperation({ summary: 'Mengajukan pengaduan' })
+  async ajukan(@Body() dto: AjukanPengaduanDto, @CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.ajukanPengaduan(schema, konteks, {
+      category: dto.category,
+      subject: dto.subject,
+      body: dto.body,
+      isAnonymous: dto.isAnonymous ?? false,
+    });
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.WRITE')
+  @BlockDemo()
+  @Post('complaints/:id/responses')
+  @ApiOperation({
+    summary: 'Menanggapi pengaduan saya',
+    description:
+      'Tanggapan atas pengaduan yang sudah dinyatakan selesai membukanya kembali. Anggota tidak dapat menutup pengaduannya sendiri.',
+  })
+  async tanggapi(
+    @Param('id') id: string,
+    @Body() dto: TanggapiPengaduanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.tanggapiPengaduan(schema, konteks, id, dto.body);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('notifications')
+  @ApiOperation({ summary: 'Pemberitahuan untuk saya' })
+  async pemberitahuan(@CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.pemberitahuan(schema, konteks);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.WRITE')
+  @Patch('notifications/:id/read')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Menandai pemberitahuan sudah dibaca' })
+  async dibaca(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.portal.tandaiDibaca(schema, konteks, id);
+  }
+}
+
+/**
+ * Situs koperasi — pratinjau dan penerimaan lamaran.
+ *
+ * **Endpoint ini BUKAN endpoint publik, dan itu disengaja.**
+ *
+ * Situs koperasi seharusnya dapat dibuka siapa saja tanpa sesi. Tetapi
+ * pengunjung tanpa sesi tidak membawa konteks ruang kerja, sehingga sesuatu
+ * harus menentukan skema mana yang dibaca. Satu-satunya cara yang tersedia
+ * hari ini adalah menerima nama skema dari alamat — dan itu justru yang
+ * dilarang tegas: nama skema tidak boleh datang dari badan permintaan, query,
+ * header, maupun parameter jalur; ia hanya boleh datang dari
+ * `platform.tenant_schema_registry`.
+ *
+ * Melanggarnya berarti siapa pun di internet dapat mencoba nama skema mana
+ * pun sampai menemukan yang ada. Jadi jalur publiknya DITUNDA sampai
+ * [IR-005](../../../../docs/integration-requests/cooperative/005-resolusi-tenant-situs-publik.md)
+ * — yang meminta Core menyediakan pemetaan host → skema seperti yang sudah
+ * dipakai marketplace — disetujui.
+ *
+ * Sampai saat itu pengurus tetap dapat menyusun dan melihat pratinjau
+ * situsnya, dan lamaran tetap dapat diuji lewat jalur bersesi. Yang belum ada
+ * hanyalah pintunya dari internet.
+ */
+@ApiTags('cooperative-website')
+@Controller('cooperative/website')
+export class CooperativeWebsiteController {
+  constructor(private readonly portal: CooperativePortalService) {}
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_WEBSITE.READ')
+  @Get('preview/:slug')
+  @ApiOperation({
+    summary: 'Pratinjau situs koperasi',
+    description:
+      'Isi yang akan dilihat pengunjung. Jumlah anggota dan besar aset disertakan hanya bila pengurus memilih menampilkannya.',
+  })
+  async pratinjau(@Param('slug') slug: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.portal.situsPublik(requireSchema(user), slug);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_WEBSITE.WRITE')
+  @BlockDemo()
+  @Post('preview/:slug/applications')
+  @HttpCode(201)
+  @ApiOperation({
+    summary: 'Mengirim lamaran calon anggota',
+    description:
+      'Berhenti pada tabel karantina. TIDAK membentuk baris anggota — pengurus yang menerbitkannya setelah memeriksa berkas. Jalur dari internet menunggu IR-005.',
+  })
+  async lamar(
+    @Param('slug') slug: string,
+    @Body() dto: LamaranPublikDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.portal.terimaLamaran(
+      requireSchema(user),
+      slug,
+      {
+        fullName: dto.fullName,
+        phone: dto.phone,
+        email: dto.email ?? null,
+        occupation: dto.occupation ?? null,
+        address: dto.address ?? null,
+        motivation: dto.motivation ?? null,
+        consentGiven: dto.consentGiven,
+      },
+      null,
+    );
+  }
+}
 
 @ApiTags('cooperative')
 @Controller('cooperative')
@@ -374,8 +705,8 @@ export class CooperativeController {
 
 @Module({
   imports: [InfrastructureModule],
-  controllers: [CooperativeController],
-  providers: [CooperativeProfileService, CooperativePosAdapter],
-  exports: [CooperativeProfileService, CooperativePosAdapter],
+  controllers: [CooperativeController, CooperativePortalController, CooperativeWebsiteController],
+  providers: [CooperativeProfileService, CooperativePortalService, CooperativePosAdapter],
+  exports: [CooperativeProfileService, CooperativePortalService, CooperativePosAdapter],
 })
 export class CooperativeModule {}

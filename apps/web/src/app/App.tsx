@@ -78,6 +78,13 @@ const BelanjaProductPage = lazy(() =>
   import('../pages/belanja/BelanjaProductPage').then((m) => ({ default: m.BelanjaProductPage })),
 );
 
+// Vertikal koperasi — seluruh rutenya terkumpul di satu berkas di dalam
+// namespace-nya sendiri, supaya jejaknya di berkas bersama ini tinggal satu
+// impor dan satu baris rute (panduan koordinasi §3).
+const CooperativeRoutes = lazy(() =>
+  import('../verticals/cooperative/routes').then((m) => ({ default: m.CooperativeRoutes })),
+);
+
 export function App() {
   return (
     <Suspense fallback={<LoadingState />}>
@@ -107,6 +114,8 @@ export function App() {
           <Route path="/demo" element={<DemoEntryPage />} />
           <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />
         </Route>
+
+        <Route path="/ekoperasi/*" element={<CooperativeRoutes />} />
 
         {/* Marketplace publik (belanja.ebisnis.id) */}
         <Route path="/belanja" element={<BelanjaLayout />}>
