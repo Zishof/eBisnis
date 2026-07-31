@@ -5,6 +5,44 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## POS-0 — Audit jalur kritis POS Web
+
+### Ditambahkan
+- `docs/pos-web-priority/` — tiga belas dokumen audit: keadaan saat ini, peta
+  dependensi kritis, peta pemakaian ulang modul, matriks celah, matriks peran
+  dan hak akses, peta model data, peta rute API dan UI, peta kemampuan
+  pembayaran, peta posting stok dan akuntansi, garis dasar pengujian, dan
+  rencana peluncuran.
+
+### Temuan utama
+- **Fondasi data POS sudah ada.** Sembilan belas tabel pada `V006`, termasuk
+  `pos_sale` yang sudah memiliki `idempotency_key`, `posting_key`, `offline_id`,
+  `sync_status`, dan `version`. Pekerjaan POS adalah membangun layanan dan
+  antarmuka di atasnya, bukan merancang ulang basis data.
+- **Tidak ada satu pun endpoint `/pos/*` maupun halaman `/app/pos`.** Menu POS
+  sudah terdaftar dan menunjuk ke `/app/pos`, tetapi rute itu jatuh ke
+  `ComingSoonPage`.
+- **`PricingEngineService` bukan untuk POS.** Namanya menyesatkan: mesin itu
+  menghitung tagihan langganan SaaS (`planCode`, `billingInterval`,
+  `deviceIds`), bukan harga produk di kasir. Mesin kuotasi harga POS harus
+  dibangun baru — hanya `DiscountEvaluatorService` yang dapat dipakai ulang.
+  Menyimpulkan sebaliknya akan membuat POS-2 diperkirakan jauh lebih ringan
+  daripada kenyataannya.
+- **Mesin posting akuntansi hanya mengenal dua belas kode `MARKETPLACE_*`.**
+  Dua belas kode `POS_*` beserta aturan postingnya perlu ditambahkan, dan akan
+  tunduk pada uji kelengkapan yang sama.
+- Matriks celah: 66 kemampuan diperiksa — 14 `DONE`, 21 `PARTIAL`, 28 `MISSING`,
+  3 `BLOCKED`. Tidak ada `BROKEN` maupun `CONFLICTING`.
+- Tiga penghalang berasal dari V8 yang belum pernah dibangun: Pusat Bantuan
+  menahan POS-11, ekspor Excel menahan laporan POS-9, dan job cetak PDF menahan
+  struk PDF POS-7. Ketiganya menurunkan mutu, bukan menghentikan kasir.
+
+### Garis dasar
+- `jest` 1048 tes lulus · `vitest` 35 tes lulus · lint dan `tsc` bersih ·
+  `vite build` berhasil.
+- **Cakupan pengujian POS saat ini: nol.** Sasaran minimum sepanjang POS-1
+  sampai POS-8 adalah 100 pengujian baru; sepanjang seluruh fase, 140.
+
 ## Beranda rinci dan empat dokumen penawaran
 
 ### Ditambahkan
