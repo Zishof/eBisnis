@@ -217,13 +217,62 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     sortOrder: 33,
   },
 
+  // Laboratorium dan radiologi — H-5.
+  //
+  // Nilai kritis punya menunya sendiri, terpisah dari hasil. Bukan kerapian:
+  // yang menerima nilai kritis adalah dokter yang merawat, bukan analis yang
+  // memasukkan hasilnya, dan keduanya tidak boleh saling menggantikan.
+  {
+    code: 'HEALTH_LAB_ORDER',
+    parentCode: 'HEALTH',
+    label: 'Pesanan Pemeriksaan',
+    route: '/app/emedik/lab/pesanan',
+    icon: 'flask-conical',
+    actions: ['READ', 'CREATE', 'CANCEL'],
+    sortOrder: 40,
+  },
+  {
+    code: 'HEALTH_LAB_SPECIMEN',
+    parentCode: 'HEALTH',
+    label: 'Spesimen',
+    route: '/app/emedik/lab/spesimen',
+    icon: 'test-tube',
+    actions: ['READ', 'CREATE', 'RECEIVE'],
+    sortOrder: 41,
+  },
+  {
+    code: 'HEALTH_LAB_RESULT',
+    parentCode: 'HEALTH',
+    label: 'Hasil Pemeriksaan',
+    route: '/app/emedik/lab/hasil',
+    icon: 'file-check',
+    actions: ['READ', 'CREATE', 'VERIFY_RESULT', 'AMEND'],
+    sortOrder: 42,
+  },
+  {
+    code: 'HEALTH_LAB_CRITICAL',
+    parentCode: 'HEALTH',
+    label: 'Nilai Kritis',
+    route: '/app/emedik/lab/kritis',
+    icon: 'alert-octagon',
+    actions: ['READ', 'CREATE', 'ACKNOWLEDGE_CRITICAL'],
+    sortOrder: 43,
+  },
+  {
+    code: 'HEALTH_LAB_CATALOG',
+    parentCode: 'HEALTH',
+    label: 'Katalog Pemeriksaan',
+    route: '/app/emedik/lab/katalog',
+    icon: 'list-checks',
+    actions: ['READ', 'CREATE', 'UPDATE'],
+    sortOrder: 44,
+  },
+
   // Fase berikutnya — ditandai jujur
   { code: 'HEALTH_APPOINTMENT', parentCode: 'HEALTH', label: 'Janji Temu', icon: 'calendar', actions: ['READ'], sortOrder: 10, comingSoon: true },
   { code: 'HEALTH_REGISTRATION', parentCode: 'HEALTH', label: 'Pendaftaran', icon: 'clipboard-list', actions: ['READ'], sortOrder: 11, comingSoon: true },
   { code: 'HEALTH_QUEUE', parentCode: 'HEALTH', label: 'Antrean', icon: 'list-ordered', actions: ['READ'], sortOrder: 12, comingSoon: true },
   { code: 'HEALTH_OUTPATIENT', parentCode: 'HEALTH', label: 'Rawat Jalan', icon: 'activity', actions: ['READ'], sortOrder: 20, comingSoon: true },
-  { code: 'HEALTH_LABORATORY', parentCode: 'HEALTH', label: 'Laboratorium', icon: 'flask-conical', actions: ['READ'], sortOrder: 40, comingSoon: true },
-  { code: 'HEALTH_RADIOLOGY', parentCode: 'HEALTH', label: 'Radiologi', icon: 'scan', actions: ['READ'], sortOrder: 41, comingSoon: true },
   { code: 'HEALTH_INPATIENT', parentCode: 'HEALTH', label: 'Rawat Inap', icon: 'bed-double', actions: ['READ'], sortOrder: 50, comingSoon: true },
   { code: 'HEALTH_EMERGENCY', parentCode: 'HEALTH', label: 'IGD', icon: 'siren', actions: ['READ'], sortOrder: 60, comingSoon: true },
   { code: 'HEALTH_PUSKESMAS', parentCode: 'HEALTH', label: 'Puskesmas', icon: 'building-2', actions: ['READ'], sortOrder: 70, comingSoon: true },
@@ -378,6 +427,58 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     sortOrder: 8,
   },
   {
+    code: 'HEALTH_LAB_ANALYST',
+    name: 'Analis Laboratorium',
+    description: 'Menerima spesimen dan memasukkan hasil pemeriksaan. Tidak memverifikasi.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_LAB_ORDER.READ',
+      'HEALTH_LAB_SPECIMEN.READ',
+      'HEALTH_LAB_SPECIMEN.RECEIVE',
+      'HEALTH_LAB_RESULT.READ',
+      'HEALTH_LAB_RESULT.CREATE',
+      'HEALTH_LAB_CATALOG.READ',
+      // Menyampaikan nilai kritis, tetapi tidak menerimanya. Yang menerima
+      // adalah dokter yang merawat — penerimaan oleh penyampainya sendiri
+      // hanya mencatat bahwa telepon berdering.
+      'HEALTH_LAB_CRITICAL.READ',
+      'HEALTH_LAB_CRITICAL.CREATE',
+    ],
+    sortOrder: 9,
+  },
+  {
+    code: 'HEALTH_LAB_SUPERVISOR',
+    name: 'Penanggung Jawab Laboratorium',
+    description: 'Memverifikasi dan melepas hasil, serta mengelola katalog dan rentang rujukan.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_LAB_ORDER.READ',
+      'HEALTH_LAB_SPECIMEN.READ',
+      'HEALTH_LAB_RESULT.READ',
+      'HEALTH_LAB_RESULT.VERIFY_RESULT',
+      'HEALTH_LAB_RESULT.AMEND',
+      'HEALTH_LAB_CATALOG.READ',
+      'HEALTH_LAB_CATALOG.CREATE',
+      'HEALTH_LAB_CATALOG.UPDATE',
+      'HEALTH_LAB_CRITICAL.READ',
+      'HEALTH_LAB_CRITICAL.CREATE',
+    ],
+    sortOrder: 10,
+  },
+  {
+    code: 'HEALTH_RADIOGRAPHER',
+    name: 'Radiografer',
+    description: 'Mengerjakan pemeriksaan radiologi dan mengunggah rujukan citra.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_LAB_ORDER.READ',
+      'HEALTH_LAB_RESULT.READ',
+      'HEALTH_LAB_RESULT.CREATE',
+      'HEALTH_LAB_CATALOG.READ',
+    ],
+    sortOrder: 11,
+  },
+  {
     code: 'HEALTH_QUALITY_MANAGER',
     name: 'Manajer Mutu',
     description: 'Menelaah akses darurat dan indikator mutu.',
@@ -442,6 +543,28 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'obatnya dari rak: keliru memilih tempat obat pada rak tidak akan tertangkap oleh orang ' +
       'yang sejak awal sudah yakin obat apa yang dimaksudnya.',
     conflictingPermissions: ['HEALTH_PRESCRIPTION.CREATE', 'HEALTH_DISPENSING.CREATE'],
+  },
+  {
+    code: 'HEALTH_SOD_RESULT_VERIFY',
+    name: 'Pemasuk hasil tidak memverifikasi hasilnya sendiri',
+    description:
+      'Alasan yang sama seperti telaah apoteker: orang yang mengetik angkanya adalah orang ' +
+      'yang paling sulit melihat kekeliruannya. Basis data menegakkannya pula lewat constraint ' +
+      'lab_result_verify_not_self, dengan pengecualian verifikasi otomatis — di sana yang ' +
+      'memasukkan hasilnya adalah alat, bukan orang.',
+    conflictingPermissions: ['HEALTH_LAB_RESULT.CREATE', 'HEALTH_LAB_RESULT.VERIFY_RESULT'],
+  },
+  {
+    code: 'HEALTH_SOD_CRITICAL_ACK',
+    name: 'Penyampai nilai kritis tidak menerimanya sendiri',
+    description:
+      'Penerimaan nilai kritis membuktikan bahwa dokter yang merawat benar-benar mendengar ' +
+      'angkanya. Bila analis yang menyampaikan juga yang mencatat penerimaannya, catatan itu ' +
+      'hanya membuktikan bahwa ia menekan dua tombol.',
+    conflictingPermissions: [
+      'HEALTH_LAB_CRITICAL.CREATE',
+      'HEALTH_LAB_CRITICAL.ACKNOWLEDGE_CRITICAL',
+    ],
   },
 ];
 

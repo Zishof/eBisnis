@@ -5,6 +5,92 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-5 — Laboratorium dan radiologi: pesanan, spesimen, hasil, dan nilai kritis
+
+### Ditambahkan
+
+- **`H008__health__laboratory.sql`** — delapan tabel: `lab_test_catalog`,
+  `lab_reference_range`, `lab_order`, `lab_order_item`, `lab_specimen`,
+  `lab_result`, `lab_result_amendment`, `lab_critical_notification`.
+- **`H009__health__laboratory_permissions.sql`** — aksi `RECEIVE` dan `AMEND`,
+  lima menu laboratorium, tiga peran baru (Analis Laboratorium, Penanggung
+  Jawab Laboratorium, Radiografer), dan dua aturan pemisahan wewenang.
+- **`health-lab.ts`** — aturan sebagai fungsi murni: pemilihan rentang rujukan
+  menurut umur dan jenis kelamin, penilaian hasil, pemeriksaan delta,
+  penerimaan spesimen, verifikasi otomatis, pelepasan, penyampaian nilai
+  kritis, amandemen, dan pengurutan daftar kerja. **64 pengujian.**
+- **`health-lab.service.ts`** dan **`health-lab.controller.ts`** — dua belas
+  jalan pada `/api/v1/health/lab/**`.
+- **`LabPage.tsx`** — daftar kerja dan nilai kritis pada web.
+- **`prove-health-lab.mjs`** — naskah bukti, 44 pemeriksaan, seluruhnya lulus.
+  Dijalankan dengan empat pengguna: dokter, perawat, analis, penyelia.
+
+Uji: API 1243 → **1307**. Web 54 → **59**.
+
+### Keputusan yang perlu dicatat
+
+- **Nilai kritis punya tabelnya sendiri, bukan kolom pada hasil.** Satu nilai
+  kritis dapat disampaikan berkali-kali sebelum ada yang menerimanya, dan
+  setiap percobaan itu berharga ketika kelak ditanya mengapa hasilnya terlambat
+  sampai. Catatannya terbuka **sendiri** begitu hasilnya dinilai kritis;
+  menunggu seseorang menekan tombol berarti nilai kritis yang terlupa tidak
+  meninggalkan jejak bahwa ia pernah ada.
+
+- **Penerimaan menuntut bacaan ulang, dan dicocokkan di peladen.** Penerima
+  mengulang angkanya kepada penyampai — satu-satunya cara mengetahui bahwa yang
+  terdengar sama dengan yang diucapkan. Ditegakkan constraint basis data pula,
+  supaya tidak dapat dilewati lewat jalan lain menuju tabelnya.
+
+- **Rentang rujukan bergantung umur DAN jenis kelamin**, dan yang dipakai
+  **disalin** ke baris hasilnya. Rentang berubah ketika alat diganti; hasil
+  tahun lalu harus tetap dapat dijelaskan dengan rentang tahun lalu.
+
+- **Batas kritis wajib berada di luar rentang normal**, ditegakkan constraint.
+  Penandaan kritis yang sering keliru adalah penandaan yang akan diabaikan.
+
+- **Hasil tanpa rentang yang berlaku dinyatakan belum dapat dinilai, bukan
+  normal** — di layanan maupun di layar, di mana ia sengaja tidak berwarna
+  hijau.
+
+- **Verifikasi otomatis tidak pernah untuk nilai kritis**, tidak pernah ketika
+  delta mencurigakan, dan tidak pernah untuk pemeriksaan yang tidak ditandai.
+
+- **Spesimen tanpa label tidak pernah diterima**, dan pesanannya ikut ditolak
+  supaya tidak duduk selamanya di daftar kerja tanpa ada yang tahu pasiennya
+  harus diambil ulang.
+
+- **Verifikator bukan pemasuk hasil, dan penerima nilai kritis bukan
+  penyampainya.** Keduanya menjadi aturan pemisahan wewenang, dan yang pertama
+  ditegakkan constraint pula — dengan pengecualian verifikasi otomatis, di mana
+  yang memasukkan hasilnya adalah alat, bukan orang.
+
+- **Nilai kritis ditempatkan di atas daftar kerja, bukan di tab tersendiri.**
+  Tab tersendiri berarti seseorang harus memilih untuk melihatnya, dan
+  laboratorium yang sibuk tidak memilih — ia mengerjakan apa yang ada di depan
+  mata.
+
+### Cacat yang ditemukan naskah bukti, bukan pengujian unit
+
+Basis data menyimpan hasil sebagai `NUMERIC(18,6)` dan mengembalikannya sebagai
+`"7.200000"`; dokter yang mengulang angkanya di telepon mengetik `"7,2"`.
+Perbandingan teks menolak keduanya sebagai tidak cocok — sehingga **setiap**
+penerimaan nilai kritis yang sah akan gagal. Pengujian unitnya lolos karena
+membandingkan `"6.2"` dengan `"6.2"`, nilai yang tidak pernah melewati basis
+data. Penolakan yang selalu terjadi adalah penolakan yang akan dicarikan jalan
+memutar, tepat pada langkah yang paling tidak boleh dilewati. Perbandingannya
+kini dilakukan sebagai angka bila keduanya angka, sebagai teks bila bukan, dan
+pesan galatnya menyebut angka seperti yang diucapkan — bukan seperti disimpan.
+
+### Belum dikerjakan
+
+Laboratorium rujukan luar, antarmuka alat (HL7/ASTM), pemesanan berpaket, dan
+PACS/DICOM. Yang terakhir tetap **terhalang**: yang disimpan baru rujukan citra,
+sebab menyimpan berkas utuh di basis data relasional akan membengkakkan cadangan
+sampai tidak dapat dipulihkan pada saat dibutuhkan. Arsitektur penyimpanannya
+menunggu keputusan Core.
+
+---
+
 ## H-4 — Farmasi: resep, telaah apoteker, penyerahan, dan pemberian obat
 
 ### Ditambahkan

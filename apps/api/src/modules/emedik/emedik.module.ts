@@ -34,8 +34,10 @@ import { HealthFacilityService } from './health-facility.service';
 import { HealthPatientService } from './health-patient.service';
 import { HealthVisitService } from './health-visit.service';
 import { HealthPharmacyService } from './health-pharmacy.service';
+import { HealthLabService } from './health-lab.service';
 import { HealthClinicalController } from './health-clinical.controller';
 import { HealthPharmacyController } from './health-pharmacy.controller';
+import { HealthLabController } from './health-lab.controller';
 import {
   CoreAuditAdapter,
   CoreIdentityAdapter,
@@ -373,12 +375,13 @@ export class HealthController {
 
 @Module({
   imports: [InfrastructureModule, AuthModule],
-  controllers: [HealthController, HealthClinicalController, HealthPharmacyController],
+  controllers: [HealthController, HealthClinicalController, HealthPharmacyController, HealthLabController],
   providers: [
     HealthFacilityService,
     HealthPatientService,
     HealthVisitService,
     HealthPharmacyService,
+    HealthLabService,
     CoreIdentityAdapter,
     CoreAuditAdapter,
     CoreNotificationAdapter,
@@ -396,6 +399,7 @@ export class HealthController {
     HealthPatientService,
     HealthVisitService,
     HealthPharmacyService,
+    HealthLabService,
     IDENTITY_PORT,
     AUDIT_PORT,
     NOTIFICATION_PORT,

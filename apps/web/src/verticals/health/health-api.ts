@@ -251,6 +251,100 @@ export interface ResepLengkap {
   lines: BarisResep[];
 }
 
+// --- Laboratorium ------------------------------------------------------------
+
+export type PenilaianHasil =
+  | 'NORMAL'
+  | 'LOW'
+  | 'HIGH'
+  | 'CRITICAL_LOW'
+  | 'CRITICAL_HIGH'
+  | 'ABNORMAL'
+  | 'UNKNOWN';
+
+export interface PemeriksaanKatalog {
+  id: string;
+  code: string;
+  name: string;
+  short_name: string | null;
+  department: string;
+  category: string | null;
+  result_type: string;
+  unit: string | null;
+  specimen_type: string | null;
+  container_type: string | null;
+  turnaround_minutes: number | null;
+  requires_fasting: boolean;
+  price: number;
+  range_count: number;
+}
+
+export interface BarisKerjaLab {
+  id: string;
+  order_number: string;
+  priority: 'STAT' | 'URGENT' | 'ROUTINE';
+  ordered_at: string;
+  status: string;
+  department: string;
+  patient_name: string;
+  item_count: number;
+  resulted_count: number;
+  isCritical: boolean;
+  overdue: boolean;
+}
+
+export interface HasilMasuk {
+  id: string;
+  flag: PenilaianHasil;
+  critical: boolean;
+  message: string;
+  delta: { suspicious: boolean; changePercent: number | null; message?: string };
+  autoVerified: boolean;
+  autoVerifyBlockedBecause: string | null;
+}
+
+export interface HasilLab {
+  id: string;
+  value_numeric: number | null;
+  value_text: string | null;
+  unit: string | null;
+  range_low: number | null;
+  range_high: number | null;
+  flag: PenilaianHasil;
+  is_critical: boolean;
+  status: string;
+  released_at: string | null;
+  impression: string | null;
+  image_reference: string | null;
+  test_name: string;
+  test_code: string;
+  department: string;
+  order_number: string;
+  ordered_at: string;
+  amendment_count: number;
+}
+
+export interface NilaiKritis {
+  id: string;
+  result_id: string;
+  critical_at: string;
+  acknowledged_at: string | null;
+  notified_at: string | null;
+  escalated_at: string | null;
+  patient_name: string;
+  test_name: string;
+  value_numeric: string | null;
+  value_text: string | null;
+  unit: string | null;
+  flag: PenilaianHasil;
+  order_number: string;
+  delivery: {
+    state: 'ACKNOWLEDGED' | 'PENDING' | 'OVERDUE';
+    minutesElapsed: number;
+    message: string;
+  };
+}
+
 // --- Panggilan ---------------------------------------------------------------
 
 export const healthApi = {
@@ -435,6 +529,77 @@ export const healthApi = {
     api.post<{ id: string; status: string }>('/health/pharmacy/administrations/skip', body, {
       headers: tajuk(ctx),
     }),
+
+  // --- Laboratorium dan radiologi -------------------------------------------
+  labTests: (department?: string) =>
+    api.get<PemeriksaanKatalog[]>(`/health/lab/tests${department ? `?department=${department}` : ''}`),
+
+  labWorklist: (facilityId: string, department?: string) =>
+    api.get<BarisKerjaLab[]>(
+      `/health/lab/worklist?facilityId=${facilityId}${department ? `&department=${department}` : ''}`,
+    ),
+
+  createLabOrder: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{
+      id: string;
+      orderNumber: string;
+      specimens: Array<{ id: string; specimenNumber: string; specimenType: string }>;
+    }>('/health/lab/orders', body, { headers: tajuk(ctx) }),
+
+  collectSpecimen: (id: string, body: { volumeMl?: number }, ctx: KonteksAkses) =>
+    api.post<{ id: string; status: string }>(`/health/lab/specimens/${id}/collect`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  receiveSpecimen: (id: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; status: string }>(`/health/lab/specimens/${id}/receive`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  enterResult: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<HasilMasuk>('/health/lab/results', body, { headers: tajuk(ctx) }),
+
+  verifyResult: (id: string, ctx: KonteksAkses) =>
+    api.post<{ id: string; status: string }>(`/health/lab/results/${id}/verify`, {}, {
+      headers: tajuk(ctx),
+    }),
+
+  releaseResult: (id: string, ctx: KonteksAkses) =>
+    api.post<{ id: string; status: string; critical: boolean }>(
+      `/health/lab/results/${id}/release`,
+      {},
+      { headers: tajuk(ctx) },
+    ),
+
+  amendResult: (
+    id: string,
+    body: { valueNumeric?: number; valueText?: string; reason: string },
+    ctx: KonteksAkses,
+  ) =>
+    api.post<{ id: string; status: string; flag: string; critical: boolean }>(
+      `/health/lab/results/${id}/amend`,
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  patientLabResults: (patientId: string, ctx: KonteksAkses) =>
+    api.get<HasilLab[]>(`/health/lab/patients/${patientId}/results`, { headers: tajuk(ctx) }),
+
+  // Daftar nilai kritis tidak menuntut tujuan penggunaan: ia daftar kerja, bukan
+  // pembacaan rekam medis seorang pasien tertentu. Yang menuntutnya adalah
+  // penerimaannya, karena di sanalah isinya benar-benar dibaca.
+  criticalPending: (facilityId?: string) =>
+    api.get<NilaiKritis[]>(`/health/lab/critical${facilityId ? `?facilityId=${facilityId}` : ''}`),
+
+  notifyCritical: (id: string, body: { channel: string; notifiedTo: string }, ctx: KonteksAkses) =>
+    api.post<{ id: string; notified: boolean }>(`/health/lab/critical/${id}/notify`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  acknowledgeCritical: (id: string, body: { readBackValue: string }, ctx: KonteksAkses) =>
+    api.post<{ id: string; acknowledged: boolean }>(`/health/lab/critical/${id}/acknowledge`, body, {
+      headers: tajuk(ctx),
+    }),
 };
 
 // --- Bantuan tampilan --------------------------------------------------------
@@ -507,6 +672,84 @@ export const LABEL_GOLONGAN_OBAT: Record<string, string> = {
   PRESCRIPTION: 'Keras',
   PSYCHOTROPIC: 'Psikotropika',
   NARCOTIC: 'Narkotika',
+};
+
+/**
+ * Rupa penilaian hasil laboratorium.
+ *
+ * Sama seperti peringatan obat: hanya yang kritis berwarna merah pekat. Hasil
+ * tinggi dan rendah memang perlu terlihat, tetapi bila semuanya merah, yang
+ * benar-benar membahayakan tidak lagi menonjol.
+ */
+export const RUPA_HASIL: Record<string, { kelas: string; label: string; singkat: string }> = {
+  CRITICAL_HIGH: {
+    kelas: 'bg-rose-600 text-white dark:bg-rose-700',
+    label: 'Kritis tinggi',
+    singkat: 'KT',
+  },
+  CRITICAL_LOW: {
+    kelas: 'bg-rose-600 text-white dark:bg-rose-700',
+    label: 'Kritis rendah',
+    singkat: 'KR',
+  },
+  HIGH: {
+    kelas: 'bg-orange-100 text-orange-900 dark:bg-orange-950/60 dark:text-orange-200',
+    label: 'Tinggi',
+    singkat: 'T',
+  },
+  LOW: {
+    kelas: 'bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200',
+    label: 'Rendah',
+    singkat: 'R',
+  },
+  ABNORMAL: {
+    kelas: 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200',
+    label: 'Tidak normal',
+    singkat: 'A',
+  },
+  NORMAL: {
+    kelas: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200',
+    label: 'Normal',
+    singkat: 'N',
+  },
+  /*
+   * Sengaja TIDAK berwarna hijau. Hasil tanpa rentang rujukan yang berlaku
+   * bukan hasil normal — ia hasil yang belum dapat dinilai, dan mewarnainya
+   * hijau akan membuat pembacanya berhenti melihat.
+   */
+  UNKNOWN: {
+    kelas: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+    label: 'Belum dapat dinilai',
+    singkat: '—',
+  },
+};
+
+export const LABEL_PRIORITAS_LAB: Record<string, string> = {
+  STAT: 'Segera',
+  URGENT: 'Mendesak',
+  ROUTINE: 'Rutin',
+};
+
+export const LABEL_STATUS_SPESIMEN: Record<string, string> = {
+  ORDERED: 'Menunggu pengambilan',
+  COLLECTED: 'Sudah diambil',
+  RECEIVED: 'Diterima laboratorium',
+  REJECTED: 'Ditolak',
+  IN_PROCESS: 'Sedang dikerjakan',
+  COMPLETED: 'Selesai',
+};
+
+export const LABEL_TOLAK_SPESIMEN: Record<string, string> = {
+  UNLABELLED: 'Tanpa label',
+  MISLABELLED: 'Label tidak cocok',
+  HEMOLYSED: 'Hemolisis',
+  CLOTTED: 'Menggumpal',
+  INSUFFICIENT_VOLUME: 'Volume kurang',
+  WRONG_CONTAINER: 'Tabung keliru',
+  CONTAMINATED: 'Terkontaminasi',
+  EXPIRED_TUBE: 'Tabung kedaluwarsa',
+  DELAYED_TRANSPORT: 'Terlambat tiba',
+  LEAKED: 'Bocor',
 };
 
 export const LABEL_KEGAWATAN: Record<string, string> = {

@@ -116,12 +116,68 @@ masuk dan pulang (menunggu H-6), penarikan sediaan, dan pelaporan narkotika ke
 SIPNAP. Kode peristiwa akuntansi `HEALTH_*` masih menunggu keputusan Core, jadi
 penyerahan obat belum memicu pencatatan harga pokok.
 
-### H-5 · Laboratorium, radiologi, hasil
+### H-5 · Laboratorium, radiologi, hasil — **SELESAI**
 
-Katalog, pesanan, spesimen, daftar kerja, hasil, rentang rujukan, **hasil kritis
-dengan penerimaan wajib**, verifikasi, amandemen, laboratorium luar.
+Katalog, pesanan, spesimen, daftar kerja, hasil, rentang rujukan, hasil kritis
+dengan penerimaan wajib, verifikasi, amandemen.
 
-Uji ≥ 30. PACS/DICOM **terhalang** — memerlukan arsitektur penyimpanan.
+Uji ≥ 30 → **64 tercapai**, ditambah naskah bukti 44 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H008__health__laboratory.sql`, `H009__health__laboratory_permissions.sql` |
+| Aturan murni | `health-lab.ts` + 64 pengujian |
+| Layanan | `health-lab.service.ts` |
+| Endpoint | `health-lab.controller.ts` — 12 jalan di `/api/v1/health/lab/**` |
+| Layar | `apps/web/src/verticals/health/LabPage.tsx` |
+| Bukti | `scripts/prove-health-lab.mjs` → [bukti-h5-laboratorium.txt](bukti-h5-laboratorium.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **Nilai kritis punya tabelnya sendiri**, bukan kolom pada hasil. Satu nilai
+  kritis dapat disampaikan berkali-kali sebelum ada yang menerimanya, dan
+  setiap percobaan itu berharga ketika kelak ditanya mengapa hasilnya terlambat
+  sampai. Catatan penyampaiannya terbuka **sendiri** begitu hasilnya dinilai
+  kritis — menunggu seseorang menekan tombol "sampaikan" berarti nilai kritis
+  yang terlupa tidak meninggalkan jejak bahwa ia pernah ada.
+
+- **Penerimaan menuntut bacaan ulang, dicocokkan di peladen.** "Sudah saya
+  sampaikan" tanpa bacaan ulang hanya mencatat bahwa telepon berdering.
+
+- **Rentang rujukan bergantung umur DAN jenis kelamin.** Hemoglobin 11 g/dL
+  wajar pada anak dan menunjukkan anemia pada laki-laki dewasa. Rentang yang
+  dipakai **disalin** ke baris hasilnya, bukan dirujuk: rentang berubah ketika
+  alat diganti, dan hasil tahun lalu harus tetap dapat dijelaskan dengan
+  rentang tahun lalu.
+
+- **Hasil tanpa rentang yang berlaku dinyatakan `UNKNOWN`, bukan normal.**
+  Menandainya normal adalah berbohong; menandainya tinggi juga.
+
+- **Verifikasi otomatis tidak pernah untuk nilai kritis** dan tidak pernah
+  ketika pemeriksaan delta mencurigakan. Nilai kritis yang lolos tanpa dilihat
+  siapa pun akan masuk ke rekam medis tanpa ada seorang pun yang tahu ia pernah
+  ada.
+
+- **Spesimen tanpa label tidak pernah diterima.** Keyakinan yang salah tentang
+  identitas spesimen menghasilkan hasil yang benar secara analitis, dilaporkan
+  dengan percaya diri, dan tertempel pada orang yang keliru — dan ia akan
+  dipercaya, karena laboratorium jarang salah.
+
+- **Sebab penolakan spesimen dibatasi daftar tertutup.** Teks bebas membuat
+  "hemolisis", "hemolysed", dan "darah pecah" menjadi tiga hal berbeda bagi
+  laporan mutu, dan laporan yang tidak dapat menghitung sebab penolakan tidak
+  dapat memperbaikinya.
+
+- **Nilai kritis ditempatkan di atas daftar kerja pada layar, bukan di tab
+  tersendiri.** Tab tersendiri berarti seseorang harus memilih untuk melihatnya,
+  dan laboratorium yang sibuk tidak memilih — ia mengerjakan apa yang ada di
+  depan mata.
+
+**Yang belum:** laboratorium rujukan luar, antarmuka alat (HL7/ASTM), pemesanan
+berpaket (order set), dan PACS/DICOM. Yang terakhir tetap **terhalang** — yang
+disimpan baru rujukan citra; arsitektur penyimpanannya menunggu keputusan Core.
 
 ### H-6 · Rawat inap, ADT, tempat tidur, keperawatan
 

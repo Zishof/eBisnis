@@ -14,7 +14,10 @@ import {
   umurDari,
   LABEL_GOLONGAN_OBAT,
   LABEL_KEYAKINAN,
+  LABEL_PRIORITAS_LAB,
   LABEL_STATUS_RESEP,
+  LABEL_TOLAK_SPESIMEN,
+  RUPA_HASIL,
   RUPA_PERINGATAN,
   TUJUAN_LABEL,
   type PurposeOfUse,
@@ -111,6 +114,17 @@ describe('tujuan penggunaan pada pembacaan rekam medis', () => {
         'skipAdministration',
         () => healthApi.skipAdministration({ administrationId: 'A1', status: 'OMITTED', reason: 'x' }, ctx),
       ],
+      // Laboratorium.
+      ['createLabOrder', () => healthApi.createLabOrder({}, ctx)],
+      ['collectSpecimen', () => healthApi.collectSpecimen('S1', {}, ctx)],
+      ['receiveSpecimen', () => healthApi.receiveSpecimen('S1', {}, ctx)],
+      ['enterResult', () => healthApi.enterResult({}, ctx)],
+      ['verifyResult', () => healthApi.verifyResult('R1', ctx)],
+      ['releaseResult', () => healthApi.releaseResult('R1', ctx)],
+      ['amendResult', () => healthApi.amendResult('R1', { reason: 'sepuluh huruf' }, ctx)],
+      ['patientLabResults', () => healthApi.patientLabResults('P1', ctx)],
+      ['notifyCritical', () => healthApi.notifyCritical('C1', { channel: 'PHONE', notifiedTo: 'x' }, ctx)],
+      ['acknowledgeCritical', () => healthApi.acknowledgeCritical('C1', { readBackValue: '7.2' }, ctx)],
     ];
 
     const tanpaTujuan: string[] = [];
@@ -216,5 +230,42 @@ describe('rupa peringatan obat', () => {
   it('golongan obat dinyatakan dengan istilah Indonesia yang dipakai apoteker', () => {
     expect(LABEL_GOLONGAN_OBAT.NARCOTIC).toBe('Narkotika');
     expect(LABEL_GOLONGAN_OBAT.PRESCRIPTION).toBe('Keras');
+  });
+});
+
+describe('rupa hasil laboratorium', () => {
+  it('setiap penilaian punya rupa, label, dan singkatannya', () => {
+    for (const f of ['CRITICAL_HIGH', 'CRITICAL_LOW', 'HIGH', 'LOW', 'NORMAL', 'UNKNOWN']) {
+      expect(RUPA_HASIL[f]?.label).toBeTruthy();
+      expect(RUPA_HASIL[f]?.singkat).toBeTruthy();
+      expect(RUPA_HASIL[f]?.kelas).toContain('bg-');
+    }
+  });
+
+  it('HANYA nilai kritis yang berwarna merah pekat', () => {
+    const pekat = Object.entries(RUPA_HASIL).filter(([, r]) => r.kelas.includes('rose-6'));
+    expect(pekat.map(([k]) => k).sort()).toEqual(['CRITICAL_HIGH', 'CRITICAL_LOW']);
+  });
+
+  it('hasil yang belum dapat dinilai TIDAK berwarna hijau', () => {
+    /*
+     * Hasil tanpa rentang rujukan yang berlaku bukan hasil normal — ia hasil
+     * yang belum dapat dinilai. Mewarnainya hijau akan membuat pembacanya
+     * berhenti melihat.
+     */
+    expect(RUPA_HASIL.UNKNOWN.kelas).not.toContain('emerald');
+    expect(RUPA_HASIL.UNKNOWN.label).toContain('Belum');
+  });
+
+  it('setiap sebab penolakan spesimen punya label berbahasa Indonesia', () => {
+    for (const [kode, label] of Object.entries(LABEL_TOLAK_SPESIMEN)) {
+      expect(label).not.toBe(kode);
+      expect(label).not.toMatch(/_/);
+    }
+  });
+
+  it('prioritas laboratorium dinyatakan dengan kata yang dipahami petugas', () => {
+    expect(LABEL_PRIORITAS_LAB.STAT).toBe('Segera');
+    expect(LABEL_PRIORITAS_LAB.ROUTINE).toBe('Rutin');
   });
 });

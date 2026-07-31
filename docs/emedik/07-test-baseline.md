@@ -67,9 +67,10 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-2 | 40 | 42 | `health-patient-identity.spec.ts` |
 | H-3 | 30 | 37 | `health-front-office.spec.ts` |
 | H-4 | 35 | **60** | `health-medication.spec.ts` |
+| H-5 | 30 | **64** | `health-lab.spec.ts` |
 
-API keseluruhan: **1243** pengujian pada 50 berkas. Web: **54** pada 5 berkas,
-19 di antaranya pada `health-api.spec.ts`.
+API keseluruhan: **1307** pengujian pada 51 berkas. Web: **59** pada 5 berkas,
+24 di antaranya pada `health-api.spec.ts`.
 
 ### Naskah bukti
 
@@ -83,6 +84,17 @@ sungguhan, pada basis data sungguhan:
 | H-2/H-3 | `prove-health-flow-e2e.mjs` | [bukti-h2-h3-alur.txt](bukti-h2-h3-alur.txt) |
 | H-3 | `prove-health-clinical.mjs` | [bukti-h3-klinis.txt](bukti-h3-klinis.txt) |
 | H-4 | `prove-health-pharmacy.mjs` | 44 pemeriksaan, seluruhnya lulus — [bukti-h4-farmasi.txt](bukti-h4-farmasi.txt) |
+| H-5 | `prove-health-lab.mjs` | 44 pemeriksaan, seluruhnya lulus — [bukti-h5-laboratorium.txt](bukti-h5-laboratorium.txt) |
+
+Naskah H-5 menemukan satu cacat yang akan mengenai **setiap** penerimaan nilai
+kritis di lapangan: basis data menyimpan hasil sebagai `NUMERIC(18,6)` dan
+mengembalikannya sebagai `"7.200000"`, sedangkan dokter yang mengulang angkanya
+di telepon mengetik `"7,2"`. Perbandingan teks menolak keduanya sebagai tidak
+cocok. Pengujian unitnya lolos karena membandingkan `"6.2"` dengan `"6.2"` —
+nilai yang tidak pernah melewati basis data. Penolakan yang selalu terjadi
+adalah penolakan yang akan dicarikan jalan memutar, tepat pada langkah yang
+paling tidak boleh dilewati. Perbandingannya kini dilakukan sebagai angka bila
+keduanya angka, dan sebagai teks bila bukan.
 
 Naskah H-4 menemukan dua cacat yang tidak tertangkap satu pun pengujian unit,
 dan keduanya menyangkut keselamatan pasien:
