@@ -29,6 +29,16 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { AuthenticatedUser } from '../../common/decorators';
 import { PosCatalogService } from './pos-catalog.service';
 import { PosStockService } from './pos-stock.service';
+import { ExternalPaymentRegistry } from './external-payment.registry';
+import {
+  bolehDiproses,
+  bolehDiselesaikan,
+  bolehMemberiKembalian,
+  perluDilepaskan,
+  perluDiwujudkan,
+  perluPenangan,
+  pesanUntukKasir,
+} from './pos-external-payment';
 import { bulatkan, totalKeranjang, type HasilKuotasi } from './pos-pricing';
 import {
   bolehPindah,
@@ -58,6 +68,15 @@ export class PosSaleService {
     private readonly tenantDb: TenantConnectionService,
     private readonly katalog: PosCatalogService,
     private readonly stok: PosStockService,
+    /*
+     * Penangan pembayaran bersaldo eksternal (IR-002).
+     *
+     * POS tidak mengetahui apa pun tentang saldo yang dikelola modul lain —
+     * ia hanya tahu bahwa ada penangan yang dapat menahan, mewujudkan, dan
+     * melepaskannya. Ketidaktahuan itu disengaja: begitu POS mengetahui
+     * bentuk saldo koperasi, ia berhenti dapat dipakai vertikal berikutnya.
+     */
+    private readonly pembayaranEksternal: ExternalPaymentRegistry,
   ) {}
 
   // --- Keranjang -------------------------------------------------------------
@@ -342,9 +361,73 @@ export class PosSaleService {
         [saleId],
       );
       for (const b of baris) await this.stok.lepas(schemaName, b.id, alasan);
+
+      await this.lepaskanPenahananEksternal(schemaName, saleId, alasan ?? 'Transaksi dibatalkan.');
     }
 
     return this.ambil(schemaName, saleId);
+  }
+
+  /**
+   * Melepaskan penahanan dana pada modul lain (IR-002).
+   *
+   * Dipanggil saat penjualan dibatalkan. Tanpa ini, saldo anggota tertahan
+   * selamanya untuk transaksi yang tidak pernah terjadi — dan anggota tidak
+   * akan mengetahuinya sampai ia mencoba memakai saldonya.
+   *
+   * Kegagalan di sini **dicatat, tidak dilempar**. Pembatalan penjualan sudah
+   * selesai dan tidak boleh digagalkan oleh modul lain yang sedang tidak
+   * dapat dihubungi; barisnya tetap `AUTHORIZED` dan indeks parsial
+   * `ix_pos_payment_external_pending` menyediakannya bagi penjadwal pelepas.
+   *
+   * Penahanan yang sudah `CAPTURED` sengaja tidak disentuh. Dana yang sudah
+   * berpindah dikembalikan lewat retur, yang punya jejaknya sendiri.
+   */
+  private async lepaskanPenahananEksternal(
+    schemaName: string,
+    saleId: string,
+    alasan: string,
+  ): Promise<void> {
+    const rows = await this.tenantDb.query<{
+      id: string;
+      external_handler: string | null;
+      external_reference: string | null;
+      external_state: string | null;
+      status: string;
+    }>(
+      schemaName,
+      `SELECT id, external_handler, external_reference, external_state, status
+         FROM "${schemaName}".pos_payment WHERE pos_sale_id = $1`,
+      [saleId],
+    );
+
+    for (const p of perluDilepaskan(
+      rows.map((x) => ({
+        id: x.id,
+        externalHandler: x.external_handler,
+        externalReference: x.external_reference,
+        externalState: x.external_state,
+        status: x.status,
+      })),
+    )) {
+      try {
+        const penangan = this.pembayaranEksternal.require(p.externalHandler!);
+        await penangan.reverse({ schemaName, reference: p.externalReference!, reason: alasan });
+        await this.tenantDb.query(
+          schemaName,
+          `UPDATE "${schemaName}".pos_payment
+              SET external_state = 'REVERSED'
+            WHERE id = $1 AND external_state = 'AUTHORIZED'`,
+          [p.id],
+        );
+      } catch (error) {
+        const pesan = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Pelepasan penahanan ${p.externalReference} pada pembayaran ${p.id} gagal: ${pesan}. ` +
+            'Baris dibiarkan AUTHORIZED untuk ditagih ulang penjadwal.',
+        );
+      }
+    }
   }
 
   // --- Pembayaran dan penyelesaian ------------------------------------------
@@ -352,7 +435,14 @@ export class PosSaleService {
   async tambahPembayaran(
     schemaName: string,
     saleId: string,
-    input: { paymentMethodId: string; amount: number; tenderedAmount?: number; reference?: string },
+    input: {
+      paymentMethodId: string;
+      amount: number;
+      tenderedAmount?: number;
+      reference?: string;
+      /** Bukti sekali pakai dari layar penyedia saldo. Bukan PIN. */
+      authToken?: string;
+    },
     idempotencyKey: string,
     /*
      * Siapa yang benar-benar menerima uangnya, dicatat pada barisnya sendiri
@@ -382,9 +472,10 @@ export class PosSaleService {
       requires_reference: boolean;
       method_type: string;
       name: string;
+      external_handler: string | null;
     }>(
       schemaName,
-      `SELECT allows_change, requires_reference, method_type, name
+      `SELECT allows_change, requires_reference, method_type, name, external_handler
          FROM "${schemaName}".payment_method
         WHERE id = $1 AND deleted_at IS NULL AND is_active = TRUE`,
       [input.paymentMethodId],
@@ -401,7 +492,39 @@ export class PosSaleService {
       );
     }
 
+    /*
+     * Pembayaran bersaldo eksternal (IR-002).
+     *
+     * Diperiksa SEBELUM transaksi dibuka. Penahanan dana berada di modul lain
+     * dan tidak ikut digulung balik oleh `ROLLBACK` di sini — jadi ia tidak
+     * boleh terjadi di dalam transaksi yang masih mungkin gagal karena sebab
+     * lain.
+     */
+    const metodeEksternal = {
+      methodType: m.method_type,
+      externalHandler: m.external_handler,
+      name: m.name,
+    };
+    const gerbang = bolehDiproses(
+      metodeEksternal,
+      m.external_handler ? this.pembayaranEksternal.has(m.external_handler) : false,
+    );
+    if (!gerbang.allowed) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, gerbang.message!);
+    }
+
     const diserahkan = input.tenderedAmount ?? input.amount;
+
+    if (perluPenangan(metodeEksternal) && diserahkan !== input.amount) {
+      // Saldo yang ditahan sebesar nilai transaksi tidak menghasilkan uang
+      // tunai di laci; memberi kembalian atasnya mengeluarkan kas untuk dana
+      // yang tidak pernah masuk ke sana.
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        bolehMemberiKembalian(metodeEksternal).message!,
+      );
+    }
+
     if (!m.allows_change && diserahkan > input.amount) {
       /*
        * Lebih bayar hanya sah pada tunai. Kelebihan pada kartu berarti
@@ -433,11 +556,49 @@ export class PosSaleService {
 
       const kembalian = m.allows_change ? Math.max(0, diserahkan - input.amount) : 0;
 
+      /*
+       * Penahanan dana pada modul lain.
+       *
+       * Diletakkan SESUDAH pemeriksaan idempotensi dengan sengaja: klik ganda
+       * pada layar yang lambat adalah keadaan yang pasti terjadi di lapangan,
+       * dan menahan dana dua kali berarti saldo anggota berkurang dua kali
+       * untuk satu transaksi.
+       *
+       * `authorize()` MENAHAN, tidak memotong. Pemotongan hanya terjadi saat
+       * penjualan diselesaikan — kasir yang menutup layar di tengah pembayaran
+       * tidak boleh meninggalkan saldo yang berkurang tanpa transaksi.
+       */
+      let rujukanEksternal: string | null = null;
+      if (perluPenangan(metodeEksternal)) {
+        const penangan = this.pembayaranEksternal.require(m.external_handler!);
+        const hasil = await penangan.authorize({
+          schemaName,
+          saleId,
+          outletId: sale.outlet_id,
+          customerId: sale.customer_id ?? null,
+          amount: String(input.amount),
+          idempotencyKey,
+          // Bukti sekali pakai dari layar milik penyedia penangan. POS
+          // meneruskannya apa adanya dan tidak pernah menyimpannya; ia BUKAN
+          // PIN, dan PIN tidak pernah melewati kasir sama sekali.
+          authToken: input.authToken,
+        });
+
+        if (!hasil.authorized) {
+          throw AppError.badRequest(
+            ErrorCodes.VALIDATION_FAILED,
+            pesanUntukKasir(hasil.message, m.name),
+          );
+        }
+        rujukanEksternal = hasil.reference;
+      }
+
       const baru = await client.query<{ id: string }>(
         `INSERT INTO "${schemaName}".pos_payment
            (pos_sale_id, payment_method_id, amount, tendered_amount, change_amount,
-            reference, status, idempotency_key, sequence_no, received_by)
-         VALUES ($1, $2, $3, $4, $5, $6, 'RECEIVED', $7, $8, $9)
+            reference, status, idempotency_key, sequence_no, received_by,
+            external_handler, external_reference, external_state)
+         VALUES ($1, $2, $3, $4, $5, $6, 'RECEIVED', $7, $8, $9, $10, $11, $12)
          RETURNING id`,
         [
           saleId,
@@ -449,6 +610,9 @@ export class PosSaleService {
           idempotencyKey,
           Number(urut.rows[0].n),
           subjectId,
+          m.external_handler,
+          rujukanEksternal,
+          rujukanEksternal ? 'AUTHORIZED' : null,
         ],
       );
 
@@ -581,6 +745,63 @@ export class PosSaleService {
         })),
         userId: subjectId,
       });
+
+      /*
+       * 6b. Mewujudkan penahanan dana pada modul lain (IR-002).
+       *
+       * DI DALAM transaksi, dan sesudah stok dipotong. Urutannya menentukan:
+       * pemotongan saldo yang berhasil tanpa penjualan yang menaunginya adalah
+       * uang anggota yang hilang tanpa jejak, sedangkan penjualan yang selesai
+       * tanpa saldo terpotong adalah barang yang keluar tanpa dibayar.
+       *
+       * Bila `capture()` gagal, seluruh transaksi ini digulung balik — stok
+       * kembali, struk tidak terbit, penjualan tetap PAYMENT_PENDING. Yang
+       * tidak ikut tergulung adalah penahanan pada modul lain; ia tetap
+       * `AUTHORIZED` dan dilepaskan saat penjualannya dibatalkan.
+       */
+      const pembayaran = await client.query<{
+        id: string;
+        external_handler: string | null;
+        external_reference: string | null;
+        external_state: string | null;
+        status: string;
+      }>(
+        `SELECT id, external_handler, external_reference, external_state, status
+           FROM "${schemaName}".pos_payment WHERE pos_sale_id = $1`,
+        [saleId],
+      );
+
+      const siap = bolehDiselesaikan(
+        pembayaran.rows.map((p) => ({
+          id: p.id,
+          externalHandler: p.external_handler,
+          externalReference: p.external_reference,
+          externalState: p.external_state,
+          status: p.status,
+        })),
+      );
+      if (!siap.allowed) {
+        throw AppError.conflict(ErrorCodes.CONFLICT, siap.message!);
+      }
+
+      for (const p of perluDiwujudkan(
+        pembayaran.rows.map((x) => ({
+          id: x.id,
+          externalHandler: x.external_handler,
+          externalReference: x.external_reference,
+          externalState: x.external_state,
+          status: x.status,
+        })),
+      )) {
+        const penangan = this.pembayaranEksternal.require(p.externalHandler!);
+        await penangan.capture({ schemaName, reference: p.externalReference! });
+        await client.query(
+          `UPDATE "${schemaName}".pos_payment
+              SET external_state = 'CAPTURED', external_captured_at = now()
+            WHERE id = $1 AND external_state = 'AUTHORIZED'`,
+          [p.id],
+        );
+      }
 
       // 7. Peristiwa akuntansi.
       await this.peristiwaAkuntansi(client, schemaName, {

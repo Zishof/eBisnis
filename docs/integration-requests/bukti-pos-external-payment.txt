@@ -1,0 +1,45 @@
+==============================================================================
+BUKTI PEMBAYARAN BERSALDO EKSTERNAL PADA KASIR (IR-002)
+Waktu  : 2026-07-31T22:07:52.028Z
+Schema : demo
+==============================================================================
+
+1. Kolom penahanan terpasang
+  LULUS  payment_method.external_handler ada
+  LULUS  pos_payment.external_handler ada
+  LULUS  pos_payment.external_reference ada
+  LULUS  pos_payment.external_state ada
+  LULUS  pos_payment.external_captured_at ada
+
+2. Metode EXTERNAL_BALANCE wajib menyebut penangannya
+  LULUS  metode EXTERNAL_BALANCE tanpa penangan DITOLAK
+  LULUS  metode dengan penangan DITERIMA
+
+3. Pembayaran menyimpan rujukan penahanannya
+  LULUS  pembayaran tersimpan berstatus AUTHORIZED
+  LULUS  rujukan tanpa penangan DITOLAK
+  LULUS  keadaan penahanan di luar daftar DITOLAK
+  LULUS  CAPTURED tanpa waktu pewujudan DITOLAK
+
+4. Aturan memilih baris yang benar dari basis data
+  LULUS  penjualan siap diselesaikan
+  LULUS  satu penahanan perlu diwujudkan
+  LULUS  satu penahanan perlu dilepaskan bila batal
+  LULUS  yang sudah diwujudkan TIDAK diwujudkan lagi
+  LULUS  yang sudah diwujudkan TIDAK dilepaskan — pengembaliannya lewat retur
+
+5. Penahanan yang menggantung dapat ditemukan penjadwal
+  LULUS  penahanan yang pembayarannya dibatalkan tetap terlihat
+  LULUS  indeks parsial penjadwal pelepas terpasang
+  LULUS  pembayaran yang dibatalkan kasir tetap perlu dilepaskan
+
+6. Registri menolak metode yang penangannya tidak ada
+  LULUS  metode eksternal ditolak selama penangannya belum terdaftar
+  LULUS  setelah terdaftar, metode diterima
+  LULUS  penangan yang tidak ada MELEMPAR, bukan lolos diam-diam
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.

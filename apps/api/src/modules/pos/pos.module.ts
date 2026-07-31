@@ -258,6 +258,26 @@ class PembayaranDto {
   @IsString()
   @MaxLength(120)
   reference?: string;
+
+  /*
+   * Bukti sekali pakai dari layar milik penyedia saldo (IR-002).
+   *
+   * BUKAN PIN, dan itu bukan sekadar penamaan. Spesifikasi eKoperasi §14
+   * menyebutnya tegas: PIN anggota tidak boleh terlihat kasir — dan sesuatu
+   * yang melewati layar kasir adalah sesuatu yang terlihat kasir. Anggota
+   * memasukkan PIN-nya pada perangkatnya sendiri; yang sampai ke sini hanya
+   * bukti bahwa ia sudah melakukannya.
+   *
+   * Diteruskan apa adanya ke penangan dan tidak pernah disimpan.
+   */
+  @ApiPropertyOptional({
+    description:
+      'Bukti sekali pakai dari layar penyedia saldo. BUKAN PIN — PIN tidak pernah melewati kasir.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  authToken?: string;
 }
 
 class CekStokDto {
