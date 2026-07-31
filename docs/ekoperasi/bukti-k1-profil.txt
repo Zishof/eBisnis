@@ -1,0 +1,54 @@
+==============================================================================
+BUKTI K-1 — PROFIL KOPERASI, LEGALITAS, DAN GERBANG GO-LIVE
+Waktu  : 2026-07-31T16:34:51.441Z
+Schema : demo
+==============================================================================
+
+1. Tabel K-1 terpasang
+  LULUS  tabel cooperative_type
+  LULUS  tabel cooperative
+  LULUS  tabel cooperative_legal_document
+  LULUS  tabel cooperative_address
+  LULUS  tabel cooperative_service_area
+  LULUS  tabel cooperative_policy
+  LULUS  tabel cooperative_domain
+  LULUS  tabel cooperative_account_mapping
+
+2. Membuat koperasi
+  LULUS  koperasi dibuat berstatus DRAFT
+
+3. Satu ruang kerja hanya untuk satu koperasi
+  LULUS  koperasi kedua pada tenant yang sama DITOLAK basis data
+
+4. Koperasi aktif wajib punya nomor badan hukum
+  LULUS  status ACTIVE tanpa nomor badan hukum DITOLAK basis data
+
+5. Kebijakan aktif wajib menyebutkan persetujuannya
+  LULUS  kebijakan ACTIVE tanpa approved_at DITOLAK basis data
+
+6. Kebijakan berversi — versi baru, bukan penyuntingan versi lama
+  LULUS  dua versi tersimpan berdampingan
+  LULUS  hanya satu yang berstatus ACTIVE
+  LULUS  versi ACTIVE kedua atas kode yang sama DITOLAK
+
+7. Masa berlaku dokumen tidak boleh terbalik
+  LULUS  valid_until sebelum valid_from DITOLAK
+
+8. Satu alamat utama dan satu domain utama saja
+  LULUS  alamat utama kedua DITOLAK
+
+9. Domain sendiri wajib punya token verifikasi
+  LULUS  domain CUSTOM tanpa token verifikasi DITOLAK
+
+10. Gerbang go-live: melengkapi syarat lalu mengaktifkan
+  LULUS  koperasi yang lengkap dapat diaktifkan
+  LULUS  waktu go-live tercatat
+
+11. Pemetaan akun bertanggal berlaku
+  LULUS  dua pemetaan aktif untuk kode yang sama DITOLAK
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Data bukti dibersihkan.

@@ -28,6 +28,9 @@ import { ActivityModule } from './modules/activity/activity.module';
 import { AccountingModule } from './modules/accounting/accounting.module';
 import { PosModule } from './modules/pos/pos.module';
 import { SuratModule } from './modules/surat/surat.module';
+// Vertikal koperasi (eKoperasi). Satu baris impor dan satu entri — sengaja
+// sekecil mungkin, sebab berkas ini disentuh empat sesi paralel.
+import { CooperativeModule } from './modules/cooperative/cooperative.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { AiModule } from './modules/ai/ai.module';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
@@ -81,6 +84,7 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
     AccountingModule,
     PosModule,
     SuratModule,
+    CooperativeModule,
     NotificationModule,
     AiModule,
     // TenantModule didaftarkan TERAKHIR: MasterController memakai route

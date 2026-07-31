@@ -1,0 +1,68 @@
+==============================================================================
+BUKTI K-2 — ORGANISASI, KEPENGURUSAN, DAN KEANGGOTAAN
+Waktu  : 2026-07-31T16:42:08.369Z
+Schema : demo
+==============================================================================
+
+1. Tabel K-2 terpasang
+  LULUS  tabel cooperative_organization_term
+  LULUS  tabel cooperative_board_position
+  LULUS  tabel cooperative_member
+  LULUS  tabel cooperative_member_category
+  LULUS  tabel cooperative_appointment
+  LULUS  tabel cooperative_member_document
+  LULUS  tabel cooperative_member_consent
+  LULUS  tabel cooperative_member_beneficiary
+  LULUS  tabel cooperative_related_party
+  LULUS  tabel cooperative_member_status_history
+  LULUS  tabel cooperative_member_portal_account
+
+2. Calon anggota TIDAK boleh punya tanggal aktif
+  LULUS  calon anggota dengan activated_at DITOLAK
+
+3. Anggota aktif WAJIB punya nomor anggota dan tanggal aktif
+  LULUS  anggota ACTIVE tanpa nomor anggota DITOLAK
+  LULUS  anggota ACTIVE tanpa tanggal aktif DITOLAK
+
+4. Alur keanggotaan yang sah
+  LULUS  calon anggota dibuat
+  LULUS  calon anggota melalui tahapan tanpa tanggal aktif
+  LULUS  anggota diaktifkan bersama nomor dan tanggalnya
+  LULUS  tanggal aktif tercatat
+
+5. Nomor anggota tidak boleh kembar
+  LULUS  nomor anggota kembar DITOLAK
+
+6. Satu orang satu keanggotaan yang belum berakhir
+  LULUS  identitas yang sama mendaftar dua kali DITOLAK
+
+   Setelah keanggotaan berakhir, identitas yang sama boleh mendaftar lagi:
+  LULUS  bekas anggota dapat mendaftar kembali sebagai calon baru
+
+7. Pemberhentian wajib mencantumkan tanggalnya
+  LULUS  status TERMINATED tanpa terminated_at DITOLAK
+
+8. Satu jabatan hanya dipangku satu orang pada satu waktu
+  LULUS  ketua pertama diangkat
+  LULUS  ketua kedua pada periode yang tumpang tindih DITOLAK
+  LULUS  ketua berikutnya setelah periode sebelumnya berakhir DITERIMA
+
+9. Ahli waris: bagian tidak boleh melebihi seratus persen
+  LULUS  bagian ahli waris 120% DITOLAK
+
+10. Hubungan keluarga: seseorang bukan keluarga dirinya sendiri
+  LULUS  hubungan keluarga dengan diri sendiri DITOLAK
+  LULUS  hubungan keluarga antar dua anggota tercatat
+
+11. Persetujuan pemakaian data tercatat, bukan diasumsikan
+  LULUS  persetujuan tercatat dengan waktunya
+  LULUS  tujuan persetujuan di luar daftar DITOLAK
+
+12. Riwayat status tersimpan lengkap
+  LULUS  tiga perpindahan tercatat
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.

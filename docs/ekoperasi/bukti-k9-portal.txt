@@ -1,0 +1,83 @@
+==============================================================================
+BUKTI K-9 — SITUS KOPERASI DAN PORTAL ANGGOTA
+Waktu  : 2026-07-31T17:54:22.400Z
+Schema : demo
+==============================================================================
+
+1. Tabel K-9 terpasang
+  LULUS  tabel cooperative_website_setting ada
+  LULUS  tabel cooperative_website_page ada
+  LULUS  tabel cooperative_announcement ada
+  LULUS  tabel cooperative_public_application ada
+  LULUS  tabel cooperative_complaint ada
+  LULUS  tabel cooperative_complaint_response ada
+  LULUS  tabel cooperative_notification ada
+  LULUS  tabel cooperative_portal_activity ada
+
+2. Dua anggota disiapkan, masing-masing dengan datanya sendiri
+  LULUS  dua anggota terbentuk
+  LULUS  pengaduan dan pemberitahuan kedua anggota tersimpan
+
+3. Anggota hanya melihat dirinya sendiri — atas baris sungguhan
+  LULUS  kedua pengaduan terbaca tanpa penyaring
+  LULUS  setelah disaring, Andi melihat 1 pengaduan
+  LULUS  pengaduan Budi TIDAK lolos ke Andi
+  LULUS  Andi melihat 1 pemberitahuan
+  LULUS  pemberitahuan Budi TIDAK lolos ke Andi
+  LULUS  Andi membuka pengaduan Budi lewat id langsung: DITOLAK
+  LULUS  penolakannya tidak membocorkan bahwa barisnya ada
+
+4. Medan rahasia tidak ikut terkirim ke portal
+  LULUS  baris mentah dari basis data MEMANG membawa identity_number
+  LULUS  medan identity_number dibuang sebelum dikirim
+  LULUS  medan approved_by dibuang sebelum dikirim
+  LULUS  pin_hash tersimpan sebagai hash, bukan angka
+  LULUS  pin_hash TIDAK ikut terkirim ke portal
+
+5. Kiriman dari internet berhenti di tabel karantina
+  LULUS  lamaran tersimpan berstatus SUBMITTED
+  LULUS  lamaran TIDAK membentuk baris anggota dengan sendirinya
+  LULUS  lamaran tanpa persetujuan pengolahan data pribadi DITOLAK
+  LULUS  persetujuan tanpa waktunya DITOLAK
+  LULUS  lamaran DISETUJUI tanpa menerbitkan anggotanya DITOLAK
+  LULUS  lamaran DITOLAK tanpa alasan DITOLAK
+  LULUS  lamaran disetujui SETELAH anggotanya diterbitkan: DITERIMA
+  LULUS  dua lamaran menunjuk anggota yang sama DITOLAK
+
+6. Pengaduan tidak dapat ditutup diam-diam
+  LULUS  pengaduan RESOLVED tanpa keterangan penyelesaian DITOLAK
+  LULUS  pengaduan CLOSED tanpa menyebut siapa yang menutup DITOLAK
+  LULUS  penyelesaian yang beralasan DITERIMA
+  LULUS  anggota menulis catatan internal DITOLAK
+  LULUS  pengurus menulis catatan internal DITERIMA
+  LULUS  catatan internal TIDAK muncul pada tampilan anggota
+
+7. Pemberitahuan tidak menuntun anggota ke alamat luar
+  LULUS  pemberitahuan bertautan ke alamat luar DITOLAK
+  LULUS  jenis pemberitahuan di luar daftar DITOLAK
+
+8. Situs koperasi: yang tampil adalah pilihan sadar pengurus
+  LULUS  situs bawaannya BELUM terbit
+  LULUS  jumlah anggota bawaannya TIDAK ditampilkan
+  LULUS  besar aset bawaannya TIDAK ditampilkan
+  LULUS  pendaftaran daring bawaannya TERTUTUP
+  LULUS  dua pengaturan situs pada satu koperasi DITOLAK
+  LULUS  slug halaman dengan karakter aneh DITOLAK
+  LULUS  halaman baru BELUM terbit sampai diberi tanggal terbit
+
+9. Jejak portal mencatat penolakan beserta alasannya
+  LULUS  jejak penolakan tanpa kode alasan DITOLAK
+  LULUS  percobaan membaca data anggota lain tercatat
+  LULUS  alasannya tercatat sebagai NOT_OWNER
+  LULUS  jejak TIDAK menyalin isi data yang dibaca
+
+10. Bekas anggota kehilangan akses, datanya tidak hilang
+  LULUS  bekas anggota tidak melihat apa pun lewat portal
+  LULUS  tetapi datanya MASIH ADA untuk penyelesaian dan audit
+  LULUS  menghapus anggota yang masih punya pengaduan DITOLAK
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.
