@@ -165,15 +165,31 @@ async function pastikanKeranjang(page: Page): Promise<void> {
  */
 let halaman: Page;
 
-test.beforeAll(async ({ browser }: { browser: Browser }) => {
-  if (!fixture) return;
+/**
+ * Menyiapkan sesi bila belum ada — atau bila yang lama sudah tertutup.
+ *
+ * Percobaan ulang membuka kembali uji yang gagal tanpa selalu menjalankan
+ * `beforeAll` lagi, sementara `afterAll` sudah menutup halamannya. Akibatnya
+ * percobaan kedua gagal dengan "Target page, context or browser has been
+ * closed" — pesan yang tidak ada hubungannya dengan sebab aslinya, dan
+ * menyesatkan siapa pun yang membacanya pada CI.
+ */
+async function pastikanSesi(browser: Browser): Promise<void> {
+  if (halaman && !halaman.isClosed()) return;
   const konteks = await browser.newContext({ locale: 'id-ID' });
   halaman = await konteks.newPage();
   await masukSebagaiKasir(halaman);
+}
+
+test.beforeEach(async ({ browser }: { browser: Browser }) => {
+  if (!fixture) return;
+  await pastikanSesi(browser);
 });
 
 test.afterAll(async () => {
-  await halaman?.context().close();
+  if (halaman && !halaman.isClosed()) {
+    await halaman.context().close();
+  }
 });
 
 test.describe('Layar kasir', () => {
