@@ -8,6 +8,7 @@ import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { AuthenticatedUser } from '../../common/decorators';
 import { DEMO_PLATFORM_USER_ID } from '../../infrastructure/provisioning/tenant-bootstrap.service';
+import { fingerprintDevice } from './device-fingerprint';
 
 const MAX_FAILED_LOGINS = 8;
 const LOCK_MINUTES = 15;
@@ -145,6 +146,7 @@ export class AuthService {
 
     const platformPermissions = collectPermissions(user);
 
+    const perangkat = fingerprintDevice(meta.userAgent);
     const session = await this.prisma.platformSession.create({
       data: {
         userId: user.id,
@@ -155,6 +157,13 @@ export class AuthService {
         expiresAt: new Date(Date.now() + this.refreshTtlMs()),
         ipAddress: meta.ipAddress ?? null,
         userAgent: meta.userAgent ?? null,
+        deviceFingerprint: perangkat.fingerprint,
+        deviceLabel: perangkat.label,
+        // Peran aktif sengaja tidak ditetapkan saat masuk.
+        //
+        // Menebakkan satu peran akan mengejutkan pengguna yang selama ini
+        // memakai gabungan seluruh perannya: tombol yang kemarin ada mendadak
+        // hilang tanpa ia melakukan apa pun. Pemilihan harus disengaja.
       },
     });
 
@@ -584,6 +593,18 @@ export class AuthService {
       auditSchemaName,
       isDemo: session.isDemo,
       localeCode: session.user.preferredLocaleCode ?? 'id',
+      // Peran aktif dibaca dari baris sesi, BUKAN dari klaim token.
+      //
+      // Token yang sudah diterbitkan tidak dapat diubah. Bila peran aktif
+      // disimpan di dalamnya, pergantian peran baru berlaku setelah token
+      // berikutnya terbit — dan sepanjang jeda itu pengguna masih memegang izin
+      // peran lamanya. Untuk fitur yang gunanya justru MEMBATASI izin, jeda
+      // seperti itu tidak dapat diterima.
+      //
+      // Sesi memang sudah dibaca dari basis data pada setiap permintaan, jadi
+      // membacanya dari sini tidak menambah satu kueri pun.
+      activeRoleId: session.activeRoleId ?? undefined,
+      activeRoleCode: session.activeRoleCode ?? undefined,
     };
   }
 

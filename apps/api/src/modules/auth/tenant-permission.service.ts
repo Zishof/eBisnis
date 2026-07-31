@@ -16,6 +16,74 @@ const DEMO_FORBIDDEN_ACTIONS = new Set([
   'REOPEN',
 ]);
 
+/** Satu baris izin sebagaimana dibaca dari basis data. */
+export interface PermissionRow {
+  permission: string;
+  effect: string;
+  source: string;
+  role_id: string | null;
+}
+
+/** Gabungan seluruh sumber, dengan DENY selalu menang. Perilaku sebelum V10-4. */
+export function unionOf(rows: PermissionRow[]): Set<string> {
+  const allow = new Set<string>();
+  const deny = new Set<string>();
+  for (const row of rows) {
+    if (row.effect === 'DENY') deny.add(row.permission);
+    else allow.add(row.permission);
+  }
+  for (const denied of deny) allow.delete(denied);
+  return allow;
+}
+
+/**
+ * Mempersempit izin ke satu peran aktif.
+ *
+ * ## Aturan yang menjaganya tetap aman
+ *
+ * **Memilih peran hanya boleh MENGURANGI izin, tidak pernah menambah.**
+ *
+ * Tanpa aturan itu ada celah yang nyata: bila peran A menolak `KAS.APPROVE`
+ * dan peran B mengizinkannya, gabungan keduanya menghasilkan TOLAK karena DENY
+ * menang. Bila penyempitan hanya melihat peran B, larangan dari peran A ikut
+ * hilang — dan memilih peran justru MEMBERI izin yang tadinya tidak ada. Fitur
+ * yang dijual sebagai pembatasan akan diam-diam menjadi peningkatan hak.
+ *
+ * Karena itu:
+ *
+ * 1. Seluruh DENY dari **semua** peran tetap berlaku, bukan hanya dari peran
+ *    aktif. Larangan tidak melekat pada topi yang sedang dipakai.
+ * 2. Hasilnya diiriskan dengan gabungan penuh. Langkah ini sudah tersirat oleh
+ *    butir pertama, tetapi ditulis eksplisit supaya sifat "tidak pernah
+ *    menambah" dijamin oleh kode, bukan oleh penalaran.
+ *
+ * ## Izin langsung tetap berlaku
+ *
+ * Izin yang diberikan langsung kepada orangnya (`user_direct_permission`)
+ * tidak melekat pada peran mana pun — ia diberikan kepada orang itu, bukan
+ * kepada topi yang dipakainya. Karena itu ia tetap berlaku saat menyempit.
+ * Yang dipersempit adalah izin yang berasal dari peran.
+ */
+export function narrowToRole(rows: PermissionRow[], activeRoleId: string): Set<string> {
+  const penuh = unionOf(rows);
+
+  const deny = new Set<string>();
+  for (const row of rows) if (row.effect === 'DENY') deny.add(row.permission);
+
+  const sempit = new Set<string>();
+  for (const row of rows) {
+    if (row.effect === 'DENY') continue;
+    const dariPeranAktif = row.source === 'ROLE' && row.role_id === activeRoleId;
+    const izinLangsung = row.source === 'DIRECT';
+    if (!dariPeranAktif && !izinLangsung) continue;
+    if (deny.has(row.permission)) continue;
+    // Irisan dengan gabungan penuh: jaminan bahwa menyempit tidak menambah.
+    if (!penuh.has(row.permission)) continue;
+    sempit.add(row.permission);
+  }
+  return sempit;
+}
+
 @Injectable()
 export class TenantPermissionService {
   private readonly cache = new Map<string, CacheEntry>();
@@ -26,20 +94,40 @@ export class TenantPermissionService {
   /**
    * Menghitung permission efektif: role assignment + direct permission,
    * dengan DENY selalu menang.
+   *
+   * ## Peran aktif
+   *
+   * Bila `activeRoleId` diberikan, hasilnya dipersempit ke peran itu saja —
+   * lihat {@link narrowToRole} untuk aturan yang menjaganya tetap aman.
+   * `undefined` atau `null` berarti pengguna belum memilih, dan hasilnya
+   * gabungan seluruh peran persis seperti sebelum V10-4.
    */
-  async resolve(schemaName: string, platformUserId: string): Promise<Set<string>> {
-    const key = `${schemaName}:${platformUserId}`;
+  async resolve(
+    schemaName: string,
+    platformUserId: string,
+    activeRoleId?: string | null,
+  ): Promise<Set<string>> {
+    // Peran aktif ikut menjadi kunci cache. Tanpa itu, seseorang yang berganti
+    // peran akan tetap memakai izin peran sebelumnya sampai cache kedaluwarsa —
+    // dan itu berarti penyempitan yang diminta tidak benar-benar berlaku.
+    const key = `${schemaName}:${platformUserId}:${activeRoleId ?? '*'}`;
     const cached = this.cache.get(key);
     if (cached && cached.expiresAt > Date.now()) return cached.permissions;
 
-    const rows = await this.tenantDb.query<{ permission: string; effect: string; source: string }>(
+    const rows = await this.tenantDb.query<{
+      permission: string;
+      effect: string;
+      source: string;
+      role_id: string | null;
+    }>(
       schemaName,
       `WITH subject AS (
          SELECT id FROM "${schemaName}".user_subject
          WHERE platform_user_id = $1 AND deleted_at IS NULL AND is_active = TRUE
        ),
        from_role AS (
-         SELECT m.code || '.' || pa.code AS permission, rmp.effect AS effect, 'ROLE' AS source
+         SELECT m.code || '.' || pa.code AS permission, rmp.effect AS effect, 'ROLE' AS source,
+                r.id::text AS role_id
          FROM subject s
          JOIN "${schemaName}".user_role_assignment ura ON ura.user_subject_id = s.id
            AND ura.valid_from <= now()
@@ -50,7 +138,8 @@ export class TenantPermissionService {
          JOIN "${schemaName}".permission_action pa ON pa.id = rmp.permission_action_id AND pa.deleted_at IS NULL
        ),
        from_direct AS (
-         SELECT m.code || '.' || pa.code AS permission, udp.effect AS effect, 'DIRECT' AS source
+         SELECT m.code || '.' || pa.code AS permission, udp.effect AS effect, 'DIRECT' AS source,
+                NULL::text AS role_id
          FROM subject s
          JOIN "${schemaName}".user_direct_permission udp ON udp.user_subject_id = s.id
          JOIN "${schemaName}".menu m ON m.id = udp.menu_id AND m.deleted_at IS NULL AND m.is_active = TRUE
@@ -60,23 +149,17 @@ export class TenantPermissionService {
       [platformUserId],
     );
 
-    const allow = new Set<string>();
-    const deny = new Set<string>();
-    for (const row of rows) {
-      if (row.effect === 'DENY') deny.add(row.permission);
-      else allow.add(row.permission);
-    }
-    for (const denied of deny) allow.delete(denied);
+    const effective = activeRoleId ? narrowToRole(rows, activeRoleId) : unionOf(rows);
 
-    this.cache.set(key, { permissions: allow, expiresAt: Date.now() + this.ttlMs });
-    return allow;
+    this.cache.set(key, { permissions: effective, expiresAt: Date.now() + this.ttlMs });
+    return effective;
   }
 
   async findMissing(
     schemaName: string,
     platformUserId: string,
     required: string[],
-    options: { isDemo?: boolean } = {},
+    options: { isDemo?: boolean; activeRoleId?: string | null } = {},
   ): Promise<string[]> {
     if (options.isDemo) {
       const blocked = required.filter((permission) => {
@@ -87,8 +170,44 @@ export class TenantPermissionService {
       // Sesi demo memakai role DEMO_USER yang di-seed pada schema demo;
       // tetap dievaluasi lewat resolve() di bawah.
     }
-    const granted = await this.resolve(schemaName, platformUserId);
+    const granted = await this.resolve(schemaName, platformUserId, options.activeRoleId);
     return required.filter((permission) => !granted.has(permission));
+  }
+
+  /** Peran yang dipegang pengguna pada tenant, beserta jumlah izinnya. */
+  async rolesOf(
+    schemaName: string,
+    platformUserId: string,
+  ): Promise<Array<{ roleId: string; code: string; name: string; permissionCount: number }>> {
+    const rows = await this.tenantDb.query<{
+      role_id: string;
+      code: string;
+      name: string;
+      permission_count: string;
+    }>(
+      schemaName,
+      `SELECT r.id::text AS role_id, r.code, r.name,
+              count(DISTINCT m.code || '.' || pa.code) FILTER (WHERE rmp.effect <> 'DENY') AS permission_count
+         FROM "${schemaName}".user_subject s
+         JOIN "${schemaName}".user_role_assignment ura ON ura.user_subject_id = s.id
+           AND ura.valid_from <= now()
+           AND (ura.valid_until IS NULL OR ura.valid_until >= now())
+         JOIN "${schemaName}".role r ON r.id = ura.role_id AND r.deleted_at IS NULL AND r.is_active = TRUE
+         LEFT JOIN "${schemaName}".role_menu_permission rmp ON rmp.role_id = r.id
+         LEFT JOIN "${schemaName}".menu m ON m.id = rmp.menu_id AND m.deleted_at IS NULL AND m.is_active = TRUE
+         LEFT JOIN "${schemaName}".permission_action pa ON pa.id = rmp.permission_action_id AND pa.deleted_at IS NULL
+        WHERE s.platform_user_id = $1 AND s.deleted_at IS NULL AND s.is_active = TRUE
+        GROUP BY r.id, r.code, r.name
+        ORDER BY r.code`,
+      [platformUserId],
+    );
+
+    return rows.map((row) => ({
+      roleId: row.role_id,
+      code: row.code,
+      name: row.name,
+      permissionCount: Number(row.permission_count),
+    }));
   }
 
   /** Menu yang boleh dilihat pengguna (memiliki aksi READ). */
@@ -96,8 +215,11 @@ export class TenantPermissionService {
     schemaName: string,
     platformUserId: string,
     localeCode = 'id',
+    activeRoleId?: string | null,
   ): Promise<Array<Record<string, unknown>>> {
-    const granted = await this.resolve(schemaName, platformUserId);
+    // Menu mengikuti peran aktif. Menampilkan menu yang tidak dapat dibuka
+    // hanya memindahkan penolakan dari daftar menu ke halaman kosong.
+    const granted = await this.resolve(schemaName, platformUserId, activeRoleId);
     const menus = await this.tenantDb.query<{
       id: string;
       parent_id: string | null;
