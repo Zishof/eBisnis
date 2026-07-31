@@ -8,11 +8,15 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  // Diimpor sebagai NILAI, bukan hanya tipe: `instanceof ApiError` dipakai
+  // membedakan penolakan yang mengakhiri sesi (401/403) dari gangguan sementara
+  // (429, 5xx). Impor bertipe saja terhapus saat kompilasi, dan perbandingannya
+  // ikut hilang tanpa satu pun galat — seluruh galat lalu dianggap sementara.
+  ApiError,
   api,
   getRefreshToken,
   setAccessToken,
   setRefreshToken,
-  type ApiError,
 } from '../lib/api';
 
 export interface SessionUser {
@@ -62,12 +66,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Memuat identitas pemilik sesi.
+   *
+   * Gangguan sementara dicoba lagi, bukan diperlakukan sebagai "belum masuk".
+   * Peladen yang menjawab 429 atau 5xx tidak sedang mengatakan sesinya tidak
+   * sah; menampilkan halaman masuk karenanya membuat pengguna mengira ia
+   * terlempar keluar, dan pada layar kasir keranjangnya ikut hilang.
+   *
+   * Percobaannya dibatasi dua kali dengan jeda pendek. Tanpa batas, peladen yang
+   * benar-benar mati akan membuat layar menggantung tanpa keterangan apa pun —
+   * yang juga bukan jawaban.
+   */
   const loadSession = useCallback(async () => {
-    try {
-      const me = await api.get<SessionUser>('/auth/me');
-      setUser(me);
-    } catch {
-      setUser(null);
+    for (let percobaan = 1; percobaan <= 2; percobaan += 1) {
+      try {
+        setUser(await api.get<SessionUser>('/auth/me'));
+        return;
+      } catch (e) {
+        const status = e instanceof ApiError ? e.status : 0;
+        if (status === 401 || status === 403) {
+          setUser(null);
+          return;
+        }
+        if (percobaan === 2) return;
+        await new Promise((r) => setTimeout(r, 800));
+      }
     }
   }, []);
 
@@ -87,9 +111,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAccessToken(refreshed.accessToken);
         setRefreshToken(refreshed.refreshToken);
         await loadSession();
-      } catch {
-        setAccessToken(null);
-        setRefreshToken(null);
+      } catch (e) {
+        /*
+         * Hanya penolakan yang benar-benar berarti "sesi ini tidak sah lagi"
+         * yang membuang tokennya.
+         *
+         * Semula SETIAP galat di sini membuang sesi — termasuk 429 dari pembatas
+         * laju dan 5xx dari peladen yang sedang tersedak. Keduanya sementara,
+         * tetapi akibatnya permanen: refresh token terhapus, tidak ada lagi yang
+         * dapat dipakai mencoba, dan pengguna mendarat di halaman masuk.
+         *
+         * Cacat yang sama sempat diperbaiki di `lib/api.ts` tetapi terlewat di
+         * sini — dan justru jalur inilah yang menyala, sebab `loadSession()`
+         * berada di dalam `try` yang sama: `/auth/me` yang dijawab 429 ikut
+         * menjatuhkan sesinya.
+         */
+        const status = e instanceof ApiError ? e.status : 0;
+        if (status === 401 || status === 403) {
+          setAccessToken(null);
+          setRefreshToken(null);
+        }
       } finally {
         setLoading(false);
       }

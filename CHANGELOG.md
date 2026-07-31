@@ -5,6 +5,84 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Gangguan sesaat tidak lagi melempar pengguna ke halaman masuk
+
+### Diperbaiki
+- **Setiap kegagalan penyegaran token membuang sesi — termasuk yang sementara.**
+  `api.ts` memperlakukan setiap jawaban tidak-OK dari `/auth/refresh` sebagai
+  "sesi Anda tidak sah lagi", lalu menghapus refresh token sehingga tidak ada
+  jalan mencoba lagi. Padahal **429** hanya berarti "coba lagi sebentar", dan
+  **5xx** hanya berarti peladen sedang tersedak.
+
+  Pada layar kasir akibatnya: keranjang yang sedang dilayani lenyap karena
+  peladen sesaat sibuk, di depan pembeli yang sudah menunggu. Tidak ada galat
+  yang menyebutkan sebabnya — yang terlihat hanya layar masuk.
+
+  Kini hanya **401 dan 403** yang mengakhiri sesi. Galat jaringan juga tidak lagi
+  membuang refresh token: justru ketika jaringan bermasalah ia paling dibutuhkan,
+  dan membuangnya membuat pemulihan mustahil setelah jaringannya kembali.
+
+- **Cacat yang sama ada di tempat kedua**, dan justru **itulah yang menyala.**
+  `auth-context.tsx` memulihkan sesi saat aplikasi baru dimuat dengan memanggil
+  `/auth/refresh` sendiri memakai `skipRefresh`, sehingga tidak melewati jalur
+  di atas sama sekali. `loadSession()` berada di dalam `try` yang sama, jadi
+  `/auth/me` yang dijawab **429** ikut menjatuhkan sesinya.
+
+  Memperbaiki satu tanpa yang lain tidak menyelesaikan apa pun — dan sempat
+  demikian: perbaikan pertama tidak mengubah hasil uji sama sekali.
+
+- **`ApiError` diimpor sebagai tipe saja** pada `auth-context.tsx`. Impor bertipe
+  terhapus saat kompilasi, sehingga `e instanceof ApiError` akan selalu bernilai
+  salah — tanpa satu pun galat, dan seluruh penolakan dianggap sementara. Diubah
+  menjadi impor nilai.
+
+- **Gangguan sementara pada `/auth/me` kini dicoba ulang**, bukan diperlakukan
+  sebagai "belum masuk". Dibatasi dua percobaan: tanpa batas, peladen yang
+  benar-benar mati membuat layar menggantung tanpa keterangan — yang juga bukan
+  jawaban.
+
+- **Satu kali kedaluwarsa memicu dua penyegaran.** Permintaan yang sudah terbang
+  ketika token disegarkan kembali membawa 401 yang **sudah basi**; menyegarkan
+  lagi karenanya memutar refresh token untuk kedua kalinya dan menggandakan
+  lalu lintas auth. Jeda tiga detik menutupnya.
+
+- **Denyut sambungan tetap berjalan pada tab tersembunyi.** `useKoneksi`
+  menghubungi `/health` tiap lima detik meski layarnya tidak dilihat siapa pun —
+  membangunkan radio tablet kasir sepanjang hari tanpa guna, dan ikut menekan
+  jatah pembatas laju. Kini dijadwalkan jarang selama tersembunyi;
+  `visibilitychange` sudah memaksa pemeriksaan seketika begitu layarnya kembali
+  dilihat, jadi kasir tidak pernah menunggu jeda itu.
+
+- **Uji pohon gudang gagal pada ponsel.** Perbaikan sebelumnya mempersempit
+  pemilih ke bilah navigasi — benar untuk desktop, tetapi pada ponsel navigasinya
+  ada di balik laci dan belum terlihat, sehingga ujinya menunggu sesuatu yang
+  memang tersembunyi selama dua menit. `<nav>` yang sama juga digambar dua kali,
+  jadi menunjuknya menurut label saja tetap ambigu.
+
+### Diubah
+- **Uji peramban kini MEMBLOKIR penggabungan.** `continue-on-error` dilepas.
+
+  Pelajaran dari masa pemakaiannya perlu dicatat karena mudah terulang: selama
+  baris itu terpasang, cek berwarna **hijau sekalipun ujinya gagal**. Tiga
+  kegagalan sungguhan sempat lolos tanpa terlihat, dan hanya ketahuan karena
+  lognya dibaca, bukan warnanya. Pelindung yang membuat laporan berbohong lebih
+  berbahaya daripada rangkaian uji yang merah — yang merah setidaknya jujur.
+
+- **Pembatas laju dilonggarkan pada CI saja** (`THROTTLE_DEFAULT_LIMIT`,
+  `THROTTLE_AUTH_LIMIT`). Nilai bawaan disetel untuk satu alamat IP milik satu
+  orang; runner CI adalah satu alamat IP yang menjalankan seluruh rangkaian.
+  Nilai produksi tidak diubah.
+
+### Ditambahkan
+- **`apps/web/src/lib/api.spec.ts`** — 8 uji yang menjaga perilaku di atas.
+  Diverifikasi merah tanpa perbaikannya.
+
+### Catatan
+- Ketidakstabilan ini sebelumnya dicatat sebagai "runner CI lambat". Ia bukan.
+  Sebabnya baru terlihat setelah jejak jaringan pada `trace.zip` satu kegagalan
+  dibaca: `auth/refresh` berpasangan, lalu `429`, lalu halaman masuk. Tangkapan
+  layarnya menunjukkan **halaman masuk** — bukan layar kasir yang lambat.
+
 ## Kasir dapat menjual saat internet putus
 
 Fase 3 dan 4 dari rencana kasir luring. Kemampuannya sudah lengkap; **saklarnya

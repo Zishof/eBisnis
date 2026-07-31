@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  JEDA_MAKS_MS,
   jedaPercobaan,
   nilaiKoneksi,
   type RingkasanKoneksi,
@@ -52,6 +53,23 @@ export function useKoneksi(jalur = '/health'): HasilKoneksi {
 
   const periksa = useCallback(async () => {
     if (!hidup.current || sedangPeriksa.current) return;
+
+    /*
+     * Tab yang tersembunyi tidak didenyutkan.
+     *
+     * Tidak ada yang membaca lencana sambungan pada layar yang tidak terlihat,
+     * sementara denyutnya tetap membangunkan radio tablet kasir tiap lima detik
+     * sepanjang hari dan tetap membebani peladen. Pemeriksaan dijadwalkan ulang
+     * dengan jeda panjang, dan `visibilitychange` sudah memaksa pemeriksaan
+     * seketika begitu layarnya kembali dilihat — jadi kasir tidak pernah
+     * menunggu jeda itu.
+     */
+    if (typeof document !== 'undefined' && document.hidden) {
+      if (timer.current !== null) window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(periksa, JEDA_MAKS_MS);
+      return;
+    }
+
     sedangPeriksa.current = true;
 
     const pembatal = new AbortController();
