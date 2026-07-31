@@ -693,6 +693,93 @@ menghasilkan utang. Ini penghalang yang **tidak dapat diselesaikan sesi eMedik
 sendiri**, dan menyelesaikannya dengan membuat buku besar kedua akan melanggar
 aturan pertama fase ini.
 
+### H-9D · Tarif berversi dan cakupan penjamin — **SELESAI (strukturnya)**
+
+Inventaris peraturan, versi tarif beserta impor dan persetujuannya, pemilihan
+tarif menurut kunci enam bagian, dan cakupan penjamin beserta perhitungan
+tanggungannya.
+
+**Isinya menunggu terbitan resmi.** Sampai itu ada, sistem berkata "tarif untuk
+kunci ini belum tersedia" dan menolak menghitung. Itu jawaban yang benar.
+
+Uji ≥ 25 → **46 tercapai**, ditambah naskah bukti 43 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H022__health__tariff.sql`, `H023__health__tariff_permissions.sql` |
+| Aturan murni | `health-tariff.ts` + 46 pengujian |
+| Layanan | `health-tariff.service.ts` |
+| Endpoint | `health-tariff.controller.ts` — 10 jalan di `/api/v1/health/tariff/**` |
+| Katalog | `health-catalog.ts` — 2 menu, 1 peran |
+| Bukti | `scripts/prove-health-tariff.mjs` → [bukti-h9d-tarif.txt](bukti-h9d-tarif.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **Tarif dipilih menurut TANGGAL LAYANAN, bukan tanggal klaim.** Pasien yang
+  dirawat pada Maret dan klaimnya diajukan pada Mei tetap memakai tarif Maret.
+  Memakai tanggal klaim berarti menunda pengajuan menjadi cara menaikkan
+  tagihan.
+
+- **Tarif tidak pernah ditimpa.** Impor membuat versi baru; baris pada versi
+  yang sudah aktif tidak dapat diubah maupun dihapus, ditegakkan trigger
+  `forbid_active_tariff_mutation`. Klaim yang sudah dihitung memakai baris itu
+  harus tetap dapat dijelaskan.
+
+- **Tumpang tindih tanggal ditolak** oleh `EXCLUDE USING gist` atas kunci enam
+  bagian beserta rentang berlakunya. `COALESCE` dipakai pada bagian yang boleh
+  kosong — tanpa itu, dua tarif **umum** yang bertumpang tindih akan lolos,
+  sebab NULL tidak pernah sama dengan NULL pada operator kesamaan. Naskah bukti
+  mengujinya secara khusus.
+
+- **Tarif yang belum ada TIDAK ditaksir.** Jawabannya "belum tersedia" dan
+  perhitungannya berhenti. Menaksirnya akan menghasilkan angka yang tampak resmi
+  lalu dipakai menagih orang.
+
+- **Dua tarif yang sama-sama berlaku dan sama khususnya menghentikan
+  perhitungan**, bukan memilih salah satunya. Memilih yang pertama berarti
+  membiarkan urutan baris menentukan tagihan pasien.
+
+- **Aktivasi menuntut dasar peraturan, berkas sumber, sidik jarinya, dan isi
+  yang tidak kosong.** Tarif tanpa sumber tidak dapat dibedakan dari tarif yang
+  diketik dari ingatan; versi kosong yang diaktifkan akan menghentikan seluruh
+  perhitungan tanpa ada yang tahu sebabnya.
+
+- **Yang mengimpor tidak menyetujui.** Impor adalah pekerjaan teknis;
+  persetujuan mengubah seluruh tagihan rumah sakit sejak tanggal berlakunya.
+
+- **Impor menolak SELURUHNYA bila satu baris bertumpang tindih.** Impor separuh
+  menghasilkan versi yang tampak lengkap dan sebenarnya bolong — dan yang bolong
+  baru ketahuan ketika satu pasien kebetulan jatuh pada baris yang hilang.
+
+- **Pembulatan tanggungan MEMIHAK PASIEN.** Sisa satu rupiah menjadi tanggungan
+  penjamin. Selisih itu tidak berarti bagi penjamin; bagi loket pendaftaran ia
+  berarti uang kembalian yang tidak ada.
+
+- **Rujukan yang belum ada menahan tanggungan SEMENTARA, bukan selamanya**, dan
+  pesannya mengatakan begitu. Perbedaannya menentukan: yang pertama dapat
+  diperbaiki dengan melengkapi berkas, yang kedua sudah terbaca sebagai
+  keputusan akhir.
+
+**Cacat yang ditemukan naskah bukti**
+
+| Cacat | Akibatnya di produksi |
+|---|---|
+| `effectiveTo` disimpan sebagai batas atas `daterange` yang **terbuka** | Hari terakhir setiap masa berlaku tidak tertutupi tarif mana pun |
+
+Pengujian satuannya lulus — aturan murninya memang memakai batas tertutup dan
+menjawab benar. Yang salah adalah penerjemahannya ke `daterange`, dan itu hanya
+terlihat ketika angkanya benar-benar melewati basis data. Hari terakhir justru
+hari yang paling sering dipersoalkan: ia hari terakhir sebelum tarif baru
+berlaku, dan pasien yang pulang hari itu akan menerima tagihan yang tidak dapat
+dijelaskan siapa pun.
+
+**Yang belum:** isi tarif resmi (terhalang terbitan resmi), grouper INA-CBG
+(terhalang perangkat lunak berlisensi), inventaris peraturan yang sungguhan —
+strukturnya ada, dan **inventaris yang kosong lebih baik daripada inventaris
+yang berisi nomor peraturan hasil ingatan**.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -757,7 +844,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 1.  H-9    HIM, koding, mutu — seluruhnya milik kami          [SELESAI]
 2.  H-9L   Master data dan pemetaan unit — pondasi bagi tarif  [SELESAI]
 3.  H-9N   COA dan pemetaan akuntansi — strukturnya          [SELESAI]
-4.  H-9D   Struktur tarif berversi — isinya menunggu terbitan resmi
+4.  H-9D   Struktur tarif berversi — isinya menunggu           [SELESAI]
 5.  H-9E   Kebijakan jasa dan kontributor
 6.  H-9F   Simulasi, settlement, reversal
 7.  H-9G   Gerbang kontrak fee sistem dan investor

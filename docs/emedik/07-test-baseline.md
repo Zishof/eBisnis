@@ -74,8 +74,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9 | 30 | **67** | `health-him.spec.ts` |
 | H-9L | 25 | **53** | `health-master-data.spec.ts` |
 | H-9N | 20 | **45** | `health-accounting.spec.ts` |
+| H-9D | 25 | **46** | `health-tariff.spec.ts` |
 
-API keseluruhan: **1649** pengujian pada 57 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **1697** pengujian pada 58 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -101,6 +102,15 @@ sungguhan, pada basis data sungguhan:
 | H-9 | `prove-health-him.mjs` | 74 pemeriksaan, seluruhnya lulus — [bukti-h9-rekam-medis.txt](bukti-h9-rekam-medis.txt) |
 | H-9L | `prove-health-master-data.mjs` | 61 pemeriksaan, seluruhnya lulus — [bukti-h9l-master-data.txt](bukti-h9l-master-data.txt) |
 | H-9N | `prove-health-accounting.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9n-akuntansi.txt](bukti-h9n-akuntansi.txt) |
+| H-9D | `prove-health-tariff.mjs` | 43 pemeriksaan, seluruhnya lulus — [bukti-h9d-tarif.txt](bukti-h9d-tarif.txt) |
+
+Naskah H-9D menemukan cacat yang pengujian satuannya **tidak mungkin**
+menemukan: `effectiveTo` disimpan sebagai batas atas `daterange` yang terbuka,
+sehingga hari terakhir setiap masa berlaku tidak tertutupi tarif mana pun.
+Aturan murninya memakai batas tertutup dan menjawab benar; yang salah adalah
+penerjemahannya ke tipe basis data, dan itu hanya terlihat ketika angkanya
+benar-benar melewati PostgreSQL. Pengujian satuan menguji aturan; naskah bukti
+menguji terjemahannya.
 
 Naskah H-9N membuktikan satu hal yang tidak lazim: **ketiadaan.** Ia menghitung
 tabel bernama `health*journal*`, `health*ledger*`, dan `health*balance*` pada

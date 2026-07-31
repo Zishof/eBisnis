@@ -258,6 +258,30 @@ describe('peran kesehatan', () => {
     expect(mengaktifkan).toEqual(['HEALTH_ADMIN']);
   });
 
+  it('yang mengimpor tarif bukan yang menyetujuinya', () => {
+    /*
+     * Persetujuan tarif mengubah seluruh tagihan rumah sakit sejak tanggal
+     * berlakunya. Yang pertama menyadari penyatuannya adalah penjamin yang
+     * menolak seluruh klaim bulan itu.
+     */
+    const mengimpor = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_TARIFF.IMPORT'),
+    ).map((r) => r.code);
+    const menyetujui = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_TARIFF.APPROVE'),
+    ).map((r) => r.code);
+    expect(mengimpor).toEqual(['HEALTH_TARIFF_OFFICER']);
+    expect(menyetujui).toEqual(['HEALTH_ADMIN']);
+  });
+
+  it('petugas pendaftaran melihat tanggungan penjamin saat pasien datang', () => {
+    // Bukan saat tagihannya dicetak — saat itu sudah terlambat bagi pasien
+    // yang mengira layanannya ditanggung.
+    const clerk = HEALTH_ROLES.find((r) => r.code === 'HEALTH_REGISTRATION_CLERK');
+    expect(clerk?.permissions).toContain('HEALTH_PAYER.READ');
+    expect(clerk?.permissions).not.toContain('HEALTH_PAYER.UPDATE');
+  });
+
   it('penghapusan data contoh hanya dipegang administrator', () => {
     // Penghapusannya menolak bila ada data nyata yang merujuknya, dan keputusan
     // atas penolakan itu harus diambil orang yang dapat menilai akibatnya.

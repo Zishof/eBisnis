@@ -5,6 +5,70 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9D — Tarif JKN berversi dan cakupan penjamin
+
+### Ditambahkan
+
+- **`H022__health__tariff.sql`** — `jkn_regulation`, `jkn_tariff_version`,
+  `jkn_tariff`, `health_payer_coverage`. Beserta constraint pengecualian
+  `jkn_tariff_no_overlap` (`EXCLUDE USING gist`), trigger
+  `forbid_active_tariff_mutation`, dan constraint
+  `jkn_version_approval_not_self`.
+- **`H023__health__tariff_permissions.sql`** — dua menu, satu peran baru
+  (Petugas Tarif), satu aturan pemisahan wewenang.
+- **`health-tariff.ts`** — aturan sebagai fungsi murni: pemilihan tarif menurut
+  kunci enam bagian dan tanggal layanan, pemeriksaan tumpang tindih, kelayakan
+  aktivasi versi, dan pembagian tanggungan penjamin. **46 pengujian.**
+- **`health-tariff.service.ts`** dan **`health-tariff.controller.ts`** —
+  sepuluh jalan pada `/api/v1/health/tariff/**`.
+- **`prove-health-tariff.mjs`** — naskah bukti, **43 pemeriksaan**, seluruhnya
+  lulus dan lulus pula pada pengulangan.
+
+Uji: API 1649 → **1697**.
+
+### Diperbaiki
+
+- **`effectiveTo` disimpan sebagai batas atas `daterange` yang terbuka**,
+  sehingga hari terakhir setiap masa berlaku tidak tertutupi tarif mana pun.
+  Pengujian satuannya lulus — aturan murninya memakai batas tertutup dan
+  menjawab benar; yang salah adalah penerjemahannya ke tipe basis data. Hari
+  terakhir justru hari yang paling sering dipersoalkan: ia hari terakhir sebelum
+  tarif baru berlaku.
+
+### Keputusan yang perlu dicatat
+
+- **Tarif dipilih menurut TANGGAL LAYANAN, bukan tanggal klaim.** Memakai
+  tanggal klaim berarti menunda pengajuan menjadi cara menaikkan tagihan.
+
+- **Tarif tidak pernah ditimpa**, dan baris pada versi yang sudah aktif tidak
+  dapat diubah maupun dihapus. Klaim yang sudah dihitung memakainya harus tetap
+  dapat dijelaskan.
+
+- **Tumpang tindih ditolak `EXCLUDE USING gist`**, dengan `COALESCE` pada bagian
+  yang boleh kosong — tanpa itu dua tarif **umum** yang bertumpang tindih akan
+  lolos, sebab NULL tidak pernah sama dengan NULL.
+
+- **Tarif yang belum ada TIDAK ditaksir**, dan dua tarif yang sama-sama berlaku
+  menghentikan perhitungan alih-alih memilih salah satunya.
+
+- **Aktivasi menuntut dasar peraturan, berkas sumber, sidik jarinya, dan isi.**
+  Yang mengimpor tidak menyetujui.
+
+- **Pembulatan tanggungan memihak pasien.** Sisa satu rupiah menjadi tanggungan
+  penjamin.
+
+- **Rujukan yang belum ada menahan tanggungan SEMENTARA**, dan pesannya
+  mengatakan begitu.
+
+### Masih terhalang
+
+Isi tarif resmi menunggu terbitan resmi; grouper INA-CBG menunggu perangkat
+lunak berlisensi. Inventaris peraturannya sengaja **kosong** — inventaris yang
+kosong lebih baik daripada inventaris yang berisi nomor peraturan hasil ingatan,
+sebab nomor yang keliru akan disalin ke dokumen klaim.
+
+---
+
 ## H-9N — Pemetaan akuntansi kesehatan
 
 ### Ditambahkan

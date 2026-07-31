@@ -550,6 +550,28 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'UPDATE', 'ACTIVATE'],
     sortOrder: 99,
   },
+  // Tarif dan penjamin — H-9D.
+  //
+  // Strukturnya ada; isinya menunggu terbitan resmi. Pemisahannya: yang
+  // mengimpor tarif tidak menyetujuinya.
+  {
+    code: 'HEALTH_TARIFF',
+    parentCode: 'HEALTH',
+    label: 'Tarif JKN',
+    route: '/app/emedik/tarif',
+    icon: 'receipt-text',
+    actions: ['READ', 'IMPORT', 'APPROVE', 'ACTIVATE'],
+    sortOrder: 100,
+  },
+  {
+    code: 'HEALTH_PAYER',
+    parentCode: 'HEALTH',
+    label: 'Penjamin',
+    route: '/app/emedik/penjamin',
+    icon: 'handshake',
+    actions: ['READ', 'CREATE', 'UPDATE'],
+    sortOrder: 101,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -609,6 +631,9 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_CODE_MAPPING.READ',
       // Meninjau dan mengaktifkan profil akuntansi; ia tidak memetakannya.
       'HEALTH_ACCOUNTING_MAP.READ', 'HEALTH_ACCOUNTING_MAP.ACTIVATE',
+      // Menyetujui dan mengaktifkan tarif; ia tidak mengimpornya.
+      'HEALTH_TARIFF.READ', 'HEALTH_TARIFF.APPROVE', 'HEALTH_TARIFF.ACTIVATE',
+      'HEALTH_PAYER.READ',
       // Administrator TIDAK diberi hak membaca rekam medis pasien. Mengelola
       // sistem tidak menuntut membaca diagnosis siapa pun, dan hak yang tidak
       // dibutuhkan adalah hak yang akan disalahgunakan.
@@ -637,6 +662,8 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_SERVICE_CATALOG.READ',
       'HEALTH_MASTER_DATA.READ',
       'HEALTH_ACCOUNTING_MAP.READ',
+      'HEALTH_TARIFF.READ',
+      'HEALTH_PAYER.READ',
     ],
     sortOrder: 2,
   },
@@ -650,6 +677,9 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_PATIENT.UPDATE',
       'HEALTH_PATIENT_DUPLICATE.READ',
       'HEALTH_PATIENT_DUPLICATE.REVIEW',
+      // Tanggungan penjamin perlu diketahui saat pasien datang, bukan saat
+      // tagihannya dicetak.
+      'HEALTH_PAYER.READ',
       // TIDAK diberi MERGE_PATIENT. Menandai dugaan ganda dan menggabungkannya
       // adalah dua wewenang berbeda: yang pertama pekerjaan harian, yang kedua
       // menempelkan riwayat medis dan tidak boleh dilakukan sendirian.
@@ -1039,6 +1069,23 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     sortOrder: 24,
   },
   {
+    code: 'HEALTH_TARIFF_OFFICER',
+    name: 'Petugas Tarif',
+    description:
+      'Mengimpor tarif dari terbitan resmi dan mengelola cakupan penjamin. TIDAK menyetujui ' +
+      'tarif — persetujuan mengubah seluruh tagihan rumah sakit.',
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_TARIFF.READ',
+      'HEALTH_TARIFF.IMPORT',
+      'HEALTH_PAYER.READ',
+      'HEALTH_PAYER.CREATE',
+      'HEALTH_PAYER.UPDATE',
+      'HEALTH_SERVICE_CATALOG.READ',
+    ],
+    sortOrder: 26,
+  },
+  {
     code: 'HEALTH_FINANCE_OFFICER',
     name: 'Petugas Keuangan Rumah Sakit',
     description:
@@ -1058,6 +1105,9 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_ACCOUNTING_MAP.CREATE',
       'HEALTH_ACCOUNTING_MAP.UPDATE',
       'HEALTH_SERVICE_CATALOG.READ',
+      // Membaca tarif; ia memetakan akunnya, bukan mengubah tarifnya.
+      'HEALTH_TARIFF.READ',
+      'HEALTH_PAYER.READ',
     ],
     sortOrder: 25,
   },

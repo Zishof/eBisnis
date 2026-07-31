@@ -309,6 +309,20 @@
       "file": "H021__health__accounting_permissions.sql",
       "name": "eMedik: menu, hak akses, dan peran pemetaan akuntansi",
       "description": "Satu menu (HEALTH_ACCOUNTING_MAP), satu peran baru (Petugas Keuangan Rumah Sakit), dan satu aturan pemisahan wewenang. Satu pemisahan menentukan bentuknya: YANG MEMETAKAN AKUN BUKAN YANG MEMBACA REKAM MEDIS. Petugas keuangan perlu tahu bahwa pendapatan laboratorium masuk ke akun 4160; ia tidak perlu tahu siapa yang diperiksa. Peran HEALTH_FINANCE_OFFICER sengaja TIDAK diberi HEALTH_PATIENT.READ — menggabungkan wewenang keuangan dengan pembacaan rekam medis adalah cara paling sunyi untuk membocorkan seluruh riwayat pasien: tidak ada yang akan menyadarinya sebab tidak ada yang mengira bagian keuangan membacanya, dan jejaknya akan tenggelam di antara ribuan pembacaan yang sah. Administrator meninjau dan mengaktifkan profil akuntansi; ia tidak memetakannya."
+    },
+    {
+      "version": "H022",
+      "sequence": 1022,
+      "file": "H022__health__tariff.sql",
+      "name": "eMedik: tarif JKN berversi dan cakupan penjamin",
+      "description": "jkn_regulation, jkn_tariff_version, jkn_tariff, health_payer_coverage. Strukturnya dibangun sekarang; ISINYA MENUNGGU TERBITAN RESMI, dan sampai itu ada sistem berkata tarif untuk kunci ini belum tersedia lalu menolak menghitung — menaksirnya akan menghasilkan angka yang tampak resmi lalu dipakai menagih orang. TARIF TIDAK PERNAH DITIMPA: impor membuat versi baru dan versi lama ditutup dengan tanggal berakhir, sebab klaim tahun lalu harus tetap dapat dijelaskan dengan tarif tahun lalu; bila tarifnya ditimpa, seluruh klaim lama menjadi tidak dapat diaudit. TUMPANG TINDIH TANGGAL DITOLAK constraint pengecualian EXCLUDE USING gist atas kunci enam bagian beserta rentang berlakunya — dua versi yang berlaku bersamaan membuat pemilihan tarif tidak dapat ditentukan, dan yang tidak dapat ditentukan akan ditentukan urutan baris, yaitu oleh sesuatu yang tidak pernah dilihat siapa pun. COALESCE dipakai pada bagian yang boleh kosong sebab NULL tidak pernah sama dengan NULL pada operator kesamaan constraint pengecualian; tanpa itu dua tarif umum yang bertumpang tindih akan lolos. Baris tarif pada versi yang sudah aktif tidak dapat diubah maupun dihapus, ditegakkan trigger forbid_active_tariff_mutation: klaim yang sudah dihitung memakai baris itu harus tetap dapat dijelaskan, dan yang hendak mengubah tarif membuat versi baru. Aktivasi menuntut dasar peraturan, berkas sumber, sidik jari berkas, dan isi yang tidak kosong — versi kosong yang diaktifkan akan menghentikan seluruh perhitungan tarif tanpa ada yang tahu sebabnya. Yang mengimpor tidak menyetujui, ditegakkan constraint jkn_version_approval_not_self. Penjamin selain pasien sendiri wajib menyebut kontraknya: tanggungan tanpa kontrak yang tercatat tidak dapat ditagihkan kepada siapa pun."
+    },
+    {
+      "version": "H023",
+      "sequence": 1023,
+      "file": "H023__health__tariff_permissions.sql",
+      "name": "eMedik: menu, hak akses, dan peran tarif dan penjamin",
+      "description": "Dua menu (HEALTH_TARIFF, HEALTH_PAYER), satu peran baru (Petugas Tarif), dan satu aturan pemisahan wewenang. Satu pemisahan menentukan bentuknya: YANG MENGIMPOR TARIF TIDAK MENYETUJUINYA. Impor tarif adalah pekerjaan teknis — mengunggah berkas, memeriksa barisnya, membetulkan format. Persetujuan adalah keputusan yang mengubah seluruh tagihan rumah sakit sejak tanggal berlakunya. Menyatukan keduanya berarti satu orang dapat menaikkan atau menurunkan seluruh tagihan tanpa ada pihak kedua yang pernah melihatnya, dan yang pertama menyadarinya adalah penjamin yang menolak seluruh klaim bulan itu. Petugas Tarif memperoleh IMPORT tetapi tidak APPROVE maupun ACTIVATE; administrator eMedik sebaliknya. Petugas keuangan hanya membaca tarif: ia memetakan akunnya, bukan mengubah tarifnya. Petugas pendaftaran diberi HEALTH_PAYER.READ sebab tanggungan penjamin perlu diketahui saat pasien datang, bukan saat tagihannya dicetak."
     }
   ]
 }
