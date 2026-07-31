@@ -24,11 +24,19 @@ import { CheckoutModule } from './modules/checkout/checkout.module';
 import { OrderModule } from './modules/order/order.module';
 import { FulfillmentModule } from './modules/fulfillment/fulfillment.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
 
 @Module({
-  providers: [{ provide: APP_FILTER, useClass: AllExceptionsFilter }],
+  providers: [
+    // Keduanya didaftarkan lewat token Nest, bukan dibuat manual di main.ts,
+    // agar menerima dependensi. Filter yang dibuat manual tidak akan pernah
+    // memperoleh penangkap galat, dan interceptor yang dibuat manual tidak akan
+    // pernah memperoleh pengumpul metrik.
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    { provide: APP_INTERCEPTOR, useClass: PerformanceInterceptor },
+  ],
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [appConfig], cache: true }),
     // Dipakai memeriksa bahwa setiap route menyatakan hak aksesnya saat aplikasi

@@ -1,0 +1,186 @@
+// eBisnis.id Versi 10 — Metrik kinerja dan analisis memori.
+//
+// ## Sampel dan agregat dipisahkan
+//
+// Sampel mentah berguna untuk melihat satu titik waktu; agregat berguna untuk
+// melihat kecenderungan. Menyimpan hanya sampel membuat pertanyaan "apakah
+// rute ini melambat sejak rilis kemarin" menuntut memindai jutaan baris setiap
+// kali ditanyakan.
+//
+// ## Kecurigaan kebocoran memori bukan kesimpulan
+//
+// Satu grafik RAM yang naik bukan bukti kebocoran. Yang membedakan kebocoran
+// dari pemakaian yang memang meningkat adalah **dasar setelah pengumpulan
+// sampah**: bila RAM turun kembali setelah GC, itu bukan kebocoran.
+//
+// Karena itu status yang tersedia memuat `INSUFFICIENT_EVIDENCE`, dan itu
+// status yang paling sering benar.
+
+/// Cuplikan keadaan proses pada satu titik waktu.
+model PerformanceSnapshot {
+  id String @id @default(uuid()) @db.Uuid
+
+  serviceName       String  @map("service_name") @db.VarChar(48)
+  serviceInstanceId String? @map("service_instance_id") @db.VarChar(96)
+  hostName          String? @map("host_name") @db.VarChar(128)
+  releaseVersion    String? @map("release_version") @db.VarChar(64)
+
+  capturedAt DateTime @default(now()) @map("captured_at") @db.Timestamptz(6)
+
+  /// Memori proses, dalam byte.
+  rss         BigInt @default(0)
+  heapTotal   BigInt @default(0) @map("heap_total")
+  heapUsed    BigInt @default(0) @map("heap_used")
+  external    BigInt @default(0)
+  arrayBuffers BigInt @default(0) @map("array_buffers")
+
+  /// Jumlah dan lama pengumpulan sampah sejak cuplikan sebelumnya.
+  gcCount      Int @default(0) @map("gc_count")
+  gcDurationMs Int @default(0) @map("gc_duration_ms")
+
+  /// Penundaan event loop, dalam milidetik.
+  eventLoopDelayP50 Float @default(0) @map("event_loop_delay_p50")
+  eventLoopDelayP99 Float @default(0) @map("event_loop_delay_p99")
+  eventLoopUtilization Float @default(0) @map("event_loop_utilization")
+
+  activeHandles  Int @default(0) @map("active_handles")
+  activeRequests Int @default(0) @map("active_requests")
+
+  cpuUserMicros   BigInt @default(0) @map("cpu_user_micros")
+  cpuSystemMicros BigInt @default(0) @map("cpu_system_micros")
+
+  uptimeSeconds Int @default(0) @map("uptime_seconds")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([serviceName, capturedAt])
+  @@index([capturedAt])
+  @@map("performance_snapshot")
+  @@schema("platform_observability")
+}
+
+/// Ringkasan kinerja satu rute pada satu jendela waktu.
+///
+/// Disimpan sebagai agregat, bukan per permintaan. Menyimpan setiap permintaan
+/// berarti tabel yang tumbuh sebesar lalu lintas — dan pertanyaan yang
+/// benar-benar ditanyakan hampir selalu tentang rata-rata dan persentil,
+/// bukan tentang satu permintaan tertentu.
+model PerformanceRouteAggregate {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Awal jendela; lebarnya ditentukan `windowMinutes`.
+  windowStart   DateTime @map("window_start") @db.Timestamptz(6)
+  windowMinutes Int      @default(5) @map("window_minutes")
+
+  routeTemplate String  @map("route_template") @db.VarChar(255)
+  httpMethod    String  @map("http_method") @db.VarChar(10)
+  moduleCode    String? @map("module_code") @db.VarChar(48)
+
+  serviceName    String  @map("service_name") @db.VarChar(48)
+  releaseVersion String? @map("release_version") @db.VarChar(64)
+
+  requestCount Int @default(0) @map("request_count")
+  errorCount   Int @default(0) @map("error_count")
+
+  /// Persentil dalam milidetik. Rata-rata sengaja tidak disimpan sendiri —
+  /// ia dapat dihitung, dan rata-rata menyembunyikan ekor yang justru
+  /// dirasakan pengguna.
+  durationP50 Int @default(0) @map("duration_p50")
+  durationP90 Int @default(0) @map("duration_p90")
+  durationP95 Int @default(0) @map("duration_p95")
+  durationP99 Int @default(0) @map("duration_p99")
+  durationMax Int @default(0) @map("duration_max")
+
+  totalDurationMs BigInt @default(0) @map("total_duration_ms")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  /// Satu baris per rute per jendela. Tanpa batasan ini, penulis yang berjalan
+  /// dua kali menggandakan hitungan.
+  @@unique([windowStart, routeTemplate, httpMethod, serviceName])
+  @@index([windowStart])
+  @@index([routeTemplate, windowStart])
+  @@map("performance_route_aggregate")
+  @@schema("platform_observability")
+}
+
+/// Kecurigaan kinerja yang dikelompokkan.
+///
+/// Seperti galat, satu masalah kinerja yang berulang adalah satu masalah.
+model PerformanceAnomaly {
+  id String @id @default(uuid()) @db.Uuid
+
+  fingerprint String @db.VarChar(64)
+
+  /// SLOW_ROUTE, MEMORY_GROWTH, EVENT_LOOP_LAG, GC_PRESSURE, atau HANDLE_GROWTH.
+  anomalyType String @map("anomaly_type") @db.VarChar(32)
+
+  subject     String  @db.VarChar(255)
+  moduleCode  String? @map("module_code") @db.VarChar(48)
+  serviceName String  @map("service_name") @db.VarChar(48)
+
+  severity String @default("WARNING") @db.VarChar(16)
+
+  /// Nilai dasar dan nilai saat anomali, agar besarnya perubahan terlihat.
+  baselineValue Float @default(0) @map("baseline_value")
+  observedValue Float @default(0) @map("observed_value")
+  unit          String @default("ms") @db.VarChar(16)
+
+  /// NORMAL, HIGH_USAGE, SUSPECTED_LEAK, LEAK_REPRODUCED, CAPACITY_LIMIT,
+  /// TEMPORARY_SPIKE, atau INSUFFICIENT_EVIDENCE.
+  ///
+  /// `INSUFFICIENT_EVIDENCE` adalah status yang paling sering benar, dan
+  /// keberadaannya disengaja: menyatakan kebocoran tanpa bukti membuat orang
+  /// mengejar masalah yang tidak ada.
+  verdict String @default("INSUFFICIENT_EVIDENCE") @db.VarChar(24)
+
+  /// Bukti yang mendasari kesimpulan, dalam bentuk terbaca.
+  evidence Json?
+
+  firstSeenAt DateTime @default(now()) @map("first_seen_at") @db.Timestamptz(6)
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  occurrenceCount Int  @default(1) @map("occurrence_count")
+
+  status String @default("OPEN") @db.VarChar(24)
+  resolvedAt DateTime? @map("resolved_at") @db.Timestamptz(6)
+  resolvedBy String?   @map("resolved_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([fingerprint])
+  @@index([status, lastSeenAt])
+  @@index([anomalyType, lastSeenAt])
+  @@map("performance_anomaly")
+  @@schema("platform_observability")
+}
+
+/// Dasar kinerja yang dipakai membandingkan.
+///
+/// Tanpa dasar, "lambat" tidak punya arti. Dasar dihitung dari jendela yang
+/// tenang, bukan dari seluruh riwayat — memasukkan lonjakan ke dalam dasar
+/// membuat lonjakan berikutnya terlihat normal.
+model PerformanceBaseline {
+  id String @id @default(uuid()) @db.Uuid
+
+  subjectType String @map("subject_type") @db.VarChar(24)
+  subject     String @db.VarChar(255)
+  serviceName String @map("service_name") @db.VarChar(48)
+
+  metric String @db.VarChar(48)
+
+  p50 Float @default(0)
+  p95 Float @default(0)
+  p99 Float @default(0)
+
+  sampleCount Int @default(0) @map("sample_count")
+
+  computedFrom DateTime @map("computed_from") @db.Timestamptz(6)
+  computedTo   DateTime @map("computed_to") @db.Timestamptz(6)
+  computedAt   DateTime @default(now()) @map("computed_at") @db.Timestamptz(6)
+
+  @@unique([subjectType, subject, serviceName, metric])
+  @@index([computedAt])
+  @@map("performance_baseline")
+  @@schema("platform_observability")
+}

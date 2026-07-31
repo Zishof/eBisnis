@@ -33,6 +33,9 @@ import {
   RequestMeta,
 } from '../../common/decorators';
 import { ErrorCaptureService } from '../../infrastructure/observability/error-capture.service';
+import { PerformanceCollectorService } from '../../infrastructure/observability/performance-collector.service';
+import { QueryStatsAdapter } from '../../infrastructure/observability/query-stats.adapter';
+import { PerformanceQueryService } from './performance-query.service';
 import {
   ErrorQueryService,
   MAX_PAGE_SIZE,
@@ -219,10 +222,79 @@ const actorOf = (user: AuthenticatedUser, meta: RequestMeta): AccessActor => ({
   ipAddress: meta.ipAddress,
 });
 
+@ApiTags('observability')
+@ApiBearerAuth('access-token')
+@Controller('platform/observability/performance')
+export class ObservabilityPerformanceController {
+  constructor(
+    private readonly performance: PerformanceQueryService,
+    private readonly queryStats: QueryStatsAdapter,
+    private readonly collector: PerformanceCollectorService,
+  ) {}
+
+  @Get('routes')
+  @PlatformPermissions('PLATFORM.OBSERVABILITY.READ')
+  @ApiOperation({
+    summary: 'Kinerja per rute',
+    description: 'Agregat per jendela lima menit, bukan satu baris per permintaan.',
+  })
+  @ApiQuery({ name: 'jam', required: false, type: Number })
+  routes(
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+    @Query('jam') hours?: string,
+  ) {
+    return this.performance.routePerformance(readNumber(hours) ?? 24, actorOf(user, meta));
+  }
+
+  @Get('memory')
+  @PlatformPermissions('PLATFORM.OBSERVABILITY.READ')
+  @ApiOperation({
+    summary: 'Analisis memori beserta buktinya',
+    description:
+      'Menyatakan INSUFFICIENT_EVIDENCE bila sampel belum cukup. Satu grafik RAM yang naik ' +
+      'bukan bukti kebocoran.',
+  })
+  @ApiQuery({ name: 'jam', required: false, type: Number })
+  memory(
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+    @Query('jam') hours?: string,
+  ) {
+    return this.performance.memoryAnalysis(readNumber(hours) ?? 6, actorOf(user, meta));
+  }
+
+  @Get('queries')
+  @PlatformPermissions('PLATFORM.OBSERVABILITY.READ')
+  @ApiOperation({
+    summary: 'Kueri paling lambat',
+    description:
+      'Menuntut ekstensi pg_stat_statements. Bila belum terpasang, jawabannya menyatakan ' +
+      'itu apa adanya beserta cara mengaktifkannya — bukan angka yang dikarang.',
+  })
+  queries() {
+    return this.queryStats.topSlowQueries();
+  }
+
+  @Post('flush')
+  @PlatformPermissions('PLATFORM.OBSERVABILITY.MANAGE')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menulis agregat jendela yang sedang berjalan',
+    description:
+      'Agregat disimpan di memori dan ditulis berkala. Yang belum tertulis hilang bila ' +
+      'proses mati mendadak; endpoint ini memaksa penulisan sekarang.',
+  })
+  async flush() {
+    const written = await this.collector.flushWindow();
+    return { written };
+  }
+}
+
 @Module({
   imports: [InfrastructureModule],
-  controllers: [ObservabilityErrorController],
-  providers: [ErrorQueryService],
-  exports: [ErrorQueryService],
+  controllers: [ObservabilityErrorController, ObservabilityPerformanceController],
+  providers: [ErrorQueryService, PerformanceQueryService],
+  exports: [ErrorQueryService, PerformanceQueryService],
 })
 export class ObservabilityModule {}
