@@ -39,7 +39,7 @@ module.exports = {
     {
       // Naskah pembangun aset berjalan di Node, bukan di peramban, dan memang
       // melaporkan kemajuannya ke konsol — itu satu-satunya keluarannya.
-      files: ['scripts/**/*.mjs'],
+      files: ['scripts/**/*.mjs', 'scripts/**/*.ts'],
       env: { node: true, browser: false },
       rules: { 'no-console': 'off' },
     },
