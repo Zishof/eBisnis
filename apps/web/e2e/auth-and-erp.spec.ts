@@ -177,6 +177,19 @@ test.describe.serial('Portal tenant', () => {
 
   test('modul yang belum selesai menampilkan halaman Segera Hadir', async () => {
     await openMenu(page, 'Stock Opname');
-    await expect(page.getByText(/segera hadir/i).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page).toHaveURL(/\/app\/stock-counts/);
+    /*
+     * Judul halaman, bukan sembarang teks yang cocok.
+     *
+     * Menu yang belum selesai juga membawa lencana "Segera Hadir" pada sidebar
+     * desktop. Sidebar itu `hidden` pada lebar ponsel, sehingga
+     * `getByText(...).first()` memilih lencana yang tersembunyi dan uji gagal
+     * dengan "Received: hidden"; pada lebar desktop lencana yang sama terlihat,
+     * sehingga uji lulus tanpa pernah memeriksa halamannya. Judul level 1 hanya
+     * ada pada halaman, dan sama pada kedua lebar layar.
+     */
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(/segera hadir/i, {
+      timeout: 15_000,
+    });
   });
 });
