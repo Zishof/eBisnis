@@ -13,6 +13,8 @@ import { CmsSeedService } from '../modules/master-seed/cms-seed.service';
 import { DataScopeResolver } from './authorization/data-scope.resolver';
 import { SecretBoxService } from './crypto/secret-box.service';
 import { ErrorCaptureService } from './observability/error-capture.service';
+import { PerformanceCollectorService } from './observability/performance-collector.service';
+import { QueryStatsAdapter } from './observability/query-stats.adapter';
 
 /**
  * Modul infrastruktur global: akses database platform, akses schema tenant,
@@ -21,6 +23,8 @@ import { ErrorCaptureService } from './observability/error-capture.service';
 @Global()
 @Module({
   providers: [
+    PerformanceCollectorService,
+    QueryStatsAdapter,
     ErrorCaptureService,
     PrismaService,
     TenantConnectionService,
@@ -37,6 +41,8 @@ import { ErrorCaptureService } from './observability/error-capture.service';
     CmsSeedService,
   ],
   exports: [
+    PerformanceCollectorService,
+    QueryStatsAdapter,
     ErrorCaptureService,
     PrismaService,
     TenantConnectionService,

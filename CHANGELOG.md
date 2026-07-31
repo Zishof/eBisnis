@@ -9,6 +9,24 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Added
 
+- **Telemetri tersanitasi (V10-1).** Penyamar bersama yang membuang kata sandi,
+  token, dan nomor kartu sebelum apa pun masuk ke log — beserta pembersih jejak
+  tumpukan yang membuang jalur absolut sehingga struktur direktori server tidak
+  ikut tersimpan. Hanya header pada daftar putih yang disimpan; alamat IP
+  disamarkan pada oktet terakhir.
+- **ErrorLog terpusat (V10-2).** Galat dikelompokkan menurut sidik jari yang
+  dihitung saat penulisan, bukan saat pembacaan: galat yang sama dari seribu
+  permintaan menjadi satu kelompok dengan penghitung, bukan seribu baris.
+  Kelompok yang sudah `RESOLVED` lalu muncul kembali ditandai `REGRESSED`
+  otomatis. Ekspor konteks menuntut alasan tertulis.
+- **PerformanceLog (V10-3).** Kinerja per rute diagregasi di memori lalu ditulis
+  sekali per jendela lima menit — bukan satu baris per permintaan, yang akan
+  membuat pengukurnya menjadi bagian dari masalah yang diukurnya. Rute
+  dinormalkan sehingga id berbeda tidak menjadi rute berbeda, dan daftarnya
+  diurutkan menurut p95 karena rata-rata menyembunyikan ekor yang justru
+  dirasakan pengguna. Analisis kebocoran memori menjawab `INSUFFICIENT_EVIDENCE`
+  bila sampelnya belum cukup, dan statistik kueri melaporkan `EXTENSION_MISSING`
+  apa adanya alih-alih mengarang angka.
 - **Marketplace publik `belanja.ebisnis.id`.** Katalog yang dapat dibuka siapa
   pun tanpa masuk: penelusuran kategori, pencarian, penyaringan harga dan
   ketersediaan, serta halaman produk. Pemesanan belum dibuka — tombol beli

@@ -1,0 +1,75 @@
+=========================================================================
+BUKTI V10-3 — PERFORMANCELOG
+=========================================================================
+
+Petugas sementara bukti.v10.3.1b948dcc dibuat dan masuk — akan dihapus di akhir.
+
+1. NORMALISASI RUTE
+   Tiga permintaan ke id berbeda harus menjadi SATU baris agregat, bukan tiga.
+   Rute yang tidak dinormalkan membuat setiap id terlihat sebagai rute
+   tersendiri, dan persentil kehilangan artinya.
+   3 agregat rute ditulis.
+  LULUS  tiga id berbeda menjadi satu templat
+   Templat: GET /api/v1/platform/observability/errors/groups/:id — 6 permintaan
+  LULUS  id tidak tersimpan pada templat
+
+2. PERSENTIL BERASAL DARI PENGUKURAN
+   p50 <= p95 <= p99 <= max adalah sifat yang harus selalu berlaku. Jika
+   dilanggar, angkanya bukan persentil — melainkan angka yang kebetulan ada.
+  LULUS  urutan p50 <= p90 <= p95 <= p99 <= max pada semua rute
+   GET /api/v1/public/catalog/search: n=30 p50=6ms p95=14ms max=35ms
+   GET /health: n=6 p50=3ms p95=16ms max=16ms
+   GET /api/v1/platform/observability/errors/groups/:id: n=6 p50=2ms p95=3ms max=3ms
+   POST /api/v1/auth/login: n=5 p50=121ms p95=173ms max=173ms
+   POST /api/v1/auth/login: n=3 p50=77ms p95=77ms max=77ms
+   Endpoint /routes mengembalikan 8 rute.
+  LULUS  urut menurun menurut p95
+   Terlambat: POST /api/v1/auth/login p95=173ms (n=8)
+
+3. CUPLIKAN PROSES
+   15 cuplikan antara 2026-07-31T06:07:52.144Z dan 2026-07-31T06:23:45.182Z
+   heapUsed 46 MB → 57 MB, pegangan aktif puncak 1
+  LULUS  cuplikan terambil
+  LULUS  heapUsed bukan nol
+
+4. ANALISIS KEBOCORAN MENAHAN DIRI
+   Satu grafik RAM yang naik bukan bukti kebocoran. Dengan sampel sedikit,
+   jawaban yang benar adalah "bukti belum cukup" — bukan tebakan.
+   Sampel: 15, putusan: INSUFFICIENT_EVIDENCE
+   Alasan: Baru 15 sampel selama 16 menit; diperlukan sedikitnya 12 sampel dan 30 menit.
+  LULUS  putusan termasuk nilai yang dikenal
+  LULUS  bukti angka disertakan, bukan hanya kesimpulan
+
+5. STATISTIK KUERI JUJUR SAAT EKSTENSI TIDAK ADA
+   Status: EXTENSION_MISSING
+   Catatan: Ekstensi pg_stat_statements belum terpasang. Mengaktifkannya menuntut menambahkan 'pg_stat_statements' pada shared_preload_libraries, memulai ulang PostgreSQL, lalu menjalankan CREATE EXTENSION pg_stat_statements. Keduanya perubahan konfigurasi server yang perlu dilakukan operator.
+  LULUS  status termasuk nilai yang dikenal
+  LULUS  tidak ada baris dikarang saat tidak tersedia
+  LULUS  catatan menjelaskan cara mengaktifkan
+
+6. MASUK SAJA TIDAK CUKUP — IZINNYA YANG MENENTUKAN
+   Yang dibuktikan bukan hanya bahwa tanpa token ditolak, melainkan bahwa
+   petugas platform yang sudah masuk pun tetap ditolak bila tidak memegang
+   PLATFORM.OBSERVABILITY.*. Observability memuat jejak seluruh tenant.
+  LULUS  tanpa token ditolak
+  LULUS  petugas tanpa izin tetap dapat masuk
+  LULUS  GET /performance/routes ditolak untuk petugas tanpa izin
+  LULUS  GET /performance/memory ditolak untuk petugas tanpa izin
+  LULUS  GET /performance/queries ditolak untuk petugas tanpa izin
+  LULUS  POST /performance/flush ditolak untuk petugas tanpa izin
+
+7. SETIAP PEMBACAAN TERCATAT
+   MemoryAnalysis: 2 pembacaan tercatat
+   RoutePerformance: 2 pembacaan tercatat
+  LULUS  pembacaan analisis memori tercatat
+
+8. TIDAK ADA RAHASIA PADA AGREGAT
+  LULUS  kueri string tidak ikut tersimpan pada templat rute
+   Templat rute hanya memuat jalur; kueri string tidak pernah masuk.
+
+9. PEMBERSIHAN
+  LULUS  petugas sementara terhapus
+
+=========================================================================
+SELURUH PEMERIKSAAN LULUS
+=========================================================================
