@@ -294,6 +294,25 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
   { code: 'SHIPPING_PROVIDER', parentCode: 'SHIPPING', label: 'Provider Pengiriman', translationKey: 'menu.shipping.provider', route: '/app/pengiriman/provider', moduleCode: 'SHIPPING', sortOrder: 10, actions: [...CRUD, 'MANAGE_CREDENTIAL'], comingSoon: true },
   { code: 'SHIPPING_BOOKING', parentCode: 'SHIPPING', label: 'Booking dan Label', translationKey: 'menu.shipping.booking', route: '/app/pengiriman/booking', moduleCode: 'SHIPPING', sortOrder: 11, actions: ['READ', 'CREATE', 'CANCEL', 'PRINT', 'SHIP'], comingSoon: true },
   { code: 'SHIPPING_TRACKING', parentCode: 'SHIPPING', label: 'Pelacakan Kiriman', translationKey: 'menu.shipping.tracking', route: '/app/pengiriman/tracking', moduleCode: 'SHIPPING', sortOrder: 12, actions: ['READ', 'DELIVER'], comingSoon: true },
+
+  // ==========================================================================
+  // Versi 10 — Tata Kelola Surat
+  //
+  // Root tersendiri, bukan cabang di bawah ADMIN. Katalog role menunjuk MODUL
+  // (kode menu root); menempatkan surat di bawah ADMIN akan membuat setiap
+  // administrator sistem otomatis berhak menyetujui surat resmi, dan
+  // menyetujui surat adalah wewenang jabatan, bukan wewenang teknis.
+  // ==========================================================================
+
+  { code: 'SURAT', label: 'Tata Kelola Surat', translationKey: 'menu.surat', icon: 'mail', sortOrder: 26, actions: ['READ'] },
+  { code: 'SURAT_MASUK', parentCode: 'SURAT', label: 'Surat Masuk', translationKey: 'menu.surat.masuk', route: '/app/surat/masuk', icon: 'mail-open', moduleCode: 'SURAT', sortOrder: 1, actions: ['READ', 'CREATE', 'UPDATE', 'DELETE', 'PRINT', 'EXPORT'] },
+  { code: 'SURAT_KELUAR', parentCode: 'SURAT', label: 'Surat Keluar', translationKey: 'menu.surat.keluar', route: '/app/surat/keluar', icon: 'send', moduleCode: 'SURAT', sortOrder: 2, actions: DOC },
+  { code: 'SURAT_DISPOSISI', parentCode: 'SURAT', label: 'Disposisi Saya', translationKey: 'menu.surat.disposisi', route: '/app/surat/disposisi', icon: 'forward', moduleCode: 'SURAT', sortOrder: 3, actions: ['READ', 'UPDATE'] },
+  { code: 'SURAT_ARSIP', parentCode: 'SURAT', label: 'Arsip Surat', translationKey: 'menu.surat.arsip', route: '/app/surat/arsip', icon: 'archive', moduleCode: 'SURAT', sortOrder: 4, actions: ['READ', 'EXPORT'] },
+  { code: 'SURAT_KLASIFIKASI', parentCode: 'SURAT', label: 'Klasifikasi Surat', translationKey: 'menu.surat.klasifikasi', route: '/app/surat/klasifikasi', icon: 'tags', moduleCode: 'SURAT', sortOrder: 5, actions: CRUD },
+  { code: 'SURAT_PENOMORAN', parentCode: 'SURAT', label: 'Skema Penomoran', translationKey: 'menu.surat.penomoran', route: '/app/surat/penomoran', icon: 'hash', moduleCode: 'SURAT', sortOrder: 6, actions: CRUD },
+  { code: 'SURAT_ALUR', parentCode: 'SURAT', label: 'Alur Persetujuan', translationKey: 'menu.surat.alur', route: '/app/surat/alur', icon: 'git-branch', moduleCode: 'SURAT', sortOrder: 7, actions: CRUD },
+  { code: 'SURAT_LOKER', parentCode: 'SURAT', label: 'Loker Arsip', translationKey: 'menu.surat.loker', route: '/app/surat/loker', icon: 'folder-tree', moduleCode: 'SURAT', sortOrder: 8, actions: CRUD },
 ];
 
 export interface RoleTemplateSeed {
