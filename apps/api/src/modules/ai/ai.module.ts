@@ -188,6 +188,19 @@ export class AiController {
     return this.knowledge.stats(schemaOf(user));
   }
 
+  @Post('knowledge/embed')
+  @AuthenticatedOnly()
+  @ApiOperation({
+    summary: 'Membuat vektor untuk potongan yang belum punya',
+    description:
+      'Dapat diulang: potongan yang sudah bervektor dengan model yang sama dilewati, ' +
+      'sehingga pemanggilan kedua hanya mengerjakan sisanya. Melempar dengan keterangan ' +
+      'yang dapat ditindaklanjuti bila tidak ada model embedding.',
+  })
+  embed(@CurrentUser() user: AuthenticatedUser) {
+    return this.knowledge.embedPending(schemaOf(user));
+  }
+
   @Post('knowledge/reindex')
   @AuthenticatedOnly()
   @ApiOperation({

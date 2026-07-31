@@ -9,6 +9,20 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Added
 
+- **Pencarian semantik dan hibrida (V11-3b).** Penyimpanan vektor memakai
+  float8[] beserta fungsi kesamaan kosinus, karena pgvector TIDAK TERSEDIA pada
+  server basis data ini — bukan sekadar belum dipasang. Penggabungan hasil
+  leksikal dan semantik memakai Reciprocal Rank Fusion yang hanya melihat
+  URUTAN: skor ts_rank dan kosinus berada pada skala yang tidak sebanding, dan
+  menjumlahkannya membuat hasilnya didominasi skala yang kebetulan lebih besar.
+  Cara pencarian ditentukan oleh kenyataan, bukan konfigurasi — ia berpindah ke
+  hibrida sendiri begitu model embedding tersedia.
+- **Koreksi diagnosis embedding (V11-3b).** Catatan sebelumnya menyimpulkan
+  penghalangnya adalah bendera --embeddings pada server. Itu KELIRU. Ollama
+  melaporkan capabilities tiap model sebagai ["completion","tools"] — yang
+  kurang adalah MODEL embedding, bukan bendera. Pesan galat llama.cpp
+  menyesatkan, dan diagnosis yang salah membuat operator menyalakan bendera yang
+  tidak berpengaruh lalu menyimpulkan sistemnya rusak.
 - **AI Gateway (V11-1).** Satu-satunya pintu menuju model bahasa, seluruhnya di
   sisi server — peramban tidak pernah memanggil penyedia AI langsung. Nama model
   TIDAK PERNAH dikarang: katalog diisi dengan bertanya kepada penyedianya, dan

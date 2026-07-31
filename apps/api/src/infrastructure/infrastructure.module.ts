@@ -17,6 +17,7 @@ import { PerformanceCollectorService } from './observability/performance-collect
 import { QueryStatsAdapter } from './observability/query-stats.adapter';
 import { OllamaAdapter } from './ai/ollama.adapter';
 import { ModelCatalogService } from './ai/model-catalog.service';
+import { EmbeddingService } from './ai/embedding.service';
 
 /**
  * Modul infrastruktur global: akses database platform, akses schema tenant,
@@ -27,6 +28,7 @@ import { ModelCatalogService } from './ai/model-catalog.service';
   providers: [
     OllamaAdapter,
     ModelCatalogService,
+    EmbeddingService,
     PerformanceCollectorService,
     QueryStatsAdapter,
     ErrorCaptureService,
@@ -47,6 +49,7 @@ import { ModelCatalogService } from './ai/model-catalog.service';
   exports: [
     OllamaAdapter,
     ModelCatalogService,
+    EmbeddingService,
     PerformanceCollectorService,
     QueryStatsAdapter,
     ErrorCaptureService,
