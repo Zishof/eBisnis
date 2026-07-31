@@ -116,7 +116,14 @@ model PaymentChannelLegacyConfig {
 model PaymentOrder {
   id                    String             @id @default(uuid()) @db.Uuid
   providerId            String             @map("provider_id") @db.Uuid
-  invoiceId             String             @map("invoice_id") @db.Uuid
+  /// Sumber tagihan. Tepat satu di antara `invoiceId` dan `marketplaceOrderId`
+  /// harus terisi; basis data memastikannya lewat CHECK.
+  ///
+  /// Dilonggarkan menjadi opsional pada V9-7. Alternatifnya membuat tabel
+  /// perintah bayar kedua untuk marketplace — dan dua tabel yang menjawab
+  /// "sudah dibayar atau belum" pada akhirnya akan berbeda jawaban.
+  invoiceId             String?            @map("invoice_id") @db.Uuid
+  marketplaceOrderId    String?            @map("marketplace_order_id") @db.Uuid
   selectedChannelId     String?            @map("selected_channel_id") @db.Uuid
   orderNumber           String             @map("order_number") @db.VarChar(64)
   providerOrderId       String?            @map("provider_order_id") @db.VarChar(96)
@@ -143,7 +150,7 @@ model PaymentOrder {
   version   Int      @default(1)
 
   provider        PaymentProvider            @relation(fields: [providerId], references: [id], onDelete: Restrict)
-  invoice         BillingInvoice             @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  invoice         BillingInvoice?            @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
   selectedChannel PaymentChannel?            @relation(fields: [selectedChannelId], references: [id], onDelete: SetNull)
   attempts        PaymentAttempt[]
   callbackEvents  PaymentCallbackEvent[]
@@ -158,6 +165,7 @@ model PaymentOrder {
   @@unique([providerId, providerTransactionId])
   @@unique([providerId, providerOrderId])
   @@index([invoiceId, status])
+  @@index([marketplaceOrderId, status])
   @@index([status, expiresAt])
   @@map("payment_order")
   @@schema("platform")
