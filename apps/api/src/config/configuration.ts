@@ -19,6 +19,14 @@ export const appConfig = () => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   isProduction: process.env.NODE_ENV === 'production',
   port: int(process.env.PORT, 3000),
+  ai: {
+    provider: process.env.AI_PROVIDER ?? 'ollama',
+    // Hanya backend yang memakainya. Alamat ini tidak pernah sampai ke peramban.
+    ollamaUrl: process.env.OLLAMA_URL ?? 'http://38.47.182.162:11434',
+    // Nama model sengaja TIDAK dikonfigurasi. Katalog diisi dari penemuan;
+    // nama yang ditulis sebagai konfigurasi akan gagal diam-diam pada hari
+    // model itu diganti versinya.
+  },
   apiPrefix: process.env.API_PREFIX ?? 'api/v1',
   appName: process.env.APP_NAME ?? 'eBisnis.id',
   appUrl: process.env.APP_URL ?? 'http://localhost:3000',

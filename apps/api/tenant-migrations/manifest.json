@@ -148,6 +148,13 @@
       "file": "V021__notification_group_null_fix.sql",
       "name": "Perbaikan pengelompokan pemberitahuan berbasis peran",
       "description": "Indeks unik pengelompokan V020 tidak bekerja untuk pemberitahuan yang ditujukan kepada PERAN, karena recipient_subject_id-nya NULL dan PostgreSQL memperlakukan NULL sebagai selalu berbeda dari NULL lain. Akibatnya pemeriksaan SLA tiap jam menerbitkan baris lonceng baru setiap jam untuk surat yang sama. Diganti indeks berbasis ekspresi COALESCE — bukan NULLS NOT DISTINCT, yang menuntut PostgreSQL 15 sedangkan produksi menjalankan 13.12."
+    },
+    {
+      "version": "V022",
+      "sequence": 22,
+      "file": "V022__knowledge_base.sql",
+      "name": "Basis pengetahuan untuk pencarian bukti AI",
+      "description": "knowledge_chunk dengan pencarian teks penuh PostgreSQL. Sengaja TANPA kolom vektor: penyedia Ollama menolak embedding pada tingkat konfigurasi server (--embeddings mati), sehingga kolom vektor sekarang hanya akan menjadi skema yang menjanjikan kemampuan yang tidak ada. Pencarian leksikal bekerja hari ini dan mengembalikan bukti nyata; kolom vektor dapat ditambahkan kelak sebagai migration additive satu kolom. Memuat metadata izin karena potongan menyimpan SALINAN isi dokumen — tanpa itu pencarian menjadi jalan memintas hak akses."
     }
   ]
 }

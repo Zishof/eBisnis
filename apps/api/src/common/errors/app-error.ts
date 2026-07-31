@@ -39,6 +39,18 @@ export class AppError extends HttpException {
     return new AppError(errorCode, message, HttpStatus.UNPROCESSABLE_ENTITY, params);
   }
 
+  /**
+   * Kuota atau batas laju terlampaui.
+   *
+   * Dibedakan dari `conflict`: klien memperlakukan 429 sebagai "coba lagi
+   * nanti" dan 409 sebagai "permintaanmu bertabrakan dengan keadaan sekarang".
+   * Memakai 409 untuk kuota membuat klien mencoba ulang seketika, dan
+   * percobaan ulang seketika pada kuota yang habis hanya memperburuknya.
+   */
+  static tooManyRequests(errorCode: string, message: string, params?: Record<string, unknown>) {
+    return new AppError(errorCode, message, HttpStatus.TOO_MANY_REQUESTS, params);
+  }
+
   static internal(errorCode: string, message: string, params?: Record<string, unknown>) {
     return new AppError(errorCode, message, HttpStatus.INTERNAL_SERVER_ERROR, params);
   }
@@ -90,6 +102,7 @@ export const ErrorCodes = {
   CALLBACK_HOST_NOT_ALLOWED: 'CALLBACK_HOST_NOT_ALLOWED',
   CALLBACK_PAYLOAD_INVALID: 'CALLBACK_PAYLOAD_INVALID',
   BATCH_LIMIT_EXCEEDED: 'BATCH_LIMIT_EXCEEDED',
+  AI_QUOTA_EXCEEDED: 'AI_QUOTA_EXCEEDED',
   INSUFFICIENT_STOCK: 'INSUFFICIENT_STOCK',
   RECEIPT_ALREADY_VALIDATED: 'RECEIPT_ALREADY_VALIDATED',
   RECEIPT_NOT_VALIDATED: 'RECEIPT_NOT_VALIDATED',

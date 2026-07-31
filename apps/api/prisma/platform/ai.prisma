@@ -1,0 +1,191 @@
+/// Katalog model AI dan pemakaiannya.
+///
+/// ## Mengapa pada skema platform, bukan tenant
+///
+/// Model bahasa berjalan pada satu server yang dipakai seluruh tenant, dan
+/// katalognya menggambarkan keadaan server itu — bukan keadaan sebuah tenant.
+/// Menyalinnya ke setiap skema tenant akan menghasilkan empat belas salinan
+/// yang harus diselaraskan setiap kali sebuah model ditambah atau dihapus.
+///
+/// Yang TIDAK ada di sini: isi percakapan. Lihat `AiInvocation`.
+
+/// Model yang benar-benar tersedia pada penyedia.
+///
+/// ## Diisi dari penemuan, bukan ditulis tangan
+///
+/// Nama model TIDAK PERNAH dikarang maupun ditulis sebagai konstanta di dalam
+/// kode. Katalog ini diisi dengan menanyakan penyedianya (`GET /api/tags`),
+/// sehingga model yang dihapus dari server akan terlihat hilang di sini juga.
+///
+/// Kode yang menyebut nama model sebagai konstanta akan gagal diam-diam pada
+/// hari model itu diganti versinya — dan kegagalannya muncul sebagai jawaban
+/// AI yang hilang, bukan sebagai galat yang jelas.
+model AiModel {
+  id            String   @id @default(uuid()) @db.Uuid
+  provider      String   @default("ollama") @db.VarChar(32)
+  /// Nama persis sebagaimana dikenal penyedia, mis. `qwen2.5:3b-instruct-q4_K_M`.
+  name          String   @db.VarChar(160)
+  family        String?  @db.VarChar(64)
+  parameterSize String?  @map("parameter_size") @db.VarChar(32)
+  quantization  String?  @db.VarChar(32)
+  sizeBytes     BigInt?  @map("size_bytes")
+
+  /// Kemampuan yang BENAR-BENAR diuji, bukan yang diasumsikan dari namanya.
+  ///
+  /// Sebuah model dapat bernama seperti model embedding namun ditolak
+  /// servernya. Kolom ini diisi dari hasil percobaan nyata.
+  supportsChat      Boolean @default(false) @map("supports_chat")
+  supportsEmbedding Boolean @default(false) @map("supports_embedding")
+  supportsStructured Boolean @default(false) @map("supports_structured")
+
+  /// Panjang konteks menurut penyedia. Menentukan berapa banyak bukti yang
+  /// dapat disertakan pada satu permintaan.
+  contextLength Int?     @map("context_length")
+
+  /// Boleh dipakai. Administrator dapat menonaktifkan model yang terlalu lambat
+  /// atau hasilnya buruk tanpa menghapusnya dari server.
+  isEnabled     Boolean  @default(true) @map("is_enabled")
+
+  /// Catatan administrator, mis. alasan dinonaktifkan.
+  note          String?  @db.Text
+
+  firstSeenAt   DateTime @default(now()) @map("first_seen_at") @db.Timestamptz(6)
+  lastSeenAt    DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  /// Terakhir kali kemampuannya benar-benar diuji.
+  lastProbedAt  DateTime? @map("last_probed_at") @db.Timestamptz(6)
+
+  /// Hilang dari penyedia. Tidak dihapus supaya riwayat pemakaian yang
+  /// menunjuknya tetap dapat dijelaskan.
+  missingSince  DateTime? @map("missing_since") @db.Timestamptz(6)
+
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  invocations   AiInvocation[]
+
+  @@unique([provider, name])
+  @@index([isEnabled, supportsChat])
+  @@map("ai_model")
+  @@schema("platform")
+}
+
+/// Keadaan kesehatan penyedia.
+///
+/// Satu baris per pemeriksaan. Riwayatnya diperlukan untuk menjawab "sejak
+/// kapan AI tidak dapat dipakai" — pertanyaan yang tidak terjawab oleh satu
+/// baris keadaan terkini.
+model AiProviderHealth {
+  id            String   @id @default(uuid()) @db.Uuid
+  provider      String   @default("ollama") @db.VarChar(32)
+
+  /// HEALTHY  : menjawab dan cepat.
+  /// DEGRADED : menjawab tetapi lambat, atau sebagian kemampuan hilang.
+  /// DOWN     : tidak menjawab.
+  status        String   @db.VarChar(16)
+
+  latencyMs     Int?     @map("latency_ms")
+  version       String?  @db.VarChar(32)
+  modelCount    Int?     @map("model_count")
+
+  /// Keterangan yang dapat dibaca. Untuk DEGRADED dan DOWN, ia menyebutkan apa
+  /// yang terjadi — bukan sekadar statusnya.
+  note          String?  @db.Text
+
+  checkedAt     DateTime @default(now()) @map("checked_at") @db.Timestamptz(6)
+
+  @@index([provider, checkedAt])
+  @@map("ai_provider_health")
+  @@schema("platform")
+}
+
+/// Satu pemanggilan AI.
+///
+/// ## Yang disimpan dan yang tidak
+///
+/// Yang disimpan: siapa, kapan, model apa, use case apa, berapa token, berapa
+/// lama, berhasil atau tidak, dan **sidik** dari masukannya.
+///
+/// Yang TIDAK disimpan secara bawaan: isi masukan dan keluarannya. Prompt
+/// sebuah ERP memuat angka penjualan, nama pelanggan, dan gaji — menyimpannya
+/// utuh berarti membuat salinan kedua dari seluruh data sensitif, pada tabel
+/// yang aturan aksesnya berbeda dari tabel aslinya.
+///
+/// Penyimpanan isi hanya terjadi bila use case-nya menyatakannya, dan bahkan
+/// saat itu isinya melewati penyamar yang sama dengan telemetri.
+model AiInvocation {
+  id            String   @id @default(uuid()) @db.Uuid
+
+  useCaseCode   String   @map("use_case_code") @db.VarChar(64)
+  modelId       String?  @map("model_id") @db.Uuid
+  modelName     String   @map("model_name") @db.VarChar(160)
+
+  tenantId      String?  @map("tenant_id") @db.Uuid
+  tenantSchema  String?  @map("tenant_schema") @db.VarChar(64)
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  actorUsername String?  @map("actor_username") @db.VarChar(64)
+  activeRoleCode String? @map("active_role_code") @db.VarChar(64)
+  sessionId     String?  @map("session_id") @db.Uuid
+  requestId     String?  @map("request_id") @db.VarChar(64)
+
+  status        String   @db.VarChar(16)
+  /// Sebab kegagalan yang dapat dibaca.
+  errorMessage  String?  @map("error_message") @db.Text
+
+  promptTokens     Int?  @map("prompt_tokens")
+  completionTokens Int?  @map("completion_tokens")
+  durationMs       Int?  @map("duration_ms")
+
+  /// Sidik masukan — untuk mengenali permintaan yang sama tanpa menyimpan isinya.
+  inputFingerprint String? @map("input_fingerprint") @db.VarChar(64)
+
+  /// Isi, hanya bila use case-nya mengizinkan dan sesudah disamarkan.
+  promptRedacted   String? @map("prompt_redacted") @db.Text
+  outputRedacted   String? @map("output_redacted") @db.Text
+
+  /// Jumlah potongan bukti yang disertakan, bila memakai RAG.
+  evidenceCount    Int?   @map("evidence_count")
+
+  /// Keluarannya lolos pemeriksaan skema atau tidak.
+  schemaValid      Boolean? @map("schema_valid")
+
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  model         AiModel? @relation(fields: [modelId], references: [id])
+  feedback      AiFeedback[]
+
+  @@index([useCaseCode, occurredAt])
+  @@index([tenantId, occurredAt])
+  @@index([actorUserId, occurredAt])
+  @@index([status, occurredAt])
+  @@map("ai_invocation")
+  @@schema("platform")
+}
+
+/// Penilaian manusia atas keluaran AI.
+///
+/// Tanpa ini, mutu jawaban AI hanya dapat dinilai dengan membacanya satu per
+/// satu — dan tidak akan ada yang melakukannya. Penilaian yang terkumpul
+/// menjawab pertanyaan yang benar-benar penting: use case mana yang jawabannya
+/// dipercaya, dan mana yang selalu dibuang.
+model AiFeedback {
+  id            String   @id @default(uuid()) @db.Uuid
+  invocationId  String   @map("invocation_id") @db.Uuid
+
+  /// ACCEPTED : dipakai apa adanya.
+  /// EDITED   : dipakai setelah disunting.
+  /// REJECTED : dibuang.
+  verdict       String   @db.VarChar(16)
+
+  /// Wajib untuk REJECTED. Penolakan tanpa alasan tidak dapat diperbaiki.
+  reason        String?  @db.Text
+
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  invocation    AiInvocation @relation(fields: [invocationId], references: [id], onDelete: Cascade)
+
+  @@index([invocationId])
+  @@index([verdict, createdAt])
+  @@map("ai_feedback")
+  @@schema("platform")
+}
