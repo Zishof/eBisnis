@@ -152,24 +152,23 @@ memulai ulang dengan konfigurasi yang salah membuat tunnel mati dan
 
 ## 4. Apache: kenali alamat baru
 
-Alamatnya sudah ada pada konfigurasi di repo. Tarik perubahan lalu salin:
+Alamatnya sudah ada pada konfigurasi di repo. Terapkan lewat skrip pembaruan:
 
 ```bash
-cd /opt/ebisnis/app && sudo -u ebisnis git pull origin main
+sudo bash /opt/ebisnis/app/deploy/update.sh
 ```
 
-```bash
-sudo cp /opt/ebisnis/app/deploy/apache/ebisnis.conf /etc/apache2/sites-available/ebisnis.conf
-```
+Skrip ini yang mengambil source, membangun ulang, menjalankan migration,
+memasang konfigurasi Apache, dan memulai ulang layanan — berikut backup basis
+data dan pengembalian otomatis bila health check gagal.
 
-```bash
-sudo apache2ctl configtest && sudo systemctl reload apache2
-```
+> **Jangan menjalankan `git pull` manual lebih dulu.** Skrip menentukan apa yang
+> perlu dikerjakan dengan membandingkan source terhadap commit yang terakhir
+> selesai dipasang. Menarik source di luar skrip membuat keduanya tampak sama
+> padahal aplikasi belum dibangun ulang. Bila terlanjur, jalankan
+> `sudo bash /opt/ebisnis/app/deploy/update.sh --force`.
 
-`configtest` harus menjawab `Syntax OK` sebelum `reload`. Memuat konfigurasi
-yang salah membuat Apache berhenti melayani **seluruh** alamat.
-
-Memastikan alamat dikenal:
+Memastikan alamat dikenal Apache:
 
 ```bash
 apache2ctl -S | grep belanja

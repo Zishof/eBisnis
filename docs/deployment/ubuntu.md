@@ -301,6 +301,20 @@ Setelah ada perubahan yang sudah masuk `main` di GitHub:
 sudo bash /opt/ebisnis/app/deploy/update.sh
 ```
 
+Skrip melewati pekerjaan bila commit yang diminta **sudah selesai terpasang** —
+ditentukan dari penanda yang ditulis setelah health check lulus, bukan dari
+HEAD repositori. Karena itu `git pull` manual tidak membuat skrip mengira
+pekerjaannya sudah selesai.
+
+Untuk membangun ulang commit yang sama, misalnya setelah menyunting berkas di
+server atau setelah build yang terputus:
+
+```bash
+sudo bash /opt/ebisnis/app/deploy/update.sh --force
+```
+
+
+
 Urutannya: **backup database → ambil source → build → migration → restart →
 health check**.
 
