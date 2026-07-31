@@ -20,6 +20,7 @@ import {
   Param,
   Patch,
   Post,
+  type OnModuleInit,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -31,6 +32,8 @@ import {
 import {
   IsBoolean,
   IsIn,
+  IsNumber,
+  IsPositive,
   IsISO8601,
   IsObject,
   IsOptional,
@@ -42,6 +45,10 @@ import {
 import { CooperativeProfileService } from './cooperative-profile.service';
 import { CooperativePortalService } from './cooperative-portal.service';
 import { CooperativePosAdapter } from './adapters/pos.adapter';
+import { MemberBalanceService } from './payment/member-balance.service';
+import { MemberBalancePaymentHandler } from './payment/member-balance-payment.handler';
+import { ExternalPaymentRegistry } from '../pos/external-payment.registry';
+import { PosModule } from '../pos/pos.module';
 import { InfrastructureModule } from '../../infrastructure/infrastructure.module';
 import {
   AuthenticatedUser,
@@ -230,6 +237,24 @@ class AjukanPengaduanDto {
   isAnonymous?: boolean;
 }
 
+class SetujuiPembayaranDto {
+  @ApiProperty({
+    example: 53900,
+    description:
+      'Batas nilai yang boleh dibelanjakan dengan bukti ini. Anggota menyetujui sebuah jumlah, bukan menyerahkan seluruh saldonya kepada kasir.',
+  })
+  @IsNumber()
+  @IsPositive()
+  maxAmount!: number;
+
+  @ApiPropertyOptional({
+    description: 'Mengikat bukti pada satu gerai. Bukti yang terikat tidak berlaku di gerai lain.',
+  })
+  @IsOptional()
+  @IsUUID()
+  outletId?: string;
+}
+
 class TanggapiPengaduanDto {
   @ApiProperty()
   @IsString()
@@ -299,7 +324,10 @@ class LamaranPublikDto {
 @ApiTags('cooperative-portal')
 @Controller('cooperative/portal')
 export class CooperativePortalController {
-  constructor(private readonly portal: CooperativePortalService) {}
+  constructor(
+    private readonly portal: CooperativePortalService,
+    private readonly saldo: MemberBalanceService,
+  ) {}
 
   private async konteks(user: AuthenticatedUser) {
     const schema = requireSchema(user);
@@ -440,6 +468,49 @@ export class CooperativePortalController {
   ) {
     const { schema, konteks } = await this.konteks(user);
     return this.portal.tanggapiPengaduan(schema, konteks, id, dto.body);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('payment/balance')
+  @ApiOperation({
+    summary: 'Saldo yang dapat dibelanjakan di kasir',
+    description:
+      'Hanya simpanan yang boleh ditarik dan bukan ekuitas. Simpanan pokok dan wajib sengaja tidak ikut — menampilkannya sebagai saldo belanja akan membuat anggota mengira modal keanggotaannya dapat dipakai berbelanja.',
+  })
+  async saldoBelanja(@CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.saldo.saldoBelanja(schema, konteks);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.WRITE')
+  @BlockDemo()
+  @Post('payment/authorize')
+  @HttpCode(201)
+  @ApiOperation({
+    summary: 'Menyetujui pembayaran di kasir',
+    description:
+      'Menerbitkan bukti sekali pakai berumur pendek yang ditunjukkan kepada kasir. PIN anggota TIDAK PERNAH melewati kasir; yang melewatinya hanya bukti bahwa PIN sudah dimasukkan pada perangkat anggota sendiri. Buktinya dikembalikan SEKALI dan tidak dapat dibaca lagi.',
+  })
+  async setujuiPembayaran(
+    @Body() dto: SetujuiPembayaranDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.saldo.terbitkanBukti(schema, konteks, {
+      maxAmount: dto.maxAmount,
+      outletId: dto.outletId ?? null,
+    });
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PORTAL.READ')
+  @Get('payment/history')
+  @ApiOperation({ summary: 'Riwayat pembayaran saya di kasir' })
+  async riwayatPembayaran(@CurrentUser() user: AuthenticatedUser) {
+    const { schema, konteks } = await this.konteks(user);
+    return this.saldo.riwayat(schema, konteks);
   }
 
   @ApiBearerAuth('access-token')
@@ -704,9 +775,22 @@ export class CooperativeController {
 }
 
 @Module({
-  imports: [InfrastructureModule],
+  /*
+   * `PosModule` diimpor demi `ExternalPaymentRegistry` saja.
+   *
+   * Arahnya sengaja begini: koperasi bergantung pada POS, bukan sebaliknya.
+   * POS tidak mengetahui apa pun tentang simpanan anggota, dan menghapus modul
+   * koperasi tidak menyentuh satu baris pun miliknya.
+   */
+  imports: [InfrastructureModule, PosModule],
   controllers: [CooperativeController, CooperativePortalController, CooperativeWebsiteController],
-  providers: [CooperativeProfileService, CooperativePortalService, CooperativePosAdapter],
+  providers: [
+    CooperativeProfileService,
+    CooperativePortalService,
+    CooperativePosAdapter,
+    MemberBalanceService,
+    MemberBalancePaymentHandler,
+  ],
   exports: [CooperativeProfileService, CooperativePortalService, CooperativePosAdapter],
 })
 /**
@@ -716,4 +800,24 @@ export class CooperativeController {
  * modul mana yang kebetulan dimuat — dan CLI penyemai memuat lebih sedikit
  * modul daripada aplikasi HTTP. Lihat `vertical-catalogs.ts`.
  */
-export class CooperativeModule {}
+export class CooperativeModule implements OnModuleInit {
+  constructor(
+    private readonly pembayaranEksternal: ExternalPaymentRegistry,
+    private readonly penanganSaldo: MemberBalancePaymentHandler,
+  ) {}
+
+  /**
+   * Mendaftarkan penangan pembayaran bersaldo anggota (IR-002).
+   *
+   * Inilah satu-satunya tempat modul koperasi menyentuh alur kasir — lewat
+   * kontrak milik Core, bukan dengan menyunting POS. Panduan koordinasi §3.
+   *
+   * Pendaftaran dilewati bila sudah ada: modul Nest dapat dimuat lebih dari
+   * sekali pada pengujian, dan pendaftaran ganda ditolak registri — penolakan
+   * yang benar pada keadaan yang salah.
+   */
+  onModuleInit(): void {
+    if (this.pembayaranEksternal.has(this.penanganSaldo.handlerCode)) return;
+    this.pembayaranEksternal.register(this.penanganSaldo);
+  }
+}
