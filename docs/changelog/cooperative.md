@@ -5,6 +5,69 @@ menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
 ---
 
+## K-3 — Simpanan dan buku pembantu anggota
+
+### Ditambahkan
+
+- **Migrasi modul** `20260731T180000__cooperative__savings_and_subledger.sql`:
+  lima tabel — produk simpanan, rekening, transaksi, buku pembantu anggota, dan
+  rekening koran.
+- **`cooperative-saving.ts`** — aturan sebagai fungsi murni: sifat empat jenis
+  simpanan, saldo sebagai proyeksi mutasi, gerbang setor dan tarik, kemajuan
+  simpanan pokok, tunggakan berkala, dormansi, penutupan, dan bagi hasil
+  berbasis saldo rata-rata harian. **49 pengujian.**
+- **`scripts/prove-cooperative-k3.mjs`** dan buktinya di
+  `docs/ekoperasi/bukti-k3-simpanan.txt` — **24 pemeriksaan, seluruhnya lulus.**
+
+### Keputusan yang perlu dicatat
+
+- **Simpanan pokok dan wajib WAJIB bertanda ekuitas dan tidak dapat ditarik**,
+  ditegakkan constraint. Tidak ada jalan membuat "simpanan wajib yang dapat
+  ditarik" — yang secara hukum bukan simpanan wajib lagi.
+- **Bunga dan nisbah tidak boleh diisi bersamaan.** Produk yang membawa
+  keduanya tidak dapat dijelaskan kepada Dewan Pengawas Syariah maupun kepada
+  pengawas konvensional.
+- **Hanya satu produk simpanan pokok aktif per koperasi.** Dua berarti dua
+  besaran modal keanggotaan, dan tidak ada yang tahu mana yang menentukan
+  keabsahan keanggotaan.
+- **Saldo simpanan tidak pernah negatif.** Simpanan bukan pinjaman.
+- **Satu periode simpanan wajib dibayar sekali saja per rekening.** Tunggakan
+  dihitung dari periode, bukan dari selisih nilai — menyetor dua kali lipat
+  pada satu bulan tidak melunasi bulan yang terlewat, sebab SHU jasa modal
+  dihitung per periode.
+- **Buku pembantu memakai satu sisi saja per baris.** Baris bernilai nol pada
+  debit dan kredit tidak berarti apa-apa tetapi ikut terhitung saat
+  rekonsiliasi.
+- **Bagi hasil memakai saldo rata-rata harian, bukan saldo akhir.** Saldo akhir
+  memungkinkan seseorang menyetor besar pada hari terakhir dan memperoleh bagi
+  hasil sebulan penuh atasnya.
+- **`baruSajaLunas` dibedakan dari `lunas`** pada kemajuan simpanan pokok.
+  Tanpa pembedaan itu, setiap setoran berikutnya memicu pengaktifan keanggotaan
+  lagi — dan pengaktifan berulang menulis ulang tanggal aktif, yang menentukan
+  masa keanggotaan pada perhitungan SHU.
+- **Simpanan pokok dan wajib tidak pernah dormant.** Keduanya memang tidak
+  bergerak menurut sifatnya; menandainya dormant akan menyatakan seluruh
+  anggota tidak aktif.
+
+### Gerbang mutu
+
+| | |
+|---|---|
+| `tsc --noEmit` | bersih |
+| `eslint --max-warnings=0` | bersih |
+| `jest` | 48 suite, **1184 tes lulus** (bertambah 49) |
+| Bukti K-3 | **24 pemeriksaan lulus** |
+
+### Belum dikerjakan pada K-3
+
+- **Peristiwa akuntansi simpanan belum dijurnal.** Kode `COOPERATIVE_*` belum
+  dikenal mesin Core sampai IR-003 disetujui. Buku pembantu anggota berjalan;
+  yang belum terbentuk adalah jurnal buku besarnya. Kolom
+  `accounting_event_id` sudah tersedia dan tinggal diisi.
+- **Layanan dan endpoint** menyusul pada satu commit tersendiri bersama
+  keanggotaan K-2, sebab pengaktifan anggota adalah akibat dari transaksi
+  simpanan pokok.
+
 ## K-2 — Organisasi, kepengurusan, dan keanggotaan
 
 ### Ditambahkan

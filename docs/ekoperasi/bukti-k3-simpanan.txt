@@ -1,0 +1,61 @@
+==============================================================================
+BUKTI K-3 — SIMPANAN DAN BUKU PEMBANTU ANGGOTA
+Waktu  : 2026-07-31T16:49:17.680Z
+Schema : demo
+==============================================================================
+
+1. Tabel K-3 terpasang
+  LULUS  tabel cooperative_saving_product
+  LULUS  tabel cooperative_saving_account
+  LULUS  tabel cooperative_saving_transaction
+  LULUS  tabel cooperative_member_subledger
+  LULUS  tabel cooperative_saving_statement
+
+2. Simpanan wajib TIDAK dapat dibuat sebagai simpanan yang dapat ditarik
+  LULUS  produk MANDATORY dengan allows_withdrawal DITOLAK
+  LULUS  produk PRINCIPAL yang ditandai bukan ekuitas DITOLAK
+
+3. Bunga dan nisbah tidak boleh diisi bersamaan
+  LULUS  produk berbunga sekaligus bernisbah DITOLAK
+
+4. Produk simpanan yang sah
+  LULUS  tiga produk simpanan dibuat
+
+5. Hanya satu produk simpanan pokok aktif per koperasi
+  LULUS  produk simpanan pokok kedua DITOLAK
+
+6. Alur: calon anggota melunasi pokok lalu menjadi anggota
+  LULUS  simpanan pokok lunas 500.000
+  LULUS  keanggotaan menjadi aktif setelah pokok lunas
+
+7. Saldo sama dengan jumlah mutasinya
+  LULUS  saldo cache sama dengan saldo yang dibangun ulang dari mutasinya
+
+8. Saldo simpanan tidak pernah negatif
+  LULUS  saldo rekening negatif DITOLAK
+  LULUS  transaksi yang menghasilkan saldo negatif DITOLAK
+
+9. Satu periode simpanan wajib dibayar sekali saja
+  LULUS  setoran kedua untuk periode 2026-01 DITOLAK
+  LULUS  periode berikutnya diterima
+
+10. Satu anggota satu rekening per produk
+  LULUS  rekening kedua atas produk yang sama DITOLAK
+
+11. Setoran ganda dengan kunci idempotensi yang sama
+  LULUS  setoran dengan idempotency_key yang sama DITOLAK
+
+12. Buku pembantu: satu baris satu sisi
+  LULUS  baris dengan debit DAN kredit DITOLAK
+  LULUS  baris bernilai nol pada keduanya DITOLAK
+  LULUS  baris buku pembantu satu sisi diterima
+
+13. Rekening koran wajib seimbang
+  LULUS  rekening koran yang tidak seimbang DITOLAK
+  LULUS  rekening koran yang seimbang diterima
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.
