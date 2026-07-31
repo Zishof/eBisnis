@@ -5,6 +5,65 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## POS-2 — Katalog, barcode, harga, dan pajak
+
+### Ditambahkan
+- **Migrasi `V026__pos_catalog_pricing.sql`**: `pos_price_book_assignment`,
+  `pos_promotion`, `pos_promotion_product`, dan indeks pencarian barcode/SKU.
+- **`modules/pos/pos-pricing.ts`** — mesin kuotasi harga kasir sebagai fungsi
+  murni, beserta **40 pengujian**. Angkanya dihitung tangan lebih dahulu, bukan
+  disalin dari keluaran program.
+- **`modules/pos/pos-catalog.service.ts`** — pencarian produk, pemindaian
+  barcode, dan kuotasi harga di atas basis data.
+- **Enam endpoint**: `GET /pos/context`, `GET /pos/catalog/search`,
+  `GET /pos/products/by-barcode`, `POST /pos/price/quote`,
+  `POST /pos/shifts/open`, `GET /pos/shifts/current`, ditambah pengelolaan
+  penugasan register.
+- `scripts/prove-pos-1-2.mjs` beserta buktinya di
+  `docs/pos-web-priority/bukti-pos-1-2.txt` — menyiapkan sendiri pengguna,
+  terminal, dan penugasannya, lalu membersihkannya, sehingga dapat dijalankan
+  berulang kali.
+
+### Keputusan yang perlu dicatat
+- **Mesin harga dibangun baru, bukan memakai `PricingEngineService`.** Mesin
+  yang ada menghitung tagihan langganan SaaS (`planCode`, `billingInterval`,
+  `deviceIds`) — berapa yang dibayar penyewa kepada kita, bukan berapa yang
+  dibayar pembeli kepada penyewa. Yang dipakai ulang hanyalah evaluator diskon
+  berbasis pohon kondisi.
+- **Pajak dihitung pada nilai sesudah diskon.** Menghitungnya atas bruto
+  membuat penyewa membayar pajak atas uang yang tidak pernah diterimanya.
+- **Pajak inklusif dikeluarkan dari dalam harga** (`harga ÷ (1 + tarif)`),
+  bukan dikalikan di atasnya. Kekeliruan ini tidak pernah terlihat pada satu
+  struk, tetapi menggerus angka penjualan bersih setiap hari.
+- **Kekhususan buku harga menang lebih dahulu daripada jumlah minimum.**
+  Membalik urutannya membuat harga grosir tingkat tenant mengalahkan harga
+  eceran khusus outlet — dan outlet kehilangan kendali atas harganya sendiri.
+- **Baris tidak pernah bernilai negatif.** Diskon yang melebihi harga dipotong;
+  menyerahkan uang kepada pembeli adalah pengeluaran kas, yang punya alur dan
+  hak aksesnya sendiri.
+- `condition_tree` promosi dievaluasi kode, **tidak pernah** dengan `eval`,
+  `Function`, maupun SQL bebas.
+
+### Diperbaiki — ditemukan oleh naskah bukti, bukan oleh pengujian unit
+- **Konteks kasir memakai id pengguna control plane pada tabel tenant.**
+  `AuthenticatedUser.userId` menunjuk `platform.platform_user`, sedangkan
+  penugasan register dan shift menunjuk `user_subject.id`. Keduanya berbeda,
+  dan memakai yang satu di tempat yang menuntut yang lain **tidak menghasilkan
+  galat**: kuerinya berhasil dan mengembalikan nol baris. Kasir yang sudah
+  ditugaskan tampak tidak punya register sama sekali, tanpa satu pun pesan yang
+  menjelaskan sebabnya.
+- **Produk berharga nol lolos tanpa peringatan.** `default_sale_price`
+  dikembalikan sebagai teks, dan teks `"0"` bernilai benar dalam JavaScript —
+  sehingga produk berharga nol terbaca sebagai produk yang berharga, peringatan
+  `NO_PRICE` tidak muncul, dan barang akan terjual gratis tanpa satu pun tanda
+  pada layar kasir.
+- Penomoran shift memakai `MAX(shift_number)` pada kolom bertipe teks;
+  dikonversi lebih dahulu supaya nomor 10 tidak mendahului nomor 9.
+
+### Bukti
+- 26 pemeriksaan ujung-ke-ujung terhadap API yang berjalan, seluruhnya lulus.
+- `jest` 1154 tes lulus (bertambah 40).
+
 ## POS-1 — Konteks kasir, hak akses, dan peran
 
 ### Ditambahkan

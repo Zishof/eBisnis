@@ -176,6 +176,13 @@
       "file": "V025__pos_profiles.sql",
       "name": "Profil hak kasir pada constraint role",
       "description": "Memperluas ck_role_module_profile_code agar menerima profil kasir K1-K5 di samping P0-P12 dan M1-M9. Menyusul V012 yang melakukan hal sama untuk marketplace. Profil kasir dibuat tersendiri karena profil berlaku lintas modul: menambahkan REFUND_APPROVE atau CASH_MOVE ke profil manajer modul umum akan memberikannya pula pada modul lain yang menawarkan aksi itu."
+    },
+    {
+      "version": "V026",
+      "sequence": 26,
+      "file": "V026__pos_catalog_pricing.sql",
+      "name": "Penugasan buku harga dan promosi kasir",
+      "description": "pos_price_book_assignment, pos_promotion, pos_promotion_product, beserta indeks pencarian barcode dan SKU. price_book yang ada sudah punya scope_type tetapi TIDAK punya prioritas; tanpa prioritas, dua buku harga yang sama-sama berlaku pada satu outlet tidak dapat diputuskan mana yang menang, dan urutannya bergantung pada urutan baris di basis data — berarti harga yang muncul di kasir dapat berubah tanpa ada yang mengubah apa pun. condition_tree pada promosi adalah pohon kondisi terstruktur yang dievaluasi kode, TIDAK PERNAH dengan eval, Function, maupun SQL bebas: promosi adalah data yang boleh disunting pengguna tenant, dan ekspresi yang dapat mengeksekusi kode sembarang adalah lubang keamanan pada jalur uang. Constraint menolak diskon persen di atas seratus persen pada tingkat basis data."
     }
   ]
 }
