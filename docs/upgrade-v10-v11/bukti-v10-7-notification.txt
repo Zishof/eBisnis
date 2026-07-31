@@ -1,0 +1,75 @@
+=========================================================================
+BUKTI V10-7 — NOTIFICATION HUB
+=========================================================================
+
+Keadaan awal: 0 pemberitahuan pada demo.notification
+Tabel ini ada sejak V004 dan tidak pernah terisi — tidak ada satu pun kode
+yang menulisinya, dan tidak ada satu pun endpoint yang membacanya.
+
+1. KANAL MELAPORKAN KEADAANNYA APA ADANYA
+   Melaporkan berhasil padahal tidak terkirim adalah yang paling berbahaya:
+   orang mengira sudah diberi tahu, pekerjaan berhenti menunggu seseorang
+   yang tidak pernah tahu ia ditunggu, tanpa satu pun tanda ada yang salah.
+   IN_APP       SIAP
+   EMAIL        BELUM — Pengiriman surel menuntut server SMTP. Yang belum disetel: SMTP_HOST, 
+   WEB_PUSH     BELUM — Web push menuntut sepasang kunci VAPID. Yang belum disetel: VAPID_PUBL
+   WHATSAPP     BELUM — WhatsApp menuntut akun WhatsApp Business API beserta tokennya. Templat
+   MOBILE_PUSH  BELUM — Pemberitahuan seluler menuntut kredensial Firebase Cloud Messaging. Ya
+  LULUS  IN_APP siap
+  LULUS  EMAIL belum siap
+  LULUS  keterangan menyebut apa yang kurang
+
+2. DISPOSISI MENERBITKAN PEMBERITAHUAN
+   Lonceng: 1 belum dibaca, 1 menunggu tindakan
+  LULUS  disposisi muncul pada lonceng
+  LULUS  disposisi menuntut tindakan
+   Tautan: /app/surat/masuk/13695b0e-e8df-4b9f-8da2-08ff68cd5273
+  LULUS  ada tautan menuju suratnya
+
+3. LANGKAH PERSETUJUAN MEMBERI TAHU PENYETUJUNYA
+   Penyetuju yang tidak tahu gilirannya tiba akan membuat suratnya
+   menunggu sampai ada yang menanyakannya secara langsung.
+  LULUS  penyetuju diberi tahu
+  LULUS  yang menuntut tindakan didahulukan
+
+4. YANG MENUNTUT TINDAKAN TIDAK DAPAT DITUTUP BEGITU SAJA
+  LULUS  penutupan ditolak
+   Pemberitahuan yang menuntut tindakan tidak dapat ditutup begitu saja. Tindaklanjuti terlebih dahulu.
+   Menutupnya akan membuat pekerjaan orang lain berhenti menunggu tanpa
+   ada yang tahu sebabnya.
+
+5. DIBACA BERBEDA DARI DITINDAKLANJUTI
+  LULUS  sudah dibaca
+  LULUS  TETAP menunggu tindakan
+   Melihat permintaan persetujuan tidak sama dengan menyetujuinya.
+  LULUS  setelah ditindaklanjuti tidak lagi terhitung menunggu
+
+6. PENGELOMPOKAN MENCEGAH LONCENG TENGGELAM
+   Pemeriksaan SLA berjalan tiap jam. Tanpa pengelompokan, surat yang
+   terlambat tiga hari menghasilkan 72 baris lonceng — yang menenggelamkan
+   segala hal lain dan membuat lonceng itu diabaikan.
+   Tiga kali pemeriksaan menerbitkan 3 eskalasi.
+   Baris eskalasi pada lonceng: 1
+     SLA_SURAT:f691dc74-c5bf-4675-a4ca-bccfe2ecba7 -> 3 kejadian, CRITICAL
+  LULUS  tiga pemeriksaan menghasilkan SATU baris, bukan tiga
+  LULUS  penghitung kejadian eskalasi naik menjadi tiga
+  LULUS  terlambat lebih dari sehari menjadi CRITICAL
+   due_at yang dicatat V10-6 kini benar-benar dibaca — celah itu tertutup.
+
+   Pengelompokan pengajuan ulang:
+   Setelah tiga kali pengajuan: 1 baris, 2 kejadian
+  LULUS  tetap satu baris, bukan tiga
+  LULUS  penghitung kejadiannya naik
+
+7. CATATAN PENGIRIMAN PER KANAL
+   IN_APP: SKIPPED — Pemberitahuan ini ditujukan kepada peran, bukan kepada orang
+  LULUS  ada catatan pengiriman
+  LULUS  tidak ada yang mengaku SENT tanpa benar-benar terkirim
+
+8. TABEL TIDAK LAGI KOSONG
+   4 pemberitahuan diterbitkan oleh perbuatan nyata.
+  LULUS  tabel terisi
+
+=========================================================================
+SELURUH PEMERIKSAAN LULUS
+=========================================================================

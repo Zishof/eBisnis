@@ -25,6 +25,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { InfrastructureModule } from '../../infrastructure/infrastructure.module';
+import { NotificationModule } from '../notification/notification.module';
 import {
   AuthenticatedUser,
   CurrentUser,
@@ -251,7 +252,7 @@ export class SuratNomorController {
 }
 
 @Module({
-  imports: [InfrastructureModule],
+  imports: [InfrastructureModule, NotificationModule],
   controllers: [SuratMasukController, SuratKeluarController, SuratNomorController],
   providers: [SuratService, SuratNumberService],
   exports: [SuratService, SuratNumberService],

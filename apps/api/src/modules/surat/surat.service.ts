@@ -8,6 +8,7 @@ import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import type { AuthenticatedUser } from '../../common/decorators';
 import { SuratNumberService } from './surat-number.service';
+import { NotificationService } from '../notification/notification.service';
 import {
   canTransition,
   isEditable,
@@ -21,6 +22,7 @@ export class SuratService {
     private readonly tenantDb: TenantConnectionService,
     private readonly numbers: SuratNumberService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationService,
   ) {}
 
   // -- Surat masuk ----------------------------------------------------------
@@ -146,6 +148,20 @@ export class SuratService {
       [incomingId],
     );
 
+    // Disposisi yang tidak sampai kepada tujuannya hanya catatan.
+    await this.notifications.notify(schema, {
+      title: `Disposisi surat ${surat.agenda_number}`,
+      body: input.instruction,
+      recipientSubjectId: input.toUserSubjectId ?? null,
+      recipientRoleCode: input.toRoleCode ?? null,
+      deepLink: `/app/surat/masuk/${incomingId}`,
+      entityType: 'SuratIncoming',
+      entityId: incomingId,
+      severity: 'INFO',
+      // Disposisi adalah perintah, bukan kabar. Ia menuntut tindakan.
+      actionRequired: true,
+    });
+
     await this.audit.record({
       moduleCode: 'SURAT',
       actionCode: 'SURAT_MASUK_DIDISPOSISI',
@@ -270,7 +286,7 @@ export class SuratService {
     }
 
     await this.setStatus(schema, outgoingId, 'DIAJUKAN', langkah[0].step_order);
-    await this.openStep(schema, outgoingId, langkah[0]);
+    await this.openStep(schema, outgoingId, langkah[0], surat);
 
     await this.audit.record({
       moduleCode: 'SURAT',
@@ -346,7 +362,7 @@ export class SuratService {
 
     if (hasil.nextStep) {
       const berikutnya = langkah.find((l) => l.step_order === hasil.nextStep);
-      if (berikutnya) await this.openStep(schema, outgoingId, berikutnya);
+      if (berikutnya) await this.openStep(schema, outgoingId, berikutnya, surat);
     }
 
     await this.audit.record({
@@ -462,7 +478,14 @@ export class SuratService {
   private async openStep(
     schema: string,
     outgoingId: string,
-    step: { id: string; step_order: number; sla_hours: number | null },
+    step: {
+      id: string;
+      step_order: number;
+      sla_hours: number | null;
+      name?: string;
+      role_code?: string | null;
+    },
+    surat?: { subject?: string },
   ): Promise<void> {
     await this.tenantDb.query(
       schema,
@@ -473,6 +496,22 @@ export class SuratService {
        ON CONFLICT DO NOTHING`,
       [outgoingId, step.id, step.step_order, step.sla_hours],
     );
+
+    // Penyetuju yang tidak tahu bahwa gilirannya tiba akan membuat suratnya
+    // menunggu sampai ada yang menanyakannya secara langsung.
+    await this.notifications.notify(schema, {
+      title: `Surat menunggu persetujuan Anda`,
+      body:
+        `${surat?.subject ?? 'Sebuah surat keluar'} menunggu keputusan pada langkah ` +
+        `${step.step_order}${step.name ? ` (${step.name})` : ''}.`,
+      recipientRoleCode: step.role_code ?? null,
+      deepLink: `/app/surat/keluar/${outgoingId}`,
+      entityType: 'SuratOutgoing',
+      entityId: outgoingId,
+      severity: 'INFO',
+      actionRequired: true,
+      groupKey: `SURAT_PERSETUJUAN:${outgoingId}:${step.step_order}`,
+    });
   }
 
   private async nextAgendaNumber(schema: string): Promise<string> {
@@ -515,13 +554,14 @@ export class SuratService {
     const rows = await this.tenantDb.query<{
       id: string;
       status: string;
+      subject: string;
       letter_number: string | null;
       classification_id: string;
       approval_flow_id: string | null;
       current_step_order: number | null;
     }>(
       schema,
-      `SELECT id::text, status, letter_number, classification_id::text,
+      `SELECT id::text, status, subject, letter_number, classification_id::text,
               approval_flow_id::text, current_step_order
          FROM "${schema}".surat_outgoing
         WHERE id = $1 AND deleted_at IS NULL`,

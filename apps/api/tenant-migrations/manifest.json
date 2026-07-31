@@ -134,6 +134,20 @@
       "file": "V019__surat_transaksi.sql",
       "name": "Tata kelola surat: surat masuk, surat keluar, disposisi, persetujuan",
       "description": "surat_incoming, surat_outgoing, surat_disposition, surat_approval. Nomor surat masuk berasal dari pengirim dan boleh kembar sehingga yang unik adalah nomor agenda internal. Nomor surat keluar hanya diberikan setelah disetujui — nomor yang sudah keluar tidak dapat ditarik kembali. Batasan menjamin surat berstatus DITERBITKAN wajib bernomor, penolakan wajib beralasan, dan disposisi wajib punya tujuan."
+    },
+    {
+      "version": "V020",
+      "sequence": 20,
+      "file": "V020__notification_hub.sql",
+      "name": "Notification hub: deep link, tuntutan tindakan, dan catatan pengiriman",
+      "description": "notification diperluas dengan deep_link, action_required, group_key, expires_at, dan penerima berupa peran; ditambah notification_delivery (satu baris per kanal) serta notification_preference. Tabel notification sudah ada sejak V004 dengan NOL baris — tidak ada kode yang menulisinya. Catatan pengiriman dipisah karena satu pemberitahuan dapat berhasil pada satu kanal dan gagal pada kanal lain, dan status tunggal akan menyembunyikan kegagalan itu. Kanal yang belum berkredensial menulis status UNCONFIGURED beserta keterangan apa yang kurang, bukan mengarang keberhasilan."
+    },
+    {
+      "version": "V021",
+      "sequence": 21,
+      "file": "V021__notification_group_null_fix.sql",
+      "name": "Perbaikan pengelompokan pemberitahuan berbasis peran",
+      "description": "Indeks unik pengelompokan V020 tidak bekerja untuk pemberitahuan yang ditujukan kepada PERAN, karena recipient_subject_id-nya NULL dan PostgreSQL memperlakukan NULL sebagai selalu berbeda dari NULL lain. Akibatnya pemeriksaan SLA tiap jam menerbitkan baris lonceng baru setiap jam untuk surat yang sama. Diganti indeks berbasis ekspresi COALESCE — bukan NULLS NOT DISTINCT, yang menuntut PostgreSQL 15 sedangkan produksi menjalankan 13.12."
     }
   ]
 }
