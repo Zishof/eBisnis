@@ -1,0 +1,209 @@
+// eBisnis.id Versi 9 — Retur, pengembalian dana, dan sengketa.
+//
+// Retur tinggal di schema platform bersama pesanan, karena yang mengajukannya
+// adalah pembeli — yang tidak punya tenant. Barang yang kembali masuk ke gudang
+// tenant lewat pemenuhan, tetapi keputusan menerima atau menolaknya adalah
+// keputusan marketplace, bukan keputusan gudang.
+//
+// ## Pengembalian dana tidak dikarang
+//
+// eSmartlink belum terbukti punya API pengembalian dana. Karena itu status
+// `MANUAL_REQUIRED` ada dan dipakai sungguhan: sistem mencatat bahwa dana harus
+// dikembalikan, siapa yang harus melakukannya, dan buktinya — tetapi tidak
+// berpura-pura mengirim perintah yang tidak ada.
+
+/// Permintaan retur dari pembeli.
+model MarketplaceReturnRequest {
+  id      String @id @default(uuid()) @db.Uuid
+  orderId String @map("order_id") @db.Uuid
+  buyerId String @map("buyer_id") @db.Uuid
+
+  returnNumber String @map("return_number") @db.VarChar(32)
+
+  /// DAMAGED, WRONG_ITEM, NOT_AS_DESCRIBED, MISSING_PART, CHANGED_MIND, LATE.
+  reasonCode String  @map("reason_code") @db.VarChar(32)
+  reasonNote String? @map("reason_note") @db.Text
+
+  /// Apa yang diminta pembeli: REFUND, EXCHANGE, atau REPAIR.
+  requestedResolution String @default("REFUND") @map("requested_resolution") @db.VarChar(16)
+
+  status String @default("REQUESTED") @db.VarChar(32)
+
+  /// Nilai yang diminta kembali. Diisi sistem dari baris yang diretur, bukan
+  /// dari angka yang dikirim pembeli.
+  requestedAmount Decimal @default(0) @map("requested_amount") @db.Decimal(19, 4)
+  approvedAmount  Decimal @default(0) @map("approved_amount") @db.Decimal(19, 4)
+  currencyCode    String  @default("IDR") @map("currency_code") @db.VarChar(8)
+
+  requestedAt DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  reviewedAt  DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  reviewedBy  String?   @map("reviewed_by") @db.Uuid
+  decidedAt   DateTime? @map("decided_at") @db.Timestamptz(6)
+  closedAt    DateTime? @map("closed_at") @db.Timestamptz(6)
+
+  rejectionReason String? @map("rejection_reason") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order    MarketplaceOrder       @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  lines    MarketplaceReturnLine[]
+  refunds  MarketplaceRefund[]
+  disputes MarketplaceDispute[]
+
+  @@unique([returnNumber])
+  @@index([orderId])
+  @@index([buyerId, requestedAt])
+  @@index([status, requestedAt])
+  @@map("marketplace_return_request")
+  @@schema("platform")
+}
+
+/// Baris yang diretur.
+model MarketplaceReturnLine {
+  id       String @id @default(uuid()) @db.Uuid
+  returnId String @map("return_id") @db.Uuid
+
+  orderLineId String @map("order_line_id") @db.Uuid
+
+  quantity Decimal @db.Decimal(19, 6)
+  /// Berapa yang benar-benar diterima kembali setelah diperiksa. Berbeda dari
+  /// yang diajukan bila barang tidak sampai lengkap.
+  receivedQuantity Decimal @default(0) @map("received_quantity") @db.Decimal(19, 6)
+
+  unitPrice Decimal @map("unit_price") @db.Decimal(19, 4)
+  lineTotal Decimal @map("line_total") @db.Decimal(19, 4)
+
+  /// Hasil pemeriksaan barang: GOOD, DAMAGED, MISSING, atau NOT_RECEIVED.
+  inspectionResult String?   @map("inspection_result") @db.VarChar(24)
+  inspectionNote   String?   @map("inspection_note") @db.Text
+  inspectedAt      DateTime? @map("inspected_at") @db.Timestamptz(6)
+
+  /// Apa yang dilakukan pada barangnya: RESTOCK, SCRAP, atau REPAIR.
+  disposition String? @db.VarChar(16)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  request MarketplaceReturnRequest @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  @@index([returnId])
+  @@map("marketplace_return_line")
+  @@schema("platform")
+}
+
+/// Pengembalian dana.
+///
+/// Dicatat terpisah dari retur karena tidak setiap retur menghasilkan
+/// pengembalian dana, dan tidak setiap pengembalian dana berasal dari retur —
+/// pembatalan setelah bayar juga menghasilkannya.
+model MarketplaceRefund {
+  id       String  @id @default(uuid()) @db.Uuid
+  orderId  String  @map("order_id") @db.Uuid
+  returnId String? @map("return_id") @db.Uuid
+
+  refundNumber String @map("refund_number") @db.VarChar(32)
+
+  amount       Decimal @db.Decimal(19, 4)
+  currencyCode String  @default("IDR") @map("currency_code") @db.VarChar(8)
+
+  /// PROVIDER bila penyedia mendukung; MANUAL bila harus ditransfer sendiri.
+  method String @default("MANUAL") @db.VarChar(16)
+
+  /// REQUESTED, MANUAL_REQUIRED, PROCESSING, COMPLETED, FAILED, CANCELLED.
+  status String @default("REQUESTED") @db.VarChar(24)
+
+  /// Bukti transfer manual. Wajib sebelum status menjadi COMPLETED pada metode
+  /// MANUAL — tanpa bukti, "sudah dikembalikan" hanya klaim.
+  proofReference String? @map("proof_reference") @db.VarChar(255)
+  proofNote      String? @map("proof_note") @db.Text
+
+  providerRefundId String? @map("provider_refund_id") @db.VarChar(96)
+  failureReason    String? @map("failure_reason") @db.Text
+
+  requestedAt DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  completedBy String?   @map("completed_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order   MarketplaceOrder          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  request MarketplaceReturnRequest? @relation(fields: [returnId], references: [id], onDelete: SetNull)
+
+  @@unique([refundNumber])
+  @@index([orderId])
+  @@index([status, requestedAt])
+  @@map("marketplace_refund")
+  @@schema("platform")
+}
+
+/// Sengketa antara pembeli dan penjual.
+///
+/// Dibuka ketika keduanya tidak sepakat. Yang memutuskan adalah platform, dan
+/// keputusannya tercatat beserta alasannya — sengketa yang diputus tanpa alasan
+/// tertulis tidak dapat dipertanggungjawabkan bila dipersoalkan kemudian.
+model MarketplaceDispute {
+  id       String  @id @default(uuid()) @db.Uuid
+  orderId  String  @map("order_id") @db.Uuid
+  returnId String? @map("return_id") @db.Uuid
+  buyerId  String  @map("buyer_id") @db.Uuid
+
+  disputeNumber String @map("dispute_number") @db.VarChar(32)
+
+  /// Siapa yang membuka: BUYER atau SELLER.
+  openedBy String @map("opened_by") @db.VarChar(16)
+
+  category String @db.VarChar(32)
+  summary  String @db.Text
+
+  status String @default("OPEN") @db.VarChar(24)
+
+  /// BUYER, SELLER, atau SPLIT. Diisi hanya setelah diputus.
+  decisionFavor  String?  @map("decision_favor") @db.VarChar(16)
+  decisionReason String?  @map("decision_reason") @db.Text
+  decisionAmount Decimal? @map("decision_amount") @db.Decimal(19, 4)
+
+  openedAt  DateTime  @default(now()) @map("opened_at") @db.Timestamptz(6)
+  decidedAt DateTime? @map("decided_at") @db.Timestamptz(6)
+  decidedBy String?   @map("decided_by") @db.Uuid
+  closedAt  DateTime? @map("closed_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order    MarketplaceOrder             @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  request  MarketplaceReturnRequest?    @relation(fields: [returnId], references: [id], onDelete: SetNull)
+  evidence MarketplaceDisputeEvidence[]
+
+  @@unique([disputeNumber])
+  @@index([orderId])
+  @@index([status, openedAt])
+  @@map("marketplace_dispute")
+  @@schema("platform")
+}
+
+/// Bukti yang diajukan pada sengketa.
+///
+/// Append-only. Bukti yang dapat dihapus setelah diajukan tidak berguna sebagai
+/// bukti.
+model MarketplaceDisputeEvidence {
+  id        String @id @default(uuid()) @db.Uuid
+  disputeId String @map("dispute_id") @db.Uuid
+
+  submittedByType String  @map("submitted_by_type") @db.VarChar(16)
+  submittedById   String? @map("submitted_by_id") @db.Uuid
+
+  evidenceType String  @map("evidence_type") @db.VarChar(24)
+  description  String  @db.Text
+  /// Berkas tinggal di schema tenant; ini hanya penunjuknya.
+  fileReference String? @map("file_reference") @db.VarChar(512)
+
+  submittedAt DateTime @default(now()) @map("submitted_at") @db.Timestamptz(6)
+
+  dispute MarketplaceDispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId, submittedAt])
+  @@map("marketplace_dispute_evidence")
+  @@schema("platform")
+}
