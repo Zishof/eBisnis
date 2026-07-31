@@ -1137,3 +1137,168 @@ lulus.
 - `jest` — **1477 tes lulus** (bertambah 53)
 - `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
 - Migrasi diverifikasi: 89 tabel village terbentuk
+
+---
+
+## D-10 — Situs, portal warga, kiosk, dan siaran
+
+### Ditambahkan
+
+- **`village-site.ts`** — proyeksi publik, penayangan, akses portal, sesi kiosk,
+  dan kesiapan kanal siaran. **31 pengujian.**
+- **`ports/broadcast.port.ts`** — kontrak siaran beserta adapter yang
+  menghalangi dengan jujur.
+- **`village-public.resolver.ts`** — penyelesai penyewa milik village.
+- **Migrasi `20260731000012`** — tujuh tabel.
+- **`VillageSiteService`**, **`VillagePublicController`** (delapan rute, seluruhnya
+  GET), dan **sebelas endpoint** terautentikasi.
+- **Antarmuka web pertama vertikal ini** — `apps/web/src/verticals/village/`.
+- **`docs/integration-requests/village/005-public-site-resolution.md`**
+
+### Antarmuka web akhirnya ada
+
+Sembilan tahap tanpa satu berkas pun di `apps/web` berakhir di sini. Yang
+dibangun adalah situs desa publik: profil, berita, agenda, wisata, UMKM, dan
+ringkasan APBDes, pada `/desa/:slug`.
+
+Utangnya belum lunas — halaman administrasi D-1 sampai D-9 masih belum ada.
+Yang berubah adalah bahwa vertikal ini kini punya sesuatu yang dapat dibuka
+warga, dan halaman berikutnya menumpang pondasi yang sama alih-alih memulai dari
+nol.
+
+Tiga keputusan pada antarmukanya:
+
+- **Gagal memuat dan "belum ada isi" ditampilkan berbeda**, di setiap bagian.
+  Warga yang melihat "belum ada berita" padahal servernya bermasalah akan
+  berhenti membukanya lagi.
+- **Isi berita ditampilkan sebagai teks, bukan HTML.** Situs desa disunting
+  operator yang menyalin-tempel dari mana saja, dan `dangerouslySetInnerHTML` di
+  halaman publik berarti siapa pun yang dapat menyunting berita dapat
+  menjalankan skrip pada peramban warga yang membacanya. Yang hilang hanya
+  penataan.
+- **Tarif destinasi selalu dinyatakan**, termasuk bila gratis; yang belum
+  dicantumkan ditulis apa adanya.
+
+### Situs publik hanya membaca, dan itu diuji
+
+`VillagePublicController` memuat delapan rute, seluruhnya `@Get` dan
+`@Public()`. Pengujian membaca **metadata rute Nest**, bukan berkasnya, dan
+menolak metode selain GET, rute yang lupa ditandai `@Public()`, rute publik yang
+menuntut permission, serta nama metode yang menyerupai jalur tulis.
+
+Alasannya bukan kelengkapan: situs desa adalah tempat yang paling mudah
+ditemukan dan paling jarang diperhatikan — terindeks mesin pencari, dipindai
+otomatis, dan tidak ada seorang pun yang menatapnya setiap hari. Satu endpoint
+tulis di sana bernilai lebih bagi penyerang daripada seluruh halaman
+administrasi.
+
+### Proyeksi publik adalah daftar izin, bukan daftar larangan
+
+Setiap keluaran publik melewati `proyeksikan()` dengan daftar ruas yang
+diizinkan per jenis isi. Perbedaannya menentukan: daftar larangan harus
+diperbarui setiap kali kolom baru ditambahkan, dan yang lupa diperbarui menjadi
+kebocoran. Daftar izin yang lupa diperbarui hanya membuat kolom barunya tidak
+tampil — dan itu ketahuan pada hari yang sama.
+
+Di sampingnya ada `RUAS_TIDAK_PUBLIK` sebagai pemeriksaan kedua **atas daftar
+izin itu sendiri**: bila suatu hari `nik`, `birthDate`, atau `monthlyIncome`
+masuk ke daftar izin, pengujian menggagalkannya.
+
+Proyeksi juga menolak properti dari prototipe — objek yang `title`-nya berasal
+dari rantai prototipe menghasilkan keluaran kosong, bukan judul.
+
+### Kiosk menghapus jejaknya, ditegakkan constraint
+
+```sql
+CHECK (ended_at IS NULL OR (resident_id IS NULL AND search_term IS NULL
+                            AND last_view_payload IS NULL AND request_id IS NULL))
+```
+
+Kiosk di balai desa dipakai bergantian. Warga berikutnya berdiri di depan layar
+yang sama kurang dari satu menit setelah yang sebelumnya pergi — sering tanpa
+menekan apa pun untuk keluar. Menutupi layar tidak cukup: tombol "kembali"
+mengembalikannya.
+
+**Dibuktikan** bahwa satu jejak yang tersisa saja sudah cukup untuk menolak
+penutupan, dan bahwa sesi yang sudah berakhir tidak dapat diisi jejak kembali.
+
+Dua ambang, dan keduanya perlu: dua menit tanpa sentuhan menutup sesi yang
+ditinggalkan; lima belas menit sejak dimulai menutup sesi yang tampak sibuk
+karena layarnya tersenggol berulang kali — antrean di balai desa berdiri rapat,
+dan layar sentuh tidak dapat membedakan jari yang membaca dari siku yang
+menunggu.
+
+**`village_kiosk_session` sengaja tidak diaudit.** Isinya justru jejak layar
+yang wajib dihapus; menyalinnya ke tabel audit yang bersifat append-only berarti
+menyimpan selamanya persis apa yang aturannya perintahkan untuk dihapus. Enam
+tabel D-10 lainnya tetap diaudit, dan bukti memeriksa keduanya.
+
+### Siaran tidak dapat menyatakan terkirim tanpa bukti
+
+```sql
+CHECK (status <> 'TERKIRIM' OR (provider_reference <> '' AND sent_at IS NOT NULL))
+```
+
+Kanal tanpa kredensial menghasilkan `TERHALANG`, bukan `GAGAL` dan bukan
+`TERKIRIM`. Perbedaannya bukan istilah melainkan apa yang dilakukan orang
+sesudahnya:
+
+| Status | Yang dilakukan orang sesudahnya |
+|---|---|
+| `GAGAL` | Mencoba lagi — berkali-kali, dan tidak akan pernah berhasil |
+| `TERKIRIM` | Memberi tahu warga bahwa pesannya sudah dikirim |
+| `TERHALANG` | Mengurus kredensialnya |
+
+Yang kedua paling merugikan: ia membuat pemerintah desa menyatakan sesuatu yang
+tidak diketahuinya kepada warganya, dan kekeliruannya baru ketahuan ketika warga
+bertanya mengapa ia tidak menerima apa-apa.
+
+Adapternya **tidak mengarang rujukan penyedia** — dibuktikan pengujian.
+`PAPAN_INFORMASI` tetap berhasil dan rujukannya menyebut sumbernya sendiri
+(`PAPAN:...`), bukan rujukan karangan yang menyerupai penyedia luar.
+
+### Portal warga hanya diri dan keluarga
+
+Tidak ada satu pun metode portal yang menerima pengenal penduduk dari luar. Yang
+ditampilkan ditentukan `tautanPortal()` dari `userId` sesinya. Endpoint yang
+menerima `residentId` akan dicoba dengan nilai lain oleh orang pertama yang
+menyadarinya, dan pemeriksaan izin yang menahannya hanya berjarak satu
+kekeliruan dari terbuka.
+
+**Penautan akun dilakukan petugas**, beserta keterangan cara identitasnya
+dipastikan (sekurang-kurangnya sepuluh huruf, ditegakkan constraint). Akun yang
+menautkan dirinya sendiri hanya perlu menebak NIK orang lain untuk membuka
+datanya. Satu akun satu penduduk, dan satu penduduk satu akun.
+
+Dua nilai `null` tidak pernah dianggap cocok — itu akan membuka portal bagi
+seluruh warga yang belum punya kartu keluarga.
+
+### Keputusan lain
+
+- **Berita menyimpan `author_name`, bukan rujukan ke penduduk.** Penulis berita
+  bukan data kependudukan, dan menautkannya membuat halaman publik menunjuk ke
+  tabel yang seluruh isinya pribadi.
+- **Agenda internal tidak pernah keluar dari kueri publik.** Rapat perangkat
+  desa bukan undangan bagi warga.
+- **Slug penyewa yang tidak dikenal ditolak, tidak dialihkan.** Pesannya sama
+  persis dengan slug yang bentuknya salah — membedakannya memberi tahu penebak
+  bahwa slug yang ia coba berbentuk benar.
+- **Penyewa yang tidak `ACTIVE` situsnya tidak tayang.** Isinya tidak lagi
+  diperbarui siapa pun, dan pengumuman lama yang terus tampil adalah pengumuman
+  yang menyesatkan.
+- **Rincian APBDes belum ditayangkan**, hanya totalnya. Rinciannya disajikan
+  D-11 bersama ambang penyajiannya; menayangkannya sekarang akan mendahului
+  keputusan yang belum diambil.
+
+### Bukti
+
+`docs/info-desa/bukti-d10-situs-kiosk.txt` — **25 pemeriksaan**, seluruhnya
+lulus.
+
+### Gerbang mutu
+
+- `jest` — **1519 tes lulus** (bertambah 42)
+- `vitest` — 35 tes lulus
+- `vite build` — berhasil; `VillageSitePage` masuk bundel
+- `tsc --noEmit` API dan web, `eslint --max-warnings=0` keduanya — bersih
+- Migrasi diverifikasi: 96 tabel village terbentuk

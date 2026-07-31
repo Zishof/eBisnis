@@ -28,7 +28,13 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
+import {
+  AuthenticatedOnly,
+  AuthenticatedUser,
+  CurrentUser,
+  Permissions,
+  Public,
+} from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { InfrastructureModule } from '../../infrastructure/infrastructure.module';
 import { VillageMigrationService } from './village-migration.service';
@@ -43,6 +49,9 @@ import { VillageAssetService } from './village-asset.service';
 import { VillageAidService } from './village-aid.service';
 import { VillageBusinessService } from './village-business.service';
 import { VillageSafetyService } from './village-safety.service';
+import { VillageSiteService } from './village-site.service';
+import { VillagePublicResolver } from './village-public.resolver';
+import { BROADCAST_PORT, BroadcastBlockedAdapter } from './ports/broadcast.port';
 import {
   COOPERATIVE_PORT,
   HEALTH_PORT,
@@ -2239,6 +2248,239 @@ class CabutSktDto {
   reason!: string;
 }
 
+
+class BeritaDto {
+  @ApiProperty({ example: 'kerja-bakti-minggu-ini' })
+  @IsString()
+  @Matches(/^[a-z0-9]+(-[a-z0-9]+)*$/, { message: 'Slug hanya huruf kecil, angka, dan tanda hubung.' })
+  @MaxLength(200)
+  slug!: string;
+
+  @ApiProperty({ example: 'Kerja Bakti Minggu Ini' })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(300)
+  title!: string;
+
+  @ApiProperty({ description: 'Sekurang-kurangnya dua puluh huruf agar dapat ditayangkan.' })
+  @IsString()
+  @MinLength(20)
+  body!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  summary?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  category?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  coverPath?: string;
+
+  @ApiPropertyOptional({
+    description: 'Nama penulis sebagaimana hendak ditampilkan. BUKAN rujukan ke data kependudukan.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  authorName?: string;
+}
+
+const STATUS_TAYANG = ['DRAF', 'TERJADWAL', 'TAYANG', 'DIARSIPKAN'] as const;
+
+class StatusTayangDto {
+  @ApiProperty({ enum: STATUS_TAYANG })
+  @IsIn(STATUS_TAYANG as unknown as string[])
+  status!: (typeof STATUS_TAYANG)[number];
+
+  @ApiPropertyOptional({ description: 'Wajib bila TERJADWAL.' })
+  @IsOptional()
+  @IsString()
+  publishAt?: string;
+}
+
+class TautkanAkunDto {
+  @ApiProperty()
+  @IsUUID()
+  userId!: string;
+
+  @ApiProperty()
+  @IsUUID()
+  residentId!: string;
+
+  @ApiProperty({
+    description:
+      'Cara identitasnya dipastikan, sekurang-kurangnya sepuluh huruf. Penautan tanpa ' +
+      'keterangan tidak dapat dibedakan dari penautan yang keliru, dan yang keliru membuka ' +
+      'seluruh data satu keluarga kepada orang lain.',
+  })
+  @IsString()
+  @MinLength(10)
+  verificationNote!: string;
+}
+
+class SentuhKioskDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  residentId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  searchTerm?: string;
+}
+
+const KANAL_SIARAN = ['WHATSAPP', 'SUREL', 'SMS', 'PAPAN_INFORMASI'] as const;
+
+class SiaranDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(300)
+  title!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(5)
+  message!: string;
+
+  @ApiProperty({
+    enum: KANAL_SIARAN,
+    description:
+      'Kanal tanpa kredensial menghasilkan TERHALANG, bukan GAGAL dan bukan TERKIRIM. ' +
+      'PAPAN_INFORMASI selalu siap — ia hanya menayangkan pada situs desa.',
+  })
+  @IsIn(KANAL_SIARAN as unknown as string[])
+  channel!: (typeof KANAL_SIARAN)[number];
+
+  @ApiPropertyOptional({ example: 'SEMUA_WARGA' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  audience?: string;
+}
+
+// --- Controller publik ---------------------------------------------------------
+
+/**
+ * Situs desa — hanya membaca.
+ *
+ * Seluruh rute di sini `@Get` dan `@Public()`. Tidak ada satu pun jalur tulis,
+ * dan itu bukan karena belum dibuat: situs desa adalah tempat yang paling mudah
+ * ditemukan dan paling jarang diperhatikan. Ia terindeks mesin pencari,
+ * dipindai otomatis, dan tidak ada seorang pun yang menatapnya setiap hari.
+ * Satu endpoint tulis di sana bernilai lebih bagi penyerang daripada seluruh
+ * halaman administrasi.
+ *
+ * Dijaga pengujian yang membaca metadata rutenya dan menolak metode selain GET.
+ */
+@ApiTags('Village Public')
+@Controller('village/public/:slug')
+export class VillagePublicController {
+  constructor(
+    private readonly resolver: VillagePublicResolver,
+    private readonly situs: VillageSiteService,
+  ) {}
+
+  private async skema(slug: string): Promise<string> {
+    return (await this.resolver.skemaDariSlug(slug)).schemaName;
+  }
+
+  @Public()
+  @Get('profile')
+  @ApiOperation({
+    summary: 'Profil desa untuk situs publik',
+    description: 'Disaring daftar izin ruas. Kolom yang tidak didaftarkan tidak tampil.',
+  })
+  async profil(@Param('slug') slug: string) {
+    return this.situs.profilPublik(await this.skema(slug));
+  }
+
+  @Public()
+  @Get('menu')
+  @ApiOperation({ summary: 'Menu halaman situs' })
+  async menu(@Param('slug') slug: string) {
+    return this.situs.menuPublik(await this.skema(slug));
+  }
+
+  @Public()
+  @Get('pages/:pageSlug')
+  @ApiOperation({ summary: 'Satu halaman situs yang tayang' })
+  async halaman(@Param('slug') slug: string, @Param('pageSlug') pageSlug: string) {
+    return this.situs.halamanPublik(await this.skema(slug), pageSlug);
+  }
+
+  @Public()
+  @Get('news')
+  @ApiOperation({ summary: 'Berita desa yang tayang' })
+  async berita(
+    @Param('slug') slug: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.situs.beritaPublik(
+      await this.skema(slug),
+      Number(limit) || 10,
+      Number(offset) || 0,
+    );
+  }
+
+  @Public()
+  @Get('news/:newsSlug')
+  @ApiOperation({ summary: 'Satu berita' })
+  async beritaSatu(@Param('slug') slug: string, @Param('newsSlug') newsSlug: string) {
+    return this.situs.beritaPublikSatu(await this.skema(slug), newsSlug);
+  }
+
+  @Public()
+  @Get('agenda')
+  @ApiOperation({
+    summary: 'Agenda desa yang terbuka untuk warga',
+    description:
+      'Agenda internal tidak pernah keluar dari sini. Rapat perangkat desa bukan undangan bagi ' +
+      'warga, dan menayangkannya membuat warga datang ke pertemuan yang tidak menyediakan ' +
+      'tempat baginya.',
+  })
+  async agenda(@Param('slug') slug: string) {
+    return this.situs.agendaPublik(await this.skema(slug));
+  }
+
+  @Public()
+  @Get('tourism')
+  @ApiOperation({ summary: 'Destinasi wisata yang ditayangkan' })
+  async wisata(@Param('slug') slug: string) {
+    return this.situs.wisataPublik(await this.skema(slug));
+  }
+
+  @Public()
+  @Get('umkm')
+  @ApiOperation({ summary: 'UMKM desa yang ditayangkan' })
+  async umkm(@Param('slug') slug: string) {
+    return this.situs.umkmPublik(await this.skema(slug));
+  }
+
+  @Public()
+  @Get('budget')
+  @ApiOperation({
+    summary: 'Ringkasan APBDes yang sudah ditetapkan',
+    description:
+      'Hanya total. Rincian per baris disajikan D-11 bersama ambang penyajiannya — ' +
+      'menayangkannya di sini akan mendahului keputusan yang belum diambil.',
+  })
+  async apbdes(@Param('slug') slug: string) {
+    return this.situs.apbdesPublik(await this.skema(slug));
+  }
+}
+
 // --- Controller ---------------------------------------------------------------
 
 @ApiTags('village')
@@ -2256,6 +2498,7 @@ export class VillageController {
     private readonly bantuan: VillageAidService,
     private readonly usaha: VillageBusinessService,
     private readonly keamanan: VillageSafetyService,
+    private readonly situs: VillageSiteService,
   ) {}
 
 
@@ -3609,6 +3852,157 @@ export class VillageController {
     return this.keamanan.riwayatBidang(requireSchema(user), id);
   }
 
+
+  // --- Isi situs ------------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_NEWS.CREATE')
+  @Post('news')
+  @ApiOperation({ summary: 'Menyusun berita desa' })
+  simpanBerita(@Body() dto: BeritaDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.situs.simpanBerita(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_NEWS.PUBLISH')
+  @Post('news/:id/status')
+  @ApiOperation({
+    summary: 'Menayangkan, menjadwalkan, atau mengarsipkan berita',
+    description:
+      'Halaman kosong yang tayang lebih buruk daripada halaman yang belum ada: yang belum ada ' +
+      'tidak menjanjikan apa-apa, yang kosong menjanjikan lalu tidak memberi.',
+  })
+  ubahStatusBerita(
+    @Param('id') id: string,
+    @Body() dto: StatusTayangDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.situs.ubahStatusBerita(requireSchema(user), id, dto.status, user, dto.publishAt);
+  }
+
+  // --- Portal warga ---------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Get('portal/me')
+  @ApiOperation({
+    summary: 'Data diri pemilik akun',
+    description:
+      'Yang ditampilkan ditentukan dari SESINYA, bukan dari permintaannya. Tidak ada parameter ' +
+      'untuk menyebutkan warga mana yang hendak dilihat.',
+  })
+  portalDiri(@CurrentUser() user: AuthenticatedUser) {
+    return this.situs.portalDiri(requireSchema(user), user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Get('portal/family')
+  @ApiOperation({
+    summary: 'Anggota keluarga dalam satu kartu keluarga',
+    description: 'Tidak ada pencarian warga lain, dan tidak akan ada.',
+  })
+  portalKeluarga(@CurrentUser() user: AuthenticatedUser) {
+    return this.situs.portalKeluarga(requireSchema(user), user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Get('portal/requests')
+  @ApiOperation({ summary: 'Permohonan layanan milik pemilik akun' })
+  portalPermohonan(@CurrentUser() user: AuthenticatedUser) {
+    return this.situs.portalPermohonan(requireSchema(user), user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SITE.READ')
+  @Post('portal/links')
+  @ApiOperation({
+    summary: 'Menautkan akun warga ke data kependudukan',
+    description:
+      'Dilakukan PETUGAS setelah memastikan identitasnya, bukan oleh pemilik akun. Akun yang ' +
+      'menautkan dirinya sendiri hanya perlu menebak NIK orang lain untuk membuka datanya.',
+  })
+  tautkanAkun(@Body() dto: TautkanAkunDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.situs.tautkanAkun(requireSchema(user), dto, user);
+  }
+
+  // --- Kiosk ----------------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SITE.READ')
+  @Post('kiosk/sessions')
+  @ApiOperation({
+    summary: 'Memulai sesi kiosk',
+    description: 'Sesi lama pada kiosk yang sama ditutup lebih dahulu beserta jejaknya.',
+  })
+  mulaiSesiKiosk(@Query('kiosk') kioskCode: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.situs.mulaiSesiKiosk(requireSchema(user), kioskCode || 'KIOSK-01');
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SITE.READ')
+  @Post('kiosk/sessions/:id/touch')
+  @ApiOperation({
+    summary: 'Menyentuh sesi kiosk',
+    description:
+      'Sesi berakhir sendiri setelah dua menit tanpa sentuhan, atau lima belas menit sejak ' +
+      'dimulai. Berakhirnya sesi MENGHAPUS jejak layar — dan constraint basis data menolak sesi ' +
+      'berakhir yang masih menyimpannya.',
+  })
+  sentuhSesiKiosk(
+    @Param('id') id: string,
+    @Body() dto: SentuhKioskDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.situs.sentuhSesiKiosk(requireSchema(user), id, dto);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SITE.READ')
+  @Post('kiosk/sessions/:id/close')
+  @ApiOperation({ summary: 'Menutup sesi kiosk beserta jejaknya' })
+  tutupSesiKiosk(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.situs.tutupSesiKiosk(requireSchema(user), id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SITE.READ')
+  @Post('kiosk/sweep')
+  @ApiOperation({
+    summary: 'Menutup sesi kiosk yang menganggur',
+    description:
+      'Kiosk di balai desa dipakai bergantian, dan warga berikutnya berdiri di depan layar yang ' +
+      'sama kurang dari satu menit kemudian — sering tanpa menekan apa pun untuk keluar.',
+  })
+  sapuSesiKiosk(@CurrentUser() user: AuthenticatedUser) {
+    return this.situs.sapuSesiKiosk(requireSchema(user));
+  }
+
+  // --- Siaran ---------------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BROADCAST.CREATE')
+  @Post('broadcasts')
+  @ApiOperation({
+    summary: 'Menyusun dan mengirim siaran',
+    description:
+      'Kanal tanpa kredensial menghasilkan TERHALANG beserta alasannya — bukan GAGAL yang ' +
+      'mengundang percobaan ulang tak berujung, dan bukan TERKIRIM yang akan diulang pemerintah ' +
+      'desa kepada warganya. Siaran tidak dapat ditandai terkirim tanpa rujukan dari penyedianya.',
+  })
+  siarkan(@Body() dto: SiaranDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.situs.siarkan(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BROADCAST.READ')
+  @Get('broadcasts')
+  @ApiOperation({ summary: 'Riwayat siaran beserta status sebenarnya' })
+  daftarSiaran(@CurrentUser() user: AuthenticatedUser) {
+    return this.situs.daftarSiaran(requireSchema(user));
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -3644,7 +4038,7 @@ export class VillageController {
 
 @Module({
   imports: [InfrastructureModule],
-  controllers: [VillageController],
+  controllers: [VillagePublicController, VillageController],
   providers: [
     VillageUnitService,
     VillageMigrationService,
@@ -3658,6 +4052,8 @@ export class VillageController {
     VillageAidService,
     VillageBusinessService,
     VillageSafetyService,
+    VillageSiteService,
+    VillagePublicResolver,
     // Mitra vertikal yang belum ada. Adapter tiruan menyatakan "belum
     // tersambung" dengan jujur dan tidak mengembalikan satu pun angka karangan.
     // Ketika mitranya siap, yang berubah hanya empat baris di bawah ini.
@@ -3665,6 +4061,9 @@ export class VillageController {
     { provide: COOPERATIVE_PORT, useClass: CooperativeUnavailableAdapter },
     { provide: POS_PORT, useClass: PosUnavailableAdapter },
     { provide: MARKETPLACE_PORT, useClass: MarketplaceUnavailableAdapter },
+    // Kredensial WhatsApp dan surel belum ada. Adapter menghalangi dengan
+    // jujur: siaran berstatus TERHALANG, bukan GAGAL dan bukan TERKIRIM.
+    { provide: BROADCAST_PORT, useClass: BroadcastBlockedAdapter },
   ],
   exports: [
     VillageUnitService,
@@ -3679,6 +4078,7 @@ export class VillageController {
     VillageAidService,
     VillageBusinessService,
     VillageSafetyService,
+    VillageSiteService,
   ],
 })
 export class VillageModule {}

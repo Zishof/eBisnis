@@ -68,6 +68,14 @@ const PenawaranPage = lazy(() =>
   import('../pages/public/PenawaranPage').then((m) => ({ default: m.PenawaranPage })),
 );
 
+// --- Situs desa (info-desa) ---
+// Hanya membaca. Tidak ada satu pun jalur tulis dari halaman tanpa autentikasi.
+const VillageSitePage = lazy(() =>
+  import('../verticals/village/public/VillageSitePage').then((m) => ({ default: m.VillageSitePage })),
+);
+const VillageNewsPage = lazy(() =>
+  import('../verticals/village/public/VillageNewsPage').then((m) => ({ default: m.VillageNewsPage })),
+);
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
 );
@@ -106,6 +114,12 @@ export function App() {
           <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
           <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />
+        </Route>
+
+        {/* Situs desa — halaman publik satu desa, hanya membaca. */}
+        <Route element={<PublicLayout />}>
+          <Route path="/desa/:slug" element={<VillageSitePage />} />
+          <Route path="/desa/:slug/berita/:beritaSlug" element={<VillageNewsPage />} />
         </Route>
 
         {/* Marketplace publik (belanja.ebisnis.id) */}
