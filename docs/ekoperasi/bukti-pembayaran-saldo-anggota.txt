@@ -1,0 +1,48 @@
+==============================================================================
+BUKTI PEMBAYARAN MEMAKAI SALDO SIMPANAN ANGGOTA
+Waktu  : 2026-07-31T22:42:38.357Z
+Schema : demo
+==============================================================================
+
+1. Tabel penahanan dan bukti terpasang
+  LULUS  tabel cooperative_payment_token ada
+  LULUS  tabel cooperative_payment_hold ada
+
+2. Hanya simpanan yang boleh ditarik yang terpilih
+  LULUS  tepat satu rekening terpilih
+  LULUS  yang terpilih adalah simpanan sukarela
+  LULUS  simpanan pokok TIDAK ikut terpilih meski saldonya lebih besar
+  LULUS  aturan menolak simpanan pokok bila dipaksakan
+
+3. Bukti persetujuan: sekali pakai, hanya sidiknya disimpan
+  LULUS  bukti tersimpan
+  LULUS  yang tersimpan adalah SIDIKNYA, bukan buktinya
+  LULUS  bukti asli tidak dapat ditemukan di basis data
+  LULUS  dua bukti bersidik sama DITOLAK
+  LULUS  bukti yang kedaluwarsa sebelum diterbitkan DITOLAK
+  LULUS  bukti bernilai nol DITOLAK
+  LULUS  aturan menolak nilai melebihi yang disetujui anggota
+
+4. Penahanan menahan, tidak memotong
+  LULUS  saldo BELUM berkurang setelah penahanan
+  LULUS  saldo tersedia berkurang oleh penahanan
+  LULUS  penahanan kedua yang melebihi sisa DITOLAK aturan
+  LULUS  penahanan kedua dengan kunci idempotensi sama DITOLAK
+  LULUS  penahanan CAPTURED tanpa transaksi simpanan DITOLAK
+  LULUS  pelepasan tanpa alasan DITOLAK
+
+5. Pewujudan memotong saldo tepat sekali dan mencatat mutasinya
+  LULUS  saldo berkurang tepat sebesar pembayaran
+  LULUS  mutasinya menyebut nomor struk agar anggota dapat mencocokkannya
+  LULUS  mutasinya merujuk struknya
+  LULUS  mutasi kedua dengan kunci idempotensi sama DITOLAK
+  LULUS  penahanan yang sudah diwujudkan tidak dapat dilepaskan
+
+6. Saldo simpanan tidak pernah negatif
+  LULUS  saldo negatif DITOLAK basis data
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.

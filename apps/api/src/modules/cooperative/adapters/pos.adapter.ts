@@ -26,6 +26,55 @@ export class CooperativePosAdapter implements PosPort {
 
   constructor(private readonly tenantDb: TenantConnectionService) {}
 
+  /**
+   * Keterangan penjualan kasir, untuk dicantumkan pada mutasi simpanan.
+   *
+   * HANYA membaca. Diletakkan di sini, bukan pada penangan pembayaran, karena
+   * adapter inilah satu-satunya batas modul koperasi terhadap POS — dan
+   * pengujian `pos-adapter-readonly.spec.ts` menegakkannya dengan memeriksa
+   * berkas mana saja yang menyebut tabel POS.
+   *
+   * Kegagalan mengembalikan nilai kosong, bukan melempar. Nomor struk bersifat
+   * menyenangkan, bukan menentukan: mutasi simpanan tetap harus terbentuk pada
+   * penyewa yang tidak memasang POS.
+   */
+  async saleDescription(
+    schemaName: string,
+    saleId: string | null,
+    outletId: string | null,
+  ): Promise<{ receiptNumber: string | null; outletName: string | null }> {
+    let receiptNumber: string | null = null;
+    let outletName: string | null = null;
+
+    if (saleId) {
+      try {
+        const rows = await this.tenantDb.query<{ receipt_number: string | null }>(
+          schemaName,
+          `SELECT receipt_number FROM "${schemaName}".pos_sale WHERE id = $1`,
+          [saleId],
+        );
+        receiptNumber = rows[0]?.receipt_number ?? null;
+      } catch {
+        receiptNumber = null;
+      }
+    }
+
+    if (outletId) {
+      try {
+        const rows = await this.tenantDb.query<{ name: string | null }>(
+          schemaName,
+          `SELECT name FROM "${schemaName}".outlet WHERE id = $1`,
+          [outletId],
+        );
+        outletName = rows[0]?.name ?? null;
+      } catch {
+        outletName = null;
+      }
+    }
+
+    return { receiptNumber, outletName };
+  }
+
   /** Outlet yang dimiliki sebuah unit usaha. */
   async outletsOfUnit(schemaName: string, unitBusinessId: string): Promise<OutletRef[]> {
     const rows = await this.tenantDb.query<{ id: string; code: string; name: string }>(

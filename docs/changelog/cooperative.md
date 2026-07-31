@@ -3,6 +3,73 @@
 Changelog modular sesuai panduan koordinasi §11. Sesi Core/Integrator yang
 menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
+## K-12 — Pembayaran memakai saldo simpanan anggota
+
+Sisi koperasi dari IR-002. Core menyediakan `ExternalPaymentRegistry` dan
+memanggilnya dari tiga tempat pada alur kasir; fase ini menyediakan yang
+ditahan, dan bukti bahwa anggota memang mengizinkannya.
+
+**Satu-satunya tempat modul koperasi menyentuh alur kasir** — lewat kontrak
+milik Core, bukan dengan menyunting POS. Panduan koordinasi §3.
+
+### Ditambahkan
+- **Migrasi `20260801T110000`** — `cooperative_payment_token`,
+  `cooperative_payment_hold`.
+- **`payment/member-balance.ts`** — aturan sebagai fungsi murni, **35 pengujian**.
+- **`payment/member-balance-payment.handler.ts`** — implementasi
+  `ExternalPaymentHandler` milik Core.
+- **`payment/member-balance.service.ts`** dan tiga endpoint portal: saldo
+  belanja, penyetujuan pembayaran, riwayat.
+- **`prove-member-balance-payment.mjs`** — **27 pemeriksaan** pada basis data.
+
+### Keputusan yang perlu dicatat
+- **Simpanan pokok dan wajib tidak pernah dapat dibelanjakan.** Keduanya modal
+  keanggotaan, bukan titipan; membiarkannya terpakai di kasir berarti
+  mengizinkan penarikan lewat pintu belakang. Diperiksa `is_equity` DAN
+  `allows_withdrawal` — keduanya, bukan salah satunya, sebab mengandalkan satu
+  berarti bergantung pada constraint yang berlaku di tempat lain.
+- **PIN tidak pernah melewati kasir pada satu langkah pun.** Anggota
+  memasukkannya di portal pada perangkatnya sendiri; yang sampai ke kasir
+  hanyalah bukti bahwa ia sudah melakukannya. Spesifikasi §14.
+- **Bukti persetujuan adalah kredensial pembawa**, dan diperlakukan demikian:
+  hanya sidiknya yang disimpan, sekali pakai ditegakkan indeks unik, berumur
+  tiga menit, dan berbatas nilai — anggota menyetujui sebuah jumlah, bukan
+  menyerahkan seluruh saldonya kepada kasir.
+- **SHA-256, bukan Argon2, untuk menyidik bukti.** Sengaja berbeda dari kata
+  sandi: bukti ini berumur tiga menit, sekali pakai, dan bernilai acak 256 bit,
+  sehingga tidak ada kamus yang dapat menebaknya. Argon2 di sini justru
+  merugikan — ia lambat dengan sengaja, dan kasir menunggu di depan pelanggan.
+- **Penahanan menunjuk SATU rekening.** Pembayaran yang ditarik dari beberapa
+  rekening sekaligus tidak punya cara melepaskan diri yang jelas bila salah
+  satunya berubah di antara penahanan dan pewujudan.
+- **Saldo tersedia dikurangi penahanan yang menggantung.** Mengabaikannya
+  berarti satu saldo dapat dijanjikan kepada dua transaksi sekaligus — dan yang
+  kedua baru gagal saat diwujudkan, ketika barangnya sudah keluar.
+- **Pesan "saldo tidak cukup" tidak menyebutkan angkanya.** Layar kasir
+  terlihat pelanggan berikutnya.
+- **Seluruh penolakan bukti berbunyi sama.** Orang yang mencoba menebak bukti
+  anggota lain tidak boleh memperoleh keterangan dari perbedaan pesannya.
+- **Pemanggilan ulang `capture()` berakhir tenang, bukan melempar.** POS dapat
+  memanggilnya dua kali bila jaringan putus setelah panggilan pertama berhasil;
+  melempar akan menggulung balik penyelesaian penjualan yang sudah benar.
+  Mutasi simpanannya pun berkunci idempotensi yang diturunkan dari
+  penahanannya, sehingga percobaan kedua ditolak basis data.
+- **`reverse()` atas penahanan yang sudah diwujudkan dilewati, bukan digagalkan.**
+  Pembatalan penjualan yang pembayarannya sudah berpindah adalah keadaan yang
+  sah — pengembaliannya lewat retur, yang punya jejaknya sendiri.
+- **Pembacaan POS berjalan lewat adapter, bukan langsung.** Penjaga
+  `pos-adapter-readonly.spec.ts` dari K-7 menangkap versi pertama berkas ini
+  yang membaca `pos_sale` sendiri — penjaga bekerja sebagaimana dirancang, dan
+  pembacaannya dipindahkan ke `saleDescription()` pada adapter.
+- **Mutasi menyebut nomor struk.** Anggota yang memeriksa mutasinya sebulan
+  kemudian perlu dapat mencocokkannya dengan struk yang ia simpan.
+
+### Yang masih menunggu
+- Layar portal untuk menyetujui pembayaran belum dibuat; endpointnya sudah ada
+  dan teruji.
+- Metode pembayaran `EXTERNAL_BALANCE` perlu dibuat penyewa pada layar metode
+  pembayaran, dengan `external_handler` bernilai `COOPERATIVE_MEMBER_BALANCE`.
+
 ---
 
 ## K-11 — Keamanan, bukti menyeluruh, dan uji terima
