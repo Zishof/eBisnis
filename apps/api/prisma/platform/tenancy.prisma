@@ -115,6 +115,7 @@ model Tenant {
 
   registration      Registration?               @relation(fields: [registrationId], references: [id], onDelete: SetNull)
   schemaRegistry    TenantSchemaRegistry?
+  siteDomains       VerticalSiteDomain[]
   memberships       TenantMembership[]
   provisioningJobs  ProvisioningJob[]
   migrationHistory  TenantSchemaMigrationHistory[]
@@ -245,8 +246,8 @@ model ProvisioningStep {
 
 model SchemaMigrationCatalog {
   id          String   @id @default(uuid()) @db.Uuid
-  version     String   @db.VarChar(16)
-  name        String   @db.VarChar(160)
+  version     String   @db.VarChar(128)
+  name        String   @db.VarChar(255)
   checksum    String   @db.VarChar(64)
   scriptPath  String   @map("script_path") @db.VarChar(255)
   description String?  @db.Text
@@ -269,7 +270,7 @@ model TenantSchemaMigrationHistory {
   id               String    @id @default(uuid()) @db.Uuid
   tenantId         String?   @map("tenant_id") @db.Uuid
   schemaName       String    @map("schema_name") @db.VarChar(64)
-  migrationVersion String    @map("migration_version") @db.VarChar(16)
+  migrationVersion String    @map("migration_version") @db.VarChar(128)
   catalogId        String?   @map("catalog_id") @db.Uuid
   checksum         String    @db.VarChar(64)
   appliedAt        DateTime  @default(now()) @map("applied_at") @db.Timestamptz(6)
@@ -474,5 +475,42 @@ model GlobalRoleTemplate {
   @@index([isActive, deletedAt])
   @@index([isSample, sampleBatchId])
   @@map("global_role_template")
+  @@schema("platform")
+}
+
+/// Pemetaan host situs publik vertikal ke penyewa (IR-005).
+///
+/// Situs koperasi, klinik, dan desa dibuka pengunjung yang belum masuk.
+/// Pengunjung tanpa sesi tidak membawa konteks ruang kerja, sehingga host
+/// permintaan yang menentukannya — lewat tabel ini, bukan lewat alamat.
+///
+/// Menerima nama skema dari alamat adalah satu-satunya jalan lain yang
+/// tersedia, dan itu dilarang: alamat semacam itu dapat dicoba nama demi nama
+/// sampai menemukan skema yang ada.
+model VerticalSiteDomain {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  /// Host dalam bentuk yang sudah dinormalkan: huruf kecil, tanpa porta,
+  /// tanpa titik akar. Penyimpanan dan pembacaan memakai penormal yang sama.
+  host       String    @unique @db.VarChar(253)
+  /// Kode vertikal yang dilayani host ini: cooperative, health, village.
+  /// Satu host melayani satu vertikal — keduanya punya pembaca, isi, dan
+  /// aturan cakupan data yang berbeda.
+  vertical   String    @db.VarChar(32)
+  status     String    @default("PENDING") @db.VarChar(24)
+  /// Bukti kepemilikan. Selama kosong, host ini tidak melayani apa pun —
+  /// tanpa itu siapa pun dapat mendaftarkan host milik orang lain dan
+  /// memperoleh permintaan yang ditujukan ke sana.
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
+  verifyToken String?  @map("verify_token") @db.VarChar(128)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version    Int       @default(1)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, vertical])
+  @@index([status])
+  @@map("vertical_site_domain")
   @@schema("platform")
 }

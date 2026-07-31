@@ -16,12 +16,23 @@
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const MIGRATION_DIR = 'apps/api/tenant-migrations';
 const MANIFEST = join(MIGRATION_DIR, 'manifest.json');
 const NAME_PATTERN = /^V(\d{3})__[a-z0-9]+(_[a-z0-9]+)*\.sql$/;
+
+/**
+ * Nama berkas migrasi modul: <timestamp>__<modul>__<keterangan>.sql
+ *
+ * Modul vertikal tidak memakai nomor urut global. Nomor urut yang disunting
+ * tiga sesi paralel akan bertabrakan, dan tabrakan pada nomor migrasi berarti
+ * satu migrasi dianggap sudah diterapkan lalu dilewati tanpa galat (IR-001).
+ */
+const MODULE_NAME_PATTERN =
+  /^(\d{8}T\d{6})__([a-z][a-z0-9_]*)__[a-z0-9]+(_[a-z0-9]+)*\.sql$/;
+const MAX_MIGRATION_ID_LENGTH = 128;
 
 /**
  * Pernyataan yang menghancurkan atau kehilangan data. Ditolak kecuali berkas
@@ -112,9 +123,110 @@ if (manifest) {
   }
 }
 
+// --- 3b. Migrasi modul vertikal (IR-001) -----------------------------------
+//
+// Sebelum ini pemeriksa hanya melihat berkas .sql di tingkat teratas, sehingga
+// migrasi modul di dalam subdirektori TIDAK diperiksa sama sekali. Itu lebih
+// buruk daripada gagal: pemeriksa yang melewatkan berkas tanpa berkata apa-apa
+// memberi keyakinan yang tidak berdasar.
+
+const moduleDirs = readdirSync(MIGRATION_DIR).filter((name) => {
+  const full = join(MIGRATION_DIR, name);
+  return statSync(full).isDirectory() && existsSync(join(full, 'manifest.json'));
+});
+
+/** Berkas modul, untuk ikut diperiksa SQL destruktifnya. */
+const moduleFiles = [];
+
+for (const moduleName of moduleDirs) {
+  const dir = join(MIGRATION_DIR, moduleName);
+  let moduleManifest;
+  try {
+    moduleManifest = JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8'));
+  } catch (error) {
+    fail(`manifest.json modul ${moduleName} tidak dapat dibaca: ${error.message}`);
+    continue;
+  }
+
+  if (moduleManifest.module !== moduleName) {
+    fail(
+      `Manifest pada direktori ${moduleName} menyebut modul "${moduleManifest.module}". ` +
+        'Nama direktori dan nama modul harus sama.',
+    );
+  }
+
+  const onDisk = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+  const listed = new Map((moduleManifest.migrations ?? []).map((m) => [m.file, m]));
+
+  for (const file of onDisk) {
+    const match = MODULE_NAME_PATTERN.exec(file);
+    if (!match) {
+      fail(
+        `Nama berkas migrasi modul tidak sesuai pola pada ${moduleName}/${file}. ` +
+          'Pakai <timestamp>__<modul>__<keterangan>.sql',
+      );
+      continue;
+    }
+    if (match[2] !== moduleName) {
+      fail(
+        `Berkas ${moduleName}/${file} menyebut modul "${match[2]}". ` +
+          'Nama modul pada berkas harus sama dengan direktorinya.',
+      );
+    }
+
+    const entry = listed.get(file);
+    if (!entry) {
+      fail(`Berkas ${moduleName}/${file} ada di disk tetapi tidak terdaftar pada manifestnya`);
+      continue;
+    }
+    if (entry.id !== file.replace(/\.sql$/, '')) {
+      fail(
+        `Id manifest (${entry.id}) tidak cocok dengan nama berkas ${moduleName}/${file}`,
+      );
+    }
+    if (entry.id.length > MAX_MIGRATION_ID_LENGTH) {
+      fail(
+        `Id ${entry.id} panjangnya ${entry.id.length} aksara, melebihi batas ` +
+          `${MAX_MIGRATION_ID_LENGTH} yang dapat disimpan schema_migration.version`,
+      );
+    }
+    if (!entry.name) {
+      fail(`Entri manifest ${moduleName}/${file} wajib memiliki name`);
+    }
+    listed.delete(file);
+    moduleFiles.push(join(moduleName, file));
+  }
+
+  for (const orphan of listed.keys()) {
+    fail(`manifest modul ${moduleName} mendaftarkan ${orphan} tetapi berkasnya tidak ada di disk`);
+  }
+}
+
+// Id migrasi tidak boleh dipakai dua modul. Bila dibiarkan, salah satunya
+// dianggap sudah diterapkan dan dilewati tanpa galat.
+const seenIds = new Map();
+for (const moduleName of moduleDirs) {
+  const manifestPath = join(MIGRATION_DIR, moduleName, 'manifest.json');
+  let mm;
+  try {
+    mm = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  } catch {
+    continue;
+  }
+  for (const entry of mm.migrations ?? []) {
+    const owner = seenIds.get(entry.id);
+    if (owner) {
+      fail(`Id migrasi "${entry.id}" dipakai modul ${owner} dan ${moduleName} sekaligus`);
+    }
+    seenIds.set(entry.id, moduleName);
+  }
+}
+
 // --- 4. SQL destruktif tanpa persetujuan -----------------------------------
 
-for (const { file } of versions) {
+const destructiveTargets = [...versions.map((v) => v.file), ...moduleFiles];
+
+for (const file of destructiveTargets) {
   const content = readFileSync(join(MIGRATION_DIR, file), 'utf8');
   const approved = content.includes(APPROVAL_MARKER);
 
@@ -183,13 +295,24 @@ if (baseRef) {
 
 // --- Laporan ---------------------------------------------------------------
 
-console.log(`Memeriksa ${versions.length} migration tenant pada ${MIGRATION_DIR}`);
+console.log(
+  `Memeriksa ${versions.length} migration inti dan ${moduleFiles.length} migration modul ` +
+    `(${moduleDirs.length} modul) pada ${MIGRATION_DIR}`,
+);
 for (const { file, version } of versions) {
   const checksum = createHash('sha256')
     .update(readFileSync(join(MIGRATION_DIR, file)))
     .digest('hex')
     .slice(0, 16);
   console.log(`  ${version}  ${checksum}  ${file}`);
+}
+
+for (const file of moduleFiles) {
+  const checksum = createHash('sha256')
+    .update(readFileSync(join(MIGRATION_DIR, file)))
+    .digest('hex')
+    .slice(0, 16);
+  console.log(`  modul  ${checksum}  ${file}`);
 }
 
 for (const note of notes) {

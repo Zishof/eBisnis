@@ -5,6 +5,60 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Registri modular: migrasi, akuntansi, menu, pembayaran, dan situs publik
+
+Menjawab lima permintaan integrasi dari sesi eKoperasi (IR-001 sampai IR-005).
+Kelimanya menyangkut hal yang sama: berkas bersama yang harus disunting setiap
+vertikal baru, dan yang kini diperebutkan tiga sesi paralel.
+
+Seluruhnya bersifat menambah. Tidak ada perilaku lama yang berubah.
+
+### Ditambahkan
+- **Katalog migrasi modular.** `tenant-migrations/<modul>/manifest.json`
+  ditemukan otomatis dan digabungkan dengan manifest inti. Migrasi inti selalu
+  lebih dahulu; antarmodul menurut `dependsOn` lalu menurut nama, deterministik.
+- **`V033`** melebarkan `schema_migration.version` ke `VARCHAR(128)`, `name` ke
+  `VARCHAR(255)`, dan menambah kolom `module`. Sudah diterapkan ke 17 skema.
+- **`AccountingEventCatalogRegistry`** — modul vertikal dapat mendaftarkan
+  peristiwa akuntansinya sendiri. Katalog inti kini terdaftar lewat pintu yang
+  sama, tanpa perlakuan istimewa.
+- **`VerticalCatalogRegistry`** — menu, peran, dan aksi hak akses per vertikal.
+- **`ExternalPaymentRegistry`** pada POS — kontrak pembayaran bersaldo
+  eksternal: `authorize` menahan, `capture` mewujudkan, `reverse` melepaskan.
+- **`PublicTenantResolver`** dan `platform.vertical_site_domain` — situs publik
+  vertikal memperoleh penyewanya dari host permintaan.
+- **`scripts/prove-core-ir.mjs`** — 40 pemeriksaan pada basis data sungguhan.
+
+### Diperbaiki
+- **Pemeriksa migrasi CI melewatkan subdirektori tanpa berkata apa-apa.**
+  `verify-migrations.mjs` hanya melihat berkas `.sql` di tingkat teratas, jadi
+  migrasi modul akan lolos tanpa satu pun pemeriksaan penamaan, sinkronisasi
+  manifest, maupun SQL destruktif. Itu lebih buruk daripada gagal: pemeriksa
+  yang melewatkan berkas secara diam-diam memberi keyakinan yang tidak
+  berdasar. Kini memeriksa migrasi modul pula, dan sudah dibuktikan menangkap
+  id yang tidak cocok, berkas hantu pada manifest, serta id kembar antarmodul.
+
+### Keputusan yang perlu dicatat
+- **Nama skema tidak pernah boleh datang dari alamat.** Itulah sebabnya IR-005
+  ada: sesi koperasi menolak membuat `/public/:schema/:slug` dan menunda
+  kemampuannya alih-alih melonggarkan aturannya. Penolakan itu benar — alamat
+  semacam itu dapat dicoba nama demi nama sampai menemukan skema yang ada.
+- **Tabrakan id migrasi ditolak saat pemuatan, bukan saat penerapan.** Bila
+  dibiarkan, penyewa yang sudah menerapkan `V024` milik satu modul akan
+  MELEWATI `V024` milik modul lain — tanpa galat, dan tabelnya tidak pernah
+  terbentuk. Cacatnya baru terlihat berbulan-bulan kemudian, pada sebagian
+  penyewa saja.
+- **`latestVersion()` tetap berarti versi inti.** Bila ia ikut berubah setiap
+  kali ada vertikal baru, artinya bergeser tanpa ada yang memutuskannya.
+- **Peran vertikal memakai `RoleCatalogEntry`, bukan `RoleTemplateSeed`** —
+  satu-satunya penyimpangan dari bentuk yang diusulkan IR-004. Bentuk yang
+  sudah diperluas melewati mesin profil sepenuhnya, dan izin yang tidak
+  melewati mesin profil tidak tunduk pada aturan pemisahan tugas yang dibangun
+  di atasnya.
+- **Peristiwa akuntansi tanpa daftar nilai wajib ditolak.** Peristiwa keuangan
+  yang tidak diperiksa kelengkapannya menghasilkan jurnal yang tidak seimbang,
+  dan ketidakseimbangan baru terlihat saat neraca disusun.
+
 ## Halaman CMS tetap berjudul meski isinya gagal dimuat
 
 ### Diperbaiki
