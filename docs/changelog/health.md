@@ -5,6 +5,100 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-3 — Kunjungan, dokumentasi klinis, dan order
+
+### Ditambahkan
+- **Migrasi `H004__health__clinical.sql`** — `patient_allergy`,
+  `health_encounter`, `clinical_note`, `vital_sign`, `encounter_diagnosis`,
+  `clinical_order`, `clinical_alert`.
+- **Naskah bukti** `prove-health-clinical.mjs` — 27 pemeriksaan pada basis data
+  sungguhan, seluruhnya lulus.
+
+### Yang ditegakkan basis data, bukan layanan
+
+Layanan dapat dilewati — lewat jalan kedua, naskah pemeliharaan, atau konsol
+basis data. Pemicu tidak.
+
+- **Catatan klinis bertanda tangan tidak dapat diubah maupun dihapus.**
+  Dibuktikan lima arah: mengubah bagian subjektif, mengubah penilaian,
+  memindahkan ke pasien lain, memundurkan waktu tanda tangan, dan menghapusnya.
+- **Amandemen wajib beralasan** sekurang-kurangnya sepuluh huruf. Perubahan
+  catatan medis tanpa alasan tidak dapat dibedakan dari penyembunyian.
+- **Satu kunjungan, satu diagnosis utama.** Dua diagnosis utama membuat
+  pengodean casemix tidak dapat memutuskan mana yang menentukan tarif.
+- **Jejak pembacaan tidak dapat diubah maupun dihapus**; break-glass tanpa
+  alasan ditolak.
+
+### Keputusan yang perlu dicatat
+
+- **`patient_allergy` pada tingkat pasien, bukan kunjungan.** Alergi yang
+  tercatat pada kunjungan tidak akan terlihat pada kunjungan berikutnya, dan
+  obat yang mematikan akan diresepkan oleh dokter yang tidak pernah melihat
+  catatannya. Naskah bukti memeriksa persis itu.
+- **Alergi tidak dihapus**, hanya dinyatakan tidak berlaku beserta alasannya.
+- **Batas tanda vital adalah batas KEWAJARAN, bukan batas normal.** Tekanan
+  70/40 dengan nadi 140 dan saturasi 88 **diterima** — itulah pasien yang sedang
+  syok, dan sistem yang menolaknya akan menghalangi perawatan pada saat yang
+  paling menentukan. Yang ditolak hanya yang mustahil.
+- **SOAP dipisah empat kolom**: pemeriksaan mutu rekam medis menghitung
+  kelengkapan per bagian, dan teks bebas tidak dapat dinilai.
+- **Diagnosis boleh berupa teks sebelum dikodekan.** Menuntut kode sejak awal
+  memaksa dokter memilih kode yang kurang tepat demi menyimpan catatannya.
+- **Peringatan yang dilewati dicatat beserta alasannya.** Bila hampir seluruhnya
+  dilewati, yang salah adalah peringatannya.
+
+## H-2 — Persetujuan, wali, janji temu, pendaftaran, dan antrean
+
+### Ditambahkan
+- **Migrasi `H003__health__front_office.sql`** — `patient_consent`,
+  `patient_proxy`, `health_schedule`, `health_schedule_exception`,
+  `health_appointment`, `health_registration`, `health_queue`,
+  `health_referral`.
+- Aturan front office beserta **37 pengujian** (98 → 135 pada modul kesehatan).
+- **`docs/emedik/09-isolasi-per-fasilitas.md`** dan **integration request 003**.
+
+### Keputusan pemilik sistem: satu fasilitas, satu skema
+
+Arsitektur inti sudah melakukannya — `tenant_schema_registry.tenantId` unik,
+sehingga satu pendaftaran menghasilkan satu skema dan rumah sakit A tidak dapat
+membaca data rumah sakit B karena tabelnya memang tidak ada di sana. Tidak ada
+perubahan yang diperlukan.
+
+Yang dipisahkan adalah **pendaftar**, bukan setiap titik layanan: puskesmas
+dengan tiga Poskesdes jejaring tetap satu skema, sebab Poskesdes bukan pendaftar
+mandiri melainkan unit kerja puskesmas itu, dan memisahkannya akan memecah
+laporan program yang justru harus terkonsolidasi.
+
+Akibatnya pada Enterprise MPI dicatat pada IR 003. Sampai diputuskan,
+`enterprise_patient_id` **hanya berlaku dalam satu skema**, dan API pencarian
+menyatakannya pada jawabannya sendiri alih-alih tampak sudah lintas fasilitas.
+Kolom bernama "enterprise" yang ternyata lokal adalah kekeliruan yang paling
+mahal ditemukan belakangan — seseorang akan mengandalkannya untuk menyimpulkan
+bahwa pasien tidak punya alergi.
+
+### Keputusan lain
+
+- **`health_registration` adalah satu-satunya sumber tagihan langganan.** Kelima
+  pengecualian spesifikasi §4 disimpan sebagai kolom pada barisnya sendiri, bukan
+  disimpulkan dari gabungan beberapa tabel — tagihan yang harus disimpulkan akan
+  salah begitu satu tabel sumbernya berubah bentuk, dan yang menanggungnya
+  penyewa. `is_billable` dihitung sekali lalu disimpan, supaya tagihan bulan lalu
+  tetap dapat dijelaskan dengan aturan bulan lalu.
+- **`business_date` memakai zona waktu fasilitas, bukan peladen.** Pukul 23.30
+  WIT masih tanggal yang sama di Jayapura tetapi sudah berganti menurut UTC;
+  memakai waktu peladen membuat jumlah pendaftaran harian salah pada dua hari
+  sekaligus, dan jenjang tarifnya ikut salah.
+- **Antrean: prioritas menang atas nomor, tetapi tidak menghapus urutan di dalam
+  prioritas yang sama.** Lansia yang datang belakangan tetap menunggu lansia yang
+  datang lebih dahulu. Yang sudah dipanggil didahulukan atas yang belum — pasien
+  yang sudah bangkit dari kursinya tidak boleh disalip.
+- **Nomor antrean dijaga indeks unik** per unit per hari per awalan: dua petugas
+  yang mendaftarkan bersamaan akan menghasilkan nomor sama bila hanya layanan
+  yang menjaganya.
+- **Akses wali adalah hubungan tercatat yang dapat dicabut**, bukan penyamaan
+  identitas — orang tua yang membuka rekam medis anaknya tetap dirinya sendiri
+  pada jejak akses.
+
 ## H-1 — Fasilitas, profil tenant, penagihan, dan identitas pasien inti
 
 ### Ditambahkan
