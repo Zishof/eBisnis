@@ -198,8 +198,21 @@ as_app "cd '$APP_DIR' && pnpm db:generate && pnpm build"  || rollback
 # ---------------------------------------------------------------------------
 log "4/7  Migration"
 # ---------------------------------------------------------------------------
+# Schema platform.
 as_app "cd '$APP_DIR/apps/api' && pnpm exec prisma migrate status" || true
 as_app "cd '$APP_DIR/apps/api' && pnpm exec prisma migrate deploy" || rollback
+
+# Schema tenant.
+#
+# Terlewat sampai V9-5: langkah ini hanya menerapkan migration platform,
+# sehingga setiap schema tenant tertinggal pada versi saat ia dibuat. Tabel
+# yang ditambahkan rilis berikutnya tidak pernah ada di sana, dan gejalanya
+# baru muncul jauh kemudian sebagai "relation ... does not exist" pada fitur
+# yang tampak tidak berhubungan.
+#
+# Idempotent, dan menolak menerapkan ulang migration yang checksum-nya berbeda
+# — perbedaan menghasilkan error, bukan penerapan diam.
+as_app "cd '$APP_DIR' && pnpm --filter @ebisnis/api migrate:tenants" || rollback
 
 # ---------------------------------------------------------------------------
 log "5/7  Restart layanan"

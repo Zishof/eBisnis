@@ -313,6 +313,30 @@ server atau setelah build yang terputus:
 sudo bash /opt/ebisnis/app/deploy/update.sh --force
 ```
 
+### Migration platform dan tenant
+
+Skrip menerapkan keduanya. Perbedaannya perlu diketahui saat mendiagnosis:
+
+| Jenis | Mengenai | Dijalankan oleh |
+| --- | --- | --- |
+| Platform | schema `platform` dan `platform__audit` | `prisma migrate deploy` |
+| Tenant | setiap schema tenant, satu per satu | `pnpm migrate:tenants` |
+
+Sampai V9-5, skrip **hanya** menerapkan yang platform. Setiap schema tenant
+tertinggal pada versi saat ia dibuat, dan tabel yang ditambahkan rilis
+berikutnya tidak pernah ada di sana. Gejalanya baru muncul jauh kemudian,
+sebagai `relation "<tenant>.<tabel>" does not exist` pada fitur yang tampak
+tidak berhubungan dengan pembaruan mana pun.
+
+Untuk memeriksa tanpa mengubah apa pun:
+
+```bash
+sudo -u ebisnis bash -lc "cd /opt/ebisnis/app && pnpm --filter @ebisnis/api migrate:tenants -- --dry-run"
+```
+
+Instalasi baru tidak terkena: `install.sh` memanggil `seed:tenant`, yang
+menerapkan seluruh migration saat schema dibuat.
+
 
 
 Urutannya: **backup database → ambil source → build → migration → restart →
