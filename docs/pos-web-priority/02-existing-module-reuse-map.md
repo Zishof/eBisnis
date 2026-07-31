@@ -11,7 +11,6 @@ yang terdengar dapat dipakai tetapi sebenarnya tidak.
 
 | Yang ada | Berkas | Dipakai POS untuk |
 |---|---|---|
-| `StockReservationService` | `modules/order/stock-reservation.service.ts` | POS-3 seluruhnya. `hold()` menahan stok saat baris ditambahkan, `commit()` saat pembayaran berhasil, `release()` saat gagal, `releaseExpired()` untuk keranjang telantar. Persis alur yang diminta perintah §10 |
 | Konteks permintaan (`AsyncLocalStorage`) | `common/context/request-context.ts` | Pengisian otomatis pelaku pada audit — tenantId, userId, activeRoleId, requestId |
 | `AuditService` + pemicu basis data | `V008__audit_triggers.sql` | Audit setiap perubahan pada tabel POS, tanpa kode tambahan per tabel |
 | Hub notifikasi | `modules/notification/` | Permintaan persetujuan diskon, void, refund; peringatan selisih kas; shift yang belum ditutup. Pengelompokan dan SLA sudah berjalan |
@@ -22,6 +21,23 @@ yang terdengar dapat dipakai tetapi sebenarnya tidak.
 | Catatan galat, kinerja, aktivitas | V10-2, V10-3, V10-5 | Observabilitas POS sesuai perintah §22 tanpa membangun apa pun |
 | Gerbang AI | `modules/ai/` | POS-12. Kebijakan, kuota, bukti, redaksi, dan batas kewenangan sudah berlaku |
 | Kerangka data contoh | `modules/master-seed/` | POS-10. Golongan `EXAMPLE` dan pembersihan yang tidak melumpuhkan baru saja dibereskan |
+
+> **Koreksi setelah POS-3 dikerjakan.** Dokumen ini semula mencantumkan
+> `StockReservationService` sebagai dapat dipakai apa adanya untuk POS-3.
+> **Itu keliru.** Kekeliruannya berasal dari membaca nama metodenya — `hold`,
+> `commit`, `release`, `releaseExpired` — dan komentar dokumennya, bukan
+> kuerinya. Layanan itu bekerja seluruhnya pada `online_listing_variant`, yaitu
+> stok etalase marketplace, sementara kasir bekerja pada `stock_balance` per
+> gudang. Keduanya menyimpan angka berbeda pada tabel berbeda; memakainya untuk
+> POS akan membuat penjualan kasir mengurangi stok etalase daring, dan
+> sebaliknya.
+>
+> POS-3 memperoleh `modules/pos/pos-stock.service.ts` tersendiri. Yang benar-benar
+> dipakai ulang hanyalah **polanya**: menahan lalu memotong, kunci baris sebelum
+> mengubah, dan idempotensi lewat kunci unik.
+>
+> Pelajarannya layak dicatat untuk audit berikutnya: nama metode yang cocok
+> bukan bukti bahwa isinya cocok.
 
 ## Dapat dipakai ulang sebagian
 
@@ -62,8 +78,8 @@ hanyalah `DiscountEvaluatorService` yang dipakainya.
 
 `OrderService` menangani pesanan daring: pembeli, alamat kirim, kelompok
 penjual, status pengiriman. Kasir tidak punya pembeli terdaftar, tidak punya
-alamat kirim, dan barangnya berpindah tangan seketika. Hanya
-`StockReservationService` di dalamnya yang benar-benar netral terhadap kanal.
+alamat kirim, dan barangnya berpindah tangan seketika. `StockReservationService`
+di dalamnya pun tidak netral terhadap kanal — lihat koreksi di atas.
 
 ### `sales_order` / `sales_order_line` — pesanan penjualan, bukan transaksi kasir
 
@@ -76,8 +92,8 @@ alur kasir. Sesungguhnya ini pesanan penjualan B2B: punya `delivery_date`,
 
 ## Aturan yang dipegang selama POS dibangun
 
-1. **Bila sudah ada dan netral terhadap kanal, pakai.** Reservasi stok, audit,
-   notifikasi, penomoran, cakupan data.
+1. **Bila sudah ada dan netral terhadap kanal, pakai.** Audit, notifikasi,
+   penomoran, cakupan data, konteks permintaan.
 2. **Bila polanya sudah terbukti, tiru polanya — jangan menyalin kodenya.**
    Mesin transisi status, mesin posting, penomoran anti-kembar.
 3. **Bila khusus marketplace, jangan dipaksa dipakai.** Memaksa aturan retur

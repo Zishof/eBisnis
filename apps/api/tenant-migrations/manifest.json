@@ -183,6 +183,13 @@
       "file": "V026__pos_catalog_pricing.sql",
       "name": "Penugasan buku harga dan promosi kasir",
       "description": "pos_price_book_assignment, pos_promotion, pos_promotion_product, beserta indeks pencarian barcode dan SKU. price_book yang ada sudah punya scope_type tetapi TIDAK punya prioritas; tanpa prioritas, dua buku harga yang sama-sama berlaku pada satu outlet tidak dapat diputuskan mana yang menang, dan urutannya bergantung pada urutan baris di basis data — berarti harga yang muncul di kasir dapat berubah tanpa ada yang mengubah apa pun. condition_tree pada promosi adalah pohon kondisi terstruktur yang dievaluasi kode, TIDAK PERNAH dengan eval, Function, maupun SQL bebas: promosi adalah data yang boleh disunting pengguna tenant, dan ekspresi yang dapat mengeksekusi kode sembarang adalah lubang keamanan pada jalur uang. Constraint menolak diskon persen di atas seratus persen pada tingkat basis data."
+    },
+    {
+      "version": "V027",
+      "sequence": 27,
+      "file": "V027__pos_sale_detail.sql",
+      "name": "Rincian penjualan, struk, kas, retur, dan refund kasir",
+      "description": "pos_sale_line_tax, pos_sale_line_discount, pos_sale_discount, pos_sale_status_history, pos_sale_snapshot, pos_sale_receipt, pos_cash_count, pos_return, pos_return_line, pos_refund, plus kolom pelengkap pada pos_sale_line. pos_sale_line yang ada menyimpan tax_amount dan discount_amount sebagai satu angka — cukup untuk mencetak struk, tetapi tidak cukup untuk menjawab tarif mana yang dipakai saat pemeriksaan pajak atau siapa yang menyetujui diskon saat angka penjualan dipersoalkan. Tarif disimpan sebagai cuplikan karena tarif pajak berubah dan struk yang dicetak ulang tahun depan harus menunjukkan tarif saat transaksi terjadi. Dua aturan ditegakkan basis data: penyetuju retur tidak boleh sama dengan pemohonnya, dan jumlah yang diretur tidak pernah melebihi yang dijual — retur yang menghitung sendiri sisanya akan salah begitu dua retur atas transaksi yang sama diproses bersamaan."
     }
   ]
 }

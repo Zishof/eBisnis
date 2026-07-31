@@ -65,7 +65,7 @@ adalah **menambah**, bukan membetulkan atau menyatukan dua jalan yang berbeda.
 | Kemampuan | Status | Catatan |
 |---|---|---|
 | Saldo stok (on-hand, reserved, available) | `DONE` | `stock_balance` dengan enam ember: on_hand, reserved, available, in_transit, quarantine, damaged |
-| Reservasi stok | `DONE` | `stock_reservation` + `StockReservationService` (`hold`/`commit`/`release`/`releaseExpired`) |
+| Reservasi stok | `PARTIAL` | Tabel `stock_reservation` ada. `StockReservationService` yang ada TIDAK dapat dipakai — ia bekerja pada `online_listing_variant`, bukan `stock_balance`. Lihat koreksi pada [02](02-existing-module-reuse-map.md) |
 | Buku besar pergerakan stok | `DONE` | `stock_movement` dengan `posting_key` dan `idempotency_key` |
 | Kebijakan stok negatif | `PARTIAL` | `product.allow_negative_stock` dan `stock_policy` ada; belum ada penegakannya di jalur POS |
 | Batch / serial | `PARTIAL` | `inventory_lot` dan `product.tracking_type` ada; belum ada pemilihan lot di kasir |

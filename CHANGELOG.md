@@ -5,6 +5,53 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## POS-3, POS-5a, POS-6a — Stok, mesin status, dan peristiwa akuntansi kasir
+
+### Ditambahkan
+- **`modules/pos/pos-stock.ts`** — aturan ketersediaan stok sebagai fungsi
+  murni, dengan **20 pengujian** termasuk aritmetika kelima ember stok.
+- **`modules/pos/pos-stock.service.ts`** — reservasi, pelepasan, dan
+  pengeluaran stok dengan kunci baris dan idempotensi.
+- **`modules/pos/pos-sale-state.ts`** — mesin transisi tiga belas status
+  penjualan, dengan **28 pengujian**.
+- **Dua belas kode peristiwa akuntansi `POS_*`** pada mesin posting yang sudah
+  ada, beserta daftar nilai wajibnya dan **7 pengujian** kelengkapan.
+- **Migrasi `V027__pos_sale_detail.sql`**: `pos_sale_line_tax`,
+  `pos_sale_line_discount`, `pos_sale_discount`, `pos_sale_status_history`,
+  `pos_sale_snapshot`, `pos_sale_receipt`, `pos_cash_count`, `pos_return`,
+  `pos_return_line`, `pos_refund`, plus kolom pelengkap pada `pos_sale_line`.
+
+### Koreksi audit POS-0
+- **`StockReservationService` TIDAK dapat dipakai untuk POS.** Audit POS-0
+  mencantumkannya sebagai dapat dipakai apa adanya; itu keliru. Kekeliruannya
+  berasal dari membaca nama metodenya — `hold`, `commit`, `release` — dan
+  komentar dokumennya, bukan kuerinya. Layanan itu bekerja seluruhnya pada
+  `online_listing_variant`, yaitu stok etalase marketplace, sementara kasir
+  bekerja pada `stock_balance` per gudang. Memakainya untuk POS akan membuat
+  penjualan kasir mengurangi stok etalase daring, dan sebaliknya.
+  Dokumen 02 dan 03 sudah dikoreksi.
+
+### Keputusan yang perlu dicatat
+- **Tarif pajak disimpan sebagai cuplikan pada baris penjualan**, bukan hanya
+  sebagai rujukan. Tarif berubah, dan struk yang dicetak ulang tahun depan
+  harus menunjukkan tarif yang berlaku saat transaksi terjadi.
+- **`PAID` hanya boleh maju ke `COMPLETED`.** Ia keadaan sesaat: uang sudah
+  diterima tetapi stok dan jurnal belum terbentuk. Membiarkannya kembali ke
+  `DRAFT` berarti uang yang sudah masuk tidak punya transaksi yang menaunginya.
+- **Pemisahan wewenang retur ditegakkan basis data pula**, lewat constraint
+  `approved_by <> requested_by`. Aturan yang hanya ada di satu lapisan berhenti
+  berlaku begitu ada jalan kedua menuju tabelnya.
+- **Jumlah yang diretur dibatasi constraint**, bukan dihitung layanan. Retur
+  yang menghitung sendiri sisanya akan salah begitu dua retur atas transaksi
+  yang sama diproses bersamaan.
+- **Disposisi retur** membedakan `RESTOCK`, `DAMAGED`, dan `DISPOSED`.
+  Mengembalikan seluruh barang retur ke stok jual adalah cara tercepat membuat
+  catatan stok berbeda dari kenyataan di rak.
+
+### Bukti
+- Migrasi V027 diterapkan ke 17 skema tenant.
+- `jest` 1209 tes lulus (bertambah 55).
+
 ## POS-2 — Katalog, barcode, harga, dan pajak
 
 ### Ditambahkan
