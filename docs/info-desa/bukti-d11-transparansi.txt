@@ -1,0 +1,49 @@
+==============================================================================
+BUKTI D-11 — PPID, TRANSPARANSI, DAN LAPORAN
+Waktu : 2026-07-31T20:07:48.900Z
+==============================================================================
+
+1. Migrasi D-11
+  LULUS  lima tabel D-11 terbentuk
+  LULUS  pemicu audit terpasang pada tabel D-11
+
+2. Ambang penyajian tidak dapat diturunkan setelah laporan terbit
+  LULUS  ambang satu ditolak
+  LULUS  ambang boleh diturunkan selama belum ada laporan terbit
+  LULUS  pemicu menaikkan lantai ambang saat laporan terbit
+  LULUS  ambang TIDAK dapat diturunkan setelah laporan terbit
+  LULUS  ambang tetap boleh dinaikkan
+
+3. Laporan yang masih dapat dibongkar tidak dapat tersimpan
+  LULUS  satu sel tertekan sendirian bersama total yang tayang DITOLAK
+  LULUS  satu sel tertekan tanpa total yang tayang diterima
+  LULUS  laporan dengan ambang satu ditolak
+  LULUS  penarikan laporan tanpa alasan ditolak
+
+4. Pengecualian informasi wajib lengkap
+  LULUS  pengecualian tanpa batas waktu DITOLAK
+  LULUS  pengecualian tanpa uji konsekuensi ditolak
+  LULUS  pengecualian yang lengkap diterima
+  LULUS  informasi yang dikecualikan tidak dapat ditayangkan
+  LULUS  penggolongan ulang tanpa membersihkan sisa alasan pengecualian ditolak
+  LULUS  penggolongan ulang yang membersihkan sisanya diterima
+
+5. Penolakan wajib menyebut cara mengajukan keberatan
+  LULUS  permohonan tersimpan beserta tenggatnya
+  LULUS  alasan permohonan TIDAK diwajibkan
+  LULUS  penolakan tanpa cara mengajukan keberatan DITOLAK
+  LULUS  penolakan yang lengkap diterima
+  LULUS  perpanjangan tanpa alasan ditolak
+  LULUS  tenggat yang mendahului tanggal terima ditolak
+
+6. Keberatan
+  LULUS  keberatan tersimpan
+  LULUS  satu permohonan hanya punya satu keberatan yang berjalan
+  LULUS  putusan keberatan tanpa pertimbangan ditolak
+  LULUS  setelah yang lama diputus, keberatan baru dapat diajukan
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

@@ -1302,3 +1302,147 @@ lulus.
 - `vite build` — berhasil; `VillageSitePage` masuk bundel
 - `tsc --noEmit` API dan web, `eslint --max-warnings=0` keduanya — bersih
 - Migrasi diverifikasi: 96 tabel village terbentuk
+
+---
+
+## D-11 — PPID, transparansi, dan laporan
+
+### Ditambahkan
+
+- **`village-disclosure.ts`** — mesin penekanan penyajian, ambang, dan seluruh
+  aturan PPID. **39 pengujian.**
+- **Migrasi `20260731000013`** — lima tabel beserta pemicu lantai ambang.
+- **`VillageTransparencyService`** dan **empat belas endpoint.**
+
+### Menekan sel kecil saja tidak cukup
+
+Inilah kekeliruan yang paling sering terjadi pada laporan pemerintahan:
+
+| RT | Penerima bantuan |
+|---|---|
+| 001 | 12 |
+| 002 | 9 |
+| 003 | — *(ditekan)* |
+| **Jumlah** | **24** |
+
+RT 003 berisi 3 orang, dan siapa pun dapat menghitungnya: 24 − 12 − 9.
+Penekanan yang hanya satu sel bersama total yang tetap ditayangkan bukan
+penekanan — ia pengumuman dengan langkah tambahan.
+
+Karena itu penekanan di sini **berpasangan**: begitu satu sel ditekan dan
+totalnya ikut tayang, sel terkecil berikutnya ikut ditekan. Dan bila jumlah yang
+tersembunyi masih di bawah ambang, penekanan diteruskan — mengetahui "dua RT ini
+bersama-sama berisi 2 orang" hampir sama buruknya dengan mengetahui
+masing-masing. Bila tetap tidak dapat diamankan, **totalnya yang ditahan.**
+
+Pengujiannya tidak hanya memeriksa bahwa sel kecil ditekan. Ia **mencoba
+membongkarnya** dengan cara yang akan dipakai orang — pengurangan dari total —
+pada tujuh bentuk tabel sekaligus, termasuk yang hanya berisi satu sel dan yang
+seluruh selnya bernilai satu.
+
+Nol tidak ditekan: ia tidak menyebut siapa pun, dan menekannya justru menandai
+bahwa di sana ada sesuatu.
+
+### Kebocoran yang ditemukan pengujian sendiri
+
+Rancangan pertama mengembalikan **alasan** tiap penekanan pada jawaban API.
+Terlihat berguna — ia menjelaskan mengapa sebuah sel hilang. Tetapi sel bertanda
+`DI_BAWAH_AMBANG` sudah memberi tahu pembacanya bahwa isinya kurang dari ambang,
+dan pembaca itu kini tahu jauh lebih banyak daripada yang seharusnya.
+
+Kekeliruan ini tidak terlihat pada tampilan tabelnya. Ia terlihat pada jawaban
+API yang dibaca siapa pun. `sajikanPublik()` membuang alasannya, dan pengujian
+menjaga agar ia tidak kembali.
+
+### Ambang tidak dapat diturunkan setelah laporan terbit
+
+```sql
+CHECK (threshold >= published_threshold_floor)
+```
+
+`published_threshold_floor` dinaikkan **pemicu** setiap kali laporan terbit.
+Laporan yang terbit dengan ambang 5 lalu diterbitkan ulang dengan ambang 3
+membuka sel yang tadinya ditekan — dan siapa pun yang menyimpan versi pertama
+kini memegang keduanya. Menurunkan ambang bukan penyesuaian; ia penerbitan surut
+atas apa yang pernah dinyatakan tidak boleh terbit.
+
+Ditegakkan constraint, bukan pemeriksaan layanan: layanan yang lupa memeriksa,
+jalur impor, dan penyuntingan langsung sama-sama tertahan. **Dibuktikan** bahwa
+penurunan boleh sebelum laporan terbit dan ditolak sesudahnya, dan bahwa
+menaikkan tetap selalu boleh.
+
+Ambang dicuplik ke tiap laporan, bukan dirujuk. Laporan yang merujuk kebijakan
+yang berlaku sekarang akan berubah artinya setiap kali kebijakannya diubah.
+
+Satu constraint lagi menutup jalur langsung: laporan dengan **satu** sel tertekan
+bersama total yang tayang tidak dapat tersimpan sebagai terbit.
+
+### Pengecualian informasi wajib bertanggal
+
+Tiga syarat, ketiganya bersama-sama, ditegakkan constraint:
+
+1. **Dasar hukumnya disebut.** "Rahasia" bukan dasar hukum.
+2. **Uji konsekuensinya diuraikan** — akibat apa yang timbul bila dibuka.
+   Pengecualian tanpa konsekuensi yang dinyatakan bukan pengecualian melainkan
+   penolakan yang diberi nama lain.
+3. **Jangka waktunya disebut.** Pengecualian tanpa batas waktu adalah
+   kerahasiaan permanen yang ditetapkan diam-diam — tidak ada seorang pun yang
+   akan meninjaunya kembali bila tidak ada tanggal yang memaksanya.
+
+Constraint keempat menutup celah yang mudah terlewat: informasi yang **tidak**
+lagi dikecualikan tidak boleh menyimpan sisa alasan pengecualiannya. Sisa isian
+dari penggolongan sebelumnya akan terbaca sebagai pengecualian yang masih
+berlaku oleh siapa pun yang membacanya kemudian.
+
+Pengecualian yang sudah lewat masanya **ditandai** pada daftar. Tidak ada yang
+akan meninjaunya kembali bila tidak ada yang menyebutkannya.
+
+### Penolakan wajib menyebut cara mengajukan keberatan
+
+Ditegakkan constraint bersama dasar hukum dan uraiannya. Yang ketiga paling
+sering hilang, dan paling merugikan: pemohon yang tidak diberi tahu haknya tidak
+akan memakainya, dan itu berarti hak itu dihapus tanpa ada yang menghapusnya.
+
+### Alasan permohonan tidak diwajibkan
+
+`purpose` boleh kosong, dan itu keputusan yang disengaja. Hak atas informasi
+publik tidak bergantung pada keperluan pemohon, dan mewajibkannya membuat
+petugas menilai keperluan itu — penilaian yang bukan kewenangannya. **Dibuktikan
+dengan memindai `information_schema`:** kolomnya nullable.
+
+### Tenggat dihitung hari kerja
+
+Sepuluh hari kerja untuk menjawab, tujuh untuk perpanjangan, tiga puluh untuk
+keberatan. Sabtu, Minggu, dan `village_holiday` dilewati. Menghitungnya dengan
+hari kalender membuat tenggat jatuh pada hari kantor desa tutup — dan tenggat
+yang jatuh saat kantor tutup selalu terlambat, tanpa seorang pun bersalah.
+
+Keterlambatan pun dihitung dalam hari kerja: angka hari kalender menyalahkan
+kantor desa atas akhir pekan.
+
+**Perpanjangan hanya satu kali, dan wajib beralasan.** Penundaan yang berulang
+tanpa alasan adalah penolakan yang tidak pernah dinyatakan — sehingga tidak
+pernah dapat diajukan keberatan atasnya.
+
+### Keputusan lain
+
+- **Permohonan yang sudah dijawab tidak diubah.** Pemohon yang keberatan
+  mengajukan keberatan, dan keberatan adalah berkas tersendiri — bukan
+  penyuntingan jawaban yang sudah diterima pemohon.
+- **Satu permohonan, satu keberatan yang berjalan.** Setelah diputus, keberatan
+  baru dapat diajukan.
+- **Putusan keberatan wajib berpertimbangan.** Putusan tanpa pertimbangan tidak
+  dapat diuji siapa pun.
+- **Informasi yang dikecualikan tidak dapat ditayangkan** — ditegakkan
+  constraint, bukan disiplin operator.
+
+### Bukti
+
+`docs/info-desa/bukti-d11-transparansi.txt` — **28 pemeriksaan**, seluruhnya
+lulus.
+
+### Gerbang mutu
+
+- `jest` — **1558 tes lulus** (bertambah 39)
+- `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
+- Migrasi diverifikasi: 101 tabel village terbentuk

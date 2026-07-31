@@ -14,7 +14,9 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -27,6 +29,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 import {
   AuthenticatedOnly,
@@ -50,6 +53,7 @@ import { VillageAidService } from './village-aid.service';
 import { VillageBusinessService } from './village-business.service';
 import { VillageSafetyService } from './village-safety.service';
 import { VillageSiteService } from './village-site.service';
+import { VillageTransparencyService } from './village-transparency.service';
 import { VillagePublicResolver } from './village-public.resolver';
 import { BROADCAST_PORT, BroadcastBlockedAdapter } from './ports/broadcast.port';
 import {
@@ -2369,6 +2373,268 @@ class SiaranDto {
   audience?: string;
 }
 
+
+class AmbangDto {
+  @ApiProperty({
+    example: 5,
+    description:
+      'Ambang minimum penyajian agregat. Dapat dinaikkan kapan saja; TIDAK dapat diturunkan ' +
+      'setelah ada laporan yang terbit dengannya — sel yang tadinya ditekan akan terbuka, dan ' +
+      'siapa pun yang menyimpan versi sebelumnya memegang keduanya sekaligus.',
+  })
+  @IsInt()
+  @Min(2)
+  threshold!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+class SelLaporanDto {
+  @ApiProperty({ example: '003/001' })
+  @IsString()
+  @MaxLength(120)
+  kunci!: string;
+
+  @ApiProperty({ example: 12 })
+  @IsInt()
+  @Min(0)
+  cacah!: number;
+}
+
+class TerbitLaporanDto {
+  @ApiProperty({ example: 'PENDUDUK-RT' })
+  @IsString()
+  @MaxLength(64)
+  reportCode!: string;
+
+  @ApiProperty({ example: 'Jumlah Penduduk per RT' })
+  @IsString()
+  @MaxLength(300)
+  title!: string;
+
+  @ApiProperty({ example: '2027' })
+  @IsString()
+  @MaxLength(32)
+  period!: string;
+
+  @ApiProperty({ type: [SelLaporanDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SelLaporanDto)
+  cells!: SelLaporanDto[];
+}
+
+const GOLONGAN_INFORMASI = ['BERKALA', 'SERTA_MERTA', 'SETIAP_SAAT', 'DIKECUALIKAN'] as const;
+
+class InformasiPublikDto {
+  @ApiProperty({ example: 'DIP-014' })
+  @IsString()
+  @MaxLength(48)
+  code!: string;
+
+  @ApiProperty({ example: 'Laporan Realisasi APBDes' })
+  @IsString()
+  @MaxLength(300)
+  title!: string;
+
+  @ApiPropertyOptional({ enum: GOLONGAN_INFORMASI })
+  @IsOptional()
+  @IsIn(GOLONGAN_INFORMASI as unknown as string[])
+  classification?: (typeof GOLONGAN_INFORMASI)[number];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  responsibleUnit?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  format?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  retentionPeriod?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  publicationUrl?: string;
+
+  @ApiPropertyOptional({ description: 'WAJIB bila DIKECUALIKAN. "Rahasia" bukan dasar hukum.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  exemptionBasis?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'WAJIB bila DIKECUALIKAN, sekurang-kurangnya dua puluh huruf. Uji konsekuensi: akibat apa ' +
+      'yang timbul bila informasi ini dibuka. Pengecualian tanpa konsekuensi yang dinyatakan ' +
+      'bukan pengecualian melainkan penolakan yang diberi nama lain.',
+  })
+  @IsOptional()
+  @IsString()
+  exemptionConsequence?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'WAJIB bila DIKECUALIKAN. Pengecualian tanpa batas waktu adalah kerahasiaan permanen yang ' +
+      'ditetapkan diam-diam.',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  exemptionUntil?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+}
+
+class PermohonanInformasiDto {
+  @ApiProperty({ example: 'PPID/2027/031' })
+  @IsString()
+  @MaxLength(64)
+  requestNumber!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  applicantName!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(5)
+  requestedInformation!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  applicantContact?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  applicantAddress?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'TIDAK diwajibkan. Hak atas informasi publik tidak bergantung pada keperluan pemohon, dan ' +
+      'mewajibkannya membuat petugas menilai keperluan itu — penilaian yang bukan kewenangannya.',
+  })
+  @IsOptional()
+  @IsString()
+  purpose?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  informationItemId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  deliveryMethod?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  receivedAt?: string;
+}
+
+class PerpanjangDto {
+  @ApiProperty({ description: 'Sekurang-kurangnya sepuluh huruf.' })
+  @IsString()
+  @MinLength(10)
+  reason!: string;
+}
+
+class JawabPermohonanDto {
+  @ApiProperty({ enum: ['DIPENUHI', 'DIPENUHI_SEBAGIAN', 'DITOLAK'] })
+  @IsIn(['DIPENUHI', 'DIPENUHI_SEBAGIAN', 'DITOLAK'])
+  status!: 'DIPENUHI' | 'DIPENUHI_SEBAGIAN' | 'DITOLAK';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  responseNote?: string;
+
+  @ApiPropertyOptional({ description: 'WAJIB bila DITOLAK.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  refusalBasis?: string;
+
+  @ApiPropertyOptional({ description: 'WAJIB bila DITOLAK, sekurang-kurangnya dua puluh huruf.' })
+  @IsOptional()
+  @IsString()
+  refusalDetail?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'WAJIB bila DITOLAK. Pemohon yang tidak diberi tahu haknya tidak akan memakainya, dan itu ' +
+      'berarti hak itu dihapus tanpa ada yang menghapusnya.',
+  })
+  @IsOptional()
+  @IsString()
+  objectionGuidance?: string;
+}
+
+class KeberatanDto {
+  @ApiProperty()
+  @IsUUID()
+  requestId!: string;
+
+  @ApiProperty({ example: 'KBR/2027/004' })
+  @IsString()
+  @MaxLength(64)
+  objectionNumber!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(10)
+  reason!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  filedAt?: string;
+}
+
+class PutusanKeberatanDto {
+  @ApiProperty({ enum: ['DIKABULKAN', 'DIKABULKAN_SEBAGIAN', 'DITOLAK'] })
+  @IsIn(['DIKABULKAN', 'DIKABULKAN_SEBAGIAN', 'DITOLAK'])
+  decision!: 'DIKABULKAN' | 'DIKABULKAN_SEBAGIAN' | 'DITOLAK';
+
+  @ApiProperty({
+    description:
+      'Sekurang-kurangnya dua puluh huruf. Putusan tanpa pertimbangan tidak dapat diuji siapa pun.',
+  })
+  @IsString()
+  @MinLength(20)
+  decisionNote!: string;
+}
+
 // --- Controller publik ---------------------------------------------------------
 
 /**
@@ -2499,6 +2765,7 @@ export class VillageController {
     private readonly usaha: VillageBusinessService,
     private readonly keamanan: VillageSafetyService,
     private readonly situs: VillageSiteService,
+    private readonly transparansi: VillageTransparencyService,
   ) {}
 
 
@@ -4003,6 +4270,210 @@ export class VillageController {
     return this.situs.daftarSiaran(requireSchema(user));
   }
 
+
+  // --- Transparansi dan laporan ---------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_REPORT.READ')
+  @Get('transparency/policy')
+  @ApiOperation({
+    summary: 'Ambang minimum penyajian agregat',
+    description:
+      'Berlaku bagi seluruh laporan publik. Angka agregat yang mewakili kurang dari sekian orang ' +
+      'tidak ditampilkan.',
+  })
+  lihatKebijakan(@CurrentUser() user: AuthenticatedUser) {
+    return this.transparansi.lihatKebijakan(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_REPORT.EXPORT')
+  @Post('transparency/policy')
+  @ApiOperation({
+    summary: 'Mengubah ambang penyajian',
+    description:
+      'Menaikkan selalu boleh. Menurunkan DITOLAK bila sudah ada laporan yang terbit dengan ' +
+      'ambang lama — ditolak layanan agar pesannya terbaca, dan ditolak lagi oleh constraint ' +
+      'basis data agar jalur impor maupun penyuntingan langsung sama-sama tertahan.',
+  })
+  ubahAmbang(@Body() dto: AmbangDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.transparansi.ubahAmbang(requireSchema(user), dto.threshold, user, dto.note);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_REPORT.READ')
+  @Get('transparency/residents-per-rt')
+  @ApiOperation({
+    summary: 'Jumlah penduduk per RT, sudah melewati penekanan',
+    description:
+      'Sel yang mewakili orang terlalu sedikit ditekan, dan bila totalnya ikut tayang, sel kedua ' +
+      'ikut ditekan — tanpa itu, sel pertama dapat dihitung dengan pengurangan.',
+  })
+  pendudukPerRt(@CurrentUser() user: AuthenticatedUser) {
+    return this.transparansi.pendudukPerRt(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_REPORT.READ')
+  @Get('transparency/aid-per-rt')
+  @ApiOperation({
+    summary: 'Jumlah penerima bantuan per RT, sudah melewati penekanan',
+    description:
+      'Jenis agregat yang paling mudah membongkar orang: pada RT kecil, "tiga penerima" hampir ' +
+      'selalu dapat ditebak siapa saja mereka.',
+  })
+  penerimaBantuanPerRt(
+    @Query('category') category: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.transparansi.penerimaBantuanPerRt(requireSchema(user), category);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_REPORT.EXPORT')
+  @Post('transparency/reports')
+  @ApiOperation({
+    summary: 'Menerbitkan laporan agregat',
+    description:
+      'Ambang yang dipakai DICUPLIK ke laporannya, dan sejak itu ambang unit ini tidak dapat ' +
+      'diturunkan di bawahnya. Laporan yang masih dapat dibongkar dengan pengurangan dari ' +
+      'totalnya ditolak.',
+  })
+  terbitkanLaporan(@Body() dto: TerbitLaporanDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.transparansi.terbitkanLaporan(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_REPORT.READ')
+  @Get('transparency/reports')
+  @ApiOperation({ summary: 'Laporan yang sudah terbit beserta ambang yang dipakainya' })
+  daftarLaporan(@CurrentUser() user: AuthenticatedUser) {
+    return this.transparansi.daftarLaporan(requireSchema(user));
+  }
+
+  // --- PPID -----------------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_PPID.CREATE')
+  @Post('ppid/information')
+  @ApiOperation({
+    summary: 'Mencatat Daftar Informasi Publik',
+    description:
+      'Informasi yang DIKECUALIKAN wajib menyebut dasar hukum, uji konsekuensi, DAN batas ' +
+      'waktunya — ketiganya, dan ditegakkan constraint.',
+  })
+  catatInformasi(@Body() dto: InformasiPublikDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.transparansi.catatInformasi(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_PPID.READ')
+  @Get('ppid/information')
+  @ApiOperation({
+    summary: 'Daftar Informasi Publik',
+    description:
+      'Pengecualian yang sudah lewat masanya ditandai. Tidak ada yang akan meninjaunya kembali ' +
+      'bila tidak ada yang menyebutkannya.',
+  })
+  daftarInformasi(@CurrentUser() user: AuthenticatedUser) {
+    return this.transparansi.daftarInformasi(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_PPID.CREATE')
+  @Post('ppid/requests')
+  @ApiOperation({
+    summary: 'Menerima permohonan informasi',
+    description:
+      'Tenggat dihitung sepuluh hari KERJA sejak diterima, melewati Sabtu, Minggu, dan hari ' +
+      'libur yang terdaftar. Tenggat yang jatuh saat kantor tutup selalu terlambat, tanpa ' +
+      'seorang pun bersalah.',
+  })
+  terimaPermohonan(
+    @Body() dto: PermohonanInformasiDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.transparansi.terimaPermohonan(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_PPID.UPDATE')
+  @Post('ppid/requests/:id/extend')
+  @ApiOperation({
+    summary: 'Memperpanjang tenggat permohonan',
+    description:
+      'Satu kali, dan wajib beralasan. Penundaan yang berulang tanpa alasan adalah penolakan ' +
+      'yang tidak pernah dinyatakan — sehingga tidak pernah dapat diajukan keberatan atasnya.',
+  })
+  perpanjangPermohonan(
+    @Param('id') id: string,
+    @Body() dto: PerpanjangDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.transparansi.perpanjangPermohonan(requireSchema(user), id, dto.reason, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_PPID.APPROVE')
+  @Post('ppid/requests/:id/answer')
+  @ApiOperation({
+    summary: 'Menjawab permohonan informasi',
+    description:
+      'Penolakan wajib menyebut dasar hukum, uraian, DAN cara mengajukan keberatan. Pemohon yang ' +
+      'tidak diberi tahu haknya tidak akan memakainya.',
+  })
+  jawabPermohonan(
+    @Param('id') id: string,
+    @Body() dto: JawabPermohonanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.transparansi.jawabPermohonan(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_PPID.READ')
+  @Get('ppid/requests/overdue')
+  @ApiOperation({
+    summary: 'Permohonan yang lewat tenggat dan belum dijawab',
+    description:
+      'Keterlambatan dihitung dalam hari KERJA. Angka hari kalender menyalahkan kantor desa atas ' +
+      'akhir pekan.',
+  })
+  permohonanTerlambat(@CurrentUser() user: AuthenticatedUser) {
+    return this.transparansi.permohonanTerlambat(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_PPID.CREATE')
+  @Post('ppid/objections')
+  @ApiOperation({ summary: 'Mengajukan keberatan atas jawaban permohonan' })
+  ajukanKeberatan(@Body() dto: KeberatanDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.transparansi.ajukanKeberatan(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_PPID.APPROVE')
+  @Post('ppid/objections/:id/decide')
+  @ApiOperation({ summary: 'Memutus keberatan' })
+  putuskanKeberatan(
+    @Param('id') id: string,
+    @Body() dto: PutusanKeberatanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.transparansi.putuskanKeberatan(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_PPID.READ')
+  @Get('ppid/summary')
+  @ApiOperation({ summary: 'Ringkasan PPID untuk laporan tahunan' })
+  ringkasanPpid(@Query('year') year: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.transparansi.ringkasanPpid(
+      requireSchema(user),
+      Number(year) || new Date().getFullYear(),
+    );
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -4053,6 +4524,7 @@ export class VillageController {
     VillageBusinessService,
     VillageSafetyService,
     VillageSiteService,
+    VillageTransparencyService,
     VillagePublicResolver,
     // Mitra vertikal yang belum ada. Adapter tiruan menyatakan "belum
     // tersambung" dengan jujur dan tidak mengembalikan satu pun angka karangan.
@@ -4079,6 +4551,7 @@ export class VillageController {
     VillageBusinessService,
     VillageSafetyService,
     VillageSiteService,
+    VillageTransparencyService,
   ],
 })
 export class VillageModule {}
