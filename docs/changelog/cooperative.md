@@ -5,6 +5,68 @@ menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
 ---
 
+## K-2 — Organisasi, kepengurusan, dan keanggotaan
+
+### Ditambahkan
+
+- **Migrasi modul** `20260731T170000__cooperative__organization_and_membership.sql`:
+  sebelas tabel — periode kepengurusan, jabatan, penugasan, anggota, kategori
+  anggota, dokumen, persetujuan data, ahli waris, hubungan keluarga, riwayat
+  status, dan akun portal.
+- **`cooperative-member.ts`** — aturan sebagai fungsi murni: transisi sembilan
+  status, gerbang pengaktifan, kelayakan mendaftar, kepengurusan berperiode,
+  larangan rangkap jabatan, penomoran anggota, dan perhitungan penyelesaian.
+  **48 pengujian.**
+- **`scripts/prove-cooperative-k2.mjs`** dan buktinya di
+  `docs/ekoperasi/bukti-k2-keanggotaan.txt` — **33 pemeriksaan, seluruhnya
+  lulus.** Bukti berjalan dalam satu transaksi yang selalu digulung balik,
+  sehingga basis data pengembangan tidak berubah karena dijalankannya.
+
+### Keputusan yang perlu dicatat
+
+- **Calon anggota dan anggota berbagi satu tabel**, dibedakan `status`. Dua
+  tabel terpisah memaksa pemindahan baris saat calon menjadi anggota, dan
+  pemindahan baris memutus rujukan dokumen serta jejak auditnya.
+- **Gerbang keanggotaan ditegakkan dari DUA arah.** Anggota `ACTIVE` wajib
+  punya nomor dan tanggal aktif; **dan** calon anggota tidak boleh punya
+  tanggal aktif. Arah kedua menutup jalan mengisi `activated_at` lebih dahulu
+  lalu mengubah status kemudian — jalan yang akan terlewat bila hanya arah
+  pertama yang dijaga.
+- **Pengaktifan tidak menuntut hak akses tersendiri.** Ia bukan keputusan
+  manusia melainkan akibat lunasnya simpanan pokok. Memberinya hak akses akan
+  membuka jalan bagi petugas untuk mengaktifkan anggota yang belum membayar.
+- **Satu jabatan hanya dipangku satu orang pada satu waktu**, ditegakkan
+  *exclusion constraint* (`btree_gist`), bukan hanya layanan. Jabatan Ketua
+  menentukan siapa yang sah menandatangani perjanjian pinjaman, dan dua ketua
+  pada satu tanggal berarti dua tanda tangan yang sama-sama tampak sah.
+- **Bekas anggota yang meninggalkan tunggakan tidak dapat mendaftar ulang.**
+  Tanpa aturan ini, seseorang dapat menghapus tunggakannya dengan keluar lalu
+  masuk kembali sebagai orang baru.
+- **`cooperative_member_category` bukan `customer_group`.** Yang satu
+  menentukan hak suara, hak pinjam, dan bagian SHU; yang lain menggolongkan
+  pelanggan untuk harga. Menyamakannya berarti kategori anggota ikut berubah
+  setiap kali seseorang menyunting daftar harga.
+- **`cooperative_related_party`** mencatat hubungan keluarga antar anggota dan
+  pengurus. Diperlukan aturan pemisahan wewenang nomor 6; tanpanya, benturan
+  kepentingan hanya dapat ditangkap manusia yang kebetulan mengenali nama.
+- **PIN anggota disimpan sebagai hash Argon2id**, tidak pernah plaintext, dan
+  tidak pernah terlihat kasir.
+
+### Gerbang mutu
+
+| | |
+|---|---|
+| `tsc --noEmit` | bersih |
+| `eslint --max-warnings=0` | bersih |
+| `jest` | 47 suite, **1135 tes lulus** (bertambah 48) |
+| Bukti K-2 | **33 pemeriksaan lulus** |
+
+### Belum dikerjakan pada K-2
+
+- **Layanan dan endpoint keanggotaan** menyusul bersama K-3, sebab pengaktifan
+  anggota adalah akibat dari transaksi simpanan pokok — memisahkannya berarti
+  menulis dua kali jalur yang sama.
+
 ## K-1 — Profil koperasi, legalitas, dan kebijakan
 
 **Cabang:** `feature/v12-ekoperasi`

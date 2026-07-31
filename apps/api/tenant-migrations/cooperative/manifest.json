@@ -2,13 +2,21 @@
   "$comment": "Manifest migrasi modul koperasi. BELUM digabungkan ke manifest global — menunggu IR-001 (katalog migrasi modular). Sampai saat itu diterapkan ke skema uji lewat scripts/apply-cooperative-migrations.mjs. Bentuknya sengaja mengikuti usulan pada IR-001 supaya penggabungannya kelak hanya perlu mendaftarkan berkas ini.",
   "module": "cooperative",
   "schemaVersion": 2,
-  "dependsOn": ["core"],
+  "dependsOn": [
+    "core"
+  ],
   "migrations": [
     {
       "id": "20260731T160000__cooperative__profile_and_legality",
       "file": "20260731T160000__cooperative__profile_and_legality.sql",
       "name": "Profil koperasi, legalitas, dan kebijakan",
       "description": "cooperative_type, cooperative, cooperative_legal_document, cooperative_address, cooperative_service_area, cooperative_policy, cooperative_domain, cooperative_account_mapping. Satu koperasi per tenant ditegakkan indeks unik parsial — dua koperasi pada satu tenant berarti dua bagan akun, dua RAT, dan dua SHU yang harus dipisahkan pada setiap kueri. Koperasi berstatus ACTIVE wajib punya nomor badan hukum, sebab itulah pembeda antara koperasi sah dan perkumpulan biasa, dan koperasi tidak sah tidak boleh menghimpun simpanan anggota. Kebijakan berversi dan bertanggal berlaku karena SHU dihitung menurut kebijakan yang berlaku pada periode bukunya; kebijakan yang disunting di tempat membuat perhitungan tahun lalu tidak dapat diulang. Pemetaan akun bertanggal berlaku supaya jurnal lama tetap menunjuk akun yang berlaku saat itu."
+    },
+    {
+      "id": "20260731T170000__cooperative__organization_and_membership",
+      "file": "20260731T170000__cooperative__organization_and_membership.sql",
+      "name": "Organisasi, kepengurusan, calon anggota, dan anggota",
+      "description": "cooperative_organization_term, cooperative_board_position, cooperative_member, cooperative_member_category, cooperative_appointment, cooperative_member_document, cooperative_member_consent, cooperative_member_beneficiary, cooperative_related_party, cooperative_member_status_history, cooperative_member_portal_account. Calon anggota dan anggota berbagi satu tabel dibedakan status — dua tabel terpisah memaksa pemindahan baris saat calon menjadi anggota, dan pemindahan baris memutus rujukan dokumen serta jejak auditnya. Tiga aturan ditegakkan basis data: anggota berstatus ACTIVE wajib punya nomor anggota dan tanggal aktif; calon anggota TIDAK boleh punya tanggal aktif (menutup jalan mengisi activated_at lebih dahulu lalu mengubah status kemudian); dan satu jabatan hanya boleh dipangku satu orang pada satu waktu lewat exclusion constraint, sebab jabatan Ketua menentukan siapa yang sah menandatangani perjanjian pinjaman. cooperative_related_party diperlukan aturan pemisahan wewenang: tanpanya, benturan kepentingan hanya dapat ditangkap manusia yang kebetulan mengenali nama. PIN portal anggota disimpan sebagai hash Argon2id, tidak pernah plaintext dan tidak pernah terlihat kasir."
     }
   ]
 }
