@@ -20,9 +20,11 @@ import 'data/api_client.dart';
 import 'data/village_api.dart';
 import 'domain/rules.dart';
 import 'ui/ajukan_surat.dart';
+import 'ui/bantuan.dart';
 import 'ui/beranda.dart';
 import 'ui/lapor.dart';
 import 'ui/pengumuman.dart';
+import 'ui/posyandu.dart';
 import 'ui/shared.dart';
 
 /// Alamat API. Diisi saat build:
@@ -266,6 +268,20 @@ class _LayarUtamaState extends State<LayarUtama> {
     if (kodeMenu == 'PENGUMUMAN') {
       await Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => LayarPengumuman(api: widget.api)),
+      );
+      return;
+    }
+
+    if (kodeMenu == 'POSYANDU') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LayarPosyandu(api: widget.api)),
+      );
+      return;
+    }
+
+    if (kodeMenu == 'STATUS_BANTUAN') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LayarBantuan(api: widget.api)),
       );
       return;
     }

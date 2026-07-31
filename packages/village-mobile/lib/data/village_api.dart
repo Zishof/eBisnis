@@ -9,6 +9,7 @@
 library;
 
 import 'api_client.dart';
+import '../domain/rules.dart';
 
 class ProfilWarga {
   ProfilWarga({required this.nama, this.rt, this.rw, this.alamat, this.statusPenduduk});
@@ -130,6 +131,61 @@ class Pengumuman {
   final List<ProgramBantuan> programBantuan;
 }
 
+/// Satu penyaluran yang sudah diterima.
+class Penyaluran {
+  Penyaluran({required this.termin, required this.tanggal, this.jumlah});
+  final int termin;
+  final String tanggal;
+  final String? jumlah;
+
+  factory Penyaluran.dariJson(Map<String, dynamic> j) => Penyaluran(
+        termin: (j['installmentNo'] as num?)?.toInt() ?? 1,
+        tanggal: j['distributedAt']?.toString() ?? '',
+        jumlah: j['amount']?.toString(),
+      );
+}
+
+/// Keadaan warga terhadap satu program bantuan.
+///
+/// Perhatikan apa yang TIDAK ada: alasan penolakan. Ia memang tidak dikirim
+/// peladen — D-7 menetapkan warga yang tidak menerima berhak mendapat jawaban
+/// dari seseorang, dan layar ponsel bukan seseorang.
+class StatusBantuanSaya {
+  StatusBantuanSaya({
+    required this.namaProgram,
+    required this.jenis,
+    required this.status,
+    required this.penyaluran,
+    this.mulai,
+    this.selesai,
+  });
+
+  final String namaProgram;
+  final String jenis;
+  final StatusPenerima status;
+  final List<Penyaluran> penyaluran;
+  final String? mulai;
+  final String? selesai;
+
+  factory StatusBantuanSaya.dariJson(Map<String, dynamic> j) {
+    final d = j['distributions'];
+    return StatusBantuanSaya(
+      namaProgram: (j['programName'] ?? '-') as String,
+      jenis: (j['aidCategory'] ?? '-') as String,
+      status: switch (j['status']) {
+        'PENERIMA' => StatusPenerima.penerima,
+        'SEDANG_DINILAI' => StatusPenerima.sedangDinilai,
+        _ => StatusPenerima.bukanPenerima,
+      },
+      penyaluran: d is List
+          ? d.whereType<Map<String, dynamic>>().map(Penyaluran.dariJson).toList()
+          : const [],
+      mulai: j['periodStart']?.toString(),
+      selesai: j['periodEnd']?.toString(),
+    );
+  }
+}
+
 class VillageApi {
   VillageApi(this.klien);
   final ApiClient klien;
@@ -179,6 +235,17 @@ class VillageApi {
       agenda: ambil('agenda', Agenda.dariJson),
       programBantuan: ambil('aidPrograms', ProgramBantuan.dariJson),
     );
+  }
+
+  /// Status bantuan **milik sendiri**.
+  ///
+  /// Tidak ada daftar penerima lain, dan tidak ada alasan penolakan — keduanya
+  /// memang tidak dikirim peladen.
+  Future<List<StatusBantuanSaya>> statusBantuanSaya() async {
+    final r = await klien.get('/village/portal/aid');
+    final p = r['programs'];
+    if (p is! List) return const [];
+    return p.whereType<Map<String, dynamic>>().map(StatusBantuanSaya.dariJson).toList();
   }
 
   // --- Posyandu -------------------------------------------------------------

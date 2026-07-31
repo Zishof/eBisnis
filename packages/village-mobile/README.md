@@ -96,10 +96,12 @@ diperbaiki warga sendiri dengan pindah tempat, yang kedua tidak.
 | Ajukan Surat | **Jalan** — dua tab: ajukan baru, dan pantau statusnya |
 | Lapor / Aduan | **Jalan** — kirim, pilih mode nama, keterangan tempat |
 | Pengumuman | **Jalan** — berita, agenda, dan program bantuan |
-| Info Bantuan | **Jalan** — tergabung pada layar Pengumuman |
+| Info Bantuan | **Jalan** — status milik sendiri beserta riwayat penyaluran |
+| Jadwal Posyandu | **Jalan** — menampilkan "belum tersambung" dengan jujur sampai eMedik siap |
 | Masuk & pulihkan sesi | **Jalan** — token aman, rotasi refresh, perpanjang otomatis |
 | Beranda & tautan akun | **Jalan** — menu terkunci menjelaskan syaratnya |
-| Jadwal Posyandu | Endpoint siap; **menunggu eMedik** — sampai tersambung ia menyatakan "belum tersambung", bukan jadwal karangan |
+
+Kelima menu presentasi sudah berfungsi.
 
 ### Ajukan Surat
 
@@ -148,3 +150,47 @@ orang mengira aplikasinya rusak.
   Menunggu kredensial penyedia — sama dengan siaran WhatsApp pada D-10, yang
   berstatus `TERHALANG` dan tidak berpura-pura terkirim.
 - **iOS belum diuji di perangkat.** Hanya Android yang sudah dibangun sampai APK.
+
+### Jadwal Posyandu — keadaan ketiga
+
+Layar ini punya tiga keadaan, bukan dua. Selain "ada isi" dan "gagal", ada
+**"belum tersambung"** — dan itu keadaan yang paling sering terjadi sekarang,
+sebab eMedik adalah vertikal tersendiri.
+
+| Ditampilkan sebagai | Yang disimpulkan warga | Yang ia lakukan |
+|---|---|---|
+| Galat | Aplikasinya rusak | Menutup, mencoba besok, lalu menyerah |
+| Kosong | Posyandu memang tidak ada jadwal | **Tidak datang** |
+| Belum tersambung | Fiturnya belum siap | Bertanya ke kader — yang benar |
+
+Yang kedua paling berbahaya: ibu-ibu menyimpulkan Posyandu bulan ini
+ditiadakan, lalu tidak membawa balitanya.
+
+Karena itu layarnya memakai ikon dan warna netral — bukan merah — menjelaskan
+apa yang akan tampil nanti, lalu menyebutkan jalan yang sudah ada sekarang
+(tanya kader Posyandu atau bidan desa).
+
+Galat jaringan tetap ditampilkan sebagai galat: itu memang dapat diperbaiki
+warga dengan pindah tempat, dan berbeda dari kanal yang belum tersambung.
+
+### Info Bantuan — hanya keadaan diri sendiri
+
+Pengumuman menampilkan **program apa saja yang dibuka**. Layar ini menjawab
+pertanyaan yang sebenarnya ditanyakan warga: *"apakah saya termasuk?"*
+
+Tiga keadaan: penerima, sedang dinilai, atau belum terdaftar. Yang penerima
+melihat **riwayat penyalurannya** — sudah cair atau belum, itu yang paling
+ingin diketahui.
+
+Tidak ada daftar penerima lain, dan tidak akan pernah ada.
+
+**Alasan penolakan tidak muncul di layar ini**, meskipun tersimpan pada
+`village_aid_candidate.rejection_reason`. D-7 menetapkan bahwa warga yang tidak
+menerima bantuan berhak mendapat jawaban **dari seseorang** — dan layar ponsel
+bukan seseorang. Kalimat "penghasilan Anda terlalu tinggi" yang muncul sendirian
+di layar, tanpa ada yang dapat ditanyai balik, lebih melukai daripada
+menjelaskan.
+
+Layar menyampaikan keputusannya, lalu mengarahkan ke kantor desa — tempat ada
+orang yang dapat menjelaskan dan mencatat keberatan. Warnanya pun sengaja bukan
+merah: "belum terdaftar" bukan kesalahan warga.

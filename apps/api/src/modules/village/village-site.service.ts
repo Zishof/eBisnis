@@ -612,6 +612,80 @@ export class VillageSiteService {
     };
   }
 
+  /**
+   * Status bantuan **milik sendiri**.
+   *
+   * Yang dikembalikan hanya keadaan pemilik akun terhadap tiap program:
+   * penerima, sedang dinilai, atau belum terdaftar. Tidak ada daftar penerima
+   * lain, dan tidak akan pernah ada — daftar penerima pada aplikasi yang
+   * dipegang seluruh warga adalah pengumuman siapa yang miskin di desa ini.
+   *
+   * **Alasan penolakan tidak ikut dikembalikan**, meskipun ia tersimpan pada
+   * `village_aid_candidate.rejection_reason`. D-7 menetapkan bahwa warga yang
+   * tidak menerima bantuan berhak mendapat jawaban *dari seseorang* — dan layar
+   * ponsel bukan seseorang. Kalimat "penghasilan Anda terlalu tinggi" yang
+   * muncul sendirian di layar, tanpa ada yang dapat ditanyai balik, lebih
+   * melukai daripada menjelaskan.
+   */
+  async portalStatusBantuan(schemaName: string, user: AuthenticatedUser) {
+    const u = await this.unit.pastikanLayak(schemaName, 'BANTUAN.PROGRAM');
+    const t = await this.tautanPortal(schemaName, user.userId);
+    if (!t.residentId) {
+      throw AppError.forbidden(
+        ErrorCodes.FORBIDDEN,
+        'Akun Anda belum tertaut ke data kependudukan desa. Datang sekali ke kantor desa ' +
+          'dengan membawa KTP; petugas akan menautkannya.',
+      );
+    }
+
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT p.id AS "programId", p.name AS "programName", p.aid_category AS "aidCategory",
+              p.period_start AS "periodStart", p.period_end AS "periodEnd",
+              b.id AS "beneficiaryId", b.status AS "beneficiaryStatus",
+              b.entitlement_amount::text AS "entitlementAmount",
+              c.status AS "candidateStatus"
+         FROM "${schemaName}".village_aid_program p
+    LEFT JOIN "${schemaName}".village_aid_beneficiary b
+           ON b.aid_program_id = p.id AND b.resident_id = $2
+    LEFT JOIN "${schemaName}".village_aid_candidate c
+           ON c.aid_program_id = p.id AND c.resident_id = $2
+        WHERE p.village_unit_id = $1 AND p.deleted_at IS NULL
+          AND p.status IN ('DIBUKA','DISALURKAN','SELESAI')
+        ORDER BY p.period_start DESC LIMIT 20`,
+      [u.id, t.residentId],
+    );
+
+    const daftar = await Promise.all(
+      rows.map(async (r) => {
+        const penerima = r.beneficiaryStatus === 'AKTIF';
+        const calon = r.candidateStatus === 'DIUSULKAN' || r.candidateStatus === 'DIVERIFIKASI';
+
+        // Riwayat penyaluran hanya diambil bila ia memang penerima. Warga yang
+        // bukan penerima tidak perlu tahu bahwa tabelnya ada.
+        const penyaluran = penerima
+          ? await this.tenantDb.query(
+              schemaName,
+              `SELECT installment_no AS "installmentNo", distributed_at AS "distributedAt",
+                      amount::text AS amount, aid_form AS "aidForm"
+                 FROM "${schemaName}".village_aid_distribution
+                WHERE beneficiary_id = $1 ORDER BY installment_no`,
+              [r.beneficiaryId],
+            )
+          : [];
+
+        return {
+          ...proyeksikan('BANTUAN', r),
+          status: penerima ? 'PENERIMA' : calon ? 'SEDANG_DINILAI' : 'BUKAN_PENERIMA',
+          entitlementAmount: penerima ? r.entitlementAmount : null,
+          distributions: penyaluran,
+        };
+      }),
+    );
+
+    return { programs: daftar };
+  }
+
   /** Menautkan akun ke penduduk. Dilakukan petugas, bukan pemilik akun. */
   async tautkanAkun(
     schemaName: string,

@@ -4992,6 +4992,22 @@ export class VillageController {
     return this.situs.portalPengumuman(requireSchema(user));
   }
 
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Get('portal/aid')
+  @ApiOperation({
+    summary: 'Status bantuan milik sendiri',
+    description:
+      'Hanya keadaan pemilik akun terhadap tiap program. TIDAK ada daftar penerima lain, dan ' +
+      'tidak akan pernah ada. Alasan penolakan TIDAK dikembalikan meskipun tersimpan: D-7 ' +
+      'menetapkan warga yang tidak menerima bantuan berhak mendapat jawaban DARI SESEORANG, dan ' +
+      'layar ponsel bukan seseorang.',
+  })
+  portalStatusBantuan(@CurrentUser() user: AuthenticatedUser) {
+    return this.situs.portalStatusBantuan(requireSchema(user), user);
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')

@@ -260,4 +260,79 @@ void main() {
       }
     });
   });
+
+  group('keadaan ketiga: belum tersambung', () {
+    test('belum tersambung BUKAN galat dan BUKAN kosong', () {
+      final t = tilikPosyandu(tersedia: false, adaIsi: false);
+      expect(t.keadaan, KeadaanKanal.belumTersambung);
+      expect(t.keadaan, isNot(KeadaanKanal.galat));
+      expect(t.keadaan, isNot(KeadaanKanal.siap));
+    });
+
+    test('menjelaskan apa yang akan tampil nanti', () {
+      // Layar yang hanya mengatakan "belum tersedia" membuat warga menutupnya
+      // dan tidak kembali.
+      final t = tilikPosyandu(tersedia: false, adaIsi: false);
+      expect(t.uraian, contains('tanggal'));
+      expect(t.uraian, contains('tempat'));
+    });
+
+    test('MENYEBUTKAN jalan lain yang sudah ada sekarang', () {
+      final t = tilikPosyandu(tersedia: false, adaIsi: false);
+      expect(t.saran, isNotNull);
+      expect(t.saran, contains('kader'));
+    });
+
+    test('tersambung tetapi kosong dibedakan dari belum tersambung', () {
+      // "Tidak ada jadwal minggu ini" berbeda artinya dari "belum tersambung":
+      // yang pertama berarti tidak perlu datang, yang kedua berarti bertanya.
+      final kosong = tilikPosyandu(tersedia: true, adaIsi: false);
+      expect(kosong.keadaan, KeadaanKanal.siap);
+      expect(kosong.judul, isNot(contains('tersambung')));
+    });
+
+    test('tersambung dan berisi tidak menampilkan keterangan tambahan', () {
+      final ada = tilikPosyandu(tersedia: true, adaIsi: true);
+      expect(ada.keadaan, KeadaanKanal.siap);
+      expect(ada.saran, isNull);
+    });
+  });
+
+  group('status bantuan milik sendiri', () {
+    test('penerima diberi tahu apa yang harus dibawa', () {
+      final t = tilikStatusBantuan(StatusPenerima.penerima);
+      expect(t.judul, contains('terdaftar'));
+      expect(t.uraian, contains('KTP'));
+    });
+
+    test('yang sedang dinilai diberi tahu bahwa petugas mungkin datang', () {
+      final t = tilikStatusBantuan(StatusPenerima.sedangDinilai);
+      expect(t.uraian, contains('rumah'));
+    });
+
+    test('ALASAN penolakan TIDAK disampaikan lewat layar', () {
+      // D-7: warga yang tidak menerima bantuan berhak mendapat jawaban DARI
+      // SESEORANG — dan layar ponsel bukan seseorang.
+      final t = tilikStatusBantuan(StatusPenerima.bukanPenerima);
+      final gabung = '${t.judul} ${t.uraian}'.toLowerCase();
+      for (final alasan in ['penghasilan', 'tidak memenuhi syarat', 'karena', 'kriteria']) {
+        expect(gabung, isNot(contains(alasan)));
+      }
+    });
+
+    test('yang bukan penerima DIARAHKAN ke orang yang dapat menjelaskan', () {
+      final t = tilikStatusBantuan(StatusPenerima.bukanPenerima);
+      expect(t.saran, isNotNull);
+      expect(t.saran, contains('kantor desa'));
+      expect(t.saran, contains('keberatan'));
+    });
+
+    test('setiap status punya judul dan uraian yang terisi', () {
+      for (final s in StatusPenerima.values) {
+        final t = tilikStatusBantuan(s);
+        expect(t.judul.isNotEmpty, isTrue, reason: s.name);
+        expect(t.uraian.isNotEmpty, isTrue, reason: s.name);
+      }
+    });
+  });
 }

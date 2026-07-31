@@ -261,3 +261,108 @@ const menuWarga = <MenuWarga>[
   MenuWarga('PENGUMUMAN', 'Pengumuman',
       'Berita dan kegiatan desa', false),
 ];
+
+// --- Keadaan ketiga: belum tersambung ---------------------------------------
+
+/// Keadaan sebuah layar yang bergantung pada vertikal lain.
+///
+/// **"Belum tersambung" bukan galat, dan bukan kosong.** Ia keadaan ketiga,
+/// dan menyamakannya dengan salah satu dari keduanya sama-sama menyesatkan:
+///
+/// | Ditampilkan sebagai | Yang disimpulkan warga | Yang ia lakukan |
+/// |---|---|---|
+/// | Galat | Aplikasinya rusak | Menutup, mencoba besok, lalu menyerah |
+/// | Kosong | Posyandu memang tidak ada jadwal | Tidak datang |
+/// | Belum tersambung | Fiturnya belum siap | Bertanya ke kader — jawaban yang benar |
+///
+/// Yang ketiga itu yang benar, dan satu-satunya yang membuat warga melakukan
+/// hal yang tepat.
+enum KeadaanKanal { siap, belumTersambung, galat }
+
+class TilikanKanal {
+  const TilikanKanal({
+    required this.keadaan,
+    required this.judul,
+    required this.uraian,
+    this.saran,
+  });
+
+  final KeadaanKanal keadaan;
+  final String judul;
+  final String uraian;
+
+  /// Apa yang dapat dilakukan warga sementara ini.
+  final String? saran;
+}
+
+/// Tilikan untuk layar yang bergantung pada sistem kesehatan.
+///
+/// Ketika belum tersambung, layar **menjelaskan apa yang akan tampil nanti**
+/// lalu menyebutkan jalan lain yang sudah ada sekarang. Layar yang hanya
+/// mengatakan "belum tersedia" membuat warga menutupnya dan tidak kembali.
+TilikanKanal tilikPosyandu({required bool tersedia, required bool adaIsi}) {
+  if (!tersedia) {
+    return const TilikanKanal(
+      keadaan: KeadaanKanal.belumTersambung,
+      judul: 'Jadwal Posyandu belum tersambung',
+      uraian:
+          'Desa Anda belum menghubungkan sistem kesehatannya, sehingga jadwal Posyandu '
+          'belum dapat ditampilkan di sini. Jadwal yang tampil nanti berisi tanggal, '
+          'tempat, dan kegiatan tiap Posyandu.',
+      saran:
+          'Sementara ini, tanyakan jadwalnya kepada kader Posyandu atau bidan desa. '
+          'Jadwal juga biasanya diumumkan di pengumuman desa.',
+    );
+  }
+  if (!adaIsi) {
+    return const TilikanKanal(
+      keadaan: KeadaanKanal.siap,
+      judul: 'Belum ada jadwal',
+      uraian: 'Belum ada kegiatan Posyandu yang dijadwalkan untuk waktu dekat.',
+    );
+  }
+  return const TilikanKanal(
+    keadaan: KeadaanKanal.siap,
+    judul: 'Jadwal Posyandu',
+    uraian: '',
+  );
+}
+
+// --- Status bantuan milik sendiri -------------------------------------------
+
+/// Keadaan warga terhadap sebuah program bantuan.
+enum StatusPenerima { penerima, bukanPenerima, sedangDinilai }
+
+/// Pesan status bantuan.
+///
+/// **Alasan penolakan TIDAK disampaikan lewat aplikasi.** D-7 menetapkan bahwa
+/// warga yang tidak menerima bantuan berhak mendapat jawaban *dari seseorang* —
+/// dan layar ponsel bukan seseorang.
+///
+/// Kalimat "Anda tidak memenuhi syarat karena penghasilan Anda terlalu tinggi"
+/// yang muncul sendirian di layar, tanpa ada yang dapat ditanyai balik, lebih
+/// melukai daripada menjelaskan. Aplikasi menyampaikan keputusannya, lalu
+/// mengarahkan ke orang yang dapat menjelaskannya.
+TilikanKanal tilikStatusBantuan(StatusPenerima s) => switch (s) {
+      StatusPenerima.penerima => const TilikanKanal(
+          keadaan: KeadaanKanal.siap,
+          judul: 'Anda terdaftar sebagai penerima',
+          uraian: 'Penyaluran akan diumumkan desa. Bawa KTP saat pengambilan.',
+        ),
+      StatusPenerima.sedangDinilai => const TilikanKanal(
+          keadaan: KeadaanKanal.siap,
+          judul: 'Sedang dinilai',
+          uraian:
+              'Nama Anda masuk daftar calon dan sedang diverifikasi petugas. '
+              'Petugas mungkin datang ke rumah untuk memastikan keadaannya.',
+        ),
+      StatusPenerima.bukanPenerima => const TilikanKanal(
+          keadaan: KeadaanKanal.siap,
+          judul: 'Anda belum terdaftar sebagai penerima',
+          uraian: 'Untuk program ini, nama Anda belum termasuk penerima.',
+          // Diarahkan ke orang, bukan diberi alasan oleh layar.
+          saran:
+              'Untuk menanyakan alasannya atau mengajukan keberatan, datang ke kantor '
+              'desa. Petugas dapat menjelaskannya dan mencatat keberatan Anda.',
+        ),
+    };
