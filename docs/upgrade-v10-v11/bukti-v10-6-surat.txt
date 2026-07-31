@@ -1,0 +1,71 @@
+=========================================================================
+BUKTI V10-6 — TATA KELOLA SURAT
+=========================================================================
+
+1. POLA PENOMORAN DITEGAKKAN, BUKAN SEKADAR CONTOH
+   Sistem lama menyimpan contohFormat — sebuah CONTOH. Contoh tidak dapat
+   dieksekusi: dua orang yang membacanya tetap dapat menulis nomor berbeda.
+  LULUS  penanda salah ketik ditolak
+   Penanda {TAHNU} tidak dikenal. Yang tersedia: {NOMOR}, {TAHUN}, {TAHUN2}, {BULAN}, {BULAN_ROMAWI}, {KODE_KLASIFIKASI}, {KODE_UNIT}.
+  LULUS  pola tanpa {NOMOR} ditolak
+  LULUS  pola sah diterima
+
+2. KONSEP BELUM BERNOMOR
+   Nomor yang sudah keluar tidak dapat ditarik kembali. Konsep yang batal
+   akan meninggalkan lubang penomoran yang tidak dapat dijelaskan saat diaudit.
+  LULUS  konsep dibuat
+  LULUS  konsep belum punya nomor
+
+3. NOMOR HANYA KELUAR SETELAH SELURUH LANGKAH DISETUJUI
+  LULUS  konsep tidak dapat langsung diterbitkan
+   Surat berstatus KONSEP tidak dapat menjadi DITERBITKAN. Yang mungkin: DIAJUKAN, DIBATALKAN.
+  LULUS  diajukan ke langkah pertama
+  LULUS  penolakan tanpa alasan ditolak
+  LULUS  langkah 1 disetujui, lanjut ke langkah 2
+  LULUS  belum dapat diterbitkan di tengah alur
+  LULUS  langkah terakhir menyelesaikan alur
+   Nomor terbit: 0001/SK8f97/VII/2026
+  LULUS  nomor sesuai pola
+  LULUS  penerbitan ulang mengembalikan nomor yang sama
+  LULUS  penerbitan ulang tidak mengambil nomor kedua
+
+4. NOMOR TIDAK KEMBAR DI BAWAH PERMINTAAN BERSAMAAN
+   Inilah yang paling penting. MAX(nomor)+1 tidak dapat mencegahnya: dua
+   permintaan membaca MAX yang sama sebelum salah satunya menulis.
+   Di sini penghitungnya baris tersendiri, dinaikkan dengan satu pernyataan.
+   20 surat diterbitkan serentak.
+  LULUS  seluruhnya memperoleh nomor
+  LULUS  tidak ada nomor kembar
+   Urutan yang diberikan: 2 sampai 21
+  LULUS  nomornya berurut tanpa lubang
+  LULUS  basis data tidak memuat nomor kembar
+
+5. PRATINJAU TIDAK MENGAMBIL NOMOR
+   Pratinjau: 0022//VII/2026
+  LULUS  penghitung tidak bergerak
+  LULUS  dua pratinjau berturut-turut sama
+  LULUS  pratinjau ditandai sebagai pratinjau
+
+6. SURAT MASUK DAN DISPOSISI
+   Agenda: AG-2026-00001 dan AG-2026-00002
+  LULUS  nomor pengirim yang kembar tetap diterima
+  LULUS  nomor agenda internalnya berbeda
+  LULUS  disposisi tercatat
+  LULUS  disposisi tanpa tujuan ditolak
+  LULUS  surat masuk berubah menjadi DIDISPOSISI
+
+7. KAPASITAS PENYETUJU TERCATAT
+   Langkah 1: DISETUJUI, SLA ada
+   Langkah 2: DISETUJUI, SLA ada
+  LULUS  dua langkah tercatat
+  LULUS  batas waktu SLA dihitung
+
+8. SURAT YANG SUDAH TERBIT TIDAK DAPAT KEMBALI MENJADI KONSEP
+  LULUS  ditandai tidak dapat disunting
+   Yang benar adalah membuat surat baru yang menggantikannya, sehingga
+   keduanya tetap tercatat. Menyunting surat yang sudah keluar berarti
+   riwayatnya berbohong.
+
+=========================================================================
+SELURUH PEMERIKSAAN LULUS
+=========================================================================

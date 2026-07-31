@@ -9,6 +9,20 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Added
 
+- **Tata kelola surat (V10-6).** Surat masuk beserta disposisi berantai, surat
+  keluar dengan persetujuan berjenjang, klasifikasi, loker arsip, masa simpan,
+  kop surat, dan penomoran resmi. Dipetakan dari sistem lama dengan tiga
+  perubahan sengaja: pola penomoran kini DITEGAKKAN (sistem lama hanya menyimpan
+  contoh, dan contoh tidak dapat dieksekusi), penghitung nomor menjadi baris
+  tersendiri sehingga nomor kembar menjadi mustahil (dibuktikan dengan 20 surat
+  yang diterbitkan serentak), dan alur persetujuan menjadi daftar berurut bukan
+  pohon (pohon membolehkan bentuk yang tidak punya arti).
+  Nomor resmi baru diambil SETELAH surat disetujui — nomor yang sudah keluar
+  tidak dapat ditarik kembali, dan konsep yang batal akan meninggalkan lubang
+  penomoran yang tidak dapat dijelaskan saat diaudit.
+- **Sembilan menu surat** pada katalog, sebagai root tersendiri bukan cabang di
+  bawah Administrasi Sistem — menyetujui surat adalah wewenang jabatan, bukan
+  wewenang teknis.
 - **Kapasitas pelaku pada jejak audit (V10-5).** `audit_event` sudah mencatat
   SIAPA sejak awal; kini ia menjawab DALAM KAPASITAS APA. Kolomnya terisi
   sendiri dari konteks permintaan — bukan dari 76 pemanggilan audit yang

@@ -120,6 +120,20 @@
       "file": "V017__audit_active_role.sql",
       "name": "Kapasitas pelaku pada jejak audit",
       "description": "audit_event bertambah kolom active_role_code. audit_event sudah mencatat SIAPA sejak awal; kolom ini menjawab DALAM KAPASITAS APA. Tanpanya, pertanyaan itu menuntut penelusuran silang ke platform_role_switch_log untuk setiap baris — dan jawaban yang menuntut kerja sebanyak itu tidak akan pernah benar-benar dicari. Nullable; baris lama tidak diisi mundur karena kapasitas yang tidak tercatat tidak boleh dikarang."
+    },
+    {
+      "version": "V018",
+      "sequence": 18,
+      "file": "V018__surat_master.sql",
+      "name": "Tata kelola surat: master dan penomoran",
+      "description": "surat_number_group, surat_number_scheme, surat_number_counter, surat_nature, surat_locker, surat_retention_period, surat_letterhead, surat_classification, surat_approval_flow, surat_approval_flow_step. Dipetakan dari C:\\opt\\AIS dengan tiga perubahan sengaja: contohFormat menjadi POLA yang ditegakkan (contoh tidak dapat dieksekusi), penghitung nomor menjadi baris tersendiri berkunci unik (MAX+1 tidak dapat mencegah nomor kembar), dan alur persetujuan menjadi daftar berurut bukan pohon (pohon membolehkan bentuk yang tidak punya arti)."
+    },
+    {
+      "version": "V019",
+      "sequence": 19,
+      "file": "V019__surat_transaksi.sql",
+      "name": "Tata kelola surat: surat masuk, surat keluar, disposisi, persetujuan",
+      "description": "surat_incoming, surat_outgoing, surat_disposition, surat_approval. Nomor surat masuk berasal dari pengirim dan boleh kembar sehingga yang unik adalah nomor agenda internal. Nomor surat keluar hanya diberikan setelah disetujui — nomor yang sudah keluar tidak dapat ditarik kembali. Batasan menjamin surat berstatus DITERBITKAN wajib bernomor, penolakan wajib beralasan, dan disposisi wajib punya tujuan."
     }
   ]
 }
