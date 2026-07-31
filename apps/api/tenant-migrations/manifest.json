@@ -218,6 +218,13 @@
       "file": "V031__pos_shift_closing.sql",
       "name": "Penutupan shift dan rekonsiliasi kas",
       "description": "pos_shift bertambah opened_by, closed_by, approved_by/at, variance_reason, approval_note, beserta constraint pos_shift_no_self_variance_approval dan status PENDING_APPROVAL. closing_cash, expected_cash, dan variance sudah ada sejak V006, tetapi tidak ada yang mencatat SIAPA yang menutup dan siapa yang menyetujui selisihnya — justru yang ditanyakan ketika kas tidak cocok. Selisih kas menyangkut kepercayaan kepada orang, dan menjawabnya dengan 'sistem tidak mencatat itu' merugikan kasir yang jujur lebih dahulu. PENDING_APPROVAL ada supaya selisih di atas ambang tidak langsung menutup shift, tetapi juga tidak menahan kasir pulang: shift ditutup, kasnya terkunci, persetujuannya menyusul."
+    },
+    {
+      "version": "V032",
+      "sequence": 32,
+      "file": "V032__pos_transaction_sample_flags.sql",
+      "name": "Penanda data contoh pada tabel transaksi kasir",
+      "description": "pos_sale, pos_shift, pos_return, dan pos_refund bertambah is_sample dan sample_batch_id; pos_sale juga deleted_at dan delete_reason. Tabel master sudah punya penanda ini sejak awal, tabel transaksi tidak — masuk akal ketika transaksi hanya dibuat pemakaian sungguhan. Profil data contoh POS mengubahnya: penjualan contoh harus dapat dikenali dan dihapus. Tanpa penanda ini pembersihan akan melewatkannya, dan penyewa yang mengira sudah membersihkan ruang kerjanya akan menemukan penjualan karangan pada laporan keuangannya berbulan-bulan kemudian. Bawaannya FALSE: baris yang sudah ada adalah transaksi sungguhan."
     }
   ]
 }
