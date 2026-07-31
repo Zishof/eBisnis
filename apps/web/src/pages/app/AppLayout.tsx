@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { clsx } from 'clsx';
-import { AlertTriangle, LogOut, Menu, Moon, Search, Sun, X } from 'lucide-react';
+import { AlertTriangle, LogOut, Menu, Moon, Search, Sparkles, Sun, X } from 'lucide-react';
+import { CopilotPanel } from './CopilotPanel';
 import { api } from '../../lib/api';
 import { useAuth } from '../../app/auth-context';
 import { useTheme } from '../../app/theme-context';
@@ -39,6 +40,7 @@ export function AppLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const [query, setQuery] = useState('');
 
   const menus = useMenuTree();
@@ -123,6 +125,20 @@ export function AppLayout() {
               </span>
             )}
 
+            {/*
+              Asisten AI. Ditempatkan pada bilah atas supaya tersedia di setiap
+              halaman — aksinya menyesuaikan rute yang sedang dibuka.
+            */}
+            <button
+              type="button"
+              className="btn-ghost px-2 py-1.5"
+              onClick={() => setCopilotOpen((v) => !v)}
+              aria-label={t('ai.open')}
+              aria-expanded={copilotOpen}
+            >
+              <Sparkles className="h-4 w-4" aria-hidden />
+            </button>
+
             <select
               className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-900"
               value={i18n.language}
@@ -165,6 +181,8 @@ export function AppLayout() {
             </div>
           )}
         </header>
+
+        {copilotOpen && <CopilotPanel onClose={() => setCopilotOpen(false)} />}
 
         <main className="flex-1 p-4 sm:p-6" key={location.pathname}>
           <Outlet />
