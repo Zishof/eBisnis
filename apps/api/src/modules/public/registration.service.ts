@@ -32,6 +32,14 @@ export interface RegistrationInput {
   acceptTerms: boolean;
   acceptPrivacy: boolean;
   localeCode?: string;
+  /**
+   * Penyewa memilih apakah ruang kerjanya diisi data contoh.
+   *
+   * Bawaannya `true`: penyewa baru yang belum tahu apa-apa lebih terbantu oleh
+   * contoh yang dapat dilihat daripada oleh layar kosong. Yang sudah punya data
+   * sendiri dapat mematikannya, dan tetap dapat memasukkannya kemudian.
+   */
+  includeSampleData?: boolean;
 }
 
 export interface RegistrationResult {
@@ -328,6 +336,7 @@ export class RegistrationService {
 
       try {
         const provisioned = await this.provisioner.provision({
+          includeSampleData: input.includeSampleData ?? true,
           registrationId: registration.id,
           tenantId: tenant.id,
           desiredUsername: schemaName,

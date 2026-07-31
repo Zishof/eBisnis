@@ -49,8 +49,21 @@ export class MasterSeedService {
    */
   async seedTenant(
     schemaName: string,
-    options: { sampleBatchId?: string; only?: string[] } = {},
+    options: {
+      sampleBatchId?: string;
+      only?: string[];
+      /**
+       * Sertakan master bertanda `EXAMPLE` (produk, pelanggan, pemasok contoh).
+       *
+       * Bawaannya `true` supaya perilaku lama tidak berubah bagi pemanggil yang
+       * belum menyebutkannya. Data `REFERENCE` — satuan, bagan akun, kategori
+       * pajak, templat, nomor urut — SELALU disemai tanpa memandang pilihan ini,
+       * karena tanpanya tenant tidak dapat dipakai sama sekali.
+       */
+      includeExamples?: boolean;
+    } = {},
   ): Promise<SeedRunSummary> {
+    const includeExamples = options.includeExamples ?? true;
     const sampleBatchId = options.sampleBatchId ?? deterministicBatchId(schemaName);
     const summary: SeedRunSummary = {
       schemaName,
@@ -65,6 +78,8 @@ export class MasterSeedService {
 
       for (const definition of this.getTenantSeeds()) {
         if (options.only?.length && !options.only.includes(definition.resourceCode)) continue;
+        // Master contoh dilewati bila penyewa tidak memintanya.
+        if (!includeExamples && definition.seedKind === 'EXAMPLE') continue;
         if (!(await this.tableExists(client, schemaName, definition.table))) {
           this.logger.warn(`Tabel ${definition.table} tidak ada pada ${schemaName}; seed dilewati.`);
           continue;
@@ -123,6 +138,7 @@ export class MasterSeedService {
             activeCount: 0,
             sampleCount: 0,
             status: 'MISSING_TABLE',
+            seedKind: definition.seedKind ?? 'REFERENCE',
             missingCodes: [],
           });
           continue;
@@ -138,7 +154,29 @@ export class MasterSeedService {
         const activeCount = Number(counts.rows[0]?.active ?? '0');
         const sampleCount = Number(counts.rows[0]?.sample ?? '0');
 
-        const expected = await this.resolveRecords(definition, ctx);
+        const seedKindAwal = definition.seedKind ?? 'REFERENCE';
+
+        /*
+         * Menyusun daftar record yang seharusnya ada bisa GAGAL, dan sejak data
+         * contoh boleh ditolak penyewa, kegagalan itu menjadi keadaan yang wajar:
+         * `PRODUCT` menuntut `product_category.MERCHANDISE`, dan kategori itu
+         * sendiri data contoh yang mungkin tidak pernah dibuat.
+         *
+         * Untuk master CONTOH, ketiadaan itu berarti "memang tidak disemai" —
+         * bukan cacat. Untuk data ACUAN, ketiadaan dependensi tetap cacat sungguhan
+         * dan harus terdengar keras, jadi galatnya dilempar seperti sebelumnya.
+         */
+        let expected: Array<Record<string, unknown>>;
+        try {
+          expected = await this.resolveRecords(definition, ctx);
+        } catch (error) {
+          if (seedKindAwal !== 'EXAMPLE') throw error;
+          this.logger.debug(
+            `Contoh ${definition.resourceCode} tidak dapat disusun pada ${schemaName} ` +
+              `(dependensi tidak ada); dianggap tidak disemai.`,
+          );
+          expected = [];
+        }
         const uniqueColumn = assertIdentifier(definition.uniqueColumn ?? 'code');
         const expectedCodes = expected.map((r) => String(r[uniqueColumn] ?? r.code));
         const present = await client.query<{ value: string }>(
@@ -147,9 +185,19 @@ export class MasterSeedService {
         const presentSet = new Set(present.rows.map((r) => r.value));
         const missingCodes = expectedCodes.filter((code) => !presentSet.has(code));
 
+        const seedKind = seedKindAwal;
+
         let status: MasterSeedVerifyRow['status'] = 'OK';
         if (definition.minimumRecords === 0) status = 'EXEMPT';
-        else if (activeCount < definition.minimumRecords) status = 'INSUFFICIENT';
+        else if (activeCount < definition.minimumRecords) {
+          /*
+           * Data contoh yang kosong BUKAN kegagalan. Penyewa boleh menolaknya
+           * saat mendaftar, dan boleh menghapusnya kapan saja. Melaporkannya
+           * sebagai "INSUFFICIENT" akan membuat halaman berkata GAGAL kepada
+           * penyewa yang justru sedang menjalankan sistem sebagaimana mestinya.
+           */
+          status = seedKind === 'EXAMPLE' ? 'SAMPLE_EMPTY' : 'INSUFFICIENT';
+        }
 
         rows.push({
           resourceCode: definition.resourceCode,
@@ -158,6 +206,7 @@ export class MasterSeedService {
           activeCount,
           sampleCount,
           status,
+          seedKind,
           missingCodes,
         });
       }
@@ -179,7 +228,10 @@ export class MasterSeedService {
   async repairTenant(schemaName: string): Promise<SeedRunSummary> {
     const report = await this.verifyTenant(schemaName);
     const needsRepair = report.rows
-      .filter((r) => r.status === 'INSUFFICIENT' || r.missingCodes.length > 0)
+      .filter(
+        (r) =>
+          r.status === 'INSUFFICIENT' || r.status === 'SAMPLE_EMPTY' || r.missingCodes.length > 0,
+      )
       .map((r) => r.resourceCode);
 
     if (!needsRepair.length) {
@@ -214,6 +266,23 @@ export class MasterSeedService {
       // Urutan terbalik agar child dibersihkan sebelum parent.
       for (const definition of [...this.getTenantSeeds()].reverse()) {
         if (!definition.supportsSampleCleanup) continue;
+        /*
+         * HANYA master bertanda EXAMPLE yang boleh dibersihkan.
+         *
+         * Sebelum pembatasan ini, pembersihan menghapus SELURUH baris
+         * `is_sample = TRUE` — dan itu mencakup tiga belas data acuan seperti
+         * satuan, bagan akun, kategori pajak, metode pembayaran, dan templat
+         * pemberitahuan. Menghapusnya atas nama "membersihkan data contoh"
+         * akan melumpuhkan tenant: transaksi tidak dapat dibuat karena
+         * satuannya hilang, dan jurnal tidak dapat diposting karena akunnya
+         * tidak ada.
+         *
+         * Penandaan `is_sample` pada data acuan itu sendiri memang menyesatkan,
+         * tetapi mengubahnya sekarang berarti menyentuh ratusan ribu baris pada
+         * empat belas skema. Yang diperbaiki di sini adalah keputusannya, bukan
+         * penandaannya.
+         */
+        if (definition.seedKind !== 'EXAMPLE') continue;
         if (!(await this.tableExists(client, schemaName, definition.table))) continue;
 
         const table = assertIdentifier(definition.table);
