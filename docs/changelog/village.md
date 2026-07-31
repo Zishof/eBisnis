@@ -981,3 +981,159 @@ tersimpan.
 - `jest` — **1424 tes lulus** (bertambah 56)
 - `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
 - Migrasi diverifikasi: 75 tabel village terbentuk
+
+---
+
+## D-9 — Keamanan, bencana, lingkungan, dan pertanahan
+
+### Ditambahkan
+
+- **`village-land.ts`** — penyangkalan wajib, aturan bidang, surat keterangan,
+  dan riwayat peralihan. **27 pengujian.**
+- **`village-safety.ts`** — insiden, kebencanaan, logistik, dan kondisi
+  infrastruktur. **26 pengujian.**
+- **Migrasi `20260731000011`** — empat belas tabel.
+- **`VillageSafetyService`** dan **dua belas endpoint.**
+
+### Surat keterangan tanah wajib memuat penyangkalannya
+
+Inti seluruh D-9, dan satu-satunya hal di sini yang bila terlewat menghasilkan
+kertas yang dipegang warga selama puluhan tahun sebagai bukti atas sesuatu yang
+tidak pernah dibuktikannya.
+
+```sql
+CHECK (body_text ILIKE '%bukan bukti kepemilikan%')
+CHECK (body_text ILIKE '%tidak menggantikan sertifikat%')
+```
+
+Diperiksa pada **teks yang akan tercetak**, bukan pada berkas templat. Templat
+yang benar tidak menjamin surat yang benar: templat dapat disunting, diganti,
+atau dilewati jalur penerbitan lain — dan yang dipegang warga adalah teks yang
+tercetak, bukan templatnya.
+
+Dua frasa, dan keduanya menjawab pertanyaan yang benar-benar ditanyakan orang
+saat memegang surat keterangan tanah: *"ini bukti milik saya, kan?"* dan
+*"berarti saya tidak perlu sertifikat, kan?"*
+
+Desa tetap boleh menyusun bahasanya sendiri; yang dijaga bukan susunan
+kalimatnya melainkan dua hal yang harus terbaca. **Dibuktikan** bahwa
+constraint berlaku pada setiap tulis, bukan hanya saat penerbitan: menyunting
+surat yang sudah terbit untuk menghapus penyangkalannya ditolak.
+
+Berlapis tiga — layanan menyisipkan penyangkalan baku bila belum ada, memeriksa
+hasilnya, lalu basis data memeriksanya lagi. Penyisipan supaya petugas tidak
+perlu mengetiknya; constraint supaya penyisipan yang gagal karena alasan apa pun
+tidak lolos hanya karena ia dilakukan otomatis.
+
+### Dua kertas atas satu bidang adalah cara sengketa dimulai
+
+- **Tanah bersertifikat tidak diberi surat keterangan desa.** Sertifikatnya
+  sudah menjawab pertanyaan yang hendak dijawab surat ini.
+- **Satu bidang, satu surat yang berlaku.** Dua surat yang sama-sama berlaku
+  atas bidang yang sama adalah keadaan yang tidak dapat dijelaskan kepada siapa
+  pun. Setelah yang lama dicabut beserta alasannya, yang baru dapat terbit.
+- **Persetujuan batas wajib lengkap** — `consent_count >= neighbour_count`.
+  Surat yang terbit tanpa persetujuan batas memindahkan sengketa dari kantor
+  desa ke pengadilan, dengan kertas resmi di tangan satu pihak.
+- **Riwayat peralihan wajib menyebut dasarnya.** Riwayat tanpa dasar adalah
+  daftar nama yang berurutan: tampak seperti bukti, tetapi tidak membuktikan apa
+  pun — dan justru bentuk itulah yang paling sering dibawa ke pengadilan.
+
+### `possessor`, bukan `owner`
+
+Sistem ini tidak menggantikan sistem pertanahan nasional, dan nama kolomnya ikut
+menyatakan itu. Kolom bernama `owner_name` akan membuat sistem mengklaim apa
+yang justru dinyatakannya tidak dilakukan — dan yang membaca basis data tidak
+membaca dokumentasi. **Dibuktikan dengan memindai `information_schema`:** ada
+`possessor_name`, tidak ada satu pun kolom berawalan `owner`.
+
+Bidang bertanda bersertifikat wajib menyebut nomornya, dan sebaliknya. Tanpa
+nomornya, catatan desa tidak dapat dicocokkan dengan data pertanahan nasional —
+dan pencocokan itulah satu-satunya cara perbedaan diselesaikan.
+
+### Catatan insiden tidak menyimpan tuduhan sebagai fakta
+
+Tidak ada kolom untuk nama pelaku, tersangka, maupun terduga. Catatan desa yang
+menyebut seseorang sebagai pelaku adalah pencemaran nama baik yang menunggu
+waktu, dan ia tersimpan jauh lebih lama daripada peristiwanya.
+
+Yang dicatat: apa yang terjadi, kapan, di mana, siapa yang **melaporkan**. Bila
+perkaranya berlanjut, ia dirujuk ke kepolisian beserta nomor laporannya — dan di
+sanalah nama pihak-pihaknya dicatat, oleh lembaga yang berwenang mencatatnya.
+
+Larangannya ditegakkan dengan tidak menyediakan kolomnya, sama seperti larangan
+lintas vertikal pada D-8. Dibuktikan dengan memindai kolom tabelnya.
+
+**Rujukan wajib bernomor.** "Sudah dilaporkan ke polisi" tanpa nomornya tidak
+dapat ditelusuri warga yang menanyakannya enam bulan kemudian — dan pernyataan
+yang tidak dapat ditelusuri lebih buruk daripada tidak ada pernyataan, sebab ia
+menghentikan pertanyaan tanpa menjawabnya.
+
+Laporan anonim tetap mungkin, dan **benar-benar tidak menyimpan identitas
+pelapor** — ditegakkan constraint, bukan kesepakatan.
+
+### Bantuan bencana tidak menunggu penyaringan kelayakan
+
+Kebalikan sengaja dari bantuan sosial D-7. Di sana penetapan penerima menuntut
+verifikasi lapangan, dasar tertulis lima belas huruf, dan pemeriksaan bantuan
+ganda lintas program. Di sini tidak ada satu pun dari itu, dan **tabelnya tidak
+menyediakan tempatnya**: tidak ada `candidate_id`, tidak ada `verified_by`,
+tidak ada `decision_basis`.
+
+Keluarga yang kehilangan rumah pada pukul tiga pagi bukan berkas yang perlu
+dinilai kelayakannya. Yang membatasi hanyalah stok — `stock_quantity >= 0`,
+sebab gudang yang menampilkan minus dua puluh paket membuat petugas berhenti
+mempercayai seluruh angkanya.
+
+Yang tetap dituntut hanyalah nama penerimanya: **pertanggungjawaban sesudahnya,
+bukan syarat sebelumnya.** Catat setelah barangnya diserahkan bila keadaannya
+mendesak.
+
+### Laporan kejadian bencana tidak dihapus
+
+`village_disaster_event` **tidak memiliki `deleted_at`**, dan layanan tidak
+menyediakan metode penghapusan. Laporan sudah naik ke kecamatan dan BPBD serta
+menjadi dasar penetapan status tanggap darurat; menghapusnya mengubah catatan
+sejarah yang sudah dipakai pihak lain.
+
+Yang salah **dikoreksi beserta alasannya**, dan alasannya tersimpan. Angka yang
+berubah tanpa keterangan membuat laporan yang sudah naik ke BPBD tidak dapat
+dijelaskan lagi.
+
+### Kondisi infrastruktur tidak dapat dicatat tanpa tanggalnya
+
+`CHECK (condition IS NULL OR condition_assessed_at IS NOT NULL)`.
+
+Kondisi tanpa tanggal adalah pernyataan yang tidak pernah kedaluwarsa: "jalan
+rusak berat" akan tetap ada di RKP tiga tahun setelah jalannya diaspal, dan
+anggaran akan mengikuti pernyataan itu, bukan mengikuti jalannya. Umur
+penilaiannya disajikan bersama kondisinya pada daftar infrastruktur, dan yang
+lebih tua dari setahun ditandai perlu ditinjau ulang sebelum dipakai sebagai
+dasar usulan anggaran.
+
+### Keputusan lain
+
+- **Anggota Linmas yang masa tugasnya berakhir tidak dapat tetap aktif.** Daftar
+  yang memuat orang yang sudah berhenti akan dipanggil saat keadaan darurat.
+- **Laporan insiden yang selesai tidak dibuka kembali.** Kejadian susulan adalah
+  laporan baru yang menunjuk yang sebelumnya; membuka kembali laporan lama
+  membuat riwayat penanganannya bercampur.
+- **Keberatan tetangga wajib diuraikan.** Yang menolak tanpa keterangan tidak
+  meninggalkan apa pun yang dapat dimusyawarahkan.
+- **Pengaduan lingkungan memakai `village_complaint` dari D-5**, bukan tabel
+  baru. Sistem pengaduan kedua berarti warga menebak ke mana harus mengadu.
+
+### Bukti
+
+`docs/info-desa/bukti-d9-keamanan-tanah.txt` — **37 pemeriksaan**, seluruhnya
+lulus.
+
+### Yang belum dikerjakan
+
+**Antarmuka web masih belum ada**, kini sembilan tahap.
+
+### Gerbang mutu
+
+- `jest` — **1477 tes lulus** (bertambah 53)
+- `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
+- Migrasi diverifikasi: 89 tabel village terbentuk

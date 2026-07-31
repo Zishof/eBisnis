@@ -42,6 +42,7 @@ import { VillageBudgetService } from './village-budget.service';
 import { VillageAssetService } from './village-asset.service';
 import { VillageAidService } from './village-aid.service';
 import { VillageBusinessService } from './village-business.service';
+import { VillageSafetyService } from './village-safety.service';
 import {
   COOPERATIVE_PORT,
   HEALTH_PORT,
@@ -1688,6 +1689,556 @@ class KoperasiDesaDto {
   phone?: string;
 }
 
+
+const JENIS_INSIDEN = [
+  'PENCURIAN', 'PERKELAHIAN', 'KEBAKARAN', 'KECELAKAAN',
+  'GANGGUAN_KETERTIBAN', 'ORANG_HILANG', 'LAINNYA',
+] as const;
+
+class CatatInsidenDto {
+  @ApiProperty({ example: 'INS/2027/03/007' })
+  @IsString()
+  @MaxLength(64)
+  incidentNumber!: string;
+
+  @ApiProperty({ enum: JENIS_INSIDEN })
+  @IsIn(JENIS_INSIDEN as unknown as string[])
+  incidentType!: (typeof JENIS_INSIDEN)[number];
+
+  @ApiProperty({ example: '2027-03-11T22:30:00.000Z' })
+  @IsString()
+  occurredAt!: string;
+
+  @ApiProperty({ example: 'Jalan Dusun Krajan, depan poskamling RT 03' })
+  @IsString()
+  @MinLength(3)
+  locationNote!: string;
+
+  @ApiProperty({
+    description:
+      'APA yang terjadi. BUKAN siapa yang bersalah — catatan desa yang menyebut seseorang ' +
+      'sebagai pelaku adalah pencemaran nama baik yang menunggu waktu.',
+  })
+  @IsString()
+  @MinLength(10)
+  description!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  subAreaId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  villageRtId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  estimatedLoss?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  casualtyCount?: number;
+
+  @ApiPropertyOptional({ description: 'Pelapor, bukan terlapor. Diabaikan bila anonim.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  reporterName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  reporterPhone?: string;
+
+  @ApiPropertyOptional({
+    description: 'Laporan anonim benar-benar tidak menyimpan identitas pelapor.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isAnonymous?: boolean;
+}
+
+const STATUS_INSIDEN = ['DILAPORKAN', 'DITANGANI', 'DIRUJUK', 'SELESAI'] as const;
+
+class StatusInsidenDto {
+  @ApiProperty({ enum: STATUS_INSIDEN })
+  @IsIn(STATUS_INSIDEN as unknown as string[])
+  status!: (typeof STATUS_INSIDEN)[number];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  handlingNote?: string;
+
+  @ApiPropertyOptional({ description: 'Wajib bila DIRUJUK.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  referredTo?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Wajib bila DIRUJUK. "Sudah dilaporkan ke polisi" tanpa nomornya tidak dapat ditelusuri ' +
+      'warga yang menanyakannya enam bulan kemudian.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  referralNumber?: string;
+}
+
+const JENIS_BENCANA = [
+  'BANJIR', 'TANAH_LONGSOR', 'KEBAKARAN', 'ANGIN_PUTING_BELIUNG',
+  'GEMPA_BUMI', 'KEKERINGAN', 'WABAH', 'LAINNYA',
+] as const;
+
+class KejadianBencanaDto {
+  @ApiProperty({ example: 'BNC/2027/01/002' })
+  @IsString()
+  @MaxLength(64)
+  eventNumber!: string;
+
+  @ApiProperty({ enum: JENIS_BENCANA })
+  @IsIn(JENIS_BENCANA as unknown as string[])
+  disasterType!: (typeof JENIS_BENCANA)[number];
+
+  @ApiProperty({ example: '2027-01-18' })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  occurredAt!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(3)
+  locationNote!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 42 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  affectedFamilyCount?: number;
+
+  @ApiPropertyOptional({ example: 120 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displacedCount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  casualtyCount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  injuredCount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  estimatedLoss?: number;
+
+  @ApiPropertyOptional({ example: 'TANGGAP_DARURAT' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  emergencyStatus?: string;
+}
+
+class KoreksiKejadianDto {
+  @ApiProperty({
+    description:
+      'Sekurang-kurangnya sepuluh huruf. Angka yang berubah tanpa keterangan membuat laporan ' +
+      'yang sudah naik ke BPBD tidak dapat dijelaskan lagi.',
+  })
+  @IsString()
+  @MinLength(10)
+  correctionNote!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  affectedFamilyCount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displacedCount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  casualtyCount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  injuredCount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  estimatedLoss?: number;
+}
+
+class TerimaLogistikDto {
+  @ApiProperty()
+  @IsUUID()
+  reliefItemId!: string;
+
+  @ApiProperty({ example: 100 })
+  @IsNumber()
+  @IsPositive()
+  quantity!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+class SalurLogistikDto {
+  @ApiProperty()
+  @IsUUID()
+  reliefItemId!: string;
+
+  @ApiProperty({ example: 2 })
+  @IsNumber()
+  @IsPositive()
+  quantity!: number;
+
+  @ApiProperty({
+    description:
+      'WAJIB — pertanggungjawaban sesudahnya, bukan syarat sebelum bantuan diberikan. Catat ' +
+      'setelah barangnya diserahkan bila keadaannya mendesak.',
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  recipientName!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  disasterEventId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  recipientFamilyId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  locationNote?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+const KONDISI_INFRA = ['BAIK', 'RUSAK_RINGAN', 'RUSAK_SEDANG', 'RUSAK_BERAT'] as const;
+
+class PemeriksaanInfraDto {
+  @ApiProperty({ example: '2027-02-14' })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  inspectedAt!: string;
+
+  @ApiProperty({ enum: KONDISI_INFRA })
+  @IsIn(KONDISI_INFRA as unknown as string[])
+  condition!: (typeof KONDISI_INFRA)[number];
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(5)
+  finding!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  recommendation?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  estimatedCost?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  inspectorName?: string;
+}
+
+const JENIS_PENGUASAAN = [
+  'MILIK_ADAT', 'GARAPAN', 'SEWA', 'TANAH_KAS_DESA', 'TANAH_BENGKOK', 'WAKAF', 'LAINNYA',
+] as const;
+const STATUS_SERTIFIKAT = ['BELUM_BERSERTIFIKAT', 'BERSERTIFIKAT', 'DALAM_PROSES'] as const;
+
+class BidangTanahDto {
+  @ApiProperty({ example: 'TNH-0142' })
+  @IsString()
+  @MaxLength(64)
+  parcelCode!: string;
+
+  @ApiProperty({
+    example: 'Sumiati',
+    description:
+      'Pihak yang MENGUASAI menurut administrasi desa. Bukan pemilik — kepemilikan hanya dapat ' +
+      'dinyatakan Badan Pertanahan Nasional.',
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  possessorName!: string;
+
+  @ApiProperty({ example: 300 })
+  @IsNumber()
+  @IsPositive()
+  areaM2!: number;
+
+  @ApiPropertyOptional({ enum: JENIS_PENGUASAAN })
+  @IsOptional()
+  @IsIn(JENIS_PENGUASAAN as unknown as string[])
+  possessionType?: (typeof JENIS_PENGUASAAN)[number];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  possessorResidentId?: string;
+
+  @ApiPropertyOptional({ example: 'C.1284' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  letterCNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  persilNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  landUse?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  subAreaId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  villageRtId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  boundaryNorth?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  boundarySouth?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  boundaryEast?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  boundaryWest?: string;
+
+  @ApiPropertyOptional({ enum: STATUS_SERTIFIKAT })
+  @IsOptional()
+  @IsIn(STATUS_SERTIFIKAT as unknown as string[])
+  certificateStatus?: (typeof STATUS_SERTIFIKAT)[number];
+
+  @ApiPropertyOptional({ description: 'Wajib bila bertanda bersertifikat.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  certificateNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+const CARA_PERALIHAN = ['JUAL_BELI', 'WARIS', 'HIBAH', 'TUKAR_MENUKAR', 'WAKAF', 'LAINNYA'] as const;
+
+class PeralihanTanahDto {
+  @ApiProperty({ enum: CARA_PERALIHAN })
+  @IsIn(CARA_PERALIHAN as unknown as string[])
+  transferType!: (typeof CARA_PERALIHAN)[number];
+
+  @ApiProperty({ example: '2027-03-11' })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  transferredAt!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  fromName!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  toName!: string;
+
+  @ApiProperty({
+    example: 'Akta Jual Beli Nomor 14/2027',
+    description:
+      'WAJIB. Riwayat tanpa dasar adalah daftar nama yang berurutan: tampak seperti bukti, ' +
+      'tetapi tidak membuktikan apa pun.',
+  })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(300)
+  legalBasis!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  areaM2?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+
+  @ApiPropertyOptional({ description: 'Bawaan benar: nama penguasa mengikuti penerima peralihan.' })
+  @IsOptional()
+  @IsBoolean()
+  updatePossessor?: boolean;
+}
+
+class PersetujuanBatasDto {
+  @ApiProperty({ enum: ['UTARA', 'SELATAN', 'TIMUR', 'BARAT'] })
+  @IsIn(['UTARA', 'SELATAN', 'TIMUR', 'BARAT'])
+  side!: 'UTARA' | 'SELATAN' | 'TIMUR' | 'BARAT';
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  neighbourName!: string;
+
+  @ApiProperty()
+  @IsBoolean()
+  consented!: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  neighbourResidentId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  neighbourParcelId?: string;
+
+  @ApiPropertyOptional({ description: 'Wajib bila tidak setuju.' })
+  @IsOptional()
+  @IsString()
+  objectionNote?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  witnessName?: string;
+}
+
+class TerbitkanSktDto {
+  @ApiProperty({ example: 'SKT/470/12/2027' })
+  @IsString()
+  @MaxLength(64)
+  statementNumber!: string;
+
+  @ApiProperty({ example: '2027-06-04' })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  issuedAt!: string;
+
+  @ApiProperty({
+    description:
+      'Badan surat yang akan tercetak. Penyangkalan baku disisipkan bila belum ada, lalu ' +
+      'diperiksa lagi — dan basis data memeriksanya ketiga kalinya lewat constraint.',
+  })
+  @IsString()
+  @MinLength(20)
+  bodyText!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  purpose?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  validUntil?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  serviceRequestId?: string;
+}
+
+class CabutSktDto {
+  @ApiProperty({ description: 'Sekurang-kurangnya lima huruf.' })
+  @IsString()
+  @MinLength(5)
+  reason!: string;
+}
+
 // --- Controller ---------------------------------------------------------------
 
 @ApiTags('village')
@@ -1704,6 +2255,7 @@ export class VillageController {
     private readonly aset: VillageAssetService,
     private readonly bantuan: VillageAidService,
     private readonly usaha: VillageBusinessService,
+    private readonly keamanan: VillageSafetyService,
   ) {}
 
 
@@ -2844,6 +3396,219 @@ export class VillageController {
     return this.usaha.ringkasanUsaha(requireSchema(user));
   }
 
+
+  // --- Keamanan dan insiden -------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_LINMAS.CREATE')
+  @Post('incidents')
+  @ApiOperation({
+    summary: 'Mencatat insiden keamanan',
+    description:
+      'Yang dicatat APA yang terjadi, bukan siapa yang bersalah. Tidak tersedia ruas untuk nama ' +
+      'pelaku, tersangka, maupun terduga — catatan desa yang menyebut seseorang sebagai pelaku ' +
+      'adalah pencemaran nama baik yang menunggu waktu, dan ia tersimpan jauh lebih lama ' +
+      'daripada peristiwanya.',
+  })
+  catatInsiden(@Body() dto: CatatInsidenDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.keamanan.catatInsiden(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_LINMAS.UPDATE')
+  @Post('incidents/:id/status')
+  @ApiOperation({
+    summary: 'Mengubah status penanganan insiden',
+    description:
+      'Rujukan ke lembaga berwenang wajib menyebut nomor laporannya. Laporan yang sudah selesai ' +
+      'tidak dibuka kembali; kejadian susulan dicatat sebagai laporan baru.',
+  })
+  ubahStatusInsiden(
+    @Param('id') id: string,
+    @Body() dto: StatusInsidenDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.keamanan.ubahStatusInsiden(requireSchema(user), id, dto, user);
+  }
+
+  // --- Kebencanaan ----------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_DISASTER.CREATE')
+  @Post('disasters')
+  @ApiOperation({ summary: 'Mencatat kejadian bencana' })
+  catatKejadianBencana(
+    @Body() dto: KejadianBencanaDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.keamanan.catatKejadianBencana(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_DISASTER.UPDATE')
+  @Post('disasters/:id/correction')
+  @ApiOperation({
+    summary: 'Mengoreksi angka kejadian bencana',
+    description:
+      'TIDAK ADA penghapusan laporan kejadian, dan itu disengaja. Laporan sudah naik ke ' +
+      'kecamatan dan BPBD serta menjadi dasar penetapan status tanggap darurat; menghapusnya ' +
+      'mengubah catatan sejarah yang sudah dipakai pihak lain. Yang salah dikoreksi beserta ' +
+      'alasannya, sehingga koreksinya ikut terbaca.',
+  })
+  koreksiKejadian(
+    @Param('id') id: string,
+    @Body() dto: KoreksiKejadianDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.keamanan.koreksiKejadian(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_DISASTER.UPDATE')
+  @Post('relief/receipts')
+  @ApiOperation({ summary: 'Mencatat penerimaan logistik bantuan' })
+  terimaLogistik(@Body() dto: TerimaLogistikDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.keamanan.terimaLogistik(requireSchema(user), dto);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_DISASTER.UPDATE')
+  @Post('relief/distributions')
+  @ApiOperation({
+    summary: 'Menyalurkan bantuan bencana',
+    description:
+      'TIDAK ADA penyaringan kelayakan di sini, dan itu kebalikan sengaja dari bantuan sosial ' +
+      'D-7: keluarga yang kehilangan rumah pada pukul tiga pagi bukan berkas yang perlu dinilai. ' +
+      'Yang membatasi hanyalah stok; yang tetap dituntut hanyalah nama penerimanya.',
+  })
+  salurkanLogistik(@Body() dto: SalurLogistikDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.keamanan.salurkanLogistik(requireSchema(user), dto, user);
+  }
+
+  // --- Infrastruktur --------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_ENVIRONMENT.READ')
+  @Get('infrastructure')
+  @ApiOperation({
+    summary: 'Daftar infrastruktur beserta umur penilaian kondisinya',
+    description:
+      'Umur penilaian disajikan bersama kondisinya. "Jalan rusak berat" yang dinilai tiga tahun ' +
+      'lalu akan tetap masuk RKP setelah jalannya diaspal, dan anggaran mengikuti pernyataan ' +
+      'itu, bukan mengikuti jalannya.',
+  })
+  daftarInfrastruktur(@CurrentUser() user: AuthenticatedUser) {
+    return this.keamanan.daftarInfrastruktur(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_ENVIRONMENT.UPDATE')
+  @Post('infrastructure/:id/inspections')
+  @ApiOperation({
+    summary: 'Mencatat pemeriksaan infrastruktur',
+    description:
+      'Kondisi dan tanggal penilaiannya tidak dapat dipisahkan — kondisi tanpa tanggal adalah ' +
+      'pernyataan yang tidak pernah kedaluwarsa.',
+  })
+  catatPemeriksaanInfrastruktur(
+    @Param('id') id: string,
+    @Body() dto: PemeriksaanInfraDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.keamanan.catatPemeriksaanInfrastruktur(requireSchema(user), id, dto, user);
+  }
+
+  // --- Pertanahan administratif ---------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_LAND.CREATE')
+  @Post('land/parcels')
+  @ApiOperation({
+    summary: 'Mencatat bidang tanah',
+    description:
+      'Catatan ADMINISTRATIF: penguasaan fisik menurut administrasi desa, bukan hak atas tanah. ' +
+      'Sistem ini tidak menggantikan sistem pertanahan nasional.',
+  })
+  catatBidang(@Body() dto: BidangTanahDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.keamanan.catatBidang(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_LAND.UPDATE')
+  @Post('land/parcels/:id/transfers')
+  @ApiOperation({
+    summary: 'Mencatat peralihan',
+    description: 'Wajib menyebut dasarnya — nomor akta, kutipan Letter C, atau bukti lain.',
+  })
+  catatPeralihan(
+    @Param('id') id: string,
+    @Body() dto: PeralihanTanahDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.keamanan.catatPeralihan(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_LAND.UPDATE')
+  @Post('land/parcels/:id/boundary-consents')
+  @ApiOperation({
+    summary: 'Mencatat persetujuan batas dari tetangga',
+    description:
+      'Surat keterangan tidak terbit sebelum seluruh tetangga menyatakan setuju. Surat yang ' +
+      'terbit tanpa persetujuan batas memindahkan sengketa dari kantor desa ke pengadilan, ' +
+      'dengan kertas resmi di tangan satu pihak.',
+  })
+  catatPersetujuanBatas(
+    @Param('id') id: string,
+    @Body() dto: PersetujuanBatasDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.keamanan.catatPersetujuanBatas(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_LAND.CREATE')
+  @Post('land/parcels/:id/statements')
+  @ApiOperation({
+    summary: 'Menerbitkan surat keterangan tanah',
+    description:
+      'Penyangkalan WAJIB ada di dalam badan suratnya: frasa "bukan bukti kepemilikan" dan ' +
+      '"tidak menggantikan sertifikat". Disisipkan bila belum ada, diperiksa layanan, lalu ' +
+      'diperiksa lagi oleh constraint basis data pada teks yang akan tercetak. MENOLAK bila ' +
+      'bidangnya sudah bersertifikat, bila persetujuan batas belum lengkap, atau bila sudah ada ' +
+      'surat yang berlaku atas bidang yang sama.',
+  })
+  terbitkanSkt(
+    @Param('id') id: string,
+    @Body() dto: TerbitkanSktDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.keamanan.terbitkanSkt(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_LAND.UPDATE')
+  @Post('land/statements/:id/revoke')
+  @ApiOperation({ summary: 'Mencabut surat keterangan tanah' })
+  cabutSkt(
+    @Param('id') id: string,
+    @Body() dto: CabutSktDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.keamanan.cabutSkt(requireSchema(user), id, dto.reason);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_LAND.READ')
+  @Get('land/parcels/:id/history')
+  @ApiOperation({
+    summary: 'Riwayat satu bidang',
+    description: 'Peralihan, persetujuan batas, dan surat yang pernah terbit.',
+  })
+  riwayatBidang(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.keamanan.riwayatBidang(requireSchema(user), id);
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -2892,6 +3657,7 @@ export class VillageController {
     VillageAssetService,
     VillageAidService,
     VillageBusinessService,
+    VillageSafetyService,
     // Mitra vertikal yang belum ada. Adapter tiruan menyatakan "belum
     // tersambung" dengan jujur dan tidak mengembalikan satu pun angka karangan.
     // Ketika mitranya siap, yang berubah hanya empat baris di bawah ini.
@@ -2912,6 +3678,7 @@ export class VillageController {
     VillageAssetService,
     VillageAidService,
     VillageBusinessService,
+    VillageSafetyService,
   ],
 })
 export class VillageModule {}
