@@ -9,6 +9,25 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
 ### Added
 
+- **Notification Hub (V10-7).** Tabel notifikasi sudah ada sejak V004 dan berisi
+  NOL baris — tidak ada satu pun kode yang menulisinya. Kini ia berisi: disposisi
+  surat, giliran persetujuan, dan eskalasi batas waktu semuanya menerbitkan
+  pemberitahuan bertautan langsung menuju halamannya. Lonceng mendahulukan yang
+  MENUNTUT TINDAKAN, bukan yang terbaru — lonceng yang mengurutkan menurut waktu
+  akan mengubur permintaan persetujuan kemarin di bawah sepuluh kabar hari ini.
+  Ditandai sudah dibaca tidak menghilangkannya dari daftar tindakan: melihat
+  permintaan persetujuan tidak sama dengan menyetujuinya.
+- **Kanal yang belum berkredensial melaporkan apa adanya (V10-7).** Surel, web
+  push, WhatsApp, dan pemberitahuan seluler menuntut kredensial yang belum ada.
+  Adapternya melaporkan status UNCONFIGURED beserta APA yang kurang, bukan
+  mengarang keberhasilan — melaporkan berhasil padahal tidak terkirim membuat
+  orang mengira sudah diberi tahu, dan pekerjaan berhenti menunggu seseorang
+  yang tidak pernah tahu ia ditunggu.
+- **Eskalasi batas waktu persetujuan surat (V10-7).** V10-6 mencatat batas waktu
+  tetapi tidak ada yang membacanya. Kini diperiksa tiap jam, dan keterlambatan
+  lebih dari sehari naik menjadi kritis. Eskalasi yang berulang dikelompokkan
+  menjadi satu baris berpenghitung — tanpa itu, surat yang terlambat tiga hari
+  akan menghasilkan 72 baris lonceng dan membuat lonceng itu diabaikan.
 - **Tata kelola surat (V10-6).** Surat masuk beserta disposisi berantai, surat
   keluar dengan persetujuan berjenjang, klasifikasi, loker arsip, masa simpan,
   kop surat, dan penomoran resmi. Dipetakan dari sistem lama dengan tiga

@@ -29,6 +29,26 @@ export interface MigrationApplyResult {
   skipped: boolean;
 }
 
+/**
+ * Menormalkan akhir baris sebelum sidik dihitung.
+ *
+ * Tanpa ini, berkas yang isinya sama persis menghasilkan sidik berbeda hanya
+ * karena Git menormalkan CRLF menjadi LF saat commit — dan migration yang sudah
+ * diterapkan mendadak dianggap berubah, sehingga seluruh penerapan berikutnya
+ * ditolak.
+ *
+ * Terjadi nyata: V018 ditulis pada Windows dengan CRLF, diterapkan ke 14 skema,
+ * lalu di-commit. Git menyimpannya sebagai LF, dan `git pull` berikutnya
+ * menghasilkan berkas yang sidiknya berbeda dari yang tercatat. Hal yang sama
+ * akan terjadi antara pengembang Windows dan CI Linux, atau antara dua orang
+ * dengan setelan `core.autocrlf` berbeda.
+ *
+ * Yang hendak dijaga sidik ini adalah perubahan ISI. Akhir baris bukan isi.
+ */
+export function normalizeLineEndings(text: string): string {
+  return text.replace(/\r\n/g, '\n');
+}
+
 @Injectable()
 export class TenantMigrationService {
   private readonly logger = new Logger(TenantMigrationService.name);
@@ -62,7 +82,7 @@ export class TenantMigrationService {
     const cached = this.sqlCache.get(definition.file);
     if (cached) return cached;
     const sql = readFileSync(join(this.migrationsDir, definition.file), 'utf8');
-    const checksum = createHash('sha256').update(sql, 'utf8').digest('hex');
+    const checksum = createHash('sha256').update(normalizeLineEndings(sql), 'utf8').digest('hex');
     const entry = { sql, checksum };
     this.sqlCache.set(definition.file, entry);
     return entry;
