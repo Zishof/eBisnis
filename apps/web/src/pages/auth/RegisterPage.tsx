@@ -65,6 +65,10 @@ export function RegisterPage() {
 
   const [step, setStep] = useState(0);
   const [generatePassword, setGeneratePassword] = useState(true);
+  // Bawaannya menyala: penyewa baru lebih terbantu oleh contoh yang dapat
+  // dilihat daripada oleh layar kosong. Yang sudah punya data sendiri dapat
+  // mematikannya, dan tetap dapat memasukkannya kemudian dari dalam aplikasi.
+  const [includeSampleData, setIncludeSampleData] = useState(true);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [usernameQuery, setUsernameQuery] = useState('');
@@ -119,6 +123,7 @@ export function RegisterPage() {
         passwordConfirmation: generatePassword ? undefined : values.passwordConfirmation,
         acceptTerms,
         acceptPrivacy,
+        includeSampleData,
       }),
     onSuccess: (result) => {
       // Credential sementara hanya ada di memori navigasi — tidak disimpan.
@@ -225,6 +230,34 @@ export function RegisterPage() {
                     <option key={type} value={type} />
                   ))}
                 </datalist>
+              </div>
+
+              {/*
+                Pilihan data contoh.
+                Disebutkan pula APA yang tidak terpengaruh pilihan ini — penyewa
+                yang mematikannya perlu tahu bahwa ia tetap memperoleh satuan,
+                bagan akun, peran, dan hak akses. Tanpa keterangan itu, pilihan
+                ini terasa seperti memilih antara "berisi" dan "kosong sama
+                sekali".
+              */}
+              <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 shrink-0"
+                    checked={includeSampleData}
+                    onChange={(event) => setIncludeSampleData(event.target.checked)}
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">{t('register.includeSample')}</span>
+                    <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                      {t('register.includeSampleHint')}
+                    </span>
+                  </span>
+                </label>
+                <p className="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                  {t('register.includeSampleAlways')}
+                </p>
               </div>
             </div>
           )}

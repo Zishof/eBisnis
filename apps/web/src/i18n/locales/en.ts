@@ -102,6 +102,12 @@ export const en: TranslationSchema = {
     stepUpVerify: 'Verify',
   },
   register: {
+    includeSample:
+      'Include sample data',
+    includeSampleHint:
+      'Your workspace is filled with sample products, customers, and suppliers so you can try the workflow right away. All of it can be removed later from the Sample Data menu.',
+    includeSampleAlways:
+      'Always created regardless of your choice: units, chart of accounts, tax categories, payment methods, number sequences, roles, and permissions. These are not sample data — the system cannot run without them.',
     title: 'Register Your Business',
     subtitle: 'Fill in the details. Your workspace and starter data are prepared automatically.',
     stepBusiness: 'Business Profile',
@@ -182,11 +188,29 @@ export const en: TranslationSchema = {
     purgeBlocked: 'This record cannot be permanently deleted because it is still referenced.',
   },
   seed: {
+    kind:
+      'Kind',
+    kindExample:
+      'Sample',
+    kindReference:
+      'Reference',
+    emptySamples:
+      '{{count}} sample resources are empty. That is not a failure — press "Add Sample Data" if you want them back.',
+    whatIsSample:
+      'What counts as sample data',
+    whatIsSampleBody:
+      'Products, product categories, brands, suppliers, customers, and their groups. These are examples so you can try the workflow before your real data arrives.',
+    neverTouched:
+      'What is never removed',
+    neverTouchedBody:
+      'Roles and permissions, units of measure, chart of accounts, tax categories, payment methods and terms, number sequences, departments, job positions, leave types, and notification templates. These are reference data — the system cannot run without them, so they are never deleted under any circumstance.',
+    cleanupConfirm:
+      'Only sample products, suppliers, customers, and groups are removed. Roles, permissions, units, and the chart of accounts are untouched. Samples already referenced by real transactions are also kept, and reported as blocked.',
     title: 'Sample Data',
     subtitle:
       'Verify, add, remove, and restore sample data. Records already used by real transactions are never removed.',
     verify: 'Verify Seed',
-    repair: 'Add Missing Records',
+    repair: 'Add Sample Data',
     cleanup: 'Remove Sample Data',
     restore: 'Restore Sample Data',
     resourceCode: 'Resource',

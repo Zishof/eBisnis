@@ -5,6 +5,40 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Pilihan data contoh saat mendaftar dan pengelolaannya
+
+### Ditambahkan
+- Pilihan **"Sertakan data contoh"** pada langkah Profil Bisnis saat pendaftaran.
+  Menyala secara bawaan; yang sudah punya data sendiri dapat mematikannya dan
+  tetap dapat memasukkannya kemudian dari dalam aplikasi.
+- Golongan seed `REFERENCE` / `EXAMPLE` (`SeedKind`). Bawaannya `REFERENCE`,
+  sehingga master baru yang lupa ditandai berakhir sebagai data acuan yang aman —
+  bukan sebagai data yang dapat terhapus.
+- Halaman **Data Contoh** kini menerangkan lebih dahulu apa yang termasuk contoh
+  dan apa yang tidak pernah ikut terhapus, beserta kolom golongan pada tabelnya.
+- Status verifikasi `SAMPLE_EMPTY`. Ruang kerja tanpa data contoh tidak lagi
+  dilaporkan GAGAL — keadaan itu sah, bukan cacat.
+- `apps/api/scripts/prove-sample-data-choice.mjs` beserta buktinya di
+  `docs/upgrade-v10-v11/bukti-data-contoh.txt` (40 pemeriksaan, seluruhnya lulus).
+
+### Diperbaiki
+- **Pembersihan data contoh tidak lagi dapat melumpuhkan penyewa.** Sebelumnya
+  pembersihan menghapus setiap baris bertanda `is_sample = TRUE`, dan tiga belas
+  data acuan ikut bertanda demikian — di antaranya satuan, bagan akun, metode
+  pembayaran, dan templat pemberitahuan. Menekan "Hapus Data Contoh" akan membuat
+  penyewa tidak dapat membuat transaksi maupun memposting jurnal, tanpa cara
+  memperbaikinya sendiri. Pembersihan kini menyaring pada `seedKind`, dan sebuah
+  pengujian menjaga agar penandaannya tetap cocok.
+- `verifyTenant` tidak lagi gagal total ketika dependensi sebuah master contoh
+  tidak ada. `PRODUCT` menuntut `product_category.MERCHANDISE`, dan kategori itu
+  sendiri data contoh yang boleh tidak pernah dibuat; sejak pendaftaran boleh
+  menolak data contoh, keadaan itu wajar. Untuk data acuan, dependensi yang hilang
+  tetap dilempar sebagai galat.
+
+### Catatan
+- Peran, hak akses, dan menu **bukan** data contoh dan tidak pernah tersentuh
+  pembersihan — dipastikan oleh `seed-kind.spec.ts` dan oleh naskah bukti.
+
 ## [Unreleased]
 
 ### Added

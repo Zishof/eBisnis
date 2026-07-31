@@ -933,6 +933,9 @@ export class PlatformSeedService {
         requiredMinimum: check.minimum,
         activeCount,
         sampleCount: activeCount,
+        // Seluruh master control plane adalah data acuan; tidak ada yang boleh
+        // hilang karena pembersihan data contoh penyewa.
+        seedKind: 'REFERENCE',
         status: activeCount >= check.minimum ? 'OK' : 'INSUFFICIENT',
         missingCodes: [],
       });

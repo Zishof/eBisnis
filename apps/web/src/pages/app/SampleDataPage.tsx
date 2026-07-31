@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, ShieldAlert, Trash2, Undo2, Wrench } from 'lucide-react';
+import { RefreshCw, ShieldAlert, ShieldCheck, Trash2, Undo2, Wrench } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useAuth, useErrorMessage } from '../../app/auth-context';
 import {
@@ -20,7 +20,8 @@ interface VerifyRow extends Record<string, unknown> {
   requiredMinimum: number;
   activeCount: number;
   sampleCount: number;
-  status: 'OK' | 'INSUFFICIENT' | 'EXEMPT' | 'MISSING_TABLE';
+  status: 'OK' | 'INSUFFICIENT' | 'EXEMPT' | 'MISSING_TABLE' | 'SAMPLE_EMPTY';
+  seedKind: 'REFERENCE' | 'EXAMPLE';
   missingCodes: string[];
 }
 
@@ -124,6 +125,21 @@ export function SampleDataPage() {
     { key: 'activeCount', header: t('seed.activeCount'), className: 'text-end' },
     { key: 'sampleCount', header: t('seed.sampleCount'), className: 'text-end' },
     {
+      key: 'seedKind',
+      header: t('seed.kind'),
+      render: (row) => (
+        <span
+          className={
+            row.seedKind === 'EXAMPLE'
+              ? 'badge bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
+              : 'badge bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+          }
+        >
+          {row.seedKind === 'EXAMPLE' ? t('seed.kindExample') : t('seed.kindReference')}
+        </span>
+      ),
+    },
+    {
       key: 'status',
       header: t('common.status'),
       render: (row) => <StatusBadge status={row.status} />,
@@ -193,6 +209,31 @@ export function SampleDataPage() {
         }
       />
 
+      {/*
+        Keterangan ini diletakkan di atas — bukan di bawah tabel — karena tombol
+        "Hapus Data Contoh" ada di kepala halaman. Penyewa perlu tahu apa yang
+        TIDAK ikut terhapus sebelum menekannya, bukan sesudah.
+      */}
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+            {t('seed.whatIsSample')}
+          </h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            {t('seed.whatIsSampleBody')}
+          </p>
+        </div>
+        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/40">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+            <ShieldCheck className="h-4 w-4" aria-hidden />
+            {t('seed.neverTouched')}
+          </h2>
+          <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">
+            {t('seed.neverTouchedBody')}
+          </p>
+        </div>
+      </div>
+
       {verify.data && (
         <div
           className={
@@ -204,8 +245,17 @@ export function SampleDataPage() {
         >
           <p className="text-sm font-medium text-slate-900 dark:text-white">
             {verify.data.passed ? t('seed.passed') : t('seed.failed')} — {verify.data.totalResources} resource,{' '}
-            {verify.data.failingResources} belum memenuhi minimum. Schema:{' '}
+            {verify.data.failingResources} data acuan belum memenuhi minimum. Schema:{' '}
             <Code>{verify.data.schemaName}</Code>
+          </p>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+            {/*
+              Contoh yang kosong disebut terpisah dan tidak memengaruhi LULUS.
+              Ruang kerja tanpa data contoh adalah keadaan yang sah — bukan cacat.
+            */}
+            {t('seed.emptySamples', {
+              count: verify.data.rows.filter((row) => row.status === 'SAMPLE_EMPTY').length,
+            })}
           </p>
         </div>
       )}
@@ -255,7 +305,7 @@ export function SampleDataPage() {
       <ConfirmDialog
         open={confirmCleanup}
         title={t('seed.cleanup')}
-        description="Data contoh yang sudah direferensikan transaksi nyata tidak akan dihapus dan akan dilaporkan sebagai terblokir."
+        description={t('seed.cleanupConfirm')}
         destructive
         requireReason
         onCancel={() => setConfirmCleanup(false)}

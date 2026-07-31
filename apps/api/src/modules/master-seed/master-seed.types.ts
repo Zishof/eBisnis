@@ -30,6 +30,25 @@ export interface MasterSeedReference {
   isTransactional: boolean;
 }
 
+/**
+ * Sifat sebuah master terhadap pilihan "termasuk data contoh".
+ *
+ * ## Mengapa perlu dibedakan
+ *
+ * Seluruh isi seed tenant selama ini ditandai `is_sample = true`, dan itu
+ * menyesatkan. Satuan (UOM), bagan akun, kategori pajak, templat pemberitahuan,
+ * dan nomor urut BUKAN contoh — tanpanya sistem tidak dapat dipakai sama sekali.
+ * Menghapusnya atas nama "membersihkan data contoh" akan melumpuhkan tenant.
+ *
+ * `REFERENCE` selalu disemai dan tidak pernah ikut terhapus.
+ * `EXAMPLE` hanya disemai bila penyewa memintanya, dan boleh dihapus kapan saja.
+ *
+ * Peran, menu, dan hak akses termasuk `REFERENCE` — mereka menentukan siapa
+ * boleh melakukan apa, dan menghapusnya akan mengunci penyewa keluar dari
+ * sistemnya sendiri.
+ */
+export type SeedKind = 'REFERENCE' | 'EXAMPLE';
+
 export interface MasterSeedDefinition {
   /** Kode resource, mis. `PRODUCT_CATEGORY`. */
   resourceCode: string;
@@ -44,6 +63,15 @@ export interface MasterSeedDefinition {
   minimumRecords: number;
   strategy: MasterSeedStrategy;
   supportsSampleCleanup: boolean;
+  /**
+   * REFERENCE selalu ada; EXAMPLE hanya bila diminta.
+   *
+   * Bawaannya `REFERENCE` dengan sengaja: master baru yang lupa
+   * diklasifikasikan akan tetap disemai dan tidak akan terhapus, sehingga
+   * kelalaian menghasilkan tenant yang berlebih datanya — bukan tenant yang
+   * lumpuh.
+   */
+  seedKind?: SeedKind;
   hardDeletePolicy: HardDeletePolicy;
   /** Kolom yang menjadi kunci unik upsert. Default `code`. */
   uniqueColumn?: string;
@@ -75,7 +103,9 @@ export interface MasterSeedVerifyRow {
   requiredMinimum: number;
   activeCount: number;
   sampleCount: number;
-  status: 'OK' | 'INSUFFICIENT' | 'EXEMPT' | 'MISSING_TABLE';
+  status: 'OK' | 'INSUFFICIENT' | 'EXEMPT' | 'MISSING_TABLE' | 'SAMPLE_EMPTY';
+  /** Acuan atau contoh. Antarmuka memakainya untuk memisahkan kedua golongan. */
+  seedKind: SeedKind;
   missingCodes: string[];
 }
 

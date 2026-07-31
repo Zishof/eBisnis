@@ -94,8 +94,38 @@ export const zhCN: TranslationSchema = {
     confirmPassword: '确认新密码',
     changePassword: '保存密码',
   },
+  seed: {
+    ...en.seed,
+    kind:
+      '类别',
+    kindExample:
+      '示例',
+    kindReference:
+      '参照',
+    emptySamples:
+      '{{count}} 项示例数据为空。这并非故障——如需恢复请点击"添加示例数据"。',
+    repair:
+      '添加示例数据',
+    whatIsSample:
+      '哪些属于示例数据',
+    whatIsSampleBody:
+      '商品、商品分类、品牌、供应商、客户及其分组。这些都是示例，便于您在录入真实数据前先体验流程。',
+    neverTouched:
+      '哪些绝不会被删除',
+    neverTouchedBody:
+      '角色与权限、计量单位、会计科目表、税务类别、支付方式与条款、编号序列、部门、岗位、假期类型以及通知模板。这些是基础参照数据——没有它们系统无法运行，因此在任何情况下都不会删除。',
+    cleanupConfirm:
+      '仅删除示例商品、供应商、客户和分组。角色、权限、计量单位和会计科目表不受影响。已被真实交易引用的示例也会保留，并标记为「已阻止」。',
+  },
+
   register: {
     ...en.register,
+    includeSample:
+      '包含示例数据',
+    includeSampleHint:
+      '工作区将填充示例商品、客户和供应商，便于您立即体验流程。之后可随时从"示例数据"菜单中删除。',
+    includeSampleAlways:
+      '无论您如何选择都会创建：计量单位、会计科目表、税务类别、支付方式、编号序列、角色和权限。这些不是示例数据——没有它们系统无法运行。',
     title: '注册您的商户',
     businessName: '商户名称',
     businessType: '业务类型',

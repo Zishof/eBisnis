@@ -133,6 +133,17 @@ class RegistrationDto {
   @IsString()
   @MaxLength(16)
   localeCode?: string;
+
+  @ApiPropertyOptional({
+    default: true,
+    description:
+      'Isi ruang kerja dengan data contoh (produk, pelanggan, pemasok). Data acuan seperti ' +
+      'satuan, bagan akun, peran, dan hak akses SELALU dibuat dan tidak terpengaruh pilihan ini.',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true' || value === '1')
+  @IsBoolean()
+  includeSampleData?: boolean;
 }
 
 class ContactMessageDto {

@@ -172,6 +172,7 @@ export const TENANT_MASTER_SEEDS: MasterSeedDefinition[] = [
     minimumRecords: 10,
     strategy: 'UPSERT_BY_CODE',
     supportsSampleCleanup: true,
+    seedKind: 'EXAMPLE',
     hardDeletePolicy: 'PURGE_IF_UNREFERENCED',
     references: [{ table: 'product', column: 'category_id', isTransactional: false }],
     records: [
@@ -197,6 +198,7 @@ export const TENANT_MASTER_SEEDS: MasterSeedDefinition[] = [
     minimumRecords: 10,
     strategy: 'UPSERT_BY_CODE',
     supportsSampleCleanup: true,
+    seedKind: 'EXAMPLE',
     hardDeletePolicy: 'PURGE_IF_UNREFERENCED',
     references: [{ table: 'product', column: 'product_brand_id', isTransactional: false }],
     records: Array.from({ length: 10 }, (_, i) => ({
@@ -374,6 +376,7 @@ export const TENANT_MASTER_SEEDS: MasterSeedDefinition[] = [
     minimumRecords: 10,
     strategy: 'UPSERT_BY_CODE',
     supportsSampleCleanup: true,
+    seedKind: 'EXAMPLE',
     hardDeletePolicy: 'PURGE_IF_UNREFERENCED',
     references: [{ table: 'supplier', column: 'supplier_group_id', isTransactional: false }],
     records: [
@@ -399,6 +402,7 @@ export const TENANT_MASTER_SEEDS: MasterSeedDefinition[] = [
     minimumRecords: 10,
     strategy: 'UPSERT_BY_CODE',
     supportsSampleCleanup: true,
+    seedKind: 'EXAMPLE',
     hardDeletePolicy: 'PURGE_IF_UNREFERENCED',
     references: [{ table: 'customer', column: 'customer_group_id', isTransactional: false }],
     records: [
@@ -424,6 +428,7 @@ export const TENANT_MASTER_SEEDS: MasterSeedDefinition[] = [
     minimumRecords: 10,
     strategy: 'UPSERT_BY_CODE',
     supportsSampleCleanup: true,
+    seedKind: 'EXAMPLE',
     hardDeletePolicy: 'PURGE_IF_UNREFERENCED',
     references: [
       { table: 'stock_movement', column: 'product_id', isTransactional: true },
@@ -482,6 +487,7 @@ export const TENANT_MASTER_SEEDS: MasterSeedDefinition[] = [
     minimumRecords: 10,
     strategy: 'UPSERT_BY_CODE',
     supportsSampleCleanup: true,
+    seedKind: 'EXAMPLE',
     hardDeletePolicy: 'PURGE_SAMPLE_ONLY',
     references: [
       { table: 'purchase_order', column: 'supplier_id', isTransactional: true },
@@ -533,6 +539,7 @@ export const TENANT_MASTER_SEEDS: MasterSeedDefinition[] = [
     minimumRecords: 10,
     strategy: 'UPSERT_BY_CODE',
     supportsSampleCleanup: true,
+    seedKind: 'EXAMPLE',
     hardDeletePolicy: 'PURGE_SAMPLE_ONLY',
     references: [
       { table: 'pos_sale', column: 'customer_id', isTransactional: true },
@@ -581,6 +588,7 @@ export const TENANT_MASTER_SEEDS: MasterSeedDefinition[] = [
     strategy: 'INSERT_IF_MISSING',
     uniqueColumn: 'code',
     supportsSampleCleanup: true,
+    seedKind: 'EXAMPLE',
     hardDeletePolicy: 'PURGE_IF_UNREFERENCED',
     exceptionReason:
       'Junction produk-pemasok. Tetap di-seed >= 10 agar pemilihan pemasok pada PO dapat diuji.',

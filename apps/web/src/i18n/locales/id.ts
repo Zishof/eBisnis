@@ -101,6 +101,12 @@ export const id = {
     stepUpVerify: 'Verifikasi',
   },
   register: {
+    includeSample:
+      'Sertakan data contoh',
+    includeSampleHint:
+      'Ruang kerja diisi produk, pelanggan, dan pemasok contoh agar Anda dapat langsung mencoba alur kerjanya. Semuanya dapat dihapus kapan saja dari menu Data Contoh.',
+    includeSampleAlways:
+      'Selalu dibuat apa pun pilihan Anda: satuan, bagan akun, kategori pajak, metode pembayaran, nomor urut, peran, dan hak akses. Semua itu bukan data contoh — tanpanya sistem tidak dapat dipakai.',
     title: 'Daftarkan Bisnis Anda',
     subtitle: 'Isi data berikut. Ruang kerja beserta data awal disiapkan otomatis.',
     stepBusiness: 'Profil Bisnis',
@@ -182,11 +188,29 @@ export const id = {
     purgeBlocked: 'Data tidak dapat dihapus permanen karena masih direferensikan.',
   },
   seed: {
+    kind:
+      'Golongan',
+    kindExample:
+      'Contoh',
+    kindReference:
+      'Acuan',
+    emptySamples:
+      '{{count}} data contoh sedang kosong. Itu bukan kegagalan — tekan "Masukkan Data Contoh" bila Anda ingin mengisinya kembali.',
+    whatIsSample:
+      'Yang termasuk data contoh',
+    whatIsSampleBody:
+      'Produk, kategori produk, merek, pemasok, pelanggan, dan grup-grupnya. Semua itu contoh agar Anda dapat mencoba alur kerja sebelum data sungguhan masuk.',
+    neverTouched:
+      'Yang tidak pernah ikut terhapus',
+    neverTouchedBody:
+      'Peran dan hak akses, satuan, bagan akun, kategori pajak, metode dan termin pembayaran, nomor urut, departemen, jabatan, jenis cuti, serta templat pemberitahuan. Semua itu data acuan — tanpanya sistem tidak dapat dipakai, jadi tidak dihapus dalam keadaan apa pun.',
+    cleanupConfirm:
+      'Yang dihapus hanya produk, pemasok, pelanggan, dan grup contoh. Peran, hak akses, satuan, dan bagan akun tidak tersentuh. Contoh yang telanjur dipakai transaksi nyata juga tidak dihapus, dan akan dilaporkan sebagai terblokir.',
     title: 'Data Contoh',
     subtitle:
       'Verifikasi, tambahkan, hapus, dan pulihkan data contoh. Data yang sudah dipakai transaksi nyata tidak akan dihapus.',
     verify: 'Verifikasi Seed',
-    repair: 'Tambahkan Data yang Kurang',
+    repair: 'Masukkan Data Contoh',
     cleanup: 'Hapus Data Contoh',
     restore: 'Pulihkan Data Contoh',
     resourceCode: 'Resource',

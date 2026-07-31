@@ -21,6 +21,14 @@ export interface ProvisionTenantCommand {
   ownerEmail?: string | null;
   isDemo?: boolean;
   includeStarterTransactions?: boolean;
+  /**
+   * Sertakan data contoh (produk, pelanggan, pemasok, dan transaksi awal).
+   *
+   * Bawaannya `true` agar penyewa yang tidak menyatakan pilihan tetap
+   * memperoleh contoh untuk dipelajari. Data acuan seperti satuan, bagan akun,
+   * dan peran TIDAK terpengaruh pilihan ini — ia selalu ada.
+   */
+  includeSampleData?: boolean;
 }
 
 export interface ProvisionResult {
@@ -199,7 +207,8 @@ export class SchemaProvisionerService {
 
       // 6. SEEDING — master data + struktur organisasi awal
       await runStage('SEEDING', async () => {
-        const seedSummary = await this.seeds.seedTenant(schemaName);
+        const includeSampleData = command.includeSampleData ?? true;
+        const seedSummary = await this.seeds.seedTenant(schemaName, { includeExamples: includeSampleData });
         const orgSummary = await this.bootstrap.seedOrganization(schemaName, {
           businessName: command.businessName,
           businessType: command.businessType ?? null,
@@ -207,8 +216,10 @@ export class SchemaProvisionerService {
           isDemo: command.isDemo ?? false,
         });
         // Stock policy + saldo awal contoh membutuhkan gudang yang sudah ada.
+        // Transaksi awal hanya masuk akal bila produk contohnya ada.
         const opsSummary = await this.bootstrap.seedOperationalSamples(schemaName, {
-          includeStarterTransactions: command.includeStarterTransactions ?? false,
+          includeStarterTransactions:
+            includeSampleData && (command.includeStarterTransactions ?? false),
         });
         return {
           masters: seedSummary.totalInserted,

@@ -1,0 +1,69 @@
+==============================================================================
+BUKTI — PILIHAN DATA CONTOH SAAT MENDAFTAR DAN PENGELOLAANNYA
+Waktu   : 2026-07-31T11:29:03.826Z
+API     : http://localhost:3100/api/v1
+==============================================================================
+
+1. Mendaftar dengan includeSampleData = false
+   schema: bukti_d024de68
+  LULUS  Produk kosong
+  LULUS  Pemasok kosong
+  LULUS  Pelanggan kosong
+  LULUS  Kategori produk kosong
+  LULUS  Merek produk kosong
+  LULUS  Satuan tetap dibuat (10 baris)
+  LULUS  Bagan akun tetap dibuat (12 baris)
+  LULUS  Jenis akun tetap dibuat (10 baris)
+  LULUS  Kategori pajak tetap dibuat (10 baris)
+  LULUS  Metode pembayaran tetap dibuat (10 baris)
+  LULUS  Termin pembayaran tetap dibuat (10 baris)
+  LULUS  Peran tetap dibuat (155 baris)
+  LULUS  Menu tetap dibuat (133 baris)
+  LULUS  Aksi hak akses tetap dibuat (40 baris)
+  LULUS  Templat pemberitahuan tetap dibuat (16 baris)
+  LULUS  Departemen tetap dibuat (10 baris)
+  LULUS  Jabatan tetap dibuat (10 baris)
+
+2. Mendaftar dengan includeSampleData = true
+   schema: bukti_aac925b5
+  LULUS  Produk terisi (12 baris)
+  LULUS  Pemasok terisi (10 baris)
+  LULUS  Pelanggan terisi (10 baris)
+  LULUS  Kategori produk terisi (10 baris)
+  LULUS  Merek produk terisi (10 baris)
+
+3. Menghapus data contoh pada schema yang berisi contoh
+   92 baris contoh dihapus (soft delete)
+  LULUS  ada yang terhapus (92 baris)
+  LULUS  Produk bersih sesudah pembersihan
+  LULUS  Pemasok bersih sesudah pembersihan
+  LULUS  Pelanggan bersih sesudah pembersihan
+  LULUS  Kategori produk bersih sesudah pembersihan
+  LULUS  Merek produk bersih sesudah pembersihan
+
+   Yang HARUS selamat:
+  LULUS  Satuan utuh (10 → 10)
+  LULUS  Bagan akun utuh (12 → 12)
+  LULUS  Jenis akun utuh (10 → 10)
+  LULUS  Kategori pajak utuh (10 → 10)
+  LULUS  Metode pembayaran utuh (10 → 10)
+  LULUS  Termin pembayaran utuh (10 → 10)
+  LULUS  Peran utuh (155 → 155)
+  LULUS  Menu utuh (133 → 133)
+  LULUS  Aksi hak akses utuh (40 → 40)
+  LULUS  Templat pemberitahuan utuh (16 → 16)
+  LULUS  Departemen utuh (10 → 10)
+  LULUS  Jabatan utuh (10 → 10)
+
+4. Penyewa masih dapat bekerja sesudah pembersihan
+  LULUS  punya satuan untuk membuat transaksi
+  LULUS  punya bagan akun untuk memposting jurnal
+  LULUS  punya peran untuk masuk ke sistem
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Schema bukti yang dibuat (boleh dihapus operator bila tidak diperlukan):
+  bukti_d024de68
+  bukti_aac925b5
