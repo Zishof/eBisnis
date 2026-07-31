@@ -67,14 +67,46 @@ test.skip(
   'Fixture POS tidak ada. Jalankan: node apps/api/scripts/e2e-pos-fixture.mjs setup',
 );
 
-/** Masuk sebagai kasir uji. */
+/**
+ * Masuk sebagai kasir uji, dengan kesabaran terhadap pembatas laju.
+ *
+ * Pembatas laju masuk menolak percobaan kesebelas dalam satu menit. Pada
+ * pemakaian sungguhan itu tidak pernah terasa; pada rangkaian uji yang
+ * dijalankan berulang dalam waktu singkat, ia menghasilkan kegagalan yang
+ * tampak seperti layar rusak padahal peladen bekerja sebagaimana mestinya.
+ *
+ * Menunggu lalu mencoba lagi adalah yang dilakukan kasir sungguhan, dan itu
+ * pula yang dilakukan di sini — alih-alih melonggarkan pembatasnya, yang justru
+ * akan menghilangkan perlindungan yang memang diinginkan.
+ */
 async function masukSebagaiKasir(page: Page): Promise<void> {
   const f = fixture!;
-  await page.goto('/masuk');
-  await page.getByLabel(/nama pengguna atau surel/i).fill(f.username);
-  await page.getByLabel(/^kata sandi$/i).fill(f.password);
-  await page.getByRole('button', { name: /^masuk$/i }).click();
-  await page.waitForURL(/\/app/, { timeout: 30_000 });
+  for (let percobaan = 1; percobaan <= 3; percobaan += 1) {
+    await page.goto('/masuk');
+    await page.getByLabel(/nama pengguna atau surel/i).fill(f.username);
+    await page.getByLabel(/^kata sandi$/i).fill(f.password);
+    await page.getByRole('button', { name: /^masuk$/i }).click();
+
+    try {
+      await page.waitForURL(/\/app/, { timeout: 20_000 });
+      return;
+    } catch (e) {
+      const pesan = await page
+        .getByRole('alert')
+        .first()
+        .textContent()
+        .catch(() => null);
+      const dibatasi = /terlalu banyak|too many|coba lagi/i.test(pesan ?? '');
+      if (!dibatasi || percobaan === 3) {
+        throw new Error(
+          `Masuk gagal pada percobaan ${percobaan}` + (pesan ? `: ${pesan.trim()}` : ''),
+          { cause: e },
+        );
+      }
+      // Jendela pembatasnya satu menit; menunggu sedikit lebih lama sudah cukup.
+      await page.waitForTimeout(20_000);
+    }
+  }
 }
 
 /**
@@ -133,15 +165,31 @@ async function pastikanKeranjang(page: Page): Promise<void> {
  */
 let halaman: Page;
 
-test.beforeAll(async ({ browser }: { browser: Browser }) => {
-  if (!fixture) return;
+/**
+ * Menyiapkan sesi bila belum ada — atau bila yang lama sudah tertutup.
+ *
+ * Percobaan ulang membuka kembali uji yang gagal tanpa selalu menjalankan
+ * `beforeAll` lagi, sementara `afterAll` sudah menutup halamannya. Akibatnya
+ * percobaan kedua gagal dengan "Target page, context or browser has been
+ * closed" — pesan yang tidak ada hubungannya dengan sebab aslinya, dan
+ * menyesatkan siapa pun yang membacanya pada CI.
+ */
+async function pastikanSesi(browser: Browser): Promise<void> {
+  if (halaman && !halaman.isClosed()) return;
   const konteks = await browser.newContext({ locale: 'id-ID' });
   halaman = await konteks.newPage();
   await masukSebagaiKasir(halaman);
+}
+
+test.beforeEach(async ({ browser }: { browser: Browser }) => {
+  if (!fixture) return;
+  await pastikanSesi(browser);
 });
 
 test.afterAll(async () => {
-  await halaman?.context().close();
+  if (halaman && !halaman.isClosed()) {
+    await halaman.context().close();
+  }
 });
 
 test.describe('Layar kasir', () => {

@@ -19,19 +19,41 @@
 
 import { readFileSync, writeFileSync, existsSync, rmSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID } from 'node:crypto';
 import * as argon2 from 'argon2';
 import pg from 'pg';
 
 const SCHEMA = process.env.POS_SCHEMA ?? 'demo';
+/*
+ * Letak berkas fixture. `fileURLToPath` dipakai alih-alih memotong `pathname`
+ * sendiri: pada Windows `pathname` berbentuk `/C:/...` dan pemotongan manual
+ * menghasilkan jalur yang benar di satu sistem dan salah di sistem lain.
+ */
 const BERKAS =
   process.env.E2E_POS_FIXTURE ??
-  new URL('../../web/.playwright/pos-fixture.json', import.meta.url).pathname.replace(/^\//, '');
+  fileURLToPath(new URL('../../web/.playwright/pos-fixture.json', import.meta.url));
 
-const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
-const bacaEnv = (k) => env.match(new RegExp(`^${k}=(.*)$`, 'm'))?.[1]?.trim()?.replace(/^"|"$/g, '');
+/**
+ * Sambungan basis data.
+ *
+ * Peubah lingkungan didahulukan atas berkas `.env`, karena CI tidak punya
+ * `.env` sama sekali — dan naskah yang hanya bisa membaca berkas tidak dapat
+ * dijalankan di sana.
+ */
+function sambungan() {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  try {
+    const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
+    const nilai = env.match(/^DATABASE_URL=(.*)$/m)?.[1]?.trim()?.replace(/^"|"$/g, '');
+    if (nilai) return nilai;
+  } catch {
+    /* tidak ada .env — wajar pada CI */
+  }
+  throw new Error('DATABASE_URL tidak ditemukan pada lingkungan maupun apps/api/.env');
+}
 
-const client = new pg.Client({ connectionString: bacaEnv('DATABASE_URL') });
+const client = new pg.Client({ connectionString: sambungan() });
 const q = async (sql, params = []) => (await client.query(sql, params)).rows;
 
 const perintah = process.argv[2];

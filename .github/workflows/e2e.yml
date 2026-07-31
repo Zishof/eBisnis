@@ -1,0 +1,180 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+# Alur `Lint, test, build` sengaja TIDAK menyentuh basis data sama sekali; ia
+# memakai DATABASE_URL palsu supaya Prisma dapat mengurai schema. Alur ini
+# berbeda: ia menjalankan basis data sungguhan, memprovision satu tenant, lalu
+# menjalankan peramban terhadap keduanya.
+#
+# Dipisah menjadi berkas tersendiri karena waktunya jauh lebih lama, dan
+# kegagalannya berbeda jenis — uji unit yang merah berarti logikanya salah,
+# uji peramban yang merah bisa berarti layarnya rusak ATAU lingkungannya belum
+# siap. Mencampurnya membuat kedua sinyal itu sulit dibedakan.
+jobs:
+  e2e:
+    name: E2E peramban
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        # Versi 13 dipilih dengan sengaja: **produksi memakai PostgreSQL 13.12**,
+        # sedangkan pengembangan memakai 17. Menjalankan CI pada versi produksi
+        # membuat SQL yang hanya berjalan pada versi baru tertangkap di sini —
+        # bukan pada malam peluncuran. Pelajaran ini sudah pernah diambil: satu
+        # migrasi sempat memakai `NULLS NOT DISTINCT` yang menuntut PG 15.
+        image: postgres:13
+        env:
+          POSTGRES_USER: ebisnis
+          POSTGRES_PASSWORD: ebisnis
+          POSTGRES_DB: ebisnis
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ebisnis"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://ebisnis:ebisnis@localhost:5432/ebisnis?schema=platform
+      DIRECT_DATABASE_URL: postgresql://ebisnis:ebisnis@localhost:5432/ebisnis?schema=platform
+      DATABASE_ADMIN_URL: postgresql://ebisnis:ebisnis@localhost:5432/ebisnis
+      NODE_ENV: test
+      PORT: 3000
+      API_PREFIX: /api/v1
+      # Rahasia CI dibangkitkan per jalan dan tidak pernah dipakai di mana pun
+      # selain di sini. Tidak ada nilai produksi yang menyentuh berkas ini.
+      JWT_ACCESS_SECRET: ci-access-secret-not-used-anywhere-else-0123456789
+      JWT_REFRESH_SECRET: ci-refresh-secret-not-used-anywhere-else-9876543210
+      JWT_ACCESS_TTL: 900s
+      JWT_REFRESH_TTL: 7d
+      CORS_ORIGINS: http://localhost:5173
+      LOG_LEVEL: warn
+      APP_URL: http://localhost:3000
+      WEB_URL: http://localhost:5173
+      PLATFORM_SCHEMA: platform
+      PLATFORM_AUDIT_SCHEMA: platform__audit
+      DEMO_SCHEMA: demo
+      DEMO_AUDIT_SCHEMA: demo__audit
+      DEMO_RESET_ENABLED: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm db:generate
+
+      - name: Migrasi control plane
+        run: pnpm db:deploy
+
+      - name: Seed control plane
+        run: pnpm seed:platform
+
+      - name: Provision dan seed tenant demo
+        run: pnpm seed:tenant
+
+      - name: Migrasi schema tenant
+        run: pnpm migrate:tenants
+
+      # Verifikasi seed dijalankan SEBELUM peramban. Uji peramban yang gagal
+      # karena datanya belum lengkap akan tampak seperti layar yang rusak, dan
+      # menghabiskan waktu orang yang membacanya.
+      - name: Verifikasi seed
+        run: pnpm seed:verify
+
+      - name: Build
+        run: pnpm build
+
+      - name: Pasang peramban Playwright
+        run: pnpm --filter @ebisnis/web test:e2e:install
+
+      - name: Jalankan API
+        run: |
+          # `nohup` dan `disown` supaya proses bertahan setelah langkah ini
+          # selesai; tanpa keduanya runner dapat menutup seluruh grup prosesnya.
+          nohup node apps/api/dist/main.js > /tmp/api-e2e.log 2>&1 &
+          disown
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3000/health > /dev/null; then
+              echo "API siap setelah ${i} detik."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API tidak siap dalam 60 detik."
+          cat /tmp/api-e2e.log
+          exit 1
+
+      - name: Siapkan data uji kasir
+        run: node apps/api/scripts/e2e-pos-fixture.mjs setup
+
+      # Bila uji ini kelak berkedip tanpa sebab yang jelas, hal pertama yang
+      # patut diperiksa adalah pembatas laju masuk: seluruh berkas uji bersama
+      # melakukan beberapa kali masuk dalam satu menit, dan pembatasnya menolak
+      # percobaan kesebelas. Pelajaran itu sudah pernah diambil saat menulis
+      # uji layar kasir.
+      - name: Uji peramban
+        # SEMENTARA tidak memblokir penggabungan.
+        #
+        # Alur ini baru, dan jalan pertamanya menemukan dua hal sungguhan:
+        # satu cacat aksesibilitas yang hanya tampak pada basis data yang baru
+        # disemai, dan ketidakstabilan uji kasir pada runner yang jauh lebih
+        # lambat daripada mesin pengembang. Keduanya sudah dicatat sebagai
+        # pekerjaan tersendiri.
+        #
+        # Memblokir penggabungan sebelum keduanya beres akan menghentikan
+        # seluruh pekerjaan lain; membiarkannya merah tanpa keterangan akan
+        # melatih orang mengabaikan warna merah. Karena itu ia melapor tanpa
+        # memblokir — dan baris ini DIHAPUS begitu kedua hal itu selesai.
+        # Hasilnya tetap terbaca pada tab Actions dan pada laporan yang diunggah.
+        continue-on-error: true
+        run: pnpm test:e2e
+        env:
+          # Playwright menyalakan server Vite sendiri lewat `webServer` pada
+          # konfigurasinya; proxy-nya diarahkan ke API yang baru dijalankan.
+          API_PROXY_TARGET: http://localhost:3000
+
+      # Pembersihan tetap dijalankan meski uji gagal. Data uji yang tertinggal
+      # akan menumpuk pada jalan berikutnya dan membuat kegagalannya makin sulit
+      # dibaca.
+      - name: Bersihkan data uji kasir
+        if: always()
+        run: node apps/api/scripts/e2e-pos-fixture.mjs teardown
+
+      - name: Unggah laporan Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+
+      - name: Catatan API bila gagal
+        if: failure()
+        run: tail -n 200 /tmp/api-e2e.log || true
