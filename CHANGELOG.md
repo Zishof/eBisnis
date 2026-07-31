@@ -5,6 +5,41 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## POS-4 dan POS-5 UI — Layar kasir, shift, dan rekonsiliasi kas
+
+### Ditambahkan
+- **Layar kasir `/app/pos`** — batang konteks (outlet, register, shift, kas),
+  kotak pindai barcode, pencarian produk, keranjang, dan dialog pembayaran.
+  Pintasan F2 (fokus pindai), F6 (tahan), F9 (bayar).
+- **`PosShiftService`** — ringkasan kas, pergerakan kas, penutupan shift dengan
+  rekonsiliasi, dan persetujuan selisih.
+- **Lima endpoint baru**: `payment-methods`, `shifts/:id/cash-summary`,
+  `shifts/:id/cash-movement`, `shifts/:id/close`, `shifts/:id/approve`.
+- **`V031__pos_shift_closing.sql`** — `opened_by`, `closed_by`, `approved_by/at`,
+  `variance_reason`, `approval_note`, constraint
+  `pos_shift_no_self_variance_approval`, dan status `PENDING_APPROVAL`.
+
+### Keputusan yang perlu dicatat
+- **Kas yang diharapkan dihitung peladen, bukan dilaporkan kasir.** Kasir
+  melaporkan berapa uang yang ada di laci; berapa yang seharusnya ada dihitung
+  dari kas awal, penjualan tunai, dan pergerakan kas. Membiarkan kasir
+  melaporkan keduanya berarti membiarkannya melaporkan bahwa tidak ada selisih.
+- **Ambang selisih Rp 50.000.** Menuntut persetujuan supervisor untuk setiap
+  rupiah akan membuat persetujuan itu diberikan tanpa dibaca, dan persetujuan
+  yang diberikan tanpa dibaca tidak menjaga apa pun.
+- **`PENDING_APPROVAL` ada supaya kasir tidak tertahan.** Selisih di atas ambang
+  tidak langsung menutup shift, tetapi juga tidak menahan kasir pulang: shift
+  ditutup, kasnya terkunci, persetujuannya menyusul.
+- **Shift tidak dapat ditutup di atas transaksi yang belum selesai.** Transaksi
+  tertunda menahan stok dan belum menghasilkan uang; kas yang diharapkan tidak
+  dapat dihitung benar di atasnya.
+- **Fokus layar kasir selalu kembali ke kotak pindai.** Pemindai barcode
+  mengetik lalu menekan Enter; bila fokus berpindah, pindaian berikutnya masuk
+  ke tempat yang salah dan kasir baru menyadarinya beberapa barang kemudian.
+- **`Idempotency-Key` dibuat sekali per dialog pembayaran**, bukan per klik.
+  Klik ganda pada layar yang lambat mengirim kunci yang sama, dan peladen
+  mengenalinya sebagai satu pembayaran.
+
 ## POS-7 dan POS-8 — Struk, pembatalan, retur, dan refund
 
 ### Ditambahkan

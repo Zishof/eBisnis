@@ -53,6 +53,7 @@ import { PosContextService } from './pos-context.service';
 import { PosSaleService } from './pos-sale.service';
 import { PosStockService } from './pos-stock.service';
 import { PosReturnService } from './pos-return.service';
+import { PosShiftService } from './pos-shift.service';
 import { AuthModule } from '../auth/auth.module';
 import { TenantPermissionService } from '../auth/tenant-permission.service';
 
@@ -348,6 +349,36 @@ class VoidDto {
   reason!: string;
 }
 
+class TutupShiftDto {
+  @ApiProperty({ example: 1250000, description: 'Uang yang benar-benar dihitung di laci.' })
+  @IsNumber()
+  @Min(0)
+  countedCash!: number;
+
+  @ApiPropertyOptional({ description: 'Keterangan kasir bila ada selisih.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+class GerakanKasDto {
+  @ApiProperty({ enum: ['CASH_IN', 'CASH_OUT'] })
+  @IsIn(['CASH_IN', 'CASH_OUT'])
+  movementType!: 'CASH_IN' | 'CASH_OUT';
+
+  @ApiProperty({ example: 200000 })
+  @IsNumber()
+  @IsPositive()
+  amount!: number;
+
+  @ApiProperty({ description: 'Wajib: uang yang keluar tanpa alasan tercatat tidak dapat dibedakan dari uang yang hilang.' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason!: string;
+}
+
 // --- Controller -------------------------------------------------------------
 
 @ApiTags('POS')
@@ -360,6 +391,7 @@ export class PosController {
     private readonly jual: PosSaleService,
     private readonly stokLayanan: PosStockService,
     private readonly retur: PosReturnService,
+    private readonly shift: PosShiftService,
   ) {}
 
   /**
@@ -704,6 +736,86 @@ export class PosController {
     );
   }
 
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.READ')
+  @Get('payment-methods')
+  @ApiOperation({
+    summary: 'Metode pembayaran yang aktif',
+    description: 'Dipakai layar kasir untuk menampilkan pilihan pembayaran beserta perilakunya.',
+  })
+  async metodePembayaran(@CurrentUser() user: AuthenticatedUser) {
+    const schema = requireSchema(user);
+    return this.katalog.metodePembayaran(schema);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SHIFT.READ')
+  @Get('shifts/:id/cash-summary')
+  @ApiOperation({
+    summary: 'Ringkasan kas shift berjalan',
+    description:
+      'Kas yang diharapkan dihitung peladen dari kas awal, penjualan tunai, dan pergerakan kas — ' +
+      'bukan dilaporkan kasir.',
+  })
+  ringkasanKas(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.shift.ringkasanKas(requireSchema(user), id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SHIFT.CASH_MOVE')
+  @Post('shifts/:id/cash-movement')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mencatat kas masuk atau keluar di tengah shift' })
+  async gerakanKas(
+    @Param('id') id: string,
+    @Body() dto: GerakanKasDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    return this.shift.gerakanKas(schema, id, dto, await this.subjek(schema, user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SHIFT.CLOSE')
+  @Post('shifts/:id/close')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menutup shift dan merekonsiliasi kas',
+    description:
+      'Kasir melaporkan berapa uang yang ada di laci; berapa yang seharusnya ada dihitung ' +
+      'peladen. Selisih di atas ambang menjadikan shift menunggu persetujuan supervisor.',
+  })
+  async tutupShift(
+    @Param('id') id: string,
+    @Body() dto: TutupShiftDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    return this.shift.tutupShift(schema, id, dto, user, await this.subjek(schema, user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SHIFT.APPROVE')
+  @Post('shifts/:id/approve')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menyetujui selisih kas',
+    description: 'Tidak dapat dilakukan oleh orang yang menutup shiftnya sendiri.',
+  })
+  async setujuiShift(
+    @Param('id') id: string,
+    @Body() dto: AlasanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    return this.shift.setujuiShift(
+      schema,
+      id,
+      dto.reason ?? 'Selisih kas disetujui',
+      await this.subjek(schema, user),
+    );
+  }
+
   // --- Struk -----------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -883,6 +995,7 @@ export class PosController {
     PosSaleService,
     PosStockService,
     PosReturnService,
+    PosShiftService,
   ],
   exports: [
     PosCatalogService,
@@ -890,6 +1003,7 @@ export class PosController {
     PosSaleService,
     PosStockService,
     PosReturnService,
+    PosShiftService,
   ],
 })
 export class PosModule {}

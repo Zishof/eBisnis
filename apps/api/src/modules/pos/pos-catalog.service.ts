@@ -533,4 +533,26 @@ export class PosCatalogService {
       imageFileId: null,
     };
   }
+
+  /**
+   * Metode pembayaran yang aktif beserta perilakunya.
+   *
+   * `requiresReference` dan `allowsChange` dikirim ke layar kasir supaya
+   * antarmuka tidak perlu menebak: kartu menuntut nomor rujukan, tunai memberi
+   * kembalian. Menebaknya di peramban berarti aturannya tertulis dua kali dan
+   * cepat atau lambat berbeda.
+   */
+  async metodePembayaran(schemaName: string) {
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT id, code, name, method_type AS "methodType",
+              requires_reference AS "requiresReference",
+              allows_change AS "allowsChange"
+         FROM "${schemaName}".payment_method
+        WHERE deleted_at IS NULL AND is_active = TRUE
+        ORDER BY (method_type = 'CASH') DESC, sort_order, name`,
+    );
+    return rows;
+  }
+
 }

@@ -211,6 +211,13 @@
       "file": "V030__pos_void_columns.sql",
       "name": "Jejak pembatalan transaksi kasir",
       "description": "pos_sale bertambah void_requested_by/at, void_approved_by/at, dan void_reason, beserta constraint pos_sale_no_self_void_approval. Disimpan pada pos_sale — bukan hanya pada riwayat status — karena pemeriksaan pemisahan wewenang membutuhkannya SEBELUM perpindahan status terjadi: layanan harus tahu siapa pemohonnya untuk menolak penyetujuan oleh orang yang sama. Membacanya dari riwayat berarti mengurai teks alasan, dan aturan yang bergantung pada penguraian teks bukan aturan. Constraint adalah lapisan ketiga setelah mesin transisi status dan layanan — yang tetap berlaku ketika kelak ada jalan keempat menuju tabel ini."
+    },
+    {
+      "version": "V031",
+      "sequence": 31,
+      "file": "V031__pos_shift_closing.sql",
+      "name": "Penutupan shift dan rekonsiliasi kas",
+      "description": "pos_shift bertambah opened_by, closed_by, approved_by/at, variance_reason, approval_note, beserta constraint pos_shift_no_self_variance_approval dan status PENDING_APPROVAL. closing_cash, expected_cash, dan variance sudah ada sejak V006, tetapi tidak ada yang mencatat SIAPA yang menutup dan siapa yang menyetujui selisihnya — justru yang ditanyakan ketika kas tidak cocok. Selisih kas menyangkut kepercayaan kepada orang, dan menjawabnya dengan 'sistem tidak mencatat itu' merugikan kasir yang jujur lebih dahulu. PENDING_APPROVAL ada supaya selisih di atas ambang tidak langsung menutup shift, tetapi juga tidak menahan kasir pulang: shift ditutup, kasnya terkunci, persetujuannya menyusul."
     }
   ]
 }
