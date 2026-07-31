@@ -282,6 +282,28 @@ describe('peran kesehatan', () => {
     expect(clerk?.permissions).not.toContain('HEALTH_PAYER.UPDATE');
   });
 
+  it('penyusun kebijakan jasa bukan penyetujunya', () => {
+    const menyusun = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_FEE_POLICY.CREATE'),
+    ).map((r) => r.code);
+    const menyetujui = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_FEE_POLICY.APPROVE'),
+    ).map((r) => r.code);
+    expect(menyusun).toEqual(['HEALTH_FEE_ADMINISTRATOR']);
+    expect(menyetujui).toEqual(['HEALTH_FEE_APPROVER']);
+  });
+
+  it('yang mencatat kontributor adalah yang berada di kamar operasi', () => {
+    /*
+     * Merekalah yang melihat siapa yang hadir. Bagian keuangan hanya melihat
+     * daftarnya, dan daftar yang disusun dari jauh adalah daftar keinginan.
+     */
+    const mencatat = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_FEE_CONTRIBUTOR.CREATE'),
+    ).map((r) => r.code).sort();
+    expect(mencatat).toEqual(['HEALTH_FEE_ADMINISTRATOR', 'HEALTH_SCRUB_NURSE']);
+  });
+
   it('penghapusan data contoh hanya dipegang administrator', () => {
     // Penghapusannya menolak bila ada data nyata yang merujuknya, dan keputusan
     // atas penolakan itu harus diambil orang yang dapat menilai akibatnya.

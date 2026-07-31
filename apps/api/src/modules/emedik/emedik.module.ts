@@ -42,6 +42,7 @@ import { HealthHimService } from './health-him.service';
 import { HealthMasterDataService } from './health-master-data.service';
 import { HealthAccountingService } from './health-accounting.service';
 import { HealthTariffService } from './health-tariff.service';
+import { HealthFeeService } from './health-fee.service';
 import { HealthClinicalController } from './health-clinical.controller';
 import { HealthPharmacyController } from './health-pharmacy.controller';
 import { HealthLabController } from './health-lab.controller';
@@ -52,6 +53,7 @@ import { HealthHimController } from './health-him.controller';
 import { HealthMasterDataController } from './health-master-data.controller';
 import { HealthAccountingController } from './health-accounting.controller';
 import { HealthTariffController } from './health-tariff.controller';
+import { HealthFeeController } from './health-fee.controller';
 import {
   CoreAuditAdapter,
   CoreIdentityAdapter,
@@ -389,7 +391,7 @@ export class HealthController {
 
 @Module({
   imports: [InfrastructureModule, AuthModule],
-  controllers: [HealthController, HealthClinicalController, HealthPharmacyController, HealthLabController, HealthInpatientController, HealthAcuteController, HealthCommunityController, HealthHimController, HealthMasterDataController, HealthAccountingController, HealthTariffController],
+  controllers: [HealthController, HealthClinicalController, HealthPharmacyController, HealthLabController, HealthInpatientController, HealthAcuteController, HealthCommunityController, HealthHimController, HealthMasterDataController, HealthAccountingController, HealthTariffController, HealthFeeController],
   providers: [
     HealthFacilityService,
     HealthPatientService,
@@ -403,6 +405,7 @@ export class HealthController {
     HealthMasterDataService,
     HealthAccountingService,
     HealthTariffService,
+    HealthFeeService,
     CoreIdentityAdapter,
     CoreAuditAdapter,
     CoreNotificationAdapter,
@@ -428,6 +431,7 @@ export class HealthController {
     HealthMasterDataService,
     HealthAccountingService,
     HealthTariffService,
+    HealthFeeService,
     IDENTITY_PORT,
     AUDIT_PORT,
     NOTIFICATION_PORT,

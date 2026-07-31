@@ -5,6 +5,54 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9E — Kebijakan pembagian jasa dan kontributor
+
+### Ditambahkan
+
+- **`H024__health__fee_policy.sql`** — `fee_policy`, `fee_policy_line`,
+  `fee_contributor`. Beserta constraint trigger `check_fee_policy_total`,
+  trigger `forbid_active_fee_policy_mutation`, dan constraint
+  `fee_policy_approval_not_self` serta `fee_policy_sample_not_production`.
+  **Tidak menyemai satu pun persentase.**
+- **`H025__health__fee_permissions.sql`** — dua menu, dua peran baru, dua aturan
+  pemisahan wewenang.
+- **`health-fee.ts`** — aturan sebagai fungsi murni: pemeriksaan bentuk
+  kebijakan, persetujuan, penyaringan kontributor, kelayakan dasar perhitungan,
+  pembagian jasa, pembagian kepada kontributor, gerbang kontrak, dan mesin
+  status settlement. **56 pengujian.**
+- **`health-fee.service.ts`** dan **`health-fee.controller.ts`** — tujuh jalan
+  pada `/api/v1/health/fee/**`.
+- **`prove-health-fee.mjs`** — naskah bukti, **50 pemeriksaan**, seluruhnya
+  lulus dan lulus pula pada pengulangan.
+
+Uji: API 1697 → **1755**.
+
+### Keputusan yang perlu dicatat
+
+- **TIDAK ADA SATU PUN PERSENTASE DI DALAM KODE MAUPUN MIGRASI.** Persentase
+  pembagian jasa adalah kesepakatan antara rumah sakit dan tenaga medisnya.
+  Naskah bukti memeriksanya secara harfiah: kebijakan yang lahir tanpa pembuat —
+  yaitu yang datang dari migrasi — harus nol.
+
+- **Jasa BPJS dihitung dari klaim yang DIBAYAR.** Taksiran boleh untuk akrual
+  dan simulasi, tidak pernah untuk yang dibayarkan.
+
+- **Jasa dibayarkan kepada yang benar-benar hadir**, dan buktinya menunjuk ke
+  sumbernya dari H-7. Yang tersaring dikembalikan, bukan dihapus diam-diam.
+
+- **Penerima jasa tidak menyetujui aturan yang membayar dirinya**, dan itu
+  **tidak dapat ditegakkan hak akses saja** — diperiksa pada tingkat baris.
+
+- **Fee sistem dan fee investor bawaannya NONE**, dan aktivasinya menuntut
+  keenam syaratnya. Yang kurang disebutkan satu per satu.
+
+- **Templat contoh bukan standar nasional dan bukan saran hukum.**
+
+- **Sisa pembulatan diberikan kepada bobot terbesar**, bukan kepada yang pertama
+  pada daftar.
+
+---
+
 ## H-9D — Tarif JKN berversi dan cakupan penjamin
 
 ### Ditambahkan

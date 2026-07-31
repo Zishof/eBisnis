@@ -323,6 +323,20 @@
       "file": "H023__health__tariff_permissions.sql",
       "name": "eMedik: menu, hak akses, dan peran tarif dan penjamin",
       "description": "Dua menu (HEALTH_TARIFF, HEALTH_PAYER), satu peran baru (Petugas Tarif), dan satu aturan pemisahan wewenang. Satu pemisahan menentukan bentuknya: YANG MENGIMPOR TARIF TIDAK MENYETUJUINYA. Impor tarif adalah pekerjaan teknis — mengunggah berkas, memeriksa barisnya, membetulkan format. Persetujuan adalah keputusan yang mengubah seluruh tagihan rumah sakit sejak tanggal berlakunya. Menyatukan keduanya berarti satu orang dapat menaikkan atau menurunkan seluruh tagihan tanpa ada pihak kedua yang pernah melihatnya, dan yang pertama menyadarinya adalah penjamin yang menolak seluruh klaim bulan itu. Petugas Tarif memperoleh IMPORT tetapi tidak APPROVE maupun ACTIVATE; administrator eMedik sebaliknya. Petugas keuangan hanya membaca tarif: ia memetakan akunnya, bukan mengubah tarifnya. Petugas pendaftaran diberi HEALTH_PAYER.READ sebab tanggungan penjamin perlu diketahui saat pasien datang, bukan saat tagihannya dicetak."
+    },
+    {
+      "version": "H024",
+      "sequence": 1024,
+      "file": "H024__health__fee_policy.sql",
+      "name": "eMedik: kebijakan pembagian jasa dan kontributor",
+      "description": "fee_policy, fee_policy_line, fee_contributor. TIDAK ADA SATU PUN PERSENTASE BAWAAN DI DALAM MIGRASI INI. Persentase pembagian jasa adalah kesepakatan antara rumah sakit dan tenaga medisnya: berbeda antar fasilitas, berubah, dan kadang menjadi pokok sengketa. Menyemainya di sini akan membuat angka karangan tampak seperti standar nasional, dan angka yang tampak resmi akan dipakai membayar orang. Kebijakan berversi dan barisnya tidak dapat diubah setelah aktif, ditegakkan trigger forbid_active_fee_policy_mutation: pertanyaan mengapa jasa saya bulan lalu segini harus dapat dijawab dengan aturan bulan lalu. Pembuat kebijakan tidak menyetujui versinya sendiri, ditegakkan constraint fee_policy_approval_not_self. Jumlah persentase tidak boleh melebihi seratus, ditegakkan constraint trigger check_fee_policy_total sebab ia menuntut penjumlahan lintas baris; kurang dari seratus sah, sisanya menjadi bagian fasilitas dan banyak kesepakatan memang berbentuk begitu. Templat contoh bertanda is_sample_data, active, dan production_approved, dan constraint fee_policy_sample_not_production menahan templat contoh yang aktif tanpa persetujuan produksi: ia bukan standar nasional dan bukan saran hukum. Kontributor menyimpan bukti kehadiran sebagai penunjuk ke sumbernya dari H-7 (ot_checklist.completed_by, ot_count.counted_out_by, ot_case.surgeon_id) bukan sebagai kotak centang, sebab kotak centang dapat dicentang siapa saja; tanpa buktinya daftar kontributor menjadi daftar keinginan, dan pada operasi yang jasanya besar daftar keinginan cenderung memanjang. Satu pemberi layanan hanya sekali per peran pada satu tindakan."
+    },
+    {
+      "version": "H025",
+      "sequence": 1025,
+      "file": "H025__health__fee_permissions.sql",
+      "name": "eMedik: menu, hak akses, dan peran kebijakan jasa",
+      "description": "Dua menu (HEALTH_FEE_POLICY, HEALTH_FEE_CONTRIBUTOR), dua peran baru (Petugas Kebijakan Jasa, Penyetuju Kebijakan Jasa), dan dua aturan pemisahan wewenang. Tiga pemisahan menentukan bentuknya, dan yang ketiga paling sulit dilihat: pembuat kebijakan tidak menyetujui versinya sendiri; petugas kalkulasi tidak menyetujui settlement sendiri; dan PENERIMA JASA TIDAK MENGUBAH ATURAN YANG MEMBAYAR DIRINYA. Yang ketiga tidak dapat ditegakkan hanya dengan hak akses sebab dokter yang juga administrator sistem memegang dua peran yang sah masing-masing; karena itu ia diperiksa pada tingkat baris — penyetuju yang tertaut pada pemberi layanan yang tersebut di dalam kebijakannya ditolak sekalipun hak aksesnya lengkap. Hak akses menjaga siapa yang boleh membuka pintu; pemeriksaan baris menjaga siapa yang boleh melewatinya kali ini. Perawat instrumen diberi hak mencatat kontributor sebab merekalah yang melihat siapa yang hadir di kamar operasi, bukan bagian keuangan."
     }
   ]
 }

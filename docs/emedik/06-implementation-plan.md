@@ -780,6 +780,84 @@ dijelaskan siapa pun.
 strukturnya ada, dan **inventaris yang kosong lebih baik daripada inventaris
 yang berisi nomor peraturan hasil ingatan**.
 
+### H-9E · Kebijakan pembagian jasa dan kontributor — **SELESAI**
+
+Kebijakan berversi, baris pembagian, kontributor per tindakan beserta bukti
+kehadirannya, perhitungan pembagian, dan gerbang kontrak bagi fee sistem dan
+fee investor.
+
+Uji >= 25 -> **56 tercapai**, ditambah naskah bukti 50 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H024__health__fee_policy.sql`, `H025__health__fee_permissions.sql` |
+| Aturan murni | `health-fee.ts` + 56 pengujian |
+| Layanan | `health-fee.service.ts` |
+| Endpoint | `health-fee.controller.ts` — 7 jalan di `/api/v1/health/fee/**` |
+| Katalog | `health-catalog.ts` — 2 menu, 2 peran, 1 aturan SoD |
+| Bukti | `scripts/prove-health-fee.mjs` -> [bukti-h9e-jasa.txt](bukti-h9e-jasa.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **TIDAK ADA SATU PUN PERSENTASE DI DALAM KODE MAUPUN MIGRASI.** Persentase
+  pembagian jasa adalah kesepakatan antara rumah sakit dan tenaga medisnya:
+  berbeda antar fasilitas, berubah, dan kadang menjadi pokok sengketa.
+  Menanamnya berarti perhitungan jasa bulan lalu tidak dapat diulang, sebab
+  kodenya sudah berubah. Naskah bukti memeriksanya secara harfiah: ia menghitung
+  kebijakan yang lahir tanpa pembuat — yaitu yang datang dari migrasi — dan
+  menuntut hasilnya nol.
+
+- **Jasa BPJS dihitung dari klaim yang DIBAYAR, bukan yang diajukan.** Diajukan
+  sepuluh juta, disetujui tujuh, dibayar tujuh. Membagi dari sepuluh berarti
+  rumah sakit sudah membayarkan uang yang tidak pernah diterimanya — dan
+  menariknya kembali dari dokter jauh lebih sulit daripada tidak membayarkannya
+  sejak awal. Taksiran boleh untuk akrual dan **simulasi**, tidak pernah untuk
+  yang dibayarkan.
+
+- **Jasa dibayarkan kepada yang benar-benar HADIR**, dan buktinya menunjuk ke
+  sumbernya dari H-7 — `ot_checklist.completed_by`, `ot_count.counted_out_by`,
+  `ot_case.surgeon_id` — bukan berupa kotak centang, sebab kotak centang dapat
+  dicentang siapa saja. Yang tersaring **dikembalikan, bukan dihapus
+  diam-diam**: menghapus diam-diam menghasilkan pertanyaan "mengapa jasa saya
+  tidak ada" yang tidak dapat dijawab siapa pun.
+
+- **Penerima jasa tidak menyetujui aturan yang membayar dirinya.** Pemisahan
+  yang paling sering dilanggar dan paling sulit dilihat: dokter yang juga
+  administrator dapat menaikkan persentasenya sendiri, dan tidak ada yang akan
+  menyadarinya sampai ada yang membandingkan dua bulan berturut-turut. Ia
+  **tidak dapat ditegakkan hak akses saja** — keduanya peran yang sah
+  masing-masing — sehingga diperiksa pada tingkat baris: penyetuju yang tertaut
+  pada pemberi layanan yang tersebut di dalam kebijakannya ditolak, sekalipun
+  hak aksesnya lengkap.
+
+- **Fee sistem dan fee investor bawaannya NONE**, dan aktivasinya menuntut
+  keenam syaratnya — kontrak, telaah hukum, persetujuan manajemen, perlakuan
+  pajak, tanggal berlaku, batas maksimum. Yang kurang disebutkan satu per satu:
+  daftar syarat yang hanya berkata "belum lengkap" akan diisi seadanya sampai
+  tombolnya menyala.
+
+- **Templat contoh bukan standar nasional dan bukan saran hukum.** Bertanda
+  `is_sample_data`, `active=false`, `production_approved=false`, dan constraint
+  menahan templat contoh yang aktif tanpa persetujuan produksi.
+
+- **Kebijakan yang sudah aktif tidak dapat diubah barisnya.** Perhitungan jasa
+  yang sudah dilakukan memakainya harus tetap dapat dijelaskan; versi kebijakan
+  disalin ke setiap hasil perhitungan.
+
+- **Sisa pembulatan diberikan kepada kontributor dengan bobot TERBESAR**, bukan
+  kepada yang pertama pada daftar. Urutan daftar tidak berarti apa-apa; bobot
+  berarti sesuatu.
+
+- **Jumlah persentase melebihi seratus ditolak; kurang dari seratus sah.**
+  Sisanya menjadi bagian fasilitas, dan banyak kesepakatan memang berbentuk
+  begitu.
+
+**Yang belum:** settlement beserta simulasi, penguncian, pembayaran, dan
+pembalikannya — itu H-9F. Gerbang kontrak fee sistem dan investor baru berupa
+penolakan; pencatatan kontraknya sendiri H-9G.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -845,7 +923,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 2.  H-9L   Master data dan pemetaan unit — pondasi bagi tarif  [SELESAI]
 3.  H-9N   COA dan pemetaan akuntansi — strukturnya          [SELESAI]
 4.  H-9D   Struktur tarif berversi — isinya menunggu           [SELESAI]
-5.  H-9E   Kebijakan jasa dan kontributor
+5.  H-9E   Kebijakan jasa dan kontributor                    [SELESAI]
 6.  H-9F   Simulasi, settlement, reversal
 7.  H-9G   Gerbang kontrak fee sistem dan investor
 8.  H-9C   Siklus klaim internal — koding sampai rekonsiliasi

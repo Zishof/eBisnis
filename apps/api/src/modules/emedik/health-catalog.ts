@@ -572,6 +572,28 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'UPDATE'],
     sortOrder: 101,
   },
+  // Kebijakan jasa — H-9E.
+  //
+  // Tidak ada satu pun persentase bawaan di mana pun. Persentase pembagian jasa
+  // adalah kesepakatan antara rumah sakit dan tenaga medisnya.
+  {
+    code: 'HEALTH_FEE_POLICY',
+    parentCode: 'HEALTH',
+    label: 'Kebijakan Jasa',
+    route: '/app/emedik/kebijakan-jasa',
+    icon: 'percent',
+    actions: ['READ', 'CREATE', 'UPDATE', 'APPROVE', 'ACTIVATE'],
+    sortOrder: 102,
+  },
+  {
+    code: 'HEALTH_FEE_CONTRIBUTOR',
+    parentCode: 'HEALTH',
+    label: 'Kontributor Tindakan',
+    route: '/app/emedik/kontributor',
+    icon: 'users-round',
+    actions: ['READ', 'CREATE', 'UPDATE'],
+    sortOrder: 103,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -664,6 +686,8 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_ACCOUNTING_MAP.READ',
       'HEALTH_TARIFF.READ',
       'HEALTH_PAYER.READ',
+      'HEALTH_FEE_POLICY.READ',
+      'HEALTH_FEE_CONTRIBUTOR.READ',
     ],
     sortOrder: 2,
   },
@@ -807,6 +831,10 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_SURGERY.CHECKLIST',
       'HEALTH_SURGERY.UPDATE',
       ...LAPOR_INSIDEN,
+      // Merekalah yang melihat siapa yang hadir di kamar operasi, bukan bagian
+      // keuangan.
+      'HEALTH_FEE_CONTRIBUTOR.READ',
+      'HEALTH_FEE_CONTRIBUTOR.CREATE',
     ],
     sortOrder: 15,
   },
@@ -1069,6 +1097,42 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     sortOrder: 24,
   },
   {
+    code: 'HEALTH_FEE_ADMINISTRATOR',
+    name: 'Petugas Kebijakan Jasa',
+    description:
+      'Menyusun kebijakan pembagian jasa dan mencatat kontributor tindakan. TIDAK menyetujui ' +
+      'kebijakan — persentase pembagian jasa adalah kesepakatan dua pihak.',
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_FEE_POLICY.READ',
+      'HEALTH_FEE_POLICY.CREATE',
+      'HEALTH_FEE_POLICY.UPDATE',
+      'HEALTH_FEE_CONTRIBUTOR.READ',
+      'HEALTH_FEE_CONTRIBUTOR.CREATE',
+      'HEALTH_FEE_CONTRIBUTOR.UPDATE',
+      'HEALTH_SERVICE_CATALOG.READ',
+    ],
+    sortOrder: 27,
+  },
+  {
+    code: 'HEALTH_FEE_APPROVER',
+    name: 'Penyetuju Kebijakan Jasa',
+    description:
+      'Menyetujui dan mengaktifkan kebijakan pembagian jasa. TIDAK menyusunnya, dan tidak ' +
+      'boleh menjadi penerima pada kebijakan yang disetujuinya.',
+    // Yang terakhir tidak dapat ditegakkan hak akses saja — dokter yang juga
+    // administrator memegang dua peran yang sah masing-masing — sehingga ia
+    // diperiksa pada tingkat baris saat persetujuan.
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_FEE_POLICY.READ',
+      'HEALTH_FEE_POLICY.APPROVE',
+      'HEALTH_FEE_POLICY.ACTIVATE',
+      'HEALTH_FEE_CONTRIBUTOR.READ',
+    ],
+    sortOrder: 28,
+  },
+  {
     code: 'HEALTH_TARIFF_OFFICER',
     name: 'Petugas Tarif',
     description:
@@ -1108,6 +1172,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       // Membaca tarif; ia memetakan akunnya, bukan mengubah tarifnya.
       'HEALTH_TARIFF.READ',
       'HEALTH_PAYER.READ',
+      'HEALTH_FEE_POLICY.READ',
     ],
     sortOrder: 25,
   },
@@ -1246,6 +1311,29 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'adalah pasien yang menerima tagihan atas layanan yang tarifnya salah ketik.',
     conflictingPermissions: ['HEALTH_SERVICE_CATALOG.UPDATE', 'HEALTH_SERVICE_CATALOG.ACTIVATE'],
   },
+  {
+    code: 'HEALTH_SOD_FEE_POLICY_APPROVE',
+    name: 'Penyusun kebijakan jasa tidak menyetujuinya',
+    description:
+      'Persentase pembagian jasa adalah kesepakatan antara rumah sakit dan tenaga medisnya. ' +
+      'Disetujui satu pihak saja, ia bukan kesepakatan melainkan keputusan sepihak yang kelak ' +
+      'menjadi pokok sengketa — dan sengketanya akan menyangkut uang yang sudah terlanjur ' +
+      'dibayarkan. Ditegakkan constraint fee_policy_approval_not_self pada basis data pula.',
+    conflictingPermissions: ['HEALTH_FEE_POLICY.CREATE', 'HEALTH_FEE_POLICY.APPROVE'],
+  },
+  /*
+   * HEALTH_SOD_FEE_RECIPIENT_APPROVE sengaja TIDAK ada di sini.
+   *
+   * "Penerima jasa tidak menyetujui aturan yang membayar dirinya" bukan
+   * pasangan hak akses yang bertentangan — ia hubungan antara satu orang dan
+   * satu baris kebijakan. Dokter yang juga administrator memegang dua peran
+   * yang sah masing-masing; yang dilarang hanyalah menyetujui kebijakan yang
+   * menyebut namanya. Mendaftarkannya sebagai pasangan hak akses akan melarang
+   * pekerjaan yang sah dan tetap membiarkan yang dilarangnya lewat.
+   *
+   * Diperiksa pada tingkat baris saat persetujuan, dan didaftarkan pada mesin
+   * SoD tenant lewat H025.
+   */
   /*
    * HEALTH_SOD_HOLD_RELEASE sengaja TIDAK ada di sini.
    *
