@@ -13,6 +13,8 @@
 ///    akun tidak dapat menjanjikan pengaduan anonim, dan tidak menjanjikannya.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -304,7 +306,23 @@ class _LayarUtamaState extends State<LayarUtama> {
                   tampilkanNama: tampilkanNama,
                   keteranganTempat: tempat,
                 );
-                return (r['note'] as String?) ?? 'Laporan Anda tersimpan.';
+                return HasilLapor(
+                  id: (r['id'] as String?) ?? '',
+                  pesan: (r['note'] as String?) ?? 'Laporan Anda tersimpan.',
+                );
+              },
+              onUnggahFoto: ({
+                required String pengaduanId,
+                required Uint8List isi,
+                required String mime,
+                required String namaBerkas,
+              }) async {
+                await widget.api.unggahFotoPengaduan(
+                  pengaduanId: pengaduanId,
+                  isi: isi,
+                  mime: mime,
+                  namaBerkas: namaBerkas,
+                );
               },
             ),
           ),

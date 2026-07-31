@@ -1,4 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+        Kamera untuk memotret keadaan yang diadukan.
+
+        TIDAK ada ACCESS_FINE_LOCATION maupun ACCESS_COARSE_LOCATION, dan itu
+        disengaja: lokasi kejadian pada aduan DITUNJUK warga lewat isian teks,
+        bukan diambil dari posisi ponselnya. Orang biasanya melapor sesudah
+        sampai rumah, sehingga posisi ponsel justru menunjuk tempat yang salah —
+        dan yang salah itu adalah rumahnya sendiri.
+
+        Izin lokasi yang diminta "untuk berjaga-jaga" akan dipakai suatu hari
+        oleh kode yang ditulis orang lain. Yang tidak diminta tidak dapat.
+    -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application
         android:label="village_mobile"
         android:name="${applicationName}"

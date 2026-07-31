@@ -1722,3 +1722,196 @@ pendaftaran kependudukan.
 - `vite build` — berhasil; `KioskPage` 26,1 kB
 - `tsc --noEmit` dan `eslint --max-warnings=0` API dan web — bersih
 - Migrasi diverifikasi: 104 tabel village
+
+---
+
+## Aplikasi Warga Desa (Flutter)
+
+**Cabang:** `feature/v12-info-desa` · **Paket:** `packages/village-mobile/`
+
+Modul ponsel untuk warga desa/kelurahan. Lima menu dari presentasi — Lapor,
+Ajukan Surat, Pengumuman, Jadwal Posyandu, Info Bantuan — beserta enam endpoint
+portal baru pada `village-site.service.ts`.
+
+### Keputusan yang membentuknya
+
+- **Tidak ada mode "anonim".** Aplikasi memakai akun; peladen selalu tahu siapa
+  yang mengirim. Pilihannya bernama *"jangan tampilkan nama saya"*, uraiannya
+  menyatakan terus terang bahwa petugas tetap melihatnya, dan warga yang
+  memerlukan anonim sungguhan diarahkan ke anjungan kantor desa. Janji setengah
+  lebih buruk daripada tidak berjanji — yang mempercayainya adalah orang yang
+  mengadukan perangkat desanya sendiri.
+- **Lokasi kejadian ditunjuk warga, bukan diambil dari posisi ponsel.** Orang
+  biasanya melapor sesudah sampai rumah; posisi ponsel justru menunjuk rumahnya.
+- **Draf tidak pernah dibuang.** `NasibDraf` hanya punya *simpan-dan-coba-lagi*,
+  *simpan-saja*, dan *kirim*. Sinyal di desa putus-putus, dan warga yang
+  kehilangan tulisannya tidak akan mengetiknya lagi.
+- **Keadaan ketiga: "belum tersambung".** Jadwal Posyandu yang tidak dapat
+  dibaca bukan galat dan bukan "tidak ada jadwal". Yang kedua paling berbahaya:
+  ibu-ibu menyimpulkan Posyandu ditiadakan lalu tidak datang membawa balitanya.
+- **Alasan penolakan bantuan tidak muncul di layar.** Warga yang tidak menerima
+  bantuan berhak mendapat jawaban dari *seseorang*; layar ponsel bukan seseorang.
+- **Refresh token pada Keystore/Keychain, access token hanya di memori.**
+  `SharedPreferences` adalah berkas biasa di dalam sandbox aplikasi, dan sandbox
+  itu terbuka pada perangkat yang di-root — yang di desa jauh lebih banyak
+  daripada yang diperkirakan.
+
+### Gerbang mutu
+
+- `flutter test` — **41 pengujian aturan** lulus
+- `flutter analyze` — bersih
+
+---
+
+## Foto pada pengaduan
+
+**Cabang:** `feature/v12-info-desa`
+
+Warga dapat melampirkan sampai tiga foto pada aduannya, dari kamera maupun
+galeri. Petugas dapat melampirkan foto hasil peninjauan lapangan.
+
+### Ditambahkan
+
+- Migrasi `20260731000015__village__file_object.sql` — `village_file_object`,
+  beserta kunci asing yang akhirnya menautkan
+  `village_complaint_evidence.file_object_id` ke tabel yang benar-benar ada.
+- `village-file.ts` — aturan murni: jenis dari isi berkas, pembuangan metadata,
+  batas, dan hak akses.
+- `ports/file-storage.port.ts` + `ports/local-file-storage.adapter.ts`.
+- `village-file.service.ts` dan tujuh rute pada `village.module.ts`.
+- `packages/village-mobile/lib/domain/foto.dart` — pembuangan metadata di ponsel.
+- Pemilih foto pada layar Lapor, beserta pratinjau dan penghapusan.
+
+### Registri berkas dimiliki village, dan itu bukan kesukaan
+
+`MediaAsset` milik Core berada pada skema **platform**, bukan skema penyewa.
+Foto pengaduan Desa A akan duduk pada tabel yang sama dengan Desa B —
+meruntuhkan pemisahan skema-per-penyewa justru pada data yang paling pribadi.
+Ia juga `is_public` bawaannya **benar** dan memiliki `public_url`, sedangkan
+foto pengaduan memperlihatkan rumah, wajah, pelat nomor, dan halaman orang.
+Foto pembuangan sampah selalu memuat pagar rumah seseorang.
+
+Rinciannya pada
+[integration request 006](../integration-requests/village/006-file-storage.md).
+
+### Metadata dibuang, lalu diperiksa kembali, baru disimpan
+
+```sql
+CONSTRAINT village_file_metadata_must_be_stripped CHECK (metadata_stripped = TRUE)
+```
+
+Baris yang menyatakan metadatanya belum dibuang **tidak dapat disimpan**. Bukan
+sekadar dilarang layanan: jalur impor, penyuntingan langsung, dan kode yang
+ditulis kemudian sama-sama tertahan.
+
+Alasannya bukan kerapian. Foto dari ponsel membawa koordinat GPS tempat ia
+dipotret dan nomor seri kameranya. Warga yang memotret pembuangan sampah
+tetangganya tidak tahu bahwa ia melampirkan koordinat rumahnya sendiri.
+
+Lebih dari itu, EXIF yang lolos **membatalkan keputusan yang sudah diambil**:
+aplikasi warga sengaja mengirim lokasi kejadian yang *ditunjuk* warga, bukan
+posisi ponselnya. EXIF mengembalikan posisi ponsel lewat pintu belakang — dan
+tidak seorang pun akan menyadarinya, sebab ia tidak tampak di layar mana pun.
+
+Pemeriksaan ulang sesudah pembuangan tampak berlebihan; kita sendiri yang
+menulis pembuangnya. Ia tetap ada karena pembuang metadata bekerja terhadap
+berkas yang bentuknya *diperkirakan*, dan berkas dari dunia nyata tidak selalu
+berbentuk seperti yang diperkirakan. Yang lolos **ditolak**, bukan disimpan
+diam-diam beserta koordinat rumah pengunggahnya.
+
+### Dibuang juga di ponsel — dan itu bukan pengganti
+
+Aplikasi warga membuang metadatanya sebelum apa pun dikirim. Peladen tetap
+membuangnya dan tetap menolak yang bertahan: kelak akan ada aplikasi lain, dan
+aplikasi tidak pernah menjadi tempat menegakkan aturan.
+
+Yang berubah adalah **koordinatnya tidak pernah meninggalkan ponsel**. Foto yang
+dikirim mentah membawa koordinat rumah warga melewati jaringan seluler, singgah
+di memori peladen, dan mungkin tercatat pada log perantara sebelum sempat
+dibersihkan. Perbedaannya nyata bagi orang yang mengadukan tetangganya sendiri.
+
+Pratinjau di layar menampilkan **bita yang akan dikirim**, bukan berkas aslinya:
+warga melihat persis apa yang diterima kantor desa.
+
+### Jenis ditentukan dari isi berkas, tidak pernah dari `Content-Type`
+
+`Content-Type` disetel pengirim, dan pengirim adalah pihak yang sedang dinilai.
+Daftar izin hanya JPEG dan PNG — jenis yang metadatanya dapat dibuang dengan
+pasti oleh kode village. HEIC ditolak beserta petunjuk tempat mengubahnya, sebab
+ia bawaan iPhone dan bukan kekeliruan warga.
+
+### Tidak ada tautan publik, dan tidak ada metodenya
+
+`FileStoragePort` **tidak memiliki** `urlPublik()`. Antarmuka yang tidak punya
+metodenya tidak dapat dipaksa menyediakannya. Tautan yang dapat dibuka siapa pun
+yang memegangnya membuat seluruh pemeriksaan hak akses tidak berarti — satu
+tautan tersalin ke grup percakapan sudah cukup, dan foto halaman rumah orang
+keluar dari sistem.
+
+Daftar foto pun tidak menyertakan `storage_key` maupun nama asli berkas: yang
+pertama alamat isinya, yang kedua kerap memuat tanggal dan nama pemiliknya.
+
+### Badan permintaan mentah, bukan multipart dan bukan base64
+
+`multer` tidak terjangkau dari `apps/api`, dan menambahkannya menyentuh berkas
+kunci bersama yang sedang dipakai sesi vertikal lain. Base64 menaikkan ukuran
+kiriman sepertiga dan memaksa seluruh isinya masuk ke memori sebelum dapat
+dinilai.
+
+Badan mentah tidak butuh keduanya, dan alirannya **diputus tepat pada bita yang
+melewati batas**: permintaan lima ratus megabita tidak pernah sempat menempati
+memori peladen.
+
+### Keadaan ketiga pada pengiriman
+
+Pengaduan disimpan lebih dahulu, fotonya menyusul — supaya kegagalan mengirim
+foto tidak ikut membatalkan aduan yang sudah selesai ditulis. Akibatnya ada
+keadaan ketiga yang dinyatakan apa adanya: **aduannya tersimpan, sebagian
+fotonya tidak**.
+
+Menyebutnya gagal seluruhnya membuat warga mengadukan hal yang sama untuk kedua
+kalinya, dan petugas menerima dua aduan atas satu kejadian. Menyebutnya berhasil
+seluruhnya membuatnya mengira petugas melihat foto yang tidak pernah sampai.
+
+### Cacat yang ditemukan pengujian sendiri
+
+Port Dart-nya menyimpang dari kode peladen: JPEG yang terpotong di tengah
+menghasilkan berkas dua bita, bukan penolakan. Berkas seperti itu tetap lolos
+pemeriksaan bita awal di peladen, dan baru ketahuan ketika petugas mencoba
+membukanya. Versi TypeScript sudah benar sejak awal; portnya yang keliru, dan
+pengujian yang sama pada kedua sisi yang menangkapnya.
+
+### Izin yang TIDAK diminta
+
+Tidak ada `ACCESS_FINE_LOCATION` maupun `NSLocationWhenInUseUsageDescription`.
+Izin lokasi yang diminta "untuk berjaga-jaga" akan dipakai suatu hari oleh kode
+yang ditulis orang lain. Yang tidak diminta tidak dapat.
+
+Alasan izin kamera ditulis untuk dibaca warga, bukan untuk memenuhi syarat App
+Store: kalimat "aplikasi ini membutuhkan akses kamera" tidak menjelaskan apa pun
+kepada orang yang sedang memutuskan menekan Izinkan atau tidak.
+
+### Penyetelan
+
+`VILLAGE_FILE_DIR` menentukan direktori penyimpanan; bawaannya
+`<cwd>/storage/village`, yang sudah ada pada `.gitignore` sehingga foto warga
+tidak pernah ikut ter-commit. `GET /village/files/storage-readiness` menyatakan
+apakah direktorinya benar-benar dapat ditulisi — direktori yang tidak dapat
+ditulisi membuat unggahan gagal satu per satu tanpa ada yang tahu sebabnya, dan
+yang pertama menyadarinya adalah warga, bukan pengelola.
+
+### Bukti
+
+`docs/info-desa/bukti-foto-pengaduan.txt` — **21 pemeriksaan** terhadap
+PostgreSQL sungguhan, seluruhnya lulus. Setiap penyisipan dijalankan langsung ke
+basis data tanpa satu baris pun kode layanan — persis seperti yang dilakukan
+jalur impor dan penyuntingan manual.
+
+### Gerbang mutu
+
+- `jest` — `village-file.spec.ts` **20 tes lulus**; yang menentukan menyusun
+  JPEG dan PNG berisi koordinat GPS sungguhan lalu memastikan koordinat itu
+  **hilang** dari hasilnya, bukan sekadar memastikan fungsinya berjalan
+- `flutter test` — **58 pengujian lulus** (bertambah 17)
+- `flutter analyze` — bersih
+- `tsc --noEmit` API — bersih

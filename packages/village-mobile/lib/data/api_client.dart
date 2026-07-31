@@ -19,6 +19,7 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -135,6 +136,8 @@ class ApiClient {
   Future<Map<String, dynamic>> post(String jalur, Map<String, dynamic> body) async =>
       _kirim('POST', jalur, body: body);
 
+  Future<Map<String, dynamic>> hapus(String jalur) async => _kirim('DELETE', jalur);
+
   /// Daftar. Envelope peladen membungkus larik pada `data`.
   Future<List<dynamic>> getList(String jalur) async {
     final r = await _kirim('GET', jalur);
@@ -161,6 +164,7 @@ class ApiClient {
         'POST' => await _http
             .post(uri, headers: headers, body: jsonEncode(body ?? {}))
             .timeout(const Duration(seconds: 20)),
+        'DELETE' => await _http.delete(uri, headers: headers).timeout(const Duration(seconds: 20)),
         _ => await _http.get(uri, headers: headers).timeout(const Duration(seconds: 20)),
       };
     } on SocketException {
@@ -201,5 +205,65 @@ class ApiClient {
     if (data is List) return {'__list': data};
     if (data is Map<String, dynamic>) return data;
     return {'data': data};
+  }
+
+  /// Mengirim isi berkas apa adanya sebagai badan permintaan.
+  ///
+  /// Bukan multipart dan bukan base64. Base64 menaikkan ukuran kiriman
+  /// sepertiga — pada sambungan desa yang tersendat, sepertiga itu terasa —
+  /// dan multipart menambah pustaka di kedua sisi hanya untuk membungkus satu
+  /// berkas.
+  ///
+  /// Tenggangnya jauh lebih panjang daripada pemanggilan biasa: foto delapan
+  /// megabita pada sinyal lemah membutuhkan menit, bukan detik. Memutusnya pada
+  /// detik kedua puluh berarti unggahan tidak pernah berhasil justru di tempat
+  /// yang paling membutuhkannya.
+  Future<Map<String, dynamic>> unggahBiner(
+    String jalur,
+    Uint8List isi,
+    String mime, {
+    Duration tenggang = const Duration(minutes: 3),
+  }) async {
+    final uri = Uri.parse('$baseUrl$jalur');
+    final headers = {
+      'Content-Type': mime,
+      'Accept-Language': 'id',
+      if (_accessToken != null) 'Authorization': 'Bearer $_accessToken',
+    };
+
+    http.Response res;
+    try {
+      res = await _http.post(uri, headers: headers, body: isi).timeout(tenggang);
+    } on SocketException {
+      throw ApiError('JARINGAN', 'Tidak ada sambungan. Periksa sinyal Anda lalu coba lagi.', 0);
+    } catch (_) {
+      throw ApiError('JARINGAN', 'Pengiriman foto terputus. Coba lagi sebentar lagi.', 0);
+    }
+
+    if (res.statusCode == 401 && await refreshToken != null) {
+      // Sekali perpanjang, lalu ulangi. Foto berukuran besar kerap selesai
+      // terkirim tepat setelah access token yang berumur pendek kedaluwarsa.
+      if (await pulihkanSesi()) return unggahBiner(jalur, isi, mime, tenggang: tenggang);
+    }
+
+    final Map<String, dynamic> payload;
+    try {
+      final d = jsonDecode(res.body);
+      payload = d is Map<String, dynamic> ? d : {'data': d};
+    } catch (_) {
+      throw ApiError('GALAT', 'Jawaban peladen tidak dikenali.', res.statusCode);
+    }
+
+    if (res.statusCode >= 400 || payload['success'] == false) {
+      final e = payload['error'];
+      throw ApiError(
+        (e is Map && e['code'] is String) ? e['code'] as String : 'GALAT',
+        (e is Map && e['message'] is String) ? e['message'] as String : 'Foto gagal dikirim.',
+        res.statusCode,
+      );
+    }
+
+    final data = payload['data'];
+    return data is Map<String, dynamic> ? data : {'data': data};
   }
 }

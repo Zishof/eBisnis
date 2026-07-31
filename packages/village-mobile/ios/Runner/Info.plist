@@ -45,5 +45,18 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!--
+		Alasannya ditulis untuk dibaca warga, bukan untuk memenuhi syarat App
+		Store. Kalimat "aplikasi ini membutuhkan akses kamera" tidak menjelaskan
+		apa pun kepada orang yang sedang memutuskan menekan Izinkan atau tidak.
+
+		Tidak ada NSLocationWhenInUseUsageDescription: lokasi kejadian DITUNJUK
+		warga lewat isian teks, dan data lokasi pada foto justru dibuang di
+		ponsel sebelum foto dikirim.
+	-->
+	<key>NSCameraUsageDescription</key>
+	<string>Untuk memotret keadaan yang Anda adukan, misalnya jalan berlubang atau sampah menumpuk. Data lokasi pada foto dihapus di ponsel Anda sebelum foto dikirim ke kantor desa.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Untuk memilih foto yang sudah Anda potret sebelumnya sebagai lampiran aduan. Data lokasi dan informasi kamera pada foto dihapus di ponsel Anda sebelum foto dikirim.</string>
 </dict>
 </plist>

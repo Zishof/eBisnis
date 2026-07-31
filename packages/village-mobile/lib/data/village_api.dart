@@ -8,6 +8,8 @@
 /// akan dicoba dengan nilai lain oleh orang pertama yang menyadarinya.
 library;
 
+import 'dart:typed_data';
+
 import 'api_client.dart';
 import '../domain/rules.dart';
 
@@ -298,4 +300,38 @@ class VillageApi {
         'showReporterName': tampilkanNama,
         if (keteranganTempat != null) 'locationNote': keteranganTempat,
       });
+
+  /// Melampirkan satu foto pada pengaduan yang sudah tersimpan.
+  ///
+  /// Metadatanya sudah dibuang di ponsel sebelum sampai ke sini — lihat
+  /// `domain/foto.dart`. Peladen membuangnya sekali lagi dan menolak berkas
+  /// yang metadatanya bertahan; pembuangan di ponsel bukan penggantinya,
+  /// melainkan yang membuat koordinatnya tidak pernah meninggalkan perangkat.
+  Future<Map<String, dynamic>> unggahFotoPengaduan({
+    required String pengaduanId,
+    required Uint8List isi,
+    required String mime,
+    String? namaBerkas,
+    String? keterangan,
+  }) {
+    final tanya = <String, String>{
+      if (namaBerkas != null && namaBerkas.isNotEmpty) 'name': namaBerkas,
+      if (keterangan != null && keterangan.trim().isNotEmpty) 'caption': keterangan.trim(),
+    };
+    final kueri = tanya.isEmpty
+        ? ''
+        : '?${tanya.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&')}';
+    return klien.unggahBiner(
+      '/village/portal/complaints/$pengaduanId/photos$kueri',
+      isi,
+      mime,
+    );
+  }
+
+  /// Daftar foto pada sebuah pengaduan — keterangannya saja, bukan isinya.
+  Future<List<dynamic>> fotoPengaduan(String pengaduanId) =>
+      klien.getList('/village/portal/complaints/$pengaduanId/photos');
+
+  Future<Map<String, dynamic>> hapusFotoPengaduan(String fotoId) =>
+      klien.hapus('/village/portal/photos/$fotoId');
 }

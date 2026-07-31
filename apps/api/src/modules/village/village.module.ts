@@ -6,7 +6,21 @@
  * ketergantungan pada D-12, bukan hanya oleh kesepakatan.
  */
 
-import { Body, Controller, Get, Headers, Module, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Header,
+  Headers,
+  Module,
+  Param,
+  Post,
+  Query,
+  Req,
+  StreamableFile,
+} from '@nestjs/common';
+import type { IncomingMessage } from 'node:http';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -56,6 +70,9 @@ import { VillageSiteService } from './village-site.service';
 import { VillageTransparencyService } from './village-transparency.service';
 import { VillageSampleService } from './village-sample.service';
 import { VillageKioskService } from './village-kiosk.service';
+import { VillageFileService } from './village-file.service';
+import { FILE_STORAGE_PORT } from './ports/file-storage.port';
+import { LocalFileStorageAdapter } from './ports/local-file-storage.adapter';
 import { VillagePublicResolver } from './village-public.resolver';
 import { BROADCAST_PORT, BroadcastBlockedAdapter } from './ports/broadcast.port';
 import {
@@ -2978,6 +2995,7 @@ export class VillageController {
     private readonly transparansi: VillageTransparencyService,
     private readonly contoh: VillageSampleService,
     private readonly anjungan: VillageKioskService,
+    private readonly berkas: VillageFileService,
   ) {}
 
 
@@ -5008,6 +5026,147 @@ export class VillageController {
     return this.situs.portalStatusBantuan(requireSchema(user), user);
   }
 
+  // --- Foto bukti pengaduan --------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Post('portal/complaints/:id/photos')
+  @ApiOperation({
+    summary: 'Melampirkan foto pada pengaduan sendiri',
+    description:
+      'Badan permintaan adalah ISI BERKAS APA ADANYA, bukan JSON dan bukan multipart. ' +
+      'Jenisnya ditentukan dari byte pertama berkas, bukan dari Content-Type yang dikirim ' +
+      'pengirim - pengirimlah pihak yang sedang dinilai. Data lokasi GPS dan informasi kamera ' +
+      'DIBUANG sebelum disimpan, lalu diperiksa kembali; foto yang metadatanya tidak dapat ' +
+      'dibersihkan ditolak, bukan disimpan diam-diam. Foto dari ponsel membawa koordinat tempat ' +
+      'ia dipotret, dan warga yang memotret rumah tetangganya tidak tahu bahwa ia melampirkan ' +
+      'koordinat rumahnya sendiri.',
+  })
+  async portalUnggahFoto(
+    @Param('id') id: string,
+    @Req() req: IncomingMessage,
+    @Query('name') name: string | undefined,
+    @Query('caption') caption: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const isi = await this.berkas.bacaBadan(req);
+    return this.berkas.unggahBuktiPengaduan(
+      requireSchema(user),
+      id,
+      isi,
+      { namaAsli: name, keterangan: caption },
+      user,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Get('portal/complaints/:id/photos')
+  @ApiOperation({
+    summary: 'Daftar foto pada pengaduan sendiri',
+    description:
+      'Keterangannya saja, bukan isinya. Kunci penyimpanan dan nama asli berkas TIDAK ikut: ' +
+      'kunci adalah alamat isinya, dan nama berkas dari ponsel kerap memuat tanggal serta nama ' +
+      'pemiliknya. Keduanya tidak diperlukan untuk menampilkan foto.',
+  })
+  portalDaftarFoto(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.berkas.daftarBukti(requireSchema(user), id, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Get('portal/photos/:fileId')
+  // Berkas ini tidak pernah publik dan tidak pernah disinggahkan perantara.
+  @Header('Cache-Control', 'private, no-store')
+  // Peramban dilarang menebak jenisnya sendiri. Jenisnya sudah dipastikan dari
+  // byte pertama berkas saat diunggah; menebak ulang hanya membuka jalan bagi
+  // berkas yang terbaca sebagai sesuatu yang lain.
+  @Header('X-Content-Type-Options', 'nosniff')
+  @Header('Content-Security-Policy', "default-src 'none'; sandbox")
+  @ApiOperation({
+    summary: 'Isi foto bukti pengaduan',
+    description:
+      'TIDAK ADA tautan publik ke berkas ini - tidak pada rute ini maupun pada antarmuka ' +
+      'penyimpanan. Tautan yang dapat dibuka siapa pun yang memegangnya membuat seluruh ' +
+      'pemeriksaan hak akses tidak berarti: cukup satu tautan tersalin ke grup percakapan, dan ' +
+      'foto halaman rumah orang keluar dari sistem. Yang boleh membaca hanya pelapornya sendiri ' +
+      'dan petugas yang menangani.',
+  })
+  async portalIsiFoto(
+    @Param('fileId') fileId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<StreamableFile> {
+    const b = await this.berkas.ambilIsi(requireSchema(user), fileId, user);
+    return new StreamableFile(Buffer.from(b.data), {
+      type: b.mimeType,
+      disposition: 'inline',
+      length: b.sizeBytes,
+    });
+  }
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Delete('portal/photos/:fileId')
+  @ApiOperation({
+    summary: 'Menghapus foto yang dilampirkan sendiri',
+    description:
+      'Warga yang keliru melampirkan foto dapat menariknya kembali. Barisnya dihapus lebih ' +
+      'dahulu, isinya menyusul: urutan sebaliknya menyisakan baris yang menunjuk isi yang sudah ' +
+      'tiada bila penghapusan barisnya gagal. Jejak penghapusannya tetap tercatat pada audit.',
+  })
+  portalHapusFoto(@Param('fileId') fileId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.berkas.hapusBukti(requireSchema(user), fileId, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_COMPLAINT.UPDATE')
+  @Post('complaints/:id/photos')
+  @ApiOperation({
+    summary: 'Petugas melampirkan foto hasil peninjauan lapangan',
+    description:
+      'Ditandai uploaded_by_officer, dan pembedaan itu penting: foto dari petugas adalah hasil ' +
+      'peninjauan lapangan, sedangkan foto dari pelapor adalah keadaan yang diadukannya. Saat ' +
+      'aduan dipersoalkan, keduanya tidak boleh tertukar. Pembersihan metadata berlaku sama.',
+  })
+  async unggahFotoPetugas(
+    @Param('id') id: string,
+    @Req() req: IncomingMessage,
+    @Query('name') name: string | undefined,
+    @Query('caption') caption: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const isi = await this.berkas.bacaBadan(req);
+    return this.berkas.unggahBuktiPengaduan(
+      requireSchema(user),
+      id,
+      isi,
+      { namaAsli: name, keterangan: caption, olehPetugas: true },
+      user,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_COMPLAINT.READ')
+  @Get('complaints/:id/photos')
+  @ApiOperation({ summary: 'Daftar foto sebuah pengaduan (petugas)' })
+  daftarFotoPetugas(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.berkas.daftarBukti(requireSchema(user), id, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_UNIT.READ')
+  @Get('files/storage-readiness')
+  @ApiOperation({
+    summary: 'Apakah penyimpanan berkas siap dipakai',
+    description:
+      'Dinyatakan terus terang. Direktori penyimpanan yang tidak dapat ditulisi membuat unggahan ' +
+      'foto gagal satu per satu tanpa ada yang tahu sebabnya - dan yang pertama menyadarinya ' +
+      'adalah warga, bukan pengelola.',
+  })
+  kesiapanBerkas() {
+    return this.berkas.kesiapanPenyimpanan();
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -5061,6 +5220,7 @@ export class VillageController {
     VillageTransparencyService,
     VillageSampleService,
     VillageKioskService,
+    VillageFileService,
     VillagePublicResolver,
     // Mitra vertikal yang belum ada. Adapter tiruan menyatakan "belum
     // tersambung" dengan jujur dan tidak mengembalikan satu pun angka karangan.
@@ -5072,6 +5232,9 @@ export class VillageController {
     // Kredensial WhatsApp dan surel belum ada. Adapter menghalangi dengan
     // jujur: siaran berstatus TERHALANG, bukan GAGAL dan bukan TERKIRIM.
     { provide: BROADCAST_PORT, useClass: BroadcastBlockedAdapter },
+    // Penyimpanan berkas pada cakram peladen. Pemasangan terpusat kelak
+    // menggantinya dengan penyimpanan objek tanpa menyentuh layanan.
+    { provide: FILE_STORAGE_PORT, useClass: LocalFileStorageAdapter },
   ],
   exports: [
     VillageUnitService,
@@ -5090,6 +5253,7 @@ export class VillageController {
     VillageTransparencyService,
     VillageSampleService,
     VillageKioskService,
+    VillageFileService,
   ],
 })
 export class VillageModule {}
