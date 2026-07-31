@@ -51,6 +51,9 @@ const PlatformCmsPage = lazy(() =>
 const PlatformAuditPage = lazy(() =>
   import('../pages/platform/PlatformAuditPage').then((m) => ({ default: m.PlatformAuditPage })),
 );
+const PlatformSamplePage = lazy(() =>
+  import('../pages/platform/PlatformSamplePage').then((m) => ({ default: m.PlatformSamplePage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -157,6 +160,7 @@ export function App() {
           <Route path="registrations" element={<PlatformTenantsPage tab="registrations" />} />
           <Route path="packages" element={<PlatformPackagesPage />} />
           <Route path="cms" element={<PlatformCmsPage />} />
+          <Route path="contoh" element={<PlatformSamplePage />} />
           <Route path="audit" element={<PlatformAuditPage />} />
         </Route>
 

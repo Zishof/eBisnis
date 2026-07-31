@@ -24,7 +24,10 @@
     "migrate:tenants": "ts-node -P tsconfig.json src/cli/migrate-tenants.cli.ts",
     "route:audit": "ts-node -P tsconfig.json src/cli/route-audit.cli.ts",
     "seed:catalog": "ts-node -P tsconfig.json src/cli/seed-catalog.cli.ts",
-    "seed:marketplace-demo": "ts-node -P tsconfig.json src/cli/seed-marketplace-demo.cli.ts"
+    "seed:marketplace-demo": "ts-node -P tsconfig.json src/cli/seed-marketplace-demo.cli.ts",
+    "sample:list": "ts-node -P tsconfig.json src/cli/sample-catalog.cli.ts list",
+    "sample:hide": "ts-node -P tsconfig.json src/cli/sample-catalog.cli.ts hide",
+    "sample:show": "ts-node -P tsconfig.json src/cli/sample-catalog.cli.ts show"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",

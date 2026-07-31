@@ -264,6 +264,7 @@ export const id = {
     payments: 'Pembayaran',
     cms: 'Konten Website',
     locales: 'Bahasa dan Terjemahan',
+    sample: 'Produk contoh',
     audit: 'Audit',
     seed: 'Data Contoh',
     supportContext: 'Anda sedang mengakses data tenant melalui support context.',

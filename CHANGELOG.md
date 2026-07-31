@@ -19,8 +19,15 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
   kategori yang menuntut pemeriksaan tambahan.
 - **Pencarian produk** dengan peringkat kesesuaian: judul dinilai lebih tinggi
   daripada nama toko, dan nama toko lebih tinggi daripada deskripsi.
-- Data contoh marketplace (`seed:marketplace-demo`) berisi satu toko dan enam
-  produk, disiapkan agar seluruh rantai dapat dicoba dari awal sampai akhir.
+- **25 produk contoh** pada sepuluh kategori, dengan harga dari puluhan ribu
+  sampai jutaan. Termasuk barang pesan-dahulu, barang rekondisi, dan produk
+  berharga bertingkat, sehingga penyaringan dan pengurutan katalog dapat dicoba
+  sungguhan. Produk contoh melewati gerbang penerbitan yang sama dengan produk
+  penjual sungguhan — tidak ada yang diistimewakan.
+- **Halaman Produk contoh pada Platform Admin.** Administrator dapat
+  menyembunyikan seluruh produk contoh dari katalog publik dengan satu tombol,
+  atau menyembunyikan satu per satu. Menyembunyikan tidak menghapus datanya,
+  sehingga dapat ditampilkan kembali kapan saja.
 
 ### Security
 
