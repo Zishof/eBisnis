@@ -648,3 +648,171 @@ termasuk dua ikatan bersamaan pada dua koneksi basis data sungguhan.
 - `jest` — **1298 tes lulus** (bertambah 42)
 - `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
 - Migrasi diverifikasi: 55 tabel village terbentuk
+
+---
+
+## D-7 — Aset, pengadaan, dan bantuan
+
+### Ditambahkan
+
+- **`village-asset.ts`** — aturan aset sebagai fungsi murni: penggolongan KIB,
+  transisi status, peminjaman, penghapusan, metode pengadaan. **27 pengujian.**
+- **`village-aid.ts`** — pohon kriteria kelayakan beserta penafsirnya, batas
+  kecerdasan buatan, deteksi bantuan berganda, aturan penyaluran.
+  **43 pengujian.**
+- **Migrasi `20260731000009`** — dua belas tabel: `village_asset_category`,
+  `village_asset`, `village_asset_borrowing`, `village_asset_maintenance`,
+  `village_asset_disposal`, `village_procurement_plan`,
+  `village_household_survey`, `village_aid_program`, `village_aid_criteria`,
+  `village_aid_candidate`, `village_aid_beneficiary`,
+  `village_aid_distribution`.
+- **`VillageAssetService`**, **`VillageAidService`**, dan **enam belas
+  endpoint.**
+
+### Kriteria kelayakan adalah pohon, bukan ekspresi
+
+Kriteria bantuan berubah tiap program dan tiap tahun, sehingga menuliskannya di
+dalam kode berarti menunggu programmer setiap kali bupati mengubah ambangnya.
+Godaannya adalah menyimpan kriteria sebagai teks lalu mengevaluasinya — `eval`,
+`new Function`, atau menempelkannya ke `WHERE`.
+
+Ketiganya berarti hal yang sama: **siapa pun yang dapat menyunting kriteria
+program bantuan dapat menjalankan kode di server.** Yang menyunting kriteria
+adalah operator desa, dan pada satu dari sekian ribu desa ada operator yang akan
+mencobanya.
+
+Karena itu kriteria disimpan sebagai pohon kondisi terstruktur. Setiap daun
+menunjuk satu ruas dari **daftar tertutup** dua puluh dua ruas, dengan satu
+pembanding dari daftar tertutup lainnya. Nama ruas yang datang dari badan
+permintaan tidak pernah menjadi nama kolom maupun penelusuran properti pada
+objek sembarang — pencocokannya memakai `hasOwnProperty`, sehingga
+`constructor`, `__proto__`, dan `toString` ditolak seperti nama asing lainnya.
+
+Bentuknya diperiksa **sebelum disimpan**, dengan batas kedalaman enam dan batas
+delapan puluh simpul. Pohon yang datang dari badan permintaan adalah masukan yang
+tidak tepercaya, dan rekursi tanpa batas atasnya adalah cara paling mudah
+menjatuhkan proses. Kedalaman juga punya alasan yang bukan teknis: kriteria yang
+tidak dapat dibaca manusia tidak dapat digugat warga.
+
+### Kecerdasan buatan hanya mengusulkan — dan itu bukan sekadar niat
+
+Penyaringan otomatis berhenti pada `village_aid_candidate`. Yang membuatnya
+penegakan, bukan kesepakatan, adalah satu kolom:
+
+```
+decided_session_id UUID NOT NULL
+```
+
+Pemanggilan otomatis dari dalam sistem tidak memiliki sesi. Jalan kode yang
+kelak mencoba menetapkan penerima tanpa manusia yang masuk tidak akan gagal pada
+tinjauan kode — ia gagal pada `NOT NULL`.
+
+Di sampingnya, `decision_basis` menuntut sekurang-kurangnya lima belas huruf.
+Warga yang tidak menerima bantuan berhak mendapat jawaban dari seseorang, dan
+"begitu hasil sistemnya" bukan jawaban yang dapat dipertanggungjawabkan siapa
+pun.
+
+Setiap calon menyimpan **jejak penilaiannya**: ruas mana yang lulus, mana yang
+tidak, dan berapa nilainya. Penilaian `SEMUA` tidak berhenti pada kegagalan
+pertama — warga yang memperbaiki satu sebab lalu ditolak lagi karena sebab kedua
+akan merasa dipermainkan.
+
+### Satu warga tidak menerima bantuan sejenis dari dua jalur
+
+Ditegakkan indeks unik parsial atas (warga, jenis bantuan, tahun anggaran).
+Dua petugas yang menetapkan warga yang sama pada dua program berbeda secara
+bersamaan akan sama-sama lolos pemeriksaan layanan: keduanya membaca daftar
+penerima yang sama, keduanya tidak menemukan bentrok. **Dibuktikan pada dua
+koneksi sungguhan** — penetapan kedua tertahan menunggu yang pertama, lalu
+ditolak.
+
+Ini **menolak**, bukan menandai, dan itu berbeda dengan NIK kembar pada D-2.
+Perbedaannya bukan kebetulan: NIK kembar bisa berarti salah ketik, dan sistem
+yang menolak menyimpannya justru memaksa petugas memalsukan data agar dapat
+melanjutkan. Bantuan ganda bukan keraguan pencatatan — ia pembayaran kedua.
+
+Bertumpuk tetap mungkin lewat `allow_stacking`, tetapi harus dinyatakan pada
+**rancangan program**, bukan diputuskan diam-diam per warga.
+
+Indeksnya memakai tahun anggaran, bukan rentang tanggal. Rentang menuntut
+`btree_gist`, dan migrasi ini dijalankan setiap kali sebuah desa mendaftar: satu
+desa gagal disiapkan karena ekstensi tidak terpasang jauh lebih buruk daripada
+penegakan yang sedikit lebih kasar. Rentang yang sesungguhnya tetap diperiksa
+layanan, yang pesannya menyebut nama program yang bentrok.
+
+### Aset desa tidak disusutkan
+
+Penyusutan membebankan harga perolehan kepada periode yang menikmati
+manfaatnya, supaya laba tiap periode terukur. Balai desa tidak menghasilkan
+pendapatan yang perlu dilawankan dengan beban apa pun, sehingga angka nilai buku
+balai desa tidak menjawab pertanyaan siapa pun.
+
+Yang ditanyakan pada Musyawarah Desa adalah pertanyaan lain: **mana yang rusak
+dan perlu diperbaiki tahun ini.** Karena itu yang dicatat `condition`, bukan
+nilai buku. Traktor berumur sepuluh tahun yang terawat lebih berguna daripada
+traktor berumur dua tahun yang rusak berat, dan penyusutan garis lurus
+menyatakan sebaliknya.
+
+Penggolongannya mengikuti KIB A–F yang sudah dipakai pemerintahan, bukan
+penggolongan baru yang lebih rapi — petugas menyalin dari daftar ini ketika
+melapor ke kecamatan.
+
+### Aset tidak berhenti ada diam-diam
+
+- **Penghapusan wajib berdasar keputusan bernomor**, dengan alasan yang
+  diuraikan. Aset yang lenyap dari register tanpa dasar keputusan bukanlah aset
+  yang dihapus melainkan aset yang **hilang**.
+- **Aset yang sedang dipinjam tidak dapat dihapus.** Barangnya masih di tangan
+  orang lain, dan menghapusnya berarti melepaskan tanggung jawab atas barang
+  yang keberadaannya justru sedang diketahui.
+- **Penghapusan dengan cara dijual wajib menyebut nilainya.** Hasil penjualan
+  aset desa adalah pendapatan desa.
+- **Pengusul bukan penyetuju.**
+- **Aset yang sudah dihapus tidak kembali.** Bila barangnya ditemukan, ia
+  dicatat sebagai perolehan baru — sehingga jejak penghapusan yang keliru tetap
+  terbaca.
+
+### Keputusan lain
+
+- **Satu aset hanya dapat sedang dipinjam oleh satu orang**, ditegakkan indeks.
+  Bukan aturan administrasi melainkan kenyataan: proyektornya hanya satu.
+- **Tanggal rencana kembali wajib.** Peminjaman tanpa batas waktu bukan
+  peminjaman melainkan pemberian.
+- **Kondisi aset mengikuti kondisi saat dikembalikan.** Aset yang kembali rusak
+  dan tetap tercatat baik akan dipinjamkan lagi kepada orang berikutnya, yang
+  lalu dianggap merusaknya.
+- **Rencana pengadaan wajib menunjuk baris anggarannya.** Pengadaan tanpa pagu
+  akan ketahuan saat pembayarannya ditolak, ketika barangnya sudah telanjur
+  dipesan.
+- **`village_household_survey` menyimpan tanggal kunjungannya**, dan umur data
+  disajikan bersama hasil penyaringan. Penetapan bantuan atas data pendataan
+  tiga tahun lalu adalah penetapan atas desa yang sudah tidak ada.
+- **Yang sudah diketahui sistem tidak ditanyakan ulang.** Usia, jenis kelamin
+  kepala keluarga, RT/RW/dusun, dan kedisabilitasan diturunkan; yang ditanyakan
+  hanya yang diperoleh dengan mendatangi rumahnya.
+- **Satu termin disalurkan satu kali.** Penyaluran ganda pada termin yang sama
+  adalah pembayaran kedua, bukan pencatatan kedua.
+- **Kriteria lama dinonaktifkan, tidak dihapus.** Pertanyaan "kriteria mana yang
+  berlaku saat penetapan tahun lalu" akan muncul.
+- **Kelurahan tidak dapat mencatat aset bertanda `DESA`** — ia perangkat daerah
+  dan tidak memiliki kekayaan sendiri.
+
+### Bukti
+
+`docs/info-desa/bukti-d7-aset-bantuan.txt` — **38 pemeriksaan**, seluruhnya
+lulus, termasuk dua penetapan bersamaan pada dua koneksi basis data sungguhan.
+
+### Yang belum dikerjakan
+
+**Antarmuka web belum ada — dan bukan hanya pada tahap ini.** `apps/web` belum
+memuat satu berkas pun untuk vertikal ini sejak D-1; seluruh D-1 sampai D-7 baru
+berupa API, migrasi, aturan, dan pengujian. Daftar tahap pada §5 menyebut UI
+sebagai bagian tiap tahap, sehingga utangnya menumpuk tujuh tahap dan patut
+diputuskan tersendiri: dikejar sekaligus, atau digabungkan ke D-10 yang memang
+membangun situs dan portal warga.
+
+### Gerbang mutu
+
+- `jest` — **1368 tes lulus** (bertambah 70)
+- `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
+- Migrasi diverifikasi: 67 tabel village terbentuk

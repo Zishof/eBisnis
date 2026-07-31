@@ -1,0 +1,71 @@
+==============================================================================
+BUKTI D-7 — ASET, PENGADAAN, DAN BANTUAN
+Waktu : 2026-07-31T18:26:18.112Z
+==============================================================================
+
+1. Migrasi D-7
+  LULUS  dua belas tabel D-7 terbentuk
+  LULUS  pemicu audit terpasang pada tabel D-7 yang diaudit
+
+2. Aset tidak berhenti ada diam-diam
+  LULUS  penghapusan tanpa nomor keputusan ditolak
+  LULUS  penghapusan dengan alasan sekadarnya ditolak
+  LULUS  penghapusan dengan cara dijual tanpa nilai penjualan ditolak
+  LULUS  satu aset tidak dapat dihapus dua kali
+
+3. Satu aset hanya dapat sedang dipinjam oleh satu orang
+  LULUS  peminjaman kedua atas aset yang sedang dipinjam ditolak
+  LULUS  tanggal rencana kembali yang mendahului tanggal pinjam ditolak
+
+4. Kriteria bantuan
+  LULUS  kriteria dengan jenis simpul asing ditolak basis data
+  LULUS  kriteria yang melampaui batas simpul dan kedalaman ditolak
+  LULUS  kriteria yang sah tersimpan
+
+5. Penyaringan berhenti pada calon
+  LULUS  calon hasil penyaringan otomatis tersimpan dengan asal usulnya
+  LULUS  satu warga hanya menjadi satu calon pada satu program
+  LULUS  calon tidak dapat berstatus diverifikasi tanpa petugas yang memverifikasi
+  LULUS  penolakan calon tanpa alasan ditolak
+
+6. Kecerdasan buatan tidak dapat menetapkan penerima
+  LULUS  penetapan tanpa sesi manusia ditolak basis data
+  LULUS  penetapan tanpa dasar yang diuraikan ditolak
+  LULUS  penetapan oleh manusia dengan dasar yang diuraikan diterima
+
+7. Satu warga tidak menerima bantuan sejenis dari dua jalur
+  LULUS  bantuan sejenis dari program kedua pada tahun yang sama ditolak
+  LULUS  bantuan berjenis lain tetap dapat diterima warga yang sama
+  LULUS  penumpukan yang dinyatakan pada rancangan program diizinkan
+
+8. Dua petugas menetapkan warga yang sama secara bersamaan
+  LULUS  kedua petugas sama-sama membaca "belum menerima"
+  LULUS  penetapan kedua tertahan menunggu yang pertama
+  LULUS  penetapan kedua DITOLAK meski berjalan bersamaan
+  LULUS  hanya satu penetapan yang bertahan
+
+9. Penyaluran
+  LULUS  penyaluran termin pertama tercatat
+  LULUS  penyaluran kedua pada termin yang sama ditolak
+  LULUS  penyaluran berbentuk uang tanpa bukti terima ditolak
+  LULUS  penyaluran berbentuk barang tanpa bukti terima tetap diterima
+  LULUS  penyaluran yang diwakilkan tanpa nama yang mewakili ditolak
+  LULUS  penyaluran yang diwakilkan dengan nama diterima
+
+10. Rencana pengadaan wajib menunjuk pagunya
+  LULUS  rencana pengadaan tanpa baris anggaran ditolak
+  LULUS  rencana pengadaan yang menunjuk pagunya diterima
+
+11. Pendataan keadaan keluarga
+  LULUS  pendataan tersimpan beserta tanggal kunjungannya
+  LULUS  satu pendataan per keluarga per tahun
+  LULUS  status rumah di luar daftar ditolak
+
+12. Jejak audit
+  LULUS  perubahan pada tabel aset dan bantuan tercatat pada skema audit
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

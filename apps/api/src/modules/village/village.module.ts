@@ -39,6 +39,8 @@ import { VillageWorkflowService } from './village-workflow.service';
 import { VillageRequestService } from './village-request.service';
 import { VillageParticipationService } from './village-participation.service';
 import { VillageBudgetService } from './village-budget.service';
+import { VillageAssetService } from './village-asset.service';
+import { VillageAidService } from './village-aid.service';
 import { KATALOG_KELAYAKAN, layak, type KodeFitur } from './village-profile';
 
 function requireSchema(user: AuthenticatedUser): string {
@@ -704,6 +706,598 @@ class RealisasiDto {
   transactionDate?: string;
 }
 
+
+const GOLONGAN = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
+const KONDISI = ['BAIK', 'RUSAK_RINGAN', 'RUSAK_BERAT'] as const;
+const KEPEMILIKAN = ['DESA', 'DAERAH', 'PIHAK_KETIGA'] as const;
+
+class CatatAsetDto {
+  @ApiProperty({ example: 'AST-B-0007' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  registerNumber!: string;
+
+  @ApiProperty({ example: 'Proyektor Epson EB-X06' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(300)
+  name!: string;
+
+  @ApiProperty({ enum: GOLONGAN, description: 'Golongan KIB: A tanah, B peralatan dan mesin, C gedung, D jalan/irigasi, E aset tetap lainnya, F konstruksi dalam pengerjaan.' })
+  @IsIn(GOLONGAN as unknown as string[])
+  kibGroup!: string;
+
+  @ApiPropertyOptional({ enum: KEPEMILIKAN, description: 'Kelurahan tidak dapat mencatat DESA: ia perangkat daerah dan tidak memiliki kekayaan sendiri.' })
+  @IsOptional()
+  @IsIn(KEPEMILIKAN as unknown as string[])
+  ownership?: (typeof KEPEMILIKAN)[number];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: '2027-02-14' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  acquisitionDate?: string;
+
+  @ApiPropertyOptional({ example: 'PEMBELIAN' })
+  @IsOptional()
+  @IsIn(['PEMBELIAN', 'HIBAH', 'SWADAYA', 'WARISAN_DESA', 'PELIMPAHAN', 'LAINNYA'])
+  acquisitionSource?: string;
+
+  @ApiPropertyOptional({ example: 7500000 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  acquisitionValue?: number;
+
+  @ApiPropertyOptional({ description: 'Transaksi APBDes yang membiayainya. Uang desa yang berubah menjadi barang tetapi barangnya tidak masuk register adalah temuan pemeriksaan yang paling sering muncul.' })
+  @IsOptional()
+  @IsUUID()
+  budgetTransactionId?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  quantity?: number;
+
+  @ApiPropertyOptional({ example: 'unit' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  unit?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  locationNote?: string;
+
+  @ApiPropertyOptional({ enum: KONDISI })
+  @IsOptional()
+  @IsIn(KONDISI as unknown as string[])
+  condition?: (typeof KONDISI)[number];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isLendable?: boolean;
+}
+
+class PinjamAsetDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  borrowerName!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  borrowerResidentId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  borrowerPhone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  borrowerInstitution?: string;
+
+  @ApiProperty({ example: 'Rapat RT 03 di balai dusun' })
+  @IsString()
+  @MinLength(3)
+  purpose!: string;
+
+  @ApiPropertyOptional({ example: '2027-03-01' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  borrowedAt?: string;
+
+  @ApiProperty({
+    example: '2027-03-05',
+    description: 'WAJIB. Peminjaman tanpa batas waktu bukan peminjaman melainkan pemberian.',
+  })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  dueAt!: string;
+}
+
+class KembalikanAsetDto {
+  @ApiPropertyOptional({ enum: KONDISI })
+  @IsOptional()
+  @IsIn(KONDISI as unknown as string[])
+  condition?: (typeof KONDISI)[number];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  returnedAt?: string;
+}
+
+class PemeliharaanDto {
+  @ApiPropertyOptional({ enum: ['PERBAIKAN', 'PERAWATAN', 'KALIBRASI', 'PENGGANTIAN_SUKU_CADANG'] })
+  @IsOptional()
+  @IsIn(['PERBAIKAN', 'PERAWATAN', 'KALIBRASI', 'PENGGANTIAN_SUKU_CADANG'])
+  maintenanceType?: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(3)
+  description!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  scheduledAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  performedAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  vendorName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cost?: number;
+
+  @ApiPropertyOptional({ enum: KONDISI })
+  @IsOptional()
+  @IsIn(KONDISI as unknown as string[])
+  conditionAfter?: (typeof KONDISI)[number];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  budgetTransactionId?: string;
+}
+
+class HapusAsetDto {
+  @ApiProperty({ enum: ['DIJUAL', 'DIHIBAHKAN', 'DIMUSNAHKAN', 'HILANG', 'TERTIMPA_BENCANA'] })
+  @IsIn(['DIJUAL', 'DIHIBAHKAN', 'DIMUSNAHKAN', 'HILANG', 'TERTIMPA_BENCANA'])
+  method!: 'DIJUAL' | 'DIHIBAHKAN' | 'DIMUSNAHKAN' | 'HILANG' | 'TERTIMPA_BENCANA';
+
+  @ApiProperty({
+    example: 'SK Kepala Desa Nomor 9 Tahun 2027',
+    description: 'WAJIB. Aset yang lenyap dari register tanpa dasar keputusan adalah aset yang hilang, bukan aset yang dihapus.',
+  })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(160)
+  decisionNumber!: string;
+
+  @ApiProperty({ example: '2027-06-10' })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  decisionDate!: string;
+
+  @ApiProperty({ description: 'Sekurang-kurangnya sepuluh huruf.' })
+  @IsString()
+  @MinLength(10)
+  reason!: string;
+
+  @ApiPropertyOptional({ description: 'Wajib bila dijual. Hasil penjualan aset desa adalah pendapatan desa.' })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  disposalValue?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  recipientName?: string;
+}
+
+class RencanaPengadaanDto {
+  @ApiProperty({ example: 2027 })
+  @IsInt()
+  @Min(2000)
+  fiscalYear!: number;
+
+  @ApiProperty({ description: 'WAJIB. Pengadaan tanpa pagu akan ketahuan saat pembayarannya ditolak, ketika barangnya sudah telanjur dipesan.' })
+  @IsUUID()
+  budgetLineId!: string;
+
+  @ApiProperty({ example: 'PBJ-2027-014' })
+  @IsString()
+  @MaxLength(48)
+  code!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(300)
+  name!: string;
+
+  @ApiProperty({ example: 45000000 })
+  @IsNumber()
+  @IsPositive()
+  estimatedValue!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  specification?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  quantity?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  unit?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  activityId?: string;
+
+  @ApiPropertyOptional({ example: 2 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  plannedQuarter?: number;
+
+  @ApiPropertyOptional({ description: 'Batas swakelola. Berbeda antar kabupaten, karena itu dapat diatur.' })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  swakelolaThreshold?: number;
+}
+
+class ProgramBantuanDto {
+  @ApiProperty({ example: 'BLT-DD-2027' })
+  @IsString()
+  @MaxLength(48)
+  code!: string;
+
+  @ApiProperty({ example: 'Bantuan Langsung Tunai Dana Desa 2027' })
+  @IsString()
+  @MaxLength(300)
+  name!: string;
+
+  @ApiProperty({ example: 'BLT', description: 'Jenis inilah yang memutuskan apakah dua bantuan dianggap sejenis.' })
+  @IsString()
+  @MaxLength(48)
+  aidCategory!: string;
+
+  @ApiProperty({ example: 2027 })
+  @IsInt()
+  @Min(2000)
+  fiscalYear!: number;
+
+  @ApiProperty({ example: '2027-01-01' })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  periodStart!: string;
+
+  @ApiProperty({ example: '2027-12-31' })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  periodEnd!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ enum: ['UANG', 'BARANG', 'JASA'] })
+  @IsOptional()
+  @IsIn(['UANG', 'BARANG', 'JASA'])
+  aidForm?: 'UANG' | 'BARANG' | 'JASA';
+
+  @ApiPropertyOptional({ example: 'APBDES' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  fundingSource?: string;
+
+  @ApiPropertyOptional({ example: 120 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  quota?: number;
+
+  @ApiPropertyOptional({ example: 300000 })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  amountPerBeneficiary?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  budgetLineId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Program yang memang dirancang menambah bantuan lain. Bawaannya tidak: bantuan yang ' +
+      'diam-diam berganda bagi sebagian keluarga adalah cara pemerintah desa kehilangan ' +
+      'kepercayaan warganya.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowStacking?: boolean;
+}
+
+class KriteriaDto {
+  @ApiProperty({ example: 'Kriteria BLT Dana Desa 2027' })
+  @IsString()
+  @MaxLength(200)
+  name!: string;
+
+  @ApiProperty({
+    description:
+      'Pohon kondisi terstruktur. TIDAK PERNAH dieksekusi: setiap daun wajib menunjuk satu ruas ' +
+      'dari daftar tertutup, dengan satu pembanding dari daftar tertutup lainnya. Jenis simpul: ' +
+      'SEMUA, SALAH_SATU, TIDAK, BANDING.',
+    example: {
+      jenis: 'SEMUA',
+      anak: [
+        { jenis: 'BANDING', ruas: 'penghasilanBulanan', pembanding: 'MAKSIMAL', nilai: 1500000 },
+        { jenis: 'BANDING', ruas: 'memilikiKendaraanBermotor', pembanding: 'SAMA', nilai: false },
+      ],
+    },
+  })
+  criteria!: unknown;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+class SaringDto {
+  @ApiPropertyOptional({
+    enum: ['ATURAN', 'AI', 'MANUAL'],
+    description:
+      'Asal usulan. Yang berasal dari AI tetap berhenti sebagai calon; penetapannya oleh manusia.',
+  })
+  @IsOptional()
+  @IsIn(['ATURAN', 'AI', 'MANUAL'])
+  source?: 'ATURAN' | 'AI' | 'MANUAL';
+
+  @ApiPropertyOptional({ example: 2027 })
+  @IsOptional()
+  @IsInt()
+  @Min(2000)
+  surveyYear?: number;
+}
+
+class VerifikasiCalonDto {
+  @ApiProperty({ enum: ['LAYAK', 'TIDAK_LAYAK'] })
+  @IsIn(['LAYAK', 'TIDAK_LAYAK'])
+  hasil!: 'LAYAK' | 'TIDAK_LAYAK';
+
+  @ApiProperty({
+    description:
+      'Sekurang-kurangnya sepuluh huruf. Kunjungan yang tidak meninggalkan catatan tidak dapat ' +
+      'dibedakan dari kunjungan yang tidak pernah terjadi.',
+  })
+  @IsString()
+  @MinLength(10)
+  note!: string;
+}
+
+class TetapkanPenerimaDto {
+  @ApiProperty({
+    description:
+      'Sekurang-kurangnya lima belas huruf. Warga yang tidak menerima bantuan berhak mendapat ' +
+      'jawaban dari seseorang.',
+  })
+  @IsString()
+  @MinLength(15)
+  decisionBasis!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  decisionNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  entitlementAmount?: number;
+}
+
+class PenyaluranDto {
+  @ApiProperty()
+  @IsUUID()
+  beneficiaryId!: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  installmentNo?: number;
+
+  @ApiProperty({ example: 300000 })
+  @IsNumber()
+  @IsPositive()
+  amount!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  distributedAt?: string;
+
+  @ApiPropertyOptional({ enum: ['PENERIMA', 'KUASA'] })
+  @IsOptional()
+  @IsIn(['PENERIMA', 'KUASA'])
+  receivedBy?: 'PENERIMA' | 'KUASA';
+
+  @ApiPropertyOptional({ description: 'Wajib bila diwakilkan.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  proxyName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  proxyRelation?: string;
+
+  @ApiPropertyOptional({ description: 'Wajib bila bantuannya berbentuk uang.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  receiptReference?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  itemDescription?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+class PendataanKeluargaDto {
+  @ApiProperty()
+  @IsUUID()
+  familyId!: string;
+
+  @ApiProperty({ example: 2027 })
+  @IsInt()
+  @Min(2000)
+  surveyYear!: number;
+
+  @ApiProperty({
+    example: '2027-01-18',
+    description:
+      'Tanggal kunjungan. Penetapan bantuan atas data pendataan tiga tahun lalu adalah penetapan ' +
+      'atas desa yang sudah tidak ada.',
+  })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  surveyedAt!: string;
+
+  @ApiPropertyOptional({ example: 900000 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  monthlyIncome?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  dependentCount?: number;
+
+  @ApiPropertyOptional({ enum: ['MILIK', 'SEWA', 'MENUMPANG', 'DINAS', 'LAINNYA'] })
+  @IsOptional()
+  @IsIn(['MILIK', 'SEWA', 'MENUMPANG', 'DINAS', 'LAINNYA'])
+  houseStatus?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  floorType?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  floorAreaM2?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  waterSource?: string;
+
+  @ApiPropertyOptional({ example: 450 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  electricityVa?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  hasMotorVehicle?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  hasPregnantMember?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  hasToddler?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isDtksRegistered?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
 // --- Controller ---------------------------------------------------------------
 
 @ApiTags('village')
@@ -717,6 +1311,8 @@ export class VillageController {
     private readonly permohonan: VillageRequestService,
     private readonly partisipasi: VillageParticipationService,
     private readonly anggaran: VillageBudgetService,
+    private readonly aset: VillageAssetService,
+    private readonly bantuan: VillageAidService,
   ) {}
 
 
@@ -1378,6 +1974,276 @@ export class VillageController {
     return this.anggaran.serapanApbdes(requireSchema(user), id);
   }
 
+
+  // --- Aset dan pengadaan ---------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_ASSET_LIST.READ')
+  @Get('assets')
+  @ApiOperation({
+    summary: 'Register aset',
+    description:
+      'Aset desa tidak disusutkan. Yang disajikan kondisinya, sebab yang ditanyakan pada ' +
+      'Musyawarah Desa adalah mana yang rusak dan perlu diperbaiki tahun ini.',
+  })
+  daftarAset(
+    @Query('status') status: string | undefined,
+    @Query('condition') condition: string | undefined,
+    @Query('kib') kib: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.aset.daftarAset(requireSchema(user), { status, kondisi: condition, kib });
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_ASSET_LIST.CREATE')
+  @Post('assets')
+  @ApiOperation({
+    summary: 'Mencatat aset',
+    description:
+      'Kelurahan tidak dapat mencatat aset bertanda DESA: ia perangkat daerah dan tidak memiliki ' +
+      'kekayaan sendiri.',
+  })
+  catatAset(@Body() dto: CatatAsetDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.aset.catatAset(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_ASSET_LIST.UPDATE')
+  @Post('assets/:id/borrow')
+  @ApiOperation({
+    summary: 'Meminjamkan aset',
+    description:
+      'Satu aset hanya dapat sedang dipinjam oleh satu orang, ditegakkan indeks. Tanggal rencana ' +
+      'kembali wajib — peminjaman tanpa batas waktu bukan peminjaman melainkan pemberian.',
+  })
+  pinjamkan(
+    @Param('id') id: string,
+    @Body() dto: PinjamAsetDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.aset.pinjamkan(requireSchema(user), { assetId: id, ...dto }, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_ASSET_LIST.UPDATE')
+  @Post('borrowings/:id/return')
+  @ApiOperation({
+    summary: 'Menerima pengembalian aset',
+    description:
+      'Kondisi aset mengikuti kondisi saat dikembalikan. Aset yang kembali rusak dan tetap ' +
+      'tercatat baik akan dipinjamkan lagi kepada orang berikutnya, yang lalu dianggap merusaknya.',
+  })
+  kembalikanAset(
+    @Param('id') id: string,
+    @Body() dto: KembalikanAsetDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.aset.kembalikan(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_ASSET_LIST.UPDATE')
+  @Post('assets/:id/maintenance')
+  @ApiOperation({ summary: 'Mencatat pemeliharaan aset' })
+  catatPemeliharaan(
+    @Param('id') id: string,
+    @Body() dto: PemeliharaanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.aset.catatPemeliharaan(requireSchema(user), { assetId: id, ...dto }, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_ASSET_LIST.DELETE')
+  @Post('assets/:id/disposal')
+  @ApiOperation({
+    summary: 'Mengusulkan penghapusan aset',
+    description:
+      'Wajib berdasar keputusan yang bernomor. Sistem tidak boleh menjadi tempat sebuah barang ' +
+      'berhenti ada diam-diam. Aset yang sedang dipinjam tidak dapat dihapus.',
+  })
+  usulkanPenghapusan(
+    @Param('id') id: string,
+    @Body() dto: HapusAsetDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.aset.usulkanPenghapusan(requireSchema(user), { assetId: id, ...dto }, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_ASSET_LIST.DELETE')
+  @Post('disposals/:id/approve')
+  @ApiOperation({
+    summary: 'Menyetujui penghapusan aset',
+    description: 'Pengusul bukan penyetuju.',
+  })
+  setujuiPenghapusan(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.aset.setujuiPenghapusan(requireSchema(user), id, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_ASSET_LIST.CREATE')
+  @Post('procurement-plans')
+  @ApiOperation({
+    summary: 'Menyusun rencana pengadaan',
+    description:
+      'Wajib menunjuk baris anggarannya. Metode ditentukan dari nilainya: swakelola untuk yang ' +
+      'kecil, penyedia untuk yang besar.',
+  })
+  susunPengadaan(@Body() dto: RencanaPengadaanDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.aset.susunPengadaan(requireSchema(user), dto, user);
+  }
+
+  // --- Bantuan sosial -------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_AID_PROGRAM.CREATE')
+  @Post('aid/programs')
+  @ApiOperation({ summary: 'Menyusun program bantuan' })
+  susunProgramBantuan(@Body() dto: ProgramBantuanDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.bantuan.susunProgram(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_AID_PROGRAM.UPDATE')
+  @Post('aid/programs/:id/criteria')
+  @ApiOperation({
+    summary: 'Menyimpan kriteria kelayakan',
+    description:
+      'Kriteria adalah pohon kondisi terstruktur dan TIDAK PERNAH dieksekusi. Bentuknya ' +
+      'diperiksa sebelum disimpan: ruas di luar daftar tertutup ditolak, pembanding yang tidak ' +
+      'berlaku bagi tipenya ditolak, dan kedalaman serta jumlah simpulnya dibatasi.',
+  })
+  simpanKriteria(
+    @Param('id') id: string,
+    @Body() dto: KriteriaDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.bantuan.simpanKriteria(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BENEFICIARY.CREATE')
+  @Post('aid/programs/:id/screen')
+  @ApiOperation({
+    summary: 'Menyaring calon penerima',
+    description:
+      'Hasilnya DUGAAN, bukan temuan. Penyaringan otomatis berhenti pada calon; penetapannya ' +
+      'oleh manusia. Setiap calon menyimpan jejak penilaiannya, sebab warga yang tidak masuk ' +
+      'daftar akan bertanya mengapa.',
+  })
+  saringCalon(
+    @Param('id') id: string,
+    @Body() dto: SaringDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.bantuan.saring(
+      requireSchema(user),
+      id,
+      { sumber: dto.source, surveyYear: dto.surveyYear },
+      user,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BENEFICIARY.READ')
+  @Get('aid/programs/:id/candidates')
+  @ApiOperation({ summary: 'Daftar calon penerima beserta jejak penilaiannya' })
+  daftarCalon(
+    @Param('id') id: string,
+    @Query('status') status: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.bantuan.daftarCalon(
+      requireSchema(user),
+      id,
+      status as 'DIUSULKAN' | 'DIVERIFIKASI' | 'DITETAPKAN' | 'DITOLAK' | undefined,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BENEFICIARY.UPDATE')
+  @Post('aid/candidates/:id/verify')
+  @ApiOperation({
+    summary: 'Memverifikasi calon penerima',
+    description:
+      'Hasil penyaringan adalah dugaan; yang menjadikannya temuan adalah kunjungan petugas.',
+  })
+  verifikasiCalon(
+    @Param('id') id: string,
+    @Body() dto: VerifikasiCalonDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.bantuan.verifikasi(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BENEFICIARY.APPROVE')
+  @Post('aid/candidates/:id/establish')
+  @ApiOperation({
+    summary: 'Menetapkan calon menjadi penerima',
+    description:
+      'Penetapan oleh manusia, tercatat siapa dan atas dasar apa. Menolak bila: pengusul ' +
+      'menetapkan usulannya sendiri, calon belum diverifikasi, dasar penetapan tidak diuraikan, ' +
+      'kuota penuh, atau warga sudah menerima bantuan sejenis dari jalur lain pada tahun yang ' +
+      'sama — yang terakhir juga ditahan indeks unik parsial.',
+  })
+  tetapkanPenerima(
+    @Param('id') id: string,
+    @Body() dto: TetapkanPenerimaDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.bantuan.tetapkan(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BENEFICIARY.UPDATE')
+  @Post('aid/distributions')
+  @ApiOperation({
+    summary: 'Mencatat penyaluran bantuan',
+    description:
+      'Satu termin disalurkan satu kali kepada satu penerima. Penyaluran ganda pada termin yang ' +
+      'sama adalah pembayaran kedua, bukan pencatatan kedua. Wajib menyertakan Idempotency-Key.',
+  })
+  salurkanBantuan(
+    @Body() dto: PenyaluranDto,
+    @Headers('idempotency-key') kunci: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (!kunci?.trim()) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Tajuk Idempotency-Key wajib disertakan pada penyaluran bantuan.',
+      );
+    }
+    return this.bantuan.salurkan(requireSchema(user), dto, kunci.trim(), user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_AID_PROGRAM.READ')
+  @Get('aid/programs/:id/summary')
+  @ApiOperation({
+    summary: 'Ringkasan program bantuan',
+    description: 'Termasuk berapa calon yang berasal dari penyaringan otomatis.',
+  })
+  ringkasanProgramBantuan(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.bantuan.ringkasanProgram(requireSchema(user), id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_BENEFICIARY.CREATE')
+  @Post('aid/household-surveys')
+  @ApiOperation({
+    summary: 'Mencatat pendataan keadaan keluarga',
+    description:
+      'Yang sudah diketahui sistem tidak ditanyakan ulang; yang ditanyakan hanya yang diperoleh ' +
+      'dengan mendatangi rumahnya.',
+  })
+  catatPendataan(@Body() dto: PendataanKeluargaDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.bantuan.catatPendataan(requireSchema(user), dto, user);
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -1423,6 +2289,8 @@ export class VillageController {
     VillageRequestService,
     VillageParticipationService,
     VillageBudgetService,
+    VillageAssetService,
+    VillageAidService,
   ],
   exports: [
     VillageUnitService,
@@ -1433,6 +2301,8 @@ export class VillageController {
     VillageRequestService,
     VillageParticipationService,
     VillageBudgetService,
+    VillageAssetService,
+    VillageAidService,
   ],
 })
 export class VillageModule {}
