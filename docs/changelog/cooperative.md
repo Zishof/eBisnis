@@ -5,6 +5,111 @@ menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
 ---
 
+## K-11 — Keamanan, bukti menyeluruh, dan uji terima
+
+Fase terakhir, dan satu-satunya yang **menemukan cacat pada fase sebelumnya**.
+Dua cacat, keduanya lolos dari 1.541 pengujian, keduanya tercatat dalam
+changelog dengan kalimat yang percaya diri.
+
+### Ditambahkan
+
+- **`cooperative-security.spec.ts`** — 24 pemeriksaan yang membaca berkas modul
+  sendiri, mencari pelanggaran yang tidak dapat diuji lewat perilaku.
+- **`prove-cooperative-e2e.mjs`** — satu koperasi dari berdiri sampai
+  membagikan SHU, **47 pemeriksaan** dalam sembilan babak, seluruhnya lulus.
+- **Migrasi `20260801T100000`** — perbaikan kedua cacat di bawah.
+- **`docs/ekoperasi/10-uat-skenario.md`** — skenario uji terima untuk pengurus
+  koperasi sungguhan, disusun mengikuti perjalanan satu tahun buku.
+- **`docs/ekoperasi/11-audit-keamanan.md`** — hasil audit terhadap seluruh
+  aturan keamanan yang berlaku.
+
+### Cacat 1 — Penjaga kuorum dikaitkan pada status yang salah
+
+`ck_coop_meeting_quorum_evidence` dari K-5 dikaitkan pada
+`status = 'QUORUM_REACHED'`. Tetapi RAT yang sudah selesai berstatus `CLOSED`;
+`QUORUM_REACHED` hanya keadaan sesaat di tengah rapat.
+
+Akibatnya rapat dapat berstatus `CLOSED` dengan `quorum_reached = TRUE` tanpa
+satu pun angka pendukung, **selamanya**. Penjaganya menjaga keadaan yang lewat
+dalam hitungan jam dan membiarkan keadaan yang bertahan.
+
+Bukan cacat teoretis: keputusan RAT hanya sah bila kuorumnya tercapai, dan
+keabsahan pembagian SHU bersandar pada keputusan itu.
+
+Diperbaiki dengan mengaitkannya pada `quorum_reached = TRUE` berapa pun
+statusnya, ditambah dua penjaga aritmetika — rapat yang menyatakan kuorum wajib
+benar-benar dihadiri sekurang-kurangnya sebanyak syaratnya, dan rapat yang
+**menyangkal** kuorum tidak boleh justru memenuhinya, sebab penyangkalan itu
+dapat dipakai membatalkan keputusan yang sah.
+
+### Cacat 2 — Larangan menghapus pengaduan hanya ada pada aplikasi
+
+K-9 menyatakan "pengaduan tidak dapat dihapus". Itu benar tentang aplikasinya —
+tidak ada endpoint yang menghapusnya. **Basis datanya menerima `DELETE` tanpa
+keberatan.**
+
+Selisih antara keduanya menentukan. Alasan pengaduan tidak boleh dapat dihapus
+adalah supaya ia tidak dapat dihilangkan oleh orang yang isinya menegur
+dirinya — dan orang semacam itu justru yang paling mungkin memiliki akses
+langsung ke basis data. Penjagaan yang hanya ada pada lapisan aplikasi tidak
+menjaga dari orang itu.
+
+Diperbaiki dengan trigger `BEFORE DELETE` pada enam tabel yang gunanya justru
+terletak pada ketidakmungkinannya dihilangkan: pengaduan, tanggapan pengaduan,
+keputusan rapat, suara, notulen, dan jejak portal. Daftarnya sengaja pendek —
+penjaga yang menghalangi pekerjaan wajar akan dicabut seseorang pada suatu
+hari, bersama seluruh gunanya.
+
+### Yang dipelajari
+
+Kedua cacat menyangkut **jarak antara apa yang dinyatakan dan apa yang
+ditegakkan.**
+
+Yang menemukannya adalah pemeriksaan yang menjalankan urutan seperti koperasi
+sungguhan menjalankannya — sampai rapatnya `CLOSED`, bukan berhenti pada
+`QUORUM_REACHED` yang lebih mudah diuji. **Pengujian yang berhenti pada keadaan
+yang paling nyaman diuji akan melewatkan keadaan yang paling lama bertahan.**
+
+### Keputusan lain yang perlu dicatat
+
+- **Penjaga pemeriksa teks berkas diuji dengan sengaja melanggarnya.**
+  `@Query('memberId')` ditambahkan ke controller portal dan
+  `DELETE FROM cooperative_member` ke layanannya; dua pengujian gagal dan
+  menyebut keduanya, lalu keduanya dikembalikan. Penjaga yang tidak pernah
+  dibuktikan menangkap apa pun tidak berbeda dari komentar.
+- **Batas pemeriksaan teks disebutkan apa adanya** pada berkasnya: ia dapat
+  dielakkan siapa pun yang berniat mengelakkannya. Yang dijaganya bukan
+  penyerang melainkan kekeliruan — penambahan yang wajar, terburu, dan tampak
+  tidak berbahaya.
+- **Bukti menyeluruh memeriksa kecocokan angka, bukan hanya keberhasilan.**
+  Jumlah komponen SHU sama persis dengan surplus; jumlah pembagian sama persis
+  dengan jasa modal + jasa usaha; saldo di portal sama dengan saldo di buku;
+  SHU yang dilihat anggota sama dengan yang dihitung untuknya, sampai
+  rinciannya. Sistem yang setiap bagiannya benar tetapi angkanya tidak
+  bersambung lebih berbahaya daripada sistem yang jelas rusak — tidak ada yang
+  menyadarinya sampai seorang anggota menghitung sendiri.
+- **UAT ditulis untuk pengurus koperasi, bukan untuk penguji perangkat lunak**,
+  dan disusun mengikuti perjalanan satu tahun buku alih-alih susunan menu.
+  Setiap skenario memuat bagian "Yang harus DITOLAK sistem", sebab perangkat
+  lunak keuangan dinilai dari apa yang dicegahnya.
+- **Tiga dari lima hal yang masih tertahan justru mengurangi permukaan serang**
+  selama masa tunggu — hak akses yang belum disemai membuat setiap endpoint
+  menolak, dan situs publik yang belum ada membuat permukaan paling terbuka
+  belum terbuka. Bukan alasan menunda IR-nya, tetapi berarti keadaan sekarang
+  tidak berbahaya, melainkan belum dapat dipakai.
+
+### Hasil audit
+
+Patuh pada seluruh aturan yang berlaku: isolasi antarpenyewa, cakupan data
+portal, kata sandi dan PIN, larangan penghapusan, larangan perbuatan otomatis,
+larangan penilaian ekspresi bebas, dan batas antarsesi. Rinciannya pada
+[11-audit-keamanan.md](../ekoperasi/11-audit-keamanan.md).
+
+Yang **belum** dapat dinyatakan: bahwa modul ini aman dalam pemakaian
+sungguhan, sebab ia belum pernah dipakai penyewa sungguhan.
+
+---
+
 ## K-10 — Peran, bantuan, data contoh, dan AI
 
 ### Ditambahkan
