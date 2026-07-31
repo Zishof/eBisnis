@@ -97,3 +97,10 @@ desktop.ini
 # ---------------------------------------------------------------------------
 docker-compose.override.yml
 config/local/
+
+# --- Klien kasir Flutter (apps/pos-flutter) ---
+# Artefak alat Dart/Flutter; dibangkitkan ulang oleh `dart pub get`.
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies

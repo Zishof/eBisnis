@@ -1,0 +1,19 @@
+name: ebisnis_pos
+description: >-
+  Klien kasir eBisnis.id untuk tablet Android dan Windows. Klien KEDUA dari
+  sistem yang sama, bukan POS berdiri sendiri — lihat ADR-012.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.0
+
+# Belum bergantung pada Flutter.
+#
+# Yang ada sekarang barulah aturan murni beserta uji konformansinya, dan
+# keduanya berjalan dengan `dart test` tanpa emulator maupun perangkat. Menunda
+# ketergantungan Flutter membuat bagian yang paling menentukan — aritmetika uang
+# dan bahan hash — dapat diuji lebih dahulu, sebelum satu piksel pun digambar.
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^5.0.0
