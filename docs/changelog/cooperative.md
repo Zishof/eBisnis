@@ -5,6 +5,80 @@ menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
 ---
 
+## K-7 — Unit usaha dan integrasi POS
+
+### Ditambahkan
+
+- **Migrasi modul** `20260731T220000__cooperative__unit_business_and_pos_link.sql`:
+  delapan tabel — unit usaha, penghubung POS, tautan harga anggota, anggaran,
+  hasil usaha per periode, pembacaan patronage, baris patronage, dan aset unit.
+- **`cooperative-unit.ts`** — aturan sebagai fungsi murni: jenis unit, tautan
+  outlet, ringkasan patronage, laba rugi unit, alokasi beban umum, tautan
+  harga anggota, dan **batas kewenangan adapter**. **27 pengujian.**
+- **`adapters/pos.adapter.ts`** — satu-satunya berkas koperasi yang menyentuh
+  tabel `pos_*`, dan **hanya membaca**.
+- **`adapters/pos-adapter-readonly.spec.ts`** — **7 pengujian** yang memeriksa
+  isi berkas modul, bukan perilakunya.
+
+### Penjagaan batas yang tidak biasa, dan alasannya
+
+Pengujian `pos-adapter-readonly.spec.ts` membaca **isi berkas modul koperasi
+sendiri** dan menolak setiap `INSERT`, `UPDATE`, atau `DELETE` yang menyentuh
+tabel `pos_*` maupun `stock_*`. Ia juga menolak penyebutan kode peristiwa
+akuntansi POS di mana pun dalam modul, dan memastikan hanya adapter yang
+menyebut `pos_sale` — membaca pun harus lewat satu pintu.
+
+Cara ini dipilih karena pengujian perilaku hanya membuktikan jalur yang
+kebetulan diuji, sedangkan pemeriksaan isi berkas menangkap setiap penulisan
+yang kelak ditambahkan seseorang — termasuk pada jalur yang belum ada
+pengujiannya.
+
+**Penjagaannya diverifikasi dengan sengaja melanggarnya:** sebuah
+`INSERT INTO pos_sale` disisipkan ke adapter, dan pengujian gagal dengan
+menyebut berkas serta tabelnya. Penjagaan yang tidak pernah dibuktikan menangkap
+apa pun adalah penjagaan yang belum tentu bekerja.
+
+### Keputusan yang perlu dicatat
+
+- **Unit usaha koperasi TIDAK memiliki POS sendiri.** Ia tertaut ke `outlet`
+  Core lewat satu tabel penghubung; menghapus tabel itu harus cukup untuk
+  membuat POS berjalan tanpa koperasi dan sebaliknya.
+- **Satu outlet hanya dimiliki satu unit usaha**, ditegakkan indeks unik
+  parsial. Dua pemilik akan menghitung patronage penjualan yang sama dua kali —
+  dan SHU dibagikan atas angka itu.
+- **Harga khusus anggota berjalan tanpa mengubah POS sama sekali**, lewat
+  tautan kategori anggota ke `customer_group` Core. Kasir memindai kartu
+  anggota, POS mengenali pelanggannya, dan buku harga berlingkup kelompok itu
+  berlaku. Tautannya diletakkan pada tabel koperasi karena `customer_group`
+  milik Core.
+- **Patronage dibaca berkala, bukan ditulis saat transaksi.** Ia dihitung atas
+  periode buku yang sudah ditutup; menuliskannya saat transaksi membuat angkanya
+  ikut berubah setiap ada retur — sesudah SHU dihitung.
+- **Penjualan yang tidak teratribusi dilaporkan, bukan dibuang.** Unit toko yang
+  sebagian besar penjualannya tidak teratribusi berarti kartu anggotanya jarang
+  dipakai — keadaan yang perlu diketahui pengurus sebelum SHU dihitung.
+- **Penyaringan memakai `business_date`, bukan `created_at`.** Penjualan yang
+  diselesaikan lewat tengah malam tetap milik hari usaha tempat ia terjadi.
+- **Beban umum dialokasikan ke unit.** Tanpanya, unit tampak jauh lebih untung
+  daripada sebenarnya, dan pengurus memutuskan membuka unit baru berdasarkan
+  angka yang belum menanggung bagiannya atas gaji, listrik, dan sewa kantor.
+
+### Gerbang mutu
+
+| | |
+|---|---|
+| `tsc --noEmit` | bersih |
+| `eslint --max-warnings=0` | bersih |
+| `jest` | 53 suite, **1382 tes lulus** (bertambah 34) |
+| Penjagaan batas | diverifikasi dengan pelanggaran sengaja |
+
+### Belum dikerjakan pada K-7
+
+- **K-7d — pembayaran dengan saldo simpanan dan pembelian kredit anggota**
+  menunggu **IR-002** (kait pembayaran bersaldo eksternal pada POS). Unit toko
+  koperasi berjalan penuh dengan tunai dan nontunai biasa; K-7d tidak menahan
+  K-8 sampai K-11.
+
 ## K-6 — SHU dan patronage
 
 ### Ditambahkan

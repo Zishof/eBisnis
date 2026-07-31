@@ -39,6 +39,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { CooperativeProfileService } from './cooperative-profile.service';
+import { CooperativePosAdapter } from './adapters/pos.adapter';
 import { InfrastructureModule } from '../../infrastructure/infrastructure.module';
 import {
   AuthenticatedUser,
@@ -374,7 +375,7 @@ export class CooperativeController {
 @Module({
   imports: [InfrastructureModule],
   controllers: [CooperativeController],
-  providers: [CooperativeProfileService],
-  exports: [CooperativeProfileService],
+  providers: [CooperativeProfileService, CooperativePosAdapter],
+  exports: [CooperativeProfileService, CooperativePosAdapter],
 })
 export class CooperativeModule {}
