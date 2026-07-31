@@ -5,6 +5,73 @@ menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
 ---
 
+## K-8 — Akuntansi, pajak, dan laporan
+
+### Ditambahkan
+
+- **`accounting/cooperative-events.catalog.ts`** — **26 kode peristiwa
+  akuntansi** `COOPERATIVE_*` beserta nilai wajib dan kode pemetaan akunnya.
+  Ditulis penuh dalam bentuk yang diusulkan IR-003, sehingga saat disetujui
+  yang diperlukan hanya satu baris `registry.register(...)`.
+- **`cooperative-accounting.ts`** — aturan sebagai fungsi murni: rekonsiliasi
+  buku pembantu terhadap buku besar, keseimbangan jurnal, neraca, laba rugi,
+  modal sendiri, empat rasio kesehatan, pajak SHU, dan syarat penutupan
+  periode. **43 pengujian** bersama katalognya.
+
+### Keputusan yang perlu dicatat
+
+- **Rekonsiliasi memperhatikan sifat normal akun.** Piutang pinjaman bersifat
+  debit — setoran anggota menguranginya; simpanan bersifat kredit — setoran
+  menambah. Menjumlahkan tanpa memperhatikan sifatnya akan berselisih pada
+  setiap akun, dan laporan rekonsiliasi yang selalu berselisih akan segera
+  diabaikan orang.
+- **Akun yang hanya ada pada buku pembantu dilaporkan tersendiri.** Rincian
+  atas akun yang tidak ada di buku besar berarti jurnalnya tidak pernah
+  terbentuk — persis keadaan yang berlaku sampai IR-003 disetujui.
+- **Simpanan pokok dan wajib dipetakan ke akun EKUITAS; sukarela ke KEWAJIBAN.**
+  Diuji pada katalognya, bukan hanya disepakati. Rasio kesehatan dihitung atas
+  modal sendiri, dan salah menggolongkannya membuat koperasi tampak bermodal
+  kecil serta dinilai tidak sehat padahal tidak demikian.
+- **Angsuran menuntut pokok dan jasa terpisah** pada katalognya. Keduanya masuk
+  akun berbeda, dan membelah totalnya kemudian berarti menebak berapa
+  pendapatan koperasi.
+- **Tidak ada peristiwa syariah yang menuntut nilai bernama `interest`**,
+  diperiksa pengujian. Murabahah memakai `margin`, mudharabah memakai `nisbah`.
+- **`COOPERATIVE_WALLET_PAYMENT` tidak menjurnal penjualannya** — hanya
+  perpindahan dari kewajiban dompet ke kas. Diuji secara tegas: pemetaannya
+  tidak boleh menyentuh akun pendapatan, sebab penjualannya sudah dijurnal
+  mesin POS.
+- **Pembagian nol pada rasio menghasilkan nol, bukan Infinity maupun NaN.**
+  Rasio bernilai Infinity pada laporan tampak seperti cacat sistem, dan
+  pembacanya berhenti mempercayai seluruh laporannya.
+- **Tarif pajak tidak dikunci di dalam program.** Perlakuan pajak koperasi
+  berbeda dari perseroan dan berubah menurut peraturan yang berlaku; fungsi ini
+  hanya menghitung, dan keterangannya ikut dikembalikan supaya laporan dapat
+  menyebutkan dasarnya.
+- **Penutupan periode memeriksa lima syarat sekaligus.** Menutup periode tidak
+  dapat dibatalkan tanpa jejak: saldo dipindahkan, buku dikunci, dan angka
+  itulah yang dibawa ke RAT.
+
+### Gerbang mutu
+
+| | |
+|---|---|
+| `tsc --noEmit` | bersih |
+| `eslint --max-warnings=0` | bersih |
+| `jest` | 54 suite, **1425 tes lulus** (bertambah 43) |
+
+### Belum dikerjakan pada K-8
+
+- **Peristiwa koperasi masih belum dijurnal.** Katalognya lengkap dan teruji,
+  tetapi `isKnownEvent()` milik Core menolaknya sampai **IR-003** disetujui.
+  Buku pembantu anggota berjalan; buku besarnya belum, dan neraca koperasi
+  karena itu belum lengkap. Pengujian rekonsiliasi justru sudah menyiapkan
+  keadaan ini: akun yang hanya ada pada buku pembantu dilaporkan tersendiri.
+- **Ekspor Excel dan cetak PDF** tetap `BLOCKED` — prasyarat V8-5/6 dan V8-7
+  belum dibangun sesi Core. Laporan dapat ditampilkan di layar.
+- **Dua puluh satu laporan** pada spesifikasi §18 belum dirakit menjadi
+  endpoint; aturan penyusunnya sudah ada dan teruji.
+
 ## K-7 — Unit usaha dan integrasi POS
 
 ### Ditambahkan
