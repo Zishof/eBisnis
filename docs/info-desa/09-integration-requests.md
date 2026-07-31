@@ -14,6 +14,7 @@ Core meninjaunya.
 |---|---|---|---|---|
 | [001](../integration-requests/village/001-workflow-port.md) | `WorkflowPort` | Bukan pemblokir | Core | Diajukan |
 | [002](../integration-requests/village/002-health-namespace-collision.md) | Tabrakan namespace `modules/health/` | Peringatan dini | Core, eMedik | Diajukan |
+| [003](../integration-requests/village/003-village-scope-types.md) | Jenis cakupan wilayah desa pada `user_scope_assignment` | Bukan pemblokir | Core | Diajukan |
 
 ---
 
@@ -57,6 +58,7 @@ Belum diajukan; dicatat agar terlihat lebih awal.
 | Perkiraan | Tahap | Alasan |
 |---|---|---|
 | Registrasi katalog menu vertikal | D-3 | Registri menu global dikelola Core. Village menyediakan katalog modular; Core perlu kontrak plugin yang mengimpornya |
+| ~~Jenis cakupan pada `ck_user_scope_type`~~ | ~~D-3~~ | **Sudah diajukan sebagai 003.** Perkiraan ini terbukti tepat, dan constraint yang tertabrak persis jenisnya |
 | Profil peran vertikal pada constraint | D-3 | `ck_role_module_profile_code` membatasi kode profil (`P0-P12`, `M1-M9`). Peran village memerlukan kode profilnya sendiri — persis pola V012 yang dahulu memperluasnya untuk marketplace |
 | Agregasi OpenAPI | D-12 | `openapi-village.json` perlu digabung Core |
 | Cetak PDF | D-4 | Bila HTML siap cetak tidak mencukupi untuk surat resmi. Lihat catatan risiko pada [07](07-implementation-plan.md) |

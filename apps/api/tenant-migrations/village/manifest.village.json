@@ -17,6 +17,13 @@
       "file": "20260731000002__village__resident_and_family.sql",
       "name": "Penduduk, keluarga, dan peristiwa kependudukan",
       "description": "village_family, village_resident, village_resident_history, village_resident_access_log, village_vital_event, village_resident_duplicate, village_resident_document. NIK dan nomor KK unik PER PENYEWA, bukan global: warga yang pindah antar desa tercatat pada keduanya untuk sementara, dan keunikan global akan menghalangi desa tujuan mendata kedatangannya. NIK yang janggal ditandai lewat national_id_flagged, bukan ditolak — NIK yang tercetak keliru pada KTP sungguhan ada, dan menolaknya memaksa petugas mengarang NIK lain agar datanya dapat masuk. village_resident_access_log tidak punya padanan di modul lain dan itu disengaja: pada kependudukan penyalahgunaan berbentuk PEMBACAAN, dan audit yang hanya mencatat perubahan tidak akan pernah melihatnya; isi datanya tidak ikut dicatat supaya catatan akses tidak menjadi salinan kedua dari data yang dilindunginya. Penolakan peristiwa wajib beralasan, sebab warga yang laporannya ditolak tanpa keterangan akan datang kembali menanyakan hal yang sama."
+    },
+    {
+      "version": "20260731000003",
+      "sequence": 3,
+      "file": "20260731000003__village__apparatus_and_registers.sql",
+      "name": "Aparatur, masa jabatan, register, dan cakupan data",
+      "description": "village_officer, village_officer_term, village_bpd_member, village_org_node, village_delegation, village_scope_assignment, village_register_entry. village_scope_assignment ada tersendiri karena ck_user_scope_type milik Core membatasi jenis cakupan pada daftar tertutup yang tidak memuat dusun, RW, maupun RT — dan memang tidak seharusnya memuatnya: itu kosakata pemerintahan desa, bukan kosakata perdagangan. Menambahkannya berarti mengubah constraint pada tabel bersama, yang dilarang dilakukan langsung dari cabang vertikal. Bentuknya sengaja dibuat sama persis dengan milik Core supaya penggabungannya kelak hanya memindahkan baris; integration request 003 memintanya. Aparatur menunjuk village_resident alih-alih menyalin nama dan NIK-nya, sebab data yang disalin akan berbeda dari sumbernya begitu salah satunya diperbarui; external_name disediakan untuk Lurah yang kerap bukan warga desa itu. Masa jabatan tabel tersendiri karena satu orang dapat menjabat lebih dari sekali dan riwayatnya bagian dari arsip desa. Pelimpahan wewenang wajib berbatas waktu — yang tidak berujung bukan pelimpahan melainkan pergantian jabatan. Sebelas jenis register memakai satu tabel yang dibedakan register_type, sebab sebelas tabel berbentuk sama membuat pencarian lintas register menjadi sebelas kueri yang digabung."
     }
   ]
 }

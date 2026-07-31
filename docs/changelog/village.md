@@ -245,3 +245,89 @@ Disebutkan di sini alih-alih dibiarkan tampak sudah berlaku.
 - `jest` — **1141 tes lulus** (bertambah 39)
 - `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
 - Migrasi diverifikasi pada skema sungguhan: 17 tabel village terbentuk
+
+---
+
+## D-3 — Aparatur, register, dan cakupan data
+
+### Menutup celah D-2
+
+`cakupan()` pada controller sebelumnya mengembalikan `UNIT` bagi semua orang,
+sehingga **Ketua RT masih melihat seluruh desa**. Fase ini menyambungkannya ke
+penugasan sungguhan.
+
+Dibuktikan pada basis data: desa uji berisi 2 RW, 4 RT, 20 warga. Cakupan
+`UNIT` mengembalikan 20 baris, `RW` mengembalikan 10, `RT` mengembalikan **5**.
+Penyaringan terjadi pada kueri — jumlah baris yang kembali dari basis data
+memang lebih sedikit, bukan disaring sesudahnya.
+
+### Ditambahkan
+
+- **`village-officer.ts`** — masa jabatan, pelimpahan wewenang, deteksi
+  lingkaran struktur organisasi, dan penyelesai cakupan efektif. **34 pengujian.**
+- **Migrasi `20260731000003`** — tujuh tabel: `village_officer`,
+  `village_officer_term`, `village_bpd_member`, `village_org_node`,
+  `village_delegation`, `village_scope_assignment`, `village_register_entry`.
+- **`VillageScopeService`** — menyelesaikan cakupan dari penugasan dan peran.
+- **Tiga endpoint**: `GET /village/my-scope`, `POST /village/scopes`,
+  `POST /village/scopes/:id/revoke`.
+- **Integration request 003** — meminta Core memperluas `ck_user_scope_type`.
+
+### Bawaannya menutup, bukan membuka
+
+Cakupan yang tidak dapat ditentukan menghasilkan `NONE`, bukan `UNIT`. Ini
+keputusan yang paling mudah salah: bawaan longgar berarti pengguna yang
+penugasannya belum sempat diisi melihat seluruh warga desa, **dan tidak ada yang
+menyadarinya karena tidak ada yang error.** Bawaan ketat menghasilkan keluhan
+pada hari pertama — dan keluhan jauh lebih baik daripada kebocoran yang senyap.
+
+Turunannya: bawaan peran yang menunjuk objek (`RT`, `RW`, `SUB_AREA`, `SELF`)
+tanpa penugasan juga menjadi `NONE`. Ketua RT tanpa penugasan RT tidak tahu RT
+mana yang dimaksud.
+
+### Mengapa `village_scope_assignment` ada tersendiri
+
+`ck_user_scope_type` milik Core membatasi jenis cakupan pada daftar tertutup
+yang tidak memuat dusun, RW, maupun RT — dan memang tidak seharusnya memuatnya:
+itu kosakata pemerintahan desa, bukan kosakata perdagangan. Mengubah constraint
+pada tabel bersama dilarang dilakukan langsung dari cabang vertikal.
+
+Bentuk tabelnya sengaja dibuat sama persis dengan milik Core, sehingga
+penggabungan kelak hanya memindahkan baris. Diajukan sebagai
+[integration request 003](../integration-requests/village/003-village-scope-types.md).
+
+**Perkiraan pada D-0 terbukti tepat**, hanya constraint yang tertabrak berbeda
+dari yang diperkirakan — `ck_user_scope_type`, bukan `ck_role_module_profile_code`.
+
+### Keputusan lain
+
+- **Tanggal yang menentukan masa jabatan, bukan kolom status.** Masa jabatan
+  yang tanggal berakhirnya sudah lewat tetap bertuliskan `AKTIF` sampai ada yang
+  memperbaruinya, dan di kantor desa hal itu bisa tertunda berbulan-bulan.
+  Aparatur yang purnatugas tetapi aksesnya menyala masih tinggal di kampung yang
+  sama dan masih kenal semua orang.
+- **Aparatur menunjuk `village_resident`**, tidak menyalin nama dan NIK-nya —
+  data yang disalin akan berbeda dari sumbernya begitu salah satunya diperbarui.
+  `external_name` disediakan untuk Lurah, yang kerap bukan warga desa itu.
+- **Masa jabatan tabel tersendiri.** Satu orang dapat menjabat lebih dari
+  sekali, dan riwayatnya bagian dari arsip desa.
+- **Pelimpahan wewenang wajib berbatas waktu**, maksimum 180 hari. Yang tidak
+  berujung bukan pelimpahan melainkan pergantian jabatan — prosedur berbeda
+  dengan surat keputusan berbeda.
+- **Sebelas jenis register memakai satu tabel** yang dibedakan `register_type`.
+  Sebelas tabel berbentuk sama membuat pencarian lintas register menjadi sebelas
+  kueri yang digabung.
+- **Keterangan cakupan dikembalikan bersama data.** "Tidak ada data" dan "Anda
+  tidak berwenang" adalah dua hal yang sangat berbeda; menyamakannya membuat
+  petugas mengira sistemnya rusak lalu meminta administrator memperbaiki hal
+  yang tidak rusak.
+
+### Bukti
+
+`docs/info-desa/bukti-d3-data-scope.txt` — **22 pemeriksaan pada basis data
+sungguhan**, seluruhnya lulus.
+
+### Gerbang mutu
+
+- `jest` — **1175 tes lulus** (bertambah 34)
+- `tsc --noEmit` dan `eslint --max-warnings=0` — bersih

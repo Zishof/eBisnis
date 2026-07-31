@@ -29,7 +29,8 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { InfrastructureModule } from '../../infrastructure/infrastructure.module';
 import { VillageMigrationService } from './village-migration.service';
 import { VillageUnitService } from './village-unit.service';
-import { VillageResidentService, type CakupanWilayah } from './village-resident.service';
+import { VillageResidentService } from './village-resident.service';
+import { VillageScopeService } from './village-scope.service';
 import { KATALOG_KELAYAKAN, layak, type KodeFitur } from './village-profile';
 
 function requireSchema(user: AuthenticatedUser): string {
@@ -240,6 +241,52 @@ class PeristiwaDto {
   documentReference?: string;
 }
 
+
+class AlasanDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
+const JENIS_CAKUPAN = [
+  'VILLAGE_UNIT',
+  'VILLAGE_SUB_AREA',
+  'VILLAGE_RW',
+  'VILLAGE_RT',
+  'VILLAGE_SELF',
+  'VILLAGE_AGGREGATE_ONLY',
+  'VILLAGE_NONE',
+] as const;
+
+class TugaskanCakupanDto {
+  @ApiProperty()
+  @IsUUID()
+  userSubjectId!: string;
+
+  @ApiProperty({ enum: JENIS_CAKUPAN })
+  @IsIn(JENIS_CAKUPAN as unknown as string[])
+  scopeType!: (typeof JENIS_CAKUPAN)[number];
+
+  @ApiPropertyOptional({ description: 'Id dusun, RW, RT, atau penduduk — sesuai scopeType.' })
+  @IsOptional()
+  @IsUUID()
+  scopeId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  validUntil?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
 // --- Controller ---------------------------------------------------------------
 
 @ApiTags('village')
@@ -249,20 +296,9 @@ export class VillageController {
     private readonly unit: VillageUnitService,
     private readonly migrasi: VillageMigrationService,
     private readonly penduduk: VillageResidentService,
+    private readonly lingkup: VillageScopeService,
   ) {}
 
-  /**
-   * Cakupan wilayah pengguna.
-   *
-   * Sementara ini seluruh pengguna berhak-akses memperoleh cakupan UNIT. D-3
-   * menyambungkannya ke `user_scope_assignment` yang sudah ada pada Core,
-   * sehingga Ketua RT benar-benar terbatas pada RT-nya. Disebutkan terbuka di
-   * sini alih-alih dibiarkan tampak sudah berlaku — mesin penyaringnya sudah
-   * ada dan teruji, yang belum adalah sumber cakupannya.
-   */
-  private cakupan(_user: AuthenticatedUser): CakupanWilayah {
-    return { level: 'UNIT' };
-  }
 
   // --- Profil dan kelayakan ------------------------------------------------
 
@@ -408,20 +444,28 @@ export class VillageController {
       'Cakupan ditegakkan pada kueri, bukan dengan menyaring hasil. Setiap pembacaan dicatat ' +
       'pada village_resident_access_log — pada kependudukan, penyalahgunaan berbentuk pembacaan.',
   })
-  daftarPenduduk(
+  async daftarPenduduk(
     @Query('q') q: string | undefined,
     @Query('rtId') rtId: string | undefined,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.penduduk.daftar(requireSchema(user), { q, rtId }, this.cakupan(user), user);
+    const schema = requireSchema(user);
+    const cakupan = await this.lingkup.cakupanUntuk(schema, user);
+    const rows = await this.penduduk.daftar(schema, { q, rtId }, cakupan, user);
+    // Keterangan cakupan ikut dikembalikan. Pengguna yang tidak melihat data
+    // perlu tahu sebabnya — "tidak ada data" dan "Anda tidak berwenang" adalah
+    // dua hal yang sangat berbeda, dan menyamakannya membuat petugas mengira
+    // sistemnya rusak.
+    return { scope: { level: cakupan.level, description: cakupan.keterangan }, rows };
   }
 
   @ApiBearerAuth('access-token')
   @Permissions('VILLAGE_RESIDENT.READ')
   @Get('residents/:id')
   @ApiOperation({ summary: 'Rincian satu penduduk' })
-  detailPenduduk(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.penduduk.detail(requireSchema(user), id, this.cakupan(user), user);
+  async detailPenduduk(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const schema = requireSchema(user);
+    return this.penduduk.detail(schema, id, await this.lingkup.cakupanUntuk(schema, user), user);
   }
 
   @ApiBearerAuth('access-token')
@@ -494,6 +538,54 @@ export class VillageController {
     return this.penduduk.setujuiPeristiwa(requireSchema(user), id, user);
   }
 
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_RESIDENT.READ')
+  @Get('my-scope')
+  @ApiOperation({
+    summary: 'Cakupan wilayah saya',
+    description:
+      'Menerangkan sejauh mana pengguna ini melihat data kependudukan, dan dari mana cakupan itu ' +
+      'berasal. Bawaannya menutup: cakupan yang tidak dapat ditentukan berarti NONE, bukan UNIT.',
+  })
+  async cakupanSaya(@CurrentUser() user: AuthenticatedUser) {
+    const c = await this.lingkup.cakupanUntuk(requireSchema(user), user);
+    return {
+      level: c.level,
+      source: c.sumber,
+      description: c.keterangan,
+      subAreaId: c.subAreaId,
+      rwId: c.rwId,
+      rtId: c.rtId,
+    };
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_OFFICER.UPDATE')
+  @Post('scopes')
+  @ApiOperation({
+    summary: 'Menugaskan cakupan wilayah kepada pengguna',
+    description: 'Penugasan yang sama diperbarui, bukan digandakan.',
+  })
+  tugaskanCakupan(@Body() dto: TugaskanCakupanDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.lingkup.tugaskan(requireSchema(user), dto, user.userId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_OFFICER.UPDATE')
+  @Post('scopes/:id/revoke')
+  @ApiOperation({
+    summary: 'Mencabut penugasan cakupan',
+    description: 'Dicabut, bukan dihapus — riwayatnya bagian dari audit.',
+  })
+  cabutCakupan(
+    @Param('id') id: string,
+    @Body() dto: AlasanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.lingkup.cabut(requireSchema(user), id, dto.reason ?? 'Dicabut', user.userId);
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -530,7 +622,17 @@ export class VillageController {
 @Module({
   imports: [InfrastructureModule],
   controllers: [VillageController],
-  providers: [VillageUnitService, VillageMigrationService, VillageResidentService],
-  exports: [VillageUnitService, VillageMigrationService, VillageResidentService],
+  providers: [
+    VillageUnitService,
+    VillageMigrationService,
+    VillageResidentService,
+    VillageScopeService,
+  ],
+  exports: [
+    VillageUnitService,
+    VillageMigrationService,
+    VillageResidentService,
+    VillageScopeService,
+  ],
 })
 export class VillageModule {}
