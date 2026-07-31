@@ -17,6 +17,8 @@ import { Prisma } from '@prisma/client';
 import { ArrayMaxSize, IsArray, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { EsmartlinkClient } from './esmartlink/esmartlink.client';
 import { EsmartlinkPaymentService } from './esmartlink/esmartlink-payment.service';
+import { MarketplacePaymentService } from './marketplace-payment.service';
+import { OrderModule } from '../order/order.module';
 import { parseLegacyChannelConfig, LEGACY_EXPIRY_OPTIONS } from './esmartlink/esmartlink-channel.parser';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
@@ -163,7 +165,11 @@ export class PaymentController {
     });
     if (!order) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Payment order tidak ditemukan.');
     // Cross-tenant ID menghasilkan 404, bukan membocorkan keberadaan data.
-    if (!user.isPlatformStaff && order.invoice.tenantId !== user.tenantId) {
+    //
+    // Perintah bayar tanpa tagihan langganan adalah perintah bayar marketplace,
+    // yang dibaca lewat endpoint pesanan — bukan lewat sini. Menolaknya di sini
+    // lebih aman daripada menebak tenant pemiliknya.
+    if (!user.isPlatformStaff && order.invoice?.tenantId !== user.tenantId) {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Payment order tidak ditemukan.');
     }
     return order;
@@ -356,8 +362,12 @@ function resolveRemoteIp(request: Request, fallback: string): string {
 }
 
 @Module({
+  // OrderModule diimpor agar MarketplacePaymentService dapat memindahkan status
+  // pesanan. Tanpa ini pembayaran yang berhasil tidak akan pernah mengomit
+  // penahanan stok.
+  imports: [OrderModule],
   controllers: [PaymentController],
-  providers: [EsmartlinkClient, EsmartlinkPaymentService],
-  exports: [EsmartlinkPaymentService],
+  providers: [MarketplacePaymentService, EsmartlinkClient, EsmartlinkPaymentService],
+  exports: [MarketplacePaymentService, EsmartlinkPaymentService],
 })
 export class PaymentModule {}

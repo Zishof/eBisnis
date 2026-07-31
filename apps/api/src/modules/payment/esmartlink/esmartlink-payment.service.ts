@@ -736,6 +736,11 @@ export class EsmartlinkPaymentService {
         },
       });
 
+      // Perintah bayar marketplace tidak punya tagihan langganan; alokasi dan
+      // pemutakhiran invoice di bawah tidak berlaku baginya. Pemenuhan pesanan
+      // marketplace ditangani MarketplacePaymentService.
+      if (!order.invoiceId) return;
+
       const existingAllocation = await tx.billingPaymentAllocation.findUnique({
         where: { idempotencyKey: allocationKey },
       });
@@ -789,8 +794,8 @@ export class EsmartlinkPaymentService {
       }
     });
 
-    // Entitlement diaktifkan setelah alokasi tersimpan.
-    await this.activateEntitlements(order.invoiceId);
+    // Entitlement hanya berlaku bagi langganan.
+    if (order.invoiceId) await this.activateEntitlements(order.invoiceId);
 
     await this.audit.record({
       moduleCode: 'PAYMENT',
@@ -798,7 +803,7 @@ export class EsmartlinkPaymentService {
       entityType: 'PaymentOrder',
       entityId: order.id,
       documentNumber: order.orderNumber,
-      tenantId: order.invoice.tenantId,
+      tenantId: order.invoice?.tenantId,
       metadata: { sourceType: input.sourceType, amount: order.amount.toString() },
     });
 
