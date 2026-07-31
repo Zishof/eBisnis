@@ -32,6 +32,7 @@
 
 import {
   HASH_AWAL,
+  hashMuatan,
   hitungHash,
   periksaRantai,
   rekonsiliasi,
@@ -39,6 +40,7 @@ import {
   type CatatanLokal,
   type CatatanServer,
   type HasilRekonsiliasi,
+  type MuatanTransaksi,
   type StatusLokal,
   type TemuanRusak,
 } from './ledger';
@@ -144,11 +146,14 @@ export async function catat(
     itemCount: number;
     occurredAt: string;
     receiptNumber: string | null;
+    /** Rincian barang dan pembayaran; tanpanya transaksi tidak dapat dibukukan. */
+    payload?: MuatanTransaksi | null;
   },
 ): Promise<CatatanLokal> {
   const db = await bukaDb();
   const terakhir = await barisTerakhir(db);
 
+  const muatan = penjualan.payload ?? null;
   const calon: Omit<CatatanLokal, 'hash'> = {
     offlineId: penjualan.offlineId,
     sequence: (terakhir?.sequence ?? 0) + 1,
@@ -162,6 +167,8 @@ export async function catat(
     receiptNumber: penjualan.receiptNumber,
     status: 'PENDING',
     serverSaleId: null,
+    payload: muatan,
+    payloadHash: muatan ? await hashMuatan(muatan) : null,
     previousHash: terakhir?.hash ?? HASH_AWAL,
   };
 

@@ -85,7 +85,24 @@ export interface RequestOptions {
 
 let refreshPromise: Promise<boolean> | null = null;
 
+/** Kapan token terakhir berhasil disegarkan, dalam milidetik epoch. */
+let terakhirSegar = 0;
+
+/**
+ * Selama jeda ini, 401 dianggap sisa dari token lama — bukan tanda token baru
+ * sudah tidak sah.
+ *
+ * Permintaan yang sudah terbang ketika token disegarkan kembali membawa 401 yang
+ * **sudah basi**: ia dikirim dengan token lama dan dijawab sesudah token itu
+ * diganti. Menyegarkan lagi karenanya memutar refresh token untuk kedua kalinya
+ * tanpa alasan, dan menggandakan lalu lintas auth — satu kali kedaluwarsa
+ * menghasilkan dua `POST /auth/refresh` beserta dua `GET /auth/me` di belakangnya.
+ */
+const JEDA_SEGAR_MS = 3_000;
+
 async function refreshAccessToken(): Promise<boolean> {
+  if (Date.now() - terakhirSegar < JEDA_SEGAR_MS && accessToken) return true;
+
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
 
@@ -98,8 +115,24 @@ async function refreshAccessToken(): Promise<boolean> {
         body: JSON.stringify({ refreshToken }),
       });
       if (!response.ok) {
-        setAccessToken(null);
-        setRefreshToken(null);
+        /*
+         * Hanya penolakan yang benar-benar berarti "token ini tidak sah lagi"
+         * yang mengakhiri sesi.
+         *
+         * Semula SETIAP jawaban tidak-OK membuang refresh token — termasuk 429
+         * (dibatasi laju) dan 5xx (peladen tersedak). Tak satu pun dari keduanya
+         * berarti sesinya tidak sah, tetapi akibatnya sama: tokennya terhapus,
+         * tidak dapat dicoba lagi, dan pengguna terlempar ke halaman masuk.
+         *
+         * Pada layar kasir itu berarti keranjang yang sedang dilayani lenyap
+         * karena peladen sesaat sibuk, di depan pembeli yang sudah menunggu.
+         * Gangguan sementara harus berakhir sebagai percobaan berikutnya, bukan
+         * sebagai sesi yang dibuang.
+         */
+        if (response.status === 401 || response.status === 403) {
+          setAccessToken(null);
+          setRefreshToken(null);
+        }
         return false;
       }
       const payload = (await response.json()) as ApiEnvelope<{
@@ -108,10 +141,14 @@ async function refreshAccessToken(): Promise<boolean> {
       }>;
       setAccessToken(payload.data.accessToken);
       setRefreshToken(payload.data.refreshToken);
+      terakhirSegar = Date.now();
       return true;
     } catch {
-      setAccessToken(null);
-      setRefreshToken(null);
+      /*
+       * Galat jaringan. Refresh token TIDAK dibuang: justru ketika jaringan
+       * bermasalah ia paling dibutuhkan, dan membuangnya membuat pemulihan
+       * mustahil setelah jaringannya kembali.
+       */
       return false;
     } finally {
       refreshPromise = null;
@@ -119,6 +156,12 @@ async function refreshAccessToken(): Promise<boolean> {
   })();
 
   return refreshPromise;
+}
+
+/** Mengembalikan keadaan modul ke titik awal. Dipakai pengujian. */
+export function _setelUlangUntukUji(): void {
+  refreshPromise = null;
+  terakhirSegar = 0;
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {

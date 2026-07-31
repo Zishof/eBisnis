@@ -16,6 +16,8 @@ import {
   ringkasanAntrean,
   type CatatanLokal,
   type CatatanServer,
+  hashMuatan,
+  type MuatanTransaksi,
 } from './ledger';
 
 /** Menyusun rantai yang sah sepanjang n baris. */
@@ -240,5 +242,104 @@ describe('ringkasan antrean', () => {
       synced: 0,
       pendingValue: '0',
     });
+  });
+});
+
+describe('rincian transaksi di dalam rantai', () => {
+  const muatan = (over: Partial<MuatanTransaksi> = {}): MuatanTransaksi => ({
+    lines: [
+      {
+        productId: 'P1',
+        uomId: 'U1',
+        quantity: 2,
+        unitPrice: '18000',
+        lineSubtotal: '36000',
+        taxAmount: '0',
+        lineTotal: '36000',
+        taxRateId: null,
+      },
+    ],
+    payments: [
+      { paymentMethodId: 'TUNAI', amount: '36000', tenderedAmount: '50000', reference: null },
+    ],
+    subtotal: '36000',
+    taxTotal: '0',
+    changeTotal: '14000',
+    currencyCode: 'IDR',
+    catalogSyncedAt: '2026-08-01T00:00:00.000Z',
+    ...over,
+  });
+
+  async function barisBermuatan(m: MuatanTransaksi): Promise<CatatanLokal> {
+    const c: CatatanLokal = {
+      offlineId: 'off-1',
+      sequence: 1,
+      outletId: 'O1',
+      terminalId: 'T1',
+      shiftId: 'S1',
+      businessDate: '2026-08-01',
+      grandTotal: '36000',
+      itemCount: 2,
+      occurredAt: '2026-08-01T01:00:00.000Z',
+      receiptNumber: 'ST-000001',
+      status: 'PENDING',
+      serverSaleId: null,
+      payload: m,
+      payloadHash: await hashMuatan(m),
+      previousHash: HASH_AWAL,
+      hash: '',
+    };
+    c.hash = await hitungHash(c);
+    return c;
+  }
+
+  it('baris bermuatan yang utuh tidak menghasilkan temuan', async () => {
+    expect(await periksaRantai([await barisBermuatan(muatan())])).toEqual([]);
+  });
+
+  it('baris TANPA muatan tetap sah — rantai lama tidak perlu dibangun ulang', async () => {
+    /*
+     * Baris yang ditulis versi sebelumnya tidak punya rincian barang. Kalau
+     * penambahan medan ini membuat hash lamanya tidak lagi cocok, seluruh buku
+     * besar yang sudah ada akan dilaporkan rusak — dan membangunnya ulang berarti
+     * menghitung ulang bukti keutuhan dari data yang justru sedang dipertanyakan.
+     */
+    expect(await periksaRantai(await rantai(3))).toEqual([]);
+  });
+
+  it('mengubah jumlah barang ketahuan meski totalnya dibiarkan sama', async () => {
+    /*
+     * Inilah penyuntingan yang paling menggoda dan paling sulit terlihat:
+     * menukar isi keranjang sambil membiarkan nilainya tetap, sehingga seluruh
+     * laporan penjualan tetap seimbang dan hanya stoknya yang meleset.
+     */
+    const c = await barisBermuatan(muatan());
+    c.payload!.lines[0].quantity = 5;
+
+    const temuan = await periksaRantai([c]);
+    expect(temuan).toHaveLength(1);
+    expect(temuan[0].reason).toBe('MUATAN_TIDAK_COCOK');
+  });
+
+  it('mengubah metode pembayaran ketahuan', async () => {
+    const c = await barisBermuatan(muatan());
+    c.payload!.payments[0].paymentMethodId = 'KARTU';
+    expect((await periksaRantai([c]))[0].reason).toBe('MUATAN_TIDAK_COCOK');
+  });
+
+  it('muatan yang sama isinya menghasilkan hash yang sama', async () => {
+    // Bila tidak, rantai akan tampak putus setiap kali objeknya disusun ulang —
+    // misalnya sesudah melewati JSON pada IndexedDB.
+    const a = await hashMuatan(muatan());
+    const b = await hashMuatan(JSON.parse(JSON.stringify(muatan())) as MuatanTransaksi);
+    expect(a).toBe(b);
+  });
+
+  it('mengubah waktu salinan katalog ketahuan', async () => {
+    // Medan itu yang menjawab "harga versi kapan yang dipakai" ketika peladen
+    // menghitung angka berbeda; membiarkannya dapat disunting menghapus jawabannya.
+    const c = await barisBermuatan(muatan());
+    c.payload!.catalogSyncedAt = '2020-01-01T00:00:00.000Z';
+    expect((await periksaRantai([c]))[0].reason).toBe('MUATAN_TIDAK_COCOK');
   });
 });

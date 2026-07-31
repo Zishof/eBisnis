@@ -644,6 +644,19 @@ export class PosSaleService {
     idempotencyKey: string,
     user: AuthenticatedUser,
     subjectId: string,
+    /**
+     * Nomor struk yang sudah terlanjur tercetak, dipakai transaksi luring.
+     *
+     * Hanya jalur penerimaan transaksi luring yang mengisinya. Nomornya berasal
+     * dari jatah yang dipesan register selagi masih daring, dan struknya sudah
+     * berada di tangan pembeli — menerbitkan nomor baru di sini akan membuat
+     * catatan menyebut nomor yang berbeda dari kertas yang dipegang orang, dan
+     * sekaligus membuang satu nomor dari urutan.
+     *
+     * Keabsahannya — bahwa nomor ini memang milik jatah register tersebut —
+     * sudah diperiksa `pos-offline.ts` sebelum sampai ke sini.
+     */
+    nomorStrukTerpakai?: string | null,
   ) {
     const setelan = await this.katalog.setelanPos(schemaName);
 
@@ -729,7 +742,14 @@ export class PosSaleService {
       }
 
       // 5. Nomor struk — unik ditegakkan basis data, bukan layanan.
-      const nomorStruk = await this.nomorStruk(client, schemaName, s.outlet_id, s.business_date);
+      //
+      //    Transaksi luring membawa nomornya sendiri: strukya sudah tercetak
+      //    dari jatah yang dipesan sebelum internet putus. Keunikannya tetap
+      //    ditegakkan indeks `ux_pos_sale_receipt`, jadi nomor yang terlanjur
+      //    kembar akan tertolak di sini juga, bukan hanya diperiksa di atas.
+      const nomorStruk =
+        nomorStrukTerpakai ??
+        (await this.nomorStruk(client, schemaName, s.outlet_id, s.business_date));
 
       // 6. Memotong persediaan.
       const { totalCost } = await this.stok.keluarkan(client, schemaName, {

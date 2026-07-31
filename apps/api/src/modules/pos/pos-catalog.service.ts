@@ -42,6 +42,49 @@ export interface ProdukKasir {
   imageFileId: string | null;
 }
 
+/**
+ * Berapa produk paling banyak yang disalin ke satu mesin kasir.
+ *
+ * Bukan batas basis data, melainkan batas yang wajar bagi peramban: lima ribu
+ * baris muat dengan nyaman di IndexedDB dan dapat dicari seketika. Tenant yang
+ * melewatinya tetap dilayani — jawabannya menandai `truncated`, dan layar wajib
+ * mengatakannya kepada kasir.
+ */
+export const BATAS_SNAPSHOT_PRODUK = 5_000;
+
+export interface ProdukSnapshot extends ProdukKasir {
+  /** Barcode utama dan alternatif sekaligus. */
+  barcodes: string[];
+}
+
+export interface SnapshotLuring {
+  generatedAt: string;
+  /**
+   * Apakah tenant ini mengizinkan penjualan saat luring.
+   *
+   * Ikut ke dalam salinan, bukan hanya tersedia lewat jalan tersendiri: yang
+   * membutuhkannya adalah mesin kasir yang justru sedang tidak dapat bertanya.
+   */
+  offlineSaleEnabled: boolean;
+  currency: string;
+  timezone: string;
+  productCount: number;
+  productTotal: number;
+  /** Benar bila katalog lebih besar daripada yang muat disalin. */
+  truncated: boolean;
+  products: ProdukSnapshot[];
+  taxRates: Array<{
+    taxCategoryId: string;
+    taxRateId: string;
+    code: string;
+    rate: number;
+    isInclusive: boolean;
+    effectiveFrom: string | null;
+    effectiveUntil: string | null;
+  }>;
+  paymentMethods: Array<Record<string, unknown>>;
+}
+
 export interface PermintaanKuotasiApi {
   outletId: string;
   productId: string;
@@ -555,4 +598,114 @@ export class PosCatalogService {
     return rows;
   }
 
+  /**
+   * Salinan katalog untuk mesin kasir yang harus tetap melayani saat peladen
+   * tidak terjangkau.
+   *
+   * ## Mengapa satu jalan, bukan menggabungkan jalan yang sudah ada
+   *
+   * `cariProduk` mengembalikan satu barcode utama per produk. Pemindai tidak
+   * tahu bedanya antara barcode utama dan alternatif, jadi salinan lokal yang
+   * hanya memuat yang utama akan menolak barang yang di peladen dikenali — dan
+   * kasir tidak akan pernah tahu bahwa penyebabnya salinan, bukan barangnya.
+   *
+   * ## Batas, dan mengapa pemotongan diam-diam tidak boleh
+   *
+   * Katalog besar tidak dikirim seluruhnya. Tetapi memotongnya tanpa memberi
+   * tahu jauh lebih buruk daripada menolak: kasir memindai, barangnya "tidak
+   * ada", dan tidak ada apa pun pada layar yang menjelaskan bahwa katalognya
+   * memang tidak lengkap. Karena itu jawaban selalu menyebutkan berapa yang
+   * disalin dari berapa, dan layar wajib mengatakannya.
+   */
+  async snapshotLuring(
+    schemaName: string,
+    opsi: { limit?: number } = {},
+  ): Promise<SnapshotLuring> {
+    const limit = Math.min(Math.max(opsi.limit ?? BATAS_SNAPSHOT_PRODUK, 1), BATAS_SNAPSHOT_PRODUK);
+
+    const [{ n }] = await this.tenantDb.query<{ n: string }>(
+      schemaName,
+      `SELECT count(*)::text AS n
+         FROM "${schemaName}".product
+        WHERE deleted_at IS NULL AND is_active = TRUE AND is_sellable = TRUE`,
+    );
+    const total = Number(n ?? '0');
+
+    const produk = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT p.id, p.code, p.name, p.sku,
+              p.base_uom_id AS uom_id, u.code AS uom_code,
+              p.category_id, c.name AS category_name,
+              p.tax_category_id, p.tracking_type, p.allow_negative_stock,
+              p.default_sale_price::text AS default_sale_price,
+              -- Barcode utama dan alternatif digabung menjadi satu larik supaya
+              -- pencarian luring memakai satu tempat, sebagaimana peladen.
+              COALESCE(
+                ARRAY(
+                  SELECT DISTINCT b FROM unnest(
+                    ARRAY[p.barcode] || COALESCE(
+                      ARRAY(
+                        SELECT pb.barcode FROM "${schemaName}".product_barcode pb
+                         WHERE pb.product_id = p.id
+                           AND pb.deleted_at IS NULL AND pb.is_active = TRUE
+                      ), '{}'::text[]
+                    )
+                  ) AS b
+                   WHERE b IS NOT NULL AND b <> ''
+                ), '{}'::text[]
+              ) AS barcodes
+         FROM "${schemaName}".product p
+         JOIN "${schemaName}".uom u ON u.id = p.base_uom_id
+    LEFT JOIN "${schemaName}".product_category c ON c.id = p.category_id
+        WHERE p.deleted_at IS NULL AND p.is_active = TRUE AND p.is_sellable = TRUE
+        ORDER BY p.name
+        LIMIT $1`,
+      [limit],
+    );
+
+    const pajak = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT tax_category_id, id AS tax_rate_id, code, rate::text, is_inclusive,
+              to_char(effective_from, 'YYYY-MM-DD') AS effective_from,
+              to_char(effective_until, 'YYYY-MM-DD') AS effective_until
+         FROM "${schemaName}".tax_rate
+        WHERE deleted_at IS NULL AND is_active = TRUE
+        ORDER BY tax_category_id, sort_order, code`,
+    );
+
+    const metode = await this.metodePembayaran(schemaName);
+    const setelan = await this.setelanPos(schemaName);
+
+    const saklar = await this.tenantDb.query<{ value_json: unknown }>(
+      schemaName,
+      `SELECT value_json FROM "${schemaName}".app_setting
+        WHERE code = 'POS_OFFLINE_SALE_ENABLED' AND deleted_at IS NULL`,
+    );
+
+    return {
+      generatedAt: new Date().toISOString(),
+      // Hanya `true` yang menyalakan; setelan yang hilang berarti mati.
+      offlineSaleEnabled:
+        (saklar[0]?.value_json as { value?: unknown } | undefined)?.value === true,
+      currency: setelan.currency,
+      timezone: setelan.timezone,
+      productCount: produk.length,
+      productTotal: total,
+      truncated: produk.length < total,
+      products: produk.map((r) => ({
+        ...this.petakanProduk(r),
+        barcodes: ((r.barcodes as string[] | null) ?? []).filter(Boolean),
+      })),
+      taxRates: pajak.map((r) => ({
+        taxCategoryId: String(r.tax_category_id),
+        taxRateId: String(r.tax_rate_id),
+        code: String(r.code),
+        rate: Number(r.rate),
+        isInclusive: Boolean(r.is_inclusive),
+        effectiveFrom: (r.effective_from as string) ?? null,
+        effectiveUntil: (r.effective_until as string) ?? null,
+      })),
+      paymentMethods: metode,
+    };
+  }
 }

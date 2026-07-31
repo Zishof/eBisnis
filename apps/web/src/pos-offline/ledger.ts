@@ -45,9 +45,68 @@ export interface CatatanLokal {
   status: StatusLokal;
   /** Id penjualan di server, terisi setelah tersinkron. */
   serverSaleId: string | null;
+  /**
+   * Rincian yang diperlukan peladen untuk memutar ulang transaksi ini.
+   *
+   * Semula buku besar hanya menyimpan `grandTotal` dan `itemCount` — cukup untuk
+   * membuktikan bahwa transaksinya ada dan nilainya berapa, tetapi tidak cukup
+   * untuk mencatatnya di peladen. Tanpa rinciannya, transaksi luring hanya dapat
+   * dilaporkan, tidak dapat dibukukan.
+   */
+  payload?: MuatanTransaksi | null;
+  /**
+   * Hash dari `payload`, ikut masuk ke rantai.
+   *
+   * Rinciannya sendiri tidak ikut dirangkai langsung supaya bahan hash tetap
+   * berupa daftar medan yang tertulis tegas dan berurut. Yang dirangkai adalah
+   * hash-nya, jadi mengubah satu baris barang tetap memutus rantai.
+   *
+   * Keduanya opsional, dan itu bukan kelonggaran melainkan keterangan: baris
+   * yang ditulis versi sebelumnya — ketika buku besar hanya menyimpan total —
+   * memang tidak memilikinya, dan tipe yang mewajibkannya akan berbohong tentang
+   * apa yang benar-benar ada di mesin kasir.
+   */
+  payloadHash?: string | null;
   /** Hash baris ini; menutup seluruh medan di atas beserta hash sebelumnya. */
   hash: string;
   previousHash: string;
+}
+
+/** Satu baris barang sebagaimana tercetak pada struk pembeli. */
+export interface BarisMuatan {
+  productId: string;
+  uomId: string | null;
+  quantity: number;
+  /** Harga satuan yang benar-benar ditagihkan, dari salinan katalog. */
+  unitPrice: string;
+  lineSubtotal: string;
+  taxAmount: string;
+  lineTotal: string;
+  taxRateId: string | null;
+}
+
+/** Satu pembayaran sebagaimana diterima kasir. */
+export interface PembayaranMuatan {
+  paymentMethodId: string;
+  amount: string;
+  tenderedAmount: string | null;
+  reference: string | null;
+}
+
+export interface MuatanTransaksi {
+  lines: BarisMuatan[];
+  payments: PembayaranMuatan[];
+  subtotal: string;
+  taxTotal: string;
+  changeTotal: string;
+  currencyCode: string;
+  /**
+   * Kapan salinan katalog yang dipakai menetapkan harga ini diambil.
+   *
+   * Dicatat supaya ketika peladen menghitung angka yang berbeda, pertanyaan
+   * "harga versi kapan yang dipakai" punya jawaban — bukan dugaan.
+   */
+  catalogSyncedAt: string;
 }
 
 export type StatusLokal = 'PENDING' | 'SYNCED' | 'REJECTED';
@@ -55,8 +114,47 @@ export type StatusLokal = 'PENDING' | 'SYNCED' | 'REJECTED';
 /** Hash awal rantai; menandai bahwa tidak ada baris sebelum yang pertama. */
 export const HASH_AWAL = '0'.repeat(64);
 
-/** Medan yang ikut dihitung ke dalam hash, berurut dan tetap. */
-type MedanTertutup = Omit<CatatanLokal, 'hash' | 'status' | 'serverSaleId'>;
+/**
+ * Medan yang ikut dihitung ke dalam hash, berurut dan tetap.
+ *
+ * `payload` tidak termasuk — yang termasuk adalah `payloadHash`, yang menutupinya.
+ */
+type MedanTertutup = Omit<CatatanLokal, 'hash' | 'status' | 'serverSaleId' | 'payload'>;
+
+/**
+ * Menyusun teks kanonik dari rincian transaksi, untuk dihash.
+ *
+ * Ditulis medan per medan dengan urutan tetap, bukan `JSON.stringify(payload)`.
+ * Urutan kunci pada JSON mengikuti urutan penyisipan, dan objek yang sama isinya
+ * tetapi disusun berbeda menghasilkan teks berbeda — sehingga rantai tampak
+ * putus padahal datanya utuh.
+ */
+export function bahanMuatan(m: MuatanTransaksi): string {
+  const baris = m.lines
+    .map((b) =>
+      [
+        b.productId,
+        b.uomId ?? '',
+        b.quantity,
+        b.unitPrice,
+        b.lineSubtotal,
+        b.taxAmount,
+        b.lineTotal,
+        b.taxRateId ?? '',
+      ].join('|'),
+    )
+    .join(';');
+  const bayar = m.payments
+    .map((p) => [p.paymentMethodId, p.amount, p.tenderedAmount ?? '', p.reference ?? ''].join('|'))
+    .join(';');
+  return [baris, bayar, m.subtotal, m.taxTotal, m.changeTotal, m.currencyCode, m.catalogSyncedAt].join(
+    '#',
+  );
+}
+
+export async function hashMuatan(m: MuatanTransaksi): Promise<string> {
+  return hashSha256(bahanMuatan(m));
+}
 
 /**
  * Menyusun teks yang dihash.
@@ -82,6 +180,16 @@ export function bahanHash(c: MedanTertutup): string {
     c.occurredAt,
     c.receiptNumber ?? '',
     c.previousHash,
+    /*
+     * Ditambahkan di ujung, dengan cadangan string kosong.
+     *
+     * Baris yang dicatat ketika buku besar baru menyimpan total — tanpa rincian
+     * barang — menghasilkan teks yang persis sama seperti dahulu, sehingga hash
+     * lamanya tetap sah dan rantainya tidak perlu dibangun ulang. Membangun ulang
+     * rantai berarti menghitung ulang bukti keutuhan dari data yang justru sedang
+     * dipertanyakan keutuhannya.
+     */
+    c.payloadHash ?? '',
   ].join('');
 }
 
@@ -103,6 +211,7 @@ export type AlasanRusak =
   | 'SEQUENCE_LOMPAT'
   | 'RANTAI_PUTUS'
   | 'HASH_TIDAK_COCOK'
+  | 'MUATAN_TIDAK_COCOK'
   | 'AWAL_SALAH';
 
 export interface TemuanRusak {
@@ -156,6 +265,26 @@ export async function periksaRantai(baris: CatatanLokal[]): Promise<TemuanRusak[
         reason: 'HASH_TIDAK_COCOK',
         message: 'Isi baris ini berubah setelah dicatat.',
       });
+    }
+
+    /*
+     * Rincian barang diperiksa terpisah.
+     *
+     * `payloadHash` sudah ikut ke dalam rantai, jadi mengubahnya ketahuan. Tetapi
+     * mengubah `payload` **tanpa** menyentuh `payloadHash` tidak akan memutus
+     * rantai apa pun — dan itu justru penyuntingan yang paling menggoda: mengubah
+     * jumlah barang pada satu transaksi sambil membiarkan totalnya tetap.
+     */
+    if (c.payload) {
+      const muatan = await hashMuatan(c.payload);
+      if (muatan !== c.payloadHash) {
+        temuan.push({
+          sequence: c.sequence,
+          offlineId: c.offlineId,
+          reason: 'MUATAN_TIDAK_COCOK',
+          message: 'Rincian barang pada baris ini berubah setelah dicatat.',
+        });
+      }
     }
 
     sebelumnya = c.hash;

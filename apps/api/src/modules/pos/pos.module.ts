@@ -56,6 +56,7 @@ import { PosReturnService } from './pos-return.service';
 import { PosShiftService } from './pos-shift.service';
 import { PosReportService } from './pos-report.service';
 import { PosSampleService, PROFIL_BAWAAN, PROFIL_RINGKAS } from './pos-sample.service';
+import { PosOfflineService } from './pos-offline.service';
 import { AuthModule } from '../auth/auth.module';
 import { TenantPermissionService } from '../auth/tenant-permission.service';
 
@@ -295,6 +296,150 @@ class CekStokDto {
   quantity!: number;
 }
 
+// --- Transaksi luring -------------------------------------------------------
+
+class BarisLuringDto {
+  @ApiProperty()
+  @IsUUID()
+  productId!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  uomId?: string;
+
+  @ApiProperty({ example: 2 })
+  @IsNumber()
+  @IsPositive()
+  quantity!: number;
+
+  @ApiProperty({ description: 'Harga satuan yang benar-benar ditagihkan, dari salinan katalog.' })
+  @IsString()
+  unitPrice!: string;
+
+  @ApiProperty()
+  @IsString()
+  lineSubtotal!: string;
+
+  @ApiProperty()
+  @IsString()
+  taxAmount!: string;
+
+  @ApiProperty()
+  @IsString()
+  lineTotal!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  taxRateId?: string;
+}
+
+class PembayaranLuringDto {
+  @ApiProperty()
+  @IsUUID()
+  paymentMethodId!: string;
+
+  @ApiProperty()
+  @IsString()
+  amount!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  tenderedAmount?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  reference?: string;
+}
+
+class TransaksiLuringDto {
+  @ApiProperty({ description: 'Identitas yang dibuat mesin kasir; dasar idempotensi.' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  offlineId!: string;
+
+  @ApiProperty()
+  @IsUUID()
+  outletId!: string;
+
+  @ApiProperty()
+  @IsUUID()
+  terminalId!: string;
+
+  @ApiProperty()
+  @IsUUID()
+  shiftId!: string;
+
+  @ApiProperty({ example: '2026-08-01' })
+  @IsString()
+  businessDate!: string;
+
+  @ApiProperty({ description: 'Nomor yang sudah tercetak, dari jatah register ini.' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  receiptNumber!: string;
+
+  @ApiProperty()
+  @IsISO8601()
+  occurredAt!: string;
+
+  @ApiProperty()
+  @IsString()
+  currencyCode!: string;
+
+  @ApiProperty()
+  @IsString()
+  subtotal!: string;
+
+  @ApiProperty()
+  @IsString()
+  taxTotal!: string;
+
+  @ApiProperty()
+  @IsString()
+  grandTotal!: string;
+
+  @ApiProperty()
+  @IsString()
+  changeTotal!: string;
+
+  @ApiProperty({ description: 'Kapan salinan katalog yang menetapkan harga ini diambil.' })
+  @IsString()
+  catalogSyncedAt!: string;
+
+  @ApiPropertyOptional({ description: 'Hash rantai buku besar lokal, untuk penelusuran.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  localHash?: string;
+
+  @ApiProperty({ type: [BarisLuringDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => BarisLuringDto)
+  lines!: BarisLuringDto[];
+
+  @ApiProperty({ type: [PembayaranLuringDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => PembayaranLuringDto)
+  payments!: PembayaranLuringDto[];
+}
+
+class JatahStrukDto {
+  @ApiProperty()
+  @IsUUID()
+  terminalId!: string;
+}
+
 class AlasanDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -427,6 +572,7 @@ export class PosController {
     private readonly shift: PosShiftService,
     private readonly laporan: PosReportService,
     private readonly contoh: PosSampleService,
+    private readonly luring: PosOfflineService,
   ) {}
 
   /**
@@ -466,6 +612,130 @@ export class PosController {
   ) {
     return this.katalog.cariProduk(requireSchema(user), q ?? '', {
       categoryId: categoryId || undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  // --- Transaksi luring ----------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.SELL')
+  @Post('offline/receipt-blocks')
+  @ApiOperation({
+    summary: 'Memesan jatah nomor struk untuk register ini',
+    description:
+      'Dipanggil selagi masih daring. Urutan nomor struk dimajukan sejauh ukuran jatah, dan ' +
+      'rentangnya dicatat sebagai milik register ini — sehingga penjualan daring tidak akan ' +
+      'pernah memakai nomor di dalamnya. Jatah lama register ini dilepaskan; nomor yang belum ' +
+      'terpakai padanya hangus, sebab nomor struk tidak perlu dihemat sedangkan nomor kembar mahal.',
+  })
+  async pesanJatah(@CurrentUser() user: AuthenticatedUser, @Body() body: JatahStrukDto) {
+    const schema = requireSchema(user);
+    const subjectId = await this.konteks.subjectIdPublik(schema, user.userId);
+    return this.luring.alokasikanJatah(schema, body.terminalId, subjectId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.READ')
+  @Get('offline/receipt-blocks/current')
+  @ApiOperation({ summary: 'Jatah nomor struk yang sedang aktif pada satu register' })
+  jatahAktif(@CurrentUser() user: AuthenticatedUser, @Query('terminalId') terminalId: string) {
+    return this.luring.jatahAktif(requireSchema(user), terminalId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.SELL')
+  @Post('offline/sales')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Mengirim transaksi yang terjadi saat luring',
+    description:
+      'Idempoten pada `offlineId`. Transaksi diputar ulang lewat jalur penjualan yang sama ' +
+      'dengan transaksi daring, memakai nomor struk yang sudah tercetak. ' +
+      'Bila peladen menghitung angka yang berbeda, atau stok tidak cukup, atau shift sudah ' +
+      'ditutup, transaksinya **ditahan di karantina** beserta kedua angkanya — tidak ditolak ' +
+      '(uangnya sudah berpindah tangan) dan tidak dibukukan diam-diam dengan angka lain ' +
+      '(struk di tangan pembeli menyebut angka pada mesin kasir).',
+  })
+  async kirimLuring(@CurrentUser() user: AuthenticatedUser, @Body() body: TransaksiLuringDto) {
+    const schema = requireSchema(user);
+    const subjectId = await this.konteks.subjectIdPublik(schema, user.userId);
+    return this.luring.terima(
+      schema,
+      {
+        ...body,
+        localHash: body.localHash ?? null,
+        lines: body.lines.map((l) => ({
+          ...l,
+          uomId: l.uomId ?? null,
+          taxRateId: l.taxRateId ?? null,
+        })),
+        payments: body.payments.map((p) => ({
+          ...p,
+          tenderedAmount: p.tenderedAmount ?? null,
+          reference: p.reference ?? null,
+        })),
+      },
+      user,
+      subjectId,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_REPORT.READ')
+  @Get('offline/quarantine')
+  @ApiOperation({
+    summary: 'Transaksi luring yang tertahan',
+    description:
+      'Setiap baris menyebut sebabnya beserta KEDUA angka — yang tercetak pada struk dan yang ' +
+      'dihitung peladen. Menyebut salah satunya saja memaksa pemeriksa mencari sendiri angka ' +
+      'pembandingnya, dan pencarian itu yang membuat pemeriksaan tidak pernah dikerjakan.',
+  })
+  karantina(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('outletId') outletId?: string,
+    @Query('status') status?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.luring.karantina(requireSchema(user), {
+      outletId: outletId || undefined,
+      status: status || undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.READ')
+  @Get('offline/reconcile')
+  @ApiOperation({
+    summary: 'Catatan peladen untuk diadu dengan buku besar mesin kasir',
+    description:
+      'Seluruh penjualan register pada satu tanggal usaha, daring maupun luring. Mesin kasir ' +
+      'yang hanya menerima baris luring akan melaporkan setiap penjualan daring sebagai ' +
+      '"hanya ada di server", dan laporan yang penuh selisih palsu tidak akan pernah dibaca.',
+  })
+  rekonsiliasiLuring(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('terminalId') terminalId: string,
+    @Query('businessDate') businessDate: string,
+  ) {
+    return this.luring.catatanUntukRekonsiliasi(requireSchema(user), { terminalId, businessDate });
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.READ')
+  @Get('catalog/snapshot')
+  @ApiOperation({
+    summary: 'Salinan katalog untuk mesin kasir luring',
+    description:
+      'Produk beserta seluruh barcode (utama dan alternatif), tarif pajak, dan metode ' +
+      'pembayaran, dalam satu jawaban. Dipakai layar kasir agar pencarian dan pemindaian ' +
+      'tetap bekerja ketika peladen tidak terjangkau. Bila katalog lebih besar daripada ' +
+      'batas salin, medan `truncated` bernilai benar dan layar wajib memberitahu kasir — ' +
+      'katalog yang dipotong diam-diam membuat barang tampak "tidak ada" tanpa penjelasan.',
+  })
+  snapshotKatalog(@CurrentUser() user: AuthenticatedUser, @Query('limit') limit?: string) {
+    return this.katalog.snapshotLuring(requireSchema(user), {
       limit: limit ? Number(limit) : undefined,
     });
   }
@@ -1165,6 +1435,7 @@ import { ExternalPaymentRegistry } from './external-payment.registry';
     PosShiftService,
     PosReportService,
     PosSampleService,
+    PosOfflineService,
   ],
   exports: [
     ExternalPaymentRegistry,

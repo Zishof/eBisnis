@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
 
 /**
@@ -12,7 +13,78 @@ import path from 'node:path';
 const API_TARGET = process.env.API_PROXY_TARGET ?? 'http://localhost:3000';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      /*
+       * Layar kasir dipasang sebagai aplikasi, dan cangkangnya dilayani dari
+       * mesin kasir sendiri.
+       *
+       * Tanpa ini, kasir yang kehilangan internet mendapat halaman galat
+       * peramban — bukan layar kasir yang memberitahu apa yang sedang terjadi.
+       * Yang di-cache adalah cangkang aplikasinya; data tetap datang dari
+       * peladen, dan bagian mana yang boleh dipakai saat luring diputuskan
+       * `pos-offline`, bukan service worker.
+       */
+      registerType: 'prompt',
+      injectRegister: null,
+      includeAssets: ['favicon.svg'],
+      manifest: {
+        name: 'eBisnis.id — Kasir',
+        short_name: 'Kasir',
+        description: 'Kasir eBisnis.id. Dapat dipasang pada mesin kasir dan tetap terbuka saat internet terputus.',
+        lang: 'id',
+        start_url: '/app/pos',
+        scope: '/',
+        display: 'standalone',
+        orientation: 'landscape',
+        background_color: '#ffffff',
+        theme_color: '#0f172a',
+        /*
+         * Ikon dibuat `scripts/buat-ikon-pwa.mjs`, bukan diletakkan sebagai
+         * berkas biner begitu saja, supaya perubahannya terbaca pada permintaan
+         * tarik dan mudah diganti ketika logo resmi tersedia.
+         *
+         * `maskable` memakai berkas tersendiri. Android memotong ikon maskable
+         * menjadi lingkaran atau bentuk lain sesuai peluncurnya; ikon biasa yang
+         * dipakai sebagai maskable akan kehilangan sudutnya. Versi maskable
+         * sudah menyisakan ruang aman di tepinya.
+         */
+        icons: [
+          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/pwa-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        /*
+         * PNG sengaja tidak ada di sini. Ikon manifest sudah dimasukkan plugin
+         * ke precache dengan sendirinya; menambahkan polanya membuat setiap ikon
+         * terdaftar dua kali. Selama revisinya sama Workbox membiarkannya, tetapi
+         * begitu berbeda ia menolak dengan `add-to-cache-list-conflicting-entries`
+         * dan service worker gagal dipasang — pada mesin kasir yang sudah
+         * terpasang, kegagalan itu baru terlihat sebagai aplikasi yang berhenti
+         * diperbarui, tanpa ada yang menghubungkannya dengan berkas ikon.
+         *
+         * Pola menyeluruh `**\/*.png` juga akan ikut menelan gambar apa pun yang
+         * kelak ditaruh di `public/`.
+         */
+        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        /*
+         * Permintaan API TIDAK PERNAH di-cache service worker.
+         *
+         * Harga, stok, dan hak akses yang dilayani dari cache akan membuat
+         * kasir menjual dengan angka yang sudah tidak berlaku, tanpa ada yang
+         * menyadarinya. Data luring ditangani `pos-offline` yang tahu mana yang
+         * boleh basi dan mana yang tidak.
+         */
+        navigateFallbackDenylist: [/^\/api/, /^\/health/],
+        runtimeCaching: [],
+        cleanupOutdatedCaches: true,
+      },
+      devOptions: { enabled: false },
+    }),
+  ],
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },

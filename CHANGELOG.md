@@ -5,6 +5,221 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Gangguan sesaat tidak lagi melempar pengguna ke halaman masuk
+
+### Diperbaiki
+- **Setiap kegagalan penyegaran token membuang sesi — termasuk yang sementara.**
+  `api.ts` memperlakukan setiap jawaban tidak-OK dari `/auth/refresh` sebagai
+  "sesi Anda tidak sah lagi", lalu menghapus refresh token sehingga tidak ada
+  jalan mencoba lagi. Padahal **429** hanya berarti "coba lagi sebentar", dan
+  **5xx** hanya berarti peladen sedang tersedak.
+
+  Pada layar kasir akibatnya: keranjang yang sedang dilayani lenyap karena
+  peladen sesaat sibuk, di depan pembeli yang sudah menunggu. Tidak ada galat
+  yang menyebutkan sebabnya — yang terlihat hanya layar masuk.
+
+  Kini hanya **401 dan 403** yang mengakhiri sesi. Galat jaringan juga tidak lagi
+  membuang refresh token: justru ketika jaringan bermasalah ia paling dibutuhkan,
+  dan membuangnya membuat pemulihan mustahil setelah jaringannya kembali.
+
+- **Cacat yang sama ada di tempat kedua**, dan justru **itulah yang menyala.**
+  `auth-context.tsx` memulihkan sesi saat aplikasi baru dimuat dengan memanggil
+  `/auth/refresh` sendiri memakai `skipRefresh`, sehingga tidak melewati jalur
+  di atas sama sekali. `loadSession()` berada di dalam `try` yang sama, jadi
+  `/auth/me` yang dijawab **429** ikut menjatuhkan sesinya.
+
+  Memperbaiki satu tanpa yang lain tidak menyelesaikan apa pun — dan sempat
+  demikian: perbaikan pertama tidak mengubah hasil uji sama sekali.
+
+- **`ApiError` diimpor sebagai tipe saja** pada `auth-context.tsx`. Impor bertipe
+  terhapus saat kompilasi, sehingga `e instanceof ApiError` akan selalu bernilai
+  salah — tanpa satu pun galat, dan seluruh penolakan dianggap sementara. Diubah
+  menjadi impor nilai.
+
+- **Gangguan sementara pada `/auth/me` kini dicoba ulang**, bukan diperlakukan
+  sebagai "belum masuk". Dibatasi dua percobaan: tanpa batas, peladen yang
+  benar-benar mati membuat layar menggantung tanpa keterangan — yang juga bukan
+  jawaban.
+
+- **Satu kali kedaluwarsa memicu dua penyegaran.** Permintaan yang sudah terbang
+  ketika token disegarkan kembali membawa 401 yang **sudah basi**; menyegarkan
+  lagi karenanya memutar refresh token untuk kedua kalinya dan menggandakan
+  lalu lintas auth. Jeda tiga detik menutupnya.
+
+- **Denyut sambungan tetap berjalan pada tab tersembunyi.** `useKoneksi`
+  menghubungi `/health` tiap lima detik meski layarnya tidak dilihat siapa pun —
+  membangunkan radio tablet kasir sepanjang hari tanpa guna, dan ikut menekan
+  jatah pembatas laju. Kini dijadwalkan jarang selama tersembunyi;
+  `visibilitychange` sudah memaksa pemeriksaan seketika begitu layarnya kembali
+  dilihat, jadi kasir tidak pernah menunggu jeda itu.
+
+- **Uji pohon gudang gagal pada ponsel.** Perbaikan sebelumnya mempersempit
+  pemilih ke bilah navigasi — benar untuk desktop, tetapi pada ponsel navigasinya
+  ada di balik laci dan belum terlihat, sehingga ujinya menunggu sesuatu yang
+  memang tersembunyi selama dua menit. `<nav>` yang sama juga digambar dua kali,
+  jadi menunjuknya menurut label saja tetap ambigu.
+
+### Diubah
+- **Uji peramban kini MEMBLOKIR penggabungan.** `continue-on-error` dilepas.
+
+  Pelajaran dari masa pemakaiannya perlu dicatat karena mudah terulang: selama
+  baris itu terpasang, cek berwarna **hijau sekalipun ujinya gagal**. Tiga
+  kegagalan sungguhan sempat lolos tanpa terlihat, dan hanya ketahuan karena
+  lognya dibaca, bukan warnanya. Pelindung yang membuat laporan berbohong lebih
+  berbahaya daripada rangkaian uji yang merah — yang merah setidaknya jujur.
+
+- **Pembatas laju dilonggarkan pada CI saja** (`THROTTLE_DEFAULT_LIMIT`,
+  `THROTTLE_AUTH_LIMIT`). Nilai bawaan disetel untuk satu alamat IP milik satu
+  orang; runner CI adalah satu alamat IP yang menjalankan seluruh rangkaian.
+  Nilai produksi tidak diubah.
+
+### Ditambahkan
+- **`apps/web/src/lib/api.spec.ts`** — 8 uji yang menjaga perilaku di atas.
+  Diverifikasi merah tanpa perbaikannya.
+
+### Catatan
+- Ketidakstabilan ini sebelumnya dicatat sebagai "runner CI lambat". Ia bukan.
+  Sebabnya baru terlihat setelah jejak jaringan pada `trace.zip` satu kegagalan
+  dibaca: `auth/refresh` berpasangan, lalu `429`, lalu halaman masuk. Tangkapan
+  layarnya menunjukkan **halaman masuk** — bukan layar kasir yang lambat.
+
+## Kasir dapat menjual saat internet putus
+
+Fase 3 dan 4 dari rencana kasir luring. Kemampuannya sudah lengkap; **saklarnya
+mati secara bawaan**, dan menyalakannya adalah keputusan usaha.
+
+### Ditambahkan
+- **Buku transaksi lokal tersambung ke layar kasir.** Antrean kirim, pemeriksaan
+  keutuhan rantai, dan unduh bukti kini ada pada batang status — modulnya sudah
+  masuk lewat #47 tetapi belum dipakai layar mana pun.
+- **Rincian barang masuk ke rantai hash.** Semula buku besar hanya menyimpan
+  total, cukup untuk membuktikan transaksinya ada tetapi tidak cukup untuk
+  membukukannya. Ditambahkan lewat `payloadHash` di ujung bahan hash dengan
+  cadangan string kosong, sehingga **rantai yang sudah ada tetap sah** dan tidak
+  perlu dibangun ulang.
+- **`pos_receipt_block` (V037)** — register memesan jatah nomor struk selagi
+  daring. `number_sequence` dimajukan melewati seluruh rentang, jadi penjualan
+  daring tidak akan pernah menyentuhnya. Tidak ada sumber penomoran kedua.
+- **`pos_offline_quarantine` (V037)** — transaksi luring yang tidak dapat
+  dibukukan apa adanya ditahan beserta **kedua angkanya** dan muatan lengkapnya.
+  Tujuh sebab dibedakan karena tindak lanjutnya berbeda.
+- **`POST /pos/offline/sales`** — idempoten pada `offlineId`, memutar ulang
+  transaksi lewat jalur penjualan yang sama dengan transaksi daring.
+- **`harga-luring.ts`** — aritmetika uang dalam bilangan bulat satuan terkecil.
+- **90 uji satuan web** (35 → 158 total) dan **28 uji API** (1873 → 1901).
+- **`scripts/prove-pos-offline.mjs`** — 17 pemeriksaan terhadap peladen dan basis
+  data sungguhan. Menyalakan saklarnya sendiri lalu **mengembalikannya**,
+  termasuk bila gagal di tengah jalan.
+
+### Keputusan
+- **Peramban tidak menghitung harga.** Ia mengalikan harga yang sudah dibekukan
+  peladen di dalam salinan katalog. Memindahkan mesin harga ke peramban berarti
+  kebijakan harga punya dua implementasi, dan dua implementasi aturan uang tidak
+  pernah tetap sama — yang pertama menyadarinya adalah pembeli yang ditagih
+  berbeda dari struk sebelumnya. Akibatnya promosi dan buku harga **tidak
+  dievaluasi saat luring**, dan layar mengatakannya.
+- **Penerimaan luring memakai jalur penjualan yang sudah ada**, bukan `INSERT`
+  tersendiri. Jalur kedua akan menyimpang: setiap perubahan pada kuotasi,
+  pemesanan stok, atau peristiwa akuntansi akan memperbaiki jalur keranjang yang
+  terlihat dan melupakan jalur luring yang tersembunyi.
+- **Selisih ditahan, tidak ditolak dan tidak diterima diam-diam.** Menolak tidak
+  membuat transaksinya tidak pernah terjadi — uangnya sudah berpindah tangan.
+  Menerima dengan angka peladen membuat catatan tidak sesuai kertas yang dipegang
+  pembeli, tanpa satu pun galat yang muncul.
+- **Uang dihitung sebagai bilangan bulat satuan terkecil.** `Math.round(1.005 * 100)`
+  bernilai 100, bukan 101; selisih sepersekian sen yang menumpuk sepanjang hari
+  menjadi selisih laci kas yang tidak dapat dijelaskan siapa pun.
+- **Jatah disimpan sebelum nomornya dipakai.** Urutan sebaliknya membuat mesin
+  yang mati di antara keduanya menerbitkan nomor yang sama dua kali.
+
+### Diperbaiki
+- **Percobaan migrasi yang GAGAL ikut mengunci checksumnya.** Migrasi yang
+  diperbaiki lalu ditolak dengan "tidak boleh diubah", padahal ia belum pernah
+  berhasil diterapkan dan tidak ada satu pun objek yang terbentuk darinya.
+  Penjagaan itu ada untuk melindungi migrasi yang sudah mengubah basis data;
+  memperlakukan kegagalan sama membuat setiap kesalahan ketik menjadi buntu
+  permanen yang hanya dapat dibuka dengan menyunting tabel riwayat secara manual.
+- **Riwayat migrasi ditulis dengan `create`, bukan `upsert`.** Penjalanan ulang
+  yang berhasil menabrak baris `FAILED` dan melempar galat **sesudah seluruh DDL
+  terlanjur diterapkan** — basis datanya sudah berubah, pembukuannya mengatakan
+  gagal.
+- **`produkNonaktif` mengembalikan seluruh produk.** Kueri mengambil `p.id` dari
+  baris yang justru tidak punya pasangan, sehingga isinya selalu NULL. Setiap
+  transaksi luring akan ditahan dengan alasan yang keliru. Tertangkap naskah
+  bukti, bukan uji satuan: yang salah SQL-nya, bukan aturannya.
+- **Uji pohon gudang gagal karena pemilih yang ambigu**, bukan karena aplikasinya.
+  Dasbor juga memuat pintasan "Monitoring Stok", dan kartu itu hanya muncul ketika
+  ringkasan stoknya berhasil dimuat — sehingga ambiguitasnya bergantung pada isi
+  basis data dan baru menampakkan diri sewaktu-waktu.
+
+### Catatan penerapan
+- Migrasi ini **V037, bukan V035**: sesi paralel eKoperasi sudah memakai V035 dan
+  V036 pada basis data bersama sebelum berkasnya masuk Git.
+- Prasyarat menyalakan: outlet harus punya urutan `POS_RECEIPT`. Tenant yang
+  memakai penomoran cadangan berbasis tanggal tidak dapat memesan jatah — nomor
+  cadangan dihitung dari banyaknya penjualan hari itu dan tidak dapat dipesan di
+  muka. Permintaannya ditolak dengan keterangan itu.
+
+## Layar kasir dapat dipasang dan katalognya tersalin ke mesin kasir
+
+Fase 1 dan 2 dari rencana kasir luring: aplikasi dapat dipasang seperti aplikasi
+biasa, dan katalog produk disalin ke mesin kasir supaya pencarian serta
+pemindaian tetap bekerja ketika peladen tidak menjawab.
+
+### Ditambahkan
+- **Layar kasir dapat dipasang** (`vite-plugin-pwa`, mode `generateSW`). Manifest
+  membuka langsung pada `/app/pos`, berorientasi mendatar, dengan cangkang
+  aplikasi tercache — 35 berkas, 817 KiB. Mesin kasir yang kehilangan internet
+  kini tetap membuka layar kasir, bukan halaman galat peramban.
+- **`GET /pos/catalog/snapshot`** — produk beserta **seluruh** barcode (utama dan
+  alternatif dalam satu larik), tarif pajak, dan metode pembayaran dalam satu
+  jawaban. `catalog/search` yang sudah ada hanya mengembalikan barcode utama;
+  salinan yang dibangun darinya akan menolak barang yang di peladen dikenali,
+  dan kasir tidak akan pernah tahu bahwa penyebabnya salinan, bukan barangnya.
+- **Indikator sambungan yang membedakan empat keadaan**, bukan dua. `TERBATAS` —
+  jaringan tersambung tetapi peladen tidak menjawab — dipisahkan dari `LURING`
+  karena keduanya menuntut tindakan berbeda dari kasir, dan `navigator.onLine`
+  tidak dapat membedakannya.
+- **Salinan katalog di IndexedDB**, pada basis data tersendiri
+  (`ebisnis-pos-katalog`), terpisah dari buku transaksi lokal. Katalog boleh
+  hilang dan tinggal disalin ulang; buku transaksi tidak. Menyatukannya berarti
+  setiap pembersihan cache mengancam yang tidak tergantikan demi membereskan
+  yang tergantikan. Salinan membawa `tenantId` dan dibuang bila mesin yang sama
+  dipakai masuk ke tenant lain.
+- **Batas umur per jenis data**, dipilih menurut akibat bila salah, bukan menurut
+  seberapa sering datanya berubah: harga dan pajak 12 jam, produk dan barcode 7
+  hari. Salinan yang melewati batasnya **tidak dipakai sama sekali**.
+- **34 uji baru** pada aturan sambungan, kesegaran katalog, dan penerapan
+  pembaruan (web: 35 → 69).
+- **`apps/web/scripts/buat-ikon-pwa.mjs`** — ikon dibuat dari kode, bukan berkas
+  biner yang dilempar ke repositori, supaya perubahannya terbaca pada permintaan
+  tarik dan mudah diganti ketika logo resmi tersedia.
+
+### Keputusan
+- **Permintaan API tidak pernah di-cache service worker** (`runtimeCaching: []`,
+  `navigateFallbackDenylist` untuk `/api` dan `/health`). Harga atau stok yang
+  dilayani dari cache membuat kasir menjual dengan angka yang sudah tidak
+  berlaku, dan tidak ada satu pun galat yang muncul saat itu terjadi.
+- **Pembaruan aplikasi ditunda selama keranjang terbuka.** Memuat ulang di tengah
+  transaksi menghapus keranjang yang barangnya sudah dipindai satu per satu, di
+  depan pembeli yang sedang menunggu. Juga ditunda selama masih ada transaksi
+  yang belum terkirim ke peladen: yang tahu cara membaca antrean itu adalah versi
+  yang menulisnya.
+- **Katalog yang terpotong disebutkan dengan angkanya** — "4.999 dari 12.480",
+  bukan "sebagian produk tidak tersalin". Katalog yang dipotong diam-diam membuat
+  barang tampak tidak ada tanpa satu pun keterangan di layar.
+- **Salinan lokal hanya dipakai saat peladen tidak menjawab.** Selama daring,
+  peladen tetap satu-satunya sumber harga.
+- **Ikon maskable memakai berkas tersendiri** yang penuh sampai ke tepi. Peluncur
+  Android memotong sendiri ikon maskable; ikon yang sudah membulat akan dipotong
+  dua kali dan mengambang di dalam bentuk potongan peluncur.
+
+### Belum termasuk
+- **Menjual saat luring belum aktif.** Salinan katalog dipakai untuk memeriksa
+  harga dan nama barang; memasukkannya ke keranjang masih memerlukan peladen, dan
+  layar mengatakannya apa adanya. Tiga keputusan usaha masih menunggu jawaban
+  sebelum penjualan luring dapat dibuka: kebijakan stok saat luring, pembagian
+  blok nomor struk per register, dan pembekuan harga.
 ## Kasir menerima pembayaran bersaldo eksternal
 
 Menyelesaikan IR-002. Registri penangannya sudah ada sejak penggabungan
