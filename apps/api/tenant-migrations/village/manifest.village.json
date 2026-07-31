@@ -24,6 +24,20 @@
       "file": "20260731000003__village__apparatus_and_registers.sql",
       "name": "Aparatur, masa jabatan, register, dan cakupan data",
       "description": "village_officer, village_officer_term, village_bpd_member, village_org_node, village_delegation, village_scope_assignment, village_register_entry. village_scope_assignment ada tersendiri karena ck_user_scope_type milik Core membatasi jenis cakupan pada daftar tertutup yang tidak memuat dusun, RW, maupun RT — dan memang tidak seharusnya memuatnya: itu kosakata pemerintahan desa, bukan kosakata perdagangan. Menambahkannya berarti mengubah constraint pada tabel bersama, yang dilarang dilakukan langsung dari cabang vertikal. Bentuknya sengaja dibuat sama persis dengan milik Core supaya penggabungannya kelak hanya memindahkan baris; integration request 003 memintanya. Aparatur menunjuk village_resident alih-alih menyalin nama dan NIK-nya, sebab data yang disalin akan berbeda dari sumbernya begitu salah satunya diperbarui; external_name disediakan untuk Lurah yang kerap bukan warga desa itu. Masa jabatan tabel tersendiri karena satu orang dapat menjabat lebih dari sekali dan riwayatnya bagian dari arsip desa. Pelimpahan wewenang wajib berbatas waktu — yang tidak berujung bukan pelimpahan melainkan pergantian jabatan. Sebelas jenis register memakai satu tabel yang dibedakan register_type, sebab sebelas tabel berbentuk sama membuat pencarian lintas register menjadi sebelas kueri yang digabung."
+    },
+    {
+      "version": "20260731000004",
+      "sequence": 4,
+      "file": "20260731000004__village__citizen_service_and_letters.sql",
+      "name": "Layanan warga, surat, antrean, dan alur persetujuan",
+      "description": "village_service_catalog, village_service_requirement, village_service_request, village_request_document, village_request_history, village_workflow_instance, village_workflow_step, village_letter, village_counter, village_queue_ticket, village_holiday. TIDAK memakai tabel surat_* Core: surat_outgoing adalah korespondensi resmi antar lembaga, sedangkan surat keterangan domisili adalah keluaran layanan yang pemohonnya warga dari luar organisasi, punya persyaratan berkas, antrean, dan janji waktu. Memaksakan keduanya ke satu tabel menghasilkan tabel yang setengah kolomnya selalu kosong dan laporan surat kantor yang tercemar ribuan surat keterangan; yang dipakai ulang adalah SuratNumberService. Permohonan menyimpan definition_snapshot sehingga perubahan katalog tidak mengubah aturan main di tengah jalan — warga yang mengajukan surat pada hari Senin tidak boleh tiba-tiba dituntut melengkapi berkas yang baru diwajibkan pada hari Rabu. SLA dihitung sejak documents_completed_at, bukan sejak permohonan masuk, sebab angka yang menyalahkan warga yang lambat melengkapi berkas tidak akan dipakai siapa pun untuk memperbaiki apa pun. Penolakan dan pengembalian berkas wajib beralasan, ditegakkan constraint. Mesin alur sendiri karena workflow_* Core tidak punya kode yang menjalankannya — lihat integration request 001. Nomor antrean kembali ke satu setiap hari."
+    },
+    {
+      "version": "20260731000005",
+      "sequence": 5,
+      "file": "20260731000005__village__single_unit_per_schema.sql",
+      "name": "Satu desa/kelurahan per schema",
+      "description": "Indeks unik parsial pada village_unit yang memastikan hanya ada satu unit pemerintahan aktif per schema. eBisnis memakai skema-per-penyewa sejak awal, tetapi tidak ada yang mencegah dua unit tersisip ke satu schema — dan bila itu terjadi, kegagalannya senyap seluruhnya: layanan village membaca baris pertama menurut created_at, sehingga unit kedua tidak pernah terlihat pada daftar mana pun; bila urutannya berubah karena baris pertama dinonaktifkan, seluruh sistem tiba-tiba menunjuk desa yang berbeda tanpa galat apa pun; dan karena kelayakan profil ditentukan profile_type unit itu, dua unit berbeda profil berarti APBDes desa dapat dibuka petugas kelurahan. Indeks parsial dipilih supaya baris nonaktif tidak menghalangi — desa yang berubah status menjadi kelurahan menonaktifkan unit lamanya lalu membuat yang baru, dan itu sah."
     }
   ]
 }

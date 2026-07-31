@@ -31,6 +31,8 @@ import { VillageMigrationService } from './village-migration.service';
 import { VillageUnitService } from './village-unit.service';
 import { VillageResidentService } from './village-resident.service';
 import { VillageScopeService } from './village-scope.service';
+import { VillageWorkflowService } from './village-workflow.service';
+import { VillageRequestService } from './village-request.service';
 import { KATALOG_KELAYAKAN, layak, type KodeFitur } from './village-profile';
 
 function requireSchema(user: AuthenticatedUser): string {
@@ -287,6 +289,81 @@ class TugaskanCakupanDto {
   note?: string;
 }
 
+
+class AjukanLayananDto {
+  @ApiProperty({ example: 'SKD', description: 'Kode jenis layanan.' })
+  @IsString()
+  @MaxLength(48)
+  serviceCode!: string;
+
+  @ApiPropertyOptional({ description: 'Penduduk terdaftar, bila pemohonnya warga desa ini.' })
+  @IsOptional()
+  @IsUUID()
+  residentId?: string;
+
+  @ApiProperty({ example: 'Ahmad Fauzi' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  applicantName!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  applicantNik?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  applicantPhone?: string;
+
+  @ApiPropertyOptional({ description: 'Keperluan surat.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  purpose?: string;
+}
+
+class PutusanDto {
+  @ApiProperty({ enum: ['APPROVE', 'REJECT', 'REQUEST_CHANGES'] })
+  @IsIn(['APPROVE', 'REJECT', 'REQUEST_CHANGES'])
+  action!: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES';
+
+  @ApiPropertyOptional({
+    description: 'WAJIB untuk REJECT dan REQUEST_CHANGES. Dibaca pemohon.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  reason?: string;
+}
+
+class TerbitkanDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  signedByOfficerId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  body?: string;
+}
+
+class AmbilAntreanDto {
+  @ApiProperty({ example: 'A' })
+  @IsString()
+  @MaxLength(8)
+  counterCode!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  requestId?: string;
+}
+
 // --- Controller ---------------------------------------------------------------
 
 @ApiTags('village')
@@ -297,6 +374,7 @@ export class VillageController {
     private readonly migrasi: VillageMigrationService,
     private readonly penduduk: VillageResidentService,
     private readonly lingkup: VillageScopeService,
+    private readonly permohonan: VillageRequestService,
   ) {}
 
 
@@ -586,6 +664,101 @@ export class VillageController {
     return this.lingkup.cabut(requireSchema(user), id, dto.reason ?? 'Dicabut', user.userId);
   }
 
+
+  // --- Layanan warga --------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.CREATE')
+  @Post('requests')
+  @ApiOperation({
+    summary: 'Mengajukan permohonan layanan',
+    description:
+      'Cuplikan definisi alur diambil saat pengajuan. Bila katalog diubah esok hari, permohonan ' +
+      'ini tetap memakai aturan yang berlaku saat ia masuk — warga yang mengajukan surat pada ' +
+      'hari Senin tidak boleh tiba-tiba dituntut melengkapi berkas yang baru diwajibkan Rabu.',
+  })
+  ajukan(@Body() dto: AjukanLayananDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.permohonan.ajukan(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.UPDATE')
+  @Post('requests/:id/verify')
+  @ApiOperation({
+    summary: 'Memverifikasi kelengkapan berkas',
+    description:
+      'Bila lengkap, janji layanan mulai berjalan DARI SINI — bukan sejak permohonan masuk. ' +
+      'Bila kurang, permohonan dikembalikan beserta daftar berkas yang masih dibutuhkan.',
+  })
+  verifikasi(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.permohonan.verifikasiBerkas(requireSchema(user), id, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.SUBMIT')
+  @Post('requests/:id/submit-approval')
+  @ApiOperation({ summary: 'Meneruskan permohonan untuk persetujuan' })
+  teruskan(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.permohonan.mulaiPersetujuan(requireSchema(user), id, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.APPROVE')
+  @Post('requests/:id/decide')
+  @ApiOperation({
+    summary: 'Menyetujui, menolak, atau meminta perbaikan',
+    description:
+      'Pemohon tidak dapat memutuskan permohonannya sendiri. Penolakan dan permintaan perbaikan ' +
+      'wajib beralasan — permohonan yang berhenti tanpa kabar adalah keluhan nomor satu ' +
+      'pelayanan publik.',
+  })
+  putuskan(
+    @Param('id') id: string,
+    @Body() dto: PutusanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.permohonan.putuskan(requireSchema(user), id, dto.action, dto.reason, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.PRINT')
+  @Post('requests/:id/issue')
+  @ApiOperation({
+    summary: 'Menerbitkan surat',
+    description:
+      'Nomor surat diambil di dalam transaksi yang sama dengan penyimpanannya, dan keunikannya ' +
+      'ditegakkan indeks unik — dua petugas yang menerbitkan pada milidetik yang sama tidak ' +
+      'dapat memperoleh nomor yang sama.',
+  })
+  terbitkan(
+    @Param('id') id: string,
+    @Body() dto: TerbitkanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.permohonan.terbitkan(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_QUEUE.CREATE')
+  @Post('queue/tickets')
+  @ApiOperation({ summary: 'Mengambil nomor antrean' })
+  ambilAntrean(@Body() dto: AmbilAntreanDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.permohonan.ambilNomorAntrean(requireSchema(user), dto.counterCode, dto.requestId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.READ')
+  @Get('requests/track/:number')
+  @ApiOperation({
+    summary: 'Melacak permohonan',
+    description:
+      'Hanya riwayat yang ditandai terlihat warga. Catatan internal petugas tidak perlu — dan ' +
+      'tidak seharusnya — dibaca pemohonnya.',
+  })
+  lacak(@Param('number') number: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.permohonan.lacak(requireSchema(user), number);
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -627,12 +800,16 @@ export class VillageController {
     VillageMigrationService,
     VillageResidentService,
     VillageScopeService,
+    VillageWorkflowService,
+    VillageRequestService,
   ],
   exports: [
     VillageUnitService,
     VillageMigrationService,
     VillageResidentService,
     VillageScopeService,
+    VillageWorkflowService,
+    VillageRequestService,
   ],
 })
 export class VillageModule {}

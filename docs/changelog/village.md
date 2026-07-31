@@ -331,3 +331,119 @@ sungguhan**, seluruhnya lulus.
 
 - `jest` — **1175 tes lulus** (bertambah 34)
 - `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
+
+---
+
+## D-4 — Layanan warga, surat, antrean, dan alur persetujuan
+
+Inti sistem. Layanan warga dan surat adalah alasan sebuah desa memakai sistem
+seperti ini.
+
+### Ditambahkan
+
+- **`village-service.ts`** — aturan layanan sebagai fungsi murni: mesin transisi
+  sepuluh status, kelengkapan berkas, perhitungan SLA dalam hari kerja,
+  penyusunan nomor surat dari pola, dan pemeriksaan alur buntu. **41 pengujian.**
+- **`ports/workflow.port.ts`** — antarmuka `WorkflowPort` milik village.
+- **`VillageWorkflowService`** — mesin alur persetujuan yang village bangun
+  sendiri, sebab mesin bersama yang disebut perintah §7 tidak ada.
+- **Migrasi `20260731000004`** — sebelas tabel layanan, surat, antrean, dan alur.
+- **Migrasi `20260731000005`** — penjaga satu desa per schema.
+- **`VillageRequestService`** dan **tujuh endpoint** `/village/requests/*`,
+  `/village/queue/*`.
+
+### Mengapa BUKAN memakai tabel `surat_*` Core
+
+`surat_outgoing` adalah korespondensi resmi antar lembaga: ada pengirim,
+penerima, klasifikasi, disposisi. Surat keterangan domisili bukan surat keluar —
+ia **keluaran layanan**, yang pemohonnya warga dari luar organisasi, punya
+persyaratan berkas, antrean, dan janji waktu.
+
+Memaksakan keduanya ke satu tabel menghasilkan tabel yang setengah kolomnya
+selalu kosong, dan laporan surat kantor yang tercemar ribuan surat keterangan.
+Yang **dipakai ulang** adalah polanya, termasuk penomoran anti-kembar.
+
+### Empat sikap yang berasal dari keadaan nyata di kantor desa
+
+**Penolakan dan pengembalian wajib beralasan** — ditegakkan constraint, bukan
+hanya layanan. Permohonan yang berhenti tanpa kabar adalah keluhan nomor satu
+pelayanan publik; warga yang ditolak tanpa keterangan akan datang lagi
+menanyakan hal yang sama, dan petugas berikutnya tidak tahu apa yang harus
+dijawab.
+
+**SLA dihitung sejak berkas lengkap**, bukan sejak permohonan masuk. Perbedaannya
+bukan teknis melainkan soal siapa yang disalahkan angkanya: warga yang butuh
+seminggu melengkapi berkas bukan kesalahan desa, dan angka yang menyalahkan
+pihak yang salah tidak akan dipakai siapa pun untuk memperbaiki apa pun.
+
+**Cuplikan definisi alur disimpan pada permohonan.** Bila katalog diubah —
+persyaratan ditambah, jenjang persetujuan diubah — permohonan yang sudah
+berjalan tetap memakai aturan yang berlaku saat ia masuk. Warga yang mengajukan
+surat pada hari Senin tidak boleh tiba-tiba dituntut melengkapi berkas yang baru
+diwajibkan pada hari Rabu.
+
+**Pemohon tidak dapat memutuskan permohonannya sendiri** — ditegakkan mesin
+alur, bukan diserahkan kepada pemanggil. Di desa kecil, perangkat desa juga
+warga yang suatu saat mengajukan surat untuk dirinya.
+
+### Satu desa satu schema — dijaga basis data
+
+Atas pertanyaan pemilik sistem. eBisnis memakai skema-per-penyewa sejak awal:
+satu desa mendaftar, satu schema PostgreSQL dibuat, dan pemisahannya berada di
+lapisan basis data.
+
+Yang **belum** dijaga adalah dua unit pemerintahan tersisip ke satu schema.
+Akibatnya senyap seluruhnya: layanan village membaca baris pertama menurut
+`created_at`, sehingga unit kedua tidak pernah terlihat pada daftar mana pun;
+bila urutannya berubah karena baris pertama dinonaktifkan, seluruh sistem
+tiba-tiba menunjuk desa yang berbeda tanpa galat apa pun; dan karena kelayakan
+profil ditentukan `profile_type` unit itu, dua unit berbeda profil berarti
+APBDes desa dapat dibuka petugas kelurahan.
+
+Ditutup dengan indeks unik parsial. Baris nonaktif tidak menghalangi — desa yang
+berubah status menjadi kelurahan menonaktifkan unit lamanya lalu membuat yang
+baru, dan itu sah.
+
+### Keputusan lain
+
+- **Verifikasi publik tidak membocorkan data pribadi.** Pihak ketiga memeriksa
+  keaslian surat tanpa masuk sistem; yang dikembalikan hanya sah/tidak sah,
+  nomor, tanggal, jenis layanan, dan nama desanya. Halaman yang menampilkan isi
+  surat akan menjadikan setiap token yang bocor sebagai kebocoran data warga.
+- **`BERKAS_KURANG` kembali ke `DIAJUKAN`, bukan ke `DRAF`.** Warga melengkapi
+  berkasnya, bukan mengajukan ulang dari nol; nomor antreannya tetap dan
+  riwayatnya tidak terputus.
+- **Riwayat permohonan punya penanda terlihat-warga.** Catatan internal petugas
+  tidak perlu — dan tidak seharusnya — dibaca pemohonnya.
+- **Satu permohonan satu surat**, ditegakkan indeks unik. Permohonan yang
+  menerbitkan dua surat bernomor berbeda berarti salah satunya tidak dapat
+  dipertanggungjawabkan.
+- **Nomor antrean kembali ke satu setiap hari.** Yang tidak pernah kembali akan
+  mencapai angka ribuan pada bulan ketiga, dan warga yang dipanggil nomor 3.412
+  kehilangan gambaran berapa lama lagi gilirannya.
+- **Layanan tanpa jenjang persetujuan langsung disetujui.** Surat keterangan
+  sederhana pada desa kecil memang begitu; memaksakan langkah kosong hanya
+  menambah klik tanpa menambah kendali.
+- **Register surat keluar terisi otomatis** saat surat terbit. Buku register
+  yang harus diisi ulang secara manual adalah buku register yang tidak pernah
+  lengkap.
+- **Alur buntu ketahuan saat dikonfigurasi**, bukan saat warga sudah mengantre.
+  Desa kecil kerap tidak punya seluruh jabatan, dan alur yang menuntut Kasi
+  Pelayanan pada desa yang tidak punya Kasi Pelayanan akan menggantung selamanya.
+
+### Bukti
+
+`docs/info-desa/bukti-d4-layanan-warga.txt` — **25 pemeriksaan pada dua desa
+sungguhan**, seluruhnya lulus.
+
+### Yang masih terhalang
+
+Cetak PDF surat (V8-7 tidak pernah dibangun). Surat dapat dirender sebagai HTML
+siap cetak; itu bukan pengganti PDF bertanda tangan digital, tetapi cukup
+dipakai. Belum dikerjakan pada fase ini.
+
+### Gerbang mutu
+
+- `jest` — **1216 tes lulus** (bertambah 41)
+- `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
+- Migrasi diverifikasi: 35 tabel village terbentuk
