@@ -239,6 +239,13 @@
       "file": "V034__widen_audit_migration_version.sql",
       "name": "Pelebaran versi migrasi pada jejak audit",
       "description": "Melengkapi V033 dan memperbaiki cacat yang lolos darinya. Ada kolom KETIGA yang menyimpan versi migrasi dan terlewat: {{AUDIT_SCHEMA}}.audit_schema_migration.migration_version, masih VARCHAR(16). Setiap migrasi yang berhasil menuliskan jejaknya ke sana, sehingga begitu migrasi modul pertama dijalankan pada penyewa BARU, penerapannya berhasil, pembukuannya berhasil, lalu jejak auditnya gagal dan seluruh provisioning batal. Tidak tertangkap lebih awal karena bukti V033 memeriksa penyimpanan id panjang pada schema_migration saja, dan penerapan ke penyewa yang sudah ada hanya menjalankan V033 sendiri yang idnya pendek; jalur yang gagal hanya dilalui penyewa baru yang menjalankan migrasi modul dari nol. Pelajarannya: melebarkan satu kolom kunci berarti mencari SELURUH kolom yang menyimpan nilai yang sama, dan yang paling mudah terlupakan adalah jejak audit sebab ia tidak pernah dibaca aplikasi."
+    },
+    {
+      "version": "V035",
+      "sequence": 35,
+      "file": "V035__cooperative_profiles.sql",
+      "name": "Profil hak koperasi pada constraint role",
+      "description": "Menyusul V012 (marketplace M1-M9) dan V025 (kasir K1-K5). Profil koperasi C1-C4 dibuat tersendiri, bukan dengan menambahkan ANALYZE, DISBURSE, dan WRITE_OFF ke P1-P12, karena profil berlaku lintas modul: menambahkan DISBURSE ke profil manajer modul umum akan memberikannya pula pada setiap modul lain yang kebetulan menawarkan aksi itu, dan hak mencairkan dana bukan sesuatu yang boleh merembes karena seseorang manajer modul di tempat lain. Yang dijaga keluarga ini adalah pemisahan yang paling menentukan pada koperasi simpan pinjam: C1 memuat ANALYZE dan TIDAK memuat APPROVE sehingga petugas pinjaman menganalisis tetapi tidak menyetujui, sedangkan C2 memuat APPROVE dan DISBURSE tetapi TIDAK memuat CREATE sehingga penyetuju tidak mencatat. Pemisahan itu karena itu tidak dijaga daftar izin yang dapat disusun keliru, melainkan oleh bentuk profilnya sendiri. Additive: hanya daftar nilai yang sah diperluas, dan perluasan tidak pernah membatalkan baris yang sudah ada."
     }
   ]
 }

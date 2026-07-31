@@ -766,9 +766,16 @@ export interface SodGroup {
  * Kelompok bersisi tunggal dibuang. Ia tidak melarang apa pun, dan
  * menyemainya hanya menghasilkan aturan yang tidak pernah berlaku.
  */
-export function buildSodGroups(): SodGroup[] {
+export function buildSodGroups(
+  /*
+   * Peran vertikal ikut membentuk kelompok pemisahan tugas. Bila tidak,
+   * Ketua dan Petugas Pinjaman koperasi akan dapat dipegang satu orang —
+   * pasangan yang paling sering dipakai menyalurkan pinjaman fiktif.
+   */
+  roles: readonly RoleCatalogEntry[] = ROLE_CATALOG,
+): SodGroup[] {
   const groups = new Map<string, SodGroup['members']>();
-  for (const role of ROLE_CATALOG) {
+  for (const role of roles) {
     if (!role.sodGroup || !role.sodSide) continue;
     const members = groups.get(role.sodGroup) ?? [];
     members.push({ code: role.code, side: role.sodSide });

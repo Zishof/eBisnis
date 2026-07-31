@@ -20,6 +20,7 @@
 export type ProfileCode =
   | 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6'
   | 'P7' | 'P8' | 'P9' | 'P10' | 'P11' | 'P12'
+  | 'C1' | 'C2' | 'C3' | 'C4'
   | 'M1' | 'M2' | 'M3' | 'M4' | 'M5' | 'M6' | 'M7' | 'M8' | 'M9'
   | 'K1' | 'K2' | 'K3' | 'K4' | 'K5';
 
@@ -247,6 +248,59 @@ const POS_MASTER_ADMIN = [
  * Penghapusan permanen tetap menuntut permission tersendiri dan step-up,
  * sehingga tidak ikut terbawa hanya karena seseorang administrator tenant.
  */
+/**
+ * Profil koperasi (C1–C4).
+ *
+ * Dibuat tersendiri dengan alasan yang sama seperti keluarga POS K1–K5: profil
+ * umum P1–P12 tidak mengenal `ANALYZE`, `DISBURSE`, dan `WRITE_OFF`, sehingga
+ * peran koperasi yang memakainya akan memperoleh hak itu lewat profil yang
+ * terlalu luas — atau tidak memperolehnya sama sekali.
+ *
+ * Yang dijaga keluarga ini adalah pemisahan yang paling menentukan pada
+ * koperasi simpan pinjam: **yang menganalisis tidak menyetujui, dan yang
+ * menyetujui tidak mencairkan tanpa jejak.**
+ */
+
+/**
+ * Petugas koperasi. Mencatat dan menganalisis; tidak menyetujui apa pun.
+ *
+ * `ANALYZE` ada di sini dan `APPROVE` tidak. Itulah seluruh maksudnya: analisis
+ * kredit kehilangan gunanya bila penyusunnya sekaligus yang memutuskan, dan
+ * pasangan itulah yang paling sering dipakai menyalurkan pinjaman fiktif.
+ */
+const COOP_OFFICER = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT', 'ANALYZE', 'SUBMIT'] as const;
+
+/**
+ * Penyetuju koperasi. Menyetujui dan mencairkan; tidak mencatat.
+ *
+ * Tanpa `CREATE` dan `UPDATE` dengan sengaja — pemisahan itulah yang membuat
+ * persetujuannya berarti. Ketua yang dapat membuat permohonan lalu
+ * menyetujuinya sendiri tidak sedang menyetujui apa pun.
+ */
+const COOP_APPROVER = [
+  'READ', 'REVIEW', 'APPROVE', 'REJECT', 'RETURN', 'PRINT', 'EXPORT',
+  'DISBURSE', 'VIEW_AMOUNT',
+] as const;
+
+/**
+ * Pengurus koperasi yang menanggung keputusan terberat.
+ *
+ * Satu-satunya profil koperasi yang memegang `WRITE_OFF`. Penghapusbukuan
+ * menghilangkan piutang dari neraca dan merupakan perbuatan yang paling mudah
+ * dipakai menutupi pinjaman bermasalah — basis data karena itu tetap menuntut
+ * dua orang berbeda, dan hak akses ini tidak menggantikannya.
+ */
+const COOP_BOARD = [...COOP_APPROVER, 'WRITE_OFF', 'CANCEL', 'AUDIT_READ'] as const;
+
+/**
+ * Anggota koperasi pada portalnya.
+ *
+ * Sengaja tidak memakai P10 (layanan mandiri) yang juga memberi `UPDATE`.
+ * Anggota mengubah satu hal saja — menandai pemberitahuan sudah dibaca — dan
+ * `UPDATE` yang berlaku pada seluruh menu portal jauh lebih luas daripada itu.
+ */
+const COOP_MEMBER = ['READ', 'CREATE', 'SUBMIT', 'PRINT'] as const;
+
 export const PROFILE_ACTIONS: Record<ProfileCode, readonly string[]> = {
   P0: [],
   P1: READ_ONLY,
@@ -275,6 +329,10 @@ export const PROFILE_ACTIONS: Record<ProfileCode, readonly string[]> = {
   K3: POS_STORE_MANAGER,
   K4: POS_AUDITOR,
   K5: POS_MASTER_ADMIN,
+  C1: COOP_OFFICER,
+  C2: COOP_APPROVER,
+  C3: COOP_BOARD,
+  C4: COOP_MEMBER,
 };
 
 export const PROFILE_LABELS: Record<ProfileCode, string> = {
@@ -297,6 +355,10 @@ export const PROFILE_LABELS: Record<ProfileCode, string> = {
   M4: 'Operator Fulfillment',
   M5: 'Layanan Pelanggan',
   M6: 'Supervisor Marketplace',
+  C1: 'Petugas Koperasi',
+  C2: 'Penyetuju Koperasi',
+  C3: 'Pengurus Koperasi',
+  C4: 'Anggota Koperasi',
   M7: 'Manajer/Admin Seller',
   M8: 'Platform Marketplace',
   M9: 'Pemegang Credential Pembayaran',

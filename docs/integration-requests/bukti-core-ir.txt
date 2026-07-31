@@ -1,6 +1,6 @@
 ==============================================================================
 BUKTI SISI CORE — IR-001 SAMPAI IR-005
-Waktu : 2026-07-31T20:29:16.094Z
+Waktu : 2026-07-31T21:20:35.879Z
 ==============================================================================
 
 IR-001 · Katalog migrasi modular
@@ -12,7 +12,7 @@ IR-001 · Katalog migrasi modular
   LULUS  tidak ada versi yang tercatat dua kali
   LULUS  id modular 53 aksara tersimpan dan terbaca kembali
   LULUS  katalog tanpa modul sama persis dengan manifest inti
-  LULUS  versi inti tertinggi V034
+  LULUS  versi inti tertinggi V035
   LULUS  katalog gabungan bertambah tepat satu
   LULUS  seluruh migrasi inti tetap mendahului migrasi modul
   LULUS  versi inti tertinggi TIDAK berubah oleh kehadiran modul
