@@ -5,6 +5,33 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Halaman CMS tetap berjudul meski isinya gagal dimuat
+
+### Diperbaiki
+- **`/tentang`, `/syarat`, dan `/privasi` tidak memiliki `<h1>` sama sekali saat
+  isinya sedang dimuat atau gagal dimuat.** Keduanya menampilkan pesan tanpa
+  judul apa pun, sehingga pembaca layar yang melompat antar heading tidak
+  menemukan apa-apa dan tidak dapat tahu halaman apa yang sedang dibukanya —
+  justru pada saat pengguna paling membutuhkan keterangan tentang di mana ia
+  berada.
+
+  `CmsPage` kini menerima `fallbackTitle` yang wajib. Judul dari CMS dipakai
+  bila sudah tiba; bila belum, judul cadangan yang dipakai. Keduanya tetap satu
+  `<h1>`.
+
+### Ditambahkan
+- **Uji regresi** yang memalsukan galat API lalu menegaskan judulnya tetap ada.
+  Diverifikasi gagal tanpa perbaikannya dan lulus dengannya — uji regresi yang
+  tidak pernah merah tidak membuktikan apa pun.
+- Uji "tepat satu heading tingkat 1" kini mencakup `/syarat` dan `/privasi`,
+  yang sebelumnya tidak pernah diperiksa sama sekali.
+
+### Catatan
+- Cacat ini ditemukan oleh alur CI E2E yang baru, dan **tidak pernah tampak
+  pada basis data yang sudah lama dipakai** — isinya selalu ada di sana.
+  Ia hanya menampakkan diri pada basis data yang baru disemai. Inilah gunanya
+  menjalankan uji peramban terhadap lingkungan yang bersih.
+
 ## Uji Playwright layar kasir
 
 ### Ditambahkan
