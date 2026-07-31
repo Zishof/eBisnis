@@ -243,13 +243,82 @@ Uji ≥ 30 → **53 tercapai**, ditambah naskah bukti 41 pemeriksaan.
 asuhan keperawatan berbasis diagnosis keperawatan, dan rekonsiliasi obat saat
 masuk dan pulang.
 
-### H-7 · IGD, operasi, ICU, layanan khusus
+### H-7 · IGD, operasi, ICU, layanan khusus — **SELESAI**
 
 Triase, disposisi; permintaan dan jadwal operasi, daftar periksa bedah, catatan
 operasi, anestesi, pemulihan; perawatan intensif; dialisis, onkologi,
 rehabilitasi, gigi, kesehatan jiwa; kebidanan dan neonatal.
 
-Uji ≥ 35.
+Uji ≥ 35 → **60 tercapai**, ditambah naskah bukti 55 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H012__health__acute_care.sql`, `H013__health__acute_permissions.sql` |
+| Aturan murni | `health-acute.ts` + 60 pengujian |
+| Layanan | `health-acute.service.ts` |
+| Endpoint | `health-acute.controller.ts` — 13 jalan di `/api/v1/health/acute/**` |
+| Layar | `apps/web/src/verticals/health/EmergencyPage.tsx` |
+| Bukti | `scripts/prove-health-acute.mjs` → [bukti-h7-akut.txt](bukti-h7-akut.txt) |
+
+**Invarian yang ditegakkan basis data**
+
+- **Jeda sebelum sayatan tidak dapat dicentang belakangan** — constraint
+  `ot_case_timeout_before_incision` menuntut waktu penyelesaiannya mendahului
+  waktu sayatan. Daftar periksa yang diisi setelah operasinya selesai tidak
+  menahan apa pun; ia hanya membuat berkasnya tampak rapi.
+- **Satu kamar operasi, satu operasi pada satu waktu** — constraint pengecualian
+  `EXCLUDE USING gist` atas rentang waktu terjadwal. Naskah bukti menembusnya
+  lewat `INSERT` langsung; ditolak.
+- **Tingkat triase akhir tidak pernah lebih ringan daripada yang diusulkan** —
+  constraint `ed_visit_level_not_softened`.
+- **"Pergi tanpa dilihat" hanya untuk pasien yang belum pernah dilihat dokter** —
+  constraint `ed_visit_lwbs_never_seen`.
+
+**Keputusan yang menentukan bentuknya**
+
+- **Tanda bahaya MENAIKKAN tingkat triase, tidak pernah menurunkannya.** Petugas
+  boleh menilai lebih gawat daripada tanda vitalnya — ia melihat pasiennya,
+  sistem tidak — tetapi tidak boleh menilai lebih ringan. Triase yang terlalu
+  rendah lebih berbahaya daripada yang terlalu tinggi: yang pertama membuat
+  pasien menunggu berjam-jam sementara penyakitnya berjalan; yang kedua hanya
+  membuang waktu petugas.
+
+- **Tingkat yang diusulkan DAN tingkat akhir disimpan keduanya.** Selisihnya
+  adalah data mutu IGD yang paling berharga: seberapa sering penilaian manusia
+  lebih ringan daripada tanda vitalnya. Ditampilkan pula di layar, karena
+  petugas yang melihat penilaiannya dinaikkan akan menilai lebih cermat lain
+  kali; yang tidak pernah melihatnya tidak akan.
+
+- **Menurunkan tingkat menuntut alasan; menaikkan tidak.** Penurunan tingkatlah
+  yang membuat pasien menunggu lebih lama, dan di sanalah tekanan antrean paling
+  mudah menyusup. Setiap perubahan meninggalkan barisnya sendiri, dan barisnya
+  tidak dapat diubah.
+
+- **Yang mengisi daftar periksa bukan yang menyayat.** Jeda sebelum sayatan
+  adalah percakapan tim, bukan centang satu orang. Dokter bedah memperoleh
+  `INCISE` tetapi tidak `CHECKLIST`; perawat instrumen sebaliknya.
+
+- **Sisi yang ditandai dibandingkan dengan persetujuan tindakan sebelum
+  sayatan.** Bila berbeda, jawabannya bukan peringatan melainkan penolakan
+  dengan kata "HENTIKAN" — tidak ada seorang pun di kamar operasi yang dapat
+  memastikan mana yang benar tanpa bertanya kepada pasien, yang sudah terbius.
+
+- **Hitungan kasa yang tidak cocok menahan, tetapi ada jalan keluarnya.**
+  Menahannya tanpa jalan keluar sama sekali akan membuat orang mematikan
+  sistemnya, dan sistem yang dimatikan tidak menahan apa pun. Yang dituntut
+  adalah pencariannya tercatat.
+
+- **Dukungan organ ganda selalu dinyatakan kritis apa pun skornya.** Pasien
+  dengan ventilator dan vasopresor sekaligus adalah pasien yang tanda vitalnya
+  tampak baik justru karena mesin yang menahannya, dan skor yang membaca tanda
+  vital saja akan menyimpulkan ia sedang membaik.
+
+**Yang belum:** rekam anestesi berkelanjutan, ruang pemulihan beserta skor
+Aldrete, dialisis, onkologi, rehabilitasi, gigi, kesehatan jiwa, serta kebidanan
+dan neonatal. Kelima yang terakhir menuntut model datanya sendiri dan lebih
+tepat menjadi fase tersendiri daripada disisipkan di sini.
 
 ### H-8 · Puskesmas dan Posyandu
 

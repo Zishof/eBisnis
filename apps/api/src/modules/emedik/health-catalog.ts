@@ -296,7 +296,37 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE'],
     sortOrder: 51,
   },
-  { code: 'HEALTH_EMERGENCY', parentCode: 'HEALTH', label: 'IGD', icon: 'siren', actions: ['READ'], sortOrder: 60, comingSoon: true },
+  // Gawat darurat, bedah, intensif — H-7.
+  //
+  // Dua pemisahan yang menentukan: yang menriase bukan yang menetapkan
+  // disposisi, dan yang mengisi daftar periksa bukan yang menyayat.
+  {
+    code: 'HEALTH_EMERGENCY',
+    parentCode: 'HEALTH',
+    label: 'IGD',
+    route: '/app/emedik/igd',
+    icon: 'siren',
+    actions: ['READ', 'TRIAGE', 'UPDATE', 'DISCHARGE'],
+    sortOrder: 60,
+  },
+  {
+    code: 'HEALTH_SURGERY',
+    parentCode: 'HEALTH',
+    label: 'Kamar Operasi',
+    route: '/app/emedik/operasi',
+    icon: 'scissors',
+    actions: ['READ', 'CREATE', 'UPDATE', 'CHECKLIST', 'INCISE', 'CANCEL'],
+    sortOrder: 61,
+  },
+  {
+    code: 'HEALTH_ICU',
+    parentCode: 'HEALTH',
+    label: 'Perawatan Intensif',
+    route: '/app/emedik/intensif',
+    icon: 'activity',
+    actions: ['READ', 'CREATE', 'UPDATE'],
+    sortOrder: 62,
+  },
   { code: 'HEALTH_PUSKESMAS', parentCode: 'HEALTH', label: 'Puskesmas', icon: 'building-2', actions: ['READ'], sortOrder: 70, comingSoon: true },
   { code: 'HEALTH_POSYANDU', parentCode: 'HEALTH', label: 'Posyandu', icon: 'baby', actions: ['READ'], sortOrder: 71, comingSoon: true },
   { code: 'HEALTH_CLAIM', parentCode: 'HEALTH', label: 'Klaim', icon: 'file-text', actions: ['READ'], sortOrder: 80, comingSoon: true },
@@ -440,6 +470,52 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_BED.UPDATE',
     ],
     sortOrder: 6,
+  },
+  {
+    code: 'HEALTH_TRIAGE_NURSE',
+    name: 'Perawat Triase',
+    description: 'Menriase pasien gawat darurat. TIDAK menetapkan disposisi.',
+    permissions: [...BACA_PASIEN, 'HEALTH_EMERGENCY.READ', 'HEALTH_EMERGENCY.TRIAGE'],
+    sortOrder: 13,
+  },
+  {
+    code: 'HEALTH_SURGEON',
+    name: 'Dokter Bedah',
+    description: 'Menjadwalkan dan mengerjakan operasi. TIDAK mengisi daftar periksa.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_SURGERY.READ',
+      'HEALTH_SURGERY.CREATE',
+      'HEALTH_SURGERY.UPDATE',
+      'HEALTH_SURGERY.INCISE',
+      'HEALTH_SURGERY.CANCEL',
+    ],
+    sortOrder: 14,
+  },
+  {
+    code: 'HEALTH_SCRUB_NURSE',
+    name: 'Perawat Instrumen',
+    description: 'Mengisi daftar periksa bedah dan menghitung kasa. TIDAK memulai sayatan.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_SURGERY.READ',
+      'HEALTH_SURGERY.CHECKLIST',
+      'HEALTH_SURGERY.UPDATE',
+    ],
+    sortOrder: 15,
+  },
+  {
+    code: 'HEALTH_INTENSIVIST',
+    name: 'Dokter Intensif',
+    description: 'Mengelola perawatan intensif.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_ICU.READ',
+      'HEALTH_ICU.CREATE',
+      'HEALTH_ICU.UPDATE',
+      'HEALTH_ADMISSION.READ',
+    ],
+    sortOrder: 16,
   },
   {
     code: 'HEALTH_WARD_CLERK',
@@ -616,6 +692,26 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'HEALTH_LAB_CRITICAL.CREATE',
       'HEALTH_LAB_CRITICAL.ACKNOWLEDGE_CRITICAL',
     ],
+  },
+  {
+    code: 'HEALTH_SOD_CHECKLIST_INCISE',
+    name: 'Pengisi daftar periksa bukan yang menyayat',
+    description:
+      'Jeda sebelum sayatan adalah percakapan tim, bukan centang satu orang. Bila yang mengisi ' +
+      'daftar periksa juga yang memulai sayatan, seluruh gunanya hilang: ia hanya mengonfirmasi ' +
+      'kepada dirinya sendiri apa yang sudah diyakininya. Basis data menegakkan sisi lain dari ' +
+      'aturan yang sama lewat ot_case_timeout_before_incision — daftar periksa tidak dapat ' +
+      'dicentang setelah pisau menyentuh kulit.',
+    conflictingPermissions: ['HEALTH_SURGERY.CHECKLIST', 'HEALTH_SURGERY.INCISE'],
+  },
+  {
+    code: 'HEALTH_SOD_TRIAGE_DISPOSITION',
+    name: 'Penriase bukan yang menetapkan disposisi',
+    description:
+      'Yang menriase adalah perawat di depan pintu; yang memutuskan pasien boleh pulang adalah ' +
+      'dokter. Menyatukannya membuat tekanan antrean berpindah langsung menjadi keputusan ' +
+      'memulangkan.',
+    conflictingPermissions: ['HEALTH_EMERGENCY.TRIAGE', 'HEALTH_EMERGENCY.DISCHARGE'],
   },
 ];
 

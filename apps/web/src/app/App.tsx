@@ -92,6 +92,9 @@ const HealthLabPage = lazy(() =>
 const HealthWardPage = lazy(() =>
   import('../verticals/health/WardPage').then((m) => ({ default: m.WardPage })),
 );
+const HealthEmergencyPage = lazy(() =>
+  import('../verticals/health/EmergencyPage').then((m) => ({ default: m.EmergencyPage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -206,6 +209,7 @@ export function App() {
             <Route path="rawat-inap" element={<HealthWardPage />} />
             <Route path="keperawatan" element={<HealthWardPage />} />
             <Route path="tempat-tidur" element={<HealthWardPage />} />
+            <Route path="igd" element={<HealthEmergencyPage />} />
           </Route>
           <Route path="*" element={<ComingSoonPage />} />
         </Route>

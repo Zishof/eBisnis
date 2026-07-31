@@ -15,6 +15,9 @@ import {
   LABEL_GOLONGAN_OBAT,
   LABEL_KEYAKINAN,
   LABEL_CARA_PULANG,
+  LABEL_DISPOSISI_IGD,
+  LABEL_TAHAP_BEDAH,
+  RUPA_TRIASE,
   LABEL_ISOLASI,
   LABEL_PRIORITAS_LAB,
   LABEL_STATUS_TEMPAT_TIDUR,
@@ -136,6 +139,21 @@ describe('tujuan penggunaan pada pembacaan rekam medis', () => {
       ['dischargeSummary', () => healthApi.dischargeSummary('A1', {}, ctx)],
       ['recordObservation', () => healthApi.recordObservation({}, ctx)],
       ['setBedStatus', () => healthApi.setBedStatus('B1', { status: 'AVAILABLE' }, ctx)],
+      // Gawat darurat, bedah, intensif.
+      ['triage', () => healthApi.triage({}, ctx)],
+      ['retriage', () => healthApi.retriage('V1', { level: 2 }, ctx)],
+      ['markSeen', () => healthApi.markSeen('V1', ctx)],
+      ['edDisposition', () => healthApi.edDisposition('V1', { disposition: 'DISCHARGED' }, ctx)],
+      ['scheduleSurgery', () => healthApi.scheduleSurgery({}, ctx)],
+      ['markSite', () => healthApi.markSite('C1', { site: 'KIRI' }, ctx)],
+      [
+        'surgicalChecklist',
+        () => healthApi.surgicalChecklist('C1', { phase: 'TIME_OUT', items: [] }, ctx),
+      ],
+      ['surgicalCount', () => healthApi.surgicalCount('C1', {}, ctx)],
+      ['incision', () => healthApi.incision('C1', ctx)],
+      ['leaveTheatre', () => healthApi.leaveTheatre('C1', {}, ctx)],
+      ['icuAssessment', () => healthApi.icuAssessment({}, ctx)],
     ];
 
     const tanpaTujuan: string[] = [];
@@ -323,5 +341,47 @@ describe('rupa rawat inap', () => {
     // Laporan yang tidak dapat membedakan pulang paksa dari pulang biasa tidak
     // dapat memperbaiki sebabnya.
     expect(LABEL_CARA_PULANG.AGAINST_MEDICAL_ADVICE).toBe('Pulang paksa');
+  });
+});
+
+describe('rupa gawat darurat dan bedah', () => {
+  it('lima tingkat triase, masing-masing berwarna dan berlabel', () => {
+    for (const t of [1, 2, 3, 4, 5]) {
+      expect(RUPA_TRIASE[t]?.label).toBeTruthy();
+      expect(RUPA_TRIASE[t]?.kelas).toContain('bg-');
+    }
+  });
+
+  it('hanya tingkat 1 dan 2 berwarna pekat', () => {
+    /*
+     * Perawat yang memindai papan dari seberang ruangan harus dapat melihat
+     * siapa yang tidak boleh menunggu, tanpa membaca satu angka pun. Bila
+     * seluruh tingkat berwarna pekat, tidak ada yang menonjol.
+     */
+    const pekat = Object.entries(RUPA_TRIASE).filter(([, r]) => r.kelas.includes('text-white'));
+    expect(pekat.map(([k]) => k).sort()).toEqual(['1', '2']);
+  });
+
+  it('"pergi tanpa dilihat" TIDAK diperhalus menjadi "pulang"', () => {
+    /*
+     * Menyamarkannya akan menyembunyikan angka yang paling penting bagi mutu
+     * IGD: berapa banyak orang yang menyerah menunggu.
+     */
+    expect(LABEL_DISPOSISI_IGD.LEFT_WITHOUT_BEING_SEEN).toBe('Pergi tanpa dilihat');
+    expect(LABEL_DISPOSISI_IGD.LEFT_WITHOUT_BEING_SEEN).not.toContain('Pulang');
+  });
+
+  it('setiap disposisi IGD punya label Indonesia', () => {
+    for (const [kode, label] of Object.entries(LABEL_DISPOSISI_IGD)) {
+      expect(label).not.toBe(kode);
+      expect(label).not.toMatch(/_/);
+    }
+  });
+
+  it('tahap bedah dinamai menurut SAAT-nya, bukan istilah asingnya', () => {
+    // "Time out" tidak berarti apa-apa bagi perawat yang belum pernah membaca
+    // panduannya; "jeda sebelum sayatan" mengatakan kapan ia terjadi.
+    expect(LABEL_TAHAP_BEDAH.TIME_OUT).toBe('Jeda sebelum sayatan');
+    expect(LABEL_TAHAP_BEDAH.SIGN_IN).toContain('pembiusan');
   });
 });

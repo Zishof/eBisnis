@@ -387,6 +387,70 @@ export interface HasilPengamatan {
   missing: string[];
 }
 
+// --- Gawat darurat, bedah, intensif ------------------------------------------
+
+export type TingkatTriase = 1 | 2 | 3 | 4 | 5;
+
+export interface HasilTriase {
+  id: string;
+  visitNumber: string;
+  level: TingkatTriase;
+  requestedLevel: TingkatTriase;
+  escalated: boolean;
+  redFlags: string[];
+  maxWaitMinutes: number;
+  message: string;
+}
+
+export interface BarisPapanIgd {
+  id: string;
+  visit_number: string;
+  patient_name: string | null;
+  chief_complaint: string | null;
+  triage_level: TingkatTriase;
+  requested_level: TingkatTriase | null;
+  triage_red_flags: string[] | null;
+  arrived_at: string;
+  seen_by_doctor_at: string | null;
+  max_wait_minutes: number;
+  status: string;
+  wait: { overdue: boolean; waitedMinutes: number; lateMinutes: number };
+}
+
+export interface BarisJadwalOperasi {
+  id: string;
+  case_number: string;
+  procedure_name: string;
+  urgency: string;
+  status: string;
+  scheduled_start: string | null;
+  scheduled_end: string | null;
+  requires_site_marking: boolean;
+  consent_site: string | null;
+  marked_site: string | null;
+  sign_in_at: string | null;
+  time_out_at: string | null;
+  incision_at: string | null;
+  left_theatre_at: string | null;
+  patient_name: string;
+  theatre_name: string | null;
+}
+
+export interface BarisPapanIcu {
+  id: string;
+  started_at: string;
+  admission_reason: string | null;
+  patient_name: string;
+  admission_number: string;
+  severity_score: number | null;
+  organ_support: number | null;
+  risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null;
+  last_assessed_at: string | null;
+  on_ventilator: boolean | null;
+  on_vasopressor: boolean | null;
+  on_dialysis: boolean | null;
+}
+
 // --- Panggilan ---------------------------------------------------------------
 
 export const healthApi = {
@@ -691,6 +755,92 @@ export const healthApi = {
       body,
       { headers: tajuk(ctx) },
     ),
+
+  // --- Gawat darurat, bedah, intensif ---------------------------------------
+  triage: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<HasilTriase>('/health/acute/ed/visits', body, { headers: tajuk(ctx) }),
+
+  retriage: (id: string, body: { level: number; reason?: string }, ctx: KonteksAkses) =>
+    api.post<{ id: string; level: number; from: number }>(
+      `/health/acute/ed/visits/${id}/triage`,
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  markSeen: (id: string, ctx: KonteksAkses) =>
+    api.post<{ id: string; seen: boolean }>(`/health/acute/ed/visits/${id}/seen`, {}, {
+      headers: tajuk(ctx),
+    }),
+
+  edDisposition: (
+    id: string,
+    body: { disposition: string; reason?: string; admissionId?: string },
+    ctx: KonteksAkses,
+  ) =>
+    api.post<{ id: string; disposition: string }>(
+      `/health/acute/ed/visits/${id}/disposition`,
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  edBoard: (facilityId: string) =>
+    api.get<BarisPapanIgd[]>(`/health/acute/ed/board?facilityId=${facilityId}`),
+
+  scheduleSurgery: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; caseNumber: string }>('/health/acute/ot/cases', body, {
+      headers: tajuk(ctx),
+    }),
+
+  markSite: (id: string, body: { site: string }, ctx: KonteksAkses) =>
+    api.post<{ id: string; markedSite: string; matchesConsent: boolean }>(
+      `/health/acute/ot/cases/${id}/mark-site`,
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  surgicalChecklist: (
+    id: string,
+    body: { phase: 'SIGN_IN' | 'TIME_OUT' | 'SIGN_OUT'; items: string[]; note?: string },
+    ctx: KonteksAkses,
+  ) =>
+    api.post<{ id: string; phase: string; complete: boolean }>(
+      `/health/acute/ot/cases/${id}/checklist`,
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  checklistItems: () =>
+    api.get<Record<'SIGN_IN' | 'TIME_OUT' | 'SIGN_OUT', string[]>>('/health/acute/ot/checklist-items'),
+
+  surgicalCount: (id: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; itemType: string }>(`/health/acute/ot/cases/${id}/counts`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  incision: (id: string, ctx: KonteksAkses) =>
+    api.post<{ id: string; incisionAt: string }>(`/health/acute/ot/cases/${id}/incision`, {}, {
+      headers: tajuk(ctx),
+    }),
+
+  leaveTheatre: (id: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; status: string }>(`/health/acute/ot/cases/${id}/leave`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  surgerySchedule: (facilityId: string, date?: string) =>
+    api.get<BarisJadwalOperasi[]>(
+      `/health/acute/ot/schedule?facilityId=${facilityId}${date ? `&date=${date}` : ''}`,
+    ),
+
+  icuAssessment: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; score: number; organSupport: number; risk: string }>(
+      '/health/acute/icu/assessments',
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  icuBoard: (facilityId: string) =>
+    api.get<BarisPapanIcu[]>(`/health/acute/icu/board?facilityId=${facilityId}`),
 };
 
 // --- Bantuan tampilan --------------------------------------------------------
@@ -889,6 +1039,39 @@ export const LABEL_CARA_PULANG: Record<string, string> = {
   AGAINST_MEDICAL_ADVICE: 'Pulang paksa',
   ABSCONDED: 'Menghilang',
   DECEASED: 'Meninggal',
+};
+
+/**
+ * Rupa tingkat triase.
+ *
+ * Tingkat 1 dan 2 berwarna pekat; sisanya menurun. Bukan gradasi cantik:
+ * perawat yang memindai papan dari seberang ruangan harus dapat melihat siapa
+ * yang tidak boleh menunggu, tanpa membaca satu angka pun.
+ */
+export const RUPA_TRIASE: Record<number, { kelas: string; label: string }> = {
+  1: { kelas: 'bg-rose-600 text-white dark:bg-rose-700', label: 'Resusitasi' },
+  2: { kelas: 'bg-orange-500 text-white dark:bg-orange-600', label: 'Gawat darurat' },
+  3: { kelas: 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200', label: 'Darurat' },
+  4: { kelas: 'bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200', label: 'Kurang darurat' },
+  5: { kelas: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200', label: 'Tidak darurat' },
+};
+
+export const LABEL_DISPOSISI_IGD: Record<string, string> = {
+  DISCHARGED: 'Pulang',
+  ADMITTED: 'Rawat inap',
+  TRANSFERRED: 'Dirujuk',
+  OBSERVATION: 'Observasi',
+  // Disebut apa adanya. Menyamarkannya menjadi "pulang" akan menyembunyikan
+  // angka yang paling penting bagi mutu IGD.
+  LEFT_WITHOUT_BEING_SEEN: 'Pergi tanpa dilihat',
+  DIED_IN_ED: 'Meninggal di IGD',
+  DOA: 'Meninggal sebelum tiba',
+};
+
+export const LABEL_TAHAP_BEDAH: Record<string, string> = {
+  SIGN_IN: 'Sebelum pembiusan',
+  TIME_OUT: 'Jeda sebelum sayatan',
+  SIGN_OUT: 'Sebelum keluar',
 };
 
 export const LABEL_KEGAWATAN: Record<string, string> = {

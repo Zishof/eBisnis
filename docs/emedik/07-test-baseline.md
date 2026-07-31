@@ -69,9 +69,10 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-4 | 35 | **60** | `health-medication.spec.ts` |
 | H-5 | 30 | **64** | `health-lab.spec.ts` |
 | H-6 | 30 | **53** | `health-inpatient.spec.ts` |
+| H-7 | 35 | **60** | `health-acute.spec.ts` |
 
-API keseluruhan: **1360** pengujian pada 52 berkas. Web: **64** pada 5 berkas,
-29 di antaranya pada `health-api.spec.ts`.
+API keseluruhan: **1420** pengujian pada 53 berkas. Web: **69** pada 5 berkas,
+34 di antaranya pada `health-api.spec.ts`.
 
 ### Naskah bukti
 
@@ -87,6 +88,13 @@ sungguhan, pada basis data sungguhan:
 | H-4 | `prove-health-pharmacy.mjs` | 44 pemeriksaan, seluruhnya lulus — [bukti-h4-farmasi.txt](bukti-h4-farmasi.txt) |
 | H-5 | `prove-health-lab.mjs` | 44 pemeriksaan, seluruhnya lulus — [bukti-h5-laboratorium.txt](bukti-h5-laboratorium.txt) |
 | H-6 | `prove-health-inpatient.mjs` | 41 pemeriksaan, seluruhnya lulus — [bukti-h6-rawat-inap.txt](bukti-h6-rawat-inap.txt) |
+| H-7 | `prove-health-acute.mjs` | 55 pemeriksaan, seluruhnya lulus — [bukti-h7-akut.txt](bukti-h7-akut.txt) |
+
+Naskah H-7 menembus dua invarian dari jalur basis data langsung, dan keduanya
+ditolak: penjadwalan kamar operasi yang bertumpang tindih (constraint
+pengecualian `EXCLUDE USING gist`) dan pengisian jeda sebelum sayatan setelah
+sayatan dimulai (constraint `ot_case_timeout_before_incision`). Ia lulus
+seluruhnya pada percobaan pertama.
 
 Naskah H-6 menembus invarian "satu tempat tidur satu pasien" dari **dua arah**:
 lewat API, dan lewat `INSERT` langsung ke tabel penempatan. Keduanya ditolak —

@@ -5,6 +5,100 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-7 — Gawat darurat, kamar operasi, dan perawatan intensif
+
+### Ditambahkan
+
+- **`H012__health__acute_care.sql`** — `ed_visit`, `ed_triage_change`,
+  `ot_theatre`, `ot_case`, `ot_checklist`, `ot_count`, `icu_stay`,
+  `icu_assessment`.
+- **`H013__health__acute_permissions.sql`** — aksi `TRIAGE`, `CHECKLIST`,
+  `INCISE`; dua menu baru; empat peran baru; dua aturan pemisahan wewenang.
+- **`health-acute.ts`** — aturan sebagai fungsi murni: penentuan triase, batas
+  tunggu, urutan antrean, daftar periksa keselamatan bedah, izin memulai
+  sayatan, hitungan kasa, penjadwalan kamar operasi, skor perawatan intensif,
+  dan disposisi. **60 pengujian.**
+- **`health-acute.service.ts`** dan **`health-acute.controller.ts`** — tiga
+  belas jalan pada `/api/v1/health/acute/**`.
+- **`EmergencyPage.tsx`** — papan gawat darurat pada web.
+- **`prove-health-acute.mjs`** — naskah bukti, 55 pemeriksaan, seluruhnya lulus
+  pada percobaan pertama. Dijalankan dengan lima pengguna.
+
+Uji: API 1360 → **1420**. Web 64 → **69**.
+
+### Invarian yang ditegakkan basis data
+
+- **Jeda sebelum sayatan tidak dapat dicentang belakangan** — constraint
+  `ot_case_timeout_before_incision`. Daftar periksa yang diisi setelah
+  operasinya selesai tidak menahan apa pun; ia hanya membuat berkasnya tampak
+  rapi, padahal ia satu-satunya penahan yang tersisa untuk operasi salah sisi
+  dan salah pasien.
+- **Satu kamar operasi, satu operasi pada satu waktu** — constraint pengecualian
+  `EXCLUDE USING gist` atas rentang waktu terjadwal. Dua penjadwalan bersamaan
+  sama-sama melihat kamarnya kosong; yang kedua baru ketahuan ketika tim datang
+  menemukan kamarnya terpakai, lalu pasien yang sudah berpuasa sejak tengah
+  malam ditunda. Rentangnya setengah terbuka sehingga operasi berikutnya boleh
+  dimulai tepat saat yang sebelumnya berakhir.
+- **Tingkat triase akhir tidak pernah lebih ringan daripada yang diusulkan.**
+- **"Pergi tanpa dilihat" hanya untuk pasien yang belum pernah dilihat dokter.**
+
+Naskah bukti menembus dua yang pertama lewat `INSERT`/`UPDATE` langsung.
+Keduanya ditolak.
+
+### Keputusan yang perlu dicatat
+
+- **Tanda bahaya MENAIKKAN tingkat triase, tidak pernah menurunkannya.** Triase
+  yang terlalu rendah lebih berbahaya daripada yang terlalu tinggi: yang pertama
+  membuat pasien menunggu berjam-jam sementara penyakitnya berjalan terus; yang
+  kedua hanya membuang waktu petugas. Petugas boleh menilai lebih gawat daripada
+  tanda vitalnya — ia melihat pasiennya, sistem tidak.
+
+- **Tingkat yang diusulkan dan tingkat akhir disimpan keduanya**, dan selisihnya
+  ditampilkan di layar. Petugas yang melihat penilaiannya dinaikkan sistem akan
+  menilai lebih cermat lain kali; yang tidak pernah melihatnya tidak akan.
+
+- **Menurunkan tingkat menuntut alasan; menaikkan tidak.** Penurunan tingkatlah
+  yang membuat pasien menunggu lebih lama, dan di sanalah tekanan antrean paling
+  mudah menyusup. Riwayatnya tidak dapat diubah.
+
+- **Lima tingkat triase, bukan tiga.** Tiga tingkat memaksa "kuning" menampung
+  pasien yang harus dilihat dalam sepuluh menit bersama pasien yang dapat
+  menunggu satu jam — dan yang pertama akan menunggu selama yang kedua.
+
+- **Yang mengisi daftar periksa bukan yang menyayat.** Jeda sebelum sayatan
+  adalah percakapan tim, bukan centang satu orang. Bila yang mengisi juga yang
+  menyayat, ia hanya mengonfirmasi kepada dirinya sendiri apa yang sudah
+  diyakininya.
+
+- **Sisi yang ditandai dibandingkan dengan persetujuan tindakan.** Bila berbeda,
+  jawabannya bukan peringatan melainkan penolakan dengan kata "HENTIKAN".
+
+- **Butir daftar periksa yang terlewat dilaporkan NAMANYA.** "Enam dari tujuh"
+  tidak memberi tahu siapa pun butir mana yang terlewat.
+
+- **Hitungan kasa yang tidak cocok menahan, tetapi ada jalan keluarnya.**
+  Menahannya tanpa jalan keluar sama sekali akan membuat orang mematikan
+  sistemnya, dan sistem yang dimatikan tidak menahan apa pun. Penghitung kedua
+  tidak boleh sama dengan penghitung pertama — hitungan oleh satu orang bukan
+  hitungan ganda.
+
+- **Dukungan organ ganda selalu kritis apa pun skornya.** Pasien dengan
+  ventilator dan vasopresor sekaligus adalah pasien yang tanda vitalnya tampak
+  baik justru karena mesin yang menahannya.
+
+- **Pada layar, tingkat triase menjadi blok warna besar**, dan hanya tingkat 1
+  dan 2 berwarna pekat. Perawat yang berdiri di tengah IGD ramai tidak membaca
+  tabel; ia memindai warna.
+
+### Belum dikerjakan
+
+Rekam anestesi berkelanjutan, ruang pemulihan beserta skor Aldrete, dialisis,
+onkologi, rehabilitasi, gigi, kesehatan jiwa, serta kebidanan dan neonatal.
+Kelima yang terakhir menuntut model datanya sendiri dan lebih tepat menjadi fase
+tersendiri daripada disisipkan di sini.
+
+---
+
 ## H-6 — Rawat inap: penerimaan, tempat tidur, keperawatan, dan pemulangan
 
 ### Ditambahkan
