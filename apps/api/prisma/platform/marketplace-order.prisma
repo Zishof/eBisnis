@@ -94,6 +94,9 @@ model MarketplaceOrder {
   lines        MarketplaceOrderLine[]
   reservations MarketplaceStockReservation[]
   history      MarketplaceOrderStatusHistory[]
+  returns      MarketplaceReturnRequest[]
+  refunds      MarketplaceRefund[]
+  disputes     MarketplaceDispute[]
 
   @@unique([orderNumber])
   @@index([sellerId, status])
