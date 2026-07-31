@@ -433,6 +433,62 @@ Uji ≥ 40.
 
 ---
 
+## Revisi 2 — fase tambahan H-9A sampai H-9N
+
+Paket **eMedik V12 Revisi 2** (1 Agustus 2026) menggantikan spesifikasi
+sebelumnya bila berkonflik, dan menambahkan empat belas subfase pada H-9.
+
+Audit H-0 R2 tersimpan pada dokumen [09](09-satusehat-capability-matrix.md)
+sampai [20](20-legal-and-contract-review-checklist.md).
+
+| Fase | Cakupan | Dapat dibangun tanpa kredensial? |
+|---|---|---|
+| H-9 | HIM, koding, mutu, keselamatan | **Ya, seluruhnya** |
+| H-9A | Fondasi SATUSEHAT | Kerangka + gerbang kemampuan saja |
+| H-9B | BPJS kepesertaan/rujukan/SEP/antrean | Catatan lokalnya saja |
+| H-9C | Klaim/casemix/rekonsiliasi | **Ya, sembilan dari lima belas tahap** |
+| H-9D | Tarif JKN/kelas/coverage | Struktur berversi; isinya menunggu |
+| H-9E | Kebijakan jasa/kontributor | **Ya, seluruhnya** |
+| H-9F | Simulasi/settlement/reversal | **Ya, seluruhnya** |
+| H-9G | Gerbang kontrak fee sistem/investor | **Ya, seluruhnya** |
+| H-9H | Registri alat/gateway | **Ya** kecuali protokol tertentu |
+| H-9I | DICOM/PACS/LIS/bedside | HL7/ASTM ya; DICOM terhalang PACS |
+| H-9J | Pemeliharaan/keamanan biomedis | **Ya, seluruhnya** |
+| H-9K | Dasbor investor/waterfall | **Ya**, menunggu port investor |
+| H-9L | Master data/pemetaan unit | **Ya, seluruhnya** |
+| H-9M | Impor KFA/katalog contoh | Struktur ya; isi KFA menunggu |
+| H-9N | COA kesehatan/pemetaan akuntansi | Struktur ya; **jurnalnya menunggu port** |
+
+### Urutan yang dipilih, dan alasannya
+
+Bukan urutan abjad. Yang didahulukan adalah yang **dapat berjalan penuh tanpa
+menunggu pihak lain**, sebab fase yang selesai setengah karena menunggu
+kredensial tidak dapat ditunjukkan kepada siapa pun.
+
+```text
+1.  H-9    HIM, koding, mutu — seluruhnya milik kami
+2.  H-9L   Master data dan pemetaan unit — pondasi bagi tarif dan jasa
+3.  H-9N   COA dan pemetaan akuntansi — strukturnya; jurnal menunggu port
+4.  H-9D   Struktur tarif berversi — isinya menunggu terbitan resmi
+5.  H-9E   Kebijakan jasa dan kontributor
+6.  H-9F   Simulasi, settlement, reversal
+7.  H-9G   Gerbang kontrak fee sistem dan investor
+8.  H-9C   Siklus klaim internal — koding sampai rekonsiliasi
+9.  H-9H   Registri alat dan gateway
+10. H-9J   Pemeliharaan, kalibrasi, keamanan siber
+11. H-9K   Dasbor investor agregat
+12. H-9I   Adapter HL7/ASTM; DICOM menunggu PACS
+13. H-9A   Kerangka SATUSEHAT beserta gerbang kemampuan
+14. H-9B   Kerangka BPJS beserta gerbang kemampuan
+15. H-9M   Kerangka impor KFA
+```
+
+Tiga yang terakhir sengaja diletakkan paling belakang: keluarannya adalah
+kerangka yang **menolak berjalan** sampai kredensialnya ada, dan kerangka yang
+menolak berjalan tidak dapat diperagakan.
+
+---
+
 ## Yang terhalang sejak sekarang
 
 Disebutkan di muka, bukan ditemukan pada fasenya. Tidak satu pun menghentikan

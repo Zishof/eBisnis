@@ -620,7 +620,7 @@ basis data. Pemicu tidak.
   `health_appointment`, `health_registration`, `health_queue`,
   `health_referral`.
 - Aturan front office beserta **37 pengujian** (98 → 135 pada modul kesehatan).
-- **`docs/emedik/09-isolasi-per-fasilitas.md`** dan **integration request 003**.
+- **`docs/emedik/21-isolasi-per-fasilitas.md`** dan **integration request 003**.
 
 ### Keputusan pemilik sistem: satu fasilitas, satu skema
 
