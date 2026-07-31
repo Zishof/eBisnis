@@ -10,6 +10,13 @@
       "file": "20260731000001__village__region_and_profile.sql",
       "name": "Unit pemerintahan, profil wilayah, dan domain",
       "description": "village_unit (dengan profile_type DESA/KELURAHAN sebagai tumpuan seluruh vertikal), village_profile_change, village_sub_area (dusun untuk desa, lingkungan untuk kelurahan — satu tabel dibedakan kind, sebab dua tabel berbentuk sama memaksa setiap kueri kependudukan menggabungkan keduanya), village_rw, village_rt, village_boundary, village_geo_area (GeoJSON sebagai JSONB, bukan PostGIS, karena ekstensi itu belum tentu ada dan kebutuhannya hanya menampilkan peta), village_potential, village_indicator, village_domain. Kode wilayah administratif disimpan sebagai teks karena nol di depan bermakna. Domain sendiri wajib diverifikasi kepemilikannya; subdomain info-desa.id tidak. Memakai fungsi pemicu audit generik dari V008, tidak membangun mekanisme audit sendiri."
+    },
+    {
+      "version": "20260731000002",
+      "sequence": 2,
+      "file": "20260731000002__village__resident_and_family.sql",
+      "name": "Penduduk, keluarga, dan peristiwa kependudukan",
+      "description": "village_family, village_resident, village_resident_history, village_resident_access_log, village_vital_event, village_resident_duplicate, village_resident_document. NIK dan nomor KK unik PER PENYEWA, bukan global: warga yang pindah antar desa tercatat pada keduanya untuk sementara, dan keunikan global akan menghalangi desa tujuan mendata kedatangannya. NIK yang janggal ditandai lewat national_id_flagged, bukan ditolak — NIK yang tercetak keliru pada KTP sungguhan ada, dan menolaknya memaksa petugas mengarang NIK lain agar datanya dapat masuk. village_resident_access_log tidak punya padanan di modul lain dan itu disengaja: pada kependudukan penyalahgunaan berbentuk PEMBACAAN, dan audit yang hanya mencatat perubahan tidak akan pernah melihatnya; isi datanya tidak ikut dicatat supaya catatan akses tidak menjadi salinan kedua dari data yang dilindunginya. Penolakan peristiwa wajib beralasan, sebab warga yang laporannya ditolak tanpa keterangan akan datang kembali menanyakan hal yang sama."
     }
   ]
 }

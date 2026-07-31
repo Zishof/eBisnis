@@ -158,3 +158,90 @@ tanpa dasar hukum ditolak.
 
 - `jest` — **1102 tes lulus** (bertambah 54)
 - `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
+
+---
+
+## D-2 — Penduduk, keluarga, dan peristiwa kependudukan
+
+### Ditambahkan
+
+- **`village-resident.ts`** — aturan kependudukan sebagai fungsi murni:
+  pemeriksaan NIK, penandaan duplikat, susunan kartu keluarga, transisi
+  peristiwa, usia dan kelompoknya, serta ambang penyajian agregat.
+  **39 pengujian.**
+- **Migrasi `20260731000002__village__resident_and_family.sql`** — tujuh tabel:
+  `village_family`, `village_resident`, `village_resident_history`,
+  `village_resident_access_log`, `village_vital_event`,
+  `village_resident_duplicate`, `village_resident_document`.
+- **`VillageResidentService`** dengan penegakan cakupan pada kueri, dan
+  **tujuh endpoint** `/village/residents/*`, `/village/vital-events/*`.
+
+### Tiga sikap yang disengaja, dan berlawanan dengan naluri "sistem harus ketat"
+
+**NIK yang janggal ditandai, bukan ditolak.** Godaannya besar: NIK punya format
+terdefinisi, dan menolak yang tidak sesuai terasa benar. Tetapi NIK yang
+tercetak keliru pada KTP sungguhan **ada**, dan warga pemiliknya tetap berhak
+dilayani desanya. Menolaknya memaksa petugas mengarang NIK lain agar datanya
+dapat masuk — dan data karangan lebih buruk daripada data yang ditandai janggal.
+Yang tetap ditolak hanyalah yang bukan enam belas digit angka, sebab itu pasti
+kesalahan pengetikan.
+
+**Duplikat ditandai, bukan diputuskan.** NIK kembar bisa berarti salah ketik,
+pemalsuan, atau kesalahan penerbitan. Sistem tidak tahu yang mana. Menolaknya
+otomatis menghalangi pendataan warga yang datanya memang bermasalah — padahal
+justru merekalah yang paling perlu dibantu mengurusnya. Penandaan dijalankan
+**sesudah** penyimpanan, bukan sebelumnya.
+
+**NIK dan nomor KK unik per penyewa, bukan global.** Warga yang pindah antar
+desa tercatat pada keduanya untuk sementara; keunikan global akan menghalangi
+desa tujuan mendata kedatangannya.
+
+### `village_resident_access_log` — tabel yang tidak punya padanan
+
+Pada kependudukan, penyalahgunaan berbentuk **pembacaan**: membuka data
+tetangga karena penasaran, menyalin daftar penerima bantuan menjelang pemilihan.
+Audit yang hanya mencatat perubahan tidak akan pernah melihatnya.
+
+Yang dicatat: siapa, kapan, dalam kapasitas apa, penduduk mana, dari layar mana.
+Yang **tidak** dicatat: isi datanya — catatan akses tidak boleh menjadi salinan
+kedua dari data yang dilindunginya.
+
+Kegagalan mencatat tidak menggagalkan pembacaannya: petugas tidak boleh berhenti
+melayani warga yang sedang berdiri di depannya karena satu tabel jejak bermasalah.
+Kegagalannya dicatat sebagai peringatan supaya tetap terlihat.
+
+### Keputusan lain
+
+- **Cakupan ditegakkan pada kueri**, mengembalikan potongan `WHERE` — bukan
+  menyaring hasil. Penyaringan hasil tetap membaca seluruh baris dari basis data.
+- **`AGGREGATE_ONLY` dan `NONE` menghasilkan `AND FALSE`.** BPD mengawasi, tidak
+  menyelidiki; Linmas menjaga ketertiban, tidak mendata.
+- **"Tidak ditemukan" dan "di luar cakupan" memberi pesan yang sama.**
+  Membedakannya akan memberi tahu bahwa penduduk itu ADA di RT lain — dan itu
+  sendiri sudah kebocoran.
+- **Penyuntingan wajib beralasan**, dan setiap medan yang berubah menghasilkan
+  satu baris riwayat beserta rujukan dokumennya.
+- **Penduduk meninggal atau pindah tidak dihapus dan tidak dapat disunting.**
+  Dokumen kependudukan kerap dibutuhkan bertahun-tahun kemudian, termasuk oleh
+  ahli warisnya.
+- **Persetujuan peristiwa dan perubahan status penduduk dalam satu transaksi.**
+  Peristiwa yang disetujui tanpa status yang ikut berubah membuat penduduk yang
+  sudah meninggal tetap tampak hidup pada daftar.
+- **Penolakan peristiwa wajib beralasan**, ditegakkan constraint. Warga yang
+  laporannya ditolak tanpa keterangan akan datang kembali menanyakan hal yang
+  sama, dan petugas berikutnya tidak tahu apa yang harus dijawab.
+
+### Yang belum tersambung, dan disebutkan terbuka
+
+`cakupan()` pada controller mengembalikan `UNIT` bagi seluruh pengguna.
+Mesin penyaringnya sudah ada dan teruji; yang belum adalah **sumber**
+cakupannya — penyambungan ke `user_scope_assignment` Core dikerjakan pada D-3.
+Sampai itu selesai, Ketua RT masih melihat seluruh desa.
+
+Disebutkan di sini alih-alih dibiarkan tampak sudah berlaku.
+
+### Gerbang mutu
+
+- `jest` — **1141 tes lulus** (bertambah 39)
+- `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
+- Migrasi diverifikasi pada skema sungguhan: 17 tabel village terbentuk

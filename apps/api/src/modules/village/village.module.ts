@@ -6,7 +6,7 @@
  * ketergantungan pada D-12, bukan hanya oleh kesepakatan.
  */
 
-import { Body, Controller, Get, Module, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Module, Param, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -16,6 +16,7 @@ import {
 } from '@nestjs/swagger';
 import {
   IsBoolean,
+  IsIn,
   IsOptional,
   IsString,
   IsUUID,
@@ -28,6 +29,7 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { InfrastructureModule } from '../../infrastructure/infrastructure.module';
 import { VillageMigrationService } from './village-migration.service';
 import { VillageUnitService } from './village-unit.service';
+import { VillageResidentService, type CakupanWilayah } from './village-resident.service';
 import { KATALOG_KELAYAKAN, layak, type KodeFitur } from './village-profile';
 
 function requireSchema(user: AuthenticatedUser): string {
@@ -119,6 +121,125 @@ class DaftarDomainDto {
   makePrimary?: boolean;
 }
 
+
+class BuatPendudukDto {
+  @ApiPropertyOptional({
+    example: '3507121708900001',
+    description: 'NIK. Yang janggal DITANDAI, bukan ditolak.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  nationalId?: string;
+
+  @ApiProperty({ example: 'Ahmad Fauzi' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  fullName!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  birthPlace?: string;
+
+  @ApiPropertyOptional({ example: '1990-08-17' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  birthDate?: string;
+
+  @ApiPropertyOptional({ enum: ['L', 'P'] })
+  @IsOptional()
+  @IsIn(['L', 'P'])
+  gender?: 'L' | 'P';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  familyId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  familyRelation?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  rtId?: string;
+}
+
+class SuntingPendudukDto {
+  @ApiProperty({
+    description: 'Alasan perubahan. WAJIB — data kependudukan tidak berubah tanpa sebab.',
+  })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(500)
+  reason!: string;
+
+  @ApiPropertyOptional({ description: 'Rujukan dokumen yang mendasari perubahan.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  documentReference?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  effectiveDate?: string;
+
+  @ApiProperty({ description: 'Medan yang diubah beserta nilai barunya.' })
+  changes!: Record<string, string | null>;
+}
+
+const JENIS_PERISTIWA = [
+  'KELAHIRAN',
+  'KEMATIAN',
+  'PINDAH_MASUK',
+  'PINDAH_KELUAR',
+  'PERKAWINAN',
+  'PERCERAIAN',
+] as const;
+
+class PeristiwaDto {
+  @ApiProperty({ enum: JENIS_PERISTIWA })
+  @IsIn(JENIS_PERISTIWA as unknown as string[])
+  eventType!: (typeof JENIS_PERISTIWA)[number];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  residentId?: string;
+
+  @ApiProperty({ example: '2026-07-31' })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  eventDate!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  eventPlace?: string;
+
+  @ApiPropertyOptional({ description: 'Nama bayi, untuk peristiwa kelahiran.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  childName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  documentReference?: string;
+}
+
 // --- Controller ---------------------------------------------------------------
 
 @ApiTags('village')
@@ -127,7 +248,21 @@ export class VillageController {
   constructor(
     private readonly unit: VillageUnitService,
     private readonly migrasi: VillageMigrationService,
+    private readonly penduduk: VillageResidentService,
   ) {}
+
+  /**
+   * Cakupan wilayah pengguna.
+   *
+   * Sementara ini seluruh pengguna berhak-akses memperoleh cakupan UNIT. D-3
+   * menyambungkannya ke `user_scope_assignment` yang sudah ada pada Core,
+   * sehingga Ketua RT benar-benar terbatas pada RT-nya. Disebutkan terbuka di
+   * sini alih-alih dibiarkan tampak sudah berlaku — mesin penyaringnya sudah
+   * ada dan teruji, yang belum adalah sumber cakupannya.
+   */
+  private cakupan(_user: AuthenticatedUser): CakupanWilayah {
+    return { level: 'UNIT' };
+  }
 
   // --- Profil dan kelayakan ------------------------------------------------
 
@@ -261,6 +396,104 @@ export class VillageController {
     return this.unit.daftarkanDomain(requireSchema(user), dto, user.userId);
   }
 
+
+  // --- Kependudukan ---------------------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_RESIDENT.READ')
+  @Get('residents')
+  @ApiOperation({
+    summary: 'Daftar penduduk',
+    description:
+      'Cakupan ditegakkan pada kueri, bukan dengan menyaring hasil. Setiap pembacaan dicatat ' +
+      'pada village_resident_access_log — pada kependudukan, penyalahgunaan berbentuk pembacaan.',
+  })
+  daftarPenduduk(
+    @Query('q') q: string | undefined,
+    @Query('rtId') rtId: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.penduduk.daftar(requireSchema(user), { q, rtId }, this.cakupan(user), user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_RESIDENT.READ')
+  @Get('residents/:id')
+  @ApiOperation({ summary: 'Rincian satu penduduk' })
+  detailPenduduk(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.penduduk.detail(requireSchema(user), id, this.cakupan(user), user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_RESIDENT.CREATE')
+  @Post('residents')
+  @ApiOperation({
+    summary: 'Mendaftarkan penduduk',
+    description:
+      'NIK yang janggal DITANDAI, bukan ditolak. NIK yang tercetak keliru pada KTP sungguhan ' +
+      'ada, dan menolaknya memaksa petugas mengarang NIK lain agar datanya dapat masuk.',
+  })
+  buatPenduduk(@Body() dto: BuatPendudukDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.penduduk.buat(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_RESIDENT.UPDATE')
+  @Post('residents/:id/amend')
+  @ApiOperation({
+    summary: 'Menyunting data penduduk',
+    description:
+      'Wajib menyertakan alasan. Setiap medan yang berubah menghasilkan satu baris riwayat — ' +
+      'pertanyaan "sejak kapan alamatnya begini, atas dasar surat apa" pasti muncul di kantor desa.',
+  })
+  suntingPenduduk(
+    @Param('id') id: string,
+    @Body() dto: SuntingPendudukDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.penduduk.sunting(
+      requireSchema(user),
+      id,
+      dto.changes ?? {},
+      {
+        reason: dto.reason,
+        documentReference: dto.documentReference,
+        effectiveDate: dto.effectiveDate,
+      },
+      user,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_FAMILY.READ')
+  @Get('families/:id/validate')
+  @ApiOperation({ summary: 'Memeriksa susunan kartu keluarga' })
+  periksaKeluarga(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.penduduk.periksaKeluarga(requireSchema(user), id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_VITAL_EVENT.CREATE')
+  @Post('vital-events')
+  @ApiOperation({ summary: 'Melaporkan peristiwa kependudukan' })
+  catatPeristiwa(@Body() dto: PeristiwaDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.penduduk.catatPeristiwa(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_VITAL_EVENT.APPROVE')
+  @Post('vital-events/:id/approve')
+  @ApiOperation({
+    summary: 'Menyetujui peristiwa kependudukan',
+    description:
+      'Persetujuan dan perubahan status penduduk terjadi dalam satu transaksi. Peristiwa yang ' +
+      'disetujui tanpa status yang ikut berubah akan membuat penduduk yang sudah meninggal ' +
+      'tetap tampak hidup pada daftar.',
+  })
+  setujuiPeristiwa(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.penduduk.setujuiPeristiwa(requireSchema(user), id, user);
+  }
+
   // --- Penyiapan ------------------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -297,7 +530,7 @@ export class VillageController {
 @Module({
   imports: [InfrastructureModule],
   controllers: [VillageController],
-  providers: [VillageUnitService, VillageMigrationService],
-  exports: [VillageUnitService, VillageMigrationService],
+  providers: [VillageUnitService, VillageMigrationService, VillageResidentService],
+  exports: [VillageUnitService, VillageMigrationService, VillageResidentService],
 })
 export class VillageModule {}
