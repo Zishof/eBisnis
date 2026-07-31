@@ -1,0 +1,76 @@
+==============================================================================
+BUKTI H-2 dan H-3 — SATU PASIEN DARI PENDAFTARAN SAMPAI KUNJUNGAN SELESAI
+Waktu   : 2026-07-31T17:42:30.137Z
+Schema  : demo
+==============================================================================
+
+Peran bukti dibuat dengan 171 hak akses pada 19 menu kesehatan.
+
+1. Tujuan penggunaan wajib pada setiap pembacaan rekam medis
+  LULUS  membaca rekam medis TANPA tujuan ditolak
+  LULUS  penolakannya menyebutkan tajuk yang kurang
+  LULUS  tujuan yang tidak dikenal ditolak
+
+2. Mendaftarkan pasien
+  LULUS  pasien terdaftar
+  LULUS  memperoleh nomor rekam medis
+   MRN: FAC457A2-000001
+  LULUS  NIK yang bentuknya salah ditolak
+
+3. Deteksi rekam medis ganda
+  LULUS  pendaftaran yang hampir pasti ganda DITAHAN
+  LULUS  penolakannya menyebutkan calon rekam medis yang sudah ada
+  LULUS  menyertakan alasan mengapa diduga sama
+  LULUS  dapat dilanjutkan bila petugas menegaskan orangnya berbeda
+
+4. Penggabungan rekam medis
+  LULUS  rekam kedua diberi NIK yang berbeda
+  LULUS  penggabungan dengan NIK berbeda DITOLAK
+  LULUS  penolakannya menyebutkan NIK
+  LULUS  penggabungan yang sah berhasil
+  LULUS  rekam sumber TIDAK dihapus, hanya menunjuk induknya
+
+5. Pendaftaran kunjungan dan antrean
+  LULUS  kunjungan terdaftar
+  LULUS  memperoleh nomor antrean
+  LULUS  ditandai tertagih
+   FAC457A2-20260801-0001 · antrean A-001
+  LULUS  mendaftarkan pada rekam yang sudah digabungkan DITOLAK
+  LULUS  antrean terbaca
+
+6. Kunjungan dan dokumentasi klinis
+  LULUS  kunjungan dimulai
+  LULUS  tanda vital tercatat
+  LULUS  tekanan darah terbalik ditolak
+  LULUS  catatan klinis tersimpan dan ditandatangani
+  LULUS  mengubah catatan bertanda tangan lewat basis data DITOLAK
+  LULUS  amandemen dapat dibuat
+  LULUS  amandemen tanpa alasan bermakna ditolak
+  LULUS  diagnosis utama tercatat
+  LULUS  diagnosis utama KEDUA ditolak
+  LULUS  penolakannya menerangkan apa yang harus dilakukan
+  LULUS  order laboratorium dibuat
+
+7. Akses darurat
+  LULUS  akses darurat tanpa alasan DITOLAK
+  LULUS  akses darurat beralasan diizinkan
+  LULUS  akses darurat tercatat pada jejak
+  LULUS  jejak pembacaan terbaca lewat API
+   2 pembacaan tercatat untuk pasien ini
+
+8. Menyelesaikan kunjungan dan rekap penagihan
+  LULUS  kunjungan selesai
+  LULUS  ringkasan kunjungan terbaca
+  LULUS  memuat dua catatan: asli dan amandemennya
+  LULUS  catatan asli TETAP menyebut diagnosis semula
+  LULUS  amandemen menyebut diagnosis yang dikoreksi
+  LULUS  rekap penagihan terbaca
+  LULUS  pendaftaran yang berhasil ditandai tertagih
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Data sementara dibersihkan sebagian. Catatan klinis bertanda tangan, jejak
+pembacaan, pendaftaran, dan pasien sengaja ditinggalkan: penjaganya menolak
+penghapusan, dan itulah salah satu hal yang baru saja dibuktikan.

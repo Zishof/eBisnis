@@ -5,6 +5,57 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-2/H-3 lanjutan — Endpoint, penyemaian menu, dan bukti alur
+
+Melengkapi H-2 dan H-3 agar benar-benar dapat dipakai, bukan hanya berupa skema.
+
+### Ditambahkan
+- **`HealthPatientService`** dan **`HealthVisitService`** — identitas pasien,
+  pendaftaran, antrean, kunjungan, dan dokumentasi klinis.
+- **Dua puluh endpoint baru** (10 → 30 seluruhnya di bawah `/api/v1/health/**`).
+- **Migrasi `H005`** — menyemai 19 menu, 8 aksi hak akses klinis, 7 peran
+  bawaan, dan 2 aturan pemisahan wewenang.
+- **Naskah bukti alur** `prove-health-flow-e2e.mjs` — **42 pemeriksaan** lewat
+  HTTP dengan hak akses sungguhan, seluruhnya lulus.
+
+### Tiga cacat yang ditemukan naskah bukti, bukan pengujian unit
+
+- **Menu kesehatan tidak pernah disemai.** Katalognya ada sebagai berkas
+  TypeScript, layanannya benar, penjaganya benar — tetapi tidak ada apa pun
+  yang memasukkan barisnya ke tabel `menu`, sehingga **seluruh endpoint
+  menjawab 403** dan tidak satu pun hak akses kesehatan dapat diberikan.
+  Diperbaiki oleh H005.
+
+- **Akses darurat tidak memeriksa hak akses, hanya alasan.** Memberi alasan
+  sudah cukup untuk menembus batas hubungan perawatan — sehingga siapa pun yang
+  boleh membaca satu rekam medis dapat membaca **semua** rekam medis hanya
+  dengan mengetik kalimat. Alasan membuat perbuatannya dapat ditelaah; ia tidak
+  membuat perbuatannya boleh. Kini `HEALTH_PATIENT.BREAK_GLASS` diperiksa
+  tersendiri.
+
+- **Nomor kunjungan bertabrakan antar fasilitas.**
+  `ux_health_encounter_number` unik se-tenant, tetapi penomorannya urut per
+  fasilitas — sehingga fasilitas kedua gagal memulai kunjungan pertamanya pada
+  hari yang sama. Satu fasilitas saja tidak pernah menunjukkannya. Kelas cacat
+  yang sama dengan `ux_pos_shift_number` pada sesi Core.
+
+### Catatan tentang naskah bukti
+
+Percobaan pertama gagal dengan 409 pada pendaftaran pertama, dan itu **bukan**
+cacat: pasien bukti dari jalannya yang terdahulu masih ada dengan nama, tanggal
+lahir, dan nama ibu yang sama, sehingga deteksi penggandaan menahannya persis
+sebagaimana mestinya. Yang keliru adalah naskah buktinya, yang mengandaikan
+basis data selalu bersih. Nama dan NIK kini dibuat unik per jalannya.
+
+Hal serupa terjadi pada penggabungan yang sempat terbaca 403: perannya memang
+belum diberi `MERGE_PATIENT`. Penjaganya bekerja; naskahnya yang kurang.
+
+### Perbaikan lain
+- `ON CONFLICT (code)` diganti penjaga `NOT EXISTS` pada H005: indeks unik pada
+  `menu.code`, `permission_action.code`, dan `role.code` bersifat **parsial**
+  (`WHERE deleted_at IS NULL`), dan indeks parsial tidak dapat dipakai Postgres
+  untuk menyimpulkan sasaran `ON CONFLICT`.
+
 ## H-3 — Kunjungan, dokumentasi klinis, dan order
 
 ### Ditambahkan

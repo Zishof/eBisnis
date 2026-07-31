@@ -31,6 +31,9 @@ import { AuthModule } from '../auth/auth.module';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { HealthFacilityService } from './health-facility.service';
+import { HealthPatientService } from './health-patient.service';
+import { HealthVisitService } from './health-visit.service';
+import { HealthClinicalController } from './health-clinical.controller';
 import {
   CoreAuditAdapter,
   CoreIdentityAdapter,
@@ -367,9 +370,11 @@ export class HealthController {
 
 @Module({
   imports: [InfrastructureModule, AuthModule],
-  controllers: [HealthController],
+  controllers: [HealthController, HealthClinicalController],
   providers: [
     HealthFacilityService,
+    HealthPatientService,
+    HealthVisitService,
     CoreIdentityAdapter,
     CoreAuditAdapter,
     CoreNotificationAdapter,
@@ -380,6 +385,6 @@ export class HealthController {
     { provide: AUDIT_PORT, useExisting: CoreAuditAdapter },
     { provide: NOTIFICATION_PORT, useExisting: CoreNotificationAdapter },
   ],
-  exports: [HealthFacilityService, IDENTITY_PORT, AUDIT_PORT, NOTIFICATION_PORT],
+  exports: [HealthFacilityService, HealthPatientService, HealthVisitService, IDENTITY_PORT, AUDIT_PORT, NOTIFICATION_PORT],
 })
 export class EmedikModule {}
