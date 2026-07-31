@@ -144,6 +144,19 @@ const SKEMA_DRAFT_SURAT = {
   required: ['perihal', 'isi', 'catatanPenyusun'],
 } as const;
 
+const SKEMA_DRAFT_PESAN = {
+  type: 'object',
+  properties: {
+    judul: { type: 'string' },
+    isi: { type: 'string', description: 'Badan pesan, bahasa Indonesia.' },
+    catatanPenyusun: {
+      type: 'string',
+      description: 'Hal yang perlu diperiksa manusia sebelum pesan dipakai.',
+    },
+  },
+  required: ['judul', 'isi', 'catatanPenyusun'],
+} as const;
+
 /**
  * Seluruh keperluan yang dikenal.
  *
@@ -245,6 +258,189 @@ export const AI_USE_CASES: AiUseCase[] = [
     name: 'Jelaskan Galat',
     description: 'Menjelaskan sebuah kelompok galat dan mengusulkan langkah pemeriksaan.',
     menuCode: 'ADMIN_AUDIT',
+    action: 'READ',
+    outputKind: 'ANALYSIS',
+    riskClass: 'LOW',
+    requiresEvidence: true,
+    outputSchema: SKEMA_RINGKASAN,
+    hourlyQuotaPerUser: 30,
+    storeContent: false,
+  },
+// ------------------------------------------------------- Eksekutif dan BI
+  {
+    code: 'RINGKAS_KINERJA',
+    name: 'Ringkas Kinerja',
+    description:
+      'Meringkas angka kinerja pada dasbor menjadi satu kesimpulan beserta hal yang ' +
+      'paling perlu diperhatikan.',
+    menuCode: 'REPORTING',
+    action: 'READ',
+    outputKind: 'ANALYSIS',
+    riskClass: 'MEDIUM',
+    requiresEvidence: true,
+    outputSchema: SKEMA_RINGKASAN,
+    hourlyQuotaPerUser: 20,
+    storeContent: false,
+  },
+
+  // -------------------------------------------------------- Penjualan / CRM
+  {
+    code: 'ANALISIS_PENJUALAN',
+    name: 'Analisis Penjualan',
+    description: 'Menjelaskan pergerakan penjualan dari angka yang disertakan.',
+    menuCode: 'SALES',
+    action: 'READ',
+    outputKind: 'ANALYSIS',
+    riskClass: 'MEDIUM',
+    requiresEvidence: true,
+    outputSchema: SKEMA_RINGKASAN,
+    hourlyQuotaPerUser: 20,
+    storeContent: false,
+  },
+  {
+    code: 'DRAFT_BALASAN_PELANGGAN',
+    name: 'Draft Balasan Pelanggan',
+    description:
+      'Menyusun konsep balasan untuk pelanggan. Hasilnya SELALU konsep yang wajib dibaca ' +
+      'dan disunting manusia sebelum dikirim — tidak ada balasan yang terkirim otomatis.',
+    // Menu ANAK, bukan root. Root CRM hanya punya aksi READ, sehingga izin
+    // CRM.CREATE tidak akan pernah dapat diberikan kepada siapa pun — dan
+    // keperluan yang menuntutnya menjadi tidak dapat dipakai. Ditemukan oleh
+    // pengujian yang membandingkan registri terhadap katalog menu.
+    menuCode: 'CRM_CUSTOMER',
+    action: 'CREATE',
+    outputKind: 'DRAFT',
+    riskClass: 'HIGH',
+    requiresEvidence: false,
+    outputSchema: SKEMA_DRAFT_PESAN,
+    hourlyQuotaPerUser: 15,
+    // Berisiko tinggi: isinya disimpan supaya dapat ditelusuri bila kelak ada
+    // balasan yang isinya dipersoalkan pelanggan.
+    storeContent: true,
+  },
+
+  // ------------------------------------------------------------- Pembelian
+  {
+    code: 'BANDINGKAN_PENAWARAN',
+    name: 'Bandingkan Penawaran',
+    description:
+      'Membandingkan penawaran pemasok dari data yang disertakan. Hasilnya usulan, ' +
+      'bukan keputusan — pemilihan pemasok tetap lewat persetujuan manusia.',
+    menuCode: 'PURCHASING',
+    action: 'READ',
+    outputKind: 'RECOMMENDATION',
+    riskClass: 'MEDIUM',
+    requiresEvidence: true,
+    outputSchema: SKEMA_REKOMENDASI,
+    hourlyQuotaPerUser: 20,
+    storeContent: false,
+  },
+
+  // -------------------------------------------------------------- Persediaan
+  {
+    code: 'ANALISIS_STOK',
+    name: 'Analisis Stok',
+    description: 'Menandai barang yang pergerakannya janggal beserta buktinya.',
+    menuCode: 'INVENTORY',
+    action: 'READ',
+    outputKind: 'ANALYSIS',
+    riskClass: 'MEDIUM',
+    requiresEvidence: true,
+    outputSchema: SKEMA_ANOMALI,
+    hourlyQuotaPerUser: 20,
+    storeContent: false,
+  },
+
+  // ------------------------------------------------------ Produksi dan mutu
+  {
+    code: 'ANALISIS_MUTU',
+    name: 'Analisis Temuan Mutu',
+    description: 'Meringkas temuan pemeriksaan mutu dan mengusulkan langkah perbaikan.',
+    menuCode: 'QUALITY',
+    action: 'READ',
+    outputKind: 'RECOMMENDATION',
+    riskClass: 'MEDIUM',
+    requiresEvidence: true,
+    outputSchema: SKEMA_REKOMENDASI,
+    hourlyQuotaPerUser: 20,
+    storeContent: false,
+  },
+
+  // ------------------------------------------------------- Marketplace / POS
+  {
+    code: 'DRAFT_DESKRIPSI_PRODUK',
+    name: 'Draft Deskripsi Produk',
+    description:
+      'Menyusun konsep deskripsi produk untuk toko online. Konsep wajib diperiksa manusia; ' +
+      'penerbitan produk tetap melewati gerbang tiga gambar dan persetujuan yang ada.',
+    // Menu anak, dengan alasan yang sama seperti CRM_CUSTOMER di atas.
+    menuCode: 'ONLINE_LISTING',
+    action: 'CREATE',
+    outputKind: 'DRAFT',
+    riskClass: 'MEDIUM',
+    requiresEvidence: false,
+    outputSchema: SKEMA_DRAFT_PESAN,
+    hourlyQuotaPerUser: 25,
+    storeContent: false,
+  },
+  {
+    code: 'ANALISIS_KINERJA_TOKO',
+    name: 'Analisis Kinerja Toko',
+    description: 'Menjelaskan pergerakan kinerja toko online dari angka yang disertakan.',
+    menuCode: 'STORE_PERFORMANCE',
+    action: 'READ',
+    outputKind: 'ANALYSIS',
+    riskClass: 'MEDIUM',
+    requiresEvidence: true,
+    outputSchema: SKEMA_RINGKASAN,
+    hourlyQuotaPerUser: 20,
+    storeContent: false,
+  },
+
+  // -------------------------------------------------------------- Keuangan
+  {
+    code: 'JELASKAN_SELISIH',
+    name: 'Jelaskan Selisih',
+    description:
+      'Menjelaskan kemungkinan sebab selisih angka keuangan. Hasilnya dugaan yang wajib ' +
+      'diperiksa terhadap buku besar — AI tidak pernah memposting maupun menyesuaikan apa pun.',
+    menuCode: 'FINANCE',
+    action: 'READ',
+    outputKind: 'ANALYSIS',
+    riskClass: 'HIGH',
+    requiresEvidence: true,
+    outputSchema: SKEMA_ANOMALI,
+    // Kuota lebih ketat: keperluan keuangan berisiko tinggi, dan pemakaian
+    // berulang tanpa pemeriksaan justru memperbesar peluang angka yang salah
+    // dipercaya.
+    hourlyQuotaPerUser: 10,
+    storeContent: true,
+  },
+
+  // ------------------------------------------------------------------- SDM
+  {
+    code: 'RINGKAS_KEHADIRAN',
+    name: 'Ringkas Kehadiran',
+    description:
+      'Meringkas pola kehadiran dari data yang disertakan. TIDAK dipakai menilai orang ' +
+      'maupun mengusulkan sanksi — keluarannya ringkasan, dan penilaian tetap wewenang ' +
+      'atasan yang mengenal keadaannya.',
+    menuCode: 'HR',
+    action: 'READ',
+    outputKind: 'ANALYSIS',
+    riskClass: 'HIGH',
+    requiresEvidence: true,
+    outputSchema: SKEMA_RINGKASAN,
+    hourlyQuotaPerUser: 10,
+    storeContent: true,
+  },
+
+  // -------------------------------------------------------------- Ticketing
+  {
+    code: 'RINGKAS_TIKET',
+    name: 'Ringkas Tiket Dukungan',
+    description: 'Meringkas riwayat tiket yang panjang menjadi beberapa poin.',
+    menuCode: 'SUPPORT_TICKET',
     action: 'READ',
     outputKind: 'ANALYSIS',
     riskClass: 'LOW',

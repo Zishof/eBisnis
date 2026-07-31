@@ -228,3 +228,65 @@ Setelah itu `GET /ai/knowledge/stats` akan melaporkan `retriever: "HYBRID"`, dan
 pencarian bukti berpindah sendiri.
 
 Tidak ada perubahan kode maupun konfigurasi yang diperlukan.
+
+---
+
+# V11-5 — Keperluan AI per Modul
+
+18 keperluan mencakup sebelas modul yang disebut spesifikasi.
+
+| Modul | Keperluan | Bentuk | Risiko |
+|---|---|---|---|
+| Eksekutif/BI | `RINGKAS_KINERJA` | ANALYSIS | MEDIUM |
+| Copilot umum | `BUAT_KESIMPULAN`, `JELASKAN_ANGKA`, `TEMUKAN_ANOMALI`, `BERIKAN_REKOMENDASI` | ANALYSIS / RECOMMENDATION | LOW–MEDIUM |
+| Penjualan | `ANALISIS_PENJUALAN` | ANALYSIS | MEDIUM |
+| CRM | `DRAFT_BALASAN_PELANGGAN` | DRAFT | **HIGH** |
+| Pembelian | `BANDINGKAN_PENAWARAN` | RECOMMENDATION | MEDIUM |
+| Persediaan | `ANALISIS_STOK` | ANALYSIS | MEDIUM |
+| Mutu | `ANALISIS_MUTU` | RECOMMENDATION | MEDIUM |
+| Marketplace | `DRAFT_DESKRIPSI_PRODUK`, `ANALISIS_KINERJA_TOKO` | DRAFT / ANALYSIS | MEDIUM |
+| Keuangan | `JELASKAN_SELISIH` | ANALYSIS | **HIGH** |
+| SDM | `RINGKAS_KEHADIRAN` | ANALYSIS | **HIGH** |
+| Ticketing | `RINGKAS_TIKET` | ANALYSIS | LOW |
+| Surat | `DRAFT_SURAT_KELUAR`, `RINGKAS_SURAT_MASUK` | DRAFT / ANALYSIS | HIGH / MEDIUM |
+| Observability | `JELASKAN_GALAT` | ANALYSIS | LOW |
+
+## Batas yang dinyatakan pada keperluan berisiko tinggi
+
+- **`JELASKAN_SELISIH`** — hasilnya dugaan yang wajib diperiksa terhadap buku
+  besar. AI tidak pernah memposting maupun menyesuaikan apa pun.
+- **`RINGKAS_KEHADIRAN`** — **tidak** dipakai menilai orang maupun mengusulkan
+  sanksi. Keluarannya ringkasan; penilaian tetap wewenang atasan yang mengenal
+  keadaannya. Ini batas yang paling mudah dilanggar tanpa disadari, karena
+  ringkasan kehadiran tampak seperti bahan penilaian.
+- **`DRAFT_BALASAN_PELANGGAN`** dan **`DRAFT_SURAT_KELUAR`** — teks yang keluar
+  dari organisasi. Isinya disimpan supaya dapat ditelusuri bila kelak
+  dipersoalkan.
+
+Kuota keperluan berisiko tinggi lebih ketat (10/jam) daripada yang rendah
+(30/jam). Pemakaian berulang tanpa pemeriksaan justru memperbesar peluang angka
+yang salah dipercaya.
+
+## Cacat yang ditemukan pengujian
+
+Uji baru membandingkan registri terhadap **katalog menu yang sebenarnya**, dan
+langsung menangkap dua keperluan yang menunjuk menu **root**:
+
+- `DRAFT_BALASAN_PELANGGAN` → `CRM.CREATE`
+- `DRAFT_DESKRIPSI_PRODUK` → `ONLINE_CATALOG.CREATE`
+
+Kedua root itu hanya punya aksi `READ`. Izin `CRM.CREATE` karena itu **tidak akan
+pernah dapat diberikan kepada siapa pun**, dan kedua keperluan itu akan menjadi
+tombol yang selalu ditolak.
+
+Tanpa uji ini, kesalahannya baru ketahuan ketika seseorang mencoba memakainya —
+dan galatnya muncul sebagai "hak akses tidak mencukupi", jauh dari sebabnya.
+Diperbaiki menjadi `CRM_CUSTOMER` dan `ONLINE_LISTING`.
+
+Empat uji baru menjaga registri tetap selaras dengan katalog:
+
+1. Setiap `menuCode` ada pada katalog menu.
+2. Setiap `action` benar-benar tersedia pada menunya.
+3. Keperluan yang menyusun teks untuk pihak luar berisiko tinggi dan menyimpan
+   isinya.
+4. Kuota risiko tinggi tidak lebih longgar daripada risiko rendah.

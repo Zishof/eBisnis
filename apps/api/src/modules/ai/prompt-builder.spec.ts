@@ -6,6 +6,7 @@ import {
   validateAgainstSchema,
 } from './prompt-builder';
 import { AI_USE_CASES, findUseCase, listUseCases } from './ai-use-case.registry';
+import { MENU_TREE_SEED } from '../../infrastructure/provisioning/tenant-menu.seed';
 
 describe('redactText', () => {
   it('menyamarkan nomor rekening', () => {
@@ -273,6 +274,47 @@ describe('registri keperluan AI', () => {
     // Kebijakan bawaan pada keperluan tak dikenal berarti keperluan apa pun
     // dapat diselundupkan dengan mengarang kodenya.
     expect(findUseCase('KEPERLUAN_KARANGAN')).toBeUndefined();
+  });
+
+  it('setiap menuCode benar-benar ada pada katalog menu', () => {
+    /*
+     * Tanpa uji ini, satu huruf yang salah pada `menuCode` baru ketahuan saat
+     * seseorang memakai keperluannya — dan galatnya muncul sebagai "menu tidak
+     * dikenal" pada penjaga izin, jauh dari sebabnya.
+     *
+     * Katalog menu adalah sumber kebenarannya, jadi diperiksa terhadap katalog
+     * itu sendiri, bukan terhadap daftar yang disalin.
+     */
+    const kodeMenu = new Set(MENU_TREE_SEED.map((m) => m.code));
+    const salah = AI_USE_CASES.filter((u) => !kodeMenu.has(u.menuCode));
+    expect(salah.map((u) => `${u.code} -> ${u.menuCode}`)).toEqual([]);
+  });
+
+  it('setiap aksi benar-benar tersedia pada menunya', () => {
+    // Izin `MENU.ACTION` hanya dapat diberikan bila menunya memang punya aksi
+    // itu. Keperluan yang menuntut aksi yang tidak ada tidak akan pernah dapat
+    // dipakai siapa pun.
+    const aksiPerMenu = new Map(MENU_TREE_SEED.map((m) => [m.code, new Set(m.actions ?? [])]));
+    const salah = AI_USE_CASES.filter((u) => !aksiPerMenu.get(u.menuCode)?.has(u.action));
+    expect(salah.map((u) => `${u.code} -> ${u.menuCode}.${u.action}`)).toEqual([]);
+  });
+
+  it('keperluan yang menyusun teks untuk pihak luar berisiko tinggi', () => {
+    // Draft yang keluar dari organisasi — surat, balasan pelanggan — dapat
+    // menimbulkan akibat yang tidak dapat ditarik kembali bila isinya salah.
+    for (const kode of ['DRAFT_SURAT_KELUAR', 'DRAFT_BALASAN_PELANGGAN']) {
+      const u = findUseCase(kode)!;
+      expect(u.riskClass).toBe('HIGH');
+      expect(u.storeContent).toBe(true);
+    }
+  });
+
+  it('keperluan berisiko tinggi berkuota lebih ketat daripada yang rendah', () => {
+    const tinggi = AI_USE_CASES.filter((u) => u.riskClass === 'HIGH');
+    const rendah = AI_USE_CASES.filter((u) => u.riskClass === 'LOW');
+    const maksTinggi = Math.max(...tinggi.map((u) => u.hourlyQuotaPerUser));
+    const minRendah = Math.min(...rendah.map((u) => u.hourlyQuotaPerUser));
+    expect(maksTinggi).toBeLessThanOrEqual(minRendah);
   });
 
   it('skema keluaran setiap keperluan menyebut bidang wajib', () => {
