@@ -1,0 +1,63 @@
+==============================================================================
+BUKTI POS-1 dan POS-2 — KONTEKS KASIR, SHIFT, DAN HARGA OTORITATIF
+Waktu   : 2026-07-31T14:37:31.971Z
+API     : http://localhost:3100/api/v1
+Schema  : demo
+==============================================================================
+
+Disiapkan: pengguna bukti_kasir_a85f628c, dua terminal, satu penugasan.
+
+1. Masuk sebagai kasir
+  LULUS  login berhasil
+  LULUS  memperoleh token akses
+
+2. Konteks kasir
+  LULUS  konteks dapat dibaca
+  LULUS  hanya register yang ditugaskan yang tampil
+  LULUS  register yang tampil adalah yang ditugaskan
+  LULUS  register yang TIDAK ditugaskan tidak bocor
+  LULUS  tanggal usaha disertakan
+  LULUS  ambang persetujuan disertakan
+
+3. Membuka shift
+  LULUS  shift terbuka
+  LULUS  memperoleh id shift
+  LULUS  buka shift kedua ditolak
+  LULUS  penolakannya menyebutkan alasan yang dapat ditindaklanjuti
+
+4. Register yang tidak ditugaskan
+  LULUS  membuka register orang lain ditolak
+  LULUS  alasannya: tidak ditugaskan
+  LULUS  kas awal tercatat sebagai pergerakan kas
+
+5. Pencarian katalog
+  LULUS  pencarian dapat dijalankan
+   5 produk ditemukan
+  LULUS  produk menyertakan satuannya
+
+6. Pemindaian barcode
+  (lewat) produk pertama tanpa barcode
+  LULUS  barcode tak dikenal ditolak
+  LULUS  penolakannya menawarkan tindak lanjut
+
+7. Kuotasi harga
+  LULUS  kuotasi berhasil
+   satuan 0 × 2 = bruto 0, pajak 0, total 0
+  LULUS  harga satuan dikembalikan
+  LULUS  harga nol selalu disertai peringatan, tidak pernah diam-diam
+  LULUS  bruto benar-benar satuan dikali jumlah
+  LULUS  total adalah neto ditambah pajak
+  LULUS  rincian pajak disertakan, bukan hanya jumlahnya
+
+8. Harga tidak dapat ditentukan peramban
+  LULUS  kasir tanpa hak PRICE_OVERRIDE ditolak
+  LULUS  penolakannya mengarahkan ke supervisor
+
+9. Produk nonaktif tidak dapat dijual
+  LULUS  produk tidak dikenal ditolak
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Data sementara dibersihkan.

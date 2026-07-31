@@ -28,6 +28,14 @@ const SOD_RULE_META: Record<string, { name: string; description: string; severit
     description: 'Void dan refund harus disetujui supervisor, bukan kasir yang membuat transaksi.',
     severity: 'HIGH',
   },
+  POS_CASH: {
+    name: 'Penyiap mesin kasir bukan pemeriksa kasnya',
+    description:
+      'Administrator toko memasang terminal, menetapkan penugasan register, dan mengatur setelan struk. ' +
+      'Bila ia juga memeriksa dan menyetujui rekonsiliasi kas, tidak ada pihak kedua yang melihat apakah ' +
+      'alat yang ia siapkan menghasilkan angka yang benar.',
+    severity: 'HIGH',
+  },
   PR_APPROVAL: {
     name: 'Pemohon pembelian bukan penyetujunya',
     description: 'Permintaan pembelian disetujui pihak lain agar pengeluaran tidak disetujui sendiri.',
@@ -513,13 +521,34 @@ export class TenantBootstrapService {
         ['DEFAULT_TIMEZONE', 'Zona Waktu', 'Asia/Jakarta'],
         ['AUTO_REQUEST_ORDER_ENABLED', 'Request Order Otomatis', true],
         ['RECEIPT_REQUIRES_VALIDATION', 'Penerimaan Wajib Divalidasi', true],
+
+        // --- Ambang kasir ----------------------------------------------------
+        //
+        // Disimpan sebagai setelan tenant, bukan dikunci di dalam program.
+        // Warung dengan satu kasir dan jaringan tiga puluh outlet memerlukan
+        // ambang yang sangat berbeda, dan keduanya berhak menentukannya sendiri.
+        ['POS_DISCOUNT_APPROVAL_PCT', 'Ambang Persetujuan Diskon (%)', 10],
+        // Nol berarti setiap pembatalan transaksi selesai menuntut persetujuan.
+        // Bawaannya sengaja seketat itu: membatalkan transaksi yang sudah dibayar
+        // adalah cara paling mudah menghilangkan uang tanpa meninggalkan jejak.
+        ['POS_VOID_APPROVAL_AMOUNT', 'Ambang Persetujuan Pembatalan', 0],
+        ['POS_CASH_VARIANCE_THRESHOLD', 'Ambang Selisih Kas', 10000],
+        ['POS_ALLOW_NEGATIVE_STOCK', 'Izinkan Stok Negatif di Kasir', false],
+        // Jam pergantian hari usaha. Gerai yang buka sampai dini hari menutup
+        // hari usahanya pada jam ini, bukan pada tengah malam.
+        ['POS_BUSINESS_DAY_CUTOVER_HOUR', 'Jam Pergantian Hari Usaha', 0],
       ];
       for (const [code, name, value] of settings) {
         await upsertByCode(client, S, 'app_setting', code, {
           code,
           name,
           scope_type: 'TENANT',
-          value_type: typeof value === 'boolean' ? 'BOOLEAN' : 'STRING',
+          value_type:
+            typeof value === 'boolean'
+              ? 'BOOLEAN'
+              : typeof value === 'number'
+                ? 'NUMBER'
+                : 'STRING',
           value_json: JSON.stringify({ value }),
           is_system: true,
         });

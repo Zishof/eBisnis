@@ -1,0 +1,64 @@
+==============================================================================
+BUKTI POS-7 dan POS-8 — STRUK, PEMBATALAN, RETUR, DAN REFUND
+Waktu   : 2026-07-31T16:16:06.825Z
+Schema  : demo
+==============================================================================
+
+Dua aktor disiapkan: kasir (pemohon) dan supervisor (penyetuju).
+Metode pembayaran bukti: Tunai
+
+1. Struk
+  LULUS  struk dapat dibaca
+  LULUS  memuat nomor struk
+  LULUS  memuat barisnya
+  LULUS  memuat pembayarannya
+  LULUS  penghitung cetak mula-mula nol
+  LULUS  cetak ulang berhasil
+  LULUS  penghitung cetak naik menjadi 1
+  LULUS  cetak ulang kedua tercatat terpisah
+  LULUS  struk transaksi yang tidak ada ditolak
+
+2. Pembatalan transaksi yang sudah selesai
+  LULUS  pembatalan tanpa alasan ditolak
+  LULUS  pembatalan diajukan
+  LULUS  pemohon TIDAK dapat menyetujui permintaannya sendiri
+  LULUS  penolakannya menerangkan sebabnya
+  LULUS  constraint basis data menolaknya pula bila layanan dilewati
+  LULUS  supervisor lain dapat menyetujui
+  LULUS  stok dikembalikan 3 unit
+  LULUS  transaksi TIDAK dihapus, hanya ditandai VOIDED
+  LULUS  peristiwa akuntansi pembalik terbentuk
+  LULUS  nilainya negatif
+
+3. Retur sebagian
+  LULUS  retur melebihi yang dijual ditolak
+  LULUS  penolakannya menyebut sisa yang dapat diretur
+  LULUS  retur sebagian diajukan
+  LULUS  transaksi menjadi RETURNED_PARTIAL
+  LULUS  retur dengan kunci sama tidak dicatat dua kali
+  LULUS  pemohon retur TIDAK dapat menyetujui returnya sendiri
+  LULUS  supervisor menyetujui retur
+  LULUS  barang layak jual kembali ke stok on-hand
+
+4. Retur barang rusak tidak kembali ke stok jual
+  LULUS  retur barang rusak diajukan
+  LULUS  stok jual TIDAK bertambah
+  LULUS  ember rusak bertambah 2
+
+5. Refund
+   nilai retur 40000
+  LULUS  refund melebihi nilai retur ditolak
+  LULUS  pemohon TIDAK dapat membayarkan refund atas returnya sendiri
+  LULUS  refund dibayarkan supervisor
+  LULUS  transaksi menjadi REFUNDED_PARTIAL
+  LULUS  refund dengan kunci sama tidak dibayarkan dua kali
+  LULUS  tercatat tepat satu refund
+  LULUS  nilainya sama dengan nilai retur
+  LULUS  peristiwa POS_RETURN dan POS_REFUND terbentuk
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Data sementara dibersihkan. Buku besar pergerakan stok tidak dihapus —
+penjaga immutability V008 menolaknya, dan itu memang perilaku yang benar.

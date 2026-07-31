@@ -7,6 +7,9 @@ import {
   isKnownEvent,
   type AccountingEvent,
   type PostingRule,
+  ALL_EVENTS,
+  POS_EVENTS,
+  isPosEvent,
 } from './posting-engine';
 
 const occurredAt = new Date('2026-07-31T00:00:00Z');
@@ -254,10 +257,52 @@ describe('peristiwa yang dikenal', () => {
   });
 
   it('mendefinisikan nilai wajib untuk setiap peristiwa', () => {
-    const tanpaDefinisi = MARKETPLACE_EVENTS.filter(
+    const tanpaDefinisi = ALL_EVENTS.filter(
       (e) => !REQUIRED_AMOUNTS[e] || REQUIRED_AMOUNTS[e].length === 0,
     );
     expect(tanpaDefinisi).toEqual([]);
+  });
+
+  it('mengenali seluruh peristiwa kasir', () => {
+    const unknown = POS_EVENTS.filter((e) => !isKnownEvent(e));
+    expect(unknown).toEqual([]);
+  });
+
+  it('dua belas peristiwa kasir terdaftar', () => {
+    expect(POS_EVENTS).toHaveLength(12);
+  });
+
+  it('membedakan peristiwa kasir dari peristiwa marketplace', () => {
+    /*
+     * Keduanya berbagi mesin posting tetapi tidak berbagi akun. Penjualan kasir
+     * masuk ke kas outlet; penjualan marketplace masuk ke piutang penyedia
+     * pembayaran. Menyamakan keduanya membuat rekonsiliasi kas outlet tidak
+     * pernah cocok.
+     */
+    for (const e of POS_EVENTS) expect(isPosEvent(e)).toBe(true);
+    for (const e of MARKETPLACE_EVENTS) expect(isPosEvent(e)).toBe(false);
+  });
+
+  it('kode peristiwa tidak kembar antara kasir dan marketplace', () => {
+    expect(new Set(ALL_EVENTS).size).toBe(ALL_EVENTS.length);
+  });
+
+  it('penjualan kasir menuntut kotor, bersih, dan pajak sekaligus', () => {
+    // Penjualan yang hanya membawa nilai kotor tidak dapat dijurnal:
+    // pendapatan dan pajak keluaran masuk ke akun yang berbeda, dan menebak
+    // pembagiannya kemudian berarti menebak berapa pajak yang terutang.
+    expect(REQUIRED_AMOUNTS.POS_SALE.sort()).toEqual(['gross', 'net', 'tax']);
+  });
+
+  it('selisih kas membawa angka pembandingnya, bukan hanya selisihnya', () => {
+    expect(REQUIRED_AMOUNTS.POS_CASH_VARIANCE).toContain('expected');
+    expect(REQUIRED_AMOUNTS.POS_CASH_VARIANCE).toContain('counted');
+  });
+
+  it('peristiwa kasir yang kurang nilainya ditolak saat dibuat', () => {
+    const v = checkRequiredAmounts('POS_SALE', { gross: 10000 });
+    expect(v.ok).toBe(false);
+    expect(v.missing.sort()).toEqual(['net', 'tax']);
   });
 });
 

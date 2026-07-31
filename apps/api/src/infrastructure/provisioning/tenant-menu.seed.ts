@@ -63,6 +63,33 @@ export const PERMISSION_ACTIONS_SEED: PermissionActionSeed[] = [
   { code: 'REFUND_APPROVE', name: 'Setujui Refund', nameKey: 'action.refundApprove', actionType: 'SENSITIVE', sortOrder: 38, requiresStepUp: true },
   { code: 'MANAGE_CREDENTIAL', name: 'Kelola Credential', nameKey: 'action.manageCredential', actionType: 'SENSITIVE', sortOrder: 39, requiresStepUp: true },
   { code: 'RECONCILE', name: 'Rekonsiliasi', nameKey: 'action.reconcile', actionType: 'SENSITIVE', sortOrder: 40 },
+
+  // --- Aksi kasir (POS) ---------------------------------------------------
+  //
+  // Yang TIDAK ditambahkan di sini sama pentingnya dengan yang ditambahkan:
+  //
+  // - `VOID_LINE` dan `VOID_SALE` tidak dibuat. Membatalkan baris sebelum
+  //   pembayaran adalah UPDATE pada keranjang; membatalkan transaksi yang sudah
+  //   selesai adalah CANCEL. Keduanya sudah ada dan maknanya sudah tepat. Aksi
+  //   yang artinya sama dengan aksi lain hanya membuat matriks hak akses lebih
+  //   sulit dibaca — dan matriks yang sulit dibaca adalah matriks yang salah
+  //   dikonfigurasi.
+  // - `VIEW_OTHER_CASHIER` tidak dibuat. Itu persoalan cakupan data, dan
+  //   cakupan data sudah punya mekanismenya sendiri. Menuliskannya sebagai hak
+  //   akses akan menaruh aturan yang sama di dua tempat.
+  { code: 'SELL', name: 'Menjual', nameKey: 'action.sell', actionType: 'STANDARD', sortOrder: 41 },
+  { code: 'HOLD', name: 'Tahan Transaksi', nameKey: 'action.hold', actionType: 'STANDARD', sortOrder: 42 },
+  { code: 'RESUME', name: 'Lanjutkan Transaksi', nameKey: 'action.resume', actionType: 'STANDARD', sortOrder: 43 },
+  { code: 'DISCOUNT_LINE', name: 'Diskon per Baris', nameKey: 'action.discountLine', actionType: 'STANDARD', sortOrder: 44 },
+  { code: 'DISCOUNT_CART', name: 'Diskon Keranjang', nameKey: 'action.discountCart', actionType: 'STANDARD', sortOrder: 45 },
+  // Mengubah harga jual di luar buku harga selalu diaudit, tanpa kecuali.
+  { code: 'PRICE_OVERRIDE', name: 'Ubah Harga Manual', nameKey: 'action.priceOverride', actionType: 'SENSITIVE', sortOrder: 46 },
+  { code: 'OPEN_SHIFT', name: 'Buka Shift', nameKey: 'action.openShift', actionType: 'WORKFLOW', sortOrder: 47 },
+  { code: 'CLOSE_SHIFT', name: 'Tutup Shift', nameKey: 'action.closeShift', actionType: 'WORKFLOW', sortOrder: 48 },
+  // Satu aksi untuk kas masuk dan keluar; arahnya ada pada movement_type, dan
+  // alasannya wajib diisi. Kas yang berpindah tanpa alasan tidak dapat
+  // direkonsiliasi kemudian.
+  { code: 'CASH_MOVE', name: 'Kas Masuk / Keluar', nameKey: 'action.cashMove', actionType: 'SENSITIVE', sortOrder: 49 },
 ];
 
 export interface MenuNodeSeed {
@@ -81,6 +108,21 @@ export interface MenuNodeSeed {
 const CRUD = ['READ', 'CREATE', 'UPDATE', 'DELETE', 'EXPORT'];
 const DOC = ['READ', 'CREATE', 'UPDATE', 'SUBMIT', 'APPROVE', 'REJECT', 'CANCEL', 'PRINT', 'EXPORT'];
 
+/**
+ * Aksi pada layar kasir.
+ *
+ * `UPDATE` di sini berarti mengubah atau membatalkan baris sebelum pembayaran;
+ * `CANCEL` berarti membatalkan transaksi yang sudah selesai. Keduanya sengaja
+ * dibedakan, dan yang kedua hanya dimiliki supervisor ke atas.
+ */
+const POS_SALE_ACTIONS = [
+  'READ', 'CREATE', 'UPDATE', 'CANCEL', 'PRINT',
+  'SELL', 'HOLD', 'RESUME',
+  'DISCOUNT_LINE', 'DISCOUNT_CART', 'PRICE_OVERRIDE',
+  'APPROVE', 'REJECT',
+  'VIEW_AMOUNT', 'VIEW_COST',
+];
+
 export const MENU_TREE_SEED: MenuNodeSeed[] = [
   // 01 Beranda
   { code: 'HOME', label: 'Beranda', translationKey: 'menu.home', route: '/app', icon: 'home', sortOrder: 1, actions: ['READ'] },
@@ -89,9 +131,15 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
   { code: 'HOME_NOTIFICATIONS', parentCode: 'HOME', label: 'Notifikasi', translationKey: 'menu.home.notifications', route: '/app/notifications', icon: 'bell', sortOrder: 3, actions: ['READ'] },
 
   // 02 Kasir / POS — langsung di root
-  { code: 'POS', label: 'Kasir / POS', translationKey: 'menu.pos', route: '/app/pos', icon: 'shopping-cart', moduleCode: 'POS', sortOrder: 2, actions: ['READ', 'CREATE', 'PRINT', 'CANCEL'], comingSoon: true },
-  { code: 'POS_TERMINAL', parentCode: 'POS', label: 'Terminal POS', translationKey: 'menu.pos.terminal', route: '/app/pos/terminals', icon: 'monitor', moduleCode: 'POS', sortOrder: 1, actions: CRUD, comingSoon: true },
-  { code: 'POS_SHIFT', parentCode: 'POS', label: 'Shift Kasir', translationKey: 'menu.pos.shift', route: '/app/pos/shifts', icon: 'clock', moduleCode: 'POS', sortOrder: 2, actions: ['READ', 'CREATE', 'UPDATE'], comingSoon: true },
+  { code: 'POS', label: 'Kasir / POS', translationKey: 'menu.pos', route: '/app/pos', icon: 'shopping-cart', moduleCode: 'POS', sortOrder: 2, actions: ['READ'] },
+  { code: 'POS_SALE', parentCode: 'POS', label: 'Kasir', translationKey: 'menu.pos.sale', route: '/app/pos/kasir', icon: 'scan-barcode', moduleCode: 'POS', sortOrder: 1, actions: POS_SALE_ACTIONS },
+  { code: 'POS_HELD', parentCode: 'POS', label: 'Transaksi Ditahan', translationKey: 'menu.pos.held', route: '/app/pos/ditahan', icon: 'pause-circle', moduleCode: 'POS', sortOrder: 2, actions: ['READ', 'RESUME', 'CANCEL'] },
+  { code: 'POS_SHIFT', parentCode: 'POS', label: 'Shift Kasir', translationKey: 'menu.pos.shift', route: '/app/pos/shifts', icon: 'clock', moduleCode: 'POS', sortOrder: 3, actions: ['READ', 'CREATE', 'UPDATE', 'OPEN_SHIFT', 'CLOSE_SHIFT', 'APPROVE', 'PRINT', 'EXPORT'] },
+  { code: 'POS_CASH', parentCode: 'POS', label: 'Kas dan Rekonsiliasi', translationKey: 'menu.pos.cash', route: '/app/pos/kas', icon: 'banknote', moduleCode: 'POS', sortOrder: 4, actions: ['READ', 'CASH_MOVE', 'RECONCILE', 'PRINT', 'EXPORT'] },
+  { code: 'POS_RETURN', parentCode: 'POS', label: 'Retur dan Refund', translationKey: 'menu.pos.return', route: '/app/pos/retur', icon: 'undo-2', moduleCode: 'POS', sortOrder: 5, actions: ['READ', 'CREATE', 'RETURN', 'RETURN_APPROVE', 'REFUND_APPROVE', 'REJECT', 'PRINT', 'EXPORT'] },
+  { code: 'POS_TERMINAL', parentCode: 'POS', label: 'Terminal POS', translationKey: 'menu.pos.terminal', route: '/app/pos/terminals', icon: 'monitor', moduleCode: 'POS', sortOrder: 6, actions: CRUD },
+  { code: 'POS_REGISTER_ASSIGN', parentCode: 'POS', label: 'Penugasan Register', translationKey: 'menu.pos.registerAssign', route: '/app/pos/penugasan', icon: 'user-check', moduleCode: 'POS', sortOrder: 7, actions: ['READ', 'CREATE', 'UPDATE', 'DELETE'] },
+  { code: 'POS_REPORT', parentCode: 'POS', label: 'Laporan POS', translationKey: 'menu.pos.report', route: '/app/pos/laporan', icon: 'bar-chart-3', moduleCode: 'POS', sortOrder: 8, actions: ['READ', 'PRINT', 'EXPORT', 'VIEW_AMOUNT', 'VIEW_COST', 'VIEW_PROFIT', 'AUDIT_READ'] },
 
   // 03 Penjualan
   { code: 'SALES', label: 'Penjualan', translationKey: 'menu.sales', icon: 'trending-up', moduleCode: 'SALES', sortOrder: 3, actions: ['READ'], comingSoon: true },
