@@ -8,6 +8,7 @@ import { api, formatDate, formatMoney } from '../../lib/api';
 import { useSiteConfig } from './PublicLayout';
 import { LoadingState, ErrorState } from '../../components/ui';
 import { PackageCards, usePackages } from './PricingPage';
+import { BerandaRinci } from './BerandaRinci';
 
 interface CmsBlock {
   key: string;
@@ -98,10 +99,20 @@ export function HomePage() {
 
   if (page.isLoading) return <LoadingState />;
   if (page.isError) {
+    /*
+     * Blok CMS gagal dimuat — tetapi keterangan produk di bawah tidak
+     * bergantung padanya sama sekali. Menampilkan halaman galat kosong berarti
+     * calon penyewa yang datang saat API sedang bermasalah tidak melihat apa pun
+     * tentang apa yang kami tawarkan. Jadi galatnya disebutkan di atas, dan
+     * sisanya tetap dapat dibaca.
+     */
     return (
-      <div className="container-page py-20">
-        <ErrorState message={t('common.error')} onRetry={() => void page.refetch()} />
-      </div>
+      <>
+        <div className="container-page py-10">
+          <ErrorState message={t('common.error')} onRetry={() => void page.refetch()} />
+        </div>
+        <BerandaRinci />
+      </>
     );
   }
 
@@ -452,6 +463,15 @@ export function HomePage() {
             ) : null;
         }
       })}
+
+      {/*
+        Bagian rinci diletakkan SESUDAH blok CMS, bukan menggantikannya.
+        Blok CMS adalah bagian yang boleh disunting pengelola sewaktu-waktu —
+        sapaan, pengumuman, testimoni. Bagian di bawah menerangkan produknya
+        sendiri, dan isinya harus tetap sama dengan proposal serta surat
+        penawaran; karena itu ia bersumber dari kode, bukan dari basis data.
+      */}
+      <BerandaRinci />
     </>
   );
 }

@@ -35,6 +35,8 @@ export const id = {
     required: 'Wajib diisi',
   },
   nav: {
+    presentation: 'Presentasi',
+    proposal: 'Proposal',
     home: 'Beranda',
     features: 'Fitur',
     modules: 'Modul',

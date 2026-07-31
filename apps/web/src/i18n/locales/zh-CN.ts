@@ -45,6 +45,8 @@ export const zhCN: TranslationSchema = {
   },
   nav: {
     ...en.nav,
+    presentation: '演示',
+    proposal: '方案',
     home: '首页',
     features: '功能',
     modules: '模块',
