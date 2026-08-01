@@ -57,6 +57,7 @@ import { PosShiftService } from './pos-shift.service';
 import { PosReportService } from './pos-report.service';
 import { PosSampleService, PROFIL_BAWAAN, PROFIL_RINGKAS } from './pos-sample.service';
 import { PosOfflineService } from './pos-offline.service';
+import { PosPromotionService } from './pos-promotion.service';
 import { AuthModule } from '../auth/auth.module';
 import { TenantPermissionService } from '../auth/tenant-permission.service';
 
@@ -1488,7 +1489,6 @@ export class PosController {
 }
 
 import { ExternalPaymentRegistry } from './external-payment.registry';
-import { PosPromotionService } from './pos-promotion.service';
 
 @Module({
   imports: [InfrastructureModule, AuthModule],
