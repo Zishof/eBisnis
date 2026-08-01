@@ -439,6 +439,48 @@ describe('peran kesehatan', () => {
     expect(petugas?.permissions).not.toContain('HEALTH_DEVICE_INBOX.REVIEW');
   });
 
+  it('ANALIS KEAMANAN TIDAK DAPAT MENYENTUH ALAT', () => {
+    /*
+     * Aturan yang paling penting pada H-9J, dan ia berbentuk KETIADAAN.
+     *
+     * Analis keamanan yang dapat mematikan alat adalah analis keamanan yang,
+     * pada suatu malam yang buruk, akan mematikan alat yang sedang menopang
+     * seseorang.
+     */
+    const analis = HEALTH_ROLES.find((r) => r.code === 'HEALTH_DEVICE_SECURITY_ANALYST');
+    const terlarang = [
+      'HEALTH_DEVICE.MANAGE_DEVICE',
+      'HEALTH_DEVICE.ACTIVATE',
+      'HEALTH_DEVICE.UPDATE',
+      'HEALTH_DEVICE.CREATE',
+    ];
+    expect(terlarang.filter((p) => analis?.permissions.includes(p))).toEqual([]);
+    expect(analis?.permissions).toContain('HEALTH_DEVICE.READ');
+  });
+
+  it('yang menilai risiko alat bukan yang memutuskan penerimaannya', () => {
+    const analis = HEALTH_ROLES.find((r) => r.code === 'HEALTH_DEVICE_SECURITY_ANALYST');
+    expect(analis?.permissions).toContain('HEALTH_DEVICE_SECURITY.CREATE');
+    expect(analis?.permissions).not.toContain('HEALTH_DEVICE_SECURITY.APPROVE');
+  });
+
+  it('tidak ada peran bawaan yang memutuskan penerimaan risiko alat', () => {
+    // Sama seperti ACTIVATE: keputusannya menyangkut uang dan pelayanan yang
+    // terhenti, dan ia harus diberikan dengan sadar kepada orang yang ditunjuk
+    // namanya.
+    const pemegang = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_DEVICE_SECURITY.APPROVE'),
+    ).map((r) => r.code);
+    expect(pemegang).toEqual([]);
+  });
+
+  it('teknisi menutup pekerjaan tetapi tidak menilai risiko siber', () => {
+    const teknisi = HEALTH_ROLES.find((r) => r.code === 'HEALTH_BIOMEDICAL_ENGINEER');
+    expect(teknisi?.permissions).toContain('HEALTH_DEVICE_MAINTENANCE.RELEASE');
+    expect(teknisi?.permissions).toContain('HEALTH_DEVICE_SECURITY.READ');
+    expect(teknisi?.permissions).not.toContain('HEALTH_DEVICE_SECURITY.CREATE');
+  });
+
   it('tidak ada peran yang memiliki hak atas menu yang belum dibangun', () => {
     /*
      * Peran yang sudah diberi hak atas modul yang belum ada akan tampak

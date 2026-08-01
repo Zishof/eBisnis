@@ -1203,6 +1203,98 @@ Uji >= 25 -> **49 tercapai**, ditambah naskah bukti 60 pemeriksaan.
 menyebutkan penghalang itu — bukan dengan berkata "tidak didukung". H-9I
 membangun adapter HL7/ASTM di atas registri ini.
 
+### H-9J · Pemeliharaan biomedis, kalibrasi, keamanan siber — **SELESAI**
+
+Pekerjaan pemeliharaan dan penutupannya, riwayat kalibrasi tersendiri, uji
+keselamatan listrik, penilaian risiko siber beserta penahan penggantinya,
+keputusan penerimaan risiko yang bertenggat, dan insiden keamanan siber alat.
+
+Uji >= 25 -> **76 tercapai**, ditambah naskah bukti 81 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H035__health__device_maintenance.sql`, `H036__health__device_maintenance_permissions.sql`, `H037__health__device_maintenance_release_fix.sql`, `H038__health__device_safety_transition_fix.sql` |
+| Aturan murni | `health-device-maintenance.ts` + 76 pengujian |
+| Layanan | `health-device-maintenance.service.ts` |
+| Endpoint | `health-device-maintenance.controller.ts` — 12 jalan di `/api/v1/health/device-maintenance/**` |
+| Katalog | `health-catalog.ts` — 2 menu, 1 peran, 2 aturan SoD |
+| Bukti | `scripts/prove-health-device-maintenance.mjs` -> [bukti-h9j-pemeliharaan-alat.txt](bukti-h9j-pemeliharaan-alat.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **TIDAK ADA SATU PUN JALAN YANG MEMATIKAN ALAT.** Bukan kelalaian: ketiganya
+  dipertimbangkan dan ketiganya ditolak — trigger yang mengubah status menjadi
+  DOWNTIME pada skor CRITICAL, pada pemeliharaan yang terlambat, dan pada
+  insiden siber. Alat yang dimatikan sendiri oleh perangkat lunak adalah
+  ventilator yang berhenti pada pasien yang sedang memakainya, dan yang tahu
+  apakah alat itu sedang menopang seseorang bukan basis data melainkan orang
+  yang berdiri di sebelahnya. Naskah bukti menjalankan seluruh modul dari ujung
+  ke ujung — pemeliharaan terlambat dua tahun, risiko CRITICAL dengan enam
+  faktor berat, insiden penyanderaan data — lalu **membaca status alatnya
+  kembali dan menuntutnya tidak berubah.**
+
+- **Satu-satunya penahan keras: uji keselamatan listrik yang GAGAL.** Sebabnya
+  berbeda dari yang lain, dan perbedaannya ditulis pada kodenya: kalibrasi yang
+  lewat berarti hasilnya *mungkin* menyimpang, sedangkan uji listrik yang gagal
+  berarti alatnya *mungkin menyetrum orang yang menyentuhnya*. Yang pertama
+  ditandai; yang kedua tidak menunggu keputusan siapa pun.
+
+- **Penahan pengganti MENGURANGI risiko; ia tidak pernah menghilangkannya.**
+  Risiko sisa tidak turun di bawah sepertiga risiko bawaannya, ditegakkan
+  constraint `device_risk_residual_floor`. Skor nol berarti "tidak perlu
+  ditinjau lagi", dan itu persis kebalikan dari yang benar bagi alat yang tidak
+  dapat ditambal. Segmentasi yang sempurna pun tidak membuat alat ber-OS
+  kedaluwarsa menjadi alat yang *aman* — ia membuatnya menjadi alat yang
+  risikonya *dapat ditanggung*, dan kedua hal itu berbeda.
+
+- **Penahan yang tidak berbukti tidak dihitung sama sekali.** Penahan yang
+  diakui tanpa rujukan bukti adalah kotak yang dicentang, dan kotak yang
+  dicentang adalah cara paling umum sebuah asesmen risiko menjadi tidak berarti.
+
+- **PENERIMAAN RISIKO WAJIB BERTANGGAL TINJAU.** Penerimaan tanpa tanggal adalah
+  penerimaan selamanya — dan selamanya adalah bagaimana alat tahun 2016 masih
+  berjalan hari ini dengan catatan "risiko diterima" yang ditandatangani orang
+  yang sudah pensiun. Menerimanya **tetap boleh**, termasuk pada tingkat
+  CRITICAL: rumah sakit yang tidak dapat menerima risiko apa pun akan mematikan
+  alat yang dibutuhkan pasiennya.
+
+- **Yang menilai risiko tidak memutuskan penerimaannya sendiri.** Penilaian
+  menjawab seberapa besar risikonya; keputusan menjawab apakah rumah sakit
+  menanggung risiko sebesar itu — dan pertanyaan kedua menyangkut uang, jadwal
+  pengadaan, dan pelayanan yang terhenti bila alatnya dipensiunkan. Ditegakkan
+  constraint `device_risk_decide_not_self`.
+
+- **Analis keamanan TIDAK dapat menyentuh alat.** Sengaja tanpa `MANAGE_DEVICE`,
+  `ACTIVATE`, `UPDATE`, maupun `CREATE` pada menu alat. Analis keamanan yang
+  dapat mematikan alat adalah analis keamanan yang, pada suatu malam yang buruk,
+  akan mematikan alat yang sedang menopang seseorang. Severity CRITICAL.
+
+- **Insiden siber yang mengenai perawatan pasien WAJIB tertaut ke laporan
+  keselamatan pasien**, demikian pula pekerjaan korektif yang mengenai pasien.
+  Dua daftar tentang satu kejadian yang sama adalah cara paling rapi untuk
+  membuat kejadian itu tidak pernah dihitung: pompa infus yang berhenti karena
+  penyanderaan data adalah kejadian teknologi informasi menurut satu daftar dan
+  kejadian keselamatan pasien menurut daftar yang lain.
+
+- **Riwayat kalibrasi terpisah dari kolom "terakhir dikalibrasi".** Ketika hasil
+  laboratorium dipersengketakan, yang ditanyakan bukan kapan alat terakhir
+  dikalibrasi, melainkan **apakah ia terkalibrasi pada hari pemeriksaan itu** —
+  dan kolom tunggal tidak dapat menjawabnya.
+
+- **Langkah penahanan dimulai dari isolasi jaringan, bukan mematikan daya**, dan
+  alat yang terhubung pasien tidak pernah diputus perangkat lunak. Alat yang
+  tersusupi tetapi masih menopang pasien lebih baik daripada alat yang mati.
+
+**Dua migrasi pembetulan, dan keduanya menemukan cacat pada fase ini sendiri.**
+`H037` membetulkan aksi `CLOSE` yang tidak ada pada kosakata bersama —
+penyisipannya dilewati diam-diam, sehingga teknisi tidak dapat menutup
+pekerjaannya sama sekali. `H038` membetulkan constraint yang memeriksa
+**keadaan** padahal yang dijaga adalah **peralihan**: teknisi yang menemukan
+arus bocor pada alat yang sedang menyala tidak dapat mencatat temuannya.
+Keduanya diuraikan pada [07](07-test-baseline.md).
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -1273,7 +1365,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 7.  H-9G   Gerbang kontrak fee sistem dan investor           [SELESAI]
 8.  H-9C   Siklus klaim internal — koding sampai rekonsiliasi [SELESAI]
 9.  H-9H   Registri alat dan gateway                        [SELESAI]
-10. H-9J   Pemeliharaan, kalibrasi, keamanan siber
+10. H-9J   Pemeliharaan, kalibrasi, keamanan siber          [SELESAI]
 11. H-9K   Dasbor investor agregat
 12. H-9I   Adapter HL7/ASTM; DICOM menunggu PACS
 13. H-9A   Kerangka SATUSEHAT beserta gerbang kemampuan

@@ -699,6 +699,36 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'ASSIGN', 'REVIEW'],
     sortOrder: 112,
   },
+  // Pemeliharaan dan keamanan alat — H-9J.
+  //
+  // RELEASE menutup pekerjaan pemeliharaan; ia sengaja BUKAN aksi yang
+  // mengembalikan alat ke pelayanan. Yang menutup pekerjaan menyatakan
+  // pekerjaannya selesai; yang mengembalikan alat menyatakan alatnya layak
+  // dipakai pasien. Dua pernyataan yang berbeda, dan yang kedua dipegang
+  // HEALTH_DEVICE.MANAGE_DEVICE.
+  {
+    code: 'HEALTH_DEVICE_MAINTENANCE',
+    parentCode: 'HEALTH',
+    label: 'Pemeliharaan Alat',
+    route: '/app/emedik/pemeliharaan-alat',
+    icon: 'wrench',
+    actions: ['READ', 'CREATE', 'UPDATE', 'RELEASE'],
+    sortOrder: 113,
+  },
+  // CREATE menilai risiko dan melaporkan insiden siber; APPROVE memutuskan
+  // risiko itu ditanggung. Penilaian menjawab seberapa besar risikonya,
+  // keputusan menjawab apakah rumah sakit menanggung risiko sebesar itu — dan
+  // pertanyaan kedua menyangkut uang, jadwal pengadaan, dan pelayanan yang
+  // terhenti bila alatnya dipensiunkan.
+  {
+    code: 'HEALTH_DEVICE_SECURITY',
+    parentCode: 'HEALTH',
+    label: 'Keamanan Alat',
+    route: '/app/emedik/keamanan-alat',
+    icon: 'shield-alert',
+    actions: ['READ', 'CREATE', 'UPDATE', 'APPROVE'],
+    sortOrder: 114,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -1473,6 +1503,15 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_DEVICE_GATEWAY.UPDATE',
       'HEALTH_DEVICE_GATEWAY.MANAGE_CREDENTIAL',
       'HEALTH_DEVICE_INBOX.READ',
+      // Pemeliharaan, kalibrasi, dan uji keselamatan — H-9J.
+      'HEALTH_DEVICE_MAINTENANCE.READ',
+      'HEALTH_DEVICE_MAINTENANCE.CREATE',
+      'HEALTH_DEVICE_MAINTENANCE.UPDATE',
+      'HEALTH_DEVICE_MAINTENANCE.RELEASE',
+      // Membaca penilaian risiko alatnya; ia tidak menilai dan tidak
+      // memutuskan. Yang memperbaiki alat perlu tahu apa yang dicemaskan orang
+      // tentangnya.
+      'HEALTH_DEVICE_SECURITY.READ',
     ],
     sortOrder: 36,
   },
@@ -1492,6 +1531,35 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_LAB_ORDER.READ',
     ],
     sortOrder: 37,
+  },
+  {
+    code: 'HEALTH_DEVICE_SECURITY_ANALYST',
+    name: 'Analis Keamanan Alat Medis',
+    description:
+      'Menilai risiko siber alat medis dan melaporkan insidennya. TIDAK memutuskan penerimaan ' +
+      'risiko, dan TIDAK dapat menyentuh alatnya sama sekali.',
+    /*
+     * Sengaja TANPA satu pun hak atas menu HEALTH_DEVICE selain READ.
+     *
+     * Ia tidak dapat mengubah status alat, tidak dapat mengirim perintah, dan
+     * tidak dapat menyalakan kendali jarak jauh. Analis keamanan yang dapat
+     * mematikan alat adalah analis keamanan yang, pada suatu malam yang buruk,
+     * akan mematikan alat yang sedang menopang seseorang.
+     *
+     * Tugasnya menyatakan bahaya, bukan menghentikannya sendiri. Pemisahan ini
+     * bukan ketidakpercayaan melainkan pengakuan bahwa yang tahu ada pasien di
+     * sebelah alat itu bukan dia.
+     */
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_DEVICE.READ',
+      'HEALTH_DEVICE_GATEWAY.READ',
+      'HEALTH_DEVICE_SECURITY.READ',
+      'HEALTH_DEVICE_SECURITY.CREATE',
+      'HEALTH_DEVICE_SECURITY.UPDATE',
+      'HEALTH_DEVICE_MAINTENANCE.READ',
+    ],
+    sortOrder: 38,
   },
 ];
 
@@ -1730,6 +1798,30 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'pada basis data pula — kendali jarak jauh menuntut enam syarat sekaligus, dan basis ' +
       'data menolak baris yang kurang satu pun.',
     conflictingPermissions: ['HEALTH_DEVICE.MANAGE_DEVICE', 'HEALTH_DEVICE.ACTIVATE'],
+  },
+  {
+    code: 'HEALTH_SOD_DEVICE_RISK_DECIDE',
+    name: 'Yang menilai risiko alat tidak memutuskan penerimaannya',
+    description:
+      'Penilaian menjawab seberapa besar risikonya; keputusan menjawab apakah rumah sakit ' +
+      'menanggung risiko sebesar itu. Pertanyaan kedua menyangkut uang, jadwal pengadaan, dan ' +
+      'pelayanan yang terhenti bila alatnya dipensiunkan — tidak satu pun diketahui orang yang ' +
+      'memindai jaringan. Menyatukan keduanya menghasilkan salah satu dari dua hal, dan keduanya ' +
+      'buruk: penilai yang menurunkan skornya sendiri supaya tidak perlu berdebat, atau yang ' +
+      'menaikkannya supaya anggarannya turun. Ditegakkan constraint device_risk_decide_not_self ' +
+      'pada basis data pula.',
+    conflictingPermissions: ['HEALTH_DEVICE_SECURITY.CREATE', 'HEALTH_DEVICE_SECURITY.APPROVE'],
+  },
+  {
+    code: 'HEALTH_SOD_DEVICE_SECURITY_CONTROL',
+    name: 'Analis keamanan alat tidak mengendalikan alatnya',
+    description:
+      'Analis keamanan yang dapat mengubah status alat, mengirim perintah, atau menyalakan ' +
+      'kendali jarak jauh adalah analis keamanan yang, pada suatu malam yang buruk, akan ' +
+      'mematikan alat yang sedang menopang seseorang. Tugasnya menyatakan bahaya, bukan ' +
+      'menghentikannya sendiri — dan pemisahan ini bukan ketidakpercayaan melainkan pengakuan ' +
+      'bahwa yang tahu ada pasien di sebelah alat itu bukan dia.',
+    conflictingPermissions: ['HEALTH_DEVICE_SECURITY.CREATE', 'HEALTH_DEVICE.MANAGE_DEVICE'],
   },
   /*
    * HEALTH_SOD_DEVICE_LINK_REVIEW sengaja TIDAK ada di sini sebagai pasangan

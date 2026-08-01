@@ -5,6 +5,58 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9J — Pemeliharaan biomedis, kalibrasi, keamanan siber alat
+
+### Ditambahkan
+
+- **`H035__health__device_maintenance.sql`** — `device_work_order`,
+  `device_calibration_record`, `device_risk_assessment`, `device_risk_control`,
+  `device_security_incident`, beserta enam kolom tambahan pada
+  `medical_device`. Constraint `device_risk_residual_floor` (risiko sisa tidak
+  pernah nol selama ada faktor bawaan), `device_risk_accept_needs_review`,
+  `device_risk_decide_not_self`, `device_wo_patient_needs_incident`,
+  `device_sec_patient_needs_safety`, `device_cal_standard_required`, serta
+  trigger `forbid_completed_work_order_delete`.
+- **`H036__health__device_maintenance_permissions.sql`** — dua menu, satu peran
+  baru (Analis Keamanan Alat Medis), dan dua aturan pemisahan wewenang;
+  `HEALTH_SOD_DEVICE_SECURITY_CONTROL` bersifat CRITICAL.
+- **`health-device-maintenance.ts`** — aturan sebagai fungsi murni: jadwal
+  pemeliharaan, kelayakan kembali melayani, catatan kalibrasi, penilaian risiko
+  siber beserta penahan penggantinya, keputusan yang dituntut, masa berlaku
+  penerimaan, insiden siber, langkah penahanan, dan urutan papan perhatian.
+  **76 pengujian.**
+- **`health-device-maintenance.service.ts`** dan
+  **`health-device-maintenance.controller.ts`** — 12 jalan pada
+  `/api/v1/health/device-maintenance/**`.
+- **`prove-health-device-maintenance.mjs`** — naskah bukti, **81 pemeriksaan**,
+  seluruhnya lulus dan lulus pula pada pengulangan.
+
+### Diperbaiki
+
+- **`H037__health__device_maintenance_release_fix.sql`** — aksi `CLOSE` yang
+  diberikan H036 tidak ada pada kosakata hak akses bersama, dan penyisipannya
+  dilewati diam-diam oleh penjaga `IF a_id IS NOT NULL`. Digantikan `RELEASE`.
+  Migrasi baru ini sengaja **menggagalkan dirinya** bila aksinya tidak ada.
+- **`H038__health__device_safety_transition_fix.sql`** — constraint
+  `medical_device_failed_safety_not_active` memeriksa **keadaan** padahal yang
+  dijaga adalah **peralihan**, sehingga teknisi yang menemukan arus bocor pada
+  alat yang sedang menyala tidak dapat mencatat temuannya sama sekali.
+  Digantikan trigger `forbid_unsafe_device_activation` yang menjaga peralihan
+  MASUK ke pelayanan.
+- Kolom DATE dicor ke teks oleh PostgreSQL, bukan oleh JavaScript. Driver `pg`
+  mengembalikannya sebagai objek `Date` pada tengah malam waktu lokal;
+  `String(date).slice(0, 10)` menghasilkan teks yang tidak dapat dibandingkan,
+  dan `toISOString()` menggeser tanggalnya sehari mundur pada zona waktu
+  Indonesia.
+
+### Catatan bagi Core
+
+Tidak ada permintaan perubahan shared Core pada fase ini. Kosakata hak akses
+bersama tidak ditambah — `RELEASE` yang sudah ada dipakai apa adanya.
+
+Uji: API 1956 → **2036**.
+
+---
 ## H-9H — Registri alat kesehatan dan gateway
 
 ### Ditambahkan

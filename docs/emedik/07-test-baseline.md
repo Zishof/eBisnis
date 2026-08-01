@@ -80,8 +80,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9G | 20 | **42** | `health-fee-contract.spec.ts` |
 | H-9C | 30 | **58** | `health-claim.spec.ts` |
 | H-9H | 25 | **49** | `health-device.spec.ts` |
+| H-9J | 25 | **76** | `health-device-maintenance.spec.ts` |
 
-API keseluruhan: **1956** pengujian pada 63 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **2036** pengujian pada 64 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -113,6 +114,60 @@ sungguhan, pada basis data sungguhan:
 | H-9G | `prove-health-fee-contract.mjs` | 52 pemeriksaan, seluruhnya lulus — [bukti-h9g-kontrak-fee.txt](bukti-h9g-kontrak-fee.txt) |
 | H-9C | `prove-health-claim.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9c-klaim.txt](bukti-h9c-klaim.txt) |
 | H-9H | `prove-health-device.mjs` | 60 pemeriksaan, seluruhnya lulus — [bukti-h9h-alat.txt](bukti-h9h-alat.txt) |
+| H-9J | `prove-health-device-maintenance.mjs` | 81 pemeriksaan, seluruhnya lulus — [bukti-h9j-pemeliharaan-alat.txt](bukti-h9j-pemeliharaan-alat.txt) |
+
+**Naskah H-9J menemukan empat cacat, dan tiga di antaranya milik fase itu
+sendiri.** Ini jalan bukti yang paling banyak menemukan sejauh ini, dan sebabnya
+bukan kebetulan: ia satu-satunya yang menjalankan seluruh modul dari ujung ke
+ujung sebelum memeriksa apa pun.
+
+**Cacat pertama: penjaga yang mengunci jalan menuju perlindungannya sendiri.**
+`H035` memasang constraint `medical_device_failed_safety_not_active` — alat yang
+uji keselamatan listriknya gagal tidak boleh berstatus ACTIVE. Maksudnya benar;
+yang ditulisnya memeriksa **keadaan**, padahal yang hendak dijaga adalah
+**peralihan**. Akibatnya teknisi yang menguji alat yang sedang ACTIVE — yakni
+keadaan seluruh alat yang dipakai sehari-hari — dan menemukan arus bocornya
+melampaui ambang **tidak dapat mencatat temuannya sama sekali**. Barisnya
+ditolak basis data; alat yang berbahaya tetap menyala, dan satu-satunya catatan
+tentang bahayanya tidak pernah tersimpan.
+
+Ini kelas yang sama dengan cacat H-9: kekurangan "diagnosis belum berkode" yang
+menahan pengkodean, sehingga berkasnya tidak akan pernah berkode. Pola yang
+kini punya nama sendiri: **penjaga yang dipasang untuk melindungi justru
+mengunci jalan yang menuju perlindungan itu.** Pembetulannya `H038` — constraint
+dibuang, digantikan trigger yang menjaga peralihan MASUK ke pelayanan.
+Perbedaannya sekarang punya uji kendali tersendiri: alat yang sedang melayani
+harus tetap dapat ditandai gagal, dan alat yang bertanda gagal tidak boleh
+kembali.
+
+**Cacat kedua: migrasi yang berhasil sambil melewatkan hak akses.** `H036`
+memberikan aksi `CLOSE` kepada menu pemeliharaan, dan aksi itu tidak ada pada
+kosakata bersama. Penyisipan `menu_action` dijaga `IF a_id IS NOT NULL` —
+penjaga yang membuat migrasi tahan terhadap urutan penerapan, dan yang justru
+membuatnya **diam ketika yang dilewatinya bukan urutan melainkan salah ketik**.
+Migrasinya berhasil, menunya ada, perannya ada, dan satu-satunya tanda bahwa
+ada yang salah adalah teknisi yang tidak dapat menutup pekerjaannya. Dibetulkan
+`H037`, yang sengaja **menggagalkan dirinya** bila aksinya tidak ada.
+
+**Cacat ketiga: DATE yang diterjemahkan JavaScript.** Driver `pg` mengembalikan
+kolom DATE sebagai objek `Date` pada tengah malam waktu lokal.
+`String(date).slice(0, 10)` menghasilkan `"Fri Feb 12"` — dan pembandingan
+tanggal yang memakainya diam-diam selalu bernilai salah, sehingga papan
+pemeliharaan gagal seluruhnya dan papan risiko mengurutkan terbalik.
+`toISOString()` pun keliru, dengan cara yang lebih halus: ia menggeser
+tanggalnya sehari mundur pada zona waktu Indonesia. Yang benar adalah **tidak
+pernah membuatnya menjadi objek `Date` sama sekali** — pengecoran dilakukan
+PostgreSQL lewat `::text`. Sekelas dengan cacat H-9D: aturan murninya benar,
+terjemahannya ke tipe basis data yang salah.
+
+**Cacat keempat ada pada naskah buktinya sendiri, dan dua kali.** Uji "penilai
+tidak memutuskan penerimaannya sendiri" semula memakai analis yang memang tidak
+berhak `APPROVE`, sehingga yang menolak adalah penjaga hak akses — bukan
+pemeriksaan baris yang hendak diuji. Uji "alat yang gagal uji listrik tidak
+kembali melayani" semula lulus karena pekerjaannya masih terbuka. Keduanya
+lulus karena penjaga yang keliru, dan keduanya kini disusun sedemikian rupa
+sehingga hanya satu penjaga yang mungkin berbunyi — pelajaran H-9 dan H-9F,
+yang ternyata masih perlu diterapkan dengan sadar setiap kali.
 
 Naskah H-9H membuktikan ketiadaan pada tempat yang paling penting: ia
 menghitung kolom `medical_device` yang namanya mengandung `password`, `token`,
