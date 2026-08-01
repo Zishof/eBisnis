@@ -15,14 +15,45 @@ import { LABEL_TERPESAN, bolehMencariPortal } from './portal-host';
 import { normalkanHost } from '../tenant/public-host';
 
 describe('katalog portal', () => {
-  it('memuat tepat lima portal yang diminta', () => {
+  it('memuat tepat portal yang diminta', () => {
     expect(KATALOG_PORTAL.map((p) => p.code)).toEqual([
       'EBISNIS',
       'ENTERPRISE_EDUCATION',
+      'SANTRI_INFO',
       'EMEDIK',
       'EKOPERASI',
       'INFO_DESA',
     ]);
+  });
+
+  it('urutan tampil tidak kembar', () => {
+    /*
+     * `sortOrder` menentukan urutan portal pada footer ekosistem. Dua portal
+     * dengan angka sama membuat urutannya bergantung pada urutan baca basis
+     * data — dan itu berubah sendiri seiring tabelnya ditulis ulang.
+     */
+    const urutan = KATALOG_PORTAL.map((p) => p.sortOrder);
+    expect(new Set(urutan).size).toBe(urutan.length);
+  });
+
+  it('portal boleh berbagi vertical, tetapi vertical harus dikenali', () => {
+    /*
+     * `SANTRI_INFO` sengaja memakai vertical yang sama dengan
+     * `ENTERPRISE_EDUCATION`: merek berbeda, modul dan entitlement sama. Yang
+     * dijaga di sini adalah kebalikannya — jangan sampai merek baru diam-diam
+     * memperkenalkan vertical baru yang tidak punya modul, tidak punya harga,
+     * dan tidak punya siapa pun yang menyediakannya.
+     */
+    const VERTICAL_DIKENALI = new Set([
+      'CORE_ERP',
+      'ENTERPRISE_EDUCATION',
+      'HEALTH',
+      'COOPERATIVE',
+      'VILLAGE_GOVERNMENT',
+    ]);
+    for (const p of KATALOG_PORTAL) {
+      expect(VERTICAL_DIKENALI.has(p.verticalCode)).toBe(true);
+    }
   });
 
   it('setiap host sudah dalam bentuk ternormalkan', () => {
@@ -112,7 +143,7 @@ describe('katalog portal', () => {
 
   it('seluruhHost menyaring menurut peran', () => {
     expect(seluruhHost('AUTH')).toEqual([HOST_AUTH_KANONIK]);
-    expect(seluruhHost('APP')).toHaveLength(5);
+    expect(seluruhHost('APP')).toHaveLength(KATALOG_PORTAL.length);
     expect(seluruhHost()).toHaveLength(
       KATALOG_PORTAL.reduce((n, p) => n + p.domains.length, 0),
     );

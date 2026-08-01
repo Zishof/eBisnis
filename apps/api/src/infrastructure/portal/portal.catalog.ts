@@ -1,18 +1,26 @@
 /**
- * Katalog lima portal ekosistem.
+ * Katalog portal ekosistem.
  *
- * ## Mengapa ini data, bukan lima penyebaran
+ * ## Mengapa ini data, bukan sekian penyebaran
  *
- * Kelima merek dilayani satu aplikasi (§54). Yang membedakan jawaban untuk
- * `ebisnis.id` dan `emedik.id` adalah baris yang diseed dari sini — bukan lima
- * salinan kode, lima basis data, atau lima berkas konfigurasi.
+ * Seluruh merek dilayani satu aplikasi (§54). Yang membedakan jawaban untuk
+ * `ebisnis.id` dan `emedik.id` adalah baris yang diseed dari sini — bukan
+ * salinan kode, basis data, atau berkas konfigurasi yang berlipat.
+ *
+ * ## Portal dan vertical bukan hal yang sama
+ *
+ * `code` adalah **merek**; `verticalCode` adalah **modul dan entitlement**.
+ * Keduanya biasanya sepadan, tetapi tidak wajib: `SANTRI_INFO` dan
+ * `ENTERPRISE_EDUCATION` adalah dua portal yang berbagi satu vertical. Bila
+ * keduanya disamakan, setiap merek baru menuntut vertical baru — dan §7 justru
+ * melarang itu.
  *
  * ## Mengapa host ditulis lengkap di sini
  *
- * Host tidak disusun dari kode portal (`EMEDIK` → `emedik.id`). Dua di
+ * Host tidak disusun dari kode portal (`EMEDIK` → `emedik.id`). Beberapa di
  * antaranya tidak mengikuti pola itu — `enterprise-education.id` memakai tanda
- * hubung, `info-desa.id` juga — dan aturan yang benar untuk tiga dari lima
- * adalah aturan yang salah.
+ * hubung, `info-desa.id` juga, `SANTRI_INFO` berakhiran `.info` — dan aturan
+ * yang benar untuk sebagian adalah aturan yang salah.
  *
  * Host `auth` sengaja **satu untuk seluruh portal**: §521 menuntut hanya ada
  * satu penerbit identitas yang berwenang. Lima penerbit berarti lima sumber
@@ -76,14 +84,46 @@ export const KATALOG_PORTAL: PortalKatalog[] = [
     ],
   },
   {
+    /*
+     * Portal tersendiri, vertical yang sama.
+     *
+     * `santri.info` memakai `verticalCode` yang persis sama dengan
+     * `ENTERPRISE_EDUCATION` — modul, entitlement, dan penagihannya satu. Yang
+     * berbeda hanya merek dan halaman depannya.
+     *
+     * Ia tidak digabung menjadi host tambahan milik `ENTERPRISE_EDUCATION`
+     * karena portal menentukan merek dan konten: menggabungkannya berarti
+     * pengunjung `santri.info` disambut halaman yang bercerita tentang eCampus
+     * dan eSchool, dua hal yang tidak ia cari.
+     *
+     * Perlu diketahui saat membaca ini: `<pondok>.santri.info` BUKAN portal.
+     * Subdomain itu milik penyewa dan dicari lewat
+     * `platform.vertical_site_domain`, bukan lewat tabel portal.
+     */
+    code: 'SANTRI_INFO',
+    name: 'santri.info',
+    tagline: 'ePesantren: santri, asrama, diniyah, tahfiz, dan keuangan pondok.',
+    verticalCode: 'ENTERPRISE_EDUCATION',
+    brandPrimary: '#064E3B',
+    brandAccent: '#059669',
+    sortOrder: 3,
+    crossLinkDescription: 'ePesantren: Santri, Asrama, Diniyah, Tahfiz',
+    domains: [
+      { host: 'santri.info', kind: 'PUBLIC', isCanonical: true },
+      { host: 'www.santri.info', kind: 'PUBLIC', isCanonical: false },
+      { host: 'app.santri.info', kind: 'APP', isCanonical: true },
+    ],
+  },
+  {
     code: 'EMEDIK',
     name: 'eMedik.id',
     tagline: 'Rumah sakit, klinik, puskesmas, dan posyandu.',
     verticalCode: 'HEALTH',
     brandPrimary: '#134E4A',
     brandAccent: '#14B8A6',
-    sortOrder: 3,
+    sortOrder: 4,
     crossLinkDescription: 'Rumah Sakit, Klinik, Puskesmas, Posyandu',
+    // sortOrder bergeser satu sejak SANTRI_INFO menempati posisi 3.
     domains: [
       { host: 'emedik.id', kind: 'PUBLIC', isCanonical: true },
       { host: 'www.emedik.id', kind: 'PUBLIC', isCanonical: false },
@@ -97,7 +137,7 @@ export const KATALOG_PORTAL: PortalKatalog[] = [
     verticalCode: 'COOPERATIVE',
     brandPrimary: '#14532D',
     brandAccent: '#16A34A',
-    sortOrder: 4,
+    sortOrder: 5,
     crossLinkDescription: 'Keanggotaan, Simpan Pinjam, RAT, SHU',
     domains: [
       { host: 'ekoperasi.id', kind: 'PUBLIC', isCanonical: true },
@@ -112,7 +152,7 @@ export const KATALOG_PORTAL: PortalKatalog[] = [
     verticalCode: 'VILLAGE_GOVERNMENT',
     brandPrimary: '#78350F',
     brandAccent: '#D97706',
-    sortOrder: 5,
+    sortOrder: 6,
     crossLinkDescription: 'Penduduk, Layanan Warga, APBDes, BUMDes',
     domains: [
       { host: 'info-desa.id', kind: 'PUBLIC', isCanonical: true },

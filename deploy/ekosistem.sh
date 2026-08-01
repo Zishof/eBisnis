@@ -40,13 +40,14 @@ die()  { printf '\033[1;31m[x] %s\033[0m\n' "$*" >&2; exit 1; }
 
 as_app() { sudo -u "$APP_USER" bash -lc "$*"; }
 
-# Kelima portal beserta host publiknya. Sengaja ditulis di sini DAN diseed dari
+# Seluruh portal beserta host publiknya. Sengaja ditulis di sini DAN diseed dari
 # `portal.catalog.ts`; uji `portal.catalog.spec.ts` mengikat keduanya lewat
 # daftar label terpesan, dan langkah `periksa` di bawah membandingkan keduanya
 # terhadap kenyataan.
 HOST_PUBLIK=(
   ebisnis.id
   enterprise-education.id
+  santri.info
   emedik.id
   ekoperasi.id
   info-desa.id

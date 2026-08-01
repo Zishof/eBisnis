@@ -10,6 +10,7 @@ import { ContactPage } from '../pages/public/ContactPage';
 import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
+import { isSantriPortalHost, slugPondokDariHost } from '../verticals/pesantren/santri-host';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
@@ -93,6 +94,20 @@ const CooperativeRoutes = lazy(() =>
   import('../verticals/cooperative/routes').then((m) => ({ default: m.CooperativeRoutes })),
 );
 
+// Portal ePesantren (santri.info) — kerangkanya sendiri, sebab `PublicLayout`
+// memakai merek eBisnis dan keterangan footer tentang retail dan F&B.
+const SantriLayout = lazy(() =>
+  import('../verticals/pesantren/SantriLayout').then((m) => ({ default: m.SantriLayout })),
+);
+const SantriInfoHomePage = lazy(() =>
+  import('../verticals/pesantren/SantriInfoHomePage').then((m) => ({
+    default: m.SantriInfoHomePage,
+  })),
+);
+const SitusPondokPage = lazy(() =>
+  import('../verticals/pesantren/SitusPondokPage').then((m) => ({ default: m.SitusPondokPage })),
+);
+
 /**
  * Apa yang dilihat pengunjung di akar situs, menurut alamat yang ia ketik.
  *
@@ -107,6 +122,13 @@ const CooperativeRoutes = lazy(() =>
 function AkarMenurutHost() {
   if (isMarketplaceHost()) return <Navigate to="/belanja" replace />;
   if (isCooperativeHost()) return <Navigate to="/ekoperasi/situs" replace />;
+  /*
+   * Dua cabang untuk santri.info, dan urutannya penting: apex adalah PORTAL,
+   * subdomain adalah PONDOK. Menyamakannya membuat setiap pondok yang mendaftar
+   * kehilangan situsnya dan hanya melihat halaman jualan platform.
+   */
+  if (isSantriPortalHost()) return <Navigate to="/santri" replace />;
+  if (slugPondokDariHost()) return <Navigate to="/santri/pondok" replace />;
   return <HomePage />;
 }
 
@@ -139,6 +161,13 @@ export function App() {
         </Route>
 
         <Route path="/ekoperasi/*" element={<CooperativeRoutes />} />
+
+        {/* Portal ePesantren (santri.info) */}
+        <Route path="/santri" element={<SantriLayout />}>
+          <Route index element={<SantriInfoHomePage />} />
+        </Route>
+        {/* Di luar kerangka portal: subdomain pondok bukan halaman platform. */}
+        <Route path="/santri/pondok" element={<SitusPondokPage />} />
 
         {/* Marketplace publik (belanja.ebisnis.id) */}
         <Route path="/belanja" element={<BelanjaLayout />}>

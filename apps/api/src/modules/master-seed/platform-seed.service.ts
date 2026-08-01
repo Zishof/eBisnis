@@ -351,17 +351,17 @@ export class PlatformSeedService {
   }
 
   /**
-   * Menyeed lima portal ekosistem beserta host dan tautan silangnya.
+   * Menyeed portal ekosistem beserta host dan tautan silangnya.
    *
    * Aman diulang: baris yang sudah ada diperbarui, bukan digandakan. Karena itu
    * ia dipanggil pada setiap pembaruan, dan portal yang ditambahkan kelak muncul
-   * tanpa langkah manual.
+   * tanpa langkah manual — `SANTRI_INFO` masuk lewat jalur itu.
    *
    * Host diseed berstatus ACTIVE dengan `verifiedAt` terisi. Itu disengaja dan
-   * berbeda dari domain penyewa: kelima apex ini milik platform sendiri, bukan
-   * host yang didaftarkan pihak lain — tidak ada yang perlu dibuktikan
+   * berbeda dari domain penyewa: apex di katalog ini milik platform sendiri,
+   * bukan host yang didaftarkan pihak lain — tidak ada yang perlu dibuktikan
    * kepemilikannya kepada diri sendiri. Domain penyewa tetap wajib melewati
-   * verifikasi.
+   * verifikasi, termasuk `<pondok>.santri.info` dan domain milik pondok sendiri.
    */
   private async seedPortals(): Promise<number> {
     const idPortal = new Map<string, string>();

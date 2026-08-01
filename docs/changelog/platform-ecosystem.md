@@ -76,3 +76,51 @@ Digabungkan ke `CHANGELOG.md` akar pada integration gate (§63).
 ### Uji
 
 30 uji baru pada aturan dan katalog portal. API: 2122 lulus, 80 berkas.
+
+---
+
+## santri.info — portal ePesantren
+
+### Yang ditambahkan
+
+- Portal `SANTRI_INFO` pada `infrastructure/portal/portal.catalog.ts`, memakai
+  `verticalCode: 'ENTERPRISE_EDUCATION'` — merek tersendiri, vertical yang sama.
+  Ikut diseed dan ikut tautan silang tanpa langkah tambahan.
+- `apps/web/src/verticals/pesantren/santri-host.ts` — memisahkan apex (portal)
+  dari subdomain (pondok), menolak label terpesan dan subdomain bertingkat.
+- `SantriInfoHomePage.tsx` — halaman portal: apa itu ePesantren, modul,
+  alur pemasangan, biaya, model subdomain dan domain sendiri.
+- `SantriLayout.tsx` — kerangkanya sendiri; tautan silang diambil dari
+  `/public/portals`, bukan ditulis ulang.
+- `SitusPondokPage.tsx` — halaman sementara untuk `<pondok>.santri.info`.
+- Apache `*.santri.info`, CORS, `ekosistem.sh`, dan dua dokumen.
+
+### Keputusan yang perlu diketahui
+
+- **Portal dan vertical bukan hal yang sama.** `code` adalah merek,
+  `verticalCode` adalah modul dan hak akses. `SANTRI_INFO` berbagi vertical
+  dengan `ENTERPRISE_EDUCATION`: harga, entitlement, dan provisioning-nya satu.
+  Menjadikannya vertical baru berarti katalog modul dan harga baru untuk hal
+  yang sudah ada.
+- **Apex adalah portal, subdomain adalah pondok.** Menyamakan keduanya membuat
+  setiap pondok yang mendaftar kehilangan situsnya dan hanya melihat halaman
+  jualan platform — tanpa satu pun galat.
+- **Label terpesan disalin ke sisi peramban**, diikat uji yang membaca
+  `portal-host.ts`. Tanpa itu `app.santri.info` dibaca sebagai pondok bernama
+  "app".
+- **`<pondok>.santri.info` tidak masuk `CORS_ORIGINS`.** Permintaannya
+  sameorigin; mendaftarkan pola wildcard justru mempercayai setiap subdomain.
+- **Harga Rp 2.000/santri/bulan pada halaman adalah penawaran bawaan**, bukan
+  sumber kebenaran penagihan. Yang menagih tetap katalog harga berversi.
+
+### Utang yang halaman pemasarannya sudah janjikan
+
+1. Situs penyewa yang dapat disunting sendiri, termasuk berita. CMS dan berita
+   yang ada sekarang milik platform, tidak menerima host sebagai penentu penyewa.
+2. Verifikasi domain milik pondok. Tabelnya menolak `ACTIVE` tanpa `verifiedAt`,
+   tetapi alur yang mengisinya belum ada.
+3. Sertifikat wildcard `*.santri.info` — menuntut tantangan DNS-01.
+
+### Uji
+
+Web: 206 lulus (13 baru). API: 2124 lulus, 80 berkas.
