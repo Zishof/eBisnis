@@ -59,7 +59,19 @@ jobs:
   windows:
     name: Bangun pemasang Windows
     needs: uji
-    runs-on: windows-latest
+    # Citra dipatok, bukan `windows-latest`.
+    #
+    # `windows-latest` sudah berpindah ke Windows Server 2025, dan Flutter 3.27
+    # tidak menemukan Visual Studio di sana: ia jatuh ke generator "Visual Studio
+    # 16 2019", lalu CMake berhenti dengan "could not find any instance of Visual
+    # Studio".
+    #
+    # Lebih penting daripada kegagalan itu sendiri: alur inilah yang merakit
+    # berkas yang dipasang di mesin kasir. Citra yang berganti sendiri berarti
+    # pemasang bulan depan dibangun di atas rantai alat yang berbeda dari yang
+    # diuji hari ini — tanpa satu pun perubahan pada repo, dan tanpa ada yang
+    # memutuskannya.
+    runs-on: windows-2022
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -69,6 +81,12 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+
+      # Dicetak sebelum membangun supaya kegagalan rantai alat menyebut dirinya
+      # sendiri. Tanpa ini yang terbaca hanya galat CMake yang menyebut versi
+      # Visual Studio yang bahkan tidak dicari siapa pun.
+      - name: Rantai alat
+        run: flutter doctor -v
 
       - name: Tentukan versi
         id: versi
