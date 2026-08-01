@@ -91,6 +91,35 @@ export class VillageRequestService {
 
     const nomor = await this.nomorPermohonan(schemaName, u.id);
 
+    /*
+     * `applicant_user_id` adalah akun PEMOHON, bukan akun petugas yang
+     * mengetiknya.
+     *
+     * Semula kolom ini diisi `user.userId` apa adanya, dan itu keliru dengan
+     * akibat yang menghentikan pekerjaan: petugas yang mencatat permohonan
+     * warga di loket langsung terkunci dari memverifikasinya sendiri, sebab
+     * `pastikanBukanPemohon` melihat dirinya sebagai pemohon. Pada kantor desa
+     * yang petugas loketnya satu orang, seluruh permohonan yang dicatat di
+     * loket menjadi permohonan yang tidak dapat diproses siapa pun.
+     *
+     * Aturannya sendiri tetap: petugas tidak boleh memverifikasi permohonannya
+     * sendiri. Yang diperbaiki adalah cara menentukan "miliknya siapa" —
+     * ditelusuri dari tautan akun PENDUDUK yang dipilih, bukan dari siapa yang
+     * memegang papan ketik.
+     *
+     * Akibatnya tetap benar pada kedua keadaan:
+     *   - Petugas mencatat permohonan Sumiati  → pemohonnya akun Sumiati (atau
+     *     kosong bila ia belum punya akun). Petugas boleh memverifikasi.
+     *   - Petugas memilih data penduduk DIRINYA SENDIRI → pemohonnya akun
+     *     petugas itu, dan ia tetap tertahan.
+     *
+     * Siapa yang mengetiknya tidak hilang: `created_by` mencatatnya, dan
+     * riwayat permohonan ikut menyimpan pelakunya.
+     */
+    const akunPemohon = input.residentId
+      ? await this.akunPenduduk(schemaName, input.residentId)
+      : null;
+
     const rows = await this.tenantDb.query<{ id: string }>(
       schemaName,
       `INSERT INTO "${schemaName}".village_service_request
@@ -107,7 +136,7 @@ export class VillageRequestService {
         input.applicantName,
         input.applicantNik ?? null,
         input.applicantPhone ?? null,
-        user.userId,
+        akunPemohon,
         input.purpose ?? null,
         JSON.stringify(input.formData ?? {}),
         JSON.stringify(cuplikan),
@@ -117,7 +146,32 @@ export class VillageRequestService {
     );
 
     await this.catatRiwayat(schemaName, rows[0].id, null, 'DIAJUKAN', 'Permohonan diajukan', user);
-    return { id: rows[0].id, requestNumber: nomor, status: 'DIAJUKAN' };
+    return {
+      id: rows[0].id,
+      requestNumber: nomor,
+      status: 'DIAJUKAN',
+      // Dinyatakan kembali supaya layar loket dapat memberi tahu petugas
+      // seketika bahwa permohonan ini tidak boleh ia proses sendiri — bukan
+      // membiarkannya menemukan itu setelah menekan tombol verifikasi.
+      processableByCreator: bolehMemproses(akunPemohon, user.userId).boleh,
+    };
+  }
+
+  /**
+   * Akun yang tertaut ke seorang penduduk, bila ada.
+   *
+   * Mengembalikan `null` untuk penduduk yang belum punya akun — keadaan yang
+   * paling umum di desa, dan bukan kekeliruan.
+   */
+  private async akunPenduduk(schemaName: string, residentId: string): Promise<string | null> {
+    const rows = await this.tenantDb.query<{ user_id: string }>(
+      schemaName,
+      `SELECT user_id FROM "${schemaName}".village_portal_link
+        WHERE resident_id = $1 AND is_active = TRUE
+        LIMIT 1`,
+      [residentId],
+    );
+    return rows[0]?.user_id ?? null;
   }
 
   // --- Verifikasi berkas ----------------------------------------------------
@@ -595,6 +649,46 @@ export class VillageRequestService {
       [requestId, requirementCode],
     );
     return { requirementCode, removed: true };
+  }
+
+  // --- Jenis layanan beserta syaratnya --------------------------------------
+
+  /**
+   * Satu jenis layanan beserta persyaratannya.
+   *
+   * Dibutuhkan formulir loket, dan alasannya bukan kelengkapan data: yang
+   * paling berguna bagi warga yang berdiri di depan meja adalah mengetahui
+   * **apa yang harus ia bawa** sebelum permohonannya dibuat.
+   *
+   * Tanpa ini, petugas membuat permohonan lebih dahulu, baru melihat syaratnya
+   * pada layar berikutnya — dan warga yang ternyata kurang satu berkas sudah
+   * terlanjur punya permohonan berstatus kurang, yang harus ia urus lagi.
+   */
+  async jenisLayanan(schemaName: string, kode: string) {
+    const u = await this.unit.pastikanLayak(schemaName, 'LAYANAN.KATALOG');
+
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT id, code, name, description, category, letter_code, sla_working_days,
+              fee_amount, is_online, is_active, definition_version, approval_steps
+         FROM "${schemaName}".village_service_catalog
+        WHERE village_unit_id = $1 AND code = $2 AND deleted_at IS NULL`,
+      [u.id, kode],
+    );
+    if (!rows.length) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, `Jenis layanan "${kode}" tidak ditemukan.`);
+    }
+
+    const syarat = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT code, name, description, is_mandatory, accepts_upload, sort_order
+         FROM "${schemaName}".village_service_requirement
+        WHERE service_catalog_id = $1 AND deleted_at IS NULL
+        ORDER BY sort_order, name`,
+      [rows[0].id],
+    );
+
+    return { service: rows[0], requirements: syarat };
   }
 
   // --- Rincian untuk layar petugas ------------------------------------------

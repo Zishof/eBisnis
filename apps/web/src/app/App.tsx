@@ -128,6 +128,11 @@ const DesaJenisLayananPage = lazy(() =>
 const DesaPermohonanPage = lazy(() =>
   import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.PermohonanPage })),
 );
+const DesaPermohonanBaruPage = lazy(() =>
+  import('../verticals/village/admin/PermohonanBaruPage').then((m) => ({
+    default: m.PermohonanBaruPage,
+  })),
+);
 const DesaPermohonanDetailPage = lazy(() =>
   import('../verticals/village/admin/PermohonanDetailPage').then((m) => ({
     default: m.PermohonanDetailPage,
@@ -348,6 +353,7 @@ export function App() {
             daftar. Karena itu pengujian keselarasan rute mengabaikan rute
             berparameter: menu untuk satu berkas tertentu tidak masuk akal.
           */}
+          <Route path="info-desa/layanan/permohonan/baru" element={<DesaPermohonanBaruPage />} />
           <Route path="info-desa/layanan/permohonan/:id" element={<DesaPermohonanDetailPage />} />
           <Route path="info-desa/layanan/antrean" element={<DesaAntreanPage />} />
 

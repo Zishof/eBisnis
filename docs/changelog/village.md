@@ -2190,3 +2190,108 @@ pada penyewa yang datanya sudah berjalan.
 - `vitest` — **95 tes lulus** (bertambah 1)
 - `vite build` — berhasil; `PermohonanDetailPage` 16,8 kB
 - `tsc --noEmit` dan `eslint --max-warnings=0` API dan web — bersih
+
+---
+
+## Formulir loket — membuatkan permohonan untuk warga yang datang
+
+**Cabang:** `feature/v12-info-desa`
+
+Lubang terbesar pada layar loket sebelumnya: petugas dapat memproses permohonan
+yang sudah ada, tetapi tidak dapat membuatkannya untuk warga yang datang tanpa
+mengajukan lewat aplikasi.
+
+### Cacat yang menghentikan pekerjaan, ditemukan saat membangunnya
+
+`ajukan` menyetel `applicant_user_id` ke `user.userId` apa adanya — akun
+**petugas yang mengetik**, bukan pemohonnya.
+
+Akibatnya bukan sekadar data yang keliru. `pastikanBukanPemohon` melihat petugas
+itu sebagai pemohon, sehingga **setiap permohonan yang dicatat di loket menjadi
+permohonan yang tidak dapat diverifikasi siapa pun** pada kantor desa yang
+petugas loketnya satu orang. Formulir ini akan menghasilkan tumpukan berkas
+buntu pada hari pertama ia dipakai.
+
+Aturannya sendiri benar dan tetap: petugas tidak boleh memverifikasi
+permohonannya sendiri. Yang keliru adalah cara menentukan **miliknya siapa** —
+"siapa yang mengetik" disamakan dengan "punya siapa".
+
+Sekarang ditelusuri dari tautan akun **penduduk yang dipilih**:
+
+| Keadaan | `applicant_user_id` | Petugas boleh memverifikasi? |
+|---|---|---|
+| Mencatat permohonan Sumiati (punya akun) | akun Sumiati | ya |
+| Mencatat permohonan Karto (belum punya akun) | kosong | ya |
+| Memilih data diri **sendiri** | akun petugas | **tidak** |
+
+Siapa yang mengetiknya tidak hilang: `created_by` mencatatnya, dan riwayat
+permohonan menyimpan pelakunya.
+
+### Urutan formulir mengikuti percakapan di meja
+
+Warga datang dan berkata "saya mau surat domisili". Karena itu **jenis layanan
+dipilih lebih dahulu**, dan syaratnya langsung tampil — supaya petugas dapat
+memberi tahu apa yang harus dibawa **sebelum** permohonannya dibuat.
+
+Urutan sebaliknya menghasilkan permohonan yang terlanjur ada padahal warganya
+harus pulang mengambil fotokopi KK, dan permohonan berstatus kurang yang harus
+ia urus lagi.
+
+Endpoint `GET /village/services/:code` ditambahkan untuk itu: sebelumnya
+persyaratan hanya terlihat dari rincian permohonan — yaitu sesudah permohonannya
+dibuat.
+
+### Pemohon dicari, tidak diketik
+
+Nama yang diketik ulang setiap kali menghasilkan "Sumiati", "Sumiyati", dan
+"Sumiati binti Karto" sebagai tiga orang berbeda pada satu desa.
+
+Pencarian penduduk memakai jalur berbercakupan yang sudah ada, sehingga
+**tercatat pada log akses** — itu memang seharusnya, dan bukan alasan untuk
+menghindarinya. Pencarian baru berjalan setelah tiga huruf: pencarian satu huruf
+mengembalikan hampir seluruh desa, dan ikut tercatat sebagai pembacaan massal.
+
+Hasil pencarian menampilkan **empat angka terakhir NIK**, sama seperti daftar
+penduduk. Yang membedakan dua orang bernama sama adalah RT dan tanggal lahirnya.
+
+Mengetik manual tetap ada untuk pemohon yang belum terdaftar, dan layar
+menyatakan terus terang bahwa NIK yang diketik **tidak diperiksa** terhadap data
+kependudukan — nomor yang diketik dari kartu yang dilihat sekilas akan tercetak
+pada surat resmi, dan warga yang menanggung akibatnya di kantor lain.
+
+### Janji penyelesaian tidak dijanjikan terlalu dini
+
+Layar menyebutkan bahwa janji penyelesaian mulai dihitung saat berkas dinyatakan
+lengkap, bukan hari permohonan dibuat. Petugas yang menjanjikan "tiga hari lagi"
+kepada warga yang berkasnya belum lengkap sedang membuat janji yang tidak akan
+ditepati sistemnya.
+
+### Sesudah dibuat, langsung ke rinciannya
+
+Langkah berikutnya adalah menandai berkas yang warganya sedang pegang, dan ia
+masih berdiri di depan meja. Bila permohonan itu ternyata atas nama petugas
+sendiri, layar menyatakannya **saat itu juga** lewat `processableByCreator` —
+bukan membiarkannya ditemukan setelah tombol verifikasi ditekan.
+
+### Bukti
+
+`docs/info-desa/bukti-loket-permohonan.txt` — **18 pemeriksaan** terhadap
+PostgreSQL sungguhan, bertambah tiga yang menguji aturan pemohon pada ketiga
+keadaannya: warga berakun, warga tanpa akun, dan petugas yang memilih data
+dirinya sendiri.
+
+### Yang TIDAK selesai
+
+- **Mencetak surat** belum ada; ekspor PDF masih `BLOCKED` sejak V8-7.
+- **Persyaratan belum dapat membawa berkas unggahan.** Penyimpanan berkas
+  village sudah ada, tetapi `subject_type`-nya masih terbatas `PENGADUAN`.
+- **Nomor antrean tidak diterbitkan** dari formulir ini. Warga yang dilayani di
+  loket sudah berada di depan meja; menerbitkan nomor untuknya menambah langkah
+  tanpa menambah apa pun.
+
+### Gerbang mutu
+
+- `jest` — **2492 tes lulus**
+- `vitest` — **95 tes lulus**
+- `vite build` — berhasil; `PermohonanBaruPage` 12,7 kB
+- `tsc --noEmit` dan `eslint --max-warnings=0` API dan web — bersih

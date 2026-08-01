@@ -11,6 +11,8 @@
  * menyimpulkan datanya rusak.
  */
 
+import { Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import { VillageListPage } from './VillageListPage';
 import {
   angkaKolom,
@@ -171,6 +173,12 @@ export function PermohonanPage() {
           ],
         },
       ]}
+      aksi={
+        <Link to="/app/info-desa/layanan/permohonan/baru" className="btn-primary px-3 py-1.5 text-sm">
+          <Plus size={15} aria-hidden className="me-1.5 inline" />
+          Buat permohonan
+        </Link>
+      }
       catatan="NIK dan nomor telepon pemohon tidak ditampilkan di daftar ini. Layar loket terbaca dari antrean yang berdiri di belakangnya; keduanya tersedia pada rincian permohonan, yang dibuka satu per satu."
       kosong="Belum ada permohonan"
     />

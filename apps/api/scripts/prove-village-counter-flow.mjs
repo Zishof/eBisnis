@@ -19,7 +19,7 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import pg from 'pg';
 
 const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
@@ -118,6 +118,79 @@ try {
      VALUES ($1, $2, 'REQ-2026-00001', 'Sumiati', 'DIAJUKAN') RETURNING id`,
     [unit, katalog],
   ))[0].id;
+
+  // --- 1b. Siapa "pemohon"-nya, dan siapa yang mengetik --------------------
+  //
+  // Aturannya: petugas tidak boleh memverifikasi permohonannya sendiri.
+  //
+  // Yang menentukan "miliknya siapa" adalah tautan akun PENDUDUK yang dipilih,
+  // bukan siapa yang memegang papan ketik. Semula kolomnya diisi akun petugas
+  // apa adanya, dan akibatnya menghentikan pekerjaan: seluruh permohonan yang
+  // dicatat di loket menjadi permohonan yang tidak dapat diproses siapa pun
+  // pada kantor desa yang petugas loketnya satu orang.
+  log('');
+  log('1b. Pemohon ditentukan dari tautan akun penduduk, bukan dari yang mengetik');
+
+  const akunPetugas = randomUUID();
+  const akunSumiati = randomUUID();
+
+  const wargaSumiati = (await q(
+    `INSERT INTO "${S}".village_resident
+       (village_unit_id, national_id, full_name, normalized_name)
+     VALUES ($1, '3401011234560001', 'Sumiati', 'sumiati') RETURNING id`,
+    [unit],
+  ))[0].id;
+
+  const wargaPetugas = (await q(
+    `INSERT INTO "${S}".village_resident
+       (village_unit_id, national_id, full_name, normalized_name)
+     VALUES ($1, '3401019876540002', 'Bambang Petugas', 'bambang petugas') RETURNING id`,
+    [unit],
+  ))[0].id;
+
+  // Keduanya punya akun; petugas kebetulan juga warga desa ini.
+  // `verification_note` wajib diisi (D-10): penautan akun ke data penduduk
+  // harus menyebutkan CARA identitasnya dipastikan, sebab akun yang menautkan
+  // dirinya sendiri hanya perlu menebak NIK orang lain untuk membuka datanya.
+  await q(
+    `INSERT INTO "${S}".village_portal_link
+       (village_unit_id, user_id, resident_id, linked_by, verification_note)
+     VALUES ($1, $2, $3, $2, 'KTP asli dicocokkan di loket'),
+            ($1, $4, $5, $2, 'KTP asli dicocokkan di loket')`,
+    [unit, akunSumiati, wargaSumiati, akunPetugas, wargaPetugas],
+  );
+
+  const akunPenduduk = async (residentId) => {
+    const r = await q(
+      `SELECT user_id FROM "${S}".village_portal_link
+        WHERE resident_id = $1 AND is_active = TRUE LIMIT 1`,
+      [residentId],
+    );
+    return r[0]?.user_id ?? null;
+  };
+
+  check(
+    'permohonan warga yang dicatat petugas BUKAN milik petugas',
+    (await akunPenduduk(wargaSumiati)) !== akunPetugas,
+    'kalau tidak, petugas loket terkunci dari memverifikasi pekerjaannya sendiri',
+  );
+  check(
+    'permohonan yang dipilihkan atas data diri petugas TETAP miliknya',
+    (await akunPenduduk(wargaPetugas)) === akunPetugas,
+    'aturan pemisahan tugas tetap berlaku pada keadaan yang memang dimaksudkannya',
+  );
+
+  const wargaTanpaAkun = (await q(
+    `INSERT INTO "${S}".village_resident
+       (village_unit_id, national_id, full_name, normalized_name)
+     VALUES ($1, '3401011111110003', 'Karto', 'karto') RETURNING id`,
+    [unit],
+  ))[0].id;
+  check(
+    'penduduk yang belum punya akun menghasilkan pemohon kosong, bukan galat',
+    (await akunPenduduk(wargaTanpaAkun)) === null,
+    'keadaan paling umum di desa, dan bukan kekeliruan',
+  );
 
   // --- 2. Berkas ganda sebelum indeks -------------------------------------
   log('');

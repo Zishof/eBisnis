@@ -1,10 +1,15 @@
 ==============================================================================
 BUKTI ALUR LOKET PERMOHONAN SURAT
-Waktu : 2026-08-01T00:35:06.335Z
+Waktu : 2026-08-01T01:27:48.333Z
 ==============================================================================
 
 1. Migrasi dijalankan bertahap
   LULUS  migrasi indeks unik ada pada manifest
+
+1b. Pemohon ditentukan dari tautan akun penduduk, bukan dari yang mengetik
+  LULUS  permohonan warga yang dicatat petugas BUKAN milik petugas
+  LULUS  permohonan yang dipilihkan atas data diri petugas TETAP miliknya
+  LULUS  penduduk yang belum punya akun menghasilkan pemohon kosong, bukan galat
 
 2. Berkas ganda yang terlanjur ada
   LULUS  dua baris untuk satu persyaratan memang dapat terjadi

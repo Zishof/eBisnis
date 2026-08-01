@@ -39,15 +39,23 @@ const ruteMenu = [...katalog.matchAll(/route:\s*'\/app\/(info-desa\/[^']+)'/g)].
 /** Rute yang benar-benar terdaftar pada router, di bawah `/app`. */
 const ruteSemua = [...router.matchAll(/<Route path="(info-desa\/[^"]+)"/g)].map((m) => m[1]);
 
+/** Rute yang punya menunya sendiri pada katalog. */
+const menuSet = new Set(ruteMenu);
+
 /**
- * Rute berparameter tidak ikut dicocokkan dengan menu.
+ * Rute anak: bersarang di bawah rute yang punya menu.
  *
- * `layanan/permohonan/:id` adalah rincian satu berkas, dan ia dibuka dari
- * daftarnya. Menu untuk satu berkas tertentu tidak masuk akal — sidebar tidak
- * dapat menautkan ke permohonan yang belum ada.
+ * `layanan/permohonan/:id` adalah rincian satu berkas, dan
+ * `layanan/permohonan/baru` adalah formulirnya. Keduanya dibuka **dari
+ * daftarnya**, bukan dari sidebar — menu untuk satu berkas tertentu tidak
+ * masuk akal, dan menu terpisah untuk formulir memisahkan tombolnya dari
+ * tempat petugas berada ketika ia membutuhkannya.
  */
-const ruteRouter = new Set(ruteSemua.filter((r) => !r.includes(':')));
-const ruteBerparameter = ruteSemua.filter((r) => r.includes(':'));
+const ruteAnak = ruteSemua.filter((r) => {
+  const induk = r.slice(0, r.lastIndexOf('/'));
+  return induk.length > 0 && menuSet.has(induk);
+});
+const ruteRouter = new Set(ruteSemua.filter((r) => !ruteAnak.includes(r)));
 
 describe('rute info-desa', () => {
   it('membaca kedua berkas dengan benar', () => {
@@ -101,14 +109,14 @@ describe('rute info-desa', () => {
     }
   });
 
-  it('setiap rute berparameter berada di bawah rute daftarnya', () => {
-    // Rincian yang jalurnya tidak bersarang di bawah daftarnya akan kehilangan
-    // penanda menu aktif pada sidebar: petugas yang membuka satu permohonan
-    // melihat menu yang tidak tersorot, dan tidak lagi tahu ia sedang di bagian
-    // mana.
-    for (const r of ruteBerparameter) {
-      const induk = r.slice(0, r.indexOf('/:'));
-      expect([r, ruteRouter.has(induk)]).toEqual([r, true]);
+  it('setiap rute anak bersarang di bawah rute yang punya menu', () => {
+    // Rute anak yang jalurnya tidak bersarang di bawah daftarnya akan
+    // kehilangan penanda menu aktif pada sidebar: petugas yang membuka satu
+    // permohonan melihat menu yang tidak tersorot, dan tidak lagi tahu ia
+    // sedang berada di bagian mana.
+    expect(ruteAnak.length).toBeGreaterThan(0);
+    for (const r of ruteAnak) {
+      expect([r, menuSet.has(r.slice(0, r.lastIndexOf('/')))]).toEqual([r, true]);
     }
   });
 

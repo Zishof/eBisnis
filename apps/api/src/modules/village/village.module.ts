@@ -3408,6 +3408,22 @@ export class VillageController {
   }
 
   @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_CATALOG.READ')
+  @Get('services/:code')
+  @ApiOperation({
+    summary: 'Satu jenis layanan beserta persyaratannya',
+    description:
+      'Dibutuhkan formulir loket, dan alasannya bukan kelengkapan data: yang paling berguna bagi ' +
+      'warga yang berdiri di depan meja adalah mengetahui APA YANG HARUS IA BAWA sebelum ' +
+      'permohonannya dibuat. Tanpa ini, petugas membuat permohonan lebih dahulu lalu melihat ' +
+      'syaratnya pada layar berikutnya - dan warga yang ternyata kurang satu berkas sudah ' +
+      'terlanjur punya permohonan berstatus kurang, yang harus ia urus lagi.',
+  })
+  jenisLayanan(@Param('code') code: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.permohonan.jenisLayanan(requireSchema(user), code);
+  }
+
+  @ApiBearerAuth('access-token')
   @Permissions('VILLAGE_SERVICE_REQUEST.READ')
   @Get('requests/:id')
   @ApiOperation({
