@@ -1,0 +1,17 @@
+{
+  "$comment": "Manifest migrasi kernel pendidikan bersama (Versi 13 E13-4 fondasi). Diterapkan ke schema {username}_education, terpisah dari schema inti — lihat docs/upgrade-v13-education/03-schema-and-module-registry.md. Kernel ini TIDAK dijual terpisah tetapi wajib ada sebelum vertical mana pun, sebab vertical merujuk tabelnya.",
+  "module": "education",
+  "schemaVersion": 1,
+  "dependsOn": [
+    "core"
+  ],
+  "ownSchema": true,
+  "migrations": [
+    {
+      "id": "20260801T170000__education__calendar_and_learner",
+      "file": "20260801T170000__education__calendar_and_learner.sql",
+      "name": "Kalender akademik, peserta didik, dan keikutsertaan",
+      "description": "education_academic_year, education_academic_period, education_program, education_learner_profile, education_learner_identifier_history, education_enrollment, education_enrollment_status_history. Inilah fondasi yang dituntut billing: `education_enrollment` adalah sumber Billable Learner Month, dan riwayat statusnya append-only supaya tagihan bulan yang sudah lewat tidak berubah ketika status disunting surut. Nomor induk disimpan berjenjang waktu, bukan sebagai kolom tunggal — NIS/NISN dapat berubah karena mutasi atau koreksi Dapodik, dan nomor lama masih tercetak pada rapor yang sudah dibagikan. `education_learner_profile` menjadi supertype: satu baris per (person, institusi, jenis peserta), sehingga santri yang juga siswa tidak menghasilkan dua biodata manusia."
+    }
+  ]
+}

@@ -43,6 +43,18 @@ export interface TenantMigrationDefinition {
   description: string;
   /** Kosong untuk migrasi inti. */
   module?: string;
+  /**
+   * Benar bila modul ini tinggal di schema-nya sendiri (`{username}_<modul>`).
+   *
+   * Diturunkan dari manifest modulnya. Modul lama — koperasi — menumpang di
+   * schema inti dan tetap begitu; modul pendidikan tidak.
+   *
+   * Penerapan ke schema inti melewatkan definisi bertanda ini. Tanpa itu setiap
+   * tenant memperoleh tabel pendidikan di schema intinya, dan isolasi
+   * antarvertical yang dituntut BRD §226 berubah menjadi konvensi penamaan yang
+   * dapat dilewati satu kueri yang lupa menyaring.
+   */
+  ownSchema?: boolean;
 }
 
 export interface CoreManifest {
@@ -62,6 +74,15 @@ export interface ModuleManifest {
   schemaVersion: number;
   /** Modul lain yang migrasinya harus lebih dahulu. `core` selalu tersirat. */
   dependsOn?: string[];
+  /**
+   * Benar bila modul ini diterapkan ke schema sendiri, bukan ke schema inti.
+   *
+   * Dinyatakan pada manifest, bukan pada daftar terpisah di dalam kode: daftar
+   * semacam itu akan menjadi berkas bersama berikutnya yang harus disunting
+   * setiap kali modul baru ditambahkan, dan yang lupa disunting menghasilkan
+   * modul yang diam-diam menumpang di schema inti.
+   */
+  ownSchema?: boolean;
   migrations: ModuleManifestEntry[];
 }
 
@@ -218,6 +239,7 @@ export function gabungkanKatalog(
         name: entri.name,
         description: entri.description ?? '',
         module: namaModul,
+        ...(m.ownSchema ? { ownSchema: true } : {}),
       });
     }
   }

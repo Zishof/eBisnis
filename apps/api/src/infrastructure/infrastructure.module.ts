@@ -21,6 +21,8 @@ import { EmbeddingService } from './ai/embedding.service';
 import { VerticalCatalogRegistry } from './provisioning/vertical-catalog.registry';
 import { VERTICAL_CATALOGS } from './provisioning/vertical-catalogs';
 import { PublicTenantResolver } from './tenant/public-tenant-resolver.service';
+import { EducationSchemaResolver } from './tenant/education-schema-resolver.service';
+import { EducationSchemaGuard } from './tenant/education-schema.guard';
 
 /**
  * Modul infrastruktur global: akses database platform, akses schema tenant,
@@ -31,6 +33,8 @@ import { PublicTenantResolver } from './tenant/public-tenant-resolver.service';
   providers: [
     VerticalCatalogRegistry,
     PublicTenantResolver,
+    EducationSchemaResolver,
+    EducationSchemaGuard,
     OllamaAdapter,
     ModelCatalogService,
     EmbeddingService,
@@ -54,6 +58,8 @@ import { PublicTenantResolver } from './tenant/public-tenant-resolver.service';
   exports: [
     VerticalCatalogRegistry,
     PublicTenantResolver,
+    EducationSchemaResolver,
+    EducationSchemaGuard,
     OllamaAdapter,
     ModelCatalogService,
     EmbeddingService,
