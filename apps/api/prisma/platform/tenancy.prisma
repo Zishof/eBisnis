@@ -200,6 +200,11 @@ model Tenant {
   @@index([status, isActive, deletedAt])
   @@index([createdAt])
   @@index([isSample, sampleBatchId])
+  /// Dinyatakan di sini supaya sepadan dengan indeks yang dibuat migrasi
+  /// `20260802100000_registration_pesantren`. Indeks yang ada di basis data
+  /// tetapi tidak di schema akan terbaca sebagai penyimpangan, dan migrasi
+  /// berikutnya menawarkan diri membuangnya.
+  @@index([verticalCode])
   @@map("tenant")
   @@schema("platform")
 }
