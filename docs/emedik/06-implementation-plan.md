@@ -1774,12 +1774,97 @@ Uji >= 25 -> **54 tercapai**, ditambah naskah bukti 63 pemeriksaan.
 dibangun sebagai kerangka bergerbang pada H-9A, H-9B, dan H-9I — bukan sebagai
 implementasi tiruan yang berpura-pura bekerja.
 
-### H-11 · Peran, Help, data contoh, laporan
+### H-11 · Peran, data contoh, laporan — **SELESAI**
 
-29 peran, data contoh 50–100 baris per jenis, laporan.
+Kumpulan penyemaian berbenih deterministik, pembersihan yang menyembunyikan,
+daftar izin tabel sebagai baris basis data, delapan laporan agregat, dan tiga
+penghalang yang dicatat beserta jalan keluarnya.
 
-Uji ≥ 25. **Help terhalang** — kerangka Pusat Bantuan tidak pernah dibangun
-(V8-1/V8-2). **Ekspor Excel dan cetak PDF terhalang** (V8-5/6, V8-7).
+Uji >= 25 -> **35 tercapai**, ditambah naskah bukti 55 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H052__health__sample_and_report.sql`, `H053__health__sample_permissions.sql`, `H054__health__sample_hideable_fix.sql` |
+| Aturan murni | `health-sample.ts` + 35 pengujian |
+| Layanan | `health-sample.service.ts` |
+| Endpoint | `health-sample.controller.ts` — 8 jalan di `/api/v1/health/sample/**` |
+| Katalog | `health-catalog.ts` — 2 menu, 1 aturan SoD |
+| Bukti | `scripts/prove-health-sample.mjs` -> [bukti-h11-data-contoh.txt](bukti-h11-data-contoh.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **DUA LARANGAN YANG TERDENGAR MIRIP DAN BERBEDA SAMA SEKALI.** *Jangan
+  hard-delete sample data* tentang **cara**: data contoh disembunyikan, bukan
+  dihapus. *Jangan menghapus data real saat cleanup sample* tentang **sasaran**,
+  dan ia jauh lebih berbahaya: pembersihan yang salah sasaran menghapus rekam
+  medis, tidak menimbulkan galat, tidak terlihat pada pengujian mana pun yang
+  memakai basis data kosong, dan ditemukan oleh perawat yang mencari catatan
+  pasiennya.
+
+- **Naskah bukti membuat baris SUNGGUHAN dan baris CONTOH pada tabel yang
+  sama**, menjalankan pembersihan, lalu menghitung ulang. Baris sungguhannya
+  harus sama persis — bukan "kurang lebih". Ditegakkan constraint
+  `sample_count_real_unchanged` pula, dan seluruh transaksinya dibatalkan bila
+  satu baris pun berubah.
+
+- **Daftar izin tabel dipasang sebagai BARIS BASIS DATA, bukan tetapan pada
+  kode.** Daftar yang ada di kode dapat diubah seseorang bersamaan dengan
+  mengubah kueri pembersihnya, dan keduanya akan lolos telaah sebagai satu
+  perubahan yang tampak wajar. Daftar yang ada di basis data menuntut migrasi
+  tersendiri — dan migrasi tersendiri dibaca orang lain.
+
+- **Setiap baris daftar menyebutkan kolom penandanya**, dibaca dari
+  `information_schema`. Tabel-tabel ini tidak seragam: sebagian memakai
+  `is_sample`, sebagian `is_sample_data`. Menebak yang mana akan menghasilkan
+  kueri yang menyentuh seluruh barisnya.
+
+- **Daftar izinnya hanya memuat tabel yang benar-benar dapat disembunyikan** —
+  sepuluh dari tiga puluh empat. Sisanya dicatat sebagai **keterbatasan yang
+  dinyatakan**, bukan kemampuan yang berpura-pura ada.
+
+- **Nama aksinya `HARD_DELETE`, sekalipun yang dilakukannya menyembunyikan.**
+  Nama yang menenangkan akan membuat orang menekannya tanpa membaca layar
+  konfirmasi.
+
+- **Yang menyemai bukan yang membersihkan.** Administrator menyemai; direktur
+  membersihkan — jabatan yang paling jarang menekan tombol, dan itulah gunanya.
+  Severity CRITICAL.
+
+- **Benih penyemaian wajib dan deterministik.** Data contoh yang berbeda setiap
+  kali disemai tidak dapat dipakai mendemonstrasikan apa pun dua kali — dan yang
+  mendemonstrasikannya akan berkata "kemarin angkanya lain" di depan calon
+  penggunanya.
+
+- **Jumlah baris berbatas dua arah.** Terlalu sedikit membuat layar tampak
+  rusak; terlalu banyak membuat demo lambat, dan demo yang lambat membuat orang
+  menyimpulkan sistemnya lambat.
+
+- **Seluruh laporan agregat**, dan itu diuji — bukan sekadar ditulis pada
+  komentar. Laporan tingkat pasien yang ditambahkan kelak akan membuat ujinya
+  gagal, dan kegagalannya memaksa orang yang menambahkannya memikirkan siapa
+  yang boleh membukanya. Rentangnya wajib berbatas: laporan tanpa batas memindai
+  seluruh riwayat rumah sakit pada jam sibuk.
+
+**Yang terhalang, dan dicatat apa adanya:**
+
+| Terhalang | Sebab | Jalan keluar yang ada |
+|---|---|---|
+| Pusat Bantuan | V8-1/V8-2 tidak pernah dibangun | Setiap penolakan eMedik menyebut **alasannya** — menjawab pertanyaan yang paling sering ditanyakan kepada Pusat Bantuan |
+| Ekspor Excel | V8-5/V8-6 tidak pernah dibangun | Seluruh laporan tersedia sebagai JSON lewat API |
+| Cetak PDF | V8-7 tidak pernah dibangun | Cetak dari peramban — **dan ia jujur bahwa itu bukan pengganti yang setara**: cetakan peramban tidak berkop dan tidak bernomor |
+
+`POST /reports/:kode/export` **selalu menolak**, dan penolakannya menyebutkan
+sebab dan jalan keluarnya. Sistem yang diam tentang apa yang tidak dapat
+dilakukannya akan ditanyakan berulang kali oleh orang yang berbeda — dan salah
+satu di antaranya akan membangunnya sendiri dengan cara yang tidak dapat
+dipelihara siapa pun.
+
+**Peran:** 43 peran kesehatan, melampaui 29 yang diminta. Delapan di antaranya
+dinyatakan **tanpa satu pun hak atas data pasien**, dan naskah bukti memeriksa
+kedelapannya menurut namanya — bukan menurut ambang persentase yang berubah
+setiap kali satu peran ditambahkan.
 
 ### H-12 · Keamanan, E2E, kinerja, UAT
 

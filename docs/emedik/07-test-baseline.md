@@ -87,8 +87,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9B | 20 | **51** | `health-bpjs.spec.ts` |
 | H-9M | 20 | **41** | `health-kfa.spec.ts` |
 | H-10 | 25 | **54** | `health-portal.spec.ts` |
+| H-11 | 25 | **35** | `health-sample.spec.ts` |
 
-API keseluruhan: **2390** pengujian pada 70 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **2427** pengujian pada 71 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -127,6 +128,44 @@ sungguhan, pada basis data sungguhan:
 | H-9B | `prove-health-bpjs.mjs` | 62 pemeriksaan, seluruhnya lulus — [bukti-h9b-bpjs.txt](bukti-h9b-bpjs.txt) |
 | H-9M | `prove-health-kfa.mjs` | 52 pemeriksaan, seluruhnya lulus — [bukti-h9m-kfa.txt](bukti-h9m-kfa.txt) |
 | H-10 | `prove-health-portal.mjs` | 63 pemeriksaan, seluruhnya lulus — [bukti-h10-portal.txt](bukti-h10-portal.txt) |
+| H-11 | `prove-health-sample.mjs` | 55 pemeriksaan, seluruhnya lulus — [bukti-h11-data-contoh.txt](bukti-h11-data-contoh.txt) |
+
+**H-11 menemukan cacat yang paling halus di antara seluruh fase, dan ia
+ditemukan sebelum naskah buktinya dijalankan sama sekali.**
+
+Migrasi `H052` mengisi daftar izin pembersihan dengan **setiap** tabel yang
+punya kolom penanda contoh — tiga puluh empat tabel. Tetapi "membersihkan" pada
+fase ini berarti **menyembunyikan**, dan menyembunyikan menuntut kolom
+`deleted_at`. Hanya sepuluh dari ketiga puluh empat tabel itu memilikinya.
+
+Akibatnya bukan galat. Pembersihan pada dua puluh empat tabel sisanya akan
+berjalan, melaporkan keberhasilan, dan **tidak menyembunyikan apa pun** — jenis
+kegagalan yang paling buruk, sebab ia menghasilkan laporan yang berkata
+"selesai" dan keadaan yang tidak berubah. Orang yang membacanya akan menyerahkan
+sistemnya kepada penggunanya dengan data contoh masih di dalamnya.
+
+Perbaikannya bukan menambahkan `deleted_at` pada dua puluh empat tabel klinis:
+perubahan sebesar itu menyentuh setiap modul sejak H-2 dan tidak boleh
+diselipkan ke dalam fase data contoh. Yang dilakukan `H054` adalah
+**mempersempit daftar izinnya** dan mencatat sisanya sebagai keterbatasan yang
+dinyatakan. Ini pola yang berulang sepanjang eMedik: **ketika yang benar tidak
+dapat dilakukan sepenuhnya, yang dilakukan adalah menyatakan batasnya — bukan
+berpura-pura tidak ada batas.**
+
+**Naskah buktinya menemukan cacat urutan.** Pembersihan menghitung baris
+**sebelum** memeriksa daftar izin, sehingga nama tabel yang belum disahkan sudah
+disisipkan ke dalam SQL — dan permintaan yang menyebut tabel di luar daftar
+menghasilkan 500 alih-alih penolakan yang menjelaskan. Urutannya dibalik:
+putuskan dahulu, hitung kemudian. Yang membedakan "belum disahkan" dari
+"berbahaya" hanyalah keberuntungan tentang nama apa yang dikirimkan.
+
+**Dan pengujian katalog menangkap satu kekeliruan penempatan.** Dua hak yang
+seharusnya terpisah — menyemai dan membersihkan — keduanya masuk ke peran
+administrator, sebab jangkar penyuntingannya cocok pada blok yang sama. Uji
+"tidak ada peran bawaan yang melanggar aturannya sendiri" menolaknya seketika.
+Ini kali kelima uji itu menangkap sesuatu, dan ia satu-satunya uji pada
+keseluruhan proyek yang memeriksa **konsistensi antara aturan dan penerapannya**
+alih-alih memeriksa perilaku.
 
 **H-10 ditangkap oleh penjaga yang sudah ada sejak sebelum eMedik, dan itu
 pelajaran tersendiri.**

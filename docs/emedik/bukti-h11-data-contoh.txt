@@ -1,0 +1,87 @@
+==============================================================================
+BUKTI H-11 — DATA CONTOH, PEMBERSIHAN, LAPORAN, DAN PENGHALANG
+Waktu   : 2026-08-01T10:42:53.190Z
+Schema  : demo
+==============================================================================
+
+Satu pengguna, dengan hak menyemai DAN membersihkan sekaligus — supaya
+yang diuji adalah penjaganya, bukan ketiadaan hak aksesnya.
+
+1. DAFTAR IZIN DIBACA DARI BASIS DATA, dan hanya memuat yang dapat disembunyikan
+  LULUS  daftar izin terbaca
+  LULUS  memuat sepuluh tabel yang dapat dibersihkan
+  LULUS  DAN MENCATAT yang TIDAK dapat dibersihkan beserta sebabnya
+  LULUS  sebabnya menyebut menyentuh setiap modul sejak H-2
+  LULUS  SETIAP tabel pada daftar izin benar-benar punya deleted_at
+
+2. Benih wajib, dan jumlah baris berbatas
+  LULUS  benih terlalu pendek DITOLAK
+  LULUS  jumlah baris melampaui batas profil DITOLAK
+  LULUS  penolakannya menyebut demo yang lambat
+  LULUS  terlalu sedikit pun ditolak
+  LULUS  penyemaian tercatat
+  LULUS  menembus syarat benih lewat basis data ditolak constraint
+
+3. PEMBERSIHAN TIDAK MENYENTUH SATU PUN BARIS SUNGGUHAN
+   Baris SUNGGUHAN dan baris CONTOH dibuat pada tabel yang sama.
+  LULUS  baris sungguhan dan contoh terhitung sebelum pembersihan
+  LULUS  pembersihan berjalan
+  LULUS  BARIS SUNGGUHAN SAMA PERSIS
+  LULUS  dan baris contoh yang tampak menjadi nol
+  LULUS  jawabannya menyatakan nol baris sungguhan tersentuh
+  LULUS  dan pemeriksaannya menyatakan aman
+
+4. YANG DIBERSIHKAN DISEMBUNYIKAN, BUKAN DIHAPUS
+  LULUS  BARISNYA MASIH ADA
+  LULUS  dan seluruhnya bertanda tersembunyi
+  LULUS  SELURUH BARIS SUNGGUHAN MASIH TAMPAK
+  LULUS  caranya dinyatakan HIDE
+  LULUS  dan alasannya menyebut jejak audit yang menunjuk ketiadaan
+
+5. Basis data menolak pencatatan yang menyatakan baris sungguhan berubah
+  LULUS  hitungan yang menyatakan baris sungguhan berkurang DITOLAK constraint
+  LULUS  UJI KENDALI: yang tidak berubah diterima
+  LULUS  kumpulan penyemaian tidak dapat dihapus
+
+6. Tabel di luar daftar izin DITOLAK
+  LULUS  tabel di luar daftar izin DITOLAK
+  LULUS  penolakannya menyebut belum ditelaah
+  LULUS  dan tabel pasien tidak tersentuh sama sekali
+  LULUS  kumpulan yang sudah dibersihkan tidak dibersihkan lagi
+
+7. Laporan seluruhnya agregat dan berbatas rentang
+  LULUS  katalog terbaca
+  LULUS  SELURUH LAPORAN AGREGAT
+  LULUS  delapan laporan tercatat
+  LULUS  tidak satu pun bertingkat pasien
+  LULUS  laporan berjalan
+  LULUS  dan menyatakan dirinya bukan tingkat pasien
+  LULUS  rentang tanpa batas DITOLAK
+  LULUS  penolakannya menyebut jam sibuk
+  LULUS  laporan di luar katalog ditolak
+  LULUS  jawaban laporan tidak memuat satu pun nama pasien
+
+8. Penghalang dicatat, dan penolakannya menyebut jalan keluarnya
+  LULUS  penghalang terbaca
+  LULUS  tiga penghalang tercatat
+  LULUS  SETIAP penghalang menyebut jalan keluarnya
+  LULUS  EKSPOR MENOLAK
+  LULUS  penolakannya menyebut sebabnya
+  LULUS  DAN jalan keluarnya
+  LULUS  cetak PDF menolak pula
+  LULUS  dan JUJUR bahwa jalan keluarnya tidak setara
+  LULUS  setiap laporan menyertakan penghalang ekspornya
+
+9. Peran kesehatan dibaca dari basis data
+  LULUS  ringkasan peran terbaca
+  LULUS  lebih dari 29 peran kesehatan ada
+  LULUS  DELAPAN PERAN YANG DINYATAKAN TANPA HAK PASIEN memang tidak punya
+  LULUS  dan kedelapannya benar-benar ada pada tenant ini
+
+10. SESUDAH SELURUHNYA — TIDAK ADA HITUNGAN YANG MENYATAKAN KEHILANGAN
+  LULUS  di SELURUH tenant, tidak satu pun hitungan menyatakan baris sungguhan berubah
+  LULUS  tidak ada satu pun fungsi basis data bernama sample yang menjalankan DELETE
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

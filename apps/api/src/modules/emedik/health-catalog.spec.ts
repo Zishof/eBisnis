@@ -637,6 +637,27 @@ describe('peran kesehatan', () => {
     expect(clerk?.permissions).not.toContain('HEALTH_PORTAL_RELEASE.RELEASE');
   });
 
+  it('YANG MENYEMAI DATA CONTOH BUKAN YANG MEMBERSIHKANNYA', () => {
+    /*
+     * Pembersihan menjalankan perintah atas ratusan baris pada tabel yang sama
+     * dengan tempat rekam medis sungguhan berada.
+     */
+    const admin = HEALTH_ROLES.find((r) => r.code === 'HEALTH_ADMIN');
+    const direktur = HEALTH_ROLES.find((r) => r.code === 'HEALTH_DIRECTOR');
+    expect(admin?.permissions).toContain('HEALTH_SAMPLE_DATA.CREATE');
+    expect(admin?.permissions).not.toContain('HEALTH_SAMPLE_DATA.HARD_DELETE');
+    expect(direktur?.permissions).toContain('HEALTH_SAMPLE_DATA.HARD_DELETE');
+    expect(direktur?.permissions).not.toContain('HEALTH_SAMPLE_DATA.CREATE');
+  });
+
+  it('laporan dapat dibuka TANPA satu pun hak atas data pasien', () => {
+    // Laporan yang menuntut hak pasien akan membuat direktur diberi hak
+    // pasien — dan hak yang diberikan jarang ditarik kembali.
+    const direktur = HEALTH_ROLES.find((r) => r.code === 'HEALTH_DIRECTOR');
+    expect(direktur?.permissions).toContain('HEALTH_REPORT.READ');
+    expect(direktur?.permissions).not.toContain('HEALTH_PATIENT.READ');
+  });
+
   it('tidak ada peran yang memiliki hak atas menu yang belum dibangun', () => {
     /*
      * Peran yang sudah diberi hak atas modul yang belum ada akan tampak

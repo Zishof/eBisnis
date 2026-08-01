@@ -902,6 +902,35 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'UPDATE', 'PUBLISH', 'UNPUBLISH'],
     sortOrder: 129,
   },
+  // Data contoh dan laporan — H-11.
+  //
+  // HARD_DELETE sengaja dipakai sebagai nama aksi pembersihan, sekalipun yang
+  // dilakukannya MENYEMBUNYIKAN. Pembersihan menjalankan perintah atas ratusan
+  // baris pada tabel yang sama dengan tempat rekam medis sungguhan berada, dan
+  // nama yang menenangkan akan membuat orang menekannya tanpa membaca layar
+  // konfirmasi.
+  {
+    code: 'HEALTH_SAMPLE_DATA',
+    parentCode: 'HEALTH',
+    label: 'Data Contoh',
+    route: '/app/emedik/data-contoh',
+    icon: 'flask-conical',
+    actions: ['READ', 'CREATE', 'HARD_DELETE'],
+    sortOrder: 130,
+  },
+  // Seluruh laporan bersifat AGREGAT, dan itu yang membuatnya dapat dibuka
+  // manajemen tanpa satu pun hak atas data pasien. Laporan yang menuntut hak
+  // pasien akan membuat direktur diberi hak pasien — dan hak yang diberikan
+  // jarang ditarik kembali.
+  {
+    code: 'HEALTH_REPORT',
+    parentCode: 'HEALTH',
+    label: 'Laporan',
+    route: '/app/emedik/laporan',
+    icon: 'bar-chart-3',
+    actions: ['READ', 'EXPORT'],
+    sortOrder: 131,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -964,6 +993,13 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       // Menyetujui dan mengaktifkan tarif; ia tidak mengimpornya.
       'HEALTH_TARIFF.READ', 'HEALTH_TARIFF.APPROVE', 'HEALTH_TARIFF.ACTIVATE',
       'HEALTH_PAYER.READ',
+      // Menyemai data contoh — H-11. Ia TIDAK membersihkannya: yang menyemai
+      // baru saja membuatnya dan tahu persis mana yang miliknya, dan justru
+      // keyakinan itu yang membuatnya menekan tombolnya tanpa membaca layar
+      // konfirmasi.
+      'HEALTH_SAMPLE_DATA.READ',
+      'HEALTH_SAMPLE_DATA.CREATE',
+      'HEALTH_REPORT.READ',
       // Administrator TIDAK diberi hak membaca rekam medis pasien. Mengelola
       // sistem tidak menuntut membaca diagnosis siapa pun, dan hak yang tidak
       // dibutuhkan adalah hak yang akan disalahgunakan.
@@ -975,6 +1011,15 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     name: 'Direktur / Kepala Fasilitas',
     description: 'Memantau fasilitas dan menelaah akses darurat.',
     permissions: [
+      // Membersihkan data contoh — H-11. Jabatan yang paling jarang menekan
+      // tombol, dan itulah gunanya: yang menyemai baru saja membuatnya dan
+      // tahu persis mana yang miliknya, dan justru keyakinan itu yang
+      // membuatnya menekan tombolnya tanpa membaca layar konfirmasi.
+      'HEALTH_SAMPLE_DATA.READ',
+      'HEALTH_SAMPLE_DATA.HARD_DELETE',
+      // Laporan agregat — dapat dibuka tanpa satu pun hak atas data pasien.
+      'HEALTH_REPORT.READ',
+      'HEALTH_REPORT.EXPORT',
       'HEALTH.READ',
       'HEALTH_FACILITY.READ',
       'HEALTH_SERVICE_UNIT.READ',
@@ -2113,6 +2158,19 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'pada basis data pula — kendali jarak jauh menuntut enam syarat sekaligus, dan basis ' +
       'data menolak baris yang kurang satu pun.',
     conflictingPermissions: ['HEALTH_DEVICE.MANAGE_DEVICE', 'HEALTH_DEVICE.ACTIVATE'],
+  },
+  {
+    code: 'HEALTH_SOD_SAMPLE_SEED_CLEAN',
+    name: 'Yang menyemai data contoh tidak membersihkannya',
+    description:
+      'Pembersihan menjalankan perintah atas ratusan baris pada tabel yang sama dengan tempat ' +
+      'rekam medis sungguhan berada. Yang menyemai baru saja membuatnya dan tahu persis mana ' +
+      'yang miliknya — dan justru keyakinan itu yang membuatnya menekan tombolnya tanpa membaca ' +
+      'layar konfirmasi. Pembersihan yang salah sasaran menghapus rekam medis, tidak ' +
+      'menimbulkan galat, dan ditemukan oleh perawat yang mencari catatan pasiennya. ' +
+      'Ditegakkan constraint sample_count_real_unchanged pada basis data pula: jumlah baris ' +
+      'sungguhan sebelum dan sesudah pembersihan harus sama persis.',
+    conflictingPermissions: ['HEALTH_SAMPLE_DATA.CREATE', 'HEALTH_SAMPLE_DATA.HARD_DELETE'],
   },
   {
     code: 'HEALTH_SOD_PORTAL_VERIFY_RELEASE',

@@ -5,6 +5,44 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-11 — Peran, data contoh, dan laporan
+
+### Ditambahkan
+
+- **`H052__health__sample_and_report.sql`** — `health_sample_run`,
+  `health_sample_table`, `health_sample_row_count`. Daftar izin tabel dipasang
+  sebagai BARIS basis data, bukan tetapan pada kode; constraint
+  `sample_count_real_unchanged` menegakkan jumlah baris sungguhan sebelum dan
+  sesudah pembersihan sama persis.
+- **`H053__health__sample_permissions.sql`** — dua menu dan satu aturan
+  pemisahan wewenang CRITICAL: yang menyemai bukan yang membersihkan.
+- **`health-sample.ts`** — profil data contoh, benih, pembersihan, pemeriksaan
+  hasilnya, laporan, rentang, dan penghalang. **35 pengujian.**
+- **`health-sample.service.ts`** dan **`health-sample.controller.ts`** — 8 jalan
+  pada `/api/v1/health/sample/**`.
+- **`prove-health-sample.mjs`** — naskah bukti, **55 pemeriksaan**, seluruhnya
+  lulus dan lulus pula pada pengulangan.
+
+### Diperbaiki
+
+- **`H054__health__sample_hideable_fix.sql`** — daftar izin H052 memuat setiap
+  tabel bertanda contoh (34), padahal menyembunyikan menuntut `deleted_at` yang
+  hanya dimiliki 10 di antaranya. Pembersihan pada 24 sisanya akan berjalan,
+  melaporkan keberhasilan, dan tidak menyembunyikan apa pun. Dipersempit, dan
+  sisanya dicatat sebagai keterbatasan yang dinyatakan.
+- Urutan pembersihan dibalik: **putuskan dahulu, hitung kemudian** — nama tabel
+  yang belum disahkan tidak lagi disisipkan ke dalam SQL.
+
+### Yang terhalang, dicatat apa adanya
+
+Pusat Bantuan (V8-1/V8-2), ekspor Excel (V8-5/V8-6), dan cetak PDF (V8-7).
+`POST /reports/:kode/export` selalu menolak, dan penolakannya menyebutkan sebab
+DAN jalan keluarnya — termasuk pengakuan jujur bahwa cetak dari peramban bukan
+pengganti yang setara.
+
+Uji: API 2390 → **2427**.
+
+---
 ## H-10 — Portal pasien dan website fasilitas
 
 ### Ditambahkan
