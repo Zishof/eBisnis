@@ -1,0 +1,16 @@
+{
+  "$comment": "Manifest migrasi modul ePesantren (EP-A). Ditemukan otomatis oleh TenantMigrationService.discoverModuleManifests() -- setiap tenant baru maupun yang sudah ada menerima tabel ini lewat 'pnpm migrate:tenants', terlepas dari vertikal yang dipakainya. Entitlement per-modul belum ada (lihat docs/santri-info/07); ini keterbatasan yang sudah ada sebelum modul ini ditambahkan, bukan yang diperkenalkannya.",
+  "module": "pesantren",
+  "schemaVersion": 1,
+  "dependsOn": [
+    "core"
+  ],
+  "migrations": [
+    {
+      "id": "20260802T140000__pesantren__foundation",
+      "file": "20260802T140000__pesantren__foundation.sql",
+      "name": "Fondasi ePesantren: tahun ajaran, unit pendidikan, wali, dan santri",
+      "description": "pesantren_tahun_ajaran, pesantren_unit_pendidikan, pesantren_wali, pesantren_santri, pesantren_santri_wali. Prasyarat mutlak seluruh modul ePesantren lain (EP-0.17). Satu tahun ajaran ACTIVE ditegakkan indeks unik parsial. Santri AKTIF wajib tidak punya tanggal keluar dan sebaliknya, ditegakkan CHECK -- tanpa ini 'santri aktif' (dasar penagihan Rp 2.000/santri/bulan, §13.4) dapat dihitung dari status ATAU dari tanggal keluar, dan keduanya dapat berselisih tanpa satu pun galat. Maksimal satu wali utama per santri ditegakkan indeks unik parsial, sebab portal wali (EP-K) menuntut satu jawaban pasti atas siapa yang menerima pemberitahuan utama."
+    }
+  ]
+}

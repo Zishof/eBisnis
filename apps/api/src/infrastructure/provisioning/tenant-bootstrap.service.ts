@@ -859,6 +859,53 @@ export class TenantBootstrapService {
   }
 
   /**
+   * Memberi peran TAMBAHAN kepada seorang pengguna yang sudah punya
+   * `user_subject` pada schema ini — dipakai vertikal yang perlu peran khusus
+   * di samping OWNER bawaan (misalnya `ADMIN_EPESANTREN`).
+   *
+   * Bukan pengganti OWNER. `TenantPermissionService.resolve()` menggabungkan
+   * izin dari SELURUH peran yang dipegang satu pengguna, sehingga menambahkan
+   * peran ini tidak mengurangi apa pun yang sudah dimiliki OWNER.
+   *
+   * Diam saja bila peran atau subjeknya tidak ditemukan, bukan melempar galat.
+   * Pemanggil (jalur pendaftaran) sudah berhasil membuat penyewa dan
+   * kredensial sebelum sampai di sini; membatalkan semuanya karena peran
+   * tambahan gagal ditemukan membuang pekerjaan yang sudah benar demi
+   * kelengkapan yang bukan inti pendaftaran.
+   */
+  async assignAdditionalRole(
+    schemaName: string,
+    platformUserId: string,
+    roleCode: string,
+  ): Promise<{ assigned: boolean }> {
+    return this.tenantDb.transaction(schemaName, async (client) => {
+      const S = `"${schemaName}"`;
+      const subject = await client.query<{ id: string }>(
+        `SELECT id::text AS id FROM ${S}.user_subject WHERE platform_user_id = $1 LIMIT 1`,
+        [platformUserId],
+      );
+      const userSubjectId = subject.rows[0]?.id;
+      if (!userSubjectId) return { assigned: false };
+
+      const roleId = await lookupByCode(client, S, 'role', roleCode);
+      if (!roleId) return { assigned: false };
+
+      await client.query(
+        `INSERT INTO ${S}.user_role_assignment (user_subject_id, role_id)
+         VALUES ($1, $2) ON CONFLICT (user_subject_id, role_id) DO NOTHING`,
+        [userSubjectId, roleId],
+      );
+      await client.query(
+        `INSERT INTO ${S}.role_scope (role_id, scope_type, scope_id)
+         VALUES ($1::uuid, 'TENANT', NULL)
+         ON CONFLICT DO NOTHING`,
+        [roleId],
+      );
+      return { assigned: true };
+    });
+  }
+
+  /**
    * Subject pengguna sandbox demo.
    *
    * Seluruh sesi demo berbagi satu subject tetap sehingga resolusi permission,

@@ -36,8 +36,10 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { TenantBootstrapService } from '../../infrastructure/provisioning/tenant-bootstrap.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { RegistrationService } from './registration.service';
+import { ROLE_ADMIN_EPESANTREN } from '../pesantren/rbac/pesantren-vertical.catalog';
 import {
   AFILIASI_PESANTREN,
   JENJANG_PESANTREN,
@@ -130,6 +132,7 @@ export class PesantrenRegistrationService {
     private readonly registrations: RegistrationService,
     private readonly audit: AuditService,
     private readonly config: ConfigService,
+    private readonly bootstrap: TenantBootstrapService,
   ) {}
 
   /** Pilihan yang ditawarkan formulir. Satu sumber untuk formulir dan pemeriksa. */
@@ -342,6 +345,7 @@ export class PesantrenRegistrationService {
             },
           }),
         ]);
+
       } catch (error) {
         /*
          * Sampai di sini penyewanya sudah jadi dan credential-nya sudah dibuat.
@@ -370,6 +374,45 @@ export class PesantrenRegistrationService {
           'Akun pondok berhasil dibuat, tetapi situs pondok gagal disiapkan. ' +
             'Silakan masuk seperti biasa dan hubungi kami untuk menyiapkan alamat situsnya.',
           { registrationId: umum.registrationId, username: umum.username },
+        );
+      }
+
+      /*
+       * Peran EPESANTREN_ADMIN ditambahkan sebagai peran KEDUA, bukan
+       * pengganti OWNER.
+       *
+       * OWNER (`PEMILIK_USAHA`) memegang `allModules: true` pada profil P11 —
+       * READ, PRINT, EXPORT, APPROVE, TANPA CREATE/UPDATE. Tanpa peran
+       * tambahan ini, pengurus yang baru mendaftar tidak dapat menambahkan
+       * satu pun santri.
+       *
+       * Dibungkus try/catch TERSENDIRI, terpisah dari blok identitas pesantren
+       * di atas. Kegagalan di sini tidak boleh memicu pesan "situs pondok
+       * gagal disiapkan" — pesan itu tentang hal lain, dan menyalahgunakannya
+       * di sini menyesatkan pendaftar yang sebenarnya situsnya baik-baik saja.
+       */
+      try {
+        const pemilik = await this.prisma.tenantMembership.findFirst({
+          where: { tenantId: umum.tenantId, isOwner: true },
+          select: { platformUserId: true },
+        });
+        const hasil = pemilik
+          ? await this.bootstrap.assignAdditionalRole(
+              umum.schemaName,
+              pemilik.platformUserId,
+              ROLE_ADMIN_EPESANTREN,
+            )
+          : { assigned: false };
+        if (!hasil.assigned) {
+          this.logger.warn(
+            `Peran ${ROLE_ADMIN_EPESANTREN} tidak diberikan pada ${umum.schemaName}: ` +
+              'pemilik, peran, atau subjek pengguna tidak ditemukan.',
+          );
+        }
+      } catch (error) {
+        const pesan = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Pemberian peran ${ROLE_ADMIN_EPESANTREN} pada ${umum.schemaName} gagal: ${pesan}`,
         );
       }
 

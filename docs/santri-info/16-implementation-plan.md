@@ -11,6 +11,34 @@ pertama.
 dan pendaftaran santri. Tanpa ini seluruh EP lain tidak punya pijakan. Ini
 pekerjaan terbesar dan harus didahulukan.
 
+## Status EP-A — SEBAGIAN, irisan santri saja
+
+**Yang dikerjakan:** migrasi modul tenant `pesantren` (IR-001) menambahkan lima
+tabel — `pesantren_tahun_ajaran`, `pesantren_unit_pendidikan`, `pesantren_wali`,
+`pesantren_santri`, `pesantren_santri_wali` — dengan CHECK yang menegakkan
+konsistensi status/tanggal keluar dan indeks unik parsial (satu tahun ajaran
+aktif, satu wali utama per santri, NIS unik). Katalog vertikal `pesantren`
+(IR-004) menambahkan satu menu (`EPESANTREN_SANTRI`) dan satu peran
+(`EPESANTREN_ADMIN`, profil P7) — bukan seluruh 41 peran dari §14.6 perintah
+master, sebab menu selain data santri belum ada (larangan §6). `OWNER` saja
+tidak cukup untuk mencatat santri (profil P11 tanpa CREATE/UPDATE), sehingga
+`PesantrenRegistrationService` memberi peran `EPESANTREN_ADMIN` sebagai peran
+KEDUA kepada pemilik pondok saat pendaftaran — izin dari kedua peran digabung,
+bukan saling mengganti.
+
+API `PesantrenSantriController` (`/pesantren/santri` — GET daftar, GET satu,
+POST catat) dibuktikan lewat live test terhadap tenant `ponpes_demo`: daftar
+kosong pada tenant baru, pencatatan santri berhasil, NIS ganda ditolak dengan
+pesan ramah, validasi melaporkan seluruh galat sekaligus, dan permintaan tanpa
+token ditolak 401. `pnpm migrate:tenants` dijalankan dan seluruh 20 skema
+tenant lokal mutakhir.
+
+**Yang tidak dikerjakan:** CRUD untuk wali, unit pendidikan, dan tahun ajaran —
+tabelnya ada, API-nya belum. Formulir pendaftaran santri di sisi peramban juga
+belum dibangun; hanya API yang sudah teruji. Ini bukan kelalaian, melainkan
+irisan terkecil yang membuktikan fondasi (IR-001 + IR-004) bekerja sebelum
+memperluas ke seluruh domain santri.
+
 ## Status EP-B, EP-C, EP-D — dikerjakan pada sesi ini
 
 **EP-B — DONE.** Produk `EPESANTREN`/`ESCHOOL`/`ECAMPUS` dan paket
