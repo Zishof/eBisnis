@@ -98,6 +98,28 @@ sekadar rencana:
 Ketiganya menghalangi pondok pertama benar-benar dipakai, bukan hanya
 mendaftar.
 
+### Satu langkah yang menyertai penerapan migrasi
+
+`docs/database/*.md` — kamus data, katalog model, katalog index, ERD — dihasilkan
+`pnpm docs:generate`, yang **mengintrospeksi `information_schema`**, bukan membaca
+schema Prisma. Artinya dokumen itu hanya dapat diperbarui **sesudah**
+`20260802100000_registration_pesantren` benar-benar diterapkan pada sebuah basis
+data.
+
+Sampai itu terjadi, keempat dokumen tersebut belum memuat
+`platform.registration_pesantren` maupun `platform.tenant.vertical_code`.
+Menjalankan generatornya lebih dahulu tidak menolong: ia akan menuliskan keadaan
+basis data yang belum bermigrasi, yaitu keadaan yang sudah tercatat sekarang.
+
+Jadi urutannya:
+
+```bash
+pnpm db:deploy      # menerapkan migrasi
+pnpm docs:generate  # baru dokumennya sepadan
+```
+
+Langkah kedua itu bagian dari penerapan, bukan bagian dari perubahan kode ini.
+
 ---
 
 ## 5. Pendaftaran pondok — jalur tersendiri

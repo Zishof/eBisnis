@@ -173,3 +173,13 @@ Web: 206 lulus (13 baru). API: 2124 lulus, 80 berkas.
 ### Uji
 
 Web: 213 lulus (7 baru). API: 2151 lulus, 82 berkas (27 baru).
+
+### Yang sengaja belum dikerjakan
+
+`docs/database/*.md` belum diperbarui. Generatornya mengintrospeksi
+`information_schema`, sehingga hanya benar sesudah migrasi diterapkan pada basis
+data — bukan sesudah schema Prisma diubah. Menjalankannya sekarang hanya akan
+menuliskan ulang keadaan yang sudah tercatat.
+
+Urutannya: `pnpm db:deploy` lalu `pnpm docs:generate`. Itu bagian dari
+penerapan, bukan dari perubahan kode ini.
