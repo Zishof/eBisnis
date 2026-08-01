@@ -449,6 +449,20 @@
       "file": "H041__health__investor_policy_autoseed.sql",
       "name": "eMedik: kebijakan penyamaran bagi fasilitas yang lahir kemudian",
       "description": "H040 menyemai investor_disclosure_policy bagi setiap fasilitas yang ada PADA SAAT MIGRASINYA DIJALANKAN, dan komentarnya sendiri menyebutkan alasannya: fasilitas tanpa baris kebijakan akan memakai ambang apa pun yang kebetulan dipilih kode pemanggilnya, dan yang kebetulan dipilih selalu berakhir nol. Justru itulah yang terjadi pada fasilitas yang DIBUAT SESUDAHNYA — yakni setiap rumah sakit yang bergabung mulai besok. Nilai bawaan pada kode kebetulan benar hari ini, tetapi ia tidak dijaga apa pun: tidak ada constraint yang memeriksanya, tidak ada uji yang menangkap perubahannya, dan orang yang mengubahnya kelak tidak akan tahu bahwa ia sedang mengubah ambang penyamaran seluruh fasilitas yang belum berkebijakan. Lebih buruk lagi, cacat ini MEMBUAT PENJAGA BASIS DATANYA DIAM: constraint investor_policy_cohort_not_zero menjaga baris yang ada, dan fasilitas yang tidak punya baris tidak dijaganya sama sekali. Perbaikannya bukan memperbaiki nilai bawaannya melainkan MENIADAKAN KEADAAN TANPA BARIS: trigger seed_investor_disclosure_policy menyemai kebijakan pada saat fasilitas dibuat, sehingga pertanyaan ambang mana yang berlaku bila belum ada kebijakan tidak pernah perlu dijawab siapa pun."
+    },
+    {
+      "version": "H042",
+      "sequence": 1042,
+      "file": "H042__health__device_adapter.sql",
+      "name": "eMedik: adapter protokol alat, pesan masuk, dan pemetaan istilah",
+      "description": "device_inbound_message, device_code_map, device_code_pending, beserta empat kolom tambahan pada device_observation. Satu aturan menentukan seluruh berkas ini: PESAN ASLINYA DISIMPAN APA ADANYA, DAN YANG DISIMPAN ITU TIDAK PERNAH BERUBAH. Ketika hasil laboratorium dipersengketakan, yang ditanyakan bukan angka pada rekam medis melainkan apakah yang tersimpan sama dengan yang dikirim alat — dan pertanyaan itu hanya dapat dijawab bila pesan aslinya masih utuh dan tidak dapat disunting siapa pun, termasuk oleh orang yang paling ingin jawabannya berbeda. Trigger forbid_inbound_message_tamper mengunci raw_message, sidik jarinya, protokolnya, dan waktu terimanya; yang boleh berubah hanyalah penanda pemrosesannya. PESAN YANG GAGAL DIURAI TETAP DISIMPAN dan wajib menyebutkan sebabnya (device_msg_failure_explained) — pesan cacat yang dibuang menghilangkan satu-satunya petunjuk tentang alat yang firmware-nya baru diperbarui, dan alat itu akan terus mengirim pesan cacat sampai ada yang melihatnya; tanpa temuannya, kata gagal tidak dapat ditindaklanjuti siapa pun dan teknisi yang menerimanya akan menyalahkan jaringan. KODE YANG BELUM TERPETA MASUK ANTREAN TERSENDIRI, bukan ditebak dan bukan pula disimpan sebagai pemetaan kosong pada tabel yang sama — menebaknya akan benar hampir selalu dan salah sekali, dan yang sekali itu menaruh kadar kalium pada baris natrium. Indeks unik parsial memakai COALESCE pada device_id supaya pemetaan tingkat fasilitas yang bertumpang tindih tidak lolos lewat NULL <> NULL; pelajaran H-9D."
+    },
+    {
+      "version": "H043",
+      "sequence": 1043,
+      "file": "H043__health__device_adapter_permissions.sql",
+      "name": "eMedik: menu, hak akses, dan peran adapter protokol alat",
+      "description": "Dua menu (HEALTH_DEVICE_MESSAGE, HEALTH_DEVICE_CODE_MAP) dan satu aturan pemisahan wewenang. Pemisahannya tidak lazim: YANG MEMETAKAN KODE ALAT BUKAN YANG MENERIMA PESANNYA. Pemetaan kode menentukan angka mana yang tersimpan pada baris mana — kode K yang dipetakan ke kalium alih-alih kreatinin menghasilkan hasil laboratorium yang tampak sempurna dan salah seluruhnya, dan kekeliruannya tidak akan terlihat siapa pun sampai seseorang diberi obat berdasarkan angka itu. Karena itu pemetaan dipegang analis dan penanggung jawab laboratorium yang mengenal pemeriksaannya, bukan teknisi yang mengurus lalu lintas pesannya. Ini bukan soal kepercayaan melainkan soal siapa yang sanggup melihat kekeliruannya."
     }
   ]
 }

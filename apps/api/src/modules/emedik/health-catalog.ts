@@ -765,6 +765,31 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'APPROVE', 'POST', 'CANCEL'],
     sortOrder: 117,
   },
+  // Adapter protokol alat — H-9I.
+  //
+  // MESSAGE.CREATE menerima pesan dari gateway; CODE_MAP.CREATE memetakan
+  // kodenya. Keduanya sengaja terpisah: pemetaan kode menentukan angka mana
+  // yang tersimpan pada baris mana, dan kode "K" yang dipetakan ke kalium
+  // alih-alih kreatinin menghasilkan hasil yang tampak sempurna dan salah
+  // seluruhnya.
+  {
+    code: 'HEALTH_DEVICE_MESSAGE',
+    parentCode: 'HEALTH',
+    label: 'Pesan Alat',
+    route: '/app/emedik/pesan-alat',
+    icon: 'message-square-code',
+    actions: ['READ', 'CREATE'],
+    sortOrder: 118,
+  },
+  {
+    code: 'HEALTH_DEVICE_CODE_MAP',
+    parentCode: 'HEALTH',
+    label: 'Pemetaan Kode Alat',
+    route: '/app/emedik/pemetaan-kode',
+    icon: 'shuffle',
+    actions: ['READ', 'CREATE', 'UPDATE'],
+    sortOrder: 119,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -1558,6 +1583,11 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       // memutuskan. Yang memperbaiki alat perlu tahu apa yang dicemaskan orang
       // tentangnya.
       'HEALTH_DEVICE_SECURITY.READ',
+      // Lalu lintas pesan alat — H-9I. Ia menerimanya dan melihat yang gagal
+      // diurai; ia TIDAK memetakan kodenya.
+      'HEALTH_DEVICE_MESSAGE.READ',
+      'HEALTH_DEVICE_MESSAGE.CREATE',
+      'HEALTH_DEVICE_CODE_MAP.READ',
     ],
     sortOrder: 36,
   },
@@ -1873,6 +1903,19 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'pada basis data pula — kendali jarak jauh menuntut enam syarat sekaligus, dan basis ' +
       'data menolak baris yang kurang satu pun.',
     conflictingPermissions: ['HEALTH_DEVICE.MANAGE_DEVICE', 'HEALTH_DEVICE.ACTIVATE'],
+  },
+  {
+    code: 'HEALTH_SOD_DEVICE_CODE_MAP',
+    name: 'Yang menerima pesan alat tidak memetakan kodenya',
+    description:
+      'Pemetaan kode menentukan angka mana yang tersimpan pada baris mana. Kode "K" yang ' +
+      'dipetakan ke kalium alih-alih kreatinin menghasilkan hasil laboratorium yang tampak ' +
+      'sempurna dan salah seluruhnya, dan kekeliruannya tidak akan terlihat siapa pun sampai ' +
+      'seseorang diberi obat berdasarkan angka itu. Yang dapat membedakannya adalah orang yang ' +
+      'mengenal pemeriksaannya — analis laboratorium — bukan teknisi yang mengurus lalu lintas ' +
+      'pesannya. Ini bukan soal kepercayaan melainkan soal siapa yang sanggup melihat ' +
+      'kekeliruannya.',
+    conflictingPermissions: ['HEALTH_DEVICE_MESSAGE.CREATE', 'HEALTH_DEVICE_CODE_MAP.CREATE'],
   },
   {
     code: 'HEALTH_SOD_DISTRIBUTION_APPROVE',

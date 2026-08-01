@@ -540,6 +540,18 @@ describe('peran kesehatan', () => {
     expect(hitung.filter((r) => bayar.includes(r))).toEqual([]);
   });
 
+  it('teknisi menerima pesan alat tetapi TIDAK memetakan kodenya', () => {
+    /*
+     * Kode "K" yang dipetakan ke kalium alih-alih kreatinin menghasilkan hasil
+     * laboratorium yang tampak sempurna dan salah seluruhnya. Yang dapat
+     * membedakannya adalah orang yang mengenal pemeriksaannya.
+     */
+    const teknisi = HEALTH_ROLES.find((r) => r.code === 'HEALTH_BIOMEDICAL_ENGINEER');
+    expect(teknisi?.permissions).toContain('HEALTH_DEVICE_MESSAGE.CREATE');
+    expect(teknisi?.permissions).toContain('HEALTH_DEVICE_CODE_MAP.READ');
+    expect(teknisi?.permissions).not.toContain('HEALTH_DEVICE_CODE_MAP.CREATE');
+  });
+
   it('tidak ada peran yang memiliki hak atas menu yang belum dibangun', () => {
     /*
      * Peran yang sudah diberi hak atas modul yang belum ada akan tampak

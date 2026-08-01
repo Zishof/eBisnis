@@ -5,6 +5,39 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9I — Adapter protokol alat HL7 v2 dan ASTM
+
+### Ditambahkan
+
+- **`H042__health__device_adapter.sql`** — `device_inbound_message`,
+  `device_code_map`, `device_code_pending`, beserta empat kolom tambahan pada
+  `device_observation`. Trigger `forbid_inbound_message_tamper` mengunci pesan
+  aslinya, sidik jarinya, protokolnya, dan waktu terimanya — yang boleh berubah
+  hanyalah penanda pemrosesannya. Constraint `device_msg_failure_explained`
+  menuntut pesan yang gagal diurai menyebutkan sebabnya.
+- **`H043__health__device_adapter_permissions.sql`** — dua menu dan satu aturan
+  pemisahan wewenang: yang menerima pesan alat tidak memetakan kodenya.
+- **`health-device-adapter.ts`** — pengurai HL7 v2 dan ASTM E1394 sebagai fungsi
+  murni, pembacaan karakter pemisah, pembukaan urutan escape, penguraian waktu,
+  checksum ASTM, pemetaan istilah, katalog protokol, dan penyusunan ACK.
+  **88 pengujian** — terbanyak di antara seluruh fase.
+- **`health-device-adapter.service.ts`** dan
+  **`health-device-adapter.controller.ts`** — 8 jalan pada
+  `/api/v1/health/device-adapter/**`.
+- **`prove-health-device-adapter.mjs`** — naskah bukti, **58 pemeriksaan**,
+  seluruhnya lulus pada jalan pertama dan lulus pula pada pengulangan.
+
+### Catatan bagi Core
+
+Tidak ada permintaan perubahan shared Core. Pengurai ditulis sendiri alih-alih
+memakai pustaka HL7 pihak ketiga: yang dibutuhkan hanyalah lima segmen, dan
+pustaka yang menangani seluruh standar membawa serta perilaku yang tidak dapat
+diperiksa — termasuk melempar galat pada pesan cacat, yang persis dilarang di
+sini.
+
+Uji: API 2097 → **2186**.
+
+---
 ## H-9K — Dasbor investor agregat, waterfall, dan distribusi
 
 ### Ditambahkan

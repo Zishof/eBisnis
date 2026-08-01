@@ -1378,6 +1378,91 @@ sehingga setiap rumah sakit yang bergabung kemudian berjalan tanpa baris
 kebijakan, dan penjaga basis datanya diam. Diperbaiki dengan **meniadakan
 keadaan itu**, bukan memperbaiki nilai bawaannya.
 
+### H-9I · Adapter protokol alat HL7/ASTM — **SELESAI**
+
+Pengurai HL7 v2 dan ASTM E1394, penerimaan pesan beserta penyimpanan aslinya,
+balasan ACK, pemetaan istilah alat, dan antrean kode yang belum terpeta.
+
+Uji >= 25 -> **88 tercapai**, ditambah naskah bukti 58 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H042__health__device_adapter.sql`, `H043__health__device_adapter_permissions.sql` |
+| Aturan murni | `health-device-adapter.ts` + 88 pengujian |
+| Layanan | `health-device-adapter.service.ts` |
+| Endpoint | `health-device-adapter.controller.ts` — 8 jalan di `/api/v1/health/device-adapter/**` |
+| Katalog | `health-catalog.ts` — 2 menu, 1 aturan SoD |
+| Bukti | `scripts/prove-health-device-adapter.mjs` -> [bukti-h9i-adapter-alat.txt](bukti-h9i-adapter-alat.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **PENGURAI TIDAK PERNAH MELEMPAR GALAT.** Pesan yang rusak menghasilkan hasil
+  urai yang *menyebutkan kerusakannya*, bukan pengecualian. Sebabnya bukan
+  kerapian: pengurai yang melempar akan menjatuhkan seluruh jalur penerimaan
+  ketika satu alat mengirim satu pesan cacat — dan alat yang mengirim pesan
+  cacat biasanya mengirimnya beruntun. Satu analyzer yang firmware-nya baru
+  diperbarui dapat menghentikan penerimaan hasil seluruh laboratorium. Diuji
+  dengan dua belas bentuk pesan rusak, seluruhnya pada kedua pengurai.
+
+- **PESAN DISIMPAN LEBIH DAHULU, DIURAI KEMUDIAN.** Menyimpan sesudah berhasil
+  diurai berarti pesan yang gagal diurai tidak pernah ada — dan pesan yang gagal
+  diurai justru satu-satunya petunjuk tentang alat yang firmware-nya baru
+  diperbarui. Permintaannya tetap berhasil, dan pesan gagal wajib menyebutkan
+  sebabnya (`device_msg_failure_explained`).
+
+- **Pesan asli tidak dapat diubah maupun dihapus**, ditegakkan trigger
+  `forbid_inbound_message_tamper` — dan yang dikunci bukan seluruh barisnya:
+  penanda pemrosesannya masih boleh berubah, sebab pemrosesannya memang terjadi
+  kemudian. Ketika hasil laboratorium dipersengketakan, yang ditanyakan adalah
+  *apakah yang tersimpan sama dengan yang dikirim alat* — dan itu hanya dapat
+  dijawab bila pesannya masih utuh.
+
+- **Karakter pemisah HL7 dibaca dari MSH-1 dan MSH-2, tidak diasumsikan.**
+  Standar mengizinkan pengirim memilih pemisahnya sendiri, dan sebagian alat
+  memakainya. Pengurai yang mengasumsikan pemisah baku akan bekerja pada
+  sembilan puluh sembilan alat dan menghasilkan omong kosong pada yang
+  keseratus, tanpa galat apa pun.
+
+- **ZONA WAKTU YANG TIDAK DISEBUTKAN TIDAK DIANGGAP UTC.** Alat medis hampir
+  tidak pernah menyertakan zona waktu, dan menganggapnya UTC menggeser seluruh
+  hasil tujuh jam di Indonesia — cukup untuk memindahkan hasil pagi ke hari
+  sebelumnya. Ia ditandai, dan waktunya dibaca sebagai waktu lokal fasilitas.
+
+- **PESAN CACAT DIBALAS `AE`, BUKAN `AR`.** Perbedaannya menentukan perilaku
+  alat: `AR` membuat sebagian alat mengirim ulang pesan yang sama tanpa henti,
+  sedangkan `AE` membuatnya melanjutkan. Pesan yang cacat karena isinya akan
+  tetap cacat berapa kali pun dikirim ulang, dan alat yang mengirim ulang tanpa
+  henti akan memenuhi antrean sampai hasil pasien lain tidak dapat masuk.
+
+- **Jenis pesan adalah daftar TERTUTUP**, dan ADT maupun ORM sengaja tidak
+  diterima: pendaftaran pasien dan pemesanan pemeriksaan datang dari eMedik,
+  bukan dari alat.
+
+- **KODE YANG BELUM TERPETA TIDAK DITEBAK.** Ia masuk antrean tersendiri —
+  bukan disimpan sebagai pemetaan kosong pada tabel yang sama, yang akan terbaca
+  sebagai pemetaan yang memetakan ke ketiadaan. Menebaknya dengan kemiripan nama
+  akan benar hampir selalu dan salah sekali, dan yang sekali itu menaruh kadar
+  kalium pada baris natrium. Antreannya terurut menurut yang paling sering
+  muncul: kode yang muncul tiga ratus kali sehari menahan tiga ratus hasil.
+
+- **Satuan yang berubah diam-diam ditandai.** Satuan yang berubah adalah cara
+  alat yang baru diperbarui melipatgandakan seluruh hasilnya tanpa ada yang tahu.
+
+- **Yang menerima pesan tidak memetakan kodenya.** Pemetaan dipegang analis
+  laboratorium yang mengenal pemeriksaannya, bukan teknisi yang mengurus lalu
+  lintasnya. Bukan soal kepercayaan melainkan soal siapa yang sanggup melihat
+  kekeliruannya.
+
+- **Pemetaan tidak ditimpa; ia dinonaktifkan lalu dibuat baru.** Pertanyaan
+  "kode ini dulu dipetakan ke mana" muncul persis ketika ada hasil lama yang
+  dipersengketakan.
+
+**Yang belum:** DICOM, DICOMweb, Modality Worklist, MPPS, FHIR, API vendor, dan
+MQTT tercatat pada katalog beserta **penghalangnya masing-masing**, dan pesan
+yang memakainya ditolak dengan menyebutkan penghalang itu.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -1450,7 +1535,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 9.  H-9H   Registri alat dan gateway                        [SELESAI]
 10. H-9J   Pemeliharaan, kalibrasi, keamanan siber          [SELESAI]
 11. H-9K   Dasbor investor agregat                         [SELESAI]
-12. H-9I   Adapter HL7/ASTM; DICOM menunggu PACS
+12. H-9I   Adapter HL7/ASTM; DICOM menunggu PACS           [SELESAI]
 13. H-9A   Kerangka SATUSEHAT beserta gerbang kemampuan
 14. H-9B   Kerangka BPJS beserta gerbang kemampuan
 15. H-9M   Kerangka impor KFA

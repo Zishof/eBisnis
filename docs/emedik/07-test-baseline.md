@@ -82,8 +82,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9H | 25 | **49** | `health-device.spec.ts` |
 | H-9J | 25 | **76** | `health-device-maintenance.spec.ts` |
 | H-9K | 20 | **56** | `health-investor.spec.ts` |
+| H-9I | 25 | **88** | `health-device-adapter.spec.ts` |
 
-API keseluruhan: **2097** pengujian pada 65 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **2186** pengujian pada 66 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -117,6 +118,35 @@ sungguhan, pada basis data sungguhan:
 | H-9H | `prove-health-device.mjs` | 60 pemeriksaan, seluruhnya lulus — [bukti-h9h-alat.txt](bukti-h9h-alat.txt) |
 | H-9J | `prove-health-device-maintenance.mjs` | 81 pemeriksaan, seluruhnya lulus — [bukti-h9j-pemeliharaan-alat.txt](bukti-h9j-pemeliharaan-alat.txt) |
 | H-9K | `prove-health-investor.mjs` | 62 pemeriksaan, seluruhnya lulus — [bukti-h9k-investor.txt](bukti-h9k-investor.txt) |
+| H-9I | `prove-health-device-adapter.mjs` | 58 pemeriksaan, seluruhnya lulus — [bukti-h9i-adapter-alat.txt](bukti-h9i-adapter-alat.txt) |
+
+**H-9I adalah fase pertama yang naskah buktinya LULUS PADA JALAN PERTAMA**, dan
+sebabnya layak dicatat: pengujian satuannya menanggung hampir seluruh beban — 88
+pengujian, terbanyak di antara seluruh fase — sebab yang diujinya memang murni.
+Penguraian pesan tidak menyentuh basis data, tidak menyentuh jaringan, dan tidak
+bergantung pada keadaan apa pun; ia fungsi dari teks ke struktur.
+
+Dua di antara pengujian satuannya menemukan cacat pada kode fase itu sendiri
+sebelum naskah bukti dijalankan sama sekali. Yang pertama:
+`periksaChecksumAstm` hanya menerima checksum berbentuk heksadesimal, sehingga
+bingkai yang checksumnya **rusak** dilaporkan sebagai "tidak ada checksum" —
+padahal justru itu yang paling perlu dilaporkan beserta nilai yang diharapkan.
+Kedua keadaan itu menuntut tindakan yang berbeda: yang pertama berarti
+pengirimnya salah bentuk, yang kedua berarti kabelnya.
+
+Yang kedua lebih halus: uji "setiap protokol yang belum siap menyebutkan
+penghalangnya" menuntut penjelasannya lebih dari lima belas huruf, dan `MPPS`
+hanya berkata "Menunggu PACS." Sebuah uji tentang **panjang kalimat** terdengar
+sepele sampai orang mengingat mengapa penghalang ditulis sama sekali: daftar
+yang hanya berkata "tidak didukung" akan ditanyakan ulang setiap tiga bulan oleh
+orang yang berbeda, dan salah satu di antaranya akan menuliskannya sendiri.
+
+Naskah buktinya tetap menemukan hal yang tidak dapat ditemukan pengujian
+satuan — bahwa trigger `forbid_inbound_message_tamper` **membedakan kolom yang
+dikunci dari yang tidak**: uji kendalinya menuntut `processed_at` masih boleh
+berubah sesudah membuktikan `raw_message` tidak boleh. Penjaga yang mengunci
+seluruh barisnya akan menghentikan pemrosesan pesan itu sendiri, dan itu jenis
+kekeliruan yang hanya tampak ketika barisnya benar-benar diperbarui.
 
 **Naskah H-9K menemukan cacat yang seluruh pengujian satuannya tidak dapat
 menemukan, dan cacatnya berupa BARIS YANG TIDAK ADA.**
