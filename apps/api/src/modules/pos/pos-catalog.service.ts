@@ -18,11 +18,13 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import {
   cariBarcode,
   hitungBaris,
+  pilihHarga,
   type BarisBukuHarga,
   type DiskonTerpakai,
   type HasilKuotasi,
   type TarifPajak,
 } from './pos-pricing';
+import { pilihPromosi, type BarisPromosi } from './pos-promotion';
 import { tanggalUsaha } from './pos-context';
 
 export interface ProdukKasir {
@@ -223,10 +225,12 @@ export class PosCatalogService {
       name: string;
       base_uom_id: string;
       tax_category_id: string | null;
+      // Dipakai memilih promosi yang menyasar kategori, bukan produk tunggal.
+      category_id: string | null;
       default_sale_price: string | null;
     }>(
       schemaName,
-      `SELECT id, name, base_uom_id, tax_category_id, default_sale_price::text
+      `SELECT id, name, base_uom_id, tax_category_id, category_id, default_sale_price::text
          FROM "${schemaName}".product
         WHERE id = $1 AND deleted_at IS NULL AND is_active = TRUE AND is_sellable = TRUE`,
       [req.productId],
@@ -305,13 +309,27 @@ export class PosCatalogService {
         discountValue: req.manualDiscount.value,
       });
     }
+    /*
+     * Nilai baris sebelum diskon, dihitung dari harga yang SAMA dengan yang akan
+     * dipakai `hitungBaris` — lewat `pilihHarga` yang sama, bukan perhitungan
+     * kedua yang cepat atau lambat akan berbeda darinya.
+     *
+     * Diperlukan untuk memeriksa `minimum_purchase`, yang sebelumnya tidak
+     * pernah diperiksa sama sekali.
+     */
+    const hargaTerpilih = pilihHarga(priceBookLines, req.quantity, businessDate);
+    const nilaiBaris = (hargaTerpilih?.price ?? 0) * req.quantity;
+
     discounts.push(
-      ...(await this.promosiBerlaku(schemaName, {
-        productId: req.productId,
+      ...(await this.promosiTerpakai(schemaName, {
+        saat,
+        timezone: setelan.timezone,
         outletId: req.outletId,
         brandId: req.brandId ?? outlet[0].brand_id,
+        productId: req.productId,
+        productCategoryId: p.category_id ?? null,
         quantity: req.quantity,
-        saat,
+        lineSubtotal: nilaiBaris,
       })),
     );
 
@@ -441,14 +459,26 @@ export class PosCatalogService {
     }));
   }
 
-  private async promosiBerlaku(
+  /**
+   * Promosi yang berlaku untuk satu baris.
+   *
+   * SQL-nya hanya MENGAMBIL kandidat; yang memutuskan berlaku atau tidak adalah
+   * `pos-promotion.ts` yang murni dan teruji. Aturan yang memutuskan berapa uang
+   * dilepas gerai tidak boleh hidup sebagai klausa WHERE yang hanya dapat
+   * dibuktikan dengan menyiapkan basis data — sebab pada praktiknya ia lalu
+   * tidak pernah dibuktikan sama sekali.
+   */
+  private async promosiTerpakai(
     schemaName: string,
     ctx: {
-      productId: string;
+      saat: Date;
+      timezone: string;
       outletId: string;
       brandId: string | null;
+      productId: string;
+      productCategoryId: string | null;
       quantity: number;
-      saat: Date;
+      lineSubtotal: number;
     },
   ): Promise<DiskonTerpakai[]> {
     const ada = await this.tenantDb.query<{ n: string }>(
@@ -465,59 +495,68 @@ export class PosCatalogService {
       benefit_type: string;
       benefit_value: string;
       max_discount_amount: string | null;
+      minimum_purchase: string | null;
+      minimum_quantity: string | null;
+      scope_type: string;
+      scope_id: string | null;
+      valid_from: Date | null;
+      valid_until: Date | null;
+      valid_days: number[] | null;
+      valid_time_from: string | null;
+      valid_time_to: string | null;
+      usage_limit: number | null;
+      usage_count: number;
       requires_approval: boolean;
+      priority: number;
+      created_at: Date;
+      target: { productId: string | null; productCategoryId: string | null; isExclusion: boolean }[] | null;
     }>(
       schemaName,
       `SELECT pr.id, pr.name, pr.benefit_type, pr.benefit_value::text,
-              pr.max_discount_amount::text, pr.requires_approval
+              pr.max_discount_amount::text, pr.minimum_purchase::text,
+              pr.minimum_quantity::text, pr.scope_type, pr.scope_id,
+              pr.valid_from, pr.valid_until, pr.valid_days,
+              pr.valid_time_from::text, pr.valid_time_to::text,
+              pr.usage_limit, pr.usage_count, pr.requires_approval,
+              pr.priority, pr.created_at,
+              COALESCE(
+                (SELECT jsonb_agg(jsonb_build_object(
+                          'productId', pp.product_id,
+                          'productCategoryId', pp.product_category_id,
+                          'isExclusion', pp.is_exclusion))
+                   FROM "${schemaName}".pos_promotion_product pp
+                  WHERE pp.pos_promotion_id = pr.id),
+                '[]'::jsonb) AS target
          FROM "${schemaName}".pos_promotion pr
         WHERE pr.deleted_at IS NULL
-          AND pr.is_active = TRUE
-          AND (pr.valid_from IS NULL OR pr.valid_from <= $1)
-          AND (pr.valid_until IS NULL OR pr.valid_until >= $1)
-          AND (pr.valid_time_from IS NULL OR pr.valid_time_from <= $1::time)
-          AND (pr.valid_time_to IS NULL OR pr.valid_time_to >= $1::time)
-          AND (pr.valid_days IS NULL OR EXTRACT(ISODOW FROM $1::timestamptz)::smallint = ANY(pr.valid_days))
-          AND (pr.usage_limit IS NULL OR pr.usage_count < pr.usage_limit)
-          AND (pr.minimum_quantity IS NULL OR pr.minimum_quantity <= $4)
-          AND (
-            pr.scope_type = 'TENANT'
-            OR (pr.scope_type = 'OUTLET' AND pr.scope_id = $2::uuid)
-            OR (pr.scope_type = 'BRAND' AND pr.scope_id = $3::uuid)
-          )
-          -- Promosi tanpa daftar produk berlaku untuk semua; yang punya daftar
-          -- hanya berlaku bila produk ini termasuk dan tidak dikecualikan.
-          AND (
-            NOT EXISTS (SELECT 1 FROM "${schemaName}".pos_promotion_product pp
-                         WHERE pp.pos_promotion_id = pr.id AND pp.is_exclusion = FALSE)
-            OR EXISTS (
-              SELECT 1 FROM "${schemaName}".pos_promotion_product pp
-               LEFT JOIN "${schemaName}".product prod ON prod.id = $5::uuid
-               WHERE pp.pos_promotion_id = pr.id
-                 AND pp.is_exclusion = FALSE
-                 AND (pp.product_id = $5::uuid OR pp.product_category_id = prod.category_id)
-            )
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM "${schemaName}".pos_promotion_product pp
-             LEFT JOIN "${schemaName}".product prod ON prod.id = $5::uuid
-             WHERE pp.pos_promotion_id = pr.id
-               AND pp.is_exclusion = TRUE
-               AND (pp.product_id = $5::uuid OR pp.product_category_id = prod.category_id)
-          )
-        ORDER BY pr.priority, pr.created_at`,
-      [ctx.saat.toISOString(), ctx.outletId, ctx.brandId, ctx.quantity, ctx.productId],
+          AND pr.is_active = TRUE`,
+      [],
     );
 
-    return rows.map((r) => ({
-      sourceType: 'PROMOTION' as const,
-      sourceId: r.id,
-      label: r.name,
-      discountType: r.benefit_type as 'PERCENT' | 'AMOUNT',
-      discountValue: Number(r.benefit_value),
-      maxAmount: r.max_discount_amount ? Number(r.max_discount_amount) : null,
+    const baris: BarisPromosi[] = rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      benefitType: r.benefit_type as 'PERCENT' | 'AMOUNT',
+      benefitValue: Number(r.benefit_value),
+      maxDiscountAmount: r.max_discount_amount === null ? null : Number(r.max_discount_amount),
+      minimumPurchase: r.minimum_purchase === null ? null : Number(r.minimum_purchase),
+      minimumQuantity: r.minimum_quantity === null ? null : Number(r.minimum_quantity),
+      scopeType: r.scope_type,
+      scopeId: r.scope_id,
+      validFrom: r.valid_from,
+      validUntil: r.valid_until,
+      validDays: r.valid_days,
+      validTimeFrom: r.valid_time_from,
+      validTimeTo: r.valid_time_to,
+      usageLimit: r.usage_limit,
+      usageCount: r.usage_count,
       requiresApproval: r.requires_approval,
+      priority: r.priority,
+      createdAt: r.created_at,
+      target: r.target ?? [],
     }));
+
+    return pilihPromosi(baris, ctx);
   }
 
   /** Setelan kasir tingkat tenant, dengan bawaan yang aman bila belum diatur. */
