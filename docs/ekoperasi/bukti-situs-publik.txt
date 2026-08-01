@@ -1,0 +1,56 @@
+==============================================================================
+BUKTI SITUS PUBLIK KOPERASI DAN PEMBATAS LAJUNYA
+Waktu  : 2026-08-01T01:00:38.223Z
+Schema : demo
+==============================================================================
+
+1. Host permintaan menentukan koperasi — bukan alamat
+  LULUS  host yang belum terdaftar DITOLAK
+  LULUS  penolakannya berbunyi "Situs tidak ditemukan."
+  LULUS  host yang BELUM terbukti dimiliki DITOLAK
+  LULUS  host terbukti DITERIMA
+  LULUS  skema yang diperoleh "demo" — dari registry, bukan alamat
+  LULUS  host "localhost" ditolak sebelum menyentuh basis data
+  LULUS  host "203.0.113.10" ditolak sebelum menyentuh basis data
+  LULUS  host "koperasi" ditolak sebelum menyentuh basis data
+  LULUS  host "koperasi.ekoperа si.id" ditolak sebelum menyentuh basis data
+
+2. Situs yang belum diterbitkan tidak melayani siapa pun
+  LULUS  situs belum terbit TIDAK terbaca jalur publik
+  LULUS  setelah diterbitkan, situsnya terbaca
+  LULUS  jumlah anggota dan besar aset TETAP tidak ditampilkan tanpa dinyalakan
+
+3. Antrean pengurus dijaga — bukan hanya peladennya
+  LULUS  kiriman pertama diterima
+  LULUS  nomor yang lamarannya masih menunggu DITOLAK
+  LULUS  nomor yang sama dalam jeda DITOLAK
+  LULUS  kuota harian 50 lamaran DITEGAKKAN
+  LULUS  setelah jedanya lewat, diterima lagi
+
+4. Keadaan antrean dibaca dari basis data yang sungguhan
+  LULUS  nomor telepon dinormalkan
+  LULUS  kueri antrean membaca lamaran hari ini
+  LULUS  kueri antrean menemukan lamaran yang menunggu
+  LULUS  kiriman KEDUA dari nomor yang sama DITOLAK
+  LULUS  nomor yang sama dalam bentuk lain TETAP tertangkap
+
+5. Kiriman yang jelas bukan dari manusia tidak sampai ke meja pengurus
+  LULUS  nama berupa tautan DITOLAK
+  LULUS  nama tanpa huruf DITOLAK
+  LULUS  nomor tidak sah DITOLAK
+  LULUS  uraian bertabur tautan DITOLAK
+  LULUS  calon anggota yang menyertakan SATU tautan usahanya DITERIMA
+  LULUS  nama yang memuat angka DITERIMA — kartu identitas kadang begitu
+
+6. Lamaran berhenti pada karantina — tidak menjadi anggota
+  LULUS  lamaran TIDAK membentuk baris anggota
+  LULUS  kolom sidik sumber terisi
+  LULUS  alamat mentah TIDAK muncul di mana pun pada sidiknya
+  LULUS  sidiknya heksadesimal berukuran tetap
+  LULUS  penyewa berbeda menyidik alamat sama secara berbeda
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.
