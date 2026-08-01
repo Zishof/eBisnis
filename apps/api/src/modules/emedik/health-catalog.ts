@@ -729,6 +729,42 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'UPDATE', 'APPROVE'],
     sortOrder: 114,
   },
+  // Dasbor investor — H-9K.
+  //
+  // READ membaca proyeksi yang SUDAH dihitung; CREATE menghitungnya. Investor
+  // memegang yang pertama saja, dan pemisahan itu bukan formalitas: menghitung
+  // ulang dengan ambang kohort yang lebih longgar adalah cara paling rapi untuk
+  // menembus penyamaran tanpa pernah melanggar satu pun aturan yang tertulis.
+  {
+    code: 'HEALTH_INVESTOR_DASHBOARD',
+    parentCode: 'HEALTH',
+    label: 'Dasbor Investor',
+    route: '/app/emedik/dasbor-investor',
+    icon: 'line-chart',
+    actions: ['READ', 'CREATE', 'UPDATE'],
+    sortOrder: 115,
+  },
+  {
+    code: 'HEALTH_INVESTOR_WATERFALL',
+    parentCode: 'HEALTH',
+    label: 'Waterfall Investor',
+    route: '/app/emedik/waterfall',
+    icon: 'layers',
+    actions: ['READ', 'CREATE', 'UPDATE', 'ACTIVATE'],
+    sortOrder: 116,
+  },
+  // Tiga wewenang, tiga orang: CREATE menghitung, APPROVE menyetujui, POST
+  // membayarkan. Uang yang berpindah kepada investor berdasarkan angka yang
+  // keliru sulit ditarik kembali.
+  {
+    code: 'HEALTH_INVESTOR_DISTRIBUTION',
+    parentCode: 'HEALTH',
+    label: 'Distribusi Investor',
+    route: '/app/emedik/distribusi',
+    icon: 'hand-coins',
+    actions: ['READ', 'CREATE', 'APPROVE', 'POST', 'CANCEL'],
+    sortOrder: 117,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -1362,7 +1398,13 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
      * diberikan jarang ditarik kembali, sebab menariknya menuntut seseorang
      * menyadari bahwa ia pernah diberikan.
      */
-    permissions: ['HEALTH.READ', 'HEALTH_FEE_CONTRACT.READ'],
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_FEE_CONTRACT.READ',
+      // H-9K menambahkan TEPAT SATU hak: membaca proyeksi agregat yang SUDAH
+      // dihitung. Bukan menghitungnya, dan bukan mengubah ambang kohortnya.
+      'HEALTH_INVESTOR_DASHBOARD.READ',
+    ],
     sortOrder: 33,
   },
   {
@@ -1393,6 +1435,10 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_FEE_STATEMENT.READ',
       'HEALTH_FEE_STATEMENT.CREATE',
       'HEALTH_FEE_STATEMENT.EXPORT',
+      // Membayarkan distribusi investor pula — H-9K. Ia tidak menghitung dan
+      // tidak menyetujui, di sini maupun di sana.
+      'HEALTH_INVESTOR_DISTRIBUTION.READ',
+      'HEALTH_INVESTOR_DISTRIBUTION.POST',
     ],
     sortOrder: 30,
   },
@@ -1560,6 +1606,35 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_DEVICE_MAINTENANCE.READ',
     ],
     sortOrder: 38,
+  },
+  {
+    code: 'HEALTH_INVESTOR_ANALYST',
+    name: 'Analis Investasi Rumah Sakit',
+    description:
+      'Menghitung proyeksi agregat, menyusun waterfall, dan menghitung distribusi. TIDAK ' +
+      'menyetujui distribusi, TIDAK membayarkannya, dan TIDAK membaca rekam medis pasien.',
+    /*
+     * Sengaja TANPA satu pun hak atas data pasien, sekalipun ia yang
+     * menghitung agregatnya.
+     *
+     * Perhitungannya membaca tabel klinis, tetapi ia melakukannya lewat jalan
+     * yang menyamarkan — bukan lewat menu pasien. Memberinya HEALTH_PATIENT.READ
+     * akan membuat penyamaran itu dapat dilewati dengan cara yang paling
+     * sederhana: membuka layar yang lain.
+     */
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_INVESTOR_DASHBOARD.READ',
+      'HEALTH_INVESTOR_DASHBOARD.CREATE',
+      'HEALTH_INVESTOR_DASHBOARD.UPDATE',
+      'HEALTH_INVESTOR_WATERFALL.READ',
+      'HEALTH_INVESTOR_WATERFALL.CREATE',
+      'HEALTH_INVESTOR_WATERFALL.UPDATE',
+      'HEALTH_INVESTOR_DISTRIBUTION.READ',
+      'HEALTH_INVESTOR_DISTRIBUTION.CREATE',
+      'HEALTH_FEE_CONTRACT.READ',
+    ],
+    sortOrder: 39,
   },
 ];
 
@@ -1799,6 +1874,54 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'data menolak baris yang kurang satu pun.',
     conflictingPermissions: ['HEALTH_DEVICE.MANAGE_DEVICE', 'HEALTH_DEVICE.ACTIVATE'],
   },
+  {
+    code: 'HEALTH_SOD_DISTRIBUTION_APPROVE',
+    name: 'Penghitung distribusi investor tidak menyetujuinya',
+    description:
+      'Persetujuan oleh penghitungnya hanya membaca ulang angkanya sendiri — dan angka yang ' +
+      'keliru masih tampak benar baginya, sebab ia yang membuatnya. Uang yang berpindah kepada ' +
+      'investor berdasarkan angka yang keliru sulit ditarik kembali, dan investor yang sudah ' +
+      'menerimanya punya alasan untuk tidak mengembalikannya. Ditegakkan constraint ' +
+      'investor_dist_approve_not_self pada basis data pula.',
+    conflictingPermissions: [
+      'HEALTH_INVESTOR_DISTRIBUTION.CREATE',
+      'HEALTH_INVESTOR_DISTRIBUTION.APPROVE',
+    ],
+  },
+  {
+    code: 'HEALTH_SOD_DISTRIBUTION_PAY',
+    name: 'Penyetuju distribusi investor tidak membayarkannya',
+    description:
+      'Persetujuan yang langsung menjadi transfer menghilangkan jeda terakhir sebelum uang ' +
+      'berpindah. Jeda itu bukan birokrasi: ia satu-satunya kesempatan bagi orang ketiga untuk ' +
+      'melihat angkanya sebelum ia tidak dapat ditarik kembali. Ditegakkan constraint ' +
+      'investor_dist_pay_not_approver pula.',
+    conflictingPermissions: [
+      'HEALTH_INVESTOR_DISTRIBUTION.APPROVE',
+      'HEALTH_INVESTOR_DISTRIBUTION.POST',
+    ],
+  },
+  /*
+   * HEALTH_SOD_INVESTOR_VIEW_COMPUTE sengaja TIDAK ada di sini sebagai pasangan
+   * hak akses — dan pengujian katalog inilah yang menangkapnya ketika ia
+   * sempat ditulis begitu.
+   *
+   * Ini kelima kalinya pola yang sama muncul, sesudah H-9E, H-9G, H-9C, dan
+   * H-9H. Kali ini bentuknya sedikit berbeda: bukan hubungan antara satu orang
+   * dan satu BARIS, melainkan antara satu PERAN dan satu wewenang.
+   *
+   * "Investor tidak menghitung proyeksinya" adalah pernyataan tentang peran
+   * HEALTH_INVESTOR_VIEWER, bukan tentang pasangan READ dan CREATE. Analis
+   * investasi memegang keduanya dengan sah dan harus memegang keduanya: ia
+   * menghitung proyeksinya, lalu membacanya untuk memeriksa hasilnya.
+   * Mendaftarkannya sebagai pasangan yang bertentangan akan melarang pekerjaan
+   * yang justru menjadi alasan keberadaan perannya.
+   *
+   * Yang ditegakkan sebagai gantinya: peran investor TIDAK diberi
+   * HEALTH_INVESTOR_DASHBOARD.CREATE, diperiksa pengujian katalog, dan
+   * didaftarkan pada mesin SoD tenant lewat H040 dengan sisi PREPARER —
+   * pendaftaran per PERAN, bukan per pasangan hak akses.
+   */
   {
     code: 'HEALTH_SOD_DEVICE_RISK_DECIDE',
     name: 'Yang menilai risiko alat tidak memutuskan penerimaannya',

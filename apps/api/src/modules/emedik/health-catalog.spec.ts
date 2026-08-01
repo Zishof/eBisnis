@@ -337,7 +337,11 @@ describe('peran kesehatan', () => {
      * menyadari bahwa ia pernah diberikan.
      */
     const investor = HEALTH_ROLES.find((r) => r.code === 'HEALTH_INVESTOR_VIEWER');
-    expect(investor?.permissions).toEqual(['HEALTH.READ', 'HEALTH_FEE_CONTRACT.READ']);
+    expect(investor?.permissions).toEqual([
+      'HEALTH.READ',
+      'HEALTH_FEE_CONTRACT.READ',
+      'HEALTH_INVESTOR_DASHBOARD.READ',
+    ]);
 
     const terlarang = [
       'HEALTH_PATIENT',
@@ -479,6 +483,61 @@ describe('peran kesehatan', () => {
     expect(teknisi?.permissions).toContain('HEALTH_DEVICE_MAINTENANCE.RELEASE');
     expect(teknisi?.permissions).toContain('HEALTH_DEVICE_SECURITY.READ');
     expect(teknisi?.permissions).not.toContain('HEALTH_DEVICE_SECURITY.CREATE');
+  });
+
+  it('INVESTOR TIDAK DAPAT MENGHITUNG PROYEKSINYA SENDIRI', () => {
+    /*
+     * Aturan per PERAN, bukan pasangan hak akses — lihat catatan pada
+     * HEALTH_SOD_RULES. Analis investasi memegang READ maupun CREATE dengan
+     * sah; yang dilarang adalah investor memegang CREATE.
+     *
+     * Menghitung ulang dengan ambang kohort yang lebih longgar adalah cara
+     * paling rapi untuk menembus penyamaran tanpa pernah melanggar satu pun
+     * aturan yang tertulis.
+     */
+    const investor = HEALTH_ROLES.find((r) => r.code === 'HEALTH_INVESTOR_VIEWER');
+    expect(investor?.permissions).toContain('HEALTH_INVESTOR_DASHBOARD.READ');
+    expect(investor?.permissions).not.toContain('HEALTH_INVESTOR_DASHBOARD.CREATE');
+    expect(investor?.permissions).not.toContain('HEALTH_INVESTOR_DASHBOARD.UPDATE');
+  });
+
+  it('dan tidak melihat distribusi maupun waterfall', () => {
+    // Ia melihat hasil usahanya, bukan mesin yang membaginya.
+    const investor = HEALTH_ROLES.find((r) => r.code === 'HEALTH_INVESTOR_VIEWER');
+    expect(
+      investor?.permissions.filter(
+        (p) => p.startsWith('HEALTH_INVESTOR_DISTRIBUTION') || p.startsWith('HEALTH_INVESTOR_WATERFALL'),
+      ),
+    ).toEqual([]);
+  });
+
+  it('analis investasi menghitung tetapi TIDAK menyetujui dan TIDAK membayar', () => {
+    const analis = HEALTH_ROLES.find((r) => r.code === 'HEALTH_INVESTOR_ANALYST');
+    expect(analis?.permissions).toContain('HEALTH_INVESTOR_DISTRIBUTION.CREATE');
+    expect(analis?.permissions).not.toContain('HEALTH_INVESTOR_DISTRIBUTION.APPROVE');
+    expect(analis?.permissions).not.toContain('HEALTH_INVESTOR_DISTRIBUTION.POST');
+  });
+
+  it('analis investasi TIDAK membaca rekam medis pasien', () => {
+    /*
+     * Sekalipun perhitungannya membaca tabel klinis, ia melakukannya lewat
+     * jalan yang menyamarkan. Memberinya HEALTH_PATIENT.READ akan membuat
+     * penyamaran itu dapat dilewati dengan cara paling sederhana: membuka
+     * layar yang lain.
+     */
+    const analis = HEALTH_ROLES.find((r) => r.code === 'HEALTH_INVESTOR_ANALYST');
+    expect(analis?.permissions.some((p) => p.startsWith('HEALTH_PATIENT'))).toBe(false);
+  });
+
+  it('tiga wewenang distribusi dipegang tiga peran berbeda', () => {
+    const pemegang = (hak: string) =>
+      HEALTH_ROLES.filter((r) => r.permissions.includes(hak)).map((r) => r.code);
+    const hitung = pemegang('HEALTH_INVESTOR_DISTRIBUTION.CREATE');
+    const setuju = pemegang('HEALTH_INVESTOR_DISTRIBUTION.APPROVE');
+    const bayar = pemegang('HEALTH_INVESTOR_DISTRIBUTION.POST');
+    expect(hitung.filter((r) => setuju.includes(r))).toEqual([]);
+    expect(setuju.filter((r) => bayar.includes(r))).toEqual([]);
+    expect(hitung.filter((r) => bayar.includes(r))).toEqual([]);
   });
 
   it('tidak ada peran yang memiliki hak atas menu yang belum dibangun', () => {

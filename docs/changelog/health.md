@@ -5,6 +5,51 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9K — Dasbor investor agregat, waterfall, dan distribusi
+
+### Ditambahkan
+
+- **`H039__health__investor_dashboard.sql`** — `investor_disclosure_policy`,
+  `investor_projection`, `investor_projection_cell`, `investor_waterfall_policy`,
+  `investor_waterfall_tier`, `investor_distribution`. Constraint
+  `investor_policy_cohort_not_zero`, `investor_cell_suppressed_empty`,
+  `investor_dist_approve_not_self`, `investor_dist_pay_not_approver`,
+  `investor_dist_within_pool`, serta trigger `forbid_paid_distribution_change`.
+  **Tabel selnya tidak punya satu pun kolom pasien**, dan tidak satu pun kunci
+  asing ke tabel klinis.
+- **`H040__health__investor_permissions.sql`** — tiga menu, satu peran baru
+  (Analis Investasi Rumah Sakit), tiga aturan pemisahan wewenang, dan **tepat
+  satu hak baru** bagi peran investor: membaca proyeksi agregat.
+- **`health-investor.ts`** — aturan sebagai fungsi murni: daftar medan tertutup,
+  medan terlarang, ambang kohort, penyamaran beserta penyamaran pelengkapnya,
+  waterfall, bagian investor, kelayakan pembayaran, dan akun contoh. **56
+  pengujian.**
+- **`health-investor.service.ts`** dan **`health-investor.controller.ts`** — 10
+  jalan pada `/api/v1/health/investor/**`.
+- **`prove-health-investor.mjs`** — naskah bukti, **62 pemeriksaan**, seluruhnya
+  lulus dan lulus pula pada pengulangan.
+
+### Diperbaiki
+
+- **`H041__health__investor_policy_autoseed.sql`** — penyemaian kebijakan pada
+  H040 hanya menjangkau fasilitas yang ada pada saat migrasinya dijalankan,
+  sehingga fasilitas yang dibuat kemudian berjalan tanpa baris kebijakan dan
+  **penjaga basis datanya diam**: `investor_policy_cohort_not_zero` menjaga
+  baris yang ada, dan yang tidak punya baris tidak dijaganya sama sekali.
+  Diperbaiki dengan meniadakan keadaan itu, bukan memperbaiki nilai bawaannya.
+- `HEALTH_SOD_INVESTOR_VIEW_COMPUTE` dimodelkan ulang sebagai aturan **per
+  peran**, bukan pasangan hak akses — analis investasi memegang READ maupun
+  CREATE dengan sah. Ditangkap pengujian katalog sendiri.
+
+### Catatan bagi Core
+
+Tidak ada permintaan perubahan shared Core pada fase ini. Mesin investor
+bersama tidak disentuh; yang dibangun adalah proyeksi agregat khusus kesehatan
+yang berdiri di atas `fee_contract` milik H-9G.
+
+Uji: API 2036 → **2097**.
+
+---
 ## H-9J — Pemeliharaan biomedis, kalibrasi, keamanan siber alat
 
 ### Ditambahkan

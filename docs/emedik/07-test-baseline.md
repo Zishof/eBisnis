@@ -81,8 +81,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9C | 30 | **58** | `health-claim.spec.ts` |
 | H-9H | 25 | **49** | `health-device.spec.ts` |
 | H-9J | 25 | **76** | `health-device-maintenance.spec.ts` |
+| H-9K | 20 | **56** | `health-investor.spec.ts` |
 
-API keseluruhan: **2036** pengujian pada 64 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **2097** pengujian pada 65 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -115,6 +116,49 @@ sungguhan, pada basis data sungguhan:
 | H-9C | `prove-health-claim.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9c-klaim.txt](bukti-h9c-klaim.txt) |
 | H-9H | `prove-health-device.mjs` | 60 pemeriksaan, seluruhnya lulus — [bukti-h9h-alat.txt](bukti-h9h-alat.txt) |
 | H-9J | `prove-health-device-maintenance.mjs` | 81 pemeriksaan, seluruhnya lulus — [bukti-h9j-pemeliharaan-alat.txt](bukti-h9j-pemeliharaan-alat.txt) |
+| H-9K | `prove-health-investor.mjs` | 62 pemeriksaan, seluruhnya lulus — [bukti-h9k-investor.txt](bukti-h9k-investor.txt) |
+
+**Naskah H-9K menemukan cacat yang seluruh pengujian satuannya tidak dapat
+menemukan, dan cacatnya berupa BARIS YANG TIDAK ADA.**
+
+`H040` menyemai kebijakan penyamaran bagi setiap fasilitas — yang ada **pada
+saat migrasinya dijalankan**. Fasilitas yang dibuat sesudahnya, yakni setiap
+rumah sakit yang bergabung mulai besok, berjalan tanpa baris kebijakan. Layanan
+membacanya sebagai "tidak ada" lalu memakai nilai bawaan pada kodenya, dan nilai
+bawaan itu kebetulan benar hari ini.
+
+Yang membuatnya berbahaya bukan nilainya melainkan **penjaganya yang diam**:
+constraint `investor_policy_cohort_not_zero` menjaga baris yang ada, dan
+fasilitas yang tidak punya baris tidak dijaganya sama sekali. Aturan paling
+keras pada seluruh H-9K berlaku bagi setiap fasilitas kecuali yang baru.
+
+Diperbaiki `H041` dengan **meniadakan keadaannya**, bukan memperbaiki nilai
+bawaannya: trigger menyemai kebijakan pada saat fasilitas dibuat, sehingga
+pertanyaan "ambang mana yang berlaku bila belum ada kebijakan" tidak pernah
+perlu dijawab siapa pun. Naskah bukti menemukannya justru karena ia membuat
+fasilitas baru — sesuatu yang dilakukan setiap naskah bukti sejak H-2, dan yang
+tidak pernah dilakukan satu pun pengujian satuan.
+
+**Uji ketiga yang lulus karena penjaga yang keliru, dan yang menangkapnya adalah
+pemeriksaan bunyi penolakannya.** "Penghitung distribusi tidak menyetujuinya"
+memakai analis yang tidak berhak `APPROVE`, sehingga yang menolak adalah penjaga
+hak akses. Statusnya 403 — persis yang diharapkan — dan hanya pemeriksaan
+kalimat penolakannya yang membedakan penolakan yang benar dari penolakan yang
+kebetulan. Ini pembenaran paling jelas bagi kebiasaan yang berlaku sejak H-9:
+**periksa bunyinya, bukan hanya statusnya.**
+
+**Pengujian katalog menangkap kekeliruan pemodelan, dan itu yang kelima
+kalinya.** `HEALTH_SOD_INVESTOR_VIEW_COMPUTE` sempat ditulis sebagai pasangan
+hak akses `DASHBOARD.READ` × `DASHBOARD.CREATE` — dan uji "tidak ada peran
+bawaan yang melanggar aturannya sendiri" langsung menolaknya, sebab analis
+investasi memang memegang keduanya: ia menghitung proyeksinya, lalu membacanya
+untuk memeriksa hasilnya.
+
+Bentuknya sedikit berbeda dari empat yang terdahulu (H-9E, H-9G, H-9C, H-9H):
+bukan hubungan antara satu orang dan satu **baris**, melainkan antara satu
+**peran** dan satu wewenang. Yang ditegakkan sebagai gantinya adalah properti
+peran investor itu sendiri, diperiksa pengujian katalog dan didaftarkan pada
+mesin SoD tenant per peran.
 
 **Naskah H-9J menemukan empat cacat, dan tiga di antaranya milik fase itu
 sendiri.** Ini jalan bukti yang paling banyak menemukan sejauh ini, dan sebabnya

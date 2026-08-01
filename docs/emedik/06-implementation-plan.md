@@ -1295,6 +1295,89 @@ pekerjaannya sama sekali. `H038` membetulkan constraint yang memeriksa
 arus bocor pada alat yang sedang menyala tidak dapat mencatat temuannya.
 Keduanya diuraikan pada [07](07-test-baseline.md).
 
+### H-9K · Dasbor investor agregat — **SELESAI**
+
+Kebijakan penyamaran per fasilitas, proyeksi agregat berkohort minimum,
+waterfall berlapis, distribusi bertiga orang, dan pernyataan penyamaran yang
+disampaikan kepada pembacanya.
+
+Uji >= 20 -> **56 tercapai**, ditambah naskah bukti 62 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H039__health__investor_dashboard.sql`, `H040__health__investor_permissions.sql`, `H041__health__investor_policy_autoseed.sql` |
+| Aturan murni | `health-investor.ts` + 56 pengujian |
+| Layanan | `health-investor.service.ts` |
+| Endpoint | `health-investor.controller.ts` — 10 jalan di `/api/v1/health/investor/**` |
+| Katalog | `health-catalog.ts` — 3 menu, 1 peran, 2 aturan SoD |
+| Bukti | `scripts/prove-health-investor.mjs` -> [bukti-h9k-investor.txt](bukti-h9k-investor.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **PENEGAKANNYA BUKAN PENYARINGAN DI LAYAR.** Investor memperoleh proyeksi
+  agregat yang **sudah dihitung**, bukan akses ke tabel sumbernya dengan
+  penyaring. Perbedaannya menentukan: penyaring dapat dilewati siapa pun yang
+  memanggil jalur di bawahnya; proyeksi yang tidak memuat data pasien tidak
+  dapat mengungkapkannya sekalipun jalurnya ditembus. Karena itu
+  `investor_projection_cell` **tidak punya satu pun kolom pasien** — bukan
+  karena kuerinya tidak akan mengambilnya, melainkan karena tabelnya tidak punya
+  tempat untuk menyimpannya. Naskah bukti memeriksanya pada `information_schema`
+  beserta ketiadaan kunci asing ke tabel klinis mana pun.
+
+- **Ambang kohort tidak boleh nol**, ditegakkan constraint
+  `investor_policy_cohort_not_zero`. Ambang nol berarti tidak ada penyamaran
+  sama sekali, dan konfigurasi yang mengizinkan nol akan disetel nol oleh orang
+  pertama yang terganggu oleh sel yang tersembunyi.
+
+- **YANG DISEMBUNYIKAN TIDAK MENJADI NOL**, dan nilainya **tidak tersimpan** —
+  bukan tersimpan lalu disembunyikan saat ditampilkan. Nilai yang tersimpan akan
+  terbaca oleh kueri berikutnya yang lupa menyaring, dan kueri berikutnya selalu
+  ditulis orang yang tidak membaca migrasinya. Kohortnya ikut disembunyikan:
+  menyembunyikan nilainya tetapi menampilkan "n = 2" tidak menyembunyikan apa
+  pun yang penting, sebab yang berbahaya justru penyebutnya.
+
+- **PENYAMARAN PELENGKAP.** Bila hanya satu sel yang tersamar sedangkan totalnya
+  diketahui, sel itu dapat dihitung kembali dengan pengurangan — dan
+  penyamarannya menjadi hiasan. Karena itu sel tampak terkecil ikut disamarkan.
+  Ini bagian yang paling mudah dilupakan, dan ia yang membedakan penyamaran yang
+  bekerja dari penyamaran yang hanya terlihat bekerja.
+
+- **Dasbor mengatakan bahwa ia menyembunyikan.** Yang tersamar menyebut sebabnya
+  kepada pembacanya. Dasbor yang menyembunyikan tanpa mengatakannya akan
+  dipercaya sebagai gambaran lengkap, dan kesimpulan yang ditarik darinya keliru
+  dengan cara yang tidak disadari siapa pun.
+
+- **Investor memegang TEPAT SATU hak** pada seluruh modul: `DASHBOARD.READ`. Ia
+  tidak dapat menghitung ulang, dan itu bukan pembatasan sewenang-wenang —
+  menghitung ulang dengan ambang kohort yang lebih longgar adalah cara paling
+  rapi untuk menembus penyamaran tanpa pernah melanggar satu pun aturan yang
+  tertulis.
+
+- **Urutan waterfall mengikat, dan dana yang kurang TIDAK dibagi rata.**
+  Waterfall yang membagi rata ketika dananya kurang bukan waterfall. Persentase
+  dihitung terhadap **sisa saat itu**, bukan nilai awal — menghitungnya terhadap
+  nilai awal membuat jumlah seluruh lapisan melampaui dana yang ada, dan
+  kelebihannya baru ketahuan ketika uangnya hendak dipindahkan.
+
+- **Tanpa kontrak investor yang AKTIF, bagiannya NOL** — bukan galat dan bukan
+  "belum dihitung". Sama seperti H-9G: keadaan bawaan seluruh fasilitas adalah
+  tanpa kontrak, dan keadaan bawaan itu harus dapat dicatat sebagai angka.
+
+- **TIDAK ADA PEMBAYARAN OTOMATIS.** Tiga orang berbeda: yang menghitung, yang
+  menyetujui, yang membayarkan. Tidak ada trigger yang mengubah status menjadi
+  APPROVED maupun PAID, tidak ada penjadwal, dan tidak ada ambang "bila nilainya
+  di bawah sekian maka setujui sendiri". Sesudah dibayar, nilainya tidak dapat
+  diubah: yang sudah berpindah adalah angka itu, dan mengubahnya kemudian
+  membuat catatan di sini berbeda dari mutasi rekening.
+
+**Satu migrasi pembetulan.** `H041` menemukan bahwa penyemaian kebijakan pada
+`H040` hanya menjangkau fasilitas yang ada **pada saat migrasinya dijalankan** —
+sehingga setiap rumah sakit yang bergabung kemudian berjalan tanpa baris
+kebijakan, dan penjaga basis datanya diam. Diperbaiki dengan **meniadakan
+keadaan itu**, bukan memperbaiki nilai bawaannya.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -1366,7 +1449,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 8.  H-9C   Siklus klaim internal — koding sampai rekonsiliasi [SELESAI]
 9.  H-9H   Registri alat dan gateway                        [SELESAI]
 10. H-9J   Pemeliharaan, kalibrasi, keamanan siber          [SELESAI]
-11. H-9K   Dasbor investor agregat
+11. H-9K   Dasbor investor agregat                         [SELESAI]
 12. H-9I   Adapter HL7/ASTM; DICOM menunggu PACS
 13. H-9A   Kerangka SATUSEHAT beserta gerbang kemampuan
 14. H-9B   Kerangka BPJS beserta gerbang kemampuan
