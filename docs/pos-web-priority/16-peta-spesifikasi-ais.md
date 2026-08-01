@@ -65,7 +65,7 @@ Kolom "Tempat" menandai di mana pekerjaannya jatuh: **A**=API, **W**=web,
 | 3.2 | Pill kategori, badge stok, badge jumlah di keranjang | Flutter: ada. Web: sebagian | Web menyusul Flutter | W |
 | 3.2 | Fokus kotak pindai direbut ulang otomatis (debounce 50 ms) | Fokus dikembalikan sesudah aksi, tidak merebut dari elemen lain | Kecil, berguna | W F |
 | 3.3 | Cashback tidak mengurangi total | **Tidak ada konsep cashback** | Baru, menyentuh uang | A W F |
-| 3.4 | `diskon_evaluasi` per perubahan keranjang | `DiscountEvaluatorService` ada di modul pricing, **belum dipakai POS** | Sambungkan + cashback | A W F |
+| 3.4 | `diskon_evaluasi` per perubahan keranjang | **Sudah tersambung** — lihat koreksi §8 | Tinggal cashback | A W F |
 | 3.5 | Pemilih member: modal, foto, cache luring, "transaksi terbaru" | Tidak ada member di POS | Besar | A W F |
 | 3.6 | Bayar Saldo: cek ulang live, minimum mengendap, PIN | Tidak ada saldo member | Besar, menyentuh uang | A W F |
 | 3.7 | Metode `manual` vs tuntas | Metode dari peladen ada; penandaan manual perlu diperiksa | Kecil | A |
@@ -82,7 +82,7 @@ Kolom "Tempat" menandai di mana pekerjaannya jatuh: **A**=API, **W**=web,
 | 7.5 | Impor/ekspor Excel + **layar tinjau wajib** | Rencana V8-5/6 masih tertunda | Sedang | A W |
 | 7.6 | Cetak price tag / POP | Tidak ada | Sedang | W F |
 | 8 | Kulakan | ERP punya PO/penerimaan barang; bentuk berbeda | Perlu keputusan: jalur cepat POS atau arahkan ke ERP | A W |
-| 9 | Aturan diskon (target produk/toko/member, persen+cap+nominal, potong vs cashback, batas 1×/hari) | Evaluator ada, katalog aturannya belum | Sedang | A W |
+| 9 | Aturan diskon (target produk/toko/member, persen+cap+nominal, potong vs cashback, batas 1×/hari) | Tabel `pos_promotion` lengkap dan terpakai; **tanpa CRUD dan tanpa layar** | Sedang | A W |
 | 10 | Retur wizard 3 langkah | Aturan intinya ada; wizardnya belum | Kecil–sedang | W |
 | 11 | Riwayat penjualan + cetak ulang | Cetak ulang ada; layarnya belum | Kecil | W |
 | 12 | Laporan transaksi 3 sub-tab, omzet per kasir/mesin | Laporan kasir ada | Sedang | A W |
@@ -217,3 +217,47 @@ lintas beberapa minggu, bukan satu pekerjaan.
 Yang membuatnya dapat dikerjakan adalah tahap 0–2: satu keputusan, lalu empat
 perbaikan murah yang lahir dari bug produksi orang lain — sehingga tidak perlu
 dipelajari ulang dari bug produksi sendiri.
+
+
+---
+
+## 8. Koreksi terhadap dokumen ini
+
+Ditulis di sini alih-alih disunting diam-diam, sebab dokumen ini dipakai
+memutuskan urutan pekerjaan — dan keputusan yang diambil dari klaim yang salah
+perlu dapat ditelusuri kembali.
+
+**Baris §3.4 dan §9 semula keliru.** Keduanya menyatakan mesin diskon "belum
+dipakai POS". Itu kesimpulan dari `grep` yang hanya menemukan sebuah **komentar**
+pada `pos-pricing.ts`, bukan dari membaca jalurnya.
+
+Yang sebenarnya sudah ada, dari hulu ke hilir:
+
+| Bagian | Keadaan |
+| --- | --- |
+| Tabel `pos_promotion` + `pos_promotion_product` | Ada, dengan jendela tanggal/hari/jam, cap potongan, minimum, lingkup, prioritas, dan pengecualian produk |
+| Pemuatan dan penerapannya | `pos-catalog.service.ts` memilih promosi lalu menyerahkannya ke `hitungBaris` |
+| Jalur penjualan | `pos-sale.service.ts` memakai kuotasi berikut `discountAmount` |
+| Layar kasir web | Menampilkan potongan per baris dan total diskon keranjang |
+
+`DiscountEvaluatorService` yang disebut di baris itu ternyata milik **tagihan
+langganan SaaS** — masukannya `planCode`, `billingInterval`, `tenantAgeDays`.
+Ia memang tidak dipakai POS, dan tidak seharusnya.
+
+Yang benar-benar kurang pada §9 karena itu bukan mesinnya, melainkan: **tidak ada
+endpoint CRUD dan tidak ada layar** untuk mengelola aturan — sehingga aturan
+hanya dapat dibuat lewat SQL langsung atau data contoh.
+
+### Yang ditemukan justru saat memeriksa ulang
+
+Membaca jalur yang ternyata sudah ada itu memunculkan tiga cacat pada logika
+uang, ketiganya tanpa galat:
+
+| Cacat | Akibatnya |
+| --- | --- |
+| Hari dan jam dibaca dari UTC, bukan zona tenant | Promosi "Senin saja" tidak berlaku pada Senin pagi; promosi 17.00–19.00 menyala tengah malam |
+| Jendela jam yang melewati tengah malam | Promosi 22.00–02.00 tidak pernah berlaku sekali pun |
+| `minimum_purchase` tidak pernah diperiksa | "Potong Rp 10.000 di atas Rp 100.000" berlaku juga pada pembelian Rp 5.000 |
+
+Pelajarannya untuk dokumen ini: baris peta yang menyatakan sesuatu "belum ada"
+harus berasal dari membaca jalurnya, bukan dari satu `grep`.
