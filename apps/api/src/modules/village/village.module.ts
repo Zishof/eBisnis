@@ -71,6 +71,7 @@ import { VillageTransparencyService } from './village-transparency.service';
 import { VillageSampleService } from './village-sample.service';
 import { VillageKioskService } from './village-kiosk.service';
 import { VillageFileService } from './village-file.service';
+import { VillageListingService } from './village-listing.service';
 import { FILE_STORAGE_PORT } from './ports/file-storage.port';
 import { LocalFileStorageAdapter } from './ports/local-file-storage.adapter';
 import { VillagePublicResolver } from './village-public.resolver';
@@ -2996,6 +2997,7 @@ export class VillageController {
     private readonly contoh: VillageSampleService,
     private readonly anjungan: VillageKioskService,
     private readonly berkas: VillageFileService,
+    private readonly daftar: VillageListingService,
   ) {}
 
 
@@ -5026,6 +5028,114 @@ export class VillageController {
     return this.situs.portalStatusBantuan(requireSchema(user), user);
   }
 
+  // --- Daftar untuk layar petugas -------------------------------------------
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Get('lists')
+  @ApiOperation({
+    summary: 'Daftar apa saja yang tersedia beserta hak akses yang dibutuhkannya',
+    description:
+      'Dipakai layar petugas untuk mengetahui saringan apa yang tersedia pada tiap daftar. ' +
+      'Menyebutkan hak akses yang dibutuhkan, sehingga antarmuka dapat menyembunyikan menu yang ' +
+      'memang tidak akan dapat dibuka - lebih baik daripada membiarkan petugas menekannya lalu ' +
+      'menerima penolakan.',
+  })
+  katalogDaftar() {
+    return this.daftar.katalog();
+  }
+
+  @ApiBearerAuth('access-token')
+  @AuthenticatedOnly()
+  @Get('lists/:code')
+  @ApiOperation({
+    summary: 'Menjalankan satu daftar',
+    description:
+      'Nama tabel, kolom, gabungan, dan urutan seluruhnya LITERAL pada village-listing.ts. ' +
+      'Yang datang dari permintaan hanya nilai saringan, dan nilai selalu terikat sebagai ' +
+      'parameter - tidak ada jalur yang membawa teks permintaan masuk ke badan kueri. ' +
+      'HAK AKSES DIPERIKSA PER DAFTAR, bukan per rute: satu rute melayani dua puluh daftar, dan ' +
+      'hak akses yang menempel pada rutenya berarti petugas yang hanya berhak membaca antrean ' +
+      'loket dapat membaca buku kas dengan mengganti satu kata pada alamat. Kode yang tidak ' +
+      'dikenal DITOLAK, bukan diloloskan sebagai daftar kosong. Tabel berisi orang per orang ' +
+      'TIDAK dilayani rute ini sama sekali.',
+  })
+  jalankanDaftar(
+    @Param('code') code: string,
+    @Query() kueri: Record<string, string | undefined>,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.daftar.jalankan(requireSchema(user), code, kueri, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_FAMILY.READ')
+  @Get('families')
+  @ApiOperation({
+    summary: 'Daftar kartu keluarga',
+    description:
+      'Bukan lewat daftar umum: kartu keluarga adalah kumpulan orang, sehingga pembacaannya ' +
+      'wajib menghormati cakupan wilayah petugas dan wajib tercatat pada log akses. Nomor kartu ' +
+      'keluarga TIDAK ditampilkan - ia dipakai sebagai pengenal pada banyak layanan luar, dan ' +
+      'daftar yang menampilkannya berbaris-baris di layar loket adalah daftar nomor identitas ' +
+      'yang terbaca dari antrean.',
+  })
+  async daftarKeluarga(
+    @Query('q') q: string | undefined,
+    @Query('rtId') rtId: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    const cakupan = await this.lingkup.cakupanUntuk(schema, user);
+    const rows = await this.penduduk.daftarKeluarga(schema, { q, rtId }, cakupan, user);
+    return { scope: { level: cakupan.level, description: cakupan.keterangan }, rows };
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_VITAL_EVENT.READ')
+  @Get('vital-events')
+  @ApiOperation({
+    summary: 'Daftar kelahiran, kematian, dan mutasi',
+    description:
+      'Sebab kematian TIDAK ikut. Ia keterangan medis yang masuk lewat surat keterangan, dan ' +
+      'daftar yang menampilkannya membuat riwayat penyakit satu keluarga terbaca siapa pun yang ' +
+      'membuka layar peristiwa.',
+  })
+  async daftarPeristiwa(
+    @Query('jenis') jenis: string | undefined,
+    @Query('status') status: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    const cakupan = await this.lingkup.cakupanUntuk(schema, user);
+    const rows = await this.penduduk.daftarPeristiwa(schema, { jenis, status }, cakupan, user);
+    return { scope: { level: cakupan.level, description: cakupan.keterangan }, rows };
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_VULNERABLE.READ')
+  @Get('vulnerable')
+  @ApiOperation({
+    summary: 'Daftar penduduk rentan',
+    description:
+      'Layar yang paling perlu dijaga pada seluruh kependudukan: isinya penyandang disabilitas, ' +
+      'lanjut usia yang tinggal sendiri, dan keluarga yang keadaannya sulit - persis daftar yang ' +
+      'paling ingin dipegang orang untuk keperluan yang bukan pelayanan. Alamat dan nomor ' +
+      'telepon TIDAK ditampilkan; petugas yang memang perlu mendatangi membuka rinciannya ' +
+      'seorang demi seorang, dan pembukaan itu tercatat satu per satu. Dicatat pada permukaan ' +
+      'log tersendiri supaya dapat ditelusuri terpisah dari pembacaan data penduduk biasa.',
+  })
+  async daftarRentan(
+    @Query('jenis') jenis: string | undefined,
+    @Query('rtId') rtId: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    const cakupan = await this.lingkup.cakupanUntuk(schema, user);
+    const rows = await this.penduduk.daftarRentan(schema, { jenis, rtId }, cakupan, user);
+    return { scope: { level: cakupan.level, description: cakupan.keterangan }, rows };
+  }
+
   // --- Foto bukti pengaduan --------------------------------------------------
 
   @ApiBearerAuth('access-token')
@@ -5221,6 +5331,7 @@ export class VillageController {
     VillageSampleService,
     VillageKioskService,
     VillageFileService,
+    VillageListingService,
     VillagePublicResolver,
     // Mitra vertikal yang belum ada. Adapter tiruan menyatakan "belum
     // tersambung" dengan jujur dan tidak mengembalikan satu pun angka karangan.
@@ -5254,6 +5365,7 @@ export class VillageController {
     VillageSampleService,
     VillageKioskService,
     VillageFileService,
+    VillageListingService,
   ],
 })
 export class VillageModule {}

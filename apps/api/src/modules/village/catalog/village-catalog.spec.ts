@@ -48,9 +48,17 @@ describe('katalog menu', () => {
     }
   });
 
-  it('rute frontend berawalan /info-desa', () => {
+  it('rute frontend berawalan /app/info-desa', () => {
+    // Dua syarat sekaligus, dan pengujian sebelumnya hanya memeriksa yang kedua.
+    //
+    // `/info-desa` adalah namespace vertikal menurut panduan koordinasi §4.
+    // `/app` adalah tempat seluruh aplikasi penyewa hidup pada router web.
+    // Sidebar memakai `menu.route` APA ADANYA (`<NavLink to={menu.route}>`),
+    // sehingga rute tanpa `/app` jatuh ke penangkap `*` router lalu MEMANTULKAN
+    // petugas ke halaman depan — tanpa galat, tanpa pesan, dan tanpa apa pun
+    // yang menunjukkan sebabnya.
     for (const m of VILLAGE_MENUS) {
-      if (m.route) expect(m.route.startsWith('/info-desa')).toBe(true);
+      if (m.route) expect([m.code, m.route.startsWith('/app/info-desa')]).toEqual([m.code, true]);
     }
   });
 

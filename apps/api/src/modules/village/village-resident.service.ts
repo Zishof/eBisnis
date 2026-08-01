@@ -448,6 +448,207 @@ export class VillageResidentService {
 
   // --- Keluarga -------------------------------------------------------------
 
+  /**
+   * Daftar kartu keluarga.
+   *
+   * **Tidak** dilayani daftar umum (`village-listing.ts`), dan itu disengaja:
+   * kartu keluarga adalah kumpulan orang, sehingga pembacaannya wajib
+   * menghormati cakupan wilayah petugas dan wajib tercatat pada log akses.
+   * Daftar umum tidak mengetahui keduanya.
+   *
+   * Nomor kartu keluarga **tidak** ikut ditampilkan. Ia dipakai sebagai
+   * pengenal pada banyak layanan luar, sehingga daftar yang menampilkannya
+   * berbaris-baris di layar loket adalah daftar nomor identitas yang terbaca
+   * dari antrean.
+   */
+  async daftarKeluarga(
+    schemaName: string,
+    filter: { q?: string; rtId?: string; limit?: number; offset?: number },
+    cakupan: CakupanWilayah,
+    user: AuthenticatedUser,
+  ) {
+    await this.unit.pastikanLayak(schemaName, 'PENDUDUK.KELUARGA');
+    const u = await this.unit.unit(schemaName);
+
+    const params: unknown[] = [u.id];
+    let sql =
+      `SELECT f.id, f.address, f.welfare_status, f.house_ownership, f.is_active,
+              t.number AS rt_number, w.number AS rw_number,
+              (SELECT COUNT(*) FROM "${schemaName}".village_resident m
+                WHERE m.village_family_id = f.id AND m.deleted_at IS NULL) AS member_count,
+              (SELECT m.full_name FROM "${schemaName}".village_resident m
+                WHERE m.village_family_id = f.id AND m.deleted_at IS NULL
+                  AND m.family_relation = 'KEPALA_KELUARGA' LIMIT 1) AS head_name
+         FROM "${schemaName}".village_family f
+    LEFT JOIN "${schemaName}".village_rt t ON t.id = f.village_rt_id
+    LEFT JOIN "${schemaName}".village_rw w ON w.id = t.village_rw_id
+        WHERE f.village_unit_id = $1 AND f.deleted_at IS NULL`;
+
+    // Cakupan disaring lewat RT keluarganya. Petugas RT 03 melihat kartu
+    // keluarga RT 03, bukan seluruh desa.
+    const c = this.penyaringCakupan('f', cakupan, params.length + 1);
+    sql += c.sql
+      .replace(/village_rt/g, `"${schemaName}".village_rt`)
+      .replace(/village_rw/g, `"${schemaName}".village_rw`)
+      .replace(/village_resident/g, `"${schemaName}".village_resident`);
+    params.push(...c.params);
+
+    if (filter.q) {
+      params.push(`%${filter.q}%`);
+      sql += ` AND f.address ILIKE $${params.length}`;
+    }
+    if (filter.rtId) {
+      params.push(filter.rtId);
+      sql += ` AND f.village_rt_id = $${params.length}`;
+    }
+
+    params.push(Math.min(filter.limit ?? 50, 200), filter.offset ?? 0);
+    sql += ` ORDER BY w.number, t.number, f.address
+             LIMIT $${params.length - 1} OFFSET $${params.length}`;
+
+    const rows = await this.tenantDb.query<Record<string, unknown>>(schemaName, sql, params);
+
+    await this.catatAkses(schemaName, {
+      actorUserId: user.userId,
+      activeRoleId: user.activeRoleId,
+      accessType: filter.q ? 'SEARCH' : 'LIST',
+      surface: 'village/families',
+      recordCount: rows.length,
+    });
+
+    return rows;
+  }
+
+  /**
+   * Daftar peristiwa penting: kelahiran, kematian, pindah, datang.
+   *
+   * Sebab kematian (`cause_note`) **tidak** ikut. Ia keterangan medis yang
+   * masuk ke sini lewat surat keterangan, dan daftar yang menampilkannya
+   * membuat riwayat penyakit satu keluarga terbaca siapa pun yang membuka layar
+   * peristiwa.
+   */
+  async daftarPeristiwa(
+    schemaName: string,
+    filter: { jenis?: string; status?: string; limit?: number; offset?: number },
+    cakupan: CakupanWilayah,
+    user: AuthenticatedUser,
+  ) {
+    await this.unit.pastikanLayak(schemaName, 'PENDUDUK.MUTASI');
+    const u = await this.unit.unit(schemaName);
+
+    const params: unknown[] = [u.id];
+    let sql =
+      `SELECT e.id, e.event_type, e.event_date::text, e.event_place,
+              e.child_name, e.status, e.created_at,
+              r.full_name AS resident_name,
+              t.number AS rt_number, w.number AS rw_number
+         FROM "${schemaName}".village_vital_event e
+         JOIN "${schemaName}".village_resident r ON r.id = e.village_resident_id
+    LEFT JOIN "${schemaName}".village_rt t ON t.id = r.village_rt_id
+    LEFT JOIN "${schemaName}".village_rw w ON w.id = t.village_rw_id
+        WHERE e.village_unit_id = $1`;
+
+    const c = this.penyaringCakupan('r', cakupan, params.length + 1);
+    sql += c.sql
+      .replace(/village_rt/g, `"${schemaName}".village_rt`)
+      .replace(/village_rw/g, `"${schemaName}".village_rw`)
+      .replace(/village_resident/g, `"${schemaName}".village_resident`);
+    params.push(...c.params);
+
+    if (filter.jenis) {
+      params.push(filter.jenis);
+      sql += ` AND e.event_type = $${params.length}`;
+    }
+    if (filter.status) {
+      params.push(filter.status);
+      sql += ` AND e.status = $${params.length}`;
+    }
+
+    params.push(Math.min(filter.limit ?? 50, 200), filter.offset ?? 0);
+    sql += ` ORDER BY e.event_date DESC LIMIT $${params.length - 1} OFFSET $${params.length}`;
+
+    const rows = await this.tenantDb.query<Record<string, unknown>>(schemaName, sql, params);
+
+    await this.catatAkses(schemaName, {
+      actorUserId: user.userId,
+      activeRoleId: user.activeRoleId,
+      accessType: 'LIST',
+      surface: 'village/vital-events',
+      recordCount: rows.length,
+    });
+
+    return rows;
+  }
+
+  /**
+   * Daftar penduduk rentan.
+   *
+   * Layar ini yang paling perlu dijaga di seluruh D-2. Isinya penyandang
+   * disabilitas, lanjut usia yang tinggal sendiri, dan keluarga yang keadaannya
+   * sulit — persis daftar yang paling ingin dipegang orang untuk keperluan yang
+   * bukan pelayanan.
+   *
+   * Karena itu ia memakai penyaring cakupan yang sama dengan daftar penduduk,
+   * tercatat pada log akses dengan permukaan **tersendiri** supaya dapat
+   * ditelusuri terpisah, dan tidak menampilkan alamat maupun nomor telepon:
+   * yang dibutuhkan dari layar ini adalah siapa dan di RT mana. Petugas yang
+   * memang perlu mendatangi membuka rinciannya seorang demi seorang, dan
+   * pembukaan itu tercatat satu per satu.
+   */
+  async daftarRentan(
+    schemaName: string,
+    filter: { jenis?: string; rtId?: string; limit?: number; offset?: number },
+    cakupan: CakupanWilayah,
+    user: AuthenticatedUser,
+  ) {
+    await this.unit.pastikanLayak(schemaName, 'PENDUDUK.RENTAN');
+    const u = await this.unit.unit(schemaName);
+
+    const params: unknown[] = [u.id];
+    let sql =
+      `SELECT r.id, r.full_name, r.gender, r.birth_date::text, r.disability_type,
+              r.social_condition, r.resident_status,
+              t.number AS rt_number, w.number AS rw_number
+         FROM "${schemaName}".village_resident r
+    LEFT JOIN "${schemaName}".village_rt t ON t.id = r.village_rt_id
+    LEFT JOIN "${schemaName}".village_rw w ON w.id = t.village_rw_id
+        WHERE r.village_unit_id = $1 AND r.deleted_at IS NULL AND r.is_vulnerable = TRUE`;
+
+    const c = this.penyaringCakupan('r', cakupan, params.length + 1);
+    sql += c.sql
+      .replace(/village_rt/g, `"${schemaName}".village_rt`)
+      .replace(/village_rw/g, `"${schemaName}".village_rw`)
+      .replace(/village_resident/g, `"${schemaName}".village_resident`);
+    params.push(...c.params);
+
+    if (filter.jenis) {
+      params.push(filter.jenis);
+      sql += ` AND r.disability_type = $${params.length}`;
+    }
+    if (filter.rtId) {
+      params.push(filter.rtId);
+      sql += ` AND r.village_rt_id = $${params.length}`;
+    }
+
+    params.push(Math.min(filter.limit ?? 50, 200), filter.offset ?? 0);
+    sql += ` ORDER BY r.full_name LIMIT $${params.length - 1} OFFSET $${params.length}`;
+
+    const rows = await this.tenantDb.query<Record<string, unknown>>(schemaName, sql, params);
+
+    await this.catatAkses(schemaName, {
+      actorUserId: user.userId,
+      activeRoleId: user.activeRoleId,
+      accessType: 'LIST',
+      // Permukaan tersendiri, bukan `village/residents`. Pertanyaan "siapa yang
+      // membuka daftar penduduk rentan bulan lalu" harus dapat dijawab tanpa
+      // menyaring seluruh pembacaan data penduduk.
+      surface: 'village/vulnerable',
+      recordCount: rows.length,
+    });
+
+    return rows;
+  }
+
   async periksaKeluarga(schemaName: string, familyId: string) {
     const anggota = await this.tenantDb.query<{ id: string; family_relation: string }>(
       schemaName,

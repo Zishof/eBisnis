@@ -24,6 +24,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 
 const AKAR = __dirname;
+/** `src/`, untuk menamai berkas luar dengan jalur yang stabil. */
+const SRC = resolve(AKAR, '..', '..');
 
 function berkasTypeScript(dir: string): string[] {
   const hasil: string[] = [];
@@ -59,12 +61,27 @@ const TABEL_CORE_DIIZINKAN: Record<string, string> = {
   schema_migration: 'Pembukuan migrasi penyewa; dipakai VillageMigrationService.',
 };
 
-/** Modul yang boleh diimpor village. */
+/** Direktori bersama yang boleh diimpor village. */
 const IMPOR_DIIZINKAN = [
   '../../common/',
   '../../infrastructure/',
   '../../config/',
 ];
+
+/**
+ * Berkas dari modul lain yang boleh diimpor village, beserta alasannya.
+ *
+ * Daftar ini pendek dengan sengaja, sama seperti `TABEL_CORE_DIIZINKAN`. Setiap
+ * tambahan mengikat village pada perubahan modul yang tidak ikut ditinjau
+ * ketika modul itu diubah.
+ */
+const BERKAS_LUAR_DIIZINKAN: Record<string, string> = {
+  'modules/auth/tenant-permission.service':
+    'Daftar untuk layar petugas memeriksa hak akses PER DAFTAR, sebab satu rute melayani ' +
+    'dua puluh daftar dan @Permissions menempel pada rute. Pemeriksaannya memakai layanan ' +
+    'yang sama dengan penjaga rute Core — menulis pemeriksaan sendiri berarti dua aturan ' +
+    'otorisasi yang akan berbeda suatu hari, dan yang lebih longgar yang akan dipakai.',
+};
 
 describe('batas vertikal: impor', () => {
   it('memindai berkas yang jumlahnya masuk akal', () => {
@@ -86,9 +103,17 @@ describe('batas vertikal: impor', () => {
 
         const relatif = relative(AKAR, tujuan).replace(/\\/g, '/');
         const jalurNaik = `${relatif.startsWith('.') ? relatif : `./${relatif}`}`;
-        if (!IMPOR_DIIZINKAN.some((izin) => jalurNaik.includes(izin.replace(/^\.\.\/\.\.\//, '')))) {
-          pelanggaran.push(`${namaPendek(f)} → ${m[1]}`);
+        if (IMPOR_DIIZINKAN.some((izin) => jalurNaik.includes(izin.replace(/^\.\.\/\.\.\//, '')))) {
+          continue;
         }
+
+        // Berkas tunggal yang dinyatakan boleh, beserta alasannya. Dinamai
+        // relatif terhadap `src/` supaya kuncinya tidak berubah ketika berkas
+        // yang mengimpornya pindah kedalaman direktori.
+        const dariSrc = relative(SRC, tujuan).replace(/\\/g, '/');
+        if (dariSrc in BERKAS_LUAR_DIIZINKAN) continue;
+
+        pelanggaran.push(`${namaPendek(f)} → ${m[1]}`);
       }
     }
     expect(pelanggaran).toEqual([]);
@@ -246,6 +271,32 @@ describe('batas vertikal: awalan', () => {
       else if (!aksi) pelanggaran.push(`${m[1]} (tanpa aksi)`);
     }
     expect([...new Set(pelanggaran)]).toEqual([]);
+  });
+
+  it('setiap berkas luar yang diizinkan menyebutkan alasannya', () => {
+    // Aturan yang sama dengan TABEL_CORE_DIIZINKAN: pengecualian tanpa alasan
+    // yang tertulis akan bertambah satu per satu sampai daftarnya tidak lagi
+    // berarti apa-apa. Alasan yang harus diketik membuat orang berpikir dua
+    // kali sebelum menambahkannya.
+    for (const [berkas, alasan] of Object.entries(BERKAS_LUAR_DIIZINKAN)) {
+      expect([berkas, alasan.length > 60]).toEqual([berkas, true]);
+    }
+    expect(Object.keys(BERKAS_LUAR_DIIZINKAN).length).toBeLessThanOrEqual(3);
+  });
+
+  it('seluruh rute menu berada di bawah /app/info-desa', () => {
+    // Rute menu dipakai sidebar APA ADANYA (`<NavLink to={menu.route}>`).
+    // Seluruh aplikasi penyewa hidup di bawah `/app`; rute di luar itu jatuh ke
+    // penangkap `*` router lalu MEMANTULKAN petugas ke halaman depan.
+    //
+    // Kekeliruan seperti ini tidak menghasilkan galat apa pun — menunya tampil,
+    // dapat diklik, lalu membuang penggunanya keluar dari aplikasi. Tidak ada
+    // yang menangkapnya selain pengujian ini atau petugas yang kebingungan.
+    const katalog = isi.get(join(AKAR, 'catalog', 'village-permission.catalog.ts'))!;
+    const rute = [...katalog.matchAll(/route:\s*'([^']+)'/g)].map((m) => m[1]);
+
+    expect(rute.length).toBeGreaterThan(20);
+    expect(rute.filter((r) => !r.startsWith('/app/info-desa/'))).toEqual([]);
   });
 
   it('seluruh kode peristiwa akuntansi berawalan VILLAGE_', () => {

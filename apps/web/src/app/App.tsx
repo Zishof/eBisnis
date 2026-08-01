@@ -83,6 +83,109 @@ const VillageNewsPage = lazy(() =>
   import('../verticals/village/public/VillageNewsPage').then((m) => ({ default: m.VillageNewsPage })),
 );
 
+// Layar petugas info-desa (D-1 sampai D-9).
+//
+// Vite menggabungkan seluruh halaman dari satu berkas menjadi satu bundel,
+// sehingga tiga puluh baris di bawah menghasilkan tiga potongan, bukan tiga
+// puluh. Yang dimuat hanya potongan yang berisi halaman yang benar-benar
+// dibuka — penyewa yang tidak memakai vertikal desa tidak pernah mengunduhnya.
+const DesaProfilWilayahPage = lazy(() =>
+  import('../verticals/village/admin/halaman-wilayah').then((m) => ({ default: m.ProfilWilayahPage })),
+);
+const DesaWilayahPage = lazy(() =>
+  import('../verticals/village/admin/halaman-wilayah').then((m) => ({ default: m.WilayahPage })),
+);
+const DesaDomainPage = lazy(() =>
+  import('../verticals/village/admin/halaman-wilayah').then((m) => ({ default: m.DomainPage })),
+);
+const DesaPotensiPage = lazy(() =>
+  import('../verticals/village/admin/halaman-wilayah').then((m) => ({ default: m.PotensiPage })),
+);
+const DesaPendudukPage = lazy(() =>
+  import('../verticals/village/admin/halaman-penduduk').then((m) => ({ default: m.PendudukPage })),
+);
+const DesaKeluargaPage = lazy(() =>
+  import('../verticals/village/admin/halaman-penduduk').then((m) => ({ default: m.KeluargaPage })),
+);
+const DesaPeristiwaPage = lazy(() =>
+  import('../verticals/village/admin/halaman-penduduk').then((m) => ({ default: m.PeristiwaPage })),
+);
+const DesaRentanPage = lazy(() =>
+  import('../verticals/village/admin/halaman-penduduk').then((m) => ({ default: m.RentanPage })),
+);
+const DesaAparaturPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.AparaturPage })),
+);
+const DesaBpdPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.BpdPage })),
+);
+const DesaRegisterPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.RegisterPage })),
+);
+const DesaJenisLayananPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.JenisLayananPage })),
+);
+const DesaPermohonanPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.PermohonanPage })),
+);
+const DesaAntreanPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.AntreanPage })),
+);
+const DesaPengaduanPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.PengaduanPage })),
+);
+const DesaAspirasiPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.AspirasiPage })),
+);
+const DesaMusrenbangPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.MusrenbangPage })),
+);
+const DesaRpjmdesPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.RpjmdesPage })),
+);
+const DesaRkpdesPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.RkpdesPage })),
+);
+const DesaApbdesPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.ApbdesPage })),
+);
+const DesaRealisasiPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.RealisasiPage })),
+);
+const DesaBukuKasPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.BukuKasPage })),
+);
+const DesaProgramBantuanPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.ProgramBantuanPage })),
+);
+const DesaBumdesPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.BumdesPage })),
+);
+const DesaUmkmPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.UmkmPage })),
+);
+const DesaWisataPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.WisataPage })),
+);
+const DesaInsidenPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.InsidenPage })),
+);
+const DesaBencanaPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.BencanaPage })),
+);
+const DesaTanahPage = lazy(() =>
+  import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.TanahPage })),
+);
+const DesaAsetPage = lazy(() =>
+  import('../verticals/village/admin/halaman-lain').then((m) => ({ default: m.AsetPage })),
+);
+const DesaPenerimaPage = lazy(() =>
+  import('../verticals/village/admin/halaman-lain').then((m) => ({ default: m.PenerimaPage })),
+);
+const DesaLingkunganPage = lazy(() =>
+  import('../verticals/village/admin/halaman-lain').then((m) => ({ default: m.LingkunganPage })),
+);
+
 // Layar kasir dimuat terpisah: berkasnya besar dan hanya dipakai peran kasir,
 // sementara pengguna lain tidak perlu ikut menunggunya diunduh.
 const PosPage = lazy(() => import('../pages/pos/PosPage').then((m) => ({ default: m.PosPage })));
@@ -211,6 +314,56 @@ export function App() {
           <Route path="subscription/checkout" element={<SubscriptionPage tab="checkout" />} />
           <Route path="subscription/invoices" element={<SubscriptionPage tab="invoices" />} />
           <Route path="marketplace/aktivasi" element={<MarketplaceActivationPage />} />
+          {/*
+            Info-desa (D-1 sampai D-9).
+
+            Berada di bawah `/app` karena di situlah seluruh aplikasi penyewa
+            hidup, dan katalog menu menyebut `/app/info-desa/...` persis sama.
+            Sidebar memakai `menu.route` apa adanya; rute yang tidak cocok
+            memantulkan petugas ke halaman depan tanpa galat apa pun.
+          */}
+          <Route path="info-desa/profil" element={<DesaProfilWilayahPage />} />
+          <Route path="info-desa/wilayah" element={<DesaWilayahPage />} />
+          <Route path="info-desa/domain" element={<DesaDomainPage />} />
+          <Route path="info-desa/potensi" element={<DesaPotensiPage />} />
+
+          <Route path="info-desa/penduduk" element={<DesaPendudukPage />} />
+          <Route path="info-desa/keluarga" element={<DesaKeluargaPage />} />
+          <Route path="info-desa/peristiwa" element={<DesaPeristiwaPage />} />
+          <Route path="info-desa/rentan" element={<DesaRentanPage />} />
+
+          <Route path="info-desa/aparatur" element={<DesaAparaturPage />} />
+          <Route path="info-desa/bpd" element={<DesaBpdPage />} />
+          <Route path="info-desa/register" element={<DesaRegisterPage />} />
+
+          <Route path="info-desa/layanan/jenis" element={<DesaJenisLayananPage />} />
+          <Route path="info-desa/layanan/permohonan" element={<DesaPermohonanPage />} />
+          <Route path="info-desa/layanan/antrean" element={<DesaAntreanPage />} />
+
+          <Route path="info-desa/pengaduan" element={<DesaPengaduanPage />} />
+          <Route path="info-desa/aspirasi" element={<DesaAspirasiPage />} />
+          <Route path="info-desa/musrenbang" element={<DesaMusrenbangPage />} />
+          <Route path="info-desa/musrenbang-kelurahan" element={<DesaMusrenbangPage />} />
+
+          <Route path="info-desa/rpjmdes" element={<DesaRpjmdesPage />} />
+          <Route path="info-desa/rkpdes" element={<DesaRkpdesPage />} />
+          <Route path="info-desa/apbdes" element={<DesaApbdesPage />} />
+          <Route path="info-desa/realisasi" element={<DesaRealisasiPage />} />
+          <Route path="info-desa/buku-kas" element={<DesaBukuKasPage />} />
+
+          <Route path="info-desa/aset" element={<DesaAsetPage />} />
+          <Route path="info-desa/bantuan" element={<DesaProgramBantuanPage />} />
+          <Route path="info-desa/penerima" element={<DesaPenerimaPage />} />
+
+          <Route path="info-desa/bumdes" element={<DesaBumdesPage />} />
+          <Route path="info-desa/umkm" element={<DesaUmkmPage />} />
+          <Route path="info-desa/wisata" element={<DesaWisataPage />} />
+
+          <Route path="info-desa/keamanan" element={<DesaInsidenPage />} />
+          <Route path="info-desa/bencana" element={<DesaBencanaPage />} />
+          <Route path="info-desa/lingkungan" element={<DesaLingkunganPage />} />
+          <Route path="info-desa/tanah" element={<DesaTanahPage />} />
+
           <Route path="*" element={<ComingSoonPage />} />
         </Route>
 

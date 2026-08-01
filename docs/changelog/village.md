@@ -1915,3 +1915,149 @@ jalur impor dan penyuntingan manual.
 - `flutter test` — **58 pengujian lulus** (bertambah 17)
 - `flutter analyze` — bersih
 - `tsc --noEmit` API — bersih
+
+---
+
+## Layar petugas D-1 sampai D-9
+
+**Cabang:** `feature/v12-info-desa`
+
+Dua puluh sembilan layar petugas, satu lapisan baca baru pada API, dan satu
+cacat yang membuat **seluruh** menu vertikal tidak dapat dibuka.
+
+### Cacat yang ditemukan lebih dahulu
+
+Seluruh katalog menu memakai rute `/info-desa/...`, sedangkan seluruh aplikasi
+penyewa hidup di bawah `/app`. Sidebar memakai `menu.route` apa adanya
+(`<NavLink to={menu.route}>`), sehingga ketiga puluh delapan menu jatuh ke
+penangkap `*` router lalu **memantulkan petugas ke halaman depan**.
+
+Kekeliruan seperti ini tidak menghasilkan galat apa pun: menunya tampil, dapat
+diklik, lalu membuang penggunanya keluar dari aplikasi. Tidak ada yang
+menangkapnya selain seorang petugas yang kebingungan — sebab tidak ada satu
+berkas pun yang membaca katalog dan router sekaligus.
+
+Ada pengujian yang menjaga awalan `/info-desa`, dan ia lulus. Ia memeriksa
+namespace vertikal, bukan apakah rutenya dapat dicapai. Sekarang ada dua
+pengujian: satu di API, satu di web yang membaca **kedua berkas** dan
+mencocokkan setiap menu dengan rutenya.
+
+### Lapisan baca: konfigurasi, bukan pembangun kueri
+
+Dua puluh dua daftar petugas punya bentuk yang sama — ambil baris milik unit
+ini, saring, urutkan, potong halaman. Menulisnya dua puluh dua kali berarti dua
+puluh dua kesempatan melupakan `village_unit_id`.
+
+`village-listing.ts` menyatakan seluruhnya sebagai konfigurasi. Nama tabel,
+kolom, gabungan, dan urutan **literal pada berkas itu**; yang datang dari
+permintaan hanya nilai saringan, dan nilai selalu terikat sebagai parameter.
+
+Pembangun kueri yang menerima `?sort=nama_kolom` tampak praktis sampai seseorang
+mengirim `?sort=(SELECT national_id FROM ...)`. Di sini tidak ada jalannya:
+kunci saringan pun dicocokkan ke daftar tertulis, dan yang tidak cocok
+**diabaikan** — lalu diberitahukan ke layar, supaya petugas tahu saringannya
+tidak terbaca alih-alih menyimpulkan tidak ada yang cocok.
+
+### Tabel berisi orang per orang tidak dilayani daftar umum
+
+Penduduk, keluarga, peristiwa penting, dan calon penerima bantuan dibaca lewat
+layanannya masing-masing, sebab pembacaannya wajib menghormati cakupan wilayah
+petugas (D-3) dan wajib tercatat pada log akses. Daftar umum tidak mengetahui
+keduanya, dan menambahkannya ke sana berarti membuat pintu samping yang
+melewati keduanya sekaligus.
+
+Larangan itu ditegakkan `TABEL_TERLARANG` beserta pengujiannya. Menyebut tabel
+terlarang **hanya** boleh berbentuk `COUNT(*)`: menghitung berapa banyak
+penerima sebuah program adalah angka, sedangkan menyebut siapa saja mereka
+adalah pengumuman siapa yang miskin di desa ini. Perbedaannya diperiksa berkas
+pengujian, bukan dipercayakan pada niat baik orang yang menambahkan daftar
+berikutnya.
+
+Tiga daftar kependudukan ditambahkan ke `village-resident.service.ts`, tempat
+penyaring cakupan dan pencatat akses sudah ada: kartu keluarga, peristiwa
+penting, dan penduduk rentan. Yang terakhir memakai permukaan log **tersendiri**
+(`village/vulnerable`), supaya pertanyaan "siapa yang membuka daftar penduduk
+rentan bulan lalu" dapat dijawab tanpa menyaring seluruh pembacaan kependudukan.
+
+### Hak akses diperiksa per daftar, bukan per rute
+
+Satu rute melayani dua puluh dua daftar, dan `@Permissions()` menempel pada
+rute. Menuliskan satu hak akses yang longgar di sana berarti petugas yang hanya
+berhak membaca antrean loket dapat membaca buku kas dengan mengganti satu kata
+pada alamat.
+
+Pemeriksaannya memakai `TenantPermissionService` — layanan yang sama dengan
+penjaga rute Core, beserta peran aktifnya. Menulis pemeriksaan sendiri berarti
+dua aturan otorisasi yang akan berbeda suatu hari, dan yang lebih longgar yang
+akan dipakai. Impornya dinyatakan pada daftar izin uji batas vertikal beserta
+alasannya.
+
+### Yang sengaja tidak ditampilkan
+
+| Layar | Yang tidak tampil | Sebab |
+|---|---|---|
+| Penduduk | NIK utuh (empat angka terakhir saja) | Layar loket terbaca dari antrean dan dapat difoto sekali jepret |
+| Kartu keluarga | Nomor KK | Dipakai sebagai pengenal pada banyak layanan di luar sistem ini |
+| Peristiwa | Sebab kematian | Keterangan medis; daftarnya membuat riwayat penyakit satu keluarga terbaca |
+| Penduduk rentan | Alamat dan telepon | Yang dibutuhkan hanya siapa dan di RT mana |
+| Permohonan | NIK dan telepon pemohon | Sama seperti di atas — tersedia pada rincian, yang dibuka satu per satu |
+| Pengaduan | Nama pelapor mode ANONIM | `CASE` pada proyeksi, bukan mengandalkan kolomnya sudah NULL |
+| Program bantuan | Nama penerima | Hanya jumlahnya; namanya dibuka per program lewat layar penerima |
+| Insiden | Terlapor dan terduga | Tabelnya memang tidak punya kolomnya — menuduh bukan kewenangan desa |
+| Tanah | Kata "pemilik" | Kolomnya `possessor_name`; kepemilikan ditetapkan BPN |
+| Wisata | Koordinat | Titik peta objek wisata menunjuk tempat umum, bukan rumah pengelolanya |
+
+### Keterangan cakupan selalu tampil pada layar kependudukan
+
+Petugas RT hanya melihat RT-nya. Ketika ia tidak melihat apa pun, sebabnya dapat
+dua: memang tidak ada yang cocok, atau kewenangannya tidak mencapai ke sana.
+Yang kedua tidak dapat diperbaiki dengan mengubah kata pencarian.
+
+Layar yang menyamakan keduanya membuat petugas mencoba berulang kali,
+menyimpulkan sistemnya rusak, lalu menelepon orang yang juga tidak tahu. Karena
+itu keterangan cakupan ikut ditampilkan — bernada netral, bukan peringatan:
+cakupan yang sempit adalah keadaan normal bagi ketua RT, dan kotak merah di atas
+layar yang ia buka setiap hari akan berhenti terbaca dalam seminggu.
+
+### Warna status ditaruh di village, bukan ditambahkan ke Core
+
+`StatusBadge` milik Core menebak warnanya dari daftar istilah Inggris. Seluruh
+status village berbahasa Indonesia, sehingga tanpa peta warna semuanya tampil
+abu-abu — dan layar yang seluruh statusnya abu-abu tidak memberi tahu apa pun
+sekilas pandang. Petanya di `kolom.tsx`, supaya perubahan istilah village tidak
+menyentuh berkas yang dipakai seluruh vertikal.
+
+### Yang TIDAK selesai
+
+Lima menu belum punya layar petugasnya, dan itu dinyatakan sebagai daftar
+pengecualian **beserta alasannya** pada `rute-desa.spec.ts` — bukan didiamkan.
+Menu-menu ini jatuh ke halaman "belum tersedia" di dalam `/app`, jawaban jujur
+alih-alih pantulan ke halaman depan:
+
+- `situs/halaman`, `situs/berita`, `situs/siaran` (D-10)
+- `ppid`, `laporan` (D-11)
+
+Pengujiannya juga memeriksa arah sebaliknya: begitu layarnya dibangun, barisnya
+wajib dihapus dari daftar pengecualian, sebab daftar pengecualian yang basi akan
+menyembunyikan menu yang sebenarnya sudah berfungsi.
+
+**Seluruh layar ini membaca, belum menulis.** Penyuntingan, persetujuan, dan
+penerbitan masih lewat API; layar tulisnya belum dibangun.
+
+### Bukti
+
+`docs/info-desa/bukti-daftar-petugas.txt` — **30 pemeriksaan** terhadap
+PostgreSQL sungguhan. Seluruh 22 daftar dijalankan, 229 kolom hasil diperiksa
+namanya, dan nilai saringan berisi perintah SQL dibuktikan diperlakukan sebagai
+teks biasa.
+
+Yang tidak dapat dibuktikan uji satuan: bahwa kuerinya benar-benar berjalan.
+Nama kolom yang ada pada migrasi tetap dapat menghasilkan SQL yang gagal karena
+gabungan yang keliru atau agregat tanpa GROUP BY.
+
+### Gerbang mutu
+
+- `jest` — **2492 tes lulus** (bertambah 22)
+- `vitest` — **94 tes lulus** (bertambah 6)
+- `vite build` — berhasil; empat potongan terpisah, terbesar 17,5 kB
+- `tsc --noEmit` dan `eslint --max-warnings=0` API dan web — bersih
