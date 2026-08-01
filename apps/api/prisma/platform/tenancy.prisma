@@ -175,6 +175,7 @@ model Tenant {
   registration      Registration?               @relation(fields: [registrationId], references: [id], onDelete: SetNull)
   schemaRegistry    TenantSchemaRegistry?
   siteDomains       VerticalSiteDomain[]
+  websites          Website[]
   memberships       TenantMembership[]
   provisioningJobs  ProvisioningJob[]
   migrationHistory  TenantSchemaMigrationHistory[]

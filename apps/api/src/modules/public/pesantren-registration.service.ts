@@ -133,7 +133,7 @@ export class PesantrenRegistrationService {
   ) {}
 
   /** Pilihan yang ditawarkan formulir. Satu sumber untuk formulir dan pemeriksa. */
-  getConfig() {
+  async getConfig() {
     return {
       tipePesantren: TIPE_PESANTREN.map((code) => ({ code, label: labelTipe(code) })),
       santriDilayani: SANTRI_DILAYANI.map((code) => ({ code, label: labelSantri(code) })),
@@ -149,8 +149,38 @@ export class PesantrenRegistrationService {
        * tempat lain. Yang dibuat peladen wajib diganti saat masuk pertama.
        */
       passwordSelaluDibuatPeladen: true,
-      hargaPerSantriPerBulan: 2000,
+      hargaPerSantriPerBulan: await this.hargaPerSantriPerBulan(),
     };
+  }
+
+  /**
+   * Harga penawaran bawaan, dibaca dari katalog harga berversi.
+   *
+   * Sebelum EP-B, angka ini tertulis langsung sebagai `2000` di sini —
+   * persis larangan §6 "menghard-code harga Rp2.000 di controller atau
+   * frontend". Sekarang dibaca dari `EPESANTREN_SCHOOL_FIRST`, katalog yang
+   * sama yang dipakai `PlatformSeedService.seedEpesantrenCatalog()`.
+   *
+   * Angka bawaan `2000` di sini HANYA dipakai bila katalognya belum diseed —
+   * misalnya pada basis data yang belum menjalankan `pnpm seed:platform`
+   * sesudah EP-B. Formulir tetap dapat digambar; yang berbeda hanyalah
+   * sumber angkanya belum otoritatif.
+   */
+  private async hargaPerSantriPerBulan(): Promise<number> {
+    const harga = await this.prisma.subscriptionPlanPrice.findFirst({
+      where: {
+        billingMetric: 'PER_ACTIVE_SANTRI',
+        isActive: true,
+        deletedAt: null,
+        planVersion: {
+          plan: { code: 'EPESANTREN_SCHOOL_FIRST' },
+          status: 'PUBLISHED',
+        },
+      },
+      orderBy: { effectiveFrom: 'desc' },
+      select: { unitPrice: true },
+    });
+    return harga ? Number(harga.unitPrice) : 2000;
   }
 
   /** Apakah alamat situs ini masih bebas? Tanpa memesan apa pun. */

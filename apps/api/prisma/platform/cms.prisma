@@ -4,6 +4,14 @@
 
 model Website {
   id                String  @id @default(uuid()) @db.Uuid
+  /// Pemilik situs. NULL berarti milik platform sendiri — sebagaimana seluruh
+  /// baris yang ada sebelum kolom ini ditambahkan (EP-C).
+  ///
+  /// Mesin CMS ini semula melayani banyak SITUS, bukan banyak PENYEWA. Tanpa
+  /// kolom ini, endpoint publik CMS tidak dapat membedakan situs platform dari
+  /// situs pondok — penghalang tepat bagi janji "berita disunting pondok
+  /// sendiri" pada halaman pemasaran santri.info.
+  tenantId          String? @map("tenant_id") @db.Uuid
   code              String  @db.VarChar(48)
   name              String  @db.VarChar(160)
   primaryDomain     String  @map("primary_domain") @db.VarChar(255)
@@ -29,6 +37,7 @@ model Website {
   deleteReason  String?   @map("delete_reason") @db.Text
   version       Int       @default(1)
 
+  tenant         Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   domains        WebsiteDomain[]
   pages          CmsPage[]
   navigations    CmsNavigation[]
@@ -40,6 +49,7 @@ model Website {
   @@unique([code])
   @@index([isActive, deletedAt])
   @@index([isSample, sampleBatchId])
+  @@index([tenantId])
   @@map("website")
   @@schema("platform")
 }

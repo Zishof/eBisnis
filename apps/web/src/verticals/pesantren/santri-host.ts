@@ -60,6 +60,14 @@ export const LABEL_TERPESAN_SANTRI = new Set([
   'assets',
   'cdn',
   'mail',
+  // EP-D: disamakan dengan LABEL_TERPESAN sisi API, diikat uji yang membaca
+  // sumbernya langsung.
+  'static',
+  'media',
+  'login',
+  'register',
+  'demo',
+  'sandbox',
 ]);
 
 /**

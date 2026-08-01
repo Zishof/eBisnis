@@ -55,3 +55,66 @@ pondok akan digambar pada halaman yang dibuka publik; tanpa pembersihan ketat,
 satu pondok dapat menjalankan skrip pada peramban pengunjung pondok lain.
 `sanitize-html` sudah ada di repositori dan dipakai `contact.service.ts` — pola
 itu yang harus diikuti.
+
+## Eskalasi — ditemukan saat EP-C mulai dikerjakan
+
+Pemeriksaan lebih lanjut menemukan cacat yang lebih dalam daripada ketiadaan
+`tenantId`, dan **mengubah urutan pengerjaan**:
+
+```text
+model CmsPage {
+  ...
+  @@unique([websiteId, slug])   // unik PER WEBSITE, bukan global
+}
+```
+
+`getPage(slug)` pada `PublicSiteService` memanggil `cmsPage.findFirst({ where:
+{ slug, ... } })` — **tanpa menyaring `websiteId`**, dan tanpa `orderBy`. Selama
+hanya ada satu `Website`, ini tidak kentara. Begitu situs kedua dibuat, dua
+pondok yang sama-sama membuat halaman berslug `tentang` akan saling menimpa
+secara acak — pengunjung pondok A dapat melihat halaman pondok B, bergantung
+urutan yang dikembalikan basis data.
+
+Lebih parah lagi:
+
+```text
+model NewsCategory { ... }   // TIDAK ADA websiteId sama sekali
+model NewsArticle  { ... }   // TIDAK ADA websiteId sama sekali
+```
+
+Berita bukan sekadar ambigu — ia **sama sekali tidak bersekat** per situs.
+`listNews()` dan `getNewsArticle()` membaca seluruh tabel `NewsArticle` tanpa
+mengenal situs mana pun. Memberi pondok kemampuan menulis berita hari ini
+berarti tulisannya tercampur dengan berita eBisnis.id di satu tabel yang sama,
+terlihat siapa pun yang memanggil endpoint publik.
+
+### Akibatnya bagi EP-C
+
+**Ditunda**, dan sengaja ditunda: membuat baris `Website` per pondok tanpa
+menyekat `CmsPage` dan `NewsArticle` lebih dulu berarti *menampilkan* menu situs
+yang tampak berfungsi, padahal kebocoran lintas-penyewa menunggu di baliknya —
+persis pola yang §6 larang: "mengklaim fitur selesai hanya karena menu sudah
+tampil".
+
+Yang **dikerjakan** pada EP-C sesi ini, karena aman dan berdiri sendiri:
+
+1. Kolom `tenant_id` pada `platform.website` — aditif, fondasi yang tetap
+   dibutuhkan.
+2. Perbaikan `getSite()`: `findFirst` disaring eksplisit `tenantId: null`. Ini
+   bukan sekadar kerapian — tanpa penyaring itu, baris `Website` bertenant yang
+   dibuat di masa depan dapat terpilih sebagai beranda eBisnis.id, tergantung
+   `sortOrder`.
+
+**EP-C2 (menyusul, prasyarat sebelum situs pondok aktif):**
+
+```text
+ALTER TABLE cms_page      ADD COLUMN tenant_id (turunan dari website_id, atau langsung)
+ALTER TABLE news_category ADD COLUMN website_id NOT NULL
+ALTER TABLE news_article  ADD COLUMN website_id NOT NULL
+getPage()         -> tambahkan websiteId ke where
+listNews()        -> tambahkan websiteId ke where
+getNewsArticle()  -> tambahkan websiteId ke where
+```
+
+Tanpa EP-C2, `SitusPondokPage.tsx` tetap menampilkan "sedang disiapkan" —
+itu keputusan yang benar, bukan yang belum sempat dikerjakan.

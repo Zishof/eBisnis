@@ -6,6 +6,11 @@ import * as argon2 from 'argon2';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { TenantMigrationService } from '../../infrastructure/provisioning/tenant-migration.service';
 import {
+  ECAMPUS_PRODUCT_CODE,
+  EPESANTREN_MODULE_CATALOG_SEED,
+  EPESANTREN_PLAN_SEED,
+  EPESANTREN_PRODUCT_CODE,
+  ESCHOOL_PRODUCT_CODE,
   FEATURE_CATALOG_SEED,
   LOCALE_SEED,
   MODULE_CATALOG_SEED,
@@ -49,6 +54,7 @@ export class PlatformSeedService {
     summary.features = await this.seedFeatures();
     summary.plans = await this.seedPlans();
     summary.addOns = await this.seedAddOns();
+    summary.epesantrenCatalog = await this.seedEpesantrenCatalog();
     summary.discounts = await this.seedDiscountPrograms();
     summary.paymentChannels = await this.seedPaymentProvider();
     summary.migrationCatalog = await this.seedMigrationCatalog();
@@ -676,6 +682,175 @@ export class PlatformSeedService {
       }
     }
     return SUBSCRIPTION_PLAN_SEED.length;
+  }
+
+  /**
+   * Katalog produk dan paket ePesantren (EP-B, §8.2, §13.1).
+   *
+   * Terpisah dari `seedPlans()` karena metrik harganya berbeda
+   * (`PER_ACTIVE_SANTRI`, bukan `PER_POS_DEVICE`) dan produknya bukan lisensi
+   * perangkat. Menggabungkannya memaksa `seedPlans()` menebak metrik dari nama
+   * paket.
+   *
+   * Tiga produk diseed (§8.2: EPESANTREN, ESCHOOL, ECAMPUS) supaya katalog
+   * produk sudah benar sejak awal, tetapi **hanya EPESANTREN yang memperoleh
+   * paket**. ESCHOOL dan ECAMPUS sengaja dibiarkan tanpa paket — keduanya
+   * belum punya modul yang dapat ditagih, dan paket tanpa isi adalah tagihan
+   * untuk sesuatu yang tidak ada.
+   */
+  private async seedEpesantrenCatalog(): Promise<number> {
+    for (const [code, name] of [
+      [EPESANTREN_PRODUCT_CODE, 'ePesantren'],
+      [ESCHOOL_PRODUCT_CODE, 'eSchool'],
+      [ECAMPUS_PRODUCT_CODE, 'eCampus'],
+    ] as const) {
+      await this.prisma.subscriptionProduct.upsert({
+        where: { code },
+        create: {
+          code,
+          name,
+          nameKey: `product.${code.toLowerCase()}`,
+          productType: 'SUBSCRIPTION',
+          defaultTrialDays: 30,
+          isSystem: true,
+        },
+        update: { name },
+      });
+    }
+
+    for (const mod of EPESANTREN_MODULE_CATALOG_SEED) {
+      await this.prisma.moduleCatalog.upsert({
+        where: { code: mod.code },
+        create: {
+          code: mod.code,
+          name: mod.name,
+          nameKey: `module.${mod.code.toLowerCase()}`,
+          descriptionKey: `module.${mod.code.toLowerCase()}.desc`,
+          category: mod.category,
+          icon: mod.icon,
+          dependsOn: ((mod as { dependsOn?: string[] }).dependsOn ?? []) as Prisma.InputJsonValue,
+          sortOrder: mod.sortOrder,
+          isSystem: true,
+        },
+        update: {
+          name: mod.name,
+          category: mod.category,
+          icon: mod.icon,
+          sortOrder: mod.sortOrder,
+        },
+      });
+    }
+
+    const product = await this.prisma.subscriptionProduct.findUniqueOrThrow({
+      where: { code: EPESANTREN_PRODUCT_CODE },
+    });
+    const modules = await this.prisma.moduleCatalog.findMany({
+      where: { code: { in: EPESANTREN_MODULE_CATALOG_SEED.map((m) => m.code) } },
+      select: { id: true, code: true },
+    });
+    const moduleMap = new Map(modules.map((m) => [m.code, m.id]));
+
+    const planSeed = EPESANTREN_PLAN_SEED;
+    const effectiveFrom = new Date('2026-08-01T00:00:00.000Z');
+
+    const plan = await this.prisma.subscriptionPlan.upsert({
+      where: { code: planSeed.code },
+      create: {
+        productId: product.id,
+        code: planSeed.code,
+        name: planSeed.name,
+        nameKey: `plan.${planSeed.code.toLowerCase()}`,
+        descriptionKey: `plan.${planSeed.code.toLowerCase()}.desc`,
+        metadata: { description: planSeed.description },
+        status: 'PUBLISHED',
+        isPublic: true,
+        isRecommended: planSeed.isRecommended,
+        sortOrder: planSeed.sortOrder,
+      },
+      update: {
+        name: planSeed.name,
+        isRecommended: planSeed.isRecommended,
+        sortOrder: planSeed.sortOrder,
+        status: 'PUBLISHED',
+        metadata: { description: planSeed.description },
+      },
+    });
+
+    const existingVersion = await this.prisma.subscriptionPlanVersion.findUnique({
+      where: { planId_versionNumber: { planId: plan.id, versionNumber: 1 } },
+    });
+    const version =
+      existingVersion ??
+      (await this.prisma.subscriptionPlanVersion.create({
+        data: {
+          planId: plan.id,
+          versionNumber: 1,
+          status: 'PUBLISHED',
+          effectiveFrom,
+          futureModulePolicy: 'SNAPSHOT_AT_VERSION',
+          tenantWidePolicy: 'ANY_ACTIVE_ITEM',
+          trialDays: 30,
+          gracePeriodDays: 7,
+          publishedAt: new Date(),
+          changeNote: 'Seed paket awal ePesantren (EP-B).',
+        },
+      }));
+
+    for (const [index, entry] of planSeed.modules.entries()) {
+      const moduleId = moduleMap.get(entry.code);
+      if (!moduleId) continue;
+      await this.prisma.subscriptionPlanModule.upsert({
+        where: { planVersionId_moduleId: { planVersionId: version.id, moduleId } },
+        create: {
+          planVersionId: version.id,
+          moduleId,
+          entitlementScope: entry.scope,
+          included: true,
+          sortOrder: index + 1,
+        },
+        update: { entitlementScope: entry.scope, included: true },
+      });
+    }
+
+    await this.prisma.subscriptionPlanPrice.upsert({
+      where: {
+        planVersionId_currencyCode_billingMetric_billingInterval_intervalCount_effectiveFrom: {
+          planVersionId: version.id,
+          currencyCode: 'IDR',
+          billingMetric: 'PER_ACTIVE_SANTRI',
+          billingInterval: 'MONTH',
+          intervalCount: 1,
+          effectiveFrom,
+        },
+      },
+      create: {
+        planVersionId: version.id,
+        currencyCode: 'IDR',
+        billingMetric: 'PER_ACTIVE_SANTRI',
+        billingInterval: 'MONTH',
+        intervalCount: 1,
+        unitPrice: new Prisma.Decimal(planSeed.unitPrice),
+        minimumQty: 1,
+        effectiveFrom,
+      },
+      update: { unitPrice: new Prisma.Decimal(planSeed.unitPrice) },
+    });
+
+    for (const constraint of planSeed.constraints) {
+      await this.prisma.subscriptionPlanConstraint.upsert({
+        where: {
+          planVersionId_constraintType: { planVersionId: version.id, constraintType: constraint.type },
+        },
+        create: {
+          planVersionId: version.id,
+          constraintType: constraint.type,
+          numericValue: constraint.value,
+        },
+        update: { numericValue: constraint.value },
+      });
+    }
+
+    return 1;
   }
 
   private async seedAddOns(): Promise<number> {

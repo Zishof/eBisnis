@@ -13,7 +13,17 @@ export class PublicSiteService {
 
   async getSite(localeCode: string) {
     const website = await this.prisma.website.findFirst({
-      where: { isActive: true, deletedAt: null },
+      /*
+       * `tenantId: null` dijaga eksplisit sejak EP-C.
+       *
+       * Sejak situs pondok pesantren memperoleh baris `Website` miliknya
+       * sendiri, tabel ini memuat situs platform DAN situs penyewa sekaligus.
+       * Tanpa penyaring ini, `findFirst` yang diurutkan `sortOrder` dapat
+       * mengembalikan situs sebuah pondok sebagai beranda eBisnis.id — dan
+       * kesalahannya baru terlihat sebagai "beranda menampilkan nama pondok
+       * yang salah", bukan sebagai galat.
+       */
+      where: { isActive: true, deletedAt: null, tenantId: null },
       orderBy: { sortOrder: 'asc' },
       include: {
         navigations: {

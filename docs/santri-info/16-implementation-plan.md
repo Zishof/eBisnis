@@ -11,25 +11,41 @@ pertama.
 dan pendaftaran santri. Tanpa ini seluruh EP lain tidak punya pijakan. Ini
 pekerjaan terbesar dan harus didahulukan.
 
-## Yang dapat dikerjakan segera, tanpa menunggu EP-A
+## Status EP-B, EP-C, EP-D — dikerjakan pada sesi ini
 
-Ketiganya bersandar pada mesin yang sudah matang:
+**EP-B — DONE.** Produk `EPESANTREN`/`ESCHOOL`/`ECAMPUS` dan paket
+`EPESANTREN_SCHOOL_FIRST` (Rp 2.000, metrik `PER_ACTIVE_SANTRI`) tersimpan di
+katalog harga berversi. `getConfig()` pada pendaftaran pesantren kini membaca
+harga dari sana, bukan konstanta. Dibuktikan dengan mengubah harga langsung di
+basis data ke Rp 2.500 dan melihat endpoint publik ikut berubah, lalu
+dikembalikan ke Rp 2.000. Paket hanya menyertakan dua modul yang audit ini
+catat `DONE` (`EPESANTREN_FOUNDATION`, `EPESANTREN_ONBOARDING`) — bukan seluruh
+39 modul, sesuai larangan §6 mengklaim modul yang belum ada.
 
-**EP-B — Katalog produk dan paket.** Seed `EPESANTREN`, `ESCHOOL`, `ECAMPUS`,
-dan paket `EPESANTREN_SCHOOL_FIRST` Rp 2.000 per santri aktif per bulan ke
-katalog harga berversi. Memindahkan angka dari halaman pemasaran ke tempat
-seharusnya, memenuhi §13.1.
+**EP-C — SEBAGIAN, sengaja dihentikan di sini.** Kolom `tenant_id` pada
+`platform.website` sudah ada (aditif), dan `getSite()` sudah disaring eksplisit
+`tenantId: null`. Dibuktikan dengan menyisipkan baris `Website` bertenant
+`sortOrder: -999` langsung ke basis data — tanpa perbaikan, baris itu akan
+memenangkan pengurutan dan tampil sebagai beranda eBisnis.id; dengan perbaikan,
+beranda tetap benar.
 
-**EP-C — Kepemilikan penyewa pada CMS.** Kolom `tenant_id` yang boleh null pada
-`platform.website`, pencarian situs dari host, dan penjaga kepemilikan. Membuka
-janji "berita disunting pondok sendiri" yang sudah tertulis.
+Yang **tidak** dikerjakan, dan sengaja: membuat situs CMS per pondok.
+Investigasi menemukan `CmsPage.slug` hanya unik per situs sementara `getPage()`
+tidak menyaring situs sama sekali, dan `NewsArticle`/`NewsCategory` tidak punya
+kolom situs sama sekali — bukan ambigu, tidak bersekat sama sekali. Lihat
+eskalasi pada `09-cms-and-tenant-website-analysis.md`. Membangun di atas
+fondasi yang bocor lebih berbahaya daripada menunda.
 
-**EP-D — Label terpesan lengkap.** Enam label kurang, dua sisi, beserta ujinya.
-Kecil, dan menutup risiko R5.
+**EP-D — DONE.** Enam label terpesan yang kurang (`static`, `media`, `login`,
+`register`, `demo`, `sandbox`) ditambahkan di kedua sisi — API dan peramban —
+dan diikat uji yang membaca satu sama lain. Dibuktikan lewat pendaftaran
+sungguhan: `login`, `demo`, `sandbox` kini ditolak sebagai alamat situs pondok.
 
 ## Sesudah EP-A
 
 ```text
+EP-C2  Sekat situs per penyewa pada CmsPage dan NewsArticle (prasyarat sebelum
+       situs pondok aktif — lihat eskalasi pada dokumen 09)
 EP-E   Presensi
 EP-F   Tagihan pendidikan di atas mesin faktur
 EP-G   Asrama dan penempatan kamar

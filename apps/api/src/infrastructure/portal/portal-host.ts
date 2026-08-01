@@ -56,6 +56,16 @@ export const LABEL_TERPESAN = new Set([
   'assets',
   'cdn',
   'mail',
+  // Ditambahkan EP-D: perintah master §9.2 meminta 18 label, sebelumnya baru
+  // 12 yang ada di sini. Enam berikut kurang, dan kekurangannya bukan
+  // kerapian — subdomain semacam `login.ebisnis.id` yang direbut penyewa akan
+  // membingungkan pengunjung yang menuju halaman masuk resmi.
+  'static',
+  'media',
+  'login',
+  'register',
+  'demo',
+  'sandbox',
 ]);
 
 /** Benar bila slug penyewa boleh dipakai sebagai subdomain. */
