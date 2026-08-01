@@ -1,0 +1,286 @@
+name: Rilis POS
+
+# Membangun dan menerbitkan klien kasir untuk Windows dan Android.
+#
+# Dijalankan oleh tag berlingkup, misalnya `pos-v1.2.0`. Berlingkup karena repo
+# ini memuat banyak aplikasi; klien kasir tidak boleh ikut terbit setiap kali
+# ada tag lain. Awalannya dikupas kembali oleh `bersihkanTag` di sisi aplikasi.
+#
+# `workflow_dispatch` membangun tanpa menerbitkan apa pun — untuk memastikan
+# pemasangnya benar-benar jadi sebelum sebuah tag dibuat.
+
+on:
+  push:
+    tags: ['pos-v*']
+  workflow_dispatch:
+    inputs:
+      versi:
+        description: 'Versi untuk uji bangun (tidak diterbitkan)'
+        required: false
+        default: '0.0.0-uji'
+
+concurrency:
+  group: rilis-pos-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: '3.27.1'
+  JALUR: apps/pos-flutter
+
+jobs:
+  uji:
+    name: Uji sebelum dibangun
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Ambil dependensi
+        working-directory: ${{ env.JALUR }}
+        run: flutter pub get
+
+      - name: Analisis
+        working-directory: ${{ env.JALUR }}
+        run: flutter analyze
+
+      # Termasuk vektor konformansi yang mengikat aturan uang klien ini dengan
+      # klien web. Rilis yang lolos di sini tidak mungkin menghitung uang berbeda
+      # dari kasir web.
+      - name: Uji
+        working-directory: ${{ env.JALUR }}
+        run: flutter test
+
+  windows:
+    name: Bangun pemasang Windows
+    needs: uji
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Tentukan versi
+        id: versi
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            nilai="${GITHUB_REF_NAME#pos-v}"
+          else
+            nilai="${{ github.event.inputs.versi }}"
+          fi
+          echo "nilai=$nilai" >> "$GITHUB_OUTPUT"
+          echo "Versi: $nilai"
+
+      - name: Bangun
+        working-directory: ${{ env.JALUR }}
+        run: |
+          flutter pub get
+          flutter build windows --release --dart-define=VERSI=${{ steps.versi.outputs.nilai }}
+
+      # Inno Setup sudah terpasang pada runner windows-latest. Diperiksa tegas
+      # supaya kegagalannya berbunyi jelas, bukan berakhir sebagai rilis tanpa
+      # berkas .exe yang baru ketahuan ketika seseorang mencoba mengunduhnya.
+      - name: Rakit pemasang
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup tidak ditemukan di $iscc"
+          }
+          & $iscc `
+            "/DVersi=${{ steps.versi.outputs.nilai }}" `
+            "/DSumber=$PWD\${{ env.JALUR }}\build\windows\x64\runner\Release" `
+            "/DKeluaran=$PWD\keluaran" `
+            "${{ env.JALUR }}\windows\pemasang.iss"
+          Get-ChildItem keluaran
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pemasang-windows
+          path: keluaran/*.exe
+          if-no-files-found: error
+
+  android:
+    name: Bangun APK Android
+    needs: uji
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      ditandatangani: ${{ steps.kunci.outputs.ada }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Tentukan versi
+        id: versi
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            nilai="${GITHUB_REF_NAME#pos-v}"
+          else
+            nilai="${{ github.event.inputs.versi }}"
+          fi
+          echo "nilai=$nilai" >> "$GITHUB_OUTPUT"
+
+      # Kunci rilis Android bersifat PERMANEN: Android menolak memasang
+      # pembaruan yang ditandatangani kunci berbeda dari yang terpasang, dan
+      # satu-satunya jalan keluarnya adalah mencopot aplikasinya — yang berarti
+      # menghapus buku transaksi luring yang belum terkirim.
+      #
+      # Karena itu APK berkunci debug TIDAK PERNAH dilampirkan ke rilis. Tanpa
+      # rahasia penandatanganan, APK-nya tetap dibangun tetapi hanya menjadi
+      # artefak workflow, dan rilisnya mengatakan mengapa APK-nya tidak ada.
+      - name: Siapkan kunci penandatanganan
+        id: kunci
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "ada=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::ANDROID_KEYSTORE_BASE64 belum disetel — APK dibangun dengan kunci debug dan TIDAK akan dilampirkan ke rilis."
+            exit 0
+          fi
+          if [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_PASSWORD" ] || [ -z "$KEY_ALIAS" ]; then
+            echo "::error::Keystore ada tetapi kata sandi atau alias belum lengkap."
+            exit 1
+          fi
+          echo "$KEYSTORE" | base64 -d > "${JALUR}/android/rilis.jks"
+          {
+            echo "storeFile=rilis.jks"
+            echo "storePassword=${STORE_PASSWORD}"
+            echo "keyPassword=${KEY_PASSWORD}"
+            echo "keyAlias=${KEY_ALIAS}"
+          } > "${JALUR}/android/key.properties"
+          echo "ada=true" >> "$GITHUB_OUTPUT"
+
+      # `--build-number` wajib naik setiap rilis. Android menolak memasang APK
+      # dengan versionCode yang sama atau lebih kecil daripada yang terpasang,
+      # dan `pubspec.yaml` tidak memuat nomor bangun.
+      - name: Bangun APK
+        working-directory: ${{ env.JALUR }}
+        run: |
+          flutter pub get
+          flutter build apk --release \
+            --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
+            --build-name=${{ steps.versi.outputs.nilai }} \
+            --build-number=${{ github.run_number }}
+          mkdir -p "${GITHUB_WORKSPACE}/keluaran"
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             "${GITHUB_WORKSPACE}/keluaran/ebisnis-pos-${{ steps.versi.outputs.nilai }}.apk"
+
+      - name: Hapus kunci dari runner
+        if: always()
+        run: rm -f "${JALUR}/android/key.properties" "${JALUR}/android/rilis.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-android
+          path: keluaran/*.apk
+          if-no-files-found: error
+
+  terbitkan:
+    name: Terbitkan rilis
+    if: github.event_name == 'push'
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: berkas
+
+      - name: Susun daftar berkas
+        id: berkas
+        env:
+          DITANDATANGANI: ${{ needs.android.outputs.ditandatangani }}
+        run: |
+          daftar=$(ls berkas/pemasang-windows/*.exe)
+          if [ "$DITANDATANGANI" = "true" ]; then
+            daftar="$daftar $(ls berkas/apk-android/*.apk)"
+          else
+            echo "::warning::APK tidak dilampirkan: dibangun dengan kunci debug."
+          fi
+          echo "daftar=$daftar" >> "$GITHUB_OUTPUT"
+
+      # Peringatan yang tidak dapat diabaikan diam-diam.
+      #
+      # Rilis pada repo privat TIDAK dapat diunduh publik: pengunduhnya harus
+      # punya akses repo. Alur ini tetap berjalan, tetapi mengatakannya pada
+      # ringkasan supaya tidak ada yang mengira tautannya sudah dapat dibagikan.
+      - name: Periksa keterbukaan repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          visibilitas=$(gh repo view --json visibility --jq .visibility)
+          if [ "$visibilitas" != "PUBLIC" ]; then
+            echo "::warning::Repo $visibilitas — aset rilis hanya dapat diunduh oleh yang punya akses repo, BUKAN publik."
+            {
+              echo "## Aset ini belum dapat diunduh publik"
+              echo
+              echo "Repo bersifat **$visibilitas**. Tautan unduhan hanya bekerja bagi akun"
+              echo "yang punya akses repo."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Terbitkan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DITANDATANGANI: ${{ needs.android.outputs.ditandatangani }}
+          DAFTAR: ${{ steps.berkas.outputs.daftar }}
+        run: |
+          versi="${GITHUB_REF_NAME#pos-v}"
+          catatan="catatan.md"
+          {
+            echo "## eBisnis POS $versi"
+            echo
+            echo "Klien kasir untuk Windows dan tablet Android."
+            echo
+            echo "| Berkas | Untuk |"
+            echo "| --- | --- |"
+            echo "| \`ebisnis-pos-$versi-windows.exe\` | Windows 64-bit — pemasang, dijalankan tanpa hak administrator |"
+            if [ "$DITANDATANGANI" = "true" ]; then
+              echo "| \`ebisnis-pos-$versi.apk\` | Android — pasang langsung dari berkas |"
+            else
+              echo
+              echo "> **APK Android belum tersedia pada rilis ini.** Rahasia penandatanganan"
+              echo "> belum disetel, dan APK berkunci debug tidak boleh diterbitkan: ia tidak"
+              echo "> akan pernah dapat diperbarui menjadi APK berkunci rilis tanpa mencopot"
+              echo "> aplikasinya — yang menghapus buku transaksi luring yang belum terkirim."
+            fi
+            echo
+            echo "Tulis \`[WAJIB]\` pada catatan rilis bila versi ini menutup cacat yang"
+            echo "tidak boleh dibiarkan berjalan pada mesin kasir."
+          } > "$catatan"
+
+          # shellcheck disable=SC2086 -- daftar berkas memang dipecah per spasi
+          gh release create "$GITHUB_REF_NAME" \
+            --title "eBisnis POS $versi" \
+            --notes-file "$catatan" \
+            $DAFTAR

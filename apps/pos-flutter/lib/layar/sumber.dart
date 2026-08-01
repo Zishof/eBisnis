@@ -1,0 +1,148 @@
+/// Sumber data dan perangkat yang dipakai layar kasir.
+///
+/// Ditulis sebagai antarmuka, bukan implementasi, dengan satu alasan: bagian
+/// yang menentukan pada layar kasir — apa yang terjadi ketika barang dipindai,
+/// ketika kembalian dihitung, ketika laci dibuka — dapat dibuktikan tanpa
+/// peladen, tanpa printer, dan tanpa mesin kasir sungguhan.
+///
+/// Implementasi aslinya (HTTP, SQLite, USB, serial) menyusul, dan masing-masing
+/// hanya perlu membuktikan bahwa ia menyalurkan data dengan benar — bukan bahwa
+/// aturan kasirnya benar, sebab itu sudah dijaga di tempat lain.
+library;
+
+import '../aturan/harga_luring.dart';
+
+/// Satu produk pada salinan katalog di mesin ini.
+class ProdukLokal {
+  const ProdukLokal({
+    required this.productId,
+    required this.nama,
+    required this.harga,
+    required this.barcodes,
+    this.uomId,
+    this.taxRateId,
+    this.kategori,
+    this.varian,
+    this.stok,
+    this.favorit = false,
+  });
+
+  final String productId;
+  final String nama;
+
+  /// Harga beku dari salinan katalog. Peramban maupun klien ini tidak pernah
+  /// menghitungnya sendiri.
+  final String harga;
+  final List<String> barcodes;
+  final String? uomId;
+  final String? taxRateId;
+
+  /// Kategori untuk penyaring di atas kisi produk. Null berarti tidak
+  /// berkategori, dan produknya hanya muncul pada "Semua".
+  final String? kategori;
+
+  /// Keterangan varian yang tampil di bawah nama, misalnya `Reguler`, `Slice`.
+  final String? varian;
+
+  /// Sisa stok pada salinan katalog, atau **null bila tidak diketahui**.
+  ///
+  /// Dibedakan tegas dari nol. Salinan katalog tidak selalu membawa stok, dan
+  /// menampilkan "Stok 0" untuk stok yang tidak diketahui membuat kasir menolak
+  /// menjual barang yang sebenarnya ada di rak.
+  final int? stok;
+
+  /// Ditandai kasir atau gerai sebagai barang yang paling sering terjual.
+  final bool favorit;
+}
+
+/// Salinan katalog di mesin kasir.
+///
+/// Diturunkan dengan `extends`, bukan `implements`: sebagian anggotanya sudah
+/// punya isi bawaan yang cukup, dan `implements` menuntut seluruhnya ditulis
+/// ulang — termasuk yang tidak perlu diubah.
+abstract class SumberKatalog {
+  /// Produk untuk sebuah barcode, atau null bila tidak ada pada salinan.
+  ///
+  /// Barcode utama dan alternatif diperlakukan sama: pemindai tidak tahu
+  /// bedanya, dan kasir tidak seharusnya perlu tahu.
+  ProdukLokal? dariBarcode(String kode);
+
+  /// Pencarian menurut nama untuk kasir yang mengetik, bukan memindai.
+  List<ProdukLokal> cari(String kunci);
+
+  /// Seluruh produk pada salinan, untuk kisi yang ditekan kasir dengan jari.
+  ///
+  /// Bawaannya adalah pencarian dengan kunci kosong, sehingga implementasi yang
+  /// sudah ada tidak perlu berubah. Sumber yang katalognya besar sebaiknya
+  /// menimpanya dengan pembacaan berhalaman.
+  List<ProdukLokal> semua() => cari('');
+
+  /// Kategori yang benar-benar dipakai produk pada salinan ini.
+  ///
+  /// Diturunkan, bukan didaftar terpisah: daftar kategori yang disimpan sendiri
+  /// akan memuat kategori kosong — penyaring yang ditekan lalu tidak
+  /// menampilkan apa pun, dan kasir menyimpulkan aplikasinya rusak.
+  List<String> kategori() {
+    final terpakai = <String>{};
+    for (final p in semua()) {
+      final k = p.kategori;
+      if (k != null && k.trim().isNotEmpty) terpakai.add(k);
+    }
+    final urut = terpakai.toList()..sort();
+    return urut;
+  }
+
+  /// Tarif pajak yang berlaku, dari salinan yang sama dengan harganya.
+  List<TarifLuring> get tarif;
+
+  String get mataUang;
+}
+
+/// Metode pembayaran sebagaimana tersalin dari peladen.
+class MetodeBayar {
+  const MetodeBayar({
+    required this.id,
+    required this.nama,
+    required this.memberiKembalian,
+  });
+
+  final String id;
+  final String nama;
+
+  /// Hanya tunai yang memberi kembalian. Menebaknya di sini berarti aturannya
+  /// tertulis dua kali dan cepat atau lambat berbeda dari peladen.
+  final bool memberiKembalian;
+}
+
+/// Printer struk, sekaligus jalan membuka laci kas.
+abstract class Pencetak {
+  /// Mengirim byte ESC/POS apa adanya.
+  ///
+  /// Sengaja hanya menerima byte: seluruh penyusunan perintah ada di
+  /// `perangkat/escpos.dart` yang murni dan teruji. Antarmuka yang menerima
+  /// "struk" sebagai objek akan memindahkan sebagian penyusunan ke sini, ke
+  /// tempat yang hanya dapat dibuktikan dengan mencetak sungguhan.
+  Future<void> kirim(List<int> byte);
+
+  /// Benar bila printernya terpasang dan menjawab.
+  ///
+  /// Dipakai layar untuk mengatakan apa adanya ketika struk tidak dapat
+  /// tercetak — kasir yang menunggu struk keluar dari printer yang mati akan
+  /// menekan tombol cetak berulang kali.
+  bool get siap;
+}
+
+/// Pencetak yang tidak melakukan apa pun.
+///
+/// Dipakai ketika mesin kasir memang tidak punya printer — misalnya tablet yang
+/// hanya menampilkan struk di layar. Ia melaporkan dirinya TIDAK siap, sehingga
+/// layar mengatakan struk tidak tercetak alih-alih diam.
+class TanpaPencetak implements Pencetak {
+  const TanpaPencetak();
+
+  @override
+  bool get siap => false;
+
+  @override
+  Future<void> kirim(List<int> byte) async {}
+}

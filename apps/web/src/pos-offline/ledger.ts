@@ -167,6 +167,28 @@ export async function hashMuatan(m: MuatanTransaksi): Promise<string> {
  * setelah baris dibuat (PENDING menjadi SYNCED). Yang tidak boleh berubah
  * adalah isi transaksinya.
  */
+/**
+ * Pemisah antar-medan pada bahan hash.
+ *
+ * Ditulis sebagai escape `\u001F`, BUKAN sebagai karakter harfiah.
+ *
+ * Semula ia memang karakter U+001F yang diketik langsung di dalam tanda kutip.
+ * Karena tidak dapat dicetak, barisnya terbaca `.join('')` pada editor, diff,
+ * dan tinjauan kode mana pun — sehingga siapa pun yang merapikan tanda kutip itu
+ * akan mengubah SETIAP hash dan membatalkan seluruh rantai yang sudah tercatat,
+ * dengan diff yang tampak tidak berubah sama sekali.
+ *
+ * Pemisahnya sendiri memang diperlukan. Tanpa pemisah, dua baris yang berbeda
+ * dapat menghasilkan teks yang sama: outlet "AB" dengan terminal "C" tidak
+ * dapat dibedakan dari outlet "A" dengan terminal "BC", dan keduanya lalu
+ * menghasilkan hash yang identik. U+001F dipilih karena ia tidak mungkin muncul
+ * di dalam id, tanggal, maupun nilai uang.
+ *
+ * Nilainya TIDAK boleh diubah: mengubahnya membatalkan seluruh buku besar yang
+ * sudah tercatat pada mesin kasir mana pun.
+ */
+const PEMISAH_MEDAN = '\u001F';
+
 export function bahanHash(c: MedanTertutup): string {
   return [
     c.sequence,
@@ -190,7 +212,7 @@ export function bahanHash(c: MedanTertutup): string {
      * dipertanyakan keutuhannya.
      */
     c.payloadHash ?? '',
-  ].join('');
+  ].join(PEMISAH_MEDAN);
 }
 
 /** SHA-256 sebagai heksadesimal. Memakai WebCrypto yang ada di peramban. */

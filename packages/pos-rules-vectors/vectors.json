@@ -1,0 +1,975 @@
+{
+  "$comment": "Vektor konformansi aturan kasir luring. Dibangkitkan scripts/buat-vektor-aturan.mjs; JANGAN disunting dengan tangan. Setiap implementasi klien kasir wajib menghasilkan keluaran yang sama persis dari masukan yang sama. Lihat ADR-012.",
+  "generatedFrom": "apps/web/src/pos-offline",
+  "now": 1800000000000,
+  "satuanTerkecil": [
+    {
+      "teks": "18000",
+      "pecahan": 1,
+      "satuan": 18000,
+      "kembali": "18000"
+    },
+    {
+      "teks": "18000",
+      "pecahan": 100,
+      "satuan": 1800000,
+      "kembali": "18000.00"
+    },
+    {
+      "teks": "18000.0000",
+      "pecahan": 1,
+      "satuan": 18000,
+      "kembali": "18000"
+    },
+    {
+      "teks": "18000.0000",
+      "pecahan": 100,
+      "satuan": 1800000,
+      "kembali": "18000.00"
+    },
+    {
+      "teks": "12.34",
+      "pecahan": 1,
+      "satuan": 12,
+      "kembali": "12"
+    },
+    {
+      "teks": "12.34",
+      "pecahan": 100,
+      "satuan": 1234,
+      "kembali": "12.34"
+    },
+    {
+      "teks": "12.3400",
+      "pecahan": 1,
+      "satuan": 12,
+      "kembali": "12"
+    },
+    {
+      "teks": "12.3400",
+      "pecahan": 100,
+      "satuan": 1234,
+      "kembali": "12.34"
+    },
+    {
+      "teks": "12.345",
+      "pecahan": 1,
+      "satuan": 12,
+      "kembali": "12"
+    },
+    {
+      "teks": "12.345",
+      "pecahan": 100,
+      "satuan": 1235,
+      "kembali": "12.35"
+    },
+    {
+      "teks": "12.344",
+      "pecahan": 1,
+      "satuan": 12,
+      "kembali": "12"
+    },
+    {
+      "teks": "12.344",
+      "pecahan": 100,
+      "satuan": 1234,
+      "kembali": "12.34"
+    },
+    {
+      "teks": "1.005",
+      "pecahan": 1,
+      "satuan": 1,
+      "kembali": "1"
+    },
+    {
+      "teks": "1.005",
+      "pecahan": 100,
+      "satuan": 101,
+      "kembali": "1.01"
+    },
+    {
+      "teks": "0.05",
+      "pecahan": 1,
+      "satuan": 0,
+      "kembali": "0"
+    },
+    {
+      "teks": "0.05",
+      "pecahan": 100,
+      "satuan": 5,
+      "kembali": "0.05"
+    },
+    {
+      "teks": "",
+      "pecahan": 1,
+      "satuan": 0,
+      "kembali": "0"
+    },
+    {
+      "teks": "",
+      "pecahan": 100,
+      "satuan": 0,
+      "kembali": "0.00"
+    },
+    {
+      "teks": "abc",
+      "pecahan": 1,
+      "satuan": 0,
+      "kembali": "0"
+    },
+    {
+      "teks": "abc",
+      "pecahan": 100,
+      "satuan": 0,
+      "kembali": "0.00"
+    }
+  ],
+  "pecahanMataUang": [
+    {
+      "kode": "IDR",
+      "pecahan": 1
+    },
+    {
+      "kode": "USD",
+      "pecahan": 100
+    },
+    {
+      "kode": "usd",
+      "pecahan": 100
+    },
+    {
+      "kode": "XYZ",
+      "pecahan": 100
+    }
+  ],
+  "baris": [
+    {
+      "masukan": {
+        "productId": "P1",
+        "name": "Tanpa pajak",
+        "uomId": "U1",
+        "quantity": 3,
+        "unitPrice": "18000",
+        "taxRateId": null
+      },
+      "currencyCode": "IDR",
+      "hasil": {
+        "productId": "P1",
+        "name": "Tanpa pajak",
+        "uomId": "U1",
+        "quantity": 3,
+        "unitPrice": "18000",
+        "lineSubtotal": "54000",
+        "taxAmount": "0",
+        "lineTotal": "54000",
+        "taxRateId": null
+      }
+    },
+    {
+      "masukan": {
+        "productId": "P2",
+        "name": "Pajak eksklusif",
+        "uomId": "U1",
+        "quantity": 1,
+        "unitPrice": "18000",
+        "taxRateId": "T1"
+      },
+      "currencyCode": "IDR",
+      "hasil": {
+        "productId": "P2",
+        "name": "Pajak eksklusif",
+        "uomId": "U1",
+        "quantity": 1,
+        "unitPrice": "18000",
+        "lineSubtotal": "18000",
+        "taxAmount": "1980",
+        "lineTotal": "19980",
+        "taxRateId": "T1"
+      }
+    },
+    {
+      "masukan": {
+        "productId": "P3",
+        "name": "Pajak inklusif",
+        "uomId": "U1",
+        "quantity": 1,
+        "unitPrice": "19980",
+        "taxRateId": "T2"
+      },
+      "currencyCode": "IDR",
+      "hasil": {
+        "productId": "P3",
+        "name": "Pajak inklusif",
+        "uomId": "U1",
+        "quantity": 1,
+        "unitPrice": "19980",
+        "lineSubtotal": "18000",
+        "taxAmount": "1980",
+        "lineTotal": "19980",
+        "taxRateId": "T2"
+      }
+    },
+    {
+      "masukan": {
+        "productId": "P4",
+        "name": "Pembulatan ganjil",
+        "uomId": "U1",
+        "quantity": 3,
+        "unitPrice": "3333",
+        "taxRateId": "T1"
+      },
+      "currencyCode": "IDR",
+      "hasil": {
+        "productId": "P4",
+        "name": "Pembulatan ganjil",
+        "uomId": "U1",
+        "quantity": 3,
+        "unitPrice": "3333",
+        "lineSubtotal": "9999",
+        "taxAmount": "1100",
+        "lineTotal": "11099",
+        "taxRateId": "T1"
+      }
+    },
+    {
+      "masukan": {
+        "productId": "P5",
+        "name": "Tarif tak dikenal",
+        "uomId": "U1",
+        "quantity": 2,
+        "unitPrice": "5000",
+        "taxRateId": "HILANG"
+      },
+      "currencyCode": "IDR",
+      "hasil": {
+        "productId": "P5",
+        "name": "Tarif tak dikenal",
+        "uomId": "U1",
+        "quantity": 2,
+        "unitPrice": "5000",
+        "lineSubtotal": "10000",
+        "taxAmount": "0",
+        "lineTotal": "10000",
+        "taxRateId": "HILANG"
+      }
+    }
+  ],
+  "keranjang": [
+    {
+      "label": "kosong",
+      "lines": [],
+      "currencyCode": "IDR",
+      "hasil": {
+        "lines": [],
+        "subtotal": "0",
+        "taxTotal": "0",
+        "grandTotal": "0",
+        "itemCount": 0
+      }
+    },
+    {
+      "label": "campuran tanpa dan dengan pajak",
+      "lines": [
+        {
+          "productId": "P1",
+          "name": "Tanpa pajak",
+          "uomId": "U1",
+          "quantity": 3,
+          "unitPrice": "18000",
+          "taxRateId": null
+        },
+        {
+          "productId": "P2",
+          "name": "Pajak eksklusif",
+          "uomId": "U1",
+          "quantity": 1,
+          "unitPrice": "18000",
+          "taxRateId": "T1"
+        }
+      ],
+      "currencyCode": "IDR",
+      "hasil": {
+        "lines": [
+          {
+            "productId": "P1",
+            "name": "Tanpa pajak",
+            "uomId": "U1",
+            "quantity": 3,
+            "unitPrice": "18000",
+            "lineSubtotal": "54000",
+            "taxAmount": "0",
+            "lineTotal": "54000",
+            "taxRateId": null
+          },
+          {
+            "productId": "P2",
+            "name": "Pajak eksklusif",
+            "uomId": "U1",
+            "quantity": 1,
+            "unitPrice": "18000",
+            "lineSubtotal": "18000",
+            "taxAmount": "1980",
+            "lineTotal": "19980",
+            "taxRateId": "T1"
+          }
+        ],
+        "subtotal": "72000",
+        "taxTotal": "1980",
+        "grandTotal": "73980",
+        "itemCount": 4
+      }
+    },
+    {
+      "label": "tiga baris pembulatan ganjil",
+      "lines": [
+        {
+          "productId": "P4",
+          "name": "Pembulatan ganjil",
+          "uomId": "U1",
+          "quantity": 3,
+          "unitPrice": "3333",
+          "taxRateId": "T1"
+        },
+        {
+          "productId": "P4",
+          "name": "Pembulatan ganjil",
+          "uomId": "U1",
+          "quantity": 3,
+          "unitPrice": "3333",
+          "taxRateId": "T1"
+        },
+        {
+          "productId": "P4",
+          "name": "Pembulatan ganjil",
+          "uomId": "U1",
+          "quantity": 3,
+          "unitPrice": "3333",
+          "taxRateId": "T1"
+        }
+      ],
+      "currencyCode": "IDR",
+      "hasil": {
+        "lines": [
+          {
+            "productId": "P4",
+            "name": "Pembulatan ganjil",
+            "uomId": "U1",
+            "quantity": 3,
+            "unitPrice": "3333",
+            "lineSubtotal": "9999",
+            "taxAmount": "1100",
+            "lineTotal": "11099",
+            "taxRateId": "T1"
+          },
+          {
+            "productId": "P4",
+            "name": "Pembulatan ganjil",
+            "uomId": "U1",
+            "quantity": 3,
+            "unitPrice": "3333",
+            "lineSubtotal": "9999",
+            "taxAmount": "1100",
+            "lineTotal": "11099",
+            "taxRateId": "T1"
+          },
+          {
+            "productId": "P4",
+            "name": "Pembulatan ganjil",
+            "uomId": "U1",
+            "quantity": 3,
+            "unitPrice": "3333",
+            "lineSubtotal": "9999",
+            "taxAmount": "1100",
+            "lineTotal": "11099",
+            "taxRateId": "T1"
+          }
+        ],
+        "subtotal": "29997",
+        "taxTotal": "3300",
+        "grandTotal": "33297",
+        "itemCount": 9
+      }
+    },
+    {
+      "label": "seluruh bentuk",
+      "lines": [
+        {
+          "productId": "P1",
+          "name": "Tanpa pajak",
+          "uomId": "U1",
+          "quantity": 3,
+          "unitPrice": "18000",
+          "taxRateId": null
+        },
+        {
+          "productId": "P2",
+          "name": "Pajak eksklusif",
+          "uomId": "U1",
+          "quantity": 1,
+          "unitPrice": "18000",
+          "taxRateId": "T1"
+        },
+        {
+          "productId": "P3",
+          "name": "Pajak inklusif",
+          "uomId": "U1",
+          "quantity": 1,
+          "unitPrice": "19980",
+          "taxRateId": "T2"
+        },
+        {
+          "productId": "P4",
+          "name": "Pembulatan ganjil",
+          "uomId": "U1",
+          "quantity": 3,
+          "unitPrice": "3333",
+          "taxRateId": "T1"
+        },
+        {
+          "productId": "P5",
+          "name": "Tarif tak dikenal",
+          "uomId": "U1",
+          "quantity": 2,
+          "unitPrice": "5000",
+          "taxRateId": "HILANG"
+        }
+      ],
+      "currencyCode": "IDR",
+      "hasil": {
+        "lines": [
+          {
+            "productId": "P1",
+            "name": "Tanpa pajak",
+            "uomId": "U1",
+            "quantity": 3,
+            "unitPrice": "18000",
+            "lineSubtotal": "54000",
+            "taxAmount": "0",
+            "lineTotal": "54000",
+            "taxRateId": null
+          },
+          {
+            "productId": "P2",
+            "name": "Pajak eksklusif",
+            "uomId": "U1",
+            "quantity": 1,
+            "unitPrice": "18000",
+            "lineSubtotal": "18000",
+            "taxAmount": "1980",
+            "lineTotal": "19980",
+            "taxRateId": "T1"
+          },
+          {
+            "productId": "P3",
+            "name": "Pajak inklusif",
+            "uomId": "U1",
+            "quantity": 1,
+            "unitPrice": "19980",
+            "lineSubtotal": "18000",
+            "taxAmount": "1980",
+            "lineTotal": "19980",
+            "taxRateId": "T2"
+          },
+          {
+            "productId": "P4",
+            "name": "Pembulatan ganjil",
+            "uomId": "U1",
+            "quantity": 3,
+            "unitPrice": "3333",
+            "lineSubtotal": "9999",
+            "taxAmount": "1100",
+            "lineTotal": "11099",
+            "taxRateId": "T1"
+          },
+          {
+            "productId": "P5",
+            "name": "Tarif tak dikenal",
+            "uomId": "U1",
+            "quantity": 2,
+            "unitPrice": "5000",
+            "lineSubtotal": "10000",
+            "taxAmount": "0",
+            "lineTotal": "10000",
+            "taxRateId": "HILANG"
+          }
+        ],
+        "subtotal": "109999",
+        "taxTotal": "5060",
+        "grandTotal": "115059",
+        "itemCount": 10
+      }
+    }
+  ],
+  "kembalian": [
+    {
+      "total": "50000",
+      "diserahkan": "50000",
+      "currencyCode": "IDR",
+      "hasil": {
+        "cukup": true,
+        "change": "0",
+        "kurang": "0"
+      }
+    },
+    {
+      "total": "47500",
+      "diserahkan": "50000",
+      "currencyCode": "IDR",
+      "hasil": {
+        "cukup": true,
+        "change": "2500",
+        "kurang": "0"
+      }
+    },
+    {
+      "total": "50000",
+      "diserahkan": "45000",
+      "currencyCode": "IDR",
+      "hasil": {
+        "cukup": false,
+        "change": "0",
+        "kurang": "5000"
+      }
+    },
+    {
+      "total": "0",
+      "diserahkan": "0",
+      "currencyCode": "IDR",
+      "hasil": {
+        "cukup": true,
+        "change": "0",
+        "kurang": "0"
+      }
+    }
+  ],
+  "nomorStruk": [
+    {
+      "blok": {
+        "blockId": "B1",
+        "terminalId": "REG1",
+        "outletId": "O1",
+        "prefix": "INV-",
+        "padding": 6,
+        "fromNumber": 1000,
+        "toNumber": 1099,
+        "nextNumber": 1000,
+        "allocatedAt": "2026-08-01T00:00:00.000Z",
+        "businessDate": null
+      },
+      "sisa": 100,
+      "nomor": "INV-001000",
+      "nextSesudah": 1001,
+      "penilaian": {
+        "state": "CUKUP",
+        "remaining": 100,
+        "usable": true,
+        "message": "Jatah nomor struk tersisa 100."
+      },
+      "penilaianRegisterLain": "SALAH_REGISTER"
+    },
+    {
+      "blok": {
+        "blockId": "B1",
+        "terminalId": "REG1",
+        "outletId": "O1",
+        "prefix": "INV-",
+        "padding": 6,
+        "fromNumber": 1000,
+        "toNumber": 1099,
+        "nextNumber": 1001,
+        "allocatedAt": "2026-08-01T00:00:00.000Z",
+        "businessDate": null
+      },
+      "sisa": 99,
+      "nomor": "INV-001001",
+      "nextSesudah": 1002,
+      "penilaian": {
+        "state": "CUKUP",
+        "remaining": 99,
+        "usable": true,
+        "message": "Jatah nomor struk tersisa 99."
+      },
+      "penilaianRegisterLain": "SALAH_REGISTER"
+    },
+    {
+      "blok": {
+        "blockId": "B1",
+        "terminalId": "REG1",
+        "outletId": "O1",
+        "prefix": "INV-",
+        "padding": 6,
+        "fromNumber": 1000,
+        "toNumber": 1099,
+        "nextNumber": 1099,
+        "allocatedAt": "2026-08-01T00:00:00.000Z",
+        "businessDate": null
+      },
+      "sisa": 1,
+      "nomor": "INV-001099",
+      "nextSesudah": 1100,
+      "penilaian": {
+        "state": "MENIPIS",
+        "remaining": 1,
+        "usable": true,
+        "message": "Jatah nomor struk tinggal 1. Sambungkan ke peladen untuk mengambil jatah baru."
+      },
+      "penilaianRegisterLain": "SALAH_REGISTER"
+    },
+    {
+      "blok": {
+        "blockId": "B1",
+        "terminalId": "REG1",
+        "outletId": "O1",
+        "prefix": "INV-",
+        "padding": 6,
+        "fromNumber": 1000,
+        "toNumber": 1099,
+        "nextNumber": 1100,
+        "allocatedAt": "2026-08-01T00:00:00.000Z",
+        "businessDate": null
+      },
+      "sisa": 0,
+      "nomor": null,
+      "nextSesudah": null,
+      "penilaian": {
+        "state": "HABIS",
+        "remaining": 0,
+        "usable": false,
+        "message": "Jatah nomor struk habis. Penjualan luring dihentikan sampai peladen dapat dihubungi untuk mengambil jatah baru — struk tanpa nomor tidak dapat dipertanggungjawabkan."
+      },
+      "penilaianRegisterLain": "SALAH_REGISTER"
+    }
+  ],
+  "kesegaranKatalog": [
+    {
+      "jenis": "HARGA",
+      "bagianUmur": null,
+      "level": "KOSONG",
+      "usable": false,
+      "ageMs": null
+    },
+    {
+      "jenis": "HARGA",
+      "bagianUmur": 0,
+      "level": "SEGAR",
+      "usable": true,
+      "ageMs": 0
+    },
+    {
+      "jenis": "HARGA",
+      "bagianUmur": 0.4,
+      "level": "SEGAR",
+      "usable": true,
+      "ageMs": 17280000
+    },
+    {
+      "jenis": "HARGA",
+      "bagianUmur": 0.7,
+      "level": "MENUA",
+      "usable": true,
+      "ageMs": 30240000
+    },
+    {
+      "jenis": "HARGA",
+      "bagianUmur": 1.5,
+      "level": "BASI",
+      "usable": false,
+      "ageMs": 64800000
+    },
+    {
+      "jenis": "PAJAK",
+      "bagianUmur": null,
+      "level": "KOSONG",
+      "usable": false,
+      "ageMs": null
+    },
+    {
+      "jenis": "PAJAK",
+      "bagianUmur": 0,
+      "level": "SEGAR",
+      "usable": true,
+      "ageMs": 0
+    },
+    {
+      "jenis": "PAJAK",
+      "bagianUmur": 0.4,
+      "level": "SEGAR",
+      "usable": true,
+      "ageMs": 17280000
+    },
+    {
+      "jenis": "PAJAK",
+      "bagianUmur": 0.7,
+      "level": "MENUA",
+      "usable": true,
+      "ageMs": 30240000
+    },
+    {
+      "jenis": "PAJAK",
+      "bagianUmur": 1.5,
+      "level": "BASI",
+      "usable": false,
+      "ageMs": 64800000
+    },
+    {
+      "jenis": "PRODUK",
+      "bagianUmur": null,
+      "level": "KOSONG",
+      "usable": false,
+      "ageMs": null
+    },
+    {
+      "jenis": "PRODUK",
+      "bagianUmur": 0,
+      "level": "SEGAR",
+      "usable": true,
+      "ageMs": 0
+    },
+    {
+      "jenis": "PRODUK",
+      "bagianUmur": 0.4,
+      "level": "SEGAR",
+      "usable": true,
+      "ageMs": 241920000
+    },
+    {
+      "jenis": "PRODUK",
+      "bagianUmur": 0.7,
+      "level": "MENUA",
+      "usable": true,
+      "ageMs": 423360000
+    },
+    {
+      "jenis": "PRODUK",
+      "bagianUmur": 1.5,
+      "level": "BASI",
+      "usable": false,
+      "ageMs": 907200000
+    },
+    {
+      "jenis": "BARCODE",
+      "bagianUmur": null,
+      "level": "KOSONG",
+      "usable": false,
+      "ageMs": null
+    },
+    {
+      "jenis": "BARCODE",
+      "bagianUmur": 0,
+      "level": "SEGAR",
+      "usable": true,
+      "ageMs": 0
+    },
+    {
+      "jenis": "BARCODE",
+      "bagianUmur": 0.4,
+      "level": "SEGAR",
+      "usable": true,
+      "ageMs": 241920000
+    },
+    {
+      "jenis": "BARCODE",
+      "bagianUmur": 0.7,
+      "level": "MENUA",
+      "usable": true,
+      "ageMs": 423360000
+    },
+    {
+      "jenis": "BARCODE",
+      "bagianUmur": 1.5,
+      "level": "BASI",
+      "usable": false,
+      "ageMs": 907200000
+    },
+    {
+      "jenis": "METODE_BAYAR",
+      "bagianUmur": null,
+      "level": "KOSONG",
+      "usable": false,
+      "ageMs": null
+    },
+    {
+      "jenis": "METODE_BAYAR",
+      "bagianUmur": 0,
+      "level": "SEGAR",
+      "usable": true,
+      "ageMs": 0
+    },
+    {
+      "jenis": "METODE_BAYAR",
+      "bagianUmur": 0.4,
+      "level": "SEGAR",
+      "usable": true,
+      "ageMs": 241920000
+    },
+    {
+      "jenis": "METODE_BAYAR",
+      "bagianUmur": 0.7,
+      "level": "MENUA",
+      "usable": true,
+      "ageMs": 423360000
+    },
+    {
+      "jenis": "METODE_BAYAR",
+      "bagianUmur": 1.5,
+      "level": "BASI",
+      "usable": false,
+      "ageMs": 907200000
+    }
+  ],
+  "keadaanKoneksi": [
+    {
+      "masukan": {
+        "browserOnline": true,
+        "lastReachableAt": 1799999999000,
+        "lastAttemptAt": 1800000000000,
+        "lastAttemptOk": true
+      },
+      "state": "DARING",
+      "queueing": false,
+      "warna": "hijau"
+    },
+    {
+      "masukan": {
+        "browserOnline": false,
+        "lastReachableAt": 1799999999000,
+        "lastAttemptAt": 1800000000000,
+        "lastAttemptOk": true
+      },
+      "state": "LURING",
+      "queueing": true,
+      "warna": "merah"
+    },
+    {
+      "masukan": {
+        "browserOnline": true,
+        "lastReachableAt": 1799999999000,
+        "lastAttemptAt": 1800000000000,
+        "lastAttemptOk": false
+      },
+      "state": "TERBATAS",
+      "queueing": true,
+      "warna": "kuning"
+    },
+    {
+      "masukan": {
+        "browserOnline": true,
+        "lastReachableAt": null,
+        "lastAttemptAt": null,
+        "lastAttemptOk": null
+      },
+      "state": "MEMERIKSA",
+      "queueing": false,
+      "warna": "kelabu"
+    },
+    {
+      "masukan": {
+        "browserOnline": true,
+        "lastReachableAt": 1799999970000,
+        "lastAttemptAt": 1800000000000,
+        "lastAttemptOk": true
+      },
+      "state": "DARING",
+      "queueing": false,
+      "warna": "hijau"
+    },
+    {
+      "masukan": {
+        "browserOnline": true,
+        "lastReachableAt": 1799999969999,
+        "lastAttemptAt": 1800000000000,
+        "lastAttemptOk": true
+      },
+      "state": "TERBATAS",
+      "queueing": true,
+      "warna": "kuning"
+    }
+  ],
+  "jedaPercobaan": [
+    {
+      "gagal": 0,
+      "jedaMs": 5000
+    },
+    {
+      "gagal": 1,
+      "jedaMs": 2000
+    },
+    {
+      "gagal": 2,
+      "jedaMs": 4000
+    },
+    {
+      "gagal": 3,
+      "jedaMs": 8000
+    },
+    {
+      "gagal": 5,
+      "jedaMs": 30000
+    },
+    {
+      "gagal": 10,
+      "jedaMs": 30000
+    },
+    {
+      "gagal": 50,
+      "jedaMs": 30000
+    }
+  ],
+  "bahanHash": {
+    "hashAwal": "0000000000000000000000000000000000000000000000000000000000000000",
+    "muatan": {
+      "lines": [
+        {
+          "productId": "P1",
+          "uomId": "U1",
+          "quantity": 2,
+          "unitPrice": "18000",
+          "lineSubtotal": "36000",
+          "taxAmount": "0",
+          "lineTotal": "36000",
+          "taxRateId": null
+        },
+        {
+          "productId": "P2",
+          "uomId": null,
+          "quantity": 1,
+          "unitPrice": "8000",
+          "lineSubtotal": "8000",
+          "taxAmount": "880",
+          "lineTotal": "8880",
+          "taxRateId": "T1"
+        }
+      ],
+      "payments": [
+        {
+          "paymentMethodId": "TUNAI",
+          "amount": "44880",
+          "tenderedAmount": "50000",
+          "reference": null
+        }
+      ],
+      "subtotal": "44000",
+      "taxTotal": "880",
+      "changeTotal": "5120",
+      "currencyCode": "IDR",
+      "catalogSyncedAt": "2026-08-01T00:00:00.000Z"
+    },
+    "bahanMuatan": "P1|U1|2|18000|36000|0|36000|;P2||1|8000|8000|880|8880|T1#TUNAI|44880|50000|#44000#880#5120#IDR#2026-08-01T00:00:00.000Z",
+    "barisTanpaMuatan": {
+      "offlineId": "off-1",
+      "sequence": 1,
+      "outletId": "O1",
+      "terminalId": "T1",
+      "shiftId": "S1",
+      "businessDate": "2026-08-01",
+      "grandTotal": "44880",
+      "itemCount": 3,
+      "occurredAt": "2026-08-01T01:00:00.000Z",
+      "receiptNumber": "ST-000001",
+      "previousHash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "bahanTanpaMuatan": "1\u001foff-1\u001fO1\u001fT1\u001fS1\u001f2026-08-01\u001f44880\u001f3\u001f2026-08-01T01:00:00.000Z\u001fST-000001\u001f0000000000000000000000000000000000000000000000000000000000000000\u001f",
+    "bahanDenganMuatan": "1\u001foff-1\u001fO1\u001fT1\u001fS1\u001f2026-08-01\u001f44880\u001f3\u001f2026-08-01T01:00:00.000Z\u001fST-000001\u001f0000000000000000000000000000000000000000000000000000000000000000\u001faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "barisReceiptNull": "1\u001foff-1\u001fO1\u001fT1\u001fS1\u001f2026-08-01\u001f44880\u001f3\u001f2026-08-01T01:00:00.000Z\u001f\u001f0000000000000000000000000000000000000000000000000000000000000000\u001f"
+  }
+}
