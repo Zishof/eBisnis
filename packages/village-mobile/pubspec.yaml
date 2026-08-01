@@ -1,0 +1,30 @@
+name: village_mobile
+description: "Aplikasi Warga Desa - eBisnis Sistem Informasi Desa"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Penyimpanan token. Refresh token TIDAK disimpan pada SharedPreferences:
+  # pada Android ia berkas biasa di dalam sandbox aplikasi, dan sandbox itu
+  # terbuka pada perangkat yang di-root - yang di desa jauh lebih banyak
+  # daripada yang diperkirakan. flutter_secure_storage memakai Keystore dan
+  # Keychain.
+  flutter_secure_storage: ^9.2.2
+
+  http: ^1.2.2
+  image_picker: ^1.2.0
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

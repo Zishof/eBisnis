@@ -1,0 +1,52 @@
+==============================================================================
+BUKTI D-6 — PENEGAKAN PAGU APBDes
+Waktu : 2026-07-31T17:42:00.501Z
+==============================================================================
+
+1. Perencanaan
+  LULUS  RPJM Desa enam tahun tersimpan
+  LULUS  periode RPJM lebih dari sepuluh tahun ditolak
+  LULUS  satu RKP per tahun anggaran
+
+2. Usulan Musrenbang menjadi kegiatan RKP
+  LULUS  kegiatan tertaut ke usulannya
+  LULUS  satu usulan tidak dapat menjadi dua kegiatan
+
+3. APBDes
+  LULUS  APBDes ditetapkan tanpa nomor peraturan desa DITOLAK
+  LULUS  APBDes dengan peraturan desa dapat ditetapkan
+
+4. Penegakan pagu — inti fase ini
+   pagu kegiatan: Rp 100.000.000
+  LULUS  ikatan Rp 70jt dalam pagu diterima
+  LULUS  ikatan melampaui pagu DITOLAK BASIS DATA
+  LULUS  ikatan tetap pada nilai yang sah sesudah penolakan
+
+5. Realisasi dibatasi IKATAN, bukan pagu
+  LULUS  realisasi Rp 50jt dalam ikatan Rp 70jt diterima
+  LULUS  realisasi melampaui ikatan DITOLAK meski masih dalam pagu
+  LULUS  pagu tidak dapat diturunkan di bawah ikatan yang berjalan
+
+6. Dua ikatan bersamaan pada baris yang sama
+  LULUS  ikatan kedua yang melampaui pagu DITOLAK meski bersamaan
+  LULUS  total ikatan tidak melampaui pagu
+
+7. Transaksi anggaran
+  LULUS  transaksi bernilai nol ditolak
+  LULUS  kunci idempotensi mencegah transaksi terulang
+  LULUS  pembatalan transaksi tanpa alasan ditolak
+
+8. Buku kas
+  LULUS  satu baris buku kas tidak dapat sekaligus debit dan kredit
+
+9. Panjar
+  LULUS  pertanggungjawaban panjar melebihi yang diterima ditolak
+
+10. Rencana kegiatan kelurahan
+  LULUS  realisasi kelurahan melampaui pagu yang diterima ditolak
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

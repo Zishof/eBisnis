@@ -1,0 +1,55 @@
+==============================================================================
+BUKTI LAPISAN DAFTAR LAYAR PETUGAS
+Waktu : 2026-08-01T00:17:34.844Z
+==============================================================================
+
+1. Konfigurasi daftar
+  LULUS  konfigurasi terbaca dengan jumlah yang masuk akal
+  LULUS  setiap daftar punya tabel, alias, dan proyeksi
+
+2. Setiap daftar dapat dijalankan terhadap PostgreSQL sungguhan
+  LULUS  aparatur
+  LULUS  bpd
+  LULUS  register
+  LULUS  jenis-layanan
+  LULUS  permohonan
+  LULUS  antrean
+  LULUS  pengaduan
+  LULUS  aspirasi
+  LULUS  musrenbang
+  LULUS  rpjmdes
+  LULUS  rkpdes
+  LULUS  apbdes
+  LULUS  realisasi
+  LULUS  buku-kas
+  LULUS  program-bantuan
+  LULUS  bumdes
+  LULUS  umkm
+  LULUS  wisata
+  LULUS  insiden
+  LULUS  linmas
+  LULUS  bencana
+  LULUS  tanah
+
+3. Kolom yang BENAR-BENAR dikembalikan peladen
+  LULUS  tidak satu pun kolom hasil bernama ruas terlarang
+       22 daftar diperiksa, 229 kolom.
+
+4. Daftar tidak membocorkan unit lain
+       Satu skema hanya boleh punya SATU unit aktif — ditegakkan indeks parsial
+       village_unit_single_active. Unit kedua di bawah adalah unit lama yang
+       sudah dinonaktifkan, dan datanya masih tertinggal pada tabel yang sama.
+  LULUS  daftar aparatur Desa A hanya berisi aparatur Desa A
+  LULUS  tanpa penyaring unit, data unit lama memang ikut terbawa
+
+5. Baris terhapus lunak
+  LULUS  aparatur yang sudah berhenti tidak muncul
+
+6. Nilai saringan selalu terikat sebagai parameter
+  LULUS  nilai saringan berisi perintah SQL diperlakukan sebagai teks
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

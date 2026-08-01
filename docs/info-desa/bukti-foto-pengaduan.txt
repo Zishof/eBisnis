@@ -1,0 +1,56 @@
+==============================================================================
+BUKTI FOTO BUKTI PENGADUAN
+Waktu : 2026-07-31T23:21:52.238Z
+==============================================================================
+
+1. Registri berkas
+  LULUS  village_file_object terbentuk
+
+2. Berkas yang metadatanya belum dibuang TIDAK DAPAT disimpan
+  LULUS  metadata_stripped = FALSE ditolak constraint
+       Alasannya: foto dari ponsel membawa koordinat tempat ia dipotret.
+       Warga yang memotret rumah tetangganya melampirkan koordinat rumahnya
+       sendiri tanpa menyadarinya — metadata tidak tampak di layar mana pun.
+
+3. Hanya JPEG dan PNG — daftar izin, bukan daftar larangan
+  LULUS  image/heic ditolak
+  LULUS  image/svg+xml ditolak
+  LULUS  application/pdf ditolak
+  LULUS  text/html ditolak
+  LULUS  image/jpeg dan image/png diterima
+
+4. Batas ukuran
+  LULUS  berkas nol bita ditolak
+  LULUS  berkas melebihi 8 MB ditolak
+
+5. Pembersihan metadata tidak pernah memperbesar berkas
+  LULUS  ukuran akhir > ukuran awal ditolak
+
+6. Kolom yang sengaja TIDAK ada
+  LULUS  tidak ada kolom is_public
+  LULUS  tidak ada kolom public_url
+  LULUS  tidak ada kolom cdn_url
+  LULUS  tidak ada kolom shared_link
+       MediaAsset milik Core justru is_public bawaannya BENAR dan memiliki
+       public_url. Foto pengaduan memperlihatkan rumah, wajah, pelat nomor,
+       dan halaman orang — satu tautan tersalin ke grup percakapan sudah cukup.
+
+7. village_complaint_evidence.file_object_id akhirnya menunjuk tabel nyata
+  LULUS  bukti yang menunjuk berkas tidak ada ditolak
+  LULUS  satu berkas hanya dapat dilekatkan sekali
+
+8. Berkas terhapus tidak meninggalkan bukti yang menunjuk ketiadaan
+  LULUS  baris buktinya ikut terhapus
+
+9. Kunci penyimpanan unik
+  LULUS  dua berkas tidak dapat berbagi kunci
+
+10. Jejak audit
+  LULUS  village_file_object diaudit
+  LULUS  penyisipan dan penghapusan tercatat
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

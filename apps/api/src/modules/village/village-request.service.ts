@@ -1,0 +1,1010 @@
+/**
+ * Permohonan layanan warga, dari pengajuan sampai surat diserahkan.
+ *
+ * Inti sistem. Alurnya:
+ *
+ *   warga mengajukan → berkas diverifikasi → persetujuan berjenjang
+ *   → surat diterbitkan bernomor → diserahkan
+ *
+ * dengan dua jalan keluar yang keduanya **wajib beralasan**: dikembalikan
+ * karena berkas kurang, atau ditolak. Permohonan yang berhenti tanpa kabar
+ * adalah keluhan nomor satu pelayanan publik, dan tidak ada jalan pada layanan
+ * ini yang membiarkannya terjadi.
+ */
+
+import { Injectable, Logger } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+import type { PoolClient } from 'pg';
+import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
+import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { AuthenticatedUser } from '../../common/decorators';
+import { VillageUnitService } from './village-unit.service';
+import { VillageWorkflowService } from './village-workflow.service';
+import type { CuplikanAlur, LangkahWorkflow } from './ports/workflow.port';
+import {
+  TRANSISI_PERMOHONAN,
+  bolehMemproses,
+  bolehPindahPermohonan,
+  hitungSla,
+  periksaKelengkapan,
+  statusAkhir,
+  susunNomorSurat,
+  type StatusPermohonan,
+} from './village-service';
+
+@Injectable()
+export class VillageRequestService {
+  private readonly logger = new Logger(VillageRequestService.name);
+
+  constructor(
+    private readonly tenantDb: TenantConnectionService,
+    private readonly unit: VillageUnitService,
+    private readonly alur: VillageWorkflowService,
+  ) {}
+
+  // --- Pengajuan ------------------------------------------------------------
+
+  /**
+   * Mengajukan permohonan.
+   *
+   * Cuplikan definisi alur diambil di sini, bukan saat persetujuan dimulai.
+   * Bila katalog diubah esok hari, permohonan ini tetap memakai aturan yang
+   * berlaku saat ia masuk.
+   */
+  async ajukan(
+    schemaName: string,
+    input: {
+      serviceCode: string;
+      residentId?: string;
+      applicantName: string;
+      applicantNik?: string;
+      applicantPhone?: string;
+      purpose?: string;
+      formData?: Record<string, unknown>;
+    },
+    user: AuthenticatedUser,
+  ) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.PERMOHONAN');
+    const u = await this.unit.unit(schemaName);
+
+    const layanan = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT id, code, name, sla_working_days, definition_version, approval_steps
+         FROM "${schemaName}".village_service_catalog
+        WHERE village_unit_id = $1 AND code = $2 AND is_active = TRUE AND deleted_at IS NULL`,
+      [u.id, input.serviceCode],
+    );
+    if (!layanan.length) {
+      throw AppError.notFound(
+        ErrorCodes.NOT_FOUND,
+        `Jenis layanan "${input.serviceCode}" tidak tersedia di desa/kelurahan ini.`,
+      );
+    }
+    const l = layanan[0];
+
+    const cuplikan: CuplikanAlur = {
+      definitionCode: String(l.code),
+      version: Number(l.definition_version),
+      capturedAt: new Date().toISOString(),
+      steps: (l.approval_steps as LangkahWorkflow[]) ?? [],
+    };
+
+    const nomor = await this.nomorPermohonan(schemaName, u.id);
+
+    /*
+     * `applicant_user_id` adalah akun PEMOHON, bukan akun petugas yang
+     * mengetiknya.
+     *
+     * Semula kolom ini diisi `user.userId` apa adanya, dan itu keliru dengan
+     * akibat yang menghentikan pekerjaan: petugas yang mencatat permohonan
+     * warga di loket langsung terkunci dari memverifikasinya sendiri, sebab
+     * `pastikanBukanPemohon` melihat dirinya sebagai pemohon. Pada kantor desa
+     * yang petugas loketnya satu orang, seluruh permohonan yang dicatat di
+     * loket menjadi permohonan yang tidak dapat diproses siapa pun.
+     *
+     * Aturannya sendiri tetap: petugas tidak boleh memverifikasi permohonannya
+     * sendiri. Yang diperbaiki adalah cara menentukan "miliknya siapa" —
+     * ditelusuri dari tautan akun PENDUDUK yang dipilih, bukan dari siapa yang
+     * memegang papan ketik.
+     *
+     * Akibatnya tetap benar pada kedua keadaan:
+     *   - Petugas mencatat permohonan Sumiati  → pemohonnya akun Sumiati (atau
+     *     kosong bila ia belum punya akun). Petugas boleh memverifikasi.
+     *   - Petugas memilih data penduduk DIRINYA SENDIRI → pemohonnya akun
+     *     petugas itu, dan ia tetap tertahan.
+     *
+     * Siapa yang mengetiknya tidak hilang: `created_by` mencatatnya, dan
+     * riwayat permohonan ikut menyimpan pelakunya.
+     */
+    const akunPemohon = input.residentId
+      ? await this.akunPenduduk(schemaName, input.residentId)
+      : null;
+
+    const rows = await this.tenantDb.query<{ id: string }>(
+      schemaName,
+      `INSERT INTO "${schemaName}".village_service_request
+         (village_unit_id, service_catalog_id, request_number, village_resident_id,
+          applicant_name, applicant_nik, applicant_phone, applicant_user_id, purpose,
+          form_data, status, definition_snapshot, definition_version, submitted_at, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'DIAJUKAN',$11,$12,now(),$13)
+       RETURNING id`,
+      [
+        u.id,
+        l.id,
+        nomor,
+        input.residentId ?? null,
+        input.applicantName,
+        input.applicantNik ?? null,
+        input.applicantPhone ?? null,
+        akunPemohon,
+        input.purpose ?? null,
+        JSON.stringify(input.formData ?? {}),
+        JSON.stringify(cuplikan),
+        Number(l.definition_version),
+        user.userId,
+      ],
+    );
+
+    await this.catatRiwayat(schemaName, rows[0].id, null, 'DIAJUKAN', 'Permohonan diajukan', user);
+    return {
+      id: rows[0].id,
+      requestNumber: nomor,
+      status: 'DIAJUKAN',
+      // Dinyatakan kembali supaya layar loket dapat memberi tahu petugas
+      // seketika bahwa permohonan ini tidak boleh ia proses sendiri — bukan
+      // membiarkannya menemukan itu setelah menekan tombol verifikasi.
+      processableByCreator: bolehMemproses(akunPemohon, user.userId).boleh,
+    };
+  }
+
+  /**
+   * Akun yang tertaut ke seorang penduduk, bila ada.
+   *
+   * Mengembalikan `null` untuk penduduk yang belum punya akun — keadaan yang
+   * paling umum di desa, dan bukan kekeliruan.
+   */
+  private async akunPenduduk(schemaName: string, residentId: string): Promise<string | null> {
+    const rows = await this.tenantDb.query<{ user_id: string }>(
+      schemaName,
+      `SELECT user_id FROM "${schemaName}".village_portal_link
+        WHERE resident_id = $1 AND is_active = TRUE
+        LIMIT 1`,
+      [residentId],
+    );
+    return rows[0]?.user_id ?? null;
+  }
+
+  // --- Verifikasi berkas ----------------------------------------------------
+
+  /**
+   * Memverifikasi kelengkapan berkas.
+   *
+   * Bila lengkap, `documents_completed_at` diisi — **dan sejak itulah SLA
+   * mulai berjalan.** Bila kurang, permohonan dikembalikan beserta daftar
+   * berkas yang masih dibutuhkan, bukan sekadar "berkas belum lengkap".
+   */
+  async verifikasiBerkas(schemaName: string, requestId: string, user: AuthenticatedUser) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.VERIFIKASI');
+
+    return this.tenantDb.transaction(schemaName, async (client) => {
+      const p = await this.ambilTerkunci(client, schemaName, requestId);
+      this.pastikanBukanPemohon(p, user);
+
+      const v = bolehPindahPermohonan(p.status as StatusPermohonan, 'DIVERIFIKASI');
+      if (!v.boleh) throw AppError.conflict(ErrorCodes.CONFLICT, v.alasan!);
+
+      const syarat = await client.query<{ code: string; name: string; is_mandatory: boolean }>(
+        `SELECT code, name, is_mandatory FROM "${schemaName}".village_service_requirement
+          WHERE service_catalog_id = $1 AND deleted_at IS NULL`,
+        [p.service_catalog_id],
+      );
+      const berkas = await client.query<{ requirement_code: string }>(
+        `SELECT requirement_code FROM "${schemaName}".village_request_document
+          WHERE service_request_id = $1`,
+        [requestId],
+      );
+
+      const h = periksaKelengkapan(
+        syarat.rows.map((s) => ({ code: s.code, name: s.name, mandatory: s.is_mandatory })),
+        berkas.rows.map((b) => ({ requirementCode: b.requirement_code })),
+      );
+
+      if (!h.lengkap) {
+        await client.query(
+          `UPDATE "${schemaName}".village_service_request
+              SET status = 'BERKAS_KURANG', return_reason = $2, updated_at = now(),
+                  updated_by = $3, version = version + 1
+            WHERE id = $1`,
+          [requestId, h.pesan, user.userId],
+        );
+        await this.catatRiwayatDi(client, schemaName, requestId, p.status, 'BERKAS_KURANG', h.pesan!, user);
+        return { status: 'BERKAS_KURANG', missing: h.kurang, message: h.pesan };
+      }
+
+      // Berkas lengkap: SLA mulai berjalan dari sini.
+      const sla = await client.query<{ sla_working_days: number }>(
+        `SELECT sla_working_days FROM "${schemaName}".village_service_catalog WHERE id = $1`,
+        [p.service_catalog_id],
+      );
+      const libur = await client.query<{ holiday_date: string }>(
+        `SELECT holiday_date::text FROM "${schemaName}".village_holiday WHERE village_unit_id = $1`,
+        [p.village_unit_id],
+      );
+      const hariIni = new Date().toISOString().slice(0, 10);
+      const hasil = hitungSla(
+        {
+          completedAt: hariIni,
+          finishedAt: null,
+          slaWorkingDays: Number(sla.rows[0].sla_working_days),
+          holidays: libur.rows.map((r) => r.holiday_date),
+        },
+        hariIni,
+      );
+
+      await client.query(
+        `UPDATE "${schemaName}".village_service_request
+            SET status = 'DIVERIFIKASI', documents_completed_at = now(), due_date = $2,
+                return_reason = NULL, updated_at = now(), updated_by = $3, version = version + 1
+          WHERE id = $1`,
+        [requestId, hasil.dueDate, user.userId],
+      );
+      await this.catatRiwayatDi(
+        client,
+        schemaName,
+        requestId,
+        p.status,
+        'DIVERIFIKASI',
+        `Berkas lengkap. Janji penyelesaian ${hasil.dueDate}.`,
+        user,
+      );
+
+      return { status: 'DIVERIFIKASI', dueDate: hasil.dueDate };
+    });
+  }
+
+  // --- Persetujuan ----------------------------------------------------------
+
+  /** Memulai alur persetujuan menurut cuplikan yang tersimpan pada permohonan. */
+  async mulaiPersetujuan(schemaName: string, requestId: string, user: AuthenticatedUser) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.PERMOHONAN');
+
+    const p = await this.ambil(schemaName, requestId);
+    const v = bolehPindahPermohonan(p.status as StatusPermohonan, 'MENUNGGU_PERSETUJUAN');
+    if (!v.boleh) throw AppError.conflict(ErrorCodes.CONFLICT, v.alasan!);
+
+    const cuplikan = p.definition_snapshot as CuplikanAlur;
+    if (!cuplikan?.steps?.length) {
+      /*
+       * Layanan tanpa jenjang persetujuan langsung disetujui. Surat keterangan
+       * sederhana pada desa kecil memang begitu — memaksakan langkah kosong
+       * hanya menambah klik tanpa menambah kendali.
+       */
+      await this.pindah(schemaName, requestId, 'DISETUJUI', 'Layanan tanpa jenjang persetujuan', user);
+      return { status: 'DISETUJUI', workflow: null };
+    }
+
+    const inst = await this.alur.mulai({
+      schemaName,
+      definitionCode: cuplikan.definitionCode,
+      subjectType: 'VILLAGE_SERVICE_REQUEST',
+      subjectId: requestId,
+      snapshot: cuplikan,
+      initiatedBy: String(p.applicant_user_id ?? p.created_by ?? user.userId),
+    });
+
+    await this.tenantDb.query(
+      schemaName,
+      `UPDATE "${schemaName}".village_service_request
+          SET status = 'MENUNGGU_PERSETUJUAN', workflow_instance_id = $2,
+              updated_at = now(), version = version + 1
+        WHERE id = $1`,
+      [requestId, inst.instanceId],
+    );
+    await this.catatRiwayat(
+      schemaName,
+      requestId,
+      p.status as string,
+      'MENUNGGU_PERSETUJUAN',
+      'Diteruskan untuk persetujuan',
+      user,
+    );
+
+    return { status: 'MENUNGGU_PERSETUJUAN', workflow: inst };
+  }
+
+  /** Menyetujui atau menolak langkah berjalan, lalu menyelaraskan status permohonan. */
+  async putuskan(
+    schemaName: string,
+    requestId: string,
+    aksi: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES',
+    alasan: string | undefined,
+    user: AuthenticatedUser,
+  ) {
+    const p = await this.ambil(schemaName, requestId);
+    if (!p.workflow_instance_id) {
+      throw AppError.conflict(ErrorCodes.CONFLICT, 'Permohonan ini belum masuk alur persetujuan.');
+    }
+
+    const inst = await this.alur.tindak({
+      schemaName,
+      instanceId: String(p.workflow_instance_id),
+      action: aksi,
+      actorUserId: user.userId,
+      activeRoleId: user.activeRoleId ?? null,
+      reason: alasan,
+    });
+
+    if (inst.status === 'SELESAI') {
+      await this.pindah(schemaName, requestId, 'DISETUJUI', 'Seluruh persetujuan terpenuhi', user);
+      return { status: 'DISETUJUI', workflow: inst };
+    }
+    if (inst.status === 'DITOLAK') {
+      await this.pindah(schemaName, requestId, 'DITOLAK', alasan ?? 'Ditolak', user);
+      return { status: 'DITOLAK', workflow: inst };
+    }
+    if (inst.status === 'DIKEMBALIKAN') {
+      await this.pindah(schemaName, requestId, 'BERKAS_KURANG', alasan ?? 'Perlu perbaikan', user);
+      return { status: 'BERKAS_KURANG', workflow: inst };
+    }
+    return { status: 'MENUNGGU_PERSETUJUAN', workflow: inst };
+  }
+
+  // --- Penerbitan surat -----------------------------------------------------
+
+  /**
+   * Menerbitkan surat.
+   *
+   * Nomor surat diambil di dalam transaksi yang sama dengan penyimpanannya, dan
+   * keunikannya ditegakkan indeks unik — bukan oleh perhitungan layanan. Dua
+   * petugas yang menerbitkan surat pada milidetik yang sama tidak boleh
+   * memperoleh nomor yang sama.
+   */
+  async terbitkan(
+    schemaName: string,
+    requestId: string,
+    input: { signedByOfficerId?: string; body?: string },
+    user: AuthenticatedUser,
+  ) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.PENERBITAN');
+    const u = await this.unit.unit(schemaName);
+
+    return this.tenantDb.transaction(schemaName, async (client) => {
+      const p = await this.ambilTerkunci(client, schemaName, requestId);
+      const v = bolehPindahPermohonan(p.status as StatusPermohonan, 'DITERBITKAN');
+      if (!v.boleh) throw AppError.conflict(ErrorCodes.CONFLICT, v.alasan!);
+
+      const l = await client.query<Record<string, unknown>>(
+        `SELECT code, name, letter_code, number_pattern, number_padding, template_body
+           FROM "${schemaName}".village_service_catalog WHERE id = $1`,
+        [p.service_catalog_id],
+      );
+      const katalog = l.rows[0];
+      const hariIni = new Date().toISOString().slice(0, 10);
+
+      // Urutan berikutnya dikunci bersama penyisipannya.
+      const urut = await client.query<{ n: string }>(
+        `SELECT COALESCE(MAX(
+           CASE WHEN letter_number ~ '^[0-9]+' THEN substring(letter_number from '^[0-9]+')::int ELSE 0 END
+         ), 0) + 1 AS n
+           FROM "${schemaName}".village_letter
+          WHERE village_unit_id = $1 AND date_part('year', letter_date) = date_part('year', $2::date)`,
+        [u.id, hariIni],
+      );
+
+      const nomor = susunNomorSurat(
+        {
+          pattern: String(katalog.number_pattern),
+          padding: Number(katalog.number_padding),
+        },
+        {
+          urut: Number(urut.rows[0].n),
+          kode: String(katalog.letter_code ?? katalog.code),
+          tanggal: hariIni,
+          unitCode: u.code,
+        },
+      );
+
+      const token = randomBytes(16).toString('base64url');
+
+      const surat = await client.query<{ id: string }>(
+        `INSERT INTO "${schemaName}".village_letter
+           (village_unit_id, service_request_id, letter_number, letter_date, subject, body,
+            signed_by_officer_id, verification_token, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         RETURNING id`,
+        [
+          u.id,
+          requestId,
+          nomor,
+          hariIni,
+          `${katalog.name} — ${p.applicant_name}`,
+          input.body ?? katalog.template_body ?? null,
+          input.signedByOfficerId ?? null,
+          token,
+          user.userId,
+        ],
+      );
+
+      await client.query(
+        `UPDATE "${schemaName}".village_service_request
+            SET status = 'DITERBITKAN', finished_at = now(), updated_at = now(),
+                updated_by = $2, version = version + 1
+          WHERE id = $1`,
+        [requestId, user.userId],
+      );
+      await this.catatRiwayatDi(
+        client,
+        schemaName,
+        requestId,
+        p.status,
+        'DITERBITKAN',
+        `Surat ${nomor} diterbitkan`,
+        user,
+      );
+
+      // Register surat keluar ikut terisi. Buku register yang harus diisi ulang
+      // secara manual adalah buku register yang tidak pernah lengkap.
+      await client.query(
+        `INSERT INTO "${schemaName}".village_register_entry
+           (village_unit_id, register_type, entry_number, entry_date, subject,
+            source_type, source_id, village_resident_id, recorded_by)
+         VALUES ($1, 'SURAT_KELUAR', $2, $3, $4, 'VILLAGE_LETTER', $5, $6, $7)
+         ON CONFLICT DO NOTHING`,
+        [
+          u.id,
+          nomor,
+          hariIni,
+          `${katalog.name} — ${p.applicant_name}`,
+          surat.rows[0].id,
+          p.village_resident_id ?? null,
+          user.userId,
+        ],
+      );
+
+      return { letterId: surat.rows[0].id, letterNumber: nomor, verificationToken: token };
+    });
+  }
+
+  // --- Penyerahan -----------------------------------------------------------
+
+  /**
+   * Menandai surat sudah diserahkan kepada pemohon.
+   *
+   * Langkah ini ada pada mesin status sejak D-4 tetapi belum pernah dijalankan
+   * apa pun - permohonan berhenti selamanya di `DITERBITKAN`, dan tidak ada yang
+   * dapat membedakan surat yang menunggu diambil dari surat yang sudah dibawa
+   * pulang.
+   *
+   * Perbedaan itu yang ditanyakan warga lewat telepon, dan yang dicari petugas
+   * di tumpukan map ketika ia tidak dapat menjawabnya.
+   *
+   * ## Nama penerima dicatat, dan ia boleh bukan pemohonnya
+   *
+   * Surat keterangan sering diambil anak, tetangga, atau ketua RT. Memaksa
+   * pemohon datang sendiri berarti lansia dan orang sakit tidak akan pernah
+   * menerima suratnya. Yang dicatat adalah **siapa yang benar-benar menerima**
+   * beserta hubungannya - sehingga ketika surat itu dipersoalkan, pertanyaan
+   * "siapa yang membawanya keluar dari kantor" dapat dijawab.
+   */
+  async serahkan(
+    schemaName: string,
+    requestId: string,
+    input: { receivedBy: string; relation?: string; note?: string },
+    user: AuthenticatedUser,
+  ) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.PENERBITAN');
+
+    const nama = (input.receivedBy ?? '').trim();
+    if (nama.length < 3) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Nama penerima wajib diisi. Surat yang keluar dari kantor tanpa catatan penerimanya ' +
+          'tidak dapat ditelusuri ketika isinya dipersoalkan.',
+      );
+    }
+
+    return this.tenantDb.transaction(
+      schemaName,
+      async (client) => {
+        const p = await this.ambilTerkunci(client, schemaName, requestId);
+        const v = bolehPindahPermohonan(p.status as StatusPermohonan, 'DISERAHKAN');
+        if (!v.boleh) throw AppError.conflict(ErrorCodes.CONFLICT, v.alasan!);
+
+        const keterangan = [
+          `Diserahkan kepada ${nama}`,
+          input.relation?.trim() ? `(${input.relation.trim()})` : null,
+          input.note?.trim() || null,
+        ]
+          .filter(Boolean)
+          .join(' ');
+
+        await client.query(
+          `UPDATE "${schemaName}".village_service_request
+              SET status = 'DISERAHKAN', updated_at = now(), updated_by = $2,
+                  version = version + 1
+            WHERE id = $1`,
+          [requestId, user.userId],
+        );
+        await this.catatRiwayatDi(
+          client,
+          schemaName,
+          requestId,
+          p.status,
+          'DISERAHKAN',
+          keterangan,
+          user,
+        );
+
+        return { status: 'DISERAHKAN', receivedBy: nama, note: keterangan };
+      },
+      { userId: user.userId, moduleCode: 'VILLAGE_SERVICE_REQUEST', actionCode: 'HANDOVER' },
+    );
+  }
+
+  // --- Berkas persyaratan ---------------------------------------------------
+
+  /**
+   * Mencatat satu berkas persyaratan sudah diterima.
+   *
+   * Tanpa ini, verifikasi kelengkapan **selalu** menyatakan berkas kurang pada
+   * layanan yang punya persyaratan wajib: pemeriksaannya membandingkan daftar
+   * syarat dengan `village_request_document`, dan sebelum ini tidak ada satu pun
+   * jalur yang mengisi tabel itu.
+   *
+   * ## Tidak ada pilihan "diterima tanpa bukti apa pun"
+   *
+   * Basis data menuntut setiap catatan berkas membawa bukti: berkas terunggah,
+   * ATAU pernyataan petugas bahwa ia melihat kertasnya
+   * (`village_request_document_has_evidence`, D-4).
+   *
+   * Selama persyaratan permohonan belum dapat membawa berkas unggahan, satu-
+   * satunya bukti yang mungkin adalah yang kedua — dan karena itu nilainya
+   * ditetapkan di sini, bukan diserahkan kepada pemanggil.
+   *
+   * Menyediakan bendera yang hanya punya satu nilai sah adalah jebakan: yang
+   * mengirim nilai satunya akan menerima galat basis data mentah, dan tidak ada
+   * pada layar mana pun yang menjelaskan mengapa.
+   */
+  async catatBerkas(
+    schemaName: string,
+    requestId: string,
+    input: { requirementCode: string; note?: string },
+    user: AuthenticatedUser,
+  ) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.VERIFIKASI');
+
+    const p = await this.ambil(schemaName, requestId);
+    this.pastikanBukanPemohon(p, user);
+
+    if (statusAkhir(p.status as StatusPermohonan)) {
+      throw AppError.conflict(
+        ErrorCodes.CONFLICT,
+        `Permohonan berstatus ${p.status} sudah selesai; berkasnya tidak dapat diubah lagi.`,
+      );
+    }
+
+    // Kode persyaratan wajib benar-benar milik layanan yang diminta. Kode yang
+    // tidak dikenal DITOLAK, bukan disimpan: baris yang tidak cocok dengan
+    // syarat mana pun membuat verifikasi terlihat lengkap padahal masih ada
+    // syarat yang belum terpenuhi.
+    const syarat = await this.tenantDb.query<{ code: string; name: string }>(
+      schemaName,
+      `SELECT code, name FROM "${schemaName}".village_service_requirement
+        WHERE service_catalog_id = $1 AND code = $2 AND deleted_at IS NULL`,
+      [p.service_catalog_id, input.requirementCode],
+    );
+    if (!syarat.length) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        `Persyaratan "${input.requirementCode}" bukan bagian dari layanan ini.`,
+      );
+    }
+
+    return this.tenantDb.transaction(
+      schemaName,
+      async (client) => {
+        // Satu persyaratan satu baris. Menyerahkan berkas yang sama dua kali
+        // memperbarui catatannya, bukan menambah baris kedua - dua baris untuk
+        // satu syarat membuat cacah kelengkapan tidak lagi berarti.
+        await client.query(
+          `INSERT INTO "${schemaName}".village_request_document
+             (service_request_id, requirement_code, received_physically, note,
+              verified_by, verified_at, created_by)
+           VALUES ($1,$2,TRUE,$3,$4,now(),$4)
+           ON CONFLICT (service_request_id, requirement_code)
+           DO UPDATE SET note = EXCLUDED.note,
+                         verified_by = EXCLUDED.verified_by,
+                         verified_at = now()`,
+          [requestId, input.requirementCode, input.note?.trim() || null, user.userId],
+        );
+
+        return { requirementCode: input.requirementCode, name: syarat[0].name, recorded: true };
+      },
+      { userId: user.userId, moduleCode: 'VILLAGE_SERVICE_REQUEST', actionCode: 'DOCUMENT' },
+    );
+  }
+
+  /** Membatalkan satu catatan berkas - dipakai ketika petugas salah menandai. */
+  async hapusBerkas(
+    schemaName: string,
+    requestId: string,
+    requirementCode: string,
+    user: AuthenticatedUser,
+  ) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.VERIFIKASI');
+    const p = await this.ambil(schemaName, requestId);
+    this.pastikanBukanPemohon(p, user);
+
+    if (statusAkhir(p.status as StatusPermohonan)) {
+      throw AppError.conflict(
+        ErrorCodes.CONFLICT,
+        `Permohonan berstatus ${p.status} sudah selesai; berkasnya tidak dapat diubah lagi.`,
+      );
+    }
+
+    await this.tenantDb.query(
+      schemaName,
+      `DELETE FROM "${schemaName}".village_request_document
+        WHERE service_request_id = $1 AND requirement_code = $2`,
+      [requestId, requirementCode],
+    );
+    return { requirementCode, removed: true };
+  }
+
+  // --- Jenis layanan beserta syaratnya --------------------------------------
+
+  /**
+   * Satu jenis layanan beserta persyaratannya.
+   *
+   * Dibutuhkan formulir loket, dan alasannya bukan kelengkapan data: yang
+   * paling berguna bagi warga yang berdiri di depan meja adalah mengetahui
+   * **apa yang harus ia bawa** sebelum permohonannya dibuat.
+   *
+   * Tanpa ini, petugas membuat permohonan lebih dahulu, baru melihat syaratnya
+   * pada layar berikutnya — dan warga yang ternyata kurang satu berkas sudah
+   * terlanjur punya permohonan berstatus kurang, yang harus ia urus lagi.
+   */
+  async jenisLayanan(schemaName: string, kode: string) {
+    const u = await this.unit.pastikanLayak(schemaName, 'LAYANAN.KATALOG');
+
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT id, code, name, description, category, letter_code, sla_working_days,
+              fee_amount, is_online, is_active, definition_version, approval_steps
+         FROM "${schemaName}".village_service_catalog
+        WHERE village_unit_id = $1 AND code = $2 AND deleted_at IS NULL`,
+      [u.id, kode],
+    );
+    if (!rows.length) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, `Jenis layanan "${kode}" tidak ditemukan.`);
+    }
+
+    const syarat = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT code, name, description, is_mandatory, accepts_upload, sort_order
+         FROM "${schemaName}".village_service_requirement
+        WHERE service_catalog_id = $1 AND deleted_at IS NULL
+        ORDER BY sort_order, name`,
+      [rows[0].id],
+    );
+
+    return { service: rows[0], requirements: syarat };
+  }
+
+  // --- Rincian untuk layar petugas ------------------------------------------
+
+  /**
+   * Satu permohonan beserta segala yang dibutuhkan layar loket.
+   *
+   * Dikumpulkan dalam satu pemanggilan dengan sengaja. Layar yang memanggil
+   * lima endpoint berurutan akan menampilkan bagian-bagiannya satu per satu di
+   * depan warga yang sedang berdiri menunggu, dan setiap kegagalan menghasilkan
+   * layar setengah terisi yang tidak dapat dipahami petugas.
+   *
+   * ## Yang ikut, dan yang sengaja tidak
+   *
+   * NIK dan telepon pemohon **ikut** di sini, berbeda dari daftarnya. Layar
+   * rincian dibuka satu per satu untuk melayani satu orang, dan petugas
+   * memerlukan keduanya untuk mencocokkan kartu identitas yang sedang
+   * dipegangnya. Yang tidak boleh adalah menampilkannya berbaris-baris pada
+   * layar yang terbaca dari antrean.
+   *
+   * Langkah berikutnya dihitung di sini, bukan ditebak layar. Layar yang
+   * menebak sendiri akan menampilkan tombol yang ditolak peladen - dan petugas
+   * yang menekannya lalu menerima penolakan menyimpulkan sistemnya rusak, bukan
+   * bahwa langkahnya memang belum boleh.
+   */
+  async rincian(schemaName: string, requestId: string, user: AuthenticatedUser) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.PERMOHONAN');
+
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT r.id, r.request_number, r.status, r.applicant_name, r.applicant_nik,
+              r.applicant_phone, r.applicant_user_id, r.purpose, r.form_data,
+              r.submitted_at, r.documents_completed_at, r.finished_at, r.due_date::text,
+              r.reject_reason, r.return_reason, r.workflow_instance_id, r.version,
+              r.definition_version, r.village_resident_id,
+              c.id AS service_catalog_id, c.code AS service_code, c.name AS service_name,
+              c.letter_code, c.sla_working_days, c.fee_amount,
+              l.id AS letter_id, l.letter_number, l.letter_date::text, l.is_revoked,
+              l.print_count
+         FROM "${schemaName}".village_service_request r
+         JOIN "${schemaName}".village_service_catalog c ON c.id = r.service_catalog_id
+    LEFT JOIN "${schemaName}".village_letter l ON l.service_request_id = r.id
+        WHERE r.id = $1`,
+      [requestId],
+    );
+    if (!rows.length) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Permohonan tidak ditemukan.');
+    const p = rows[0];
+
+    // Persyaratan digabung dengan berkas yang sudah tercatat, sehingga layar
+    // tidak perlu mencocokkan keduanya sendiri - dan tidak ada dua tempat yang
+    // dapat berbeda pendapat tentang apa yang masih kurang.
+    const syarat = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT q.code, q.name, q.description, q.is_mandatory, q.accepts_upload, q.sort_order,
+              d.id AS document_id, d.received_physically, d.note, d.verified_at
+         FROM "${schemaName}".village_service_requirement q
+    LEFT JOIN "${schemaName}".village_request_document d
+           ON d.requirement_code = q.code AND d.service_request_id = $2
+        WHERE q.service_catalog_id = $1 AND q.deleted_at IS NULL
+        ORDER BY q.sort_order, q.name`,
+      [p.service_catalog_id, requestId],
+    );
+
+    const riwayat = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT from_status, to_status, reason, visible_to_citizen, occurred_at
+         FROM "${schemaName}".village_request_history
+        WHERE service_request_id = $1
+        ORDER BY occurred_at`,
+      [requestId],
+    );
+
+    const alur = p.workflow_instance_id
+      ? await this.alur.keadaan(schemaName, String(p.workflow_instance_id))
+      : null;
+
+    const status = p.status as StatusPermohonan;
+    const langkahBerikut = (TRANSISI_PERMOHONAN[status] ?? []).map((ke) => {
+      const v = bolehPindahPermohonan(status, ke);
+      return { to: ke, allowed: v.boleh, reasonRequired: Boolean(v.wajibBeralasan) };
+    });
+
+    return {
+      request: p,
+      requirements: syarat,
+      history: riwayat,
+      workflow: alur,
+      nextStates: langkahBerikut,
+      // Dinyatakan terpisah: petugas yang MENGAJUKAN permohonan ini tidak boleh
+      // memverifikasi maupun menyetujuinya sendiri. Layar menyembunyikan
+      // tombolnya, dan peladen tetap menolaknya bila tombolnya dipanggil juga.
+      processableByMe: bolehMemproses((p.applicant_user_id as string) ?? null, user.userId).boleh,
+      finalState: statusAkhir(status),
+    };
+  }
+
+  /**
+   * Memeriksa keaslian surat dari tokennya.
+   *
+   * Untuk pihak ketiga — bank, sekolah, calon majikan — yang menerima surat dan
+   * ingin memastikan ia sungguh terbit dari desa itu.
+   *
+   * **Tidak mengembalikan data pribadi.** Hanya sah/tidak sah, nomor, tanggal,
+   * jenis layanan, dan nama desanya. Halaman verifikasi yang menampilkan isi
+   * surat akan menjadikan setiap token yang bocor sebagai kebocoran data warga.
+   */
+  async verifikasiPublik(schemaName: string, token: string) {
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT l.letter_number, l.letter_date::text, l.is_revoked, l.revoked_at::text,
+              c.name AS service_name, u.name AS unit_name, u.profile_type
+         FROM "${schemaName}".village_letter l
+         JOIN "${schemaName}".village_service_request r ON r.id = l.service_request_id
+         JOIN "${schemaName}".village_service_catalog c ON c.id = r.service_catalog_id
+         JOIN "${schemaName}".village_unit u ON u.id = l.village_unit_id
+        WHERE l.verification_token = $1`,
+      [token],
+    );
+
+    if (!rows.length) {
+      return { valid: false, reason: 'Kode verifikasi tidak dikenali.' };
+    }
+    const r = rows[0];
+    if (r.is_revoked) {
+      return {
+        valid: false,
+        reason: 'Surat ini telah dicabut.',
+        letterNumber: r.letter_number,
+        revokedAt: r.revoked_at,
+      };
+    }
+    return {
+      valid: true,
+      letterNumber: r.letter_number,
+      letterDate: r.letter_date,
+      serviceName: r.service_name,
+      issuedBy: `${r.profile_type === 'DESA' ? 'Desa' : 'Kelurahan'} ${r.unit_name}`,
+    };
+  }
+
+  // --- Antrean --------------------------------------------------------------
+
+  async ambilNomorAntrean(schemaName: string, counterCode: string, requestId?: string) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.ANTREAN');
+    const u = await this.unit.unit(schemaName);
+
+    return this.tenantDb.transaction(schemaName, async (client) => {
+      const loket = await client.query<{ id: string; code: string }>(
+        `SELECT id, code FROM "${schemaName}".village_counter
+          WHERE village_unit_id = $1 AND code = $2 AND is_active = TRUE AND deleted_at IS NULL`,
+        [u.id, counterCode],
+      );
+      if (!loket.rows.length) {
+        throw AppError.notFound(ErrorCodes.NOT_FOUND, `Loket ${counterCode} tidak ditemukan.`);
+      }
+
+      const terakhir = await client.query<{ n: string }>(
+        `SELECT COALESCE(MAX(sequence_no), 0) AS n FROM "${schemaName}".village_queue_ticket
+          WHERE village_unit_id = $1 AND queue_date = CURRENT_DATE AND counter_id = $2`,
+        [u.id, loket.rows[0].id],
+      );
+      const urut = Number(terakhir.rows[0].n) + 1;
+      const nomor = `${loket.rows[0].code}-${String(urut).padStart(3, '0')}`;
+
+      const t = await client.query<{ id: string }>(
+        `INSERT INTO "${schemaName}".village_queue_ticket
+           (village_unit_id, counter_id, service_request_id, ticket_number, sequence_no)
+         VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+        [u.id, loket.rows[0].id, requestId ?? null, nomor, urut],
+      );
+
+      const menunggu = await client.query<{ n: string }>(
+        `SELECT count(*)::text AS n FROM "${schemaName}".village_queue_ticket
+          WHERE village_unit_id = $1 AND queue_date = CURRENT_DATE
+            AND counter_id = $2 AND status = 'MENUNGGU' AND sequence_no < $3`,
+        [u.id, loket.rows[0].id, urut],
+      );
+
+      return { id: t.rows[0].id, ticketNumber: nomor, waitingAhead: Number(menunggu.rows[0].n) };
+    });
+  }
+
+  // --- Pelacakan warga ------------------------------------------------------
+
+  /**
+   * Status permohonan sebagaimana dilihat warga.
+   *
+   * Hanya riwayat yang ditandai terlihat warga. Catatan internal petugas —
+   * "berkas diragukan, tanya Pak RT dulu" — tidak perlu dan tidak seharusnya
+   * dibaca pemohonnya.
+   */
+  async lacak(schemaName: string, requestNumber: string) {
+    const p = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT r.id, r.request_number, r.status, r.applicant_name, r.due_date::text,
+              r.return_reason, r.reject_reason, c.name AS service_name
+         FROM "${schemaName}".village_service_request r
+         JOIN "${schemaName}".village_service_catalog c ON c.id = r.service_catalog_id
+        WHERE r.request_number = $1`,
+      [requestNumber],
+    );
+    if (!p.length) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Nomor permohonan tidak ditemukan.');
+    }
+
+    const riwayat = await this.tenantDb.query(
+      schemaName,
+      `SELECT to_status, reason, occurred_at::text
+         FROM "${schemaName}".village_request_history
+        WHERE service_request_id = $1 AND visible_to_citizen = TRUE
+        ORDER BY occurred_at`,
+      [p[0].id],
+    );
+
+    return { ...p[0], history: riwayat };
+  }
+
+  // --- Bagian dalam ---------------------------------------------------------
+
+  private async ambil(schemaName: string, id: string) {
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT * FROM "${schemaName}".village_service_request WHERE id = $1`,
+      [id],
+    );
+    if (!rows.length) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Permohonan tidak ditemukan.');
+    return rows[0];
+  }
+
+  private async ambilTerkunci(client: PoolClient, schemaName: string, id: string) {
+    const rows = await client.query<Record<string, string>>(
+      `SELECT * FROM "${schemaName}".village_service_request WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+    if (!rows.rows.length) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Permohonan tidak ditemukan.');
+    return rows.rows[0];
+  }
+
+  private pastikanBukanPemohon(p: Record<string, unknown>, user: AuthenticatedUser) {
+    const v = bolehMemproses((p.applicant_user_id as string) ?? null, user.userId);
+    if (!v.boleh) throw AppError.forbidden(ErrorCodes.FORBIDDEN, v.alasan!);
+  }
+
+  private async pindah(
+    schemaName: string,
+    id: string,
+    ke: StatusPermohonan,
+    alasan: string,
+    user: AuthenticatedUser,
+  ) {
+    const p = await this.ambil(schemaName, id);
+    const v = bolehPindahPermohonan(p.status as StatusPermohonan, ke);
+    if (!v.boleh) throw AppError.conflict(ErrorCodes.CONFLICT, v.alasan!);
+    if (v.wajibBeralasan && !alasan?.trim()) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Perubahan ini wajib menyertakan alasan yang dapat dibaca pemohon.',
+      );
+    }
+
+    const kolomAlasan =
+      ke === 'DITOLAK' ? 'reject_reason' : ke === 'BERKAS_KURANG' ? 'return_reason' : null;
+
+    await this.tenantDb.query(
+      schemaName,
+      `UPDATE "${schemaName}".village_service_request
+          SET status = $2${kolomAlasan ? `, ${kolomAlasan} = $3` : ''},
+              updated_at = now(), version = version + 1
+        WHERE id = $1`,
+      kolomAlasan ? [id, ke, alasan] : [id, ke],
+    );
+    await this.catatRiwayat(schemaName, id, p.status as string, ke, alasan, user);
+  }
+
+  private async catatRiwayat(
+    schemaName: string,
+    id: string,
+    dari: string | null,
+    ke: string,
+    alasan: string,
+    user: AuthenticatedUser,
+  ) {
+    await this.tenantDb.query(
+      schemaName,
+      `INSERT INTO "${schemaName}".village_request_history
+         (service_request_id, from_status, to_status, reason, actor_user_id, active_role_id)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [id, dari, ke, alasan, user.userId, user.activeRoleId ?? null],
+    );
+  }
+
+  private async catatRiwayatDi(
+    client: PoolClient,
+    schemaName: string,
+    id: string,
+    dari: string | null,
+    ke: string,
+    alasan: string,
+    user: AuthenticatedUser,
+  ) {
+    await client.query(
+      `INSERT INTO "${schemaName}".village_request_history
+         (service_request_id, from_status, to_status, reason, actor_user_id, active_role_id)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [id, dari, ke, alasan, user.userId, user.activeRoleId ?? null],
+    );
+  }
+
+  private async nomorPermohonan(schemaName: string, unitId: string): Promise<string> {
+    const rows = await this.tenantDb.query<{ n: string }>(
+      schemaName,
+      `SELECT count(*)::text AS n FROM "${schemaName}".village_service_request
+        WHERE village_unit_id = $1 AND date_part('year', created_at) = date_part('year', now())`,
+      [unitId],
+    );
+    const tahun = new Date().getFullYear();
+    return `REQ-${tahun}-${String(Number(rows[0].n) + 1).padStart(5, '0')}`;
+  }
+}

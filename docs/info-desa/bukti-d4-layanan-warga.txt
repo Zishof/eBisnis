@@ -1,0 +1,57 @@
+==============================================================================
+BUKTI D-4 — LAYANAN WARGA DARI PENGAJUAN SAMPAI SURAT DISERAHKAN
+Waktu : 2026-07-31T17:08:58.819Z
+==============================================================================
+
+Dua desa disiapkan pada schema terpisah: uji_desa_a_b037533c, uji_desa_b_b037533c
+
+0. Satu desa, satu schema — data tidak bercampur
+  LULUS  setiap desa memperoleh struktur lengkapnya sendiri
+  LULUS  desa kedua TIDAK dapat disisipkan ke schema yang sama
+
+Layanan "Surat Keterangan Domisili" disiapkan: 2 syarat berkas, 2 langkah persetujuan, SLA 3 hari kerja.
+
+1. Warga mengajukan
+  LULUS  permohonan tersimpan
+
+2. Penolakan dan pengembalian wajib beralasan
+  LULUS  penolakan tanpa alasan ditolak basis data
+  LULUS  pengembalian berkas tanpa alasan ditolak
+  LULUS  pengembalian beralasan diterima
+
+3. Berkas dilengkapi, SLA mulai berjalan
+  LULUS  janji layanan mulai berjalan sejak berkas lengkap
+  LULUS  berkas lengkap terjadi SESUDAH pengajuan
+  LULUS  berkas tanpa unggahan maupun tanda terima fisik ditolak
+
+4. Alur persetujuan
+  LULUS  dua langkah persetujuan terbentuk
+  LULUS  urutan langkah tidak dapat kembar
+  LULUS  penolakan langkah tanpa alasan ditolak
+  LULUS  permohonan disetujui setelah seluruh langkah selesai
+
+5. Penerbitan surat
+  LULUS  surat terbit bernomor
+  LULUS  satu permohonan tidak dapat menerbitkan dua surat
+  LULUS  nomor surat tidak dapat kembar dalam satu desa
+  LULUS  pencabutan surat tanpa alasan ditolak
+
+6. Verifikasi publik tidak membocorkan data pribadi
+  LULUS  token yang sah menemukan suratnya
+  LULUS  jawaban verifikasi TIDAK memuat NIK maupun alamat pemohon
+  LULUS  token palsu tidak menemukan apa pun
+
+7. Antrean loket
+  LULUS  nomor antrean tidak kembar pada hari yang sama
+  LULUS  nomor antrean kembali ke satu pada hari berikutnya
+
+8. Desa tetangga tidak melihat apa pun
+  LULUS  desa tetangga tidak memuat permohonan desa ini
+  LULUS  desa tetangga tidak memuat surat desa ini
+  LULUS  nomor surat yang sama BOLEH ada di desa lain
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

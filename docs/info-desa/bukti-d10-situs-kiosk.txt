@@ -1,0 +1,48 @@
+==============================================================================
+BUKTI D-10 — SITUS, PORTAL WARGA, KIOSK, DAN SIARAN
+Waktu : 2026-07-31T19:40:05.650Z
+==============================================================================
+
+1. Migrasi D-10
+  LULUS  tujuh tabel D-10 terbentuk
+
+2. Sesi kiosk yang berakhir tidak menyisakan jejak layar
+  LULUS  sesi berjalan boleh menyimpan jejak layar
+  LULUS  sesi berakhir yang MASIH menyimpan jejak DITOLAK basis data
+  LULUS  satu jejak yang tersisa saja sudah cukup untuk menolak
+  LULUS  sesi yang bersih dapat ditutup
+  LULUS  sesi yang sudah berakhir tidak dapat diisi jejak kembali
+  LULUS  sesi berakhir tanpa sebab ditolak
+
+3. Sesi kiosk sengaja tidak diaudit
+  LULUS  village_kiosk_session tidak memiliki pemicu audit
+  LULUS  enam tabel D-10 lainnya tetap diaudit
+
+4. Siaran tidak dapat menyatakan terkirim tanpa bukti
+  LULUS  status TERKIRIM tanpa provider_reference DITOLAK
+  LULUS  status TERKIRIM tanpa sent_at ditolak
+  LULUS  status TERHALANG tanpa alasan ditolak
+  LULUS  siaran terhalang tersimpan beserta alasannya
+  LULUS  siaran yang benar-benar terkirim menyimpan rujukannya
+
+5. Portal warga: tautan dilakukan petugas
+  LULUS  penautan tanpa keterangan cara identitasnya dipastikan ditolak
+  LULUS  penautan yang berketerangan diterima
+  LULUS  satu akun tidak dapat tertaut ke dua penduduk
+  LULUS  satu penduduk tidak dapat tertaut ke dua akun
+
+6. Halaman kosong tidak dapat tayang
+  LULUS  berita tayang dengan isi sekadarnya ditolak
+  LULUS  berita tayang tanpa tanggal tayang ditolak
+  LULUS  slug yang bukan huruf kecil dan tanda hubung ditolak
+  LULUS  berita yang lengkap dapat tayang
+  LULUS  berita menyimpan nama penulis, bukan rujukan ke data kependudukan
+
+7. Agenda internal tidak tampil publik
+  LULUS  hanya agenda publik yang keluar dari kueri situs
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

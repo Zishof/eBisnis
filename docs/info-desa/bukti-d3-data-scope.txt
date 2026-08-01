@@ -1,0 +1,49 @@
+==============================================================================
+BUKTI D-3 — CAKUPAN DATA MENYARING PADA KUERI
+Waktu : 2026-07-31T16:55:13.557Z
+==============================================================================
+
+Desa uji: 2 RW, 4 RT, 20 warga (5 per RT).
+
+1. Cakupan menyaring pada kueri
+  LULUS  UNIT melihat seluruh 20 warga
+  LULUS  RT melihat 5 warga saja
+  LULUS  RW melihat 10 warga
+
+2. Bawaan menutup, bukan membuka
+  LULUS  tanpa cakupan memperoleh NOL baris
+  LULUS  AGGREGATE_ONLY memperoleh NOL baris
+
+3. Cakupan warga: dirinya dan keluarganya
+  LULUS  warga melihat 3 anggota keluarganya
+  LULUS  warga tanpa kartu keluarga hanya melihat dirinya
+
+4. Penugasan cakupan
+  LULUS  penugasan tersimpan
+  LULUS  penugasan yang sama tidak dapat digandakan
+  LULUS  cakupan RT tanpa menyebut RT-nya ditolak
+  LULUS  penugasan yang dicabut tidak lagi berlaku
+  LULUS  penugasan baru boleh dibuat sesudah yang lama dicabut
+
+5. Masa jabatan dan pemberhentian
+  LULUS  masa jabatan lewat tetapi kolom status masih AKTIF
+  LULUS  satu aparatur tidak dapat punya dua jabatan aktif
+  LULUS  pemberhentian tanpa alasan ditolak
+  LULUS  aparatur tanpa identitas ditolak
+
+6. Pelimpahan wewenang
+  LULUS  pelimpahan kepada diri sendiri ditolak
+  LULUS  pelimpahan yang wajar diterima
+
+7. BPD
+  LULUS  hanya satu ketua BPD aktif
+
+8. Buku register
+  LULUS  nomor register tidak dapat kembar pada jenis yang sama
+  LULUS  nomor yang sama boleh pada jenis register berbeda
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

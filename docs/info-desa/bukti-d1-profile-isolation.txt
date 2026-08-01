@@ -1,0 +1,44 @@
+==============================================================================
+BUKTI D-1 — KEBOCORAN PROFIL DITEGAKKAN PADA LAYANAN, BUKAN MENU
+Waktu : 2026-07-31T16:36:41.802Z
+==============================================================================
+
+Dua skema uji disiapkan: uji_desa_desa_faf75033 (DESA), uji_desa_kelurahan_faf75033 (KELURAHAN)
+
+1. Struktur wilayah terbentuk pada kedua profil
+  LULUS  DESA: sepuluh tabel village terbentuk
+  LULUS  KELURAHAN: sepuluh tabel village terbentuk
+
+2. profile_type tidak menerima nilai ketiga
+  LULUS  nilai KECAMATAN ditolak basis data
+
+3. Dusun untuk desa, lingkungan untuk kelurahan
+  LULUS  desa memakai DUSUN
+  LULUS  kelurahan memakai LINGKUNGAN
+  LULUS  jenis sub-wilayah di luar dua nilai ditolak
+
+4. Slug dan domain
+  LULUS  slug berspasi dan berhuruf besar ditolak
+  LULUS  hanya satu domain utama per unit
+  LULUS  domain sendiri tanpa token verifikasi ditolak
+
+5. Penomoran RW dan RT
+  LULUS  RT dengan nomor sama pada RW yang sama ditolak
+  LULUS  RT 001 boleh ada pada RW yang berbeda
+
+6. Perubahan profil terekam beserta dasar hukumnya
+  LULUS  perubahan profil tanpa dasar hukum ditolak
+  LULUS  perubahan dengan dasar hukum tercatat
+
+7. Data kedua profil tidak saling terlihat
+  LULUS  skema desa tidak memuat unit kelurahan
+  LULUS  skema kelurahan tidak memuat unit desa
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Catatan: penegakan pada endpoint HTTP diuji pada D-12 (E2E), ketika
+penyewa uji berprofil kelurahan memanggil /village/apbdes dan ditolak 403.
+
+Skema uji dibuang.

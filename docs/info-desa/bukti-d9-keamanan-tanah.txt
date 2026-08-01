@@ -1,0 +1,64 @@
+==============================================================================
+BUKTI D-9 — KEAMANAN, BENCANA, LINGKUNGAN, DAN PERTANAHAN
+Waktu : 2026-07-31T19:14:48.523Z
+==============================================================================
+
+1. Migrasi D-9
+  LULUS  empat belas tabel D-9 terbentuk
+  LULUS  pemicu audit terpasang pada tabel D-9
+
+2. Catatan insiden tidak menyimpan tuduhan sebagai fakta
+  LULUS  tidak ada kolom untuk nama pelaku, tersangka, maupun terduga
+  LULUS  yang ada adalah pelapor, bukan terlapor
+  LULUS  laporan anonim yang menyimpan nama pelapor ditolak
+  LULUS  insiden tercatat
+  LULUS  rujukan ke kepolisian tanpa nomor laporan ditolak
+  LULUS  rujukan yang bernomor diterima
+
+3. Laporan kejadian bencana tidak dihapus, hanya dikoreksi
+  LULUS  village_disaster_event tidak memiliki deleted_at
+  LULUS  koreksi angka tanpa alasan ditolak
+  LULUS  koreksi yang beralasan diterima, dan alasannya ikut tersimpan
+  LULUS  angka korban negatif ditolak
+
+4. Bantuan bencana tidak menunggu penyaringan kelayakan
+  LULUS  tabel penyaluran TIDAK menyediakan tempat bagi verifikasi kelayakan
+  LULUS  yang tetap dituntut hanyalah nama penerimanya
+  LULUS  penyaluran tanpa nama penerima ditolak
+  LULUS  penyaluran tercatat tanpa verifikasi apa pun
+  LULUS  stok logistik tidak dapat menjadi negatif
+
+5. Kondisi infrastruktur tidak dapat dicatat tanpa tanggalnya
+  LULUS  kondisi tanpa tanggal penilaian ditolak
+  LULUS  kondisi bertanggal diterima
+
+6. Catatan tanah administratif, bukan kepemilikan
+  LULUS  kolomnya bernama possessor, bukan owner
+  LULUS  bidang bertanda bersertifikat tanpa nomornya ditolak
+  LULUS  riwayat peralihan tanpa dasar ditolak
+  LULUS  peralihan kepada diri sendiri ditolak
+  LULUS  peralihan yang berdasar tercatat
+
+7. Persetujuan batas
+  LULUS  satu sisi hanya punya satu persetujuan
+  LULUS  persetujuan tanpa tanggal ditolak
+
+8. Surat keterangan tanah wajib memuat penyangkalannya
+  LULUS  surat tanpa penyangkalan DITOLAK basis data
+  LULUS  surat yang penyangkalannya setengah ditolak
+  LULUS  surat dengan persetujuan batas yang belum lengkap ditolak
+  LULUS  surat atas tanah BERSERTIFIKAT ditolak
+  LULUS  surat yang lengkap terbit
+  LULUS  satu bidang hanya punya satu surat yang berlaku
+  LULUS  pencabutan surat tanpa alasan ditolak
+  LULUS  setelah yang lama dicabut, surat baru dapat terbit
+  LULUS  penyangkalan tidak dapat dihapus dengan menyunting surat yang sudah terbit
+
+9. Jejak audit
+  LULUS  perubahan pada tabel D-9 tercatat pada skema audit
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.
