@@ -568,6 +568,13 @@
       "file": "H060__health__menu_truth_w2.sql",
       "name": "eMedik: menu berlayar W-2",
       "description": "Melanjutkan pola H059: setiap fase layar menambahkan migrasi kecil yang mengembalikan is_coming_soon = FALSE untuk utas yang baru dibangunnya. Menambahkan lima utas W-2 — koding, penahanan, jejak-akses, pelepasan, telaah-darurat — sehingga 23 menu berlayar dan 50 masih segera hadir. Daftarnya tetap daftar yang PUNYA layar, bukan yang tidak, dan gagal berisik bila satu utas pun tidak cocok dengan menu mana pun. Perhatikan bahwa jejak-akses dan penahanan menunjuk layar yang SAMA: petugas rekam medis yang menerima surat pengadilan menanyakan siapa yang tidak boleh mengubah berkas ini dan siapa yang sudah membacanya dalam satu napas, dan memisahkannya berarti ia mencari nomor pasien yang sama dua kali."
+    },
+    {
+      "version": "H061",
+      "sequence": 1061,
+      "file": "H061__health__menu_truth_w2b.sql",
+      "name": "eMedik: menu berlayar mutu dan keselamatan",
+      "description": "Sisa W-2. Dua menu yang dilewati H060 dan disebut apa adanya sebagai belum selesai alih-alih didiamkan: mutu dan keselamatan. Keduanya kini berlayar, sehingga 25 menu berlayar dan 48 masih segera hadir. Pola yang sama dengan H059 dan H060: daftar yang PUNYA layar, gagal berisik bila satu utas pun tidak cocok."
     }
   ]
 }

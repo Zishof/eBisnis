@@ -34,6 +34,8 @@ import { PurposeProvider } from './PurposeGate';
 import { BreakGlassPage } from './BreakGlassPage';
 import { CodingPage } from './CodingPage';
 import { LegalHoldPage } from './LegalHoldPage';
+import { SafetyPage } from './SafetyPage';
+import { QualityPage } from './QualityPage';
 import { healthApi } from './health-api';
 
 function Bungkus({ children }: { children: ReactNode }) {
@@ -424,5 +426,203 @@ describe('Penahanan Hukum dan Jejak Akses', () => {
     expect(tombol).toBeDisabled();
     await pengguna.type(screen.getByLabelText('Alasan pencabutan'), 'Perkara selesai.');
     expect(tombol).not.toBeDisabled();
+  });
+});
+
+describe('Keselamatan Pasien - yang terlupa, bukan yang paling berat', () => {
+  /*
+   * Disalin dari GET /health/him/incidents. Urutannya SUDAH diurutkan peladen:
+   * yang belum ditutup dan lewat tenggat paling atas, baru menurut derajat.
+   * Perhatikan bahwa yang HIJAU berada di atas yang MERAH — itu bukan
+   * kekeliruan perlengkapan, itu justru yang diuji.
+   */
+  const PAPAN = [
+    {
+      id: 'I1',
+      incident_number: 'INS-0001',
+      incident_type: 'FALL',
+      grade: 'GREEN',
+      harm_level: 'NO_HARM',
+      occurred_at: '2026-07-01T08:00:00.000Z',
+      review_due_at: '2026-07-15T08:00:00.000Z',
+      closed_at: null,
+      is_anonymous: false,
+      action_count: 0,
+    },
+    {
+      id: 'I2',
+      incident_number: 'INS-0002',
+      incident_type: 'MEDICATION',
+      grade: 'RED',
+      harm_level: 'SEVERE',
+      occurred_at: '2026-07-30T08:00:00.000Z',
+      review_due_at: '2027-01-30T08:00:00.000Z',
+      closed_at: null,
+      is_anonymous: true,
+      action_count: 2,
+    },
+    {
+      id: 'I3',
+      incident_number: 'INS-0003',
+      incident_type: 'SURGICAL',
+      grade: 'RED',
+      harm_level: 'DEATH',
+      occurred_at: '2026-06-01T08:00:00.000Z',
+      review_due_at: '2026-06-15T08:00:00.000Z',
+      closed_at: '2026-06-20T08:00:00.000Z',
+      is_anonymous: false,
+      action_count: 4,
+    },
+  ];
+
+  beforeEach(() => {
+    vi.spyOn(healthApi, 'incidents').mockResolvedValue(PAPAN as never);
+  });
+
+  it('menampilkan urutan peladen apa adanya - hijau yang terlupa di atas merah yang baru', async () => {
+    /*
+     * Kejadian berat yang sudah ditelaah SUDAH DIKERJAKAN; kejadian ringan yang
+     * terlupa dua pekan adalah pekerjaan yang menumpuk diam-diam. Layar yang
+     * mengurutkan ulang menurut derajat membalikkan seluruh maksudnya.
+     */
+    render(<SafetyPage />, { wrapper: Bungkus });
+    const daftar = await screen.findByRole('list', { name: /Papan insiden menurut yang terlupa/ });
+    const baris = within(daftar).getAllByRole('listitem');
+    expect(baris[0].textContent).toContain('INS-0001');
+    expect(baris[1].textContent).toContain('INS-0002');
+  });
+
+  it('menghitung yang LEWAT TENGGAT, bukan hanya yang terbuka', async () => {
+    render(<SafetyPage />, { wrapper: Bungkus });
+    expect(await screen.findByText('Lewat tenggat')).toBeTruthy();
+    expect(screen.getByText('Belum ditutup')).toBeTruthy();
+  });
+
+  it('TIDAK dapat menutup insiden yang belum punya tindakan perbaikan', async () => {
+    /*
+     * Ditegakkan peladen pula. Dijelaskan DI LAYAR sebelum tombolnya ditekan:
+     * penjaga yang baru menjelaskan dirinya sesudah menolak terasa sebagai
+     * penghalang, yang menjelaskan lebih dahulu terasa sebagai aturan.
+     */
+    render(<SafetyPage />, { wrapper: Bungkus });
+    const daftar = await screen.findByRole('list', { name: /Papan insiden/ });
+    const baris = within(daftar).getAllByRole('listitem');
+
+    expect(within(baris[0]).getByRole('button', { name: 'Tutup' })).toBeDisabled();
+    expect(within(baris[0]).getByText(/belum ada tindakan perbaikan/i)).toBeTruthy();
+    expect(within(baris[1]).getByRole('button', { name: 'Tutup' })).not.toBeDisabled();
+  });
+
+  it('menyebutkan bahwa pelapor tidak menutup laporannya sendiri pada kejadian berat', async () => {
+    render(<SafetyPage />, { wrapper: Bungkus });
+    const daftar = await screen.findByRole('list', { name: /Papan insiden/ });
+    const baris = within(daftar).getAllByRole('listitem');
+    expect(within(baris[1]).getByText(/telaah oleh pihak yang terlibat bukan telaah/i)).toBeTruthy();
+  });
+
+  it('insiden yang sudah ditutup tidak lagi menawarkan tombol apa pun', async () => {
+    render(<SafetyPage />, { wrapper: Bungkus });
+    const daftar = await screen.findByRole('list', { name: /Papan insiden/ });
+    const baris = within(daftar).getAllByRole('listitem');
+    expect(within(baris[2]).queryByRole('button', { name: 'Tutup' })).toBeNull();
+    expect(within(baris[2]).queryByRole('button', { name: /Tindakan/ })).toBeNull();
+  });
+
+  it('menandai laporan tanpa nama', async () => {
+    // Pelaporan tanpa nama tetap dihitung dan tetap ditelaah.
+    render(<SafetyPage />, { wrapper: Bungkus });
+    expect(await screen.findByText('tanpa nama')).toBeTruthy();
+  });
+});
+
+describe('Indikator Mutu - arah menentukan warnanya', () => {
+  /* Disalin dari GET /health/him/quality/dashboard */
+  const MUTU = {
+    indicators: [
+      {
+        id: 'Q1',
+        code: 'ILO',
+        name: 'Infeksi Luka Operasi',
+        category: 'KESELAMATAN',
+        direction: 'LOWER_IS_BETTER',
+        target_value: 2,
+        value: 1.4,
+        meets_target: true,
+      },
+      {
+        id: 'Q2',
+        code: 'HH',
+        name: 'Kepatuhan Cuci Tangan',
+        category: 'KESELAMATAN',
+        direction: 'HIGHER_IS_BETTER',
+        target_value: 85,
+        value: 61.2,
+        meets_target: false,
+      },
+      {
+        id: 'Q3',
+        code: 'RESP',
+        name: 'Waktu Tanggap IGD',
+        category: 'AKSES',
+        direction: 'LOWER_IS_BETTER',
+        target_value: 5,
+        value: null,
+        meets_target: null,
+      },
+    ],
+    recordCompleteness: { score: 87.5, message: '35 dari 40 berkas lengkap (87.5%).' },
+  };
+
+  beforeEach(() => {
+    vi.spyOn(healthApi, 'qualityDashboard').mockResolvedValue(MUTU as never);
+  });
+
+  it('memakai meets_target dari peladen, BUKAN membandingkan angkanya sendiri', async () => {
+    /*
+     * 1,4 lebih kecil daripada sasaran 2 dan itu TERCAPAI (makin rendah makin
+     * baik). 61,2 lebih besar daripada 1,4 dan itu TAK TERCAPAI (makin tinggi
+     * makin baik, sasarannya 85).
+     *
+     * Layar yang membandingkan sendiri akan membalik salah satunya, dan tidak
+     * seorang pun akan menyadarinya: warna hijau tidak pernah ditanyakan.
+     */
+    render(<QualityPage />, { wrapper: Bungkus });
+    const tabel = await screen.findByRole('table');
+    const baris = within(tabel).getAllByRole('row');
+    expect(within(baris[1]).getByText('Tercapai')).toBeTruthy();
+    expect(within(baris[2]).getByText('Tak tercapai')).toBeTruthy();
+  });
+
+  it('MENAMPILKAN indikator yang belum diukur, tidak menyembunyikannya', async () => {
+    /*
+     * Papan yang seluruhnya hijau karena separuh indikatornya tidak diukur
+     * adalah keadaan paling menyesatkan yang dapat ditampilkan dasbor mutu.
+     */
+    render(<QualityPage />, { wrapper: Bungkus });
+    expect(await screen.findByText('Waktu Tanggap IGD')).toBeTruthy();
+
+    /*
+     * "Belum diukur" SENGAJA muncul dua kali: sekali sebagai angka ringkasan,
+     * sekali sebagai lencana pada barisnya. Yang membaca ringkasan tahu
+     * berapa; yang membaca tabel tahu yang mana.
+     */
+    expect(screen.getAllByText('Belum diukur').length).toBe(2);
+
+    const tabel = screen.getByRole('table');
+    expect(within(tabel).getByText('belum diukur')).toBeTruthy();
+    expect(within(tabel).getByText('Belum diukur')).toBeTruthy();
+  });
+
+  it('menampilkan kelengkapan berkas beserta kalimat penjelasnya', async () => {
+    render(<QualityPage />, { wrapper: Bungkus });
+    expect(await screen.findByText('87.5%')).toBeTruthy();
+    expect(screen.getByText('35 dari 40 berkas lengkap (87.5%).')).toBeTruthy();
+  });
+
+  it('menerjemahkan arah indikator ke bahasa manusia', async () => {
+    render(<QualityPage />, { wrapper: Bungkus });
+    const tabel = await screen.findByRole('table');
+    expect(within(tabel).getAllByText('makin rendah makin baik').length).toBe(2);
+    expect(within(tabel).getByText('makin tinggi makin baik')).toBeTruthy();
   });
 });

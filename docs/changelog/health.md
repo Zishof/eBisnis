@@ -33,6 +33,32 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
   hadir.
 - **`him-pages.spec.tsx`** — 14 uji komponen.
 
+### Ditambahkan kemudian, menuntaskan W-2
+
+- **`SafetyPage`** (`/app/emedik/keselamatan`) — papan insiden yang diurutkan
+  menurut **yang terlupa**, bukan menurut yang paling berat. Urutan itu akan
+  terasa keliru bagi yang pertama melihatnya, jadi sebabnya ditulis di layar:
+  kejadian merah yang sudah ditelaah sudah dikerjakan; kejadian hijau yang
+  terlupa dua pekan adalah pekerjaan yang menumpuk diam-diam. Papan yang diurut
+  menurut derajat menampilkan yang merah terus-menerus sampai orang berhenti
+  melihatnya.
+- **`QualityPage`** (`/app/emedik/mutu`) — warna datang dari `meets_target` yang
+  **dihitung peladen**, bukan dari perbandingan yang dilakukan layar. Layar yang
+  membandingkan sendiri akan menghijaukan yang buruk pada setiap indikator yang
+  makin rendah makin baik — dan tidak seorang pun akan menyadarinya, sebab warna
+  hijau tidak pernah ditanyakan. Indikator yang **belum diukur** ditampilkan,
+  tidak disembunyikan: papan yang seluruhnya hijau karena separuh indikatornya
+  tidak diukur adalah keadaan paling menyesatkan yang dapat ditampilkan dasbor
+  mutu.
+- **`H061__health__menu_truth_w2b.sql`** — 25 menu berlayar, 48 masih segera
+  hadir.
+
+Dua penjaga peladen dijelaskan **di layar sebelum tombolnya ditekan**: insiden
+tidak dapat ditutup tanpa tindakan perbaikan, dan pelapor tidak menutup
+laporannya sendiri pada kejadian merah atau kuning. Penjaga yang baru
+menjelaskan dirinya sesudah menolak terasa sebagai penghalang; yang menjelaskan
+lebih dahulu terasa sebagai aturan.
+
 ### Naskah bukti baru: kontrak klien-peladen
 
 **`prove-web-contract.mjs`** — 17 pemeriksaan, lulus dua kali.
@@ -68,7 +94,7 @@ Constraint-nya tetap berdiri sebagai penjaga terakhir.
 
 Ditemukan oleh naskah bukti kontrak, bukan oleh uji mana pun.
 
-Uji web 91 -> 105.
+Uji web 91 -> 115.
 
 ---
 

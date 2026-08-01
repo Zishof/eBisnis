@@ -1198,6 +1198,24 @@ export const healthApi = {
   qualityDashboard: (facilityId: string, year: number) =>
     api.get<PapanMutu>(`/health/him/quality/dashboard?facilityId=${facilityId}&year=${year}`),
 
+  reportIncident: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>('/health/him/incidents', body, { headers: tajuk(ctx) }),
+
+  addIncidentAction: (id: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>(`/health/him/incidents/${id}/actions`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  closeIncident: (id: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>(`/health/him/incidents/${id}/close`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  recordQualityMeasurement: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>('/health/him/quality/measurements', body, {
+      headers: tajuk(ctx),
+    }),
+
   // --- W-2: telaah darurat ---------------------------------------------------
 
   breakGlassQueue: (limit = 50, ctx: KonteksAkses) =>

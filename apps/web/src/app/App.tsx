@@ -122,6 +122,12 @@ const HealthInfoReleasePage = lazy(() =>
 const HealthBreakGlassPage = lazy(() =>
   import('../verticals/health/BreakGlassPage').then((m) => ({ default: m.BreakGlassPage })),
 );
+const HealthSafetyPage = lazy(() =>
+  import('../verticals/health/SafetyPage').then((m) => ({ default: m.SafetyPage })),
+);
+const HealthQualityPage = lazy(() =>
+  import('../verticals/health/QualityPage').then((m) => ({ default: m.QualityPage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -267,6 +273,8 @@ export function App() {
             <Route path="jejak-akses" element={<HealthLegalHoldPage />} />
             <Route path="pelepasan" element={<HealthInfoReleasePage />} />
             <Route path="telaah-darurat" element={<HealthBreakGlassPage />} />
+            <Route path="keselamatan" element={<HealthSafetyPage />} />
+            <Route path="mutu" element={<HealthQualityPage />} />
           </Route>
           <Route path="*" element={<ComingSoonPage />} />
         </Route>

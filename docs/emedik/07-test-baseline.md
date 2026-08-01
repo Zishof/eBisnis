@@ -90,9 +90,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-11 | 25 | **35** | `health-sample.spec.ts` |
 | H-12 | 40 | **75** | `health-security.spec.ts` |
 
-API keseluruhan: **2506** pengujian pada 72 berkas. Web: **105** pada 7 berkas,
-70 di antaranya kesehatan (`health-api.spec.ts` 40, `puskesmas-pages.spec.tsx` 16,
-`him-pages.spec.tsx` 14).
+API keseluruhan: **2506** pengujian pada 72 berkas. Web: **115** pada 7 berkas,
+80 di antaranya kesehatan (`health-api.spec.ts` 40, `puskesmas-pages.spec.tsx` 16,
+`him-pages.spec.tsx` 24).
 
 Seluruh dua belas fase melampaui sasaran minimumnya. Jumlah minimum yang
 ditetapkan H-0 adalah 370 pengujian baru; yang terpasang jauh di atasnya.

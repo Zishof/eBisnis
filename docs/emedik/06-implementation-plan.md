@@ -2024,16 +2024,16 @@ satu cacat Core yang menyembunyikannya. Rinciannya pada
 
 ### W-2 · Rekam medis dan telaah darurat — **SELESAI**
 
-Empat layar untuk lima menu: pengkodean, penahanan hukum, jejak akses,
-pelepasan informasi, telaah darurat. `penahanan` dan `jejak-akses` menunjuk
-layar yang sama dengan sengaja.
+Enam layar untuk tujuh menu: pengkodean, penahanan hukum, jejak akses,
+pelepasan informasi, telaah darurat, keselamatan pasien, indikator mutu.
+`penahanan` dan `jejak-akses` menunjuk layar yang sama dengan sengaja.
 
 | Bagian | Berkas |
 |---|---|
-| Migrasi | `H060__health__menu_truth_w2.sql` |
-| Layar | `CodingPage`, `LegalHoldPage`, `InfoReleasePage`, `BreakGlassPage` |
-| Klien | `health-api.ts` — 13 jalan, 9 antarmuka baru |
-| Uji | `him-pages.spec.tsx` 14 |
+| Migrasi | `H060__health__menu_truth_w2.sql`, `H061__health__menu_truth_w2b.sql` |
+| Layar | `CodingPage`, `LegalHoldPage`, `InfoReleasePage`, `BreakGlassPage`, `SafetyPage`, `QualityPage` |
+| Klien | `health-api.ts` — 17 jalan, 9 antarmuka baru |
+| Uji | `him-pages.spec.tsx` 24 |
 | Bukti | `scripts/prove-web-contract.mjs` -> [bukti-kontrak-web.txt](bukti-kontrak-web.txt) |
 
 **Keputusan yang menentukan bentuknya**
@@ -2049,6 +2049,12 @@ layar yang sama dengan sengaja.
   sendiri.
 - **Tidak ada tombol hapus pada jejak akses, dan tidak boleh pernah ada.** Ada
   uji yang menegaskan ketiadaannya.
+- **Papan insiden diurut menurut yang TERLUPA, bukan yang paling berat.**
+  Kejadian merah yang sudah ditelaah sudah dikerjakan; kejadian hijau yang
+  terlupa dua pekan menumpuk diam-diam.
+- **Warna indikator mutu datang dari `meets_target` milik peladen.** Layar yang
+  membandingkan sendiri akan menghijaukan yang buruk pada tiap indikator yang
+  makin rendah makin baik, dan warna hijau tidak pernah ditanyakan.
 - **Rujukan dasar pelepasan disimpan, bukan dicentang.** Kotak centang tanpa
   rujukan menghasilkan berkas yang dilepaskan dengan keterangan "ada
   persetujuan", dan enam bulan kemudian tidak seorang pun dapat menunjukkan
@@ -2060,7 +2066,7 @@ naskah bukti kontrak dan bukan oleh uji mana pun. Rinciannya pada
 
 ### Yang belum berlayar
 
-50 menu masih bertanda "segera hadir", dan kini menunya **berkata begitu
+48 menu masih bertanda "segera hadir", dan kini menunya **berkata begitu
 sebelum diklik**, bukan sesudah. Urutan berikutnya yang disarankan, menurut
 ukuran yang sama — berapa orang tidak dapat bekerja tanpanya:
 
