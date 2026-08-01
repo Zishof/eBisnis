@@ -39,9 +39,9 @@ export class CmsSeedService {
     summary.faqCategories = await this.seedFaq();
     summary.testimonials = await this.seedTestimonials();
     summary.partnerLogos = await this.seedPartnerLogos();
-    summary.newsCategories = await this.seedNewsCategories();
+    summary.newsCategories = await this.seedNewsCategories(website.id);
     summary.newsTags = await this.seedNewsTags();
-    summary.newsArticles = await this.seedNewsArticles();
+    summary.newsArticles = await this.seedNewsArticles(website.id);
     summary.announcements = await this.seedAnnouncements();
     summary.callToActions = await this.seedCallToActions();
     summary.contactOffices = await this.seedContactOffices();
@@ -226,11 +226,12 @@ export class CmsSeedService {
     return PARTNER_LOGO_SEED.length;
   }
 
-  private async seedNewsCategories(): Promise<number> {
+  private async seedNewsCategories(websiteId: string): Promise<number> {
     for (const category of NEWS_CATEGORY_SEED) {
       await this.prisma.newsCategory.upsert({
         where: { code: category.code },
         create: {
+          websiteId,
           code: category.code,
           nameKey: `web.news.category.${category.code.toLowerCase()}`,
           defaultName: category.name,
@@ -264,7 +265,7 @@ export class CmsSeedService {
     return NEWS_TAG_SEED.length;
   }
 
-  private async seedNewsArticles(): Promise<number> {
+  private async seedNewsArticles(websiteId: string): Promise<number> {
     const categories = await this.prisma.newsCategory.findMany({ select: { id: true, code: true } });
     const categoryMap = new Map(categories.map((c) => [c.code, c.id]));
     const tags = await this.prisma.newsTag.findMany({ select: { id: true, code: true } });
@@ -278,6 +279,7 @@ export class CmsSeedService {
       const created = await this.prisma.newsArticle.upsert({
         where: { code: article.code },
         create: {
+          websiteId,
           code: article.code,
           categoryId,
           slug: article.slug,

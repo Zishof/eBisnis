@@ -11,6 +11,28 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 export class PublicSiteService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * ID situs platform eBisnis.id sendiri (`tenant_id IS NULL`).
+   *
+   * Dipakai `getPage()`, `listNews()`, dan `getNewsArticle()` (EP-C2) selain
+   * `getSite()` — bukan hanya beranda yang dapat salah menampilkan situs
+   * pondok, tetapi juga halaman CMS dan berita, sebab `CmsPage.slug` dan
+   * (sejak EP-C2) `NewsArticle.slug`/`NewsCategory.slug` hanya unik PER SITUS,
+   * bukan global. Query tanpa penyaring `websiteId` dapat mengembalikan baris
+   * milik situs pondok mana pun yang kebetulan memakai slug yang sama.
+   */
+  private async idSitusPlatform(): Promise<string> {
+    const website = await this.prisma.website.findFirst({
+      where: { isActive: true, deletedAt: null, tenantId: null },
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true },
+    });
+    if (!website) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Website belum dikonfigurasi.');
+    }
+    return website.id;
+  }
+
   async getSite(localeCode: string) {
     const website = await this.prisma.website.findFirst({
       /*
@@ -130,8 +152,9 @@ export class PublicSiteService {
 
   /** Halaman CMS beserta blok. Hanya versi PUBLISHED yang dikembalikan. */
   async getPage(slug: string, localeCode: string) {
+    const websiteId = await this.idSitusPlatform();
     const page = await this.prisma.cmsPage.findFirst({
-      where: { slug, status: 'PUBLISHED', isActive: true, deletedAt: null },
+      where: { websiteId, slug, status: 'PUBLISHED', isActive: true, deletedAt: null },
       include: {
         versions: {
           where: { status: 'PUBLISHED', deletedAt: null },
@@ -201,13 +224,15 @@ export class PublicSiteService {
   }
 
   async listNews(params: { page: number; pageSize: number; categorySlug?: string; tagSlug?: string; localeCode: string }) {
+    const websiteId = await this.idSitusPlatform();
     const where = {
+      websiteId,
       status: 'PUBLISHED' as const,
       isActive: true,
       deletedAt: null,
       publishedAt: { lte: new Date() },
       OR: [{ expiredAt: null }, { expiredAt: { gte: new Date() } }],
-      ...(params.categorySlug ? { category: { slug: params.categorySlug } } : {}),
+      ...(params.categorySlug ? { category: { slug: params.categorySlug, websiteId } } : {}),
       ...(params.tagSlug ? { tags: { some: { tag: { slug: params.tagSlug } } } } : {}),
     };
 
@@ -266,8 +291,9 @@ export class PublicSiteService {
   }
 
   async getNewsArticle(slug: string, localeCode: string) {
+    const websiteId = await this.idSitusPlatform();
     const article = await this.prisma.newsArticle.findFirst({
-      where: { slug, status: 'PUBLISHED', isActive: true, deletedAt: null },
+      where: { websiteId, slug, status: 'PUBLISHED', isActive: true, deletedAt: null },
       include: {
         category: { select: { slug: true, defaultName: true, nameKey: true } },
         author: { select: { displayName: true } },

@@ -69,11 +69,37 @@ fondasi yang bocor lebih berbahaya daripada menunda.
 dan diikat uji yang membaca satu sama lain. Dibuktikan lewat pendaftaran
 sungguhan: `login`, `demo`, `sandbox` kini ditolak sebagai alamat situs pondok.
 
+## Status EP-C2 — DONE
+
+Menutup dua celah yang dicatat eskalasi pada `09-cms-and-tenant-website-analysis.md`:
+
+1. `CmsPage.slug` sudah punya kolom `websiteId` sejak awal, tetapi
+   `PublicSiteService.getPage()` mengabaikannya dan mencari `slug` lintas
+   SELURUH situs. Diperbaiki dengan menambah `idSitusPlatform()` (pola yang
+   sama dengan penyaring `tenantId: null` pada `getSite()`) dan menyaring
+   `getPage()` dengannya.
+2. `NewsCategory` dan `NewsArticle` tidak punya kolom situs sama sekali —
+   `slug` unik secara global. Migrasi aditif `20260802130000_news_site_scoping`
+   menambah `website_id` (NOT NULL, mengisi seluruh baris lama ke situs
+   platform sendiri), lalu mengubah keunikan `slug` dari global menjadi
+   `(website_id, slug)`. `listNews()` dan `getNewsArticle()` ikut disaring.
+
+Dibuktikan lewat live test: situs uji `ponpes_demo` diberi kategori dan
+artikel dengan slug PERSIS SAMA dengan milik eBisnis.id (`produk` dan
+`eBisnis-id-resmi-meluncurkan-platform-pos-erp`). Tanpa perbaikan, baris mana
+pun yang dikembalikan Postgres lebih dulu akan tampil di beranda publik
+eBisnis.id. Dengan perbaikan, `/public/news/:slug` dan
+`/public/news?category=produk` tetap mengembalikan artikel dan kategori milik
+eBisnis.id, bukan milik pondok uji.
+
+**Yang tidak dikerjakan, tetap sengaja:** endpoint publik dan admin CMS untuk
+mengelola situs SATU PONDOK (mis. `/pesantren/public/site`, editor berita
+tenant). Perbaikan ini hanya menutup risiko kebocoran data sebagai prasyarat
+— situs pondok itu sendiri belum dibangun.
+
 ## Sesudah EP-A
 
 ```text
-EP-C2  Sekat situs per penyewa pada CmsPage dan NewsArticle (prasyarat sebelum
-       situs pondok aktif — lihat eskalasi pada dokumen 09)
 EP-E   Presensi
 EP-F   Tagihan pendidikan di atas mesin faktur
 EP-G   Asrama dan penempatan kamar

@@ -105,16 +105,19 @@ Yang **dikerjakan** pada EP-C sesi ini, karena aman dan berdiri sendiri:
    dibuat di masa depan dapat terpilih sebagai beranda eBisnis.id, tergantung
    `sortOrder`.
 
-**EP-C2 (menyusul, prasyarat sebelum situs pondok aktif):**
+**EP-C2 — DONE (sesi berikutnya).**
 
-```text
-ALTER TABLE cms_page      ADD COLUMN tenant_id (turunan dari website_id, atau langsung)
-ALTER TABLE news_category ADD COLUMN website_id NOT NULL
-ALTER TABLE news_article  ADD COLUMN website_id NOT NULL
-getPage()         -> tambahkan websiteId ke where
-listNews()        -> tambahkan websiteId ke where
-getNewsArticle()  -> tambahkan websiteId ke where
-```
+`CmsPage` sudah mempunyai `websiteId` sejak awal — yang hilang hanyalah
+penyaringnya pada `getPage()`, sudah ditambahkan. `NewsCategory` dan
+`NewsArticle` benar-benar tidak punya kolom situs; migrasi aditif
+`20260802130000_news_site_scoping` menambah `website_id NOT NULL` pada
+keduanya (mengisi baris lama ke situs platform), mengubah keunikan `slug`
+dari global menjadi `(website_id, slug)`, dan `listNews()`/`getNewsArticle()`
+kini menyaring `websiteId`. Dibuktikan live: situs uji dengan slug kategori
+dan artikel PERSIS SAMA dengan milik eBisnis.id tidak muncul pada
+`/public/news` maupun `/public/news/:slug` eBisnis.id. Detail pada
+`16-implementation-plan.md`.
 
-Tanpa EP-C2, `SitusPondokPage.tsx` tetap menampilkan "sedang disiapkan" —
-itu keputusan yang benar, bukan yang belum sempat dikerjakan.
+`SitusPondokPage.tsx` (endpoint dan editor CMS untuk SATU situs pondok) tetap
+belum dibangun — EP-C2 hanya menutup risiko kebocoran data sebagai prasyarat,
+bukan membangun situs pondok itu sendiri.
