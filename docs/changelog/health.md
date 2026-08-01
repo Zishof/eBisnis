@@ -5,6 +5,66 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9C — Siklus klaim internal
+
+### Ditambahkan
+
+- **`H031__health__claim.sql`** — `health_claim`, `health_claim_finding`,
+  `health_claim_flag`, `health_claim_reconciliation`. Beserta constraint
+  `health_claim_gap_needs_reason`, `health_claim_verify_not_self`,
+  `claim_recon_gap_needs_explanation`, trigger `forbid_submitted_claim_delete`
+  dan `forbid_submitted_amount_change`, serta indeks unik satu klaim per
+  kunjungan yang masih hidup.
+- **`H032__health__claim_permissions.sql`** — membuka kembali menu
+  `HEALTH_CLAIM` yang ditutup H017, menambah dua menu, dua peran baru, dan dua
+  aturan pemisahan wewenang.
+- **`health-claim.ts`** — aturan sebagai fungsi murni: daur hidup klaim,
+  verifikasi internal, kelayakan pengajuan, perbandingan tiga angka, pencatatan
+  keputusan, rekonsiliasi tiga sisi, dan penanda untuk telaah. **58 pengujian.**
+- **`health-claim.service.ts`** dan **`health-claim.controller.ts`** — sepuluh
+  jalan pada `/api/v1/health/claims/**`.
+- **`prove-health-claim.mjs`** — naskah bukti, **56 pemeriksaan**, seluruhnya
+  lulus dan lulus pula pada pengulangan.
+
+Uji: API 1843 → **1903**.
+
+### Keputusan yang perlu dicatat
+
+- **Tiga angka, tiga kolom**, dan tidak ada kolom penyatu. Naskah bukti
+  memeriksa ketiadaannya secara harfiah pada `information_schema`.
+
+- **Nilai yang sudah diajukan tidak dapat diubah.** Yang sudah dikirim ke
+  penjamin adalah angka itu.
+
+- **Verifikasi internal menemukan kekurangan sebelum penjamin menemukannya**,
+  dan setiap temuan dilaporkan namanya beserta peran yang memperbaikinya.
+
+- **Kelas yang melebihi hak peserta dilaporkan tetapi tidak menahan.**
+  Menahannya akan membuat verifikasi internal dimatikan oleh orang pertama yang
+  klaimnya tertahan karena hal yang memang sah.
+
+- **Sebab penolakan adalah kode tertutup**, dan `OTHER` wajib berketerangan.
+
+- **PENANDA ANTI-FRAUD TIDAK PERNAH MENGHENTIKAN PENGAJUAN.** Tabelnya tidak
+  punya satu pun kolom penahan, dan kata "fraud" tidak muncul pada satu pun
+  pesannya — penanda yang berbunyi seperti tuduhan akan dibantah alih-alih
+  ditelaah.
+
+- **Yang mengode tidak memverifikasi klaimnya sendiri**, diperiksa pada tingkat
+  baris — bukan sebagai pasangan hak akses, sebab rumah sakit kecil yang koder
+  dan verifikatornya bergantian tetap harus dapat bekerja.
+
+- **Rekonsiliasi tiga sisi**, dan selisih yang tidak terjelaskan tidak boleh
+  ditutup. Ia tetap boleh dicatat tanpa ditutup.
+
+### Masih terhalang
+
+Enam dari lima belas tahap milik BPJS: kepesertaan, rujukan, SEP, grouping,
+pengajuan daring, dan keputusan langsung. Ditambah penjurnalan klaimnya yang
+menunggu kode peristiwa `HEALTH_*` dari Core.
+
+---
+
 ## H-9G — Kontrak fee sistem dan fee investor
 
 ### Ditambahkan

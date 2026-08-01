@@ -78,8 +78,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9E | 25 | **56** | `health-fee.spec.ts` |
 | H-9F | 25 | **42** | `health-settlement.spec.ts` |
 | H-9G | 20 | **42** | `health-fee-contract.spec.ts` |
+| H-9C | 30 | **58** | `health-claim.spec.ts` |
 
-API keseluruhan: **1843** pengujian pada 61 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **1903** pengujian pada 62 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -109,6 +110,19 @@ sungguhan, pada basis data sungguhan:
 | H-9E | `prove-health-fee.mjs` | 50 pemeriksaan, seluruhnya lulus — [bukti-h9e-jasa.txt](bukti-h9e-jasa.txt) |
 | H-9F | `prove-health-settlement.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9f-settlement.txt](bukti-h9f-settlement.txt) |
 | H-9G | `prove-health-fee-contract.mjs` | 52 pemeriksaan, seluruhnya lulus — [bukti-h9g-kontrak-fee.txt](bukti-h9g-kontrak-fee.txt) |
+| H-9C | `prove-health-claim.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9c-klaim.txt](bukti-h9c-klaim.txt) |
+
+Naskah H-9C memakai teknik H-9N sekali lagi — **membuktikan ketiadaan** — dan
+dua kali di antaranya menyangkut nama kolom. Ia menuntut `health_claim` punya
+tiga kolom nilai yang terpisah dan **tidak punya** kolom `amount`,
+`claim_amount`, atau `total_amount` yang menyatukannya; dan ia menuntut
+`health_claim_flag` tidak punya satu pun kolom bernama `blocked`,
+`blocks_submission`, atau `is_blocking`.
+
+Keduanya aturan yang mudah dilanggar tanpa sengaja oleh orang yang menambahkan
+kolom "supaya lebih praktis" — dan pelanggarannya tidak menimbulkan galat, hanya
+menimbulkan pembayaran jasa dari uang yang belum masuk, atau klaim sah yang
+tertahan penanda statistik.
 
 Naskah H-9G menemukan cacat pada **constraint yang ditulis fase itu sendiri**,
 dan itulah nilainya. `fee_application_capped_consistent` menyamakan "persentase

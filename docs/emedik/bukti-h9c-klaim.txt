@@ -1,0 +1,83 @@
+==============================================================================
+BUKTI H-9C — SIKLUS KLAIM INTERNAL
+Waktu   : 2026-08-01T01:29:52.999Z
+Schema  : demo
+==============================================================================
+
+Dua pengguna. Petugas klaim TIDAK diberi VERIFY, verifikator TIDAK diberi
+SUBMIT — dan verifikator sengaja dijadikan pengode klaim kedua, supaya
+penolakan "yang mengode tidak memverifikasi" datang dari pemeriksaan baris.
+
+1. Verifikasi internal menemukan kekurangan SEBELUM penjamin menemukannya
+  LULUS  klaim disusun
+  LULUS  nomornya bermakna
+  LULUS  menyusun klaim tanpa tujuan penggunaan ditolak
+  LULUS  mengajukan klaim yang belum diverifikasi DITOLAK
+  LULUS  penolakannya menyebut berminggu-minggu
+  LULUS  yang MENGODE tidak memverifikasi klaimnya sendiri
+  LULUS  penolakannya menyebut masih tampak benar baginya
+  LULUS  menembusnya lewat basis data ditolak constraint
+  LULUS  verifikasi berjalan
+  LULUS  berkas yang lengkap dinyatakan bersih
+  LULUS  dan statusnya berpindah
+  LULUS  berkas yang kurang menghasilkan temuan BERNAMA
+  LULUS  diagnosis utama yang tidak ada disebutkan
+  LULUS  resume pulang yang belum ada disebutkan
+  LULUS  setiap temuan menyebut siapa yang memperbaikinya
+  LULUS  kelas yang melebihi hak peserta DILAPORKAN
+  LULUS  tetapi TIDAK menahan pengajuan
+  LULUS  dan menyebut bahwa selisihnya ditagihkan kepada pasien
+  LULUS  klaim yang masih punya temuan penahan tidak dapat diajukan
+
+2. Penanda anti-fraud TIDAK PERNAH menghentikan pengajuan
+  (klaim ini bertanda: ya)
+  LULUS  tabel penanda TIDAK punya satu pun kolom penahan
+  LULUS  yang ada hanya needs_review
+  LULUS  klaim yang sudah diverifikasi DAPAT diajukan
+  LULUS  nilai yang diajukan tercatat
+
+3. Tiga angka disimpan terpisah dan tidak pernah dipertukarkan
+  LULUS  ketiganya punya kolomnya sendiri
+  LULUS  dan tidak ada kolom "nilai klaim" yang menyatukannya
+  LULUS  nilai yang sudah diajukan tidak dapat diubah
+  LULUS  penolakannya menyebut angkanya yang bergeser di sini
+  LULUS  klaim yang sudah diajukan tidak dapat dihapus
+  LULUS  tetapi yang belum diajukan boleh dihapus
+
+4. Selisih yang merugikan wajib bersebab, dan sebabnya KODE TERTUTUP
+  LULUS  selisih tanpa sebab DITOLAK
+  LULUS  penolakannya menyebut tidak dapat memperbaikinya
+  LULUS  sebab OTHER tanpa keterangan ditolak
+  LULUS  penolakannya menyebut tempat pembuangan
+  LULUS  keputusan dengan sebab kode tertutup dicatat
+  LULUS  selisihnya dihitung
+  LULUS  menembusnya lewat basis data ditolak constraint
+  LULUS  pembayaran dicatat sebagai angka KETIGA
+  LULUS  selisih bayar dihitung terpisah dari selisih setuju
+  LULUS  ketiganya tersimpan berbeda dan tidak saling menimpa
+
+5. Satu klaim per kunjungan yang masih hidup
+  LULUS  klaim kedua atas kunjungan yang sama ditolak indeks unik
+
+6. Rekonsiliasi membandingkan TIGA sisi
+  LULUS  menutup rekonsiliasi yang masih berselisih tanpa penjelasan DITOLAK
+  LULUS  penolakannya menyebut akan selalu ditutup dengan selisih
+  LULUS  selisihnya boleh DICATAT tanpa ditutup
+  LULUS  kedua selisih dihitung terpisah
+  LULUS  dengan penjelasan, boleh ditutup
+  LULUS  klaimnya berstatus REKONSILIASI
+  LULUS  menutup selisih tanpa penjelasan lewat basis data ditolak constraint
+  LULUS  catatan rekonsiliasi tidak dapat dihapus
+
+7. Laporan sebab penolakan — inilah gunanya kode tertutup
+  LULUS  laporan terbaca
+  LULUS  dan dikelompokkan menurut sebabnya
+  LULUS  beserta nilai selisihnya
+  LULUS  daftar kerja terbaca
+  LULUS  memuat jumlah temuan penahan tiap klaim
+  LULUS  klaim terbaca beserta temuan dan penandanya
+  LULUS  dan ketiga angkanya dilaporkan sekaligus
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

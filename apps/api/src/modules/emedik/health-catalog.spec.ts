@@ -364,6 +364,28 @@ describe('peran kesehatan', () => {
     expect(pemegang('APPROVE')).toEqual(['HEALTH_CONTRACT_APPROVER']);
   });
 
+  it('yang memverifikasi klaim bukan yang mengajukannya', () => {
+    const memverifikasi = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_CLAIM.VERIFY'),
+    ).map((r) => r.code);
+    const mengajukan = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_CLAIM.SUBMIT'),
+    ).map((r) => r.code);
+    expect(memverifikasi).toEqual(['HEALTH_CLAIM_VERIFIER']);
+    expect(mengajukan).toEqual(['HEALTH_CLAIM_OFFICER']);
+  });
+
+  it('koder membaca klaim tetapi tidak memverifikasinya', () => {
+    /*
+     * Verifikasi oleh yang mengodenya hanya membaca ulang pilihannya sendiri.
+     * Pemisahannya per klaim, bukan per hak akses — tetapi peran bawaan koder
+     * memang tidak diberi VERIFY.
+     */
+    const koder = HEALTH_ROLES.find((r) => r.code === 'HEALTH_CODER');
+    expect(koder?.permissions).toContain('HEALTH_CLAIM.READ');
+    expect(koder?.permissions).not.toContain('HEALTH_CLAIM.VERIFY');
+  });
+
   it('penghapusan data contoh hanya dipegang administrator', () => {
     // Penghapusannya menolak bila ada data nyata yang merujuknya, dan keputusan
     // atas penolakan itu harus diambil orang yang dapat menilai akibatnya.

@@ -631,6 +631,38 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'UPDATE', 'REVIEW', 'APPROVE', 'ACTIVATE', 'CANCEL'],
     sortOrder: 106,
   },
+  // Klaim — H-9C.
+  //
+  // Menu HEALTH_CLAIM dulunya penampung bertanda "sedang dibangun", lalu
+  // ditutup H017 ketika ternyata masih lama. Ia dibuka kembali di sini dengan
+  // aksinya yang sesungguhnya. VERIFY memeriksa berkas; SUBMIT mengajukan.
+  {
+    code: 'HEALTH_CLAIM',
+    parentCode: 'HEALTH',
+    label: 'Klaim',
+    route: '/app/emedik/klaim',
+    icon: 'file-check',
+    actions: ['READ', 'CREATE', 'UPDATE', 'VERIFY', 'SUBMIT', 'CANCEL'],
+    sortOrder: 107,
+  },
+  {
+    code: 'HEALTH_CLAIM_REVIEW',
+    parentCode: 'HEALTH',
+    label: 'Telaah Klaim',
+    route: '/app/emedik/telaah-klaim',
+    icon: 'search-check',
+    actions: ['READ', 'REVIEW'],
+    sortOrder: 108,
+  },
+  {
+    code: 'HEALTH_CLAIM_RECON',
+    parentCode: 'HEALTH',
+    label: 'Rekonsiliasi Klaim',
+    route: '/app/emedik/rekonsiliasi',
+    icon: 'scale',
+    actions: ['READ', 'CREATE', 'CLOSE_PERIOD'],
+    sortOrder: 109,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -728,6 +760,9 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_FEE_SETTLEMENT.READ',
       'HEALTH_FEE_STATEMENT.READ',
       'HEALTH_FEE_CONTRACT.READ',
+      'HEALTH_CLAIM.READ',
+      'HEALTH_CLAIM_REVIEW.READ',
+      'HEALTH_CLAIM_RECON.READ',
     ],
     sortOrder: 2,
   },
@@ -1068,6 +1103,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_QUALITY.UPDATE',
       'HEALTH_QUALITY.EXPORT',
       'HEALTH_HIM_CODING.READ',
+      'HEALTH_CLAIM_REVIEW.READ',
     ],
     sortOrder: 7,
   },
@@ -1082,6 +1118,8 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_HIM_CODING.READ',
       'HEALTH_HIM_CODING.CREATE',
       'HEALTH_TERMINOLOGY.READ',
+      // Membaca klaim yang memakai pengkodeannya; ia TIDAK memverifikasinya.
+      'HEALTH_CLAIM.READ',
     ],
     sortOrder: 20,
   },
@@ -1175,6 +1213,42 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_FEE_SETTLEMENT.APPROVE',
     ],
     sortOrder: 28,
+  },
+  {
+    code: 'HEALTH_CLAIM_OFFICER',
+    name: 'Petugas Klaim',
+    description:
+      'Menyusun dan mengajukan klaim, serta mencatat keputusan penjamin. TIDAK memverifikasi ' +
+      'berkas dan TIDAK menelaah penanda.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_CLAIM.READ',
+      'HEALTH_CLAIM.CREATE',
+      'HEALTH_CLAIM.UPDATE',
+      'HEALTH_CLAIM.SUBMIT',
+      'HEALTH_CLAIM.CANCEL',
+      'HEALTH_CLAIM_RECON.READ',
+      'HEALTH_HIM_CODING.READ',
+      'HEALTH_TARIFF.READ',
+      'HEALTH_PAYER.READ',
+    ],
+    sortOrder: 34,
+  },
+  {
+    code: 'HEALTH_CLAIM_VERIFIER',
+    name: 'Verifikator Klaim Internal',
+    description:
+      'Memverifikasi kelengkapan berkas klaim sebelum diajukan, dan menelaah penanda. TIDAK ' +
+      'mengode dan TIDAK mengajukan.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_CLAIM.READ',
+      'HEALTH_CLAIM.VERIFY',
+      'HEALTH_CLAIM_REVIEW.READ',
+      'HEALTH_CLAIM_REVIEW.REVIEW',
+      'HEALTH_HIM_CODING.READ',
+    ],
+    sortOrder: 35,
   },
   {
     code: 'HEALTH_CONTRACT_DRAFTER',
@@ -1303,6 +1377,10 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_FEE_SETTLEMENT.REVERSE',
       'HEALTH_FEE_STATEMENT.READ',
       'HEALTH_FEE_CONTRACT.READ',
+      'HEALTH_CLAIM.READ',
+      'HEALTH_CLAIM_RECON.READ',
+      'HEALTH_CLAIM_RECON.CREATE',
+      'HEALTH_CLAIM_RECON.CLOSE_PERIOD',
     ],
     sortOrder: 25,
   },
@@ -1506,6 +1584,29 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'fee_contract_review_approve_differ pula.',
     conflictingPermissions: ['HEALTH_FEE_CONTRACT.REVIEW', 'HEALTH_FEE_CONTRACT.APPROVE'],
   },
+  {
+    code: 'HEALTH_SOD_CLAIM_SUBMIT_REVIEW',
+    name: 'Pengaju klaim tidak menelaah penandanya',
+    description:
+      'Penanda anti-fraud memasukkan klaim ke antrean telaah, dan telaah oleh orang yang sedang ' +
+      'dikejar tenggat pengajuan akan selalu berkesimpulan tidak ada masalah. Bukan karena ia ' +
+      'tidak jujur, melainkan karena ia satu-satunya orang yang biayanya ditanggung sendiri bila ' +
+      'telaahnya memperlambat.',
+    conflictingPermissions: ['HEALTH_CLAIM.SUBMIT', 'HEALTH_CLAIM_REVIEW.REVIEW'],
+  },
+  /*
+   * HEALTH_SOD_CLAIM_CODE_VERIFY sengaja TIDAK ada di sini sebagai pasangan
+   * hak akses.
+   *
+   * "Pengode tidak memverifikasi klaimnya sendiri" adalah hubungan antara satu
+   * orang dan satu KLAIM, bukan antara dua hak akses. Verifikator yang
+   * kebetulan juga koder tetap boleh memverifikasi klaim yang dikode orang
+   * lain — dan melarangnya akan menghentikan rumah sakit kecil yang koder dan
+   * verifikatornya memang bergantian.
+   *
+   * Diperiksa pada tingkat baris, dan ditegakkan constraint
+   * health_claim_verify_not_self pada basis data.
+   */
   /*
    * HEALTH_SOD_FEE_RECIPIENT_APPROVE sengaja TIDAK ada di sini.
    *

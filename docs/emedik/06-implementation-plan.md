@@ -1023,6 +1023,92 @@ punggung lingkungan lain.
 **Yang belum:** penjurnalan fee-nya menunggu kode peristiwa `HEALTH_*` dari Core
 (lihat H-9N), dan dasbor investor beserta waterfall-nya adalah H-9K.
 
+### H-9C · Siklus klaim internal — **SELESAI (sembilan dari lima belas tahap)**
+
+Penyusunan klaim, verifikasi internal, pengajuan, pencatatan keputusan dan
+pembayaran penjamin, penanda untuk telaah, rekonsiliasi tiga sisi, dan laporan
+sebab penolakan.
+
+Enam tahap sisanya — kepesertaan, rujukan, SEP, grouping, pengajuan daring, dan
+keputusan langsung dari penjamin — menunggu kredensial dan grouper berlisensi.
+**Penghalang kredensial menahan ujung-ujungnya, bukan tengahnya**, dan tengahnya
+itulah yang paling banyak menghabiskan waktu petugas rumah sakit.
+
+Uji >= 30 -> **58 tercapai**, ditambah naskah bukti 56 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H031__health__claim.sql`, `H032__health__claim_permissions.sql` |
+| Aturan murni | `health-claim.ts` + 58 pengujian |
+| Layanan | `health-claim.service.ts` |
+| Endpoint | `health-claim.controller.ts` — 10 jalan di `/api/v1/health/claims/**` |
+| Katalog | `health-catalog.ts` — 3 menu, 2 peran, 1 aturan SoD |
+| Bukti | `scripts/prove-health-claim.mjs` -> [bukti-h9c-klaim.txt](bukti-h9c-klaim.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **TIGA ANGKA, TIGA KOLOM:** diajukan, disetujui, dibayar. Tidak ada satu pun
+  kolom "nilai klaim" yang menyatukannya — kolom tunggal akan dipakai bergantian
+  sebagai ketiganya, dan tidak ada yang akan tahu yang mana yang tersimpan pada
+  baris mana. Menyamakan yang pertama dengan yang ketiga adalah cara paling
+  langsung membuat rumah sakit mengira dirinya punya uang yang tidak ada — lalu
+  membagikannya sebagai jasa medis. Naskah bukti memeriksa ketiadaan kolom
+  penyatu itu secara harfiah pada `information_schema`.
+
+- **Nilai yang sudah diajukan tidak dapat diubah.** Yang sudah dikirim ke
+  penjamin adalah angka itu; mengubahnya kemudian akan membuat selisih pada
+  rekonsiliasi tampak seperti kesalahan penjamin, padahal angkanya yang bergeser
+  di sini.
+
+- **Verifikasi internal menemukan kekurangan sebelum penjamin menemukannya.**
+  Bagian yang paling sepele secara teknis dan paling berharga secara nyata:
+  klaim yang dikembalikan karena berkasnya kurang menghabiskan waktu
+  berminggu-minggu, sedangkan seluruh kekurangannya dapat diperiksa mesin dalam
+  hitungan detik. Setiap temuan dilaporkan **namanya** beserta peran yang
+  memperbaikinya.
+
+- **Kelas yang melebihi hak peserta DILAPORKAN tetapi tidak menahan.** Naik
+  kelas atas permintaan pasien sah; selisihnya ditagihkan kepada pasien, bukan
+  kepada penjamin. Menahannya akan membuat verifikasi internal dimatikan oleh
+  orang pertama yang klaimnya tertahan karena hal yang memang sah.
+
+- **Sebab penolakan adalah KODE TERTUTUP**, sembilan macam, dan sebab `OTHER`
+  wajib berketerangan — tanpa itu ia menjadi tempat pembuangan yang menampung
+  separuh penolakan dan tidak menjelaskan satu pun. Laporan sebab penolakan
+  adalah alasan keberadaan aturan ini: ia tidak dapat disusun dari teks bebas.
+
+- **PENANDA ANTI-FRAUD TIDAK PERNAH MENGHENTIKAN PENGAJUAN.** Tabelnya tidak
+  punya satu pun kolom penahan; yang ada hanya `needs_review`. Penghentian
+  otomatis pada penanda statistik akan menahan klaim yang sah dari pasien yang
+  memang sakit berat — dan rumah sakit yang klaimnya tertahan akan berhenti
+  memakai penandanya. Kata "fraud" sengaja tidak muncul pada satu pun pesannya:
+  penanda yang berbunyi seperti tuduhan akan dibantah alih-alih ditelaah.
+
+- **Yang mengode tidak memverifikasi klaimnya sendiri.** Ia akan menemukan salah
+  ketik, tetapi tidak akan menemukan pilihan kode yang keliru — sebab pilihan
+  itu masih tampak benar baginya. Diperiksa pada tingkat baris, bukan sebagai
+  pasangan hak akses: verifikator yang kebetulan juga koder tetap boleh
+  memverifikasi klaim yang dikode orang lain, dan melarangnya akan menghentikan
+  rumah sakit kecil yang koder dan verifikatornya memang bergantian.
+
+- **Rekonsiliasi membandingkan TIGA sisi:** catatan kami, catatan penjamin, dan
+  mutasi rekening. Selisih yang tidak terjelaskan tidak boleh ditutup —
+  rekonsiliasi yang dapat ditutup dengan selisih akan selalu ditutup dengan
+  selisih, dan selisih yang tertutup tidak pernah dicari lagi. Ia tetap boleh
+  **dicatat** tanpa ditutup.
+
+- **Satu klaim per kunjungan yang masih hidup.** Klaim ganda adalah salah satu
+  sebab penolakan yang paling sering dan paling mudah dicegah. Yang dibatalkan
+  tidak dihitung: kunjungan yang klaimnya batal memang boleh diklaimkan ulang.
+
+- **Klaim yang sudah diajukan tidak dapat dihapus**, tetapi yang belum diajukan
+  boleh — ia belum ada di mana pun selain di sini.
+
+**Yang belum:** enam tahap milik BPJS, dan penjurnalan klaimnya yang menunggu
+kode peristiwa `HEALTH_*` dari Core.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -1091,7 +1177,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 5.  H-9E   Kebijakan jasa dan kontributor                    [SELESAI]
 6.  H-9F   Simulasi, settlement, reversal                    [SELESAI]
 7.  H-9G   Gerbang kontrak fee sistem dan investor           [SELESAI]
-8.  H-9C   Siklus klaim internal — koding sampai rekonsiliasi
+8.  H-9C   Siklus klaim internal — koding sampai rekonsiliasi [SELESAI]
 9.  H-9H   Registri alat dan gateway
 10. H-9J   Pemeliharaan, kalibrasi, keamanan siber
 11. H-9K   Dasbor investor agregat
