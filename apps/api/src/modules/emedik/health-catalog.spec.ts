@@ -404,6 +404,41 @@ describe('peran kesehatan', () => {
     expect(verifikator?.permissions).not.toContain('HEALTH_HIM_CODING.CREATE');
   });
 
+  it('teknisi elektromedis TIDAK menyalakan kendali jarak jauh', () => {
+    const teknisi = HEALTH_ROLES.find((r) => r.code === 'HEALTH_BIOMEDICAL_ENGINEER');
+    expect(teknisi?.permissions).toContain('HEALTH_DEVICE.MANAGE_DEVICE');
+    expect(teknisi?.permissions).not.toContain('HEALTH_DEVICE.ACTIVATE');
+  });
+
+  it('teknisi elektromedis TIDAK membaca rekam medis pasien', () => {
+    /*
+     * Ia mengurus benda. Alat yang dipasangnya menghasilkan angka tentang
+     * pasien, tetapi merawat alatnya tidak menuntut mengetahui siapa yang
+     * diperiksa.
+     */
+    const teknisi = HEALTH_ROLES.find((r) => r.code === 'HEALTH_BIOMEDICAL_ENGINEER');
+    expect(teknisi?.permissions).not.toContain('HEALTH_PATIENT.READ');
+  });
+
+  it('tidak ada peran bawaan yang menyalakan kendali jarak jauh alat', () => {
+    /*
+     * ACTIVATE sengaja tidak diberikan kepada peran bawaan mana pun. Ia harus
+     * diberikan dengan sadar oleh administrator tenant kepada orang yang
+     * ditunjuk namanya — bukan diwarisi seseorang karena perannya kebetulan
+     * bernama "administrator".
+     */
+    const pemegang = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_DEVICE.ACTIVATE'),
+    ).map((r) => r.code);
+    expect(pemegang).toEqual([]);
+  });
+
+  it('yang mengaitkan hasil alat bukan yang menelaahnya', () => {
+    const petugas = HEALTH_ROLES.find((r) => r.code === 'HEALTH_DEVICE_INBOX_CLERK');
+    expect(petugas?.permissions).toContain('HEALTH_DEVICE_INBOX.ASSIGN');
+    expect(petugas?.permissions).not.toContain('HEALTH_DEVICE_INBOX.REVIEW');
+  });
+
   it('tidak ada peran yang memiliki hak atas menu yang belum dibangun', () => {
     /*
      * Peran yang sudah diberi hak atas modul yang belum ada akan tampak

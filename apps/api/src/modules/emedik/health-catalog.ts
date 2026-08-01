@@ -663,6 +663,42 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'CLOSE_PERIOD'],
     sortOrder: 109,
   },
+  // Alat kesehatan — H-9H.
+  //
+  // MANAGE_DEVICE dan ACTIVATE sengaja dipisah, dan pemisahan itu adalah
+  // pemisahan yang paling penting di seluruh menu ini. MANAGE_DEVICE mendaftar
+  // alat, mengganti statusnya, dan mengirim perintah yang sudah diizinkan —
+  // pekerjaan teknisi elektromedis, sehari-hari. ACTIVATE menyalakan kendali
+  // jarak jauh, yakni memberi perangkat lunak wewenang mengubah dosis obat pada
+  // pasien yang sedang tidur. Yang kedua bukan versi lebih besar dari yang
+  // pertama; ia jenis wewenang yang lain sama sekali.
+  {
+    code: 'HEALTH_DEVICE',
+    parentCode: 'HEALTH',
+    label: 'Alat Kesehatan',
+    route: '/app/emedik/alat',
+    icon: 'activity-square',
+    actions: ['READ', 'CREATE', 'UPDATE', 'MANAGE_DEVICE', 'ACTIVATE'],
+    sortOrder: 110,
+  },
+  {
+    code: 'HEALTH_DEVICE_GATEWAY',
+    parentCode: 'HEALTH',
+    label: 'Gateway Alat',
+    route: '/app/emedik/gateway-alat',
+    icon: 'router',
+    actions: ['READ', 'CREATE', 'UPDATE', 'MANAGE_CREDENTIAL'],
+    sortOrder: 111,
+  },
+  {
+    code: 'HEALTH_DEVICE_INBOX',
+    parentCode: 'HEALTH',
+    label: 'Kotak Masuk Hasil Alat',
+    route: '/app/emedik/hasil-alat',
+    icon: 'inbox',
+    actions: ['READ', 'CREATE', 'ASSIGN', 'REVIEW'],
+    sortOrder: 112,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -1407,6 +1443,56 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     ],
     sortOrder: 23,
   },
+  {
+    code: 'HEALTH_BIOMEDICAL_ENGINEER',
+    name: 'Teknisi Elektromedis',
+    description:
+      'Mendaftarkan alat kesehatan dan gateway-nya, mencatat kalibrasi, dan mengganti status ' +
+      'alat. TIDAK menyalakan kendali jarak jauh dan TIDAK membaca rekam medis pasien.',
+    /*
+     * Sengaja TANPA HEALTH_DEVICE.ACTIVATE dan TANPA BACA_PASIEN.
+     *
+     * Ia mengurus benda, bukan orang. Alat yang dipasangnya menghasilkan angka
+     * tentang pasien, tetapi merawat alatnya tidak menuntut mengetahui siapa
+     * yang diperiksa — dan hak akses yang tidak diperlukan adalah hak akses
+     * yang, cepat atau lambat, dipakai untuk hal lain.
+     *
+     * Yang lebih penting: ACTIVATE ada pada peran lain. Orang yang paling
+     * memahami alatnya bukan orang yang harus memutuskan bahwa perangkat lunak
+     * boleh mengubah dosisnya — sebab keahliannya justru membuatnya yakin bahwa
+     * alat itu tidak akan salah.
+     */
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_DEVICE.READ',
+      'HEALTH_DEVICE.CREATE',
+      'HEALTH_DEVICE.UPDATE',
+      'HEALTH_DEVICE.MANAGE_DEVICE',
+      'HEALTH_DEVICE_GATEWAY.READ',
+      'HEALTH_DEVICE_GATEWAY.CREATE',
+      'HEALTH_DEVICE_GATEWAY.UPDATE',
+      'HEALTH_DEVICE_GATEWAY.MANAGE_CREDENTIAL',
+      'HEALTH_DEVICE_INBOX.READ',
+    ],
+    sortOrder: 36,
+  },
+  {
+    code: 'HEALTH_DEVICE_INBOX_CLERK',
+    name: 'Petugas Hasil Alat',
+    description:
+      'Mengaitkan hasil alat yang datang tanpa identitas kepada pasien yang benar. TIDAK ' +
+      'menelaah pengaitan — yang mengaitkan bukan yang memastikan.',
+    permissions: [
+      ...BACA_PASIEN,
+      'HEALTH_DEVICE_INBOX.READ',
+      'HEALTH_DEVICE_INBOX.ASSIGN',
+      'HEALTH_DEVICE.READ',
+      // Membaca pemeriksaan yang menunggu hasilnya; itulah yang membuatnya
+      // sanggup mengaitkan hasil kepada orang yang benar.
+      'HEALTH_LAB_ORDER.READ',
+    ],
+    sortOrder: 37,
+  },
 ];
 
 // --- Pemisahan wewenang ------------------------------------------------------
@@ -1632,6 +1718,32 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
    *
    * Ditegakkan constraint him_hold_release_not_self pada basis data, dan
    * didaftarkan pada mesin SoD tenant lewat H017 dengan sisi PREPARER.
+   */
+  {
+    code: 'HEALTH_SOD_DEVICE_REMOTE',
+    name: 'Teknisi alat tidak menyalakan kendali jarak jauhnya',
+    description:
+      'Menyalakan kendali jarak jauh berarti memberi perangkat lunak wewenang mengubah dosis ' +
+      'pada pasien yang sedang tidur. Orang yang memasang alatnya adalah orang yang paling ' +
+      'yakin alat itu bekerja dengan benar, dan keyakinan itulah yang membuatnya bukan orang ' +
+      'yang tepat untuk memutuskannya. Ditegakkan constraint medical_device_remote_complete ' +
+      'pada basis data pula — kendali jarak jauh menuntut enam syarat sekaligus, dan basis ' +
+      'data menolak baris yang kurang satu pun.',
+    conflictingPermissions: ['HEALTH_DEVICE.MANAGE_DEVICE', 'HEALTH_DEVICE.ACTIVATE'],
+  },
+  /*
+   * HEALTH_SOD_DEVICE_LINK_REVIEW sengaja TIDAK ada di sini sebagai pasangan
+   * hak akses — ini yang keempat kalinya, dan pola itu sekarang sudah cukup
+   * sering untuk disebut pola.
+   *
+   * "Yang mengaitkan hasil tidak menelaahnya sendiri" adalah hubungan antara
+   * satu orang dan satu BARIS HASIL. Petugas kotak masuk yang berpengalaman
+   * justru orang yang paling pantas menelaah pengaitan rekannya; melarang
+   * seseorang memegang kedua haknya akan membuat rumah sakit yang petugas
+   * kotak masuknya hanya dua orang berhenti menelaah sama sekali.
+   *
+   * Diperiksa pada tingkat baris saat telaah, dan didaftarkan pada mesin SoD
+   * tenant lewat H034 dengan sisi PREPARER.
    */
 ];
 

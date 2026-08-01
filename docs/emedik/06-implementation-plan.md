@@ -1109,6 +1109,100 @@ Uji >= 30 -> **58 tercapai**, ditambah naskah bukti 56 pemeriksaan.
 **Yang belum:** enam tahap milik BPJS, dan penjurnalan klaimnya yang menunggu
 kode peristiwa `HEALTH_*` dari Core.
 
+### H-9H · Registri alat kesehatan dan gateway — **SELESAI**
+
+Pendaftaran alat dan gateway-nya, katalog protokol beserta penghalangnya,
+kalibrasi, status alat, kendali jarak jauh yang **mati secara bawaan**, jejak
+perintah, penerimaan hasil alat, dan antrean pengaitan hasil yang datang tanpa
+identitas pasien.
+
+Uji >= 25 -> **49 tercapai**, ditambah naskah bukti 60 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H033__health__device_registry.sql`, `H034__health__device_permissions.sql` |
+| Aturan murni | `health-device.ts` + 49 pengujian |
+| Layanan | `health-device.service.ts` |
+| Endpoint | `health-device.controller.ts` — 13 jalan di `/api/v1/health/devices/**` |
+| Katalog | `health-catalog.ts` — 3 menu, 2 peran, 1 aturan SoD |
+| Bukti | `scripts/prove-health-device.mjs` -> [bukti-h9h-alat.txt](bukti-h9h-alat.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **ALAT TIDAK PERNAH PUNYA KREDENSIAL BASIS DATA.** Tabel alat tidak memiliki
+  satu pun kolom yang menampung kata sandi, token, atau kunci — dan naskah bukti
+  memeriksanya secara harfiah pada `information_schema`, bukan dengan membaca
+  kodenya. Alat berbicara kepada gateway; gateway berbicara kepada integration
+  engine. Perintah R2 melarang menghubungkan alat medis langsung ke basis data,
+  dan larangan itu di sini berbentuk ketiadaan kolom, bukan berbentuk peringatan
+  pada dokumentasi.
+
+- **Kredensial gateway hanya berupa RUJUKAN BRANKAS**, ditegakkan constraint
+  `device_gateway_secret_is_ref` dengan regex `^(vault|secret|kms)://`. Nilai
+  mentah ditolak **sebelum** apa pun tersimpan, dan penolakannya menyebutkan
+  alasannya: kredensial alat yang tersimpan sebagai nilai membuat setiap orang
+  yang pernah membaca basis data menjadi orang yang harus dicurigai ketika ada
+  kebocoran. Daftar gateway sengaja **tidak** mengembalikan rujukannya — yang
+  dikembalikan hanya `has_credential`.
+
+- **KENDALI JARAK JAUH MATI SECARA BAWAAN, UNTUK SELURUH ALAT.** Menyalakannya
+  menuntut enam syarat sekaligus — persetujuan tertulis, telaah risiko, daftar
+  perintah yang diizinkan, batas nilai, pencatatan perintah, dan tombol henti
+  darurat — dan basis data menolak baris yang kurang satu pun lewat satu
+  constraint tunggal `medical_device_remote_complete`. Satu constraint, bukan
+  enam: enam constraint terpisah dapat dilewati satu per satu oleh migrasi yang
+  ceroboh, sedangkan satu constraint gugur seluruhnya atau tidak sama sekali.
+  Naskah bukti menghitung alat berkendali jauh **di seluruh tenant** dan menuntut
+  seluruhnya lengkap — pengukuran yang tidak dapat dipalsukan oleh naskahnya
+  sendiri.
+
+- **`MANAGE_DEVICE` dan `ACTIVATE` dipisah, dan pemisahan itu yang paling
+  penting di seluruh modul ini.** Teknisi elektromedis mendaftarkan alat,
+  mengganti statusnya, dan mengirim perintah yang sudah diizinkan.
+  Menyalakan kendali jarak jauh adalah wewenang lain sama sekali: ia memberi
+  perangkat lunak izin mengubah dosis pada pasien yang sedang tidur. Orang yang
+  paling memahami alatnya bukan orang yang tepat untuk memutuskannya — sebab
+  keahliannyalah yang membuatnya yakin alat itu tidak akan salah. Severity
+  CRITICAL, dan **tidak satu pun peran bawaan memegang `ACTIVATE`**; ia harus
+  diberikan dengan sadar kepada orang yang ditunjuk namanya.
+
+- **PERINTAH YANG DITOLAK JUSTRU YANG PALING BERHARGA DICATAT:** ia menunjukkan
+  ada yang mencoba. Jejak perintah menyimpan yang diterima maupun yang ditolak
+  beserta alasannya, dan tidak dapat dihapus (`forbid_ledger_mutation`).
+
+- **HASIL TANPA IDENTITAS PASIEN TIDAK PERNAH DITEBAK.** Ia masuk antrean
+  `PENDING_LINK` dan menunggu manusia. Menebak siapa pasiennya — dari waktu,
+  dari ruangan, dari pemeriksaan yang kebetulan terbuka — akan benar berkali-kali
+  dan salah sekali; dan yang sekali itu menempelkan hasil laboratorium orang lain
+  pada rekam medis seseorang. Ditegakkan constraint
+  `device_obs_patient_needs_method`: pasien tidak boleh muncul tanpa cara
+  pengaitan yang tercatat.
+
+- **Yang mengaitkan hasil tidak menelaahnya sendiri** — pola per baris yang
+  keempat kalinya, sesudah H-9E, H-9G, dan H-9C. Sengaja **tidak** didaftarkan
+  sebagai pasangan hak akses: petugas kotak masuk yang berpengalaman justru orang
+  yang paling pantas menelaah pengaitan rekannya.
+
+- **Dua waktu disimpan terpisah: `captured_at` dan `received_at`.** Selisihnya
+  ditandai, tidak ditolak. Jam alat medis melenceng sepanjang waktu, dan menolak
+  hasilnya karena jamnya salah akan membuang hasil yang sah — hasilnya benar,
+  jamnya yang salah. Hal yang sama berlaku bagi kalibrasi yang kedaluwarsa:
+  **ditandai, bukan ditolak**, sebab alat yang kalibrasinya lewat mungkin masih
+  benar, sedangkan hasil yang dibuang pasti hilang.
+
+- **Duplikat dikenali lewat SIDIK JARI pesan, bukan lewat waktu.** Indeks unik
+  parsial `ux_device_obs_message` menolak pesan yang sama dari alat yang sama.
+  Pengenalan berdasarkan jendela waktu akan membuang hasil kedua yang sah — dua
+  pengukuran berturut-turut memang boleh berdekatan — dan meloloskan kiriman
+  ulang yang datang terlambat.
+
+**Yang belum:** DICOM, FHIR, dan MQTT tercatat pada katalog protokol beserta
+**penghalangnya masing-masing**, dan alat yang memakainya ditolak dengan
+menyebutkan penghalang itu — bukan dengan berkata "tidak didukung". H-9I
+membangun adapter HL7/ASTM di atas registri ini.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -1155,7 +1249,7 @@ sampai [20](20-legal-and-contract-review-checklist.md).
 | H-9E | Kebijakan jasa/kontributor | **Ya, seluruhnya** |
 | H-9F | Simulasi/settlement/reversal | **Ya, seluruhnya** |
 | H-9G | Gerbang kontrak fee sistem/investor | **Ya, seluruhnya** |
-| H-9H | Registri alat/gateway | **Ya** kecuali protokol tertentu |
+| H-9H | Registri alat/gateway | **Ya, seluruhnya kecuali DICOM/FHIR/MQTT** |
 | H-9I | DICOM/PACS/LIS/bedside | HL7/ASTM ya; DICOM terhalang PACS |
 | H-9J | Pemeliharaan/keamanan biomedis | **Ya, seluruhnya** |
 | H-9K | Dasbor investor/waterfall | **Ya**, menunggu port investor |
@@ -1178,7 +1272,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 6.  H-9F   Simulasi, settlement, reversal                    [SELESAI]
 7.  H-9G   Gerbang kontrak fee sistem dan investor           [SELESAI]
 8.  H-9C   Siklus klaim internal — koding sampai rekonsiliasi [SELESAI]
-9.  H-9H   Registri alat dan gateway
+9.  H-9H   Registri alat dan gateway                        [SELESAI]
 10. H-9J   Pemeliharaan, kalibrasi, keamanan siber
 11. H-9K   Dasbor investor agregat
 12. H-9I   Adapter HL7/ASTM; DICOM menunggu PACS

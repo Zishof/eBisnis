@@ -79,8 +79,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9F | 25 | **42** | `health-settlement.spec.ts` |
 | H-9G | 20 | **42** | `health-fee-contract.spec.ts` |
 | H-9C | 30 | **58** | `health-claim.spec.ts` |
+| H-9H | 25 | **49** | `health-device.spec.ts` |
 
-API keseluruhan: **1903** pengujian pada 62 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **1956** pengujian pada 63 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -111,6 +112,28 @@ sungguhan, pada basis data sungguhan:
 | H-9F | `prove-health-settlement.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9f-settlement.txt](bukti-h9f-settlement.txt) |
 | H-9G | `prove-health-fee-contract.mjs` | 52 pemeriksaan, seluruhnya lulus — [bukti-h9g-kontrak-fee.txt](bukti-h9g-kontrak-fee.txt) |
 | H-9C | `prove-health-claim.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9c-klaim.txt](bukti-h9c-klaim.txt) |
+| H-9H | `prove-health-device.mjs` | 60 pemeriksaan, seluruhnya lulus — [bukti-h9h-alat.txt](bukti-h9h-alat.txt) |
+
+Naskah H-9H membuktikan ketiadaan pada tempat yang paling penting: ia
+menghitung kolom `medical_device` yang namanya mengandung `password`, `token`,
+`api_key`, `secret`, atau `credential`, dan menuntut hasilnya **nol**. Larangan
+menghubungkan alat medis langsung ke basis data hanya nyata bila alatnya memang
+tidak punya tempat menyimpan kredensial; larangan yang berbentuk peringatan pada
+dokumentasi akan dilanggar oleh orang pertama yang butuh "sekadar untuk
+pengujian".
+
+Ia juga mengukur seluruh tenant, bukan hanya barisnya sendiri: **berapa alat
+yang kendali jarak jauhnya menyala tanpa salah satu dari enam syaratnya** —
+dituntut nol. Pengukuran seluruh basis data yang tidak dapat dipalsukan oleh
+naskahnya sendiri, sebagaimana pelajaran H-9E.
+
+Satu pemeriksaan H-9H gagal pada jalannya yang pertama karena sebab yang layak
+dicatat: penolakannya **benar**, bunyinya **benar**, tetapi ujinya mencari
+"tidak ada jalan langsung" sedangkan kalimatnya dimulai dengan huruf besar. Uji
+yang mencocokkan bunyi penolakan — kebiasaan yang berlaku sejak H-9 — menukar
+satu kelemahan dengan kelemahan lain: ia menangkap penjaga yang keliru berbunyi,
+tetapi menjadi rapuh terhadap perubahan kalimat. Yang dicocokkan sebaiknya
+potongan yang menyebut **sebabnya**, bukan kalimat pembukanya.
 
 Naskah H-9C memakai teknik H-9N sekali lagi — **membuktikan ketiadaan** — dan
 dua kali di antaranya menyangkut nama kolom. Ia menuntut `health_claim` punya

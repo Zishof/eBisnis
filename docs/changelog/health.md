@@ -5,6 +5,37 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9H — Registri alat kesehatan dan gateway
+
+### Ditambahkan
+
+- **`H033__health__device_registry.sql`** — `device_gateway`, `medical_device`,
+  `device_command_log`, `device_observation`. Beserta constraint
+  `device_gateway_secret_is_ref` (kredensial hanya berupa rujukan brankas),
+  `medical_device_remote_complete` (enam syarat kendali jarak jauh sekaligus),
+  `device_obs_patient_needs_method`, indeks unik parsial `ux_device_obs_message`
+  bagi sidik jari pesan, trigger `flag_device_software_change`, serta
+  `forbid_ledger_mutation` pada jejak perintah dan hasil alat.
+- **`H034__health__device_permissions.sql`** — tiga menu, dua peran, dan dua
+  aturan pemisahan wewenang; `HEALTH_SOD_DEVICE_REMOTE` bersifat CRITICAL.
+- **`health-device.ts`** — aturan sebagai fungsi murni: kelayakan protokol,
+  penerimaan pesanan menurut status alat, cara pengaitan pasien, selisih jam
+  alat, provenance hasil, syarat kendali jarak jauh, kelayakan perintah,
+  penyimpanan kredensial, dan deteksi duplikat. **49 pengujian.**
+- **`health-device.service.ts`** dan **`health-device.controller.ts`** — 13 jalan
+  pada `/api/v1/health/devices/**`.
+- **`prove-health-device.mjs`** — naskah bukti, **60 pemeriksaan**, seluruhnya
+  lulus dan lulus pula pada pengulangan.
+
+### Catatan bagi Core
+
+Tidak ada permintaan perubahan shared Core pada fase ini. Alat kesehatan tidak
+pernah menyentuh basis data secara langsung; seluruh lalu lintasnya lewat
+gateway yang tercatat, dan kredensialnya hanya berupa rujukan brankas.
+
+Uji: API 1903 → **1956**.
+
+---
 ## H-9C — Siklus klaim internal
 
 ### Ditambahkan
