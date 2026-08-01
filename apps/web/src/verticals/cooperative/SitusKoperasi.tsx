@@ -1,21 +1,15 @@
 /**
- * Situs koperasi.
+ * Situs koperasi untuk pengunjung.
  *
- * Layar ini memakai jalur **pratinjau** yang bersesi, bukan jalur publik —
- * sebab jalur publiknya belum ada, dan alasannya bukan karena belum sempat
- * dikerjakan.
+ * Sejak jalur publik disambungkan, halaman ini memanggil
+ * `/cooperative/public/site` — tanpa sesi, tanpa hak akses. Koperasi mana yang
+ * ditampilkan ditentukan **host permintaan**, dicocokkan ke baris terdaftar di
+ * control plane (IR-005).
  *
- * Pengunjung tanpa sesi tidak membawa konteks penyewa, sehingga sesuatu harus
- * menentukan skema mana yang dibaca. Satu-satunya jalan yang tersedia hari ini
- * adalah menerima nama skema dari alamat — dan itu justru yang dilarang tegas:
- * alamat semacam itu dapat dicoba nama demi nama oleh siapa pun di internet
- * sampai menemukan skema yang ada.
- *
- * Jadi pengurus dapat menyusun dan melihat situsnya sekarang; pintunya dari
- * internet menunggu IR-005.
+ * Alamatnya tidak memuat slug koperasi sama sekali, dan itu disengaja: nama
+ * skema maupun pengenal penyewa tidak boleh dapat ditebak dari alamat.
  */
 
-import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Globe, Mail, MapPin, Phone } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
@@ -43,13 +37,11 @@ interface IsiSitus {
 }
 
 export function SitusKoperasi() {
-  const { slug = '' } = useParams();
-
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['cooperative', 'website', slug],
-    queryFn: () => apiRequest<IsiSitus>(`/cooperative/website/preview/${slug}`),
+    queryKey: ['cooperative', 'situs-publik'],
+    // Tanpa slug: koperasinya ditentukan host permintaan, bukan alamat.
+    queryFn: () => apiRequest<IsiSitus>('/cooperative/public/site'),
     retry: false,
-    enabled: slug.length > 0,
   });
 
   if (isLoading) {
@@ -64,10 +56,9 @@ export function SitusKoperasi() {
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
             {(error as Error | undefined)?.message ?? 'Situs koperasi tidak ditemukan.'}
           </p>
-          <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-            Halaman ini masih memakai jalur pratinjau yang memerlukan sesi pengurus. Jalur untuk
-            pengunjung umum menunggu persetujuan IR-005 — pemetaan alamat situs ke ruang kerja
-            penyewa. Sampai saat itu, situs koperasi belum dapat dibuka dari internet.
+          <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+            Alamat ini belum terdaftar sebagai situs koperasi, atau situsnya belum diterbitkan
+            pengurus.
           </p>
         </div>
       </div>

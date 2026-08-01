@@ -3,6 +3,101 @@
 Changelog modular sesuai panduan koordinasi §11. Sesi Core/Integrator yang
 menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
+## K-15 — Situs koperasi terbuka untuk pengunjung, dengan pembatas laju
+
+Menutup IR-005. Sejak K-9 seluruh isi situs sudah dapat disusun pengurus, tetapi
+pintunya dari internet sengaja tidak dibuat: pengunjung tanpa sesi tidak membawa
+konteks penyewa, dan menerima nama skema dari alamat adalah hal yang dilarang
+tegas. Core menjawabnya lewat `PublicTenantResolver` — koperasi ditentukan
+**host permintaan**, dicocokkan ke baris terdaftar di control plane.
+
+### Ditambahkan
+- **`public/cooperative-public.service.ts`** — tiga jalur publik: isi situs,
+  satu halaman, dan penerimaan pendaftaran calon anggota.
+- **`public/public-intake.ts`** — aturan penerimaan sebagai fungsi murni.
+  **29 pengujian.**
+- `CooperativePublicController` dengan tiga route `@Public()`.
+- **`prove-cooperative-public-site.mjs`** — **36 pemeriksaan** pada basis data
+  sungguhan, di dalam `BEGIN … ROLLBACK`.
+- Halaman `SitusKoperasi` disambungkan ke jalur publik; rutenya tidak lagi
+  memuat slug sama sekali.
+
+### Keputusan yang perlu dicatat
+- **Situs yang belum terbit menjawab sama dengan host yang tidak terdaftar.**
+  Membedakan keduanya memberi tahu penebak bahwa ia sudah menemukan koperasi
+  yang benar, dan pengurus yang sedang menyusun situsnya tidak perlu
+  pekerjaannya terlihat sebelum ia siap.
+- **Jumlah anggota dan besar aset tidak tampil kecuali dinyalakan.** Keduanya
+  meyakinkan calon anggota sekaligus dipakai orang lain menilai apakah koperasi
+  ini layak didekati.
+- **Pratinjau bersesi tetap ada.** Jalur publik hanya melayani yang sudah
+  terbit; pengurus perlu melihat situsnya sebelum itu.
+- **Tidak ada CAPTCHA.** Ia menyulitkan calon anggota yang memakai telepon lama
+  atau yang penglihatannya terbatas, sedangkan pengirim massal membayar orang
+  untuk menyelesaikannya.
+- **Pendaftaran berhenti pada karantina.** Tidak pernah membentuk baris
+  `cooperative_member` — tanpa itu siapa pun di internet dapat menumbuhkan
+  daftar anggota koperasi orang lain.
+- **Pesan kuota harian tidak menyebutkan bahwa koperasi sedang dibanjiri.**
+  Calon anggota yang tidak bersalah tidak perlu tahu, dan yang menyerang tidak
+  perlu memperoleh kepastian bahwa serangannya berhasil.
+
+### Dua cacat yang ditemukan saat memeriksa ulang pekerjaan sendiri
+
+Keduanya lolos dari pengujian yang sudah hijau, dan keduanya diperbaiki di sini.
+
+**1. `sidikSumber()` tidak menyidik apa pun.** Ia mengembalikan
+`` `${garam}:${ip}` `` — alamat mentah, utuh, pada kolom bernama
+`source_ip_hash`, di tabel yang dibaca pengurus dan diekspor ke CSV. Dua
+pemeriksaan meluluskannya secara sia-sia: unit test berbunyi
+`expect(sidik).toContain('garam')` (benar, tetapi bukan yang penting), dan
+pemeriksaan basis data memakai pola berjangkar `/^\d+\.\d+\.\d+\.\d+$/`
+pada kolom yang **tidak pernah diisi** baris ujinya.
+
+Sekarang SHA-256 bergaram pengenal penyewa, dipotong 32 heksadesimal. Kedua
+pemeriksaan dibalik: yang diuji adalah alamatnya TIDAK muncul di mana pun.
+Garam per penyewa membuat alamat yang sama tersidik berbeda di koperasi
+berbeda — kiriman seseorang tidak dapat dirangkaikan antar penyewa. Sejauh mana
+ini melindungi dicatat jujur pada berkasnya: terhadap paparan biasa, bukan
+terhadap penyerang yang sudah memegang basis datanya.
+
+**2. Pembatas laju per alamat IP lumpuh di belakang Apache.** `ThrottlerGuard`
+menghitung per `req.ip`, dan aplikasi ini tidak pernah menyetel `trust proxy`.
+Di `koperasi.ebisnis.id` setiap pengunjung tampak datang dari alamat proxy —
+seluruh internet berbagi satu ember.
+
+Akibatnya lebih buruk daripada tidak ada pembatas: batas ketat berubah menjadi
+**penolakan layanan terhadap pelamar sungguhan.** Lima kiriman per jam per
+alamat akan menjadi lima kiriman per jam bagi seluruh koperasi di seluruh
+platform, dan satu pengirim sampah cukup untuk menutup pintu bagi semua orang.
+
+Perbaikannya milik Core (`main.ts`, satu baris) dan **tidak dikerjakan dari
+sini** — panduan §3. Yang dikerjakan: [IR-006](../integration-requests/cooperative/006-alamat-asli-di-belakang-proxy.md),
+dan angka yang dipilih supaya benar pada kedua keadaan:
+
+- Route pembacaan **tidak lagi diberi batas per-route**; ia mewarisi batas umum.
+  Batas yang lebih ketat justru membuat situs publik paling rapuh saat embernya
+  berbagi.
+- Route pendaftaran dilonggarkan dari 5/jam menjadi **30/jam** — tidak akan
+  disentuh pelamar yang mengirim sekali, tetap berguna setelah IR-006.
+
+Yang benar-benar menahan banjir adalah lapis kedua, dan ia **tidak bergantung
+pada alamat IP sama sekali**: batas 50 lamaran per koperasi per hari dan jeda 6
+jam per nomor telepon. Keduanya bekerja sama benarnya di belakang proxy maupun
+tidak. Batas kerusakan terburuk tidak berubah: 50 baris karantina per koperasi
+per hari, tanpa satu pun baris anggota terbentuk.
+
+IR-006 mengusulkan **jumlah lompatan**, bukan `trust proxy: true`. Yang kedua
+memercayai seluruh `X-Forwarded-For`, dan header itu dapat ditulis siapa saja —
+penyerang tinggal mengacaknya setiap permintaan untuk memperoleh ember baru,
+sehingga pembatasnya hilang sepenuhnya dan kali ini tanpa jejak.
+
+### Yang masih belum ada
+- **TLS untuk `koperasi.ebisnis.id`** dan pengalihan HTTP→HTTPS. Situs publik
+  yang menerima nama, nomor telepon, dan alamat rumah tidak boleh dilayani
+  tanpa itu.
+- `trust proxy` menunggu IR-006.
+
 ## K-13 — Peristiwa akuntansi koperasi terdaftar dan terbit
 
 Menyelesaikan IR-003. Katalognya sudah lengkap sejak K-8; yang belum ada
