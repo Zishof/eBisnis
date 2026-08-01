@@ -84,8 +84,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9K | 20 | **56** | `health-investor.spec.ts` |
 | H-9I | 25 | **88** | `health-device-adapter.spec.ts` |
 | H-9A | 20 | **48** | `health-satusehat.spec.ts` |
+| H-9B | 20 | **51** | `health-bpjs.spec.ts` |
 
-API keseluruhan: **2237** pengujian pada 67 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **2290** pengujian pada 68 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -121,6 +122,37 @@ sungguhan, pada basis data sungguhan:
 | H-9K | `prove-health-investor.mjs` | 62 pemeriksaan, seluruhnya lulus — [bukti-h9k-investor.txt](bukti-h9k-investor.txt) |
 | H-9I | `prove-health-device-adapter.mjs` | 58 pemeriksaan, seluruhnya lulus — [bukti-h9i-adapter-alat.txt](bukti-h9i-adapter-alat.txt) |
 | H-9A | `prove-health-satusehat.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9a-satusehat.txt](bukti-h9a-satusehat.txt) |
+| H-9B | `prove-health-bpjs.mjs` | 62 pemeriksaan, seluruhnya lulus — [bukti-h9b-bpjs.txt](bukti-h9b-bpjs.txt) |
+
+**Pengujian satuan H-9B menangkap sesuatu yang lebih halus daripada cacat
+kode: ia menangkap saya sedang MENGARANG.**
+
+`periksaNomorSep` semula memakai pola `^\d{4}[A-Z0-9]\d{12,14}$` — pola yang
+disusun dari ingatan tentang bentuk nomor SEP. Ujinya gagal pada contoh yang
+saya tulis sendiri, dan kegagalan itu menunjukkan hal yang benar: **saya tidak
+memiliki spesifikasinya.** Pola yang ditebak dari beberapa contoh akan menolak
+nomor sah dari fasilitas yang kodenya berbeda, dan penolakan itu datang pada
+saat pasien sedang menunggu.
+
+Fungsinya diganti: yang diperiksa hanyalah nomor yang **jelas dibuat sendiri**
+— "SEP-001", "TEST", "dummy", nol semua — dan selebihnya diterima apa adanya,
+sebab yang berwenang menyatakan ia sah adalah BPJS. Ini penerapan langsung
+perintah R2 §5 pada tempat yang paling mudah dilanggar tanpa sadar: bukan
+mengarang endpoint, melainkan mengarang *format*.
+
+**Naskah buktinya juga menangkap uji yang berbunyi pada hal yang benar.**
+Pemeriksaan "tidak ada kolom penggantian pada baris item" semula memakai pola
+`%bpjs%`, yang cocok dengan `bpjs_claim_id` — kunci asing ke klaim induknya,
+yang memang harus ada. Uji yang berbunyi pada kolom yang benar akan dimatikan
+orang pertama yang membacanya, dan sesudah itu ia tidak menjaga apa pun.
+Polanya dipersempit, dan **uji kendali** ditambahkan: kunci asing itu memang
+ada.
+
+Naskah H-9B pula yang memeriksa satu hal yang tidak diperiksa fase mana pun
+sebelumnya: bahwa **tabelnya memang dapat diubah**. `ALTER TABLE ... ADD COLUMN`
+dijalankan lalu dibatalkan, dan keberhasilannya membuktikan bahwa ketiadaan
+kolom penggantian bermakna — bukan sekadar akibat izin basis data yang menolak
+semua perubahan.
 
 **Naskah H-9A membuktikan sesuatu yang bentuknya berbeda dari seluruh fase
 sebelumnya: bahwa sebuah kerangka MENOLAK BERJALAN.**

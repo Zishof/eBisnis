@@ -1,0 +1,94 @@
+==============================================================================
+BUKTI H-9B — KERANGKA BPJS/JKN DAN GERBANG ADAPTERNYA
+Waktu   : 2026-08-01T03:42:12.223Z
+Schema  : demo
+==============================================================================
+
+Tiga pengguna. Administrator memasang kredensial; petugas interoperabilitas
+memverifikasi adapter; petugas pendaftaran mencatat kepesertaan dan SEP —
+pekerjaan yang tidak menuntut kredensial siapa pun.
+
+1. TABEL BARIS ITEM TIDAK PUNYA SATU PUN KOLOM PENGGANTIAN BPJS
+  LULUS  tidak ada kolom penggantian, disetujui, atau dibayar pada baris item
+  LULUS  UJI KENDALI: kunci asing ke klaim induknya memang ada
+  LULUS  yang ada hanyalah biaya aktual dan tagihan pasien
+  LULUS  dan nilai penggantiannya berada pada tingkat PAKET
+
+2. Seluruh adapter BLOCKED, dan itu tidak menghentikan apa pun yang penting
+  LULUS  katalog terbaca
+  LULUS  tujuh adapter tercatat
+  LULUS  lima metode pembayaran didukung berdampingan
+  LULUS  katalog menyatakan penggantian resmi ada pada tingkat paket
+  LULUS  gerbang adapter tersemai bagi fasilitas BARU
+  LULUS  SELURUHNYA BLOCKED
+  LULUS  dan ditegaskan tidak menghentikan apa pun yang penting
+
+3. Kredensial sebagai rujukan; akun aktif TIDAK membuka gerbang
+  LULUS  kredensial sebagai NILAI DITOLAK
+  LULUS  penolakannya menyebut mengajukan klaim atas nama fasilitas ini
+  LULUS  menembusnya lewat basis data ditolak constraint
+  LULUS  akun dengan rujukan brankas diterima
+  LULUS  rujukan brankas TIDAK ikut dikembalikan
+  LULUS  SELURUH ADAPTER MASIH BLOCKED sesudah akun aktif
+  LULUS  pemanggilan adapter TIDAK dilakukan
+  LULUS  gerbangnya tertutup
+  LULUS  alasannya menyebut MENOLAK
+  LULUS  DAN MENYEBUT APA YANG MASIH DAPAT DIKERJAKAN
+  LULUS  penolakan EKLAIM menyebut tarif karangan
+  LULUS  dan menegaskan penyusunan klaim tidak menuntut grouper
+  LULUS  adapter yang tidak ada pada matriks ditolak
+
+4. Yang mengaktifkan akun tidak memverifikasi adapternya
+  LULUS  administrator tidak berwenang mengubah status adapter
+  LULUS  dan petugas interoperabilitas tidak memasang kredensial
+  LULUS  VERIFIED tanpa keterangan yang bermakna DITOLAK
+  LULUS  penolakannya menyebut tidak dapat ditelaah setahun kemudian
+  LULUS  menembusnya lewat basis data ditolak constraint
+
+5. Kepesertaan membedakan ADAPTER dari MANUAL, dan pasien SELALU dilayani
+  LULUS  kepesertaan dicatat
+  LULUS  DICATAT SEBAGAI MANUAL, bukan ADAPTER
+  LULUS  dan alasannya menyebut diketik petugas dari kartu peserta
+  LULUS  kedaluwarsanya terisi
+  LULUS  kepesertaan terperiksa TANPA kedaluwarsa ditolak constraint
+  LULUS  kepesertaan aktif dijamin BPJS
+  LULUS  dan pasien boleh dilayani
+  LULUS  kepesertaan tidak aktif ditagihkan kepada pasien
+  LULUS  TETAPI PASIEN TETAP BOLEH DILAYANI
+  LULUS  dan alasannya menyebut keputusan yang bukan milik perangkat lunak
+
+6. Nomor SEP datang dari BPJS, bukan dihasilkan di sini
+  LULUS  nomor yang jelas dibuat sendiri DITOLAK
+  LULUS  penolakannya menyebut sesudah pelayanannya diberikan
+  LULUS  dan menegaskan format resminya milik BPJS
+  LULUS  nomor sungguhan diterima apa adanya
+  LULUS  dan dinyatakan yang berwenang adalah BPJS
+  LULUS  NAIK KELAS TIDAK MENAHAN KLAIM
+  LULUS  dan selisihnya ditagihkan kepada pasien
+  LULUS  nomor SEP yang sama tidak dipakai dua kali
+  LULUS  penolakannya menyebut yang ditolak belum tentu yang keliru
+  LULUS  menembusnya lewat basis data ditolak constraint
+
+7. NILAI PENGGANTIAN PER ITEM DITOLAK PADA SETIAP LAPIS
+  LULUS  baris item tanpa penggantian diterima
+  LULUS  dan dinyatakan penggantiannya ada pada tingkat paket
+  LULUS  LAPIS KEDUA: permintaan HTTP yang membawanya ditolak ValidationPipe
+  LULUS  dan menyebut medan yang tidak dikenalnya
+  LULUS  UJI KENDALI: tabelnya memang dapat diubah, sehingga ketiadaan kolomnya bermakna
+
+8. Casemix group tidak dapat diisi tanpa adapter
+  LULUS  mengetik casemix group tanpa adapter ditolak constraint
+  LULUS  UJI KENDALI: dengan penanda adapter, ia diterima
+
+9. Kebijakan kelas dan KRIS berversi, dan wajib menunjuk peraturannya
+  LULUS  kebijakan tanpa rujukan peraturan ditolak constraint
+  LULUS  UJI KENDALI: yang menunjuk peraturannya diterima
+
+10. BPJS dan SATUSEHAT tidak bertaut satu sama lain
+  LULUS  TIDAK SATU PUN kunci asing di antara keduanya
+  LULUS  sesudah seluruhnya, tidak satu pun adapter VERIFIED
+  LULUS  di seluruh tenant, tidak ada VERIFIED tanpa nama manusianya
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

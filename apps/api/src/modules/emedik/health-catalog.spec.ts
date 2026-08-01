@@ -574,6 +574,22 @@ describe('peran kesehatan', () => {
     expect(bahaya).toEqual([]);
   });
 
+  it('petugas interoperabilitas memverifikasi BPJS tetapi tidak memasang kredensialnya', () => {
+    const io2 = HEALTH_ROLES.find((r) => r.code === 'HEALTH_INTEROP_OFFICER');
+    expect(io2?.permissions).toContain('HEALTH_BPJS.VERIFY');
+    expect(io2?.permissions).not.toContain('HEALTH_BPJS.MANAGE_CREDENTIAL');
+    expect(io2?.permissions).not.toContain('HEALTH_BPJS.ACTIVATE');
+  });
+
+  it('petugas pendaftaran mencatat kepesertaan dan SEP tanpa hak kredensial', () => {
+    // Pekerjaan sehari-harinya, dan ia tidak menuntut kredensial siapa pun
+    // selama adapternya belum ada.
+    const clerk = HEALTH_ROLES.find((r) => r.code === 'HEALTH_REGISTRATION_CLERK');
+    expect(clerk?.permissions).toContain('HEALTH_BPJS_ELIGIBILITY.CREATE');
+    expect(clerk?.permissions).toContain('HEALTH_BPJS_SEP.CREATE');
+    expect(clerk?.permissions).not.toContain('HEALTH_BPJS.MANAGE_CREDENTIAL');
+  });
+
   it('tidak ada peran yang memiliki hak atas menu yang belum dibangun', () => {
     /*
      * Peran yang sudah diberi hak atas modul yang belum ada akan tampak

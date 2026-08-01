@@ -51,6 +51,7 @@ import { HealthDeviceMaintenanceService } from './health-device-maintenance.serv
 import { HealthInvestorService } from './health-investor.service';
 import { HealthDeviceAdapterService } from './health-device-adapter.service';
 import { HealthSatusehatService } from './health-satusehat.service';
+import { HealthBpjsService } from './health-bpjs.service';
 import { HealthClinicalController } from './health-clinical.controller';
 import { HealthPharmacyController } from './health-pharmacy.controller';
 import { HealthLabController } from './health-lab.controller';
@@ -70,6 +71,7 @@ import { HealthDeviceMaintenanceController } from './health-device-maintenance.c
 import { HealthInvestorController } from './health-investor.controller';
 import { HealthDeviceAdapterController } from './health-device-adapter.controller';
 import { HealthSatusehatController } from './health-satusehat.controller';
+import { HealthBpjsController } from './health-bpjs.controller';
 import {
   CoreAuditAdapter,
   CoreIdentityAdapter,
@@ -407,7 +409,7 @@ export class HealthController {
 
 @Module({
   imports: [InfrastructureModule, AuthModule],
-  controllers: [HealthController, HealthClinicalController, HealthPharmacyController, HealthLabController, HealthInpatientController, HealthAcuteController, HealthCommunityController, HealthHimController, HealthMasterDataController, HealthAccountingController, HealthTariffController, HealthFeeController, HealthSettlementController, HealthFeeContractController, HealthClaimController, HealthDeviceController, HealthDeviceMaintenanceController, HealthInvestorController, HealthDeviceAdapterController, HealthSatusehatController],
+  controllers: [HealthController, HealthClinicalController, HealthPharmacyController, HealthLabController, HealthInpatientController, HealthAcuteController, HealthCommunityController, HealthHimController, HealthMasterDataController, HealthAccountingController, HealthTariffController, HealthFeeController, HealthSettlementController, HealthFeeContractController, HealthClaimController, HealthDeviceController, HealthDeviceMaintenanceController, HealthInvestorController, HealthDeviceAdapterController, HealthSatusehatController, HealthBpjsController],
   providers: [
     HealthFacilityService,
     HealthPatientService,
@@ -430,6 +432,7 @@ export class HealthController {
     HealthInvestorService,
     HealthDeviceAdapterService,
     HealthSatusehatService,
+    HealthBpjsService,
     CoreIdentityAdapter,
     CoreAuditAdapter,
     CoreNotificationAdapter,
@@ -464,6 +467,7 @@ export class HealthController {
     HealthInvestorService,
     HealthDeviceAdapterService,
     HealthSatusehatService,
+    HealthBpjsService,
     IDENTITY_PORT,
     AUDIT_PORT,
     NOTIFICATION_PORT,

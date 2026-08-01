@@ -1542,6 +1542,80 @@ penjelasannya — supaya orang yang mencari "di mana payload-nya dibuat"
 menemukan alasan alih-alih ketiadaan. Ketiadaan akan ditafsirkan sebagai
 kelalaian, dan orang yang menafsirkannya begitu akan menuliskannya sendiri.
 
+### H-9B · Kerangka BPJS/JKN — **SELESAI**
+
+Akun penyedia beserta rujukan kredensialnya, gerbang tujuh adapter, kepesertaan
+sebagai cache berkedaluwarsa, SEP sebagai catatan lokal, klaim paket, dan
+kebijakan kelas/KRIS berversi.
+
+Uji >= 20 -> **51 tercapai**, ditambah naskah bukti 62 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H046__health__bpjs_skeleton.sql`, `H047__health__bpjs_permissions.sql` |
+| Aturan murni | `health-bpjs.ts` + 51 pengujian |
+| Layanan | `health-bpjs.service.ts` |
+| Endpoint | `health-bpjs.controller.ts` — 11 jalan di `/api/v1/health/bpjs/**` |
+| Katalog | `health-catalog.ts` — 3 menu, 1 aturan SoD |
+| Bukti | `scripts/prove-health-bpjs.mjs` -> [bukti-h9b-bpjs.txt](bukti-h9b-bpjs.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **ATURAN PAKET KASUS, DAN IA MENENTUKAN BENTUK BASIS DATA.** INA-CBG adalah
+  pembayaran berbasis paket. Seorang pasien yang menerima obat senilai dua juta
+  pada paket senilai lima juta **tidak** membuat BPJS mengganti dua juta untuk
+  obat itu — yang diganti adalah paketnya. Karena itu `bpjs_claim_item`
+  menyimpan biaya **aktual** dan tagihan **pasien**, dan **tidak punya satu pun
+  kolom penggantian BPJS**. Kolom yang menyimpannya akan dijumlahkan laporan,
+  dan jumlah itu akan dipakai menghitung jasa dokter.
+
+- **Aturan itu ditegakkan pada tiga lapis**, dan naskah bukti memeriksa
+  ketiganya: kolomnya tidak ada (`information_schema`), ValidationPipe global
+  menolak permintaan HTTP yang membawanya, dan pemeriksaan pada layanan
+  menjelaskan **alasannya** bagi pemanggil dari dalam proses — yang tidak
+  melewati ValidationPipe sama sekali.
+
+- **Casemix group tidak dapat diisi tanpa adapter**
+  (`bpjs_claim_group_from_adapter`). Tarif yang diketik dari ingatan
+  menghasilkan angka yang tampak masuk akal, dipakai menyusun anggaran, lalu
+  dipakai membagi jasa medis — sampai klaim pertamanya kembali dengan angka yang
+  berbeda.
+
+- **BPJS dan SATUSEHAT tidak bertaut sama sekali.** Naskah bukti menghitung
+  kunci asing di antara keduanya dan menuntut nol. Menyatukannya akan membuat
+  kegagalan pengiriman FHIR menghentikan pengajuan klaim.
+
+- **Penolakan adapter menyebutkan apa yang MASIH dapat dikerjakan.** Hampir
+  seluruh siklus klaim di dalam rumah sakit tidak menuntut adapter mana pun;
+  penolakan yang tidak menyebutkannya akan dibaca sebagai "seluruh klaim
+  berhenti", dan itu keliru.
+
+- **Kepesertaan adalah CACHE dengan kedaluwarsa wajib**, dan ia membedakan
+  sumber `ADAPTER` dari `MANUAL`. Kolom yang tidak membedakannya membuat data
+  ketikan tampak seperti jawaban resmi.
+
+- **PASIEN SELALU BOLEH DILAYANI.** Yang diputuskan modul ini bukan
+  pelayanannya melainkan siapa yang membayar. Menolak melayani karena
+  kepesertaan tidak aktif adalah keputusan yang bukan milik perangkat lunak.
+
+- **Nomor SEP datang dari BPJS.** Tabelnya tidak punya urutan yang dapat dipakai
+  menghasilkannya, dan yang ditolak hanyalah nomor yang **jelas dibuat
+  sendiri** — format resminya milik BPJS, dan menebaknya akan menolak nomor sah
+  dari fasilitas yang kodenya berbeda, pada saat pasien sedang menunggu.
+
+- **Naik kelas tidak menahan klaim**, dan selisihnya ditagihkan kepada pasien
+  bila atas permintaannya — kepada fasilitas bila bukan. Pelajaran H-9C.
+
+- **Kelas dan KRIS adalah kebijakan berversi**, wajib menunjuk peraturannya.
+  Tata kelola JKN memang berubah, dan perubahannya harus dapat diikuti tanpa
+  mengubah kode.
+
+**Yang belum, dan sengaja:** panggilan HTTP ke BPJS, pengelompokan INA-CBG, dan
+nilai tarif resmi. `kelompokkanInacbg()` ada sebagai fungsi yang **melempar**
+beserta penjelasannya.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -1616,7 +1690,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 11. H-9K   Dasbor investor agregat                         [SELESAI]
 12. H-9I   Adapter HL7/ASTM; DICOM menunggu PACS           [SELESAI]
 13. H-9A   Kerangka SATUSEHAT beserta gerbang kemampuan    [SELESAI]
-14. H-9B   Kerangka BPJS beserta gerbang kemampuan
+14. H-9B   Kerangka BPJS beserta gerbang kemampuan         [SELESAI]
 15. H-9M   Kerangka impor KFA
 ```
 

@@ -5,6 +5,44 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9B — Kerangka BPJS/JKN dan gerbang adapternya
+
+### Ditambahkan
+
+- **`H046__health__bpjs_skeleton.sql`** — `bpjs_provider_account`,
+  `bpjs_adapter_capability`, `bpjs_participant_eligibility`, `bpjs_sep`,
+  `bpjs_claim`, `bpjs_claim_item`, `jkn_entitlement_policy`. Constraint
+  `bpjs_account_secret_is_ref`, `bpjs_cap_verified_complete`,
+  `bpjs_elig_checked_expires`, `bpjs_sep_number_not_placeholder`,
+  `bpjs_claim_group_from_adapter`, `jkn_policy_has_regulation`.
+- **`H047__health__bpjs_permissions.sql`** — tiga menu terpisah dari SATUSEHAT,
+  dan satu aturan pemisahan wewenang.
+- **`health-bpjs.ts`** — gerbang adapter, aturan paket kasus, masa berlaku
+  kepesertaan, status penjaminan, nomor SEP, kebijakan berversi, dan selisih
+  kelas. **51 pengujian.**
+- **`health-bpjs.service.ts`** dan **`health-bpjs.controller.ts`** — 11 jalan
+  pada `/api/v1/health/bpjs/**`.
+- **`prove-health-bpjs.mjs`** — naskah bukti, **62 pemeriksaan**, seluruhnya
+  lulus dan lulus pula pada pengulangan.
+
+### Yang sengaja tidak dibangun
+
+Panggilan HTTP ke BPJS, pengelompokan INA-CBG, dan nilai tarif resmi. Grouper
+adalah perangkat lunak berlisensi; menirunya menghasilkan tarif karangan yang
+tidak menimbulkan galat — ia menghasilkan angka yang tampak masuk akal, dipakai
+menyusun anggaran, lalu dipakai membagi jasa medis, sampai klaim pertamanya
+kembali dengan angka yang berbeda. `kelompokkanInacbg()` melempar beserta
+penjelasannya.
+
+### Catatan bagi Core
+
+Tidak ada permintaan perubahan shared Core. Siklus klaim internal sudah
+dibangun H-9C; yang ditambahkan di sini adalah catatan sisi BPJS-nya beserta
+gerbangnya.
+
+Uji: API 2237 → **2290**.
+
+---
 ## H-9A — Kerangka SATUSEHAT dan gerbang kemampuannya
 
 ### Ditambahkan

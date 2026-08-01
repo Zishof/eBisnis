@@ -815,6 +815,39 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'UPDATE', 'VERIFY'],
     sortOrder: 121,
   },
+  // BPJS/JKN — H-9B.
+  //
+  // Menu BPJS sengaja TERPISAH dari menu SATUSEHAT, dan pemisahannya bukan
+  // kerapian tampilan: keduanya konteks terbatas yang berbeda, dengan
+  // kredensial berbeda dan kegagalan berbeda pula. Petugas yang mengurus klaim
+  // tidak perlu — dan tidak boleh — memegang kredensial pertukaran data klinis.
+  {
+    code: 'HEALTH_BPJS',
+    parentCode: 'HEALTH',
+    label: 'BPJS/JKN',
+    route: '/app/emedik/bpjs',
+    icon: 'shield-check',
+    actions: ['READ', 'CREATE', 'UPDATE', 'ACTIVATE', 'MANAGE_CREDENTIAL', 'VERIFY'],
+    sortOrder: 122,
+  },
+  {
+    code: 'HEALTH_BPJS_ELIGIBILITY',
+    parentCode: 'HEALTH',
+    label: 'Kepesertaan JKN',
+    route: '/app/emedik/kepesertaan',
+    icon: 'id-card',
+    actions: ['READ', 'CREATE'],
+    sortOrder: 123,
+  },
+  {
+    code: 'HEALTH_BPJS_SEP',
+    parentCode: 'HEALTH',
+    label: 'SEP',
+    route: '/app/emedik/sep',
+    icon: 'file-badge',
+    actions: ['READ', 'CREATE', 'CANCEL'],
+    sortOrder: 124,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -928,6 +961,12 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_PATIENT.UPDATE',
       'HEALTH_PATIENT_DUPLICATE.READ',
       'HEALTH_PATIENT_DUPLICATE.REVIEW',
+      // Kepesertaan dan SEP — H-9B. Pekerjaan sehari-harinya, dan ia tidak
+      // menuntut kredensial siapa pun selama adapternya belum ada.
+      'HEALTH_BPJS_ELIGIBILITY.READ',
+      'HEALTH_BPJS_ELIGIBILITY.CREATE',
+      'HEALTH_BPJS_SEP.READ',
+      'HEALTH_BPJS_SEP.CREATE',
       // Tanggungan penjamin perlu diketahui saat pasien datang, bukan saat
       // tagihannya dicetak.
       'HEALTH_PAYER.READ',
@@ -1685,6 +1724,11 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_SATUSEHAT_CAPABILITY.READ',
       'HEALTH_SATUSEHAT_CAPABILITY.UPDATE',
       'HEALTH_SATUSEHAT_CAPABILITY.VERIFY',
+      // BPJS pula — H-9B. Pekerjaannya sama: menjalankan panggilan terhadap
+      // sandbox lalu menyatakan ia bekerja. Ia TIDAK memasang kredensial, di
+      // sini maupun di sana.
+      'HEALTH_BPJS.READ',
+      'HEALTH_BPJS.VERIFY',
     ],
     sortOrder: 40,
   },
@@ -1954,6 +1998,16 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'pada basis data pula — kendali jarak jauh menuntut enam syarat sekaligus, dan basis ' +
       'data menolak baris yang kurang satu pun.',
     conflictingPermissions: ['HEALTH_DEVICE.MANAGE_DEVICE', 'HEALTH_DEVICE.ACTIVATE'],
+  },
+  {
+    code: 'HEALTH_SOD_BPJS_VERIFY',
+    name: 'Yang mengaktifkan akun BPJS tidak memverifikasi adapternya',
+    description:
+      'Sama seperti SATUSEHAT: memverifikasi adapter berarti menyatakan panggilannya sudah ' +
+      'dicoba dan bekerja, dan pernyataan itu membuka jalur yang mengirimkan klaim atas nama ' +
+      'fasilitas. Administrator yang memasang kredensial adalah orang yang paling ingin ' +
+      'jalurnya terbuka. Ditegakkan constraint bpjs_cap_verified_complete pada basis data pula.',
+    conflictingPermissions: ['HEALTH_BPJS.ACTIVATE', 'HEALTH_BPJS.VERIFY'],
   },
   {
     code: 'HEALTH_SOD_SATUSEHAT_VERIFY',

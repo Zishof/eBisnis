@@ -477,6 +477,20 @@
       "file": "H045__health__satusehat_permissions.sql",
       "name": "eMedik: menu, hak akses, dan peran SATUSEHAT",
       "description": "Dua menu, satu peran baru (Petugas Interoperabilitas), dan satu aturan pemisahan wewenang bertingkat CRITICAL. Pemisahannya: YANG MENGAKTIFKAN LINGKUNGAN TIDAK MEMVERIFIKASI KEMAMPUANNYA. Memverifikasi kemampuan berarti menyatakan saya sudah menjalankan panggilan ini terhadap sandbox dan ia bekerja; pernyataan itu membuka gerbang yang mengirimkan data pasien ke sistem nasional, dan pengiriman itu tidak dapat ditarik kembali. Administrator yang memasang kredensial adalah orang yang paling ingin gerbangnya terbuka — sebab pekerjaannya belum selesai sampai ia terbuka — dan justru karena itu ia bukan orang yang tepat untuk menyatakan bahwa ia bekerja."
+    },
+    {
+      "version": "H046",
+      "sequence": 1046,
+      "file": "H046__health__bpjs_skeleton.sql",
+      "name": "eMedik: kerangka BPJS/JKN dan gerbang adapternya",
+      "description": "bpjs_provider_account, bpjs_adapter_capability, bpjs_participant_eligibility, bpjs_sep, bpjs_claim, bpjs_claim_item, jkn_entitlement_policy. SATUSEHAT dan BPJS adalah konteks terbatas yang BERBEDA dengan kredensial berbeda dan kegagalan berbeda pula; tabelnya terpisah, gerbangnya terpisah, dan tidak ada satu pun kunci asing di antara keduanya — menyatukannya akan membuat kegagalan pengiriman FHIR menghentikan pengajuan klaim, dan sebaliknya kesibukan musim klaim menghentikan pengiriman data klinis. ATURAN YANG MENENTUKAN SELURUH RANCANGAN: INA-CBG adalah pembayaran berbasis PAKET KASUS, dan itu bukan kehalusan administrasi melainkan penentu bentuk basis data. Sistem TIDAK BOLEH menganggap setiap obat, tindakan, alat, atau kamar memiliki nilai penggantian BPJS resmi per item — karena itu bpjs_claim_item menyimpan biaya AKTUAL dan tagihan PASIEN, dan TIDAK PUNYA SATU PUN KOLOM PENGGANTIAN BPJS. Seorang pasien yang menerima obat senilai dua juta pada paket senilai lima juta tidak membuat BPJS mengganti dua juta untuk obat itu; kolom yang menyimpannya akan dijumlahkan laporan, dan jumlah itu akan dipakai menghitung jasa dokter. Nilai penggantian resmi berada pada bpjs_claim, tingkat paket. PENGELOMPOKAN HANYA BOLEH DATANG DARI ADAPTER (bpjs_claim_group_from_adapter): casemix group yang terisi tanpa adapter berarti seseorang mengetiknya, dan tarif yang diketik dari ingatan menghasilkan angka yang tampak masuk akal lalu dipakai membagi jasa medis. Kepesertaan disimpan sebagai CACHE dengan kedaluwarsa wajib (bpjs_elig_checked_expires) dan membedakan sumber ADAPTER dari MANUAL — kolom yang tidak membedakannya membuat data ketikan tampak seperti jawaban resmi. Nomor SEP datang dari BPJS: tabelnya tidak punya urutan yang dapat dipakai menghasilkannya, dan constraint menolak nomor yang JELAS dibuat sendiri tanpa menebak format resminya. Kebijakan kelas dan KRIS berversi dan wajib menunjuk peraturannya."
+    },
+    {
+      "version": "H047",
+      "sequence": 1047,
+      "file": "H047__health__bpjs_permissions.sql",
+      "name": "eMedik: menu, hak akses, dan peran BPJS/JKN",
+      "description": "Tiga menu (HEALTH_BPJS, HEALTH_BPJS_ELIGIBILITY, HEALTH_BPJS_SEP) dan satu aturan pemisahan wewenang. Menu BPJS sengaja TERPISAH dari menu SATUSEHAT, dan pemisahannya bukan kerapian tampilan: keduanya konteks terbatas yang berbeda, dan petugas yang mengurus klaim tidak perlu — dan tidak boleh — memegang kredensial pertukaran data klinis. Yang mengaktifkan akun BPJS tidak memverifikasi adapternya, sama seperti SATUSEHAT. Petugas pendaftaran memeriksa kepesertaan dan mencatat SEP tanpa menuntut kredensial siapa pun selama adapternya belum ada."
     }
   ]
 }
