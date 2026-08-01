@@ -14,6 +14,8 @@ import { PesantrenTagihanController } from './pesantren-tagihan.controller';
 import { PesantrenTagihanService } from './pesantren-tagihan.service';
 import { PesantrenAsramaController, PesantrenPenempatanController } from './pesantren-asrama.controller';
 import { PesantrenAsramaService } from './pesantren-asrama.service';
+import { PesantrenKitabController, PesantrenHalaqahController } from './pesantren-diniyah.controller';
+import { PesantrenDiniyahService } from './pesantren-diniyah.service';
 
 function paramtypes(target: unknown): unknown[] {
   return (Reflect.getMetadata('design:paramtypes', target as object) as unknown[]) ?? [];
@@ -74,6 +76,24 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(tipe.filter((t) => t === undefined)).toEqual([]);
   });
 
+  it('setiap dependensi controller kitab punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenKitabController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi controller halaqah punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenHalaqahController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi service diniyah punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenDiniyahService);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
   it('controller dan service terdaftar pada pesantren.module.ts', () => {
     const sumber = readFileSync(join(__dirname, 'pesantren.module.ts'), 'utf8');
     expect(sumber).toContain('PesantrenSantriController');
@@ -85,6 +105,9 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(sumber).toContain('PesantrenAsramaController');
     expect(sumber).toContain('PesantrenPenempatanController');
     expect(sumber).toContain('PesantrenAsramaService');
+    expect(sumber).toContain('PesantrenKitabController');
+    expect(sumber).toContain('PesantrenHalaqahController');
+    expect(sumber).toContain('PesantrenDiniyahService');
   });
 
   it('modul terdaftar pada app.module.ts', () => {

@@ -76,6 +76,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 530,
     actions: CATAT,
   },
+  {
+    code: 'EPESANTREN_DINIYAH',
+    label: 'Diniyah dan Halaqah',
+    translationKey: 'menu.epesantren.diniyah',
+    route: '/app/pesantren/diniyah',
+    icon: 'BookOpen',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 540,
+    actions: CATAT,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -95,6 +105,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_PRESENSI: 'P7',
       EPESANTREN_TAGIHAN: 'P7',
       EPESANTREN_ASRAMA: 'P7',
+      EPESANTREN_DINIYAH: 'P7',
     },
     dataScope: 'TENANT',
     core: false,

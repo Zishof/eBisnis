@@ -7,6 +7,8 @@ import { PesantrenTagihanController } from './pesantren-tagihan.controller';
 import { PesantrenTagihanService } from './pesantren-tagihan.service';
 import { PesantrenAsramaController, PesantrenPenempatanController } from './pesantren-asrama.controller';
 import { PesantrenAsramaService } from './pesantren-asrama.service';
+import { PesantrenKitabController, PesantrenHalaqahController } from './pesantren-diniyah.controller';
+import { PesantrenDiniyahService } from './pesantren-diniyah.service';
 
 @Module({
   controllers: [
@@ -15,12 +17,15 @@ import { PesantrenAsramaService } from './pesantren-asrama.service';
     PesantrenTagihanController,
     PesantrenAsramaController,
     PesantrenPenempatanController,
+    PesantrenKitabController,
+    PesantrenHalaqahController,
   ],
   providers: [
     PesantrenSantriService,
     PesantrenPresensiService,
     PesantrenTagihanService,
     PesantrenAsramaService,
+    PesantrenDiniyahService,
   ],
 })
 export class PesantrenModule {}

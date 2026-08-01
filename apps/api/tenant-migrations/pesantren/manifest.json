@@ -29,6 +29,12 @@
       "file": "20260802T170000__pesantren__asrama.sql",
       "name": "EP-G: Asrama, kamar, dan penempatan santri",
       "description": "pesantren_asrama, pesantren_kamar, pesantren_penempatan. Satu santri hanya boleh punya satu penempatan aktif ditegakkan indeks unik parsial. Batas kapasitas kamar ditegakkan di service (COUNT lintas baris), bukan CHECK per baris."
+    },
+    {
+      "id": "20260802T180000__pesantren__diniyah",
+      "file": "20260802T180000__pesantren__diniyah.sql",
+      "name": "EP-H: Diniyah, halaqah, dan kitab",
+      "description": "pesantren_kitab, pesantren_halaqah, pesantren_halaqah_santri. Santri boleh mengikuti lebih dari satu halaqah sekaligus -- berbeda dari penempatan kamar EP-G -- yang dicegah hanya keanggotaan ganda pada halaqah yang sama, ditegakkan indeks unik parsial."
     }
   ]
 }

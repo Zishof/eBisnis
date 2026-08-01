@@ -192,10 +192,35 @@ dan sebaliknya, dibuktikan live.
 **Yang tidak dikerjakan:** riwayat pindah kamar sebagai laporan (data ada di
 `pesantren_penempatan`, tampilan rekapnya belum ada).
 
+## Status EP-H — SEBAGIAN, halaqah dan kitab tanpa jadwal
+
+**Yang dikerjakan:** tabel `pesantren_kitab`, `pesantren_halaqah`,
+`pesantren_halaqah_santri` (migrasi modul
+`20260802T180000__pesantren__diniyah`). Presensi diniyah sudah dapat dicatat
+sejak EP-E terhadap santri langsung (jenis `DINIYAH`) tanpa perlu halaqah;
+modul ini menambah struktur PENGELOMPOKAN yang belum ada. Berbeda dari
+penempatan kamar EP-G (satu aktif per santri), satu santri BOLEH mengikuti
+lebih dari satu halaqah sekaligus — yang dicegah hanya keanggotaan ganda
+pada halaqah yang sama, ditegakkan indeks unik parsial.
+
+API `PesantrenKitabController`/`PesantrenHalaqahController`
+(`/pesantren/kitab`, `/pesantren/halaqah`, `/pesantren/halaqah/:id/anggota`)
+dibuktikan live dengan data sampel nyata terhadap `ponpes_demo`: kitab dan
+halaqah dicatat lalu diambil kembali dan datanya sama persis, kode duplikat
+ditolak konflik, santri digabungkan ke halaqah lalu `jumlah_anggota` pada
+daftar halaqah dan daftar anggota keduanya terhitung benar, bergabung dua
+kali ke halaqah yang sama ditolak, santri yang sama BERHASIL bergabung ke
+halaqah KEDUA yang berbeda (membuktikan kaidah ini sengaja berbeda dari
+EP-G), mengeluarkan lalu mencoba mengeluarkan lagi ditolak, santri tak
+dikenal 404, dan tanpa token 401.
+
+**Yang tidak dikerjakan:** jadwal kajian per halaqah (hari/jam), pencatatan
+progres hafalan/bacaan per pertemuan (itu domain EP-I Tahfiz), dan laporan
+rekap keanggotaan.
+
 ## Sesudah EP-A
 
 ```text
-EP-H   Diniyah, halaqah, kitab
 EP-I   Tahfiz
 EP-J   Perizinan dan gerbang
 EP-K   Portal wali beserta cakupan DEPENDENT_CHILD
