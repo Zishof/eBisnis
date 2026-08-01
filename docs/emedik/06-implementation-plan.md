@@ -32,7 +32,7 @@ Sisa H-2 (janji temu, pendaftaran, antrean) tetap di H-2.
 
 ## Fase
 
-### H-1 · Fasilitas, portal, profil tenant, billing, **dan identitas pasien inti**
+### H-1 · Fasilitas, portal, profil tenant, billing, **dan identitas pasien inti** — **SELESAI**
 
 | Keluaran | Catatan |
 |---|---|
@@ -49,7 +49,7 @@ pencatatan pembacaan, tujuan penggunaan, catatan tidak dapat diubah, penandaan
 data sensitif tinggi. Keempatnya tidak dapat ditambahkan belakangan tanpa
 membongkar.
 
-### H-2 · Janji temu, pendaftaran, antrean
+### H-2 · Janji temu, pendaftaran, antrean — **SELESAI**
 
 Sisa identitas pasien (`PatientConsent`, `PatientProxy`, `PatientMerge`,
 `PatientFamilyLink`), lalu `Appointment`, `Schedule`, `ProviderAvailability`,
@@ -57,7 +57,7 @@ pendaftaran daring dan langsung, rujukan, antrean, dan pemantauan waktu tunggu.
 
 Uji ≥ 40. Ini fase dengan uji terbanyak, dan memang seharusnya.
 
-### H-3 · Rawat jalan, dokumentasi klinis, order
+### H-3 · Rawat jalan, dokumentasi klinis, order — **SELESAI**
 
 `OutpatientEncounter`, SOAP, tanda vital, masalah, diagnosis, tindakan, alergi,
 peringatan klinis, `ClinicalOrder`, `OrderSet`, surat keterangan medis.
