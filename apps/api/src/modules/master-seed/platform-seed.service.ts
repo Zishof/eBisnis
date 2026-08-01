@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
+import { KATALOG_PORTAL } from '../../infrastructure/portal/portal.catalog';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { TenantMigrationService } from '../../infrastructure/provisioning/tenant-migration.service';
@@ -43,6 +44,7 @@ export class PlatformSeedService {
     summary.globalActions = await this.seedGlobalPermissionActions();
     summary.globalMenus = await this.seedGlobalMenuTemplates();
     summary.globalRoles = await this.seedGlobalRoleTemplates();
+    summary.portals = await this.seedPortals();
     summary.modules = await this.seedModules();
     summary.features = await this.seedFeatures();
     summary.plans = await this.seedPlans();
@@ -346,6 +348,99 @@ export class PlatformSeedService {
       });
     }
     return ROLE_TEMPLATES_SEED.length;
+  }
+
+  /**
+   * Menyeed lima portal ekosistem beserta host dan tautan silangnya.
+   *
+   * Aman diulang: baris yang sudah ada diperbarui, bukan digandakan. Karena itu
+   * ia dipanggil pada setiap pembaruan, dan portal yang ditambahkan kelak muncul
+   * tanpa langkah manual.
+   *
+   * Host diseed berstatus ACTIVE dengan `verifiedAt` terisi. Itu disengaja dan
+   * berbeda dari domain penyewa: kelima apex ini milik platform sendiri, bukan
+   * host yang didaftarkan pihak lain — tidak ada yang perlu dibuktikan
+   * kepemilikannya kepada diri sendiri. Domain penyewa tetap wajib melewati
+   * verifikasi.
+   */
+  private async seedPortals(): Promise<number> {
+    const idPortal = new Map<string, string>();
+
+    for (const p of KATALOG_PORTAL) {
+      const portal = await this.prisma.platformPortal.upsert({
+        where: { code: p.code },
+        create: {
+          code: p.code,
+          name: p.name,
+          tagline: p.tagline,
+          verticalCode: p.verticalCode,
+          brandPrimary: p.brandPrimary,
+          brandAccent: p.brandAccent,
+          sortOrder: p.sortOrder,
+          status: 'ACTIVE',
+        },
+        update: {
+          name: p.name,
+          tagline: p.tagline,
+          verticalCode: p.verticalCode,
+          brandPrimary: p.brandPrimary,
+          brandAccent: p.brandAccent,
+          sortOrder: p.sortOrder,
+        },
+      });
+      idPortal.set(p.code, portal.id);
+
+      for (const d of p.domains) {
+        await this.prisma.platformPortalDomain.upsert({
+          where: { host: d.host },
+          create: {
+            portalId: portal.id,
+            host: d.host,
+            kind: d.kind,
+            isCanonical: d.isCanonical,
+            status: 'ACTIVE',
+            verifiedAt: new Date(),
+          },
+          update: {
+            portalId: portal.id,
+            kind: d.kind,
+            isCanonical: d.isCanonical,
+          },
+        });
+      }
+    }
+
+    /*
+     * Tautan silang dibuat penuh: setiap portal menautkan keempat lainnya.
+     *
+     * §118 menuntut tautan DUA ARAH. Membuatnya satu arah lalu berharap sisi
+     * lain menyusul menghasilkan footer yang timpang — dan yang timpang tidak
+     * terlihat dari portal tempat orang mengeceknya.
+     */
+    for (const sumber of KATALOG_PORTAL) {
+      for (const tujuan of KATALOG_PORTAL) {
+        if (sumber.code === tujuan.code) continue;
+        const portalId = idPortal.get(sumber.code)!;
+        const targetId = idPortal.get(tujuan.code)!;
+        await this.prisma.platformPortalCrossLink.upsert({
+          where: { portalId_targetId: { portalId, targetId } },
+          create: {
+            portalId,
+            targetId,
+            label: tujuan.name,
+            description: tujuan.crossLinkDescription,
+            sortOrder: tujuan.sortOrder,
+          },
+          update: {
+            label: tujuan.name,
+            description: tujuan.crossLinkDescription,
+            sortOrder: tujuan.sortOrder,
+          },
+        });
+      }
+    }
+
+    return KATALOG_PORTAL.length;
   }
 
   private async seedModules(): Promise<number> {

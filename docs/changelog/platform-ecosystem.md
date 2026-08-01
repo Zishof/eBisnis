@@ -36,3 +36,43 @@ Digabungkan ke `CHANGELOG.md` akar pada integration gate (§63).
 
 2432 uji lulus (API 2092, web 193, Flutter 147), lint bersih, E2E 73 lulus /
 0 flaky pada `main`.
+
+## ECO-1 — Registry portal dan penyebaran lima domain (belum dirilis)
+
+### Ditambahkan
+
+- Migrasi aditif `20260801150000_platform_portal_registry`: `platform_portal`,
+  `platform_portal_domain`, `platform_portal_cross_link`.
+- Model Prisma `PlatformPortal`, `PlatformPortalDomain`,
+  `PlatformPortalCrossLink`.
+- `infrastructure/portal/portal-host.ts` — aturan murni: label subdomain
+  terpesan (§7.4), kelayakan host, kecocokan peran, dan tautan kanonik.
+- `infrastructure/portal/portal.catalog.ts` — katalog lima portal beserta host
+  dan keterangan tautan silangnya.
+- Seed portal pada `PlatformSeedService`, idempoten, termasuk tautan silang
+  penuh dua arah.
+- `GET /api/v1/public/portals` (§39.1).
+- `deploy/apache/ekosistem.conf` — satu vhost untuk kelima domain.
+- `deploy/ekosistem.sh` — satu perintah `pasang | perbarui | periksa`.
+- `docs/ecosystem/13-penyebaran-lima-domain.md`.
+
+### Keputusan yang perlu diketahui
+
+- **Penerbit identitas satu untuk seluruh ekosistem** (`auth.ebisnis.id`),
+  diikat uji. Lima penerbit berarti lima sumber kebenaran tentang siapa yang
+  sedang masuk.
+- **Satu vhost, bukan lima.** Lima vhost yang menunjuk root dan proxy yang sama
+  hanya menghasilkan lima tempat yang harus diperbarui bersamaan.
+- **Host portal diseed terverifikasi**, berbeda dari domain penyewa. Kelima apex
+  ini milik platform sendiri; tidak ada yang perlu dibuktikan kepada diri
+  sendiri. Domain penyewa tetap wajib melewati verifikasi.
+- **Domain yang belum menjawab tidak membatalkan pembaruan.** Penyebabnya ada di
+  lapisan DNS/TLS/Apache, dan mengembalikan aplikasi tidak memperbaiki satu pun
+  di antaranya.
+- **Tombol di aplikasi belum dibuat.** Aplikasi web tidak boleh menjalankan
+  skrip shell; bentuk yang diusulkan adalah menulis permintaan yang dibaca agen
+  ber-hak istimewa.
+
+### Uji
+
+30 uji baru pada aturan dan katalog portal. API: 2122 lulus, 80 berkas.
