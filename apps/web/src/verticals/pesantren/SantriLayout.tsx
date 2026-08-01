@@ -22,6 +22,7 @@
  * ditampilkan. Footer tanpa tautan lebih baik daripada footer berisi tautan mati.
  */
 
+import { useEffect } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
@@ -51,7 +52,31 @@ function useTautanEkosistem() {
   });
 }
 
+/**
+ * Judul tab.
+ *
+ * `index.html` menuliskan judul eBisnis.id secara statis. Tanpa ini, pengunjung
+ * santri.info melihat "eBisnis.id — Platform SaaS POS & ERP Terintegrasi" pada
+ * tab, pada penanda buku, dan pada judul yang ikut saat halamannya dibagikan —
+ * kebocoran merek yang sama dengan memakai `PublicLayout`, hanya di tempat yang
+ * lebih jarang diperiksa.
+ *
+ * Judul sebelumnya dikembalikan saat kerangka ini dilepas, sebab pengunjung yang
+ * berpindah ke halaman lain dalam aplikasi yang sama tidak boleh membawa judul
+ * santri.info ke sana.
+ */
+function useJudulSantri() {
+  useEffect(() => {
+    const sebelumnya = document.title;
+    document.title = 'santri.info — Sistem Informasi Pondok Pesantren';
+    return () => {
+      document.title = sebelumnya;
+    };
+  }, []);
+}
+
 export function SantriLayout() {
+  useJudulSantri();
   const { data } = useTautanEkosistem();
   const ekosistem =
     data?.find((p) => p.code === KODE_PORTAL)?.ecosystem.filter((t) => t.url) ?? [];

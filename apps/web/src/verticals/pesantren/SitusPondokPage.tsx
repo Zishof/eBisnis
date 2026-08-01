@@ -17,9 +17,23 @@
  * yang mungkin bukan milik siapa pun.
  */
 
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 export function SitusPondokPage() {
+  /*
+   * Judul netral, bukan "eBisnis.id" dari `index.html` dan bukan pula
+   * "santri.info". Alamat ini milik pondok; menuliskan merek platform di
+   * tabnya sama saja dengan menempelkan papan nama kita di gerbang orang lain.
+   */
+  useEffect(() => {
+    const sebelumnya = document.title;
+    document.title = 'Situs pondok sedang disiapkan';
+    return () => {
+      document.title = sebelumnya;
+    };
+  }, []);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-white px-4 py-16 dark:bg-slate-950">
       <div className="max-w-lg text-center">
