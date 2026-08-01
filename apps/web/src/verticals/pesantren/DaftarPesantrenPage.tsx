@@ -140,9 +140,15 @@ export function DaftarPesantrenPage() {
   const [dataContoh, setDataContoh] = useState(true);
   const [galat, setGalat] = useState<string | null>(null);
   const [galatMedan, setGalatMedan] = useState<Record<string, string>>({});
-  // Slug diisikan sendiri sekali dari nama pondok; sesudah pengurus
-  // menyuntingnya, usulan berhenti menimpanya.
+  /*
+   * Alamat situs dan nama pengguna diisikan sendiri dari nama pondok.
+   *
+   * Masing-masing punya penanda "sudah disunting" tersendiri. Satu penanda
+   * bersama akan membuat pengurus yang menyunting alamat situs kehilangan usulan
+   * nama pengguna — dua kolom yang berbeda, dikunci oleh satu sentuhan.
+   */
   const [slugDisunting, setSlugDisunting] = useState(false);
+  const [usernameDisunting, setUsernameDisunting] = useState(false);
 
   const konfig = useQuery({
     queryKey: ['pesantren-registration-config'],
@@ -157,23 +163,27 @@ export function DaftarPesantrenPage() {
   const slugSitus = watch('slugSitus', '');
   const username = watch('desiredUsername', '');
 
-  // Usulan alamat situs dari nama pondok.
+  // Usulan alamat situs dan nama pengguna dari nama pondok. Satu panggilan,
+  // dua bentuk: tanda hubung untuk alamat situs, garis bawah untuk nama
+  // pengguna. Peladen yang menyusun keduanya, bukan peramban — supaya bentuknya
+  // tidak berselisih dengan pemeriksa yang menerima kirimannya.
   useEffect(() => {
-    if (slugDisunting || !namaPondok.trim()) return;
+    if ((slugDisunting && usernameDisunting) || !namaPondok.trim()) return;
     const timer = setTimeout(() => {
       api
-        .get<{ slug: string }>(
+        .get<{ slug: string; username: string }>(
           `/public/pesantren/site-slug/suggest?nama=${encodeURIComponent(namaPondok)}`,
         )
         .then((jawaban) => {
           if (!slugDisunting) setValue('slugSitus', jawaban.slug);
+          if (!usernameDisunting) setValue('desiredUsername', jawaban.username);
         })
         .catch(() => {
           /* Usulan yang gagal bukan kegagalan pendaftaran. Kolomnya tetap dapat diisi tangan. */
         });
     }, 500);
     return () => clearTimeout(timer);
-  }, [namaPondok, slugDisunting, setValue]);
+  }, [namaPondok, slugDisunting, usernameDisunting, setValue]);
 
   const [slugQuery, setSlugQuery] = useState('');
   useEffect(() => {
@@ -643,11 +653,18 @@ export function DaftarPesantrenPage() {
                 id="desiredUsername"
                 className="field-input ltr-code"
                 autoComplete="off"
-                {...register('desiredUsername', { required: true, minLength: 3, maxLength: 48 })}
+                {...register('desiredUsername', {
+                  required: true,
+                  minLength: 3,
+                  maxLength: 48,
+                  onChange: () => setUsernameDisunting(true),
+                })}
               />
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Dipakai untuk masuk, dan menjadi nama ruang penyimpanan data pondok.
-                Huruf kecil, angka, dan garis bawah.
+                Diusulkan dari nama pondok dan dapat diubah. Dipakai untuk masuk, dan
+                menjadi nama ruang penyimpanan data pondok. Huruf kecil, angka, dan
+                garis bawah — berbeda dari alamat situs di atas, yang memakai tanda
+                hubung.
               </p>
               <KotakPeriksa
                 aktif={usernameQuery.length >= 3}

@@ -193,9 +193,9 @@ export class PesantrenRegistrationController {
   @Public()
   @Throttle({ default: { ttl: 60_000, limit: 60 } })
   @Get('site-slug/suggest')
-  @ApiOperation({ summary: 'Usulan alamat situs dari nama pondok' })
-  usulkanSlug(@Query('nama') nama: string) {
-    return { slug: this.pesantren.usulkanSlug(nama ?? '') };
+  @ApiOperation({ summary: 'Usulan alamat situs dan nama pengguna dari nama pondok' })
+  usulkan(@Query('nama') nama: string) {
+    return this.pesantren.usulkan(nama ?? '');
   }
 
   @Public()

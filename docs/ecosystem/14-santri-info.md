@@ -113,6 +113,30 @@ Formulir gabungan yang menukar setengah pertanyaannya menurut satu pilihan di
 awal akan menampilkan pertanyaan retail kepada pengurus pondok setiap kali
 pilihan itu tergeser.
 
+### Keduanya diusulkan otomatis dari nama pondok
+
+`GET /public/pesantren/site-slug/suggest?nama=...` memulangkan **dua** nilai
+sekaligus, dan bentuknya sengaja berbeda:
+
+```
+"Pondok Pesantren Raudlatul Ulum"
+  → slug     : pondok-pesantren-raudlatul-ulum
+  → username : pondok_pesantren_raudlatul_ulum
+```
+
+Yang menyusun keduanya adalah peladen, bukan peramban — supaya bentuknya tidak
+pernah berselisih dengan pemeriksa yang menerima kirimannya.
+
+Nama pondok yang diawali angka diberi awalan huruf: "3 Muhammadiyah" menjadi
+`p3_muhammadiyah`. `3_muhammadiyah` adalah nama schema yang ditolak PostgreSQL,
+dan penolakannya baru terjadi saat schema hendak dibuat — sesudah pendaftar
+mengisi seluruh formulir. Angkanya diberi awalan dan bukan dibuang: membuangnya
+mengubah nama pondok menjadi nama pondok lain.
+
+Masing-masing kolom punya penanda "sudah disunting" tersendiri. Satu penanda
+bersama akan membuat pengurus yang menyunting alamat situs kehilangan usulan
+nama penggunanya.
+
 ### Dua nama yang tidak boleh tertukar
 
 | | Menjadi | Pola | Contoh |

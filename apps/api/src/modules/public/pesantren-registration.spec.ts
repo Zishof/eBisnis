@@ -11,6 +11,7 @@ import {
   hostSitus,
   slugSitusBoleh,
   usulanSlugDariNama,
+  usulanUsernameDariNama,
   validasiPendaftaranPesantren,
 } from './pesantren-registration';
 
@@ -112,6 +113,82 @@ describe('usulan slug dari nama', () => {
     // dan pengurus diminta mengisinya sendiri.
     expect(usulanSlugDariNama('!!!')).toBe('');
     expect(slugSitusBoleh(usulanSlugDariNama('!!!'))?.code).toBe('SLUG_KOSONG');
+  });
+});
+
+describe('usulan nama pengguna dari nama', () => {
+  it('memakai garis bawah, bukan tanda hubung', () => {
+    /*
+     * Nama pengguna menjadi nama schema PostgreSQL. Tanda hubung tidak sah di
+     * sana — dan itulah sebabnya bentuknya berbeda dari slug situs, yang justru
+     * tidak boleh memakai garis bawah.
+     */
+    expect(usulanUsernameDariNama('Pondok Pesantren Raudlatul Ulum')).toBe(
+      'pondok_pesantren_raudlatul_ulum',
+    );
+    expect(usulanUsernameDariNama('Al-Hikam')).toBe('al_hikam');
+  });
+
+  it('nama yang diawali angka diberi awalan huruf', () => {
+    /*
+     * `3_muhammadiyah` adalah nama schema yang ditolak PostgreSQL, dan
+     * penolakannya baru terjadi saat schema hendak dibuat — sesudah pendaftar
+     * mengisi seluruh formulir.
+     *
+     * Angkanya diberi awalan, bukan dibuang: membuangnya mengubah nama pondok
+     * menjadi nama pondok lain.
+     */
+    expect(usulanUsernameDariNama('3 Muhammadiyah')).toBe('p3_muhammadiyah');
+    expect(usulanUsernameDariNama('17 Agustus')).toBe('p17_agustus');
+  });
+
+  it('membuang tanda gabung seperti pada slug', () => {
+    expect(usulanUsernameDariNama('Maārif')).toBe('maarif');
+  });
+
+  it('tidak menyisakan garis bawah di tepi', () => {
+    expect(usulanUsernameDariNama('  ...Al Hikam...  ')).toBe('al_hikam');
+  });
+
+  it('yang terlalu pendek atau kosong menghasilkan kosong', () => {
+    expect(usulanUsernameDariNama('!!!')).toBe('');
+    expect(usulanUsernameDariNama('PP')).toBe('');
+  });
+
+  it('usulan yang dihasilkan sah sebagai nama schema', () => {
+    // Pola yang sama dengan `validateSchemaName`: diawali huruf kecil, lalu
+    // huruf kecil, angka, dan garis bawah, panjang 3..48.
+    const POLA_SCHEMA = /^[a-z][a-z0-9_]{2,47}$/;
+    const nama = [
+      'Pondok Pesantren Raudlatul Ulum',
+      "Ma'had Aly Al-Hikam",
+      '3 Muhammadiyah',
+      'PP. Nurul Jadid',
+      'Darul Ulum 2',
+      'A'.repeat(120),
+    ];
+
+    // Nama yang gagal dikumpulkan lebih dahulu, bukan diperiksa satu per satu.
+    // Yang gagal ikut tampil pada pesan galat — tanpa itu, yang terbaca hanya
+    // "string tidak cocok pola", tanpa menyebut nama mana.
+    const gagal = nama
+      .map((n) => ({ n, usulan: usulanUsernameDariNama(n) }))
+      .filter(({ usulan }) => usulan && !POLA_SCHEMA.test(usulan));
+
+    expect(gagal).toEqual([]);
+  });
+
+  it('bentuknya BERBEDA dari usulan slug situs', () => {
+    /*
+     * Keduanya sengaja tidak sama. Bila suatu hari salah satunya disalin dari
+     * yang lain, uji ini menyala — dan itulah cacat yang paling mahal di jalur
+     * ini.
+     */
+    const nama = 'Pondok Pesantren Raudlatul Ulum';
+    expect(usulanUsernameDariNama(nama)).not.toBe(usulanSlugDariNama(nama));
+    expect(usulanUsernameDariNama(nama)).toContain('_');
+    expect(usulanSlugDariNama(nama)).toContain('-');
+    expect(usulanSlugDariNama(nama)).not.toContain('_');
   });
 });
 

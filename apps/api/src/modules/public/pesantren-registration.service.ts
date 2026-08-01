@@ -45,6 +45,7 @@ import {
   TIPE_PESANTREN,
   hostSitus,
   usulanSlugDariNama,
+  usulanUsernameDariNama,
   validasiPendaftaranPesantren,
 } from './pesantren-registration';
 
@@ -195,9 +196,19 @@ export class PesantrenRegistrationService {
     };
   }
 
-  /** Usulan alamat situs dari nama pondok. Tidak memesan apa pun. */
-  usulkanSlug(namaPondok: string): string {
-    return usulanSlugDariNama(namaPondok ?? '');
+  /**
+   * Usulan alamat situs DAN nama pengguna dari nama pondok. Tidak memesan apa pun.
+   *
+   * Keduanya dikembalikan sekaligus supaya formulir cukup memanggil sekali.
+   * Bentuknya sengaja berbeda — tanda hubung untuk alamat situs, garis bawah
+   * untuk nama pengguna — dan perbedaan itu diikat uji.
+   */
+  usulkan(namaPondok: string): { slug: string; username: string } {
+    const nama = namaPondok ?? '';
+    return {
+      slug: usulanSlugDariNama(nama),
+      username: usulanUsernameDariNama(nama),
+    };
   }
 
   async register(

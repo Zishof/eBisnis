@@ -143,6 +143,41 @@ export function hostSitus(slug: string): string {
   return `${slug.trim().toLowerCase()}.${DOMAIN_PESANTREN}`;
 }
 
+/**
+ * Menyusun usulan nama pengguna dari nama pondok.
+ *
+ * Bentuknya berbeda dari slug situs, dan perbedaannya bukan gaya: nama pengguna
+ * menjadi **nama schema PostgreSQL**, yang tidak boleh diawali angka dan tidak
+ * boleh memakai tanda hubung. Karena itu pemisahnya garis bawah, dan awalannya
+ * dipastikan huruf.
+ *
+ * Pondok bernama "3 Muhammadiyah" menghasilkan `p3_muhammadiyah`, bukan
+ * `3_muhammadiyah` — yang terakhir adalah nama schema yang ditolak PostgreSQL,
+ * dan penolakannya baru terjadi saat schema hendak dibuat, yaitu sesudah
+ * pendaftar mengisi seluruh formulir.
+ *
+ * Mengembalikan string kosong bila tidak ada yang tersisa untuk dipakai.
+ * Kosong lebih baik daripada tebakan: yang kosong ditolak pemeriksanya, dan
+ * pendaftar diminta mengisinya sendiri.
+ */
+export function usulanUsernameDariNama(nama: string): string {
+  const dasar = nama
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  if (!dasar) return '';
+
+  // Nama schema tidak boleh diawali angka. Diberi awalan huruf, bukan dibuang:
+  // membuang angkanya mengubah nama pondok menjadi nama pondok lain.
+  const berhuruf = /^[a-z]/.test(dasar) ? dasar : `p${dasar}`;
+
+  const dipotong = berhuruf.slice(0, 48).replace(/_+$/, '');
+  return dipotong.length >= 3 ? dipotong : '';
+}
+
 export interface MasukanPesantren {
   namaPondok?: string;
   email?: string;
