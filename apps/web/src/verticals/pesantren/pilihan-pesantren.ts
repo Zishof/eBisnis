@@ -85,7 +85,7 @@ export function pilihanDipakai<T>(dariPeladen: T[] | undefined, bawaan: T[]): T[
 /**
  * Merapikan ketikan menjadi alamat situs yang sah.
  *
- * Orang mengetik "Raudlatul Ulum" atau "RaudlatulUlum" — keduanya wajar, dan
+ * Orang mengetik "Ponpes Demo" atau "PonpesDemo" — keduanya wajar, dan
  * keduanya ditolak aturan label DNS. Menolaknya dengan pesan merah memaksa
  * pengurus pondok menebak bentuk yang benar; membetulkannya sambil diketik
  * tidak.
@@ -94,8 +94,8 @@ export function pilihanDipakai<T>(dariPeladen: T[] | undefined, bawaan: T[]): T[
  * menjadi kecil, spasi dan garis bawah menjadi tanda hubung, dan karakter yang
  * tidak pernah sah dibuang.
  *
- * Tanda hubung di ujung TIDAK dibuang. Orang yang baru mengetik "raudlatul-"
- * sedang menuju "raudlatul-ulum"; membuangnya membuat tanda hubung mustahil
+ * Tanda hubung di ujung TIDAK dibuang. Orang yang baru mengetik "ponpes-"
+ * sedang menuju "ponpes-demo"; membuangnya membuat tanda hubung mustahil
  * diketik.
  */
 export function rapikanSlug(ketikan: string): string {

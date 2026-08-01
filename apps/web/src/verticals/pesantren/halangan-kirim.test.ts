@@ -19,10 +19,10 @@ import {
 } from './halangan-kirim';
 
 const LENGKAP: KeadaanFormulir = {
-  namaPondok: 'Pondok Pesantren Raudlatul Ulum',
-  email: 'pengurus@raudlatul-ulum.sch.id',
-  slugSitus: 'raudlatul-ulum',
-  desiredUsername: 'raudlatul_ulum',
+  namaPondok: 'Ponpes Demo',
+  email: 'pengurus@ponpes-demo.sch.id',
+  slugSitus: 'ponpes-demo',
+  desiredUsername: 'ponpes_demo',
   jumlahJenjangDipilih: 2,
 
   slugSedangDiperiksa: false,
@@ -249,7 +249,7 @@ describe('pesan dari peladen dipakai bila ada', () => {
     // Peladen yang menjawab pesan kosong tidak boleh menghasilkan baris kosong
     // di layar — itu persis cacat yang sedang diperbaiki.
     const h = halanganKirim({ ...LENGKAP, slugTersedia: false, slugPesan: '   ' })[0];
-    expect(h.apa).toContain('raudlatul-ulum');
+    expect(h.apa).toContain('ponpes-demo');
     expect(h.apa.length).toBeGreaterThan(10);
   });
 });

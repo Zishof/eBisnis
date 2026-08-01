@@ -16,8 +16,8 @@
  * `slugSitus` menjadi **label DNS**: `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$` —
  * tidak boleh garis bawah.
  *
- * Menyamakan keduanya membuat pondok bernama `raudlatul_ulum` memperoleh host
- * `raudlatul_ulum.santri.info`, yang tidak sah sebagai nama host. Situsnya
+ * Menyamakan keduanya membuat pondok bernama `ponpes_demo` memperoleh host
+ * `ponpes_demo.santri.info`, yang tidak sah sebagai nama host. Situsnya
  * terdaftar, tercatat aktif, dan tidak pernah dapat dibuka siapa pun.
  */
 

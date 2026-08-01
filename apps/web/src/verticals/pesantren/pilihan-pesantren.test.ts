@@ -139,14 +139,14 @@ describe('sepadan dengan katalog peladen', () => {
 
 describe('merapikan ketikan alamat situs', () => {
   it('huruf besar dan spasi dibetulkan', () => {
-    // Persis yang diketik orang: "Raudlatul Ulum" dan "RaudlatulUlum".
-    expect(rapikanSlug('Raudlatul Ulum')).toBe('raudlatul-ulum');
-    expect(rapikanSlug('RaudlatulUlum')).toBe('raudlatululum');
+    // Persis yang diketik orang: "Ponpes Demo" dan "PonpesDemo".
+    expect(rapikanSlug('Ponpes Demo')).toBe('ponpes-demo');
+    expect(rapikanSlug('PonpesDemo')).toBe('ponpesdemo');
   });
 
   it('garis bawah menjadi tanda hubung', () => {
     // Alamat situs adalah label DNS; garis bawah tidak pernah sah di sana.
-    expect(rapikanSlug('raudlatul_ulum')).toBe('raudlatul-ulum');
+    expect(rapikanSlug('ponpes_demo')).toBe('ponpes-demo');
   });
 
   it('karakter yang tidak pernah sah dibuang', () => {
@@ -155,14 +155,14 @@ describe('merapikan ketikan alamat situs', () => {
 
   it('tanda hubung di ujung TIDAK dibuang', () => {
     /*
-     * Orang yang baru mengetik "raudlatul-" sedang menuju "raudlatul-ulum".
+     * Orang yang baru mengetik "ponpes-" sedang menuju "ponpes-demo".
      * Membuangnya membuat tanda hubung mustahil diketik.
      */
-    expect(rapikanSlug('raudlatul-')).toBe('raudlatul-');
+    expect(rapikanSlug('ponpes-')).toBe('ponpes-');
   });
 
   it('tanda hubung di awal dibuang, dan yang berlipat dirapatkan', () => {
-    expect(rapikanSlug('--raudlatul--ulum')).toBe('raudlatul-ulum');
+    expect(rapikanSlug('--ponpes--demo')).toBe('ponpes-demo');
   });
 
   it('hasilnya tidak pernah melebihi batas label DNS', () => {
@@ -172,13 +172,13 @@ describe('merapikan ketikan alamat situs', () => {
 
 describe('merapikan ketikan nama pengguna', () => {
   it('huruf besar dan spasi menjadi garis bawah', () => {
-    expect(rapikanNamaPengguna('Raudlatul Ulum')).toBe('raudlatul_ulum');
-    expect(rapikanNamaPengguna('RaudlatulUlum')).toBe('raudlatululum');
+    expect(rapikanNamaPengguna('Ponpes Demo')).toBe('ponpes_demo');
+    expect(rapikanNamaPengguna('PonpesDemo')).toBe('ponpesdemo');
   });
 
   it('tanda hubung menjadi garis bawah', () => {
     // Nama pengguna menjadi nama schema PostgreSQL; tanda hubung tidak sah.
-    expect(rapikanNamaPengguna('raudlatul-ulum')).toBe('raudlatul_ulum');
+    expect(rapikanNamaPengguna('ponpes-demo')).toBe('ponpes_demo');
   });
 
   it('angka di awal dibiarkan, bukan diberi awalan huruf', () => {
@@ -192,7 +192,7 @@ describe('merapikan ketikan nama pengguna', () => {
 
   it('bentuk kedua kolom memang berbeda', () => {
     // Bila suatu hari salah satunya disalin dari yang lain, uji ini menyala.
-    const ketikan = 'Raudlatul Ulum';
+    const ketikan = 'Ponpes Demo';
     expect(rapikanSlug(ketikan)).not.toBe(rapikanNamaPengguna(ketikan));
     expect(rapikanSlug(ketikan)).toContain('-');
     expect(rapikanNamaPengguna(ketikan)).toContain('_');

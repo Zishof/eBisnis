@@ -478,8 +478,8 @@ export const DI_LUAR_BIAYA: string[] = [
 
 /** Kemitraan yang dicontohkan pada paparan kedua. */
 export const MITRA_BMT = {
-  nama: 'KSPPS BMT Nahdliyin Raudlatul Ulum (NyRU)',
-  asal: 'Pondok Pesantren Raudlatul Ulum, Bojonegoro',
+  nama: 'KSPPS BMT Ponpes Demo',
+  asal: 'lingkungan Ponpes Demo',
   semboyan: 'Solusi Keuangan Syariah untuk Umat',
   profil: [
     'Berbadan hukum koperasi (2025), berbasis pesantren.',
@@ -491,15 +491,15 @@ export const MITRA_BMT = {
   produk: [
     'Simpanan Anggota',
     'Simpanan Haji & Umroh',
-    'Simpanan Keluarga Nahdliyin Sejahtera (KNS)',
+    'Simpanan Keluarga Sejahtera',
     'Tabungan Pendidikan, Idul Fitri & Qurban',
     'Pembiayaan syariah (mudharabah, murabahah)',
   ],
   unitUsaha: [
-    'NyRU Mini Market',
-    'NyRU Cafe Mini Bar (Coffee & Juice)',
-    'NyRU Angkringan',
-    'NyRU Siomay & Pentol',
+    'Mini Market Pondok',
+    'Cafe Mini Bar (Coffee & Juice)',
+    'Angkringan Pondok',
+    'Siomay & Pentol',
   ],
 } as const;
 

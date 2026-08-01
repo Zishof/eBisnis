@@ -139,7 +139,7 @@ export function halanganKirim(k: KeadaanFormulir): Halangan[] {
       kode: 'SLUG_KOSONG',
       langkah: LANGKAH_AKUN,
       apa: 'Alamat situs pondok belum diisi.',
-      tindakan: 'Isi alamat situs, misalnya raudlatul-ulum untuk raudlatul-ulum.santri.info',
+      tindakan: 'Isi alamat situs, misalnya ponpes-demo untuk ponpes-demo.santri.info',
     });
   } else if (slug.length < 3) {
     halangan.push({

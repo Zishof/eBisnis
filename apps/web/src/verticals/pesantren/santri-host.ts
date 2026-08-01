@@ -16,7 +16,7 @@
  *
  *   santri.info                  → halaman portal ePesantren
  *   www.santri.info              → halaman portal ePesantren
- *   raudlatul-ulum.santri.info   → situs PONDOK, bukan portal
+ *   ponpes-demo.santri.info   → situs PONDOK, bukan portal
  *
  * Memperlakukan keduanya sama berarti setiap pondok yang mendaftar kehilangan
  * situsnya sendiri dan hanya melihat halaman jualan platform.

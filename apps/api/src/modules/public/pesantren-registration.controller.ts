@@ -36,25 +36,25 @@ import { PesantrenRegistrationService } from './pesantren-registration.service';
 import { Public, RequestContext, RequestMeta } from '../../common/decorators';
 
 class PendaftaranPesantrenDto {
-  @ApiProperty({ example: 'Pondok Pesantren Raudlatul Ulum' })
+  @ApiProperty({ example: 'Ponpes Demo' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
   namaPondok!: string;
 
-  @ApiProperty({ example: 'raudlatul-ulum', description: 'Menjadi <slug>.santri.info' })
+  @ApiProperty({ example: 'ponpes-demo', description: 'Menjadi <slug>.santri.info' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(63)
   slugSitus!: string;
 
-  @ApiProperty({ example: 'raudlatul_ulum', description: 'Menjadi nama schema' })
+  @ApiProperty({ example: 'ponpes_demo', description: 'Menjadi nama schema' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(64)
   desiredUsername!: string;
 
-  @ApiProperty({ example: 'admin@raudlatul-ulum.sch.id' })
+  @ApiProperty({ example: 'admin@ponpes-demo.sch.id' })
   @IsEmail()
   @MaxLength(255)
   email!: string;
@@ -147,7 +147,7 @@ class PendaftaranPesantrenDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(32)
   whatsapp?: string;
 
-  @ApiPropertyOptional({ example: 'https://raudlatul-ulum.sch.id' })
+  @ApiPropertyOptional({ example: 'https://ponpes-demo.sch.id' })
   @IsOptional() @IsString() @MaxLength(255)
   situsWeb?: string;
 

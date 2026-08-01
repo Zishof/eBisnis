@@ -141,9 +141,9 @@ pilihan itu tergeser.
 sekaligus, dan bentuknya sengaja berbeda:
 
 ```
-"Pondok Pesantren Raudlatul Ulum"
-  → slug     : pondok-pesantren-raudlatul-ulum
-  → username : pondok_pesantren_raudlatul_ulum
+"Ponpes Demo"
+  → slug     : pondok-pesantren-ponpes-demo
+  → username : pondok_pesantren_ponpes_demo
 ```
 
 Yang menyusun keduanya adalah peladen, bukan peramban — supaya bentuknya tidak
@@ -163,12 +163,12 @@ nama penggunanya.
 
 | | Menjadi | Pola | Contoh |
 | --- | --- | --- | --- |
-| Nama pengguna | nama schema | `^[a-z][a-z0-9_]{2,47}$` | `raudlatul_ulum` |
-| Alamat situs | label DNS | `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$` | `raudlatul-ulum` |
+| Nama pengguna | nama schema | `^[a-z][a-z0-9_]{2,47}$` | `ponpes_demo` |
+| Alamat situs | label DNS | `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$` | `ponpes-demo` |
 
 Garis bawah sah pada yang pertama dan **tidak sah** pada yang kedua. Menyamakan
-keduanya membuat pondok bernama `raudlatul_ulum` memperoleh host
-`raudlatul_ulum.santri.info` — tersimpan, tercatat aktif, dan tidak pernah dapat
+keduanya membuat pondok bernama `ponpes_demo` memperoleh host
+`ponpes_demo.santri.info` — tersimpan, tercatat aktif, dan tidak pernah dapat
 dibuka siapa pun.
 
 Karena itu keduanya diminta terpisah, diperiksa terpisah, dan dijaga CHECK

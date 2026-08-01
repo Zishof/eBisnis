@@ -16,10 +16,10 @@ import {
 } from './pesantren-registration';
 
 const SAH = {
-  namaPondok: 'Pondok Pesantren Raudlatul Ulum',
-  email: 'admin@raudlatul-ulum.sch.id',
-  desiredUsername: 'raudlatul_ulum',
-  slugSitus: 'raudlatul-ulum',
+  namaPondok: 'Ponpes Demo',
+  email: 'admin@ponpes-demo.sch.id',
+  desiredUsername: 'ponpes_demo',
+  slugSitus: 'ponpes-demo',
   tipePesantren: 'KOMBINASI',
   santriDilayani: 'PUTRA_PUTRI',
   jenjang: ['DINIYAH_TAKMILIYAH', 'TAHFIZ'],
@@ -29,7 +29,7 @@ const SAH = {
 
 describe('slug situs', () => {
   it('menerima label DNS yang sah', () => {
-    expect(slugSitusBoleh('raudlatul-ulum')).toBeNull();
+    expect(slugSitusBoleh('ponpes-demo')).toBeNull();
     expect(slugSitusBoleh('alhikam2')).toBeNull();
     expect(slugSitusBoleh('  Al-Hikam  ')).toBeNull();
   });
@@ -41,7 +41,7 @@ describe('slug situs', () => {
      * bawah; label DNS tidak. Menyamakannya menghasilkan host yang tersimpan,
      * tercatat aktif, dan tidak pernah dapat dibuka siapa pun.
      */
-    const galat = slugSitusBoleh('raudlatul_ulum');
+    const galat = slugSitusBoleh('ponpes_demo');
     expect(galat?.code).toBe('SLUG_TIDAK_SAH');
     expect(galat?.message).toContain('Garis bawah');
   });
@@ -75,9 +75,7 @@ describe('slug situs', () => {
 
 describe('usulan slug dari nama', () => {
   it('menyusun bentuk yang dapat dipakai', () => {
-    expect(usulanSlugDariNama('Pondok Pesantren Raudlatul Ulum')).toBe(
-      'pondok-pesantren-raudlatul-ulum',
-    );
+    expect(usulanSlugDariNama('Ponpes Demo')).toBe('ponpes-demo');
     expect(usulanSlugDariNama("Ma'had Aly Al-Hikam")).toBe('ma-had-aly-al-hikam');
   });
 
@@ -99,7 +97,7 @@ describe('usulan slug dari nama', () => {
      * langsung ditolak saat dikirim.
      */
     for (const nama of [
-      'Pondok Pesantren Raudlatul Ulum',
+      'Ponpes Demo',
       "Ma'had Aly Al-Hikam",
       'PP. Nurul Jadid',
       'Darul Ulum 2',
@@ -123,9 +121,7 @@ describe('usulan nama pengguna dari nama', () => {
      * sana — dan itulah sebabnya bentuknya berbeda dari slug situs, yang justru
      * tidak boleh memakai garis bawah.
      */
-    expect(usulanUsernameDariNama('Pondok Pesantren Raudlatul Ulum')).toBe(
-      'pondok_pesantren_raudlatul_ulum',
-    );
+    expect(usulanUsernameDariNama('Ponpes Demo')).toBe('ponpes_demo');
     expect(usulanUsernameDariNama('Al-Hikam')).toBe('al_hikam');
   });
 
@@ -160,7 +156,7 @@ describe('usulan nama pengguna dari nama', () => {
     // huruf kecil, angka, dan garis bawah, panjang 3..48.
     const POLA_SCHEMA = /^[a-z][a-z0-9_]{2,47}$/;
     const nama = [
-      'Pondok Pesantren Raudlatul Ulum',
+      'Ponpes Demo',
       "Ma'had Aly Al-Hikam",
       '3 Muhammadiyah',
       'PP. Nurul Jadid',
@@ -184,7 +180,7 @@ describe('usulan nama pengguna dari nama', () => {
      * yang lain, uji ini menyala — dan itulah cacat yang paling mahal di jalur
      * ini.
      */
-    const nama = 'Pondok Pesantren Raudlatul Ulum';
+    const nama = 'Ponpes Demo';
     expect(usulanUsernameDariNama(nama)).not.toBe(usulanSlugDariNama(nama));
     expect(usulanUsernameDariNama(nama)).toContain('_');
     expect(usulanSlugDariNama(nama)).toContain('-');
@@ -194,7 +190,7 @@ describe('usulan nama pengguna dari nama', () => {
 
 describe('host situs', () => {
   it('selalu berada di bawah santri.info', () => {
-    expect(hostSitus('raudlatul-ulum')).toBe('raudlatul-ulum.santri.info');
+    expect(hostSitus('ponpes-demo')).toBe('ponpes-demo.santri.info');
     expect(hostSitus('  AL-HIKAM ')).toBe('al-hikam.santri.info');
   });
 });

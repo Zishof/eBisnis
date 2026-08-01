@@ -7,9 +7,9 @@ seluruh langkah di bawah: **ia melayani subdomain yang belum ada saat dipasang.*
 santri.info                    → halaman portal (jualan platform)
 www.santri.info                → sama
 app.santri.info                → pintu aplikasi
-raudlatul-ulum.santri.info     → situs PONDOK
+ponpes-demo.santri.info     → situs PONDOK
 al-hikam.santri.info           → situs PONDOK lain
-raudlatul-ulum.com             → situs pondok, domain miliknya sendiri
+ponpes-demo.com             → situs pondok, domain miliknya sendiri
 ```
 
 Setiap pondok yang mendaftar menambah satu host. Kalau tiap penambahan menuntut
@@ -129,7 +129,7 @@ Harus memuat `"code":"SANTRI_INFO"`.
 
 ## 5. Domain milik pondok sendiri
 
-Pondok yang sudah punya `raudlatul-ulum.com` memakai alamat itu. Alurnya berbeda
+Pondok yang sudah punya `ponpes-demo.com` memakai alamat itu. Alurnya berbeda
 dari subdomain, dan perbedaannya bukan kerapian:
 
 1. Pengurus memasukkan domainnya pada pengaturan situs.

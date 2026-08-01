@@ -26,7 +26,7 @@ describe('host portal', () => {
   });
 
   it('subdomain pondok BUKAN portal', () => {
-    expect(isSantriPortalHost('raudlatul-ulum.santri.info')).toBe(false);
+    expect(isSantriPortalHost('ponpes-demo.santri.info')).toBe(false);
   });
 
   it('domain lain bukan portal', () => {
@@ -38,7 +38,7 @@ describe('host portal', () => {
 
 describe('slug pondok', () => {
   it('subdomain satu tingkat menjadi slug', () => {
-    expect(slugPondokDariHost('raudlatul-ulum.santri.info')).toBe('raudlatul-ulum');
+    expect(slugPondokDariHost('ponpes-demo.santri.info')).toBe('ponpes-demo');
     expect(slugPondokDariHost('Al-Hikam.SANTRI.INFO')).toBe('al-hikam');
   });
 
@@ -109,19 +109,19 @@ describe('slug pondok', () => {
 describe('milik ekosistem santri.info', () => {
   it('portal dan pondok keduanya masuk', () => {
     expect(isSantriHost('santri.info')).toBe(true);
-    expect(isSantriHost('raudlatul-ulum.santri.info')).toBe(true);
+    expect(isSantriHost('ponpes-demo.santri.info')).toBe(true);
   });
 
   it('domain sendiri milik pondok TIDAK dikenali dari sini', () => {
     /*
-     * Pondok boleh memakai domainnya sendiri (`raudlatul-ulum.com`). Host itu
+     * Pondok boleh memakai domainnya sendiri (`ponpes-demo.com`). Host itu
      * tidak dapat dikenali dari bentuknya — hanya registry yang tahu. Karena itu
      * fungsi ini menjawab false, dan yang memutuskannya adalah API.
      *
      * Menebaknya di peramban berarti setiap domain yang belum terdaftar tampak
      * seperti pondok yang sah.
      */
-    expect(isSantriHost('raudlatul-ulum.com')).toBe(false);
+    expect(isSantriHost('ponpes-demo.com')).toBe(false);
   });
 
   it('domain lain di luar ekosistem', () => {

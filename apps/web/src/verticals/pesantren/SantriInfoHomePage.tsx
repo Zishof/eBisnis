@@ -79,7 +79,7 @@ const LANGKAH = [
   {
     no: '2',
     judul: 'Alamat pondok disiapkan',
-    isi: 'Pondok memperoleh alamatnya sendiri, misalnya raudlatul-ulum.santri.info. Bila pondok sudah punya domain sendiri, alamat itu yang dipakai.',
+    isi: 'Pondok memperoleh alamatnya sendiri, misalnya ponpes-demo.santri.info. Bila pondok sudah punya domain sendiri, alamat itu yang dipakai.',
   },
   {
     no: '3',
@@ -190,7 +190,7 @@ export function SantriInfoHomePage() {
           <div className="mt-5 space-y-3">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
               <p className="font-mono text-sm text-emerald-700 dark:text-emerald-400">
-                raudlatul-ulum.santri.info
+                ponpes-demo.santri.info
               </p>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                 Alamat bawaan, siap dipakai segera setelah pendaftaran. Tidak ada
@@ -199,7 +199,7 @@ export function SantriInfoHomePage() {
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
               <p className="font-mono text-sm text-emerald-700 dark:text-emerald-400">
-                raudlatul-ulum.com
+                ponpes-demo.com
               </p>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                 Pondok yang sudah punya domain sendiri dapat memakainya. Alamatnya

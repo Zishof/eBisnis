@@ -15,7 +15,7 @@
  * **Nama pengguna** menjadi nama schema — boleh garis bawah.
  *
  * Keduanya diminta terpisah, dan keduanya diperiksa ke peladen masing-masing.
- * Menyamakannya membuat pondok bernama `raudlatul_ulum` memperoleh host yang
+ * Menyamakannya membuat pondok bernama `ponpes_demo` memperoleh host yang
  * tidak sah dan situs yang tidak pernah dapat dibuka.
  */
 
@@ -431,7 +431,7 @@ export function DaftarPesantrenPage() {
               <input
                 id="namaPondok"
                 className="field-input"
-                placeholder="Pondok Pesantren Raudlatul Ulum"
+                placeholder="Ponpes Demo"
                 {...register('namaPondok', { required: true, maxLength: 255 })}
               />
               {formState.errors.namaPondok && <p className="field-error">Wajib diisi.</p>}
