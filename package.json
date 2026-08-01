@@ -29,7 +29,8 @@
     "build": "pnpm -r build",
     "test:e2e": "pnpm --filter @ebisnis/web test:e2e",
     "check": "pnpm lint && pnpm test && pnpm build",
-    "route:audit": "pnpm --filter @ebisnis/api route:audit"
+    "route:audit": "pnpm --filter @ebisnis/api route:audit",
+    "vektor:bangkitkan": "pnpm --filter @ebisnis/api exec tsx ../web/scripts/buat-vektor-aturan.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

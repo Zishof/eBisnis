@@ -51,6 +51,25 @@ jobs:
       - name: Unit test
         run: pnpm test
 
+      # Vektor konformansi wajib mencerminkan aturan TypeScript yang berlaku
+      # SEKARANG.
+      #
+      # Ia dibangkitkan dari `apps/web/src/pos-offline/`, dan klien Flutter
+      # diuji terhadapnya. Bila aturan TypeScript diubah tanpa vektornya
+      # dibangkitkan ulang, kedua sisi tetap hijau: sisi TypeScript memakai
+      # aturan barunya, sisi Dart memakai vektor lamanya, dan yang seharusnya
+      # mengikat keduanya justru berhenti mengikat — tanpa satu pun galat.
+      #
+      # Kontrak yang tertinggal lebih buruk daripada tidak ada kontrak: ia
+      # memberi rasa aman tanpa menjaga apa pun.
+      - name: Vektor konformansi mutakhir
+        run: |
+          pnpm --filter @ebisnis/api exec tsx ../web/scripts/buat-vektor-aturan.ts
+          if ! git diff --exit-code packages/pos-rules-vectors/vectors.json; then
+            echo "::error::vectors.json tertinggal dari aturan di apps/web/src/pos-offline/. Jalankan 'pnpm vektor:bangkitkan' lalu commit hasilnya."
+            exit 1
+          fi
+
       - name: Build
         run: pnpm build
 
@@ -63,3 +82,48 @@ jobs:
           path: |
             apps/api/dist
             apps/web/dist
+
+  flutter:
+    name: Klien kasir Flutter
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Berjalan pada SETIAP PR, tanpa penyaring jalur.
+    #
+    # Penyaring jalur adalah godaan yang wajar — sebagian besar PR tidak
+    # menyentuh Flutter sama sekali. Tetapi penyaring yang kurang satu jalur
+    # menghasilkan persis kegagalan yang pekerjaan ini dimaksudkan mencegah:
+    # uji yang diam ketika seharusnya berbunyi. Vektor konformansi saja sudah
+    # membuat perubahan pada `apps/web/src/pos-offline/` relevan bagi Dart,
+    # dan daftar seperti itu akan tertinggal pada perubahan pertama yang
+    # terburu-buru.
+    #
+    # Ongkosnya kecil: job ini berjalan sejajar dengan yang lain, dan lebih
+    # cepat daripada E2E peramban yang menentukan lamanya CI.
+    steps:
+      - uses: actions/checkout@v4
+
+      # Versi disamakan dengan .github/workflows/rilis-pos.yml. Bila salah satu
+      # dinaikkan, keduanya dinaikkan — CI yang menguji pada versi berbeda dari
+      # yang merakit rilis hanya membuktikan hal yang tidak dikirim ke gerai.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.1'
+          channel: stable
+          cache: true
+
+      - name: Ambil dependensi
+        working-directory: apps/pos-flutter
+        run: flutter pub get
+
+      - name: Analisis
+        working-directory: apps/pos-flutter
+        run: flutter analyze
+
+      # Termasuk `konformansi_test.dart`, yang membaca berkas vektor yang SAMA
+      # dengan yang diuji sisi TypeScript dan menuntut Dart menghasilkan angka
+      # yang sama persis. Aturan uang yang menyimpang di satu klien menjadi uji
+      # merah di sini, bukan pembeli yang ditagih berbeda dari struk sebelumnya.
+      - name: Uji
+        working-directory: apps/pos-flutter
+        run: flutter test
