@@ -9,6 +9,7 @@ import { NewsDetailPage } from '../pages/public/NewsDetailPage';
 import { ContactPage } from '../pages/public/ContactPage';
 import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
+import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
@@ -92,6 +93,23 @@ const CooperativeRoutes = lazy(() =>
   import('../verticals/cooperative/routes').then((m) => ({ default: m.CooperativeRoutes })),
 );
 
+/**
+ * Apa yang dilihat pengunjung di akar situs, menurut alamat yang ia ketik.
+ *
+ * Subdomain menyajikan aplikasi yang sama; yang berbeda hanya titik masuknya.
+ * Keputusannya dikumpulkan di sini supaya `/` punya satu tempat yang
+ * menjelaskan seluruh kemungkinannya, alih-alih rantai syarat yang memanjang
+ * setiap kali ada vertikal baru.
+ *
+ * Ini hanya menentukan tampilan. Data mana yang boleh dibaca tetap diputuskan
+ * API dari host permintaan, bukan dari peramban.
+ */
+function AkarMenurutHost() {
+  if (isMarketplaceHost()) return <Navigate to="/belanja" replace />;
+  if (isCooperativeHost()) return <Navigate to="/ekoperasi/situs" replace />;
+  return <HomePage />;
+}
+
 export function App() {
   return (
     <Suspense fallback={<LoadingState />}>
@@ -99,11 +117,9 @@ export function App() {
         {/* Website publik — route `/` menampilkan website, bukan redirect login. */}
         <Route element={<PublicLayout />}>
           {/* Pengunjung yang datang lewat belanja.ebisnis.id langsung melihat
-              katalog; pengunjung ebisnis.id melihat website perusahaan. */}
-          <Route
-            path="/"
-            element={isMarketplaceHost() ? <Navigate to="/belanja" replace /> : <HomePage />}
-          />
+              katalog, lewat koperasi.ebisnis.id langsung melihat situs
+              koperasinya; pengunjung ebisnis.id melihat website perusahaan. */}
+          <Route path="/" element={<AkarMenurutHost />} />
           <Route path="/harga" element={<PricingPage />} />
           <Route path="/presentasi" element={<PresentasiPage />} />
           <Route path="/proposal" element={<ProposalPage />} />
