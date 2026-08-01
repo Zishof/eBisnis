@@ -121,10 +121,46 @@ berarti mengarang struktur kelas yang belum diaudit.
 formal; rekap/laporan presensi (harian, mingguan, per santri); notifikasi ke
 wali saat status bukan HADIR (bergantung EP-K, portal wali, yang belum ada).
 
+## Status EP-F — SEBAGIAN, penerbitan tagihan saja
+
+**Yang dikerjakan:** tabel `pesantren_tagihan` dan `pesantren_tagihan_item`
+(migrasi modul `20260802T160000__pesantren__tagihan`) — piutang INTERNAL
+milik satu penyewa, sengaja TERPISAH dari `platform.billing_invoice` (mesin
+faktur langganan platform, yang membebankan `Tenant`). Riset sebelum
+implementasi menemukan `BillingInvoice.tenantId` wajib menunjuk `Tenant`
+platform — tidak ada konsep "pembayar" generik yang dapat menunjuk wali
+santri, dan §6 perintah master melarang keras mencampur pembayaran
+langganan platform dengan SPP. Karena itu EP-F TIDAK memperluas
+`billing_invoice`; ia menambah tabel baru sekelas dengan buku besar
+`cooperative_saving` yang sudah ada — bukan mesin faktur kedua.
+
+Status memakai kosakata yang sama dengan `platform.InvoiceStatus`
+(DRAFT/ISSUED/PARTIALLY_PAID/PAID/OVERDUE/VOID) semata demi konsistensi
+istilah. Satu tagihan per santri per periode (bulan) ditegakkan indeks unik
+parsial. Hanya santri berstatus AKTIF yang dapat ditagih — ditegakkan di
+service, bukan hanya UI, sesuai larangan §6 menagihkan santri yang sudah
+efektif keluar.
+
+API `PesantrenTagihanController` (`/pesantren/tagihan` — GET daftar, GET
+satu, POST catat, POST :id/terbitkan) dibuktikan live terhadap `ponpes_demo`
+dengan data sampel nyata (bukan mock): membuat tagihan dua rincian (SPP +
+Asrama) dan memverifikasi totalnya terhitung benar (200.000), mengambil
+detail beserta rinciannya, periode ganda pada santri yang sama ditolak
+dengan pesan konflik, tagihan tanpa rincian ditolak validasi, penerbitan
+DRAFT→ISSUED berhasil dan penerbitan kedua kali ditolak, daftar tersaring
+status ISSUED mengembalikan hanya baris yang benar, santri yang ditandai
+KELUAR ditolak saat ditagih, santri tak dikenal menghasilkan 404, dan
+permintaan tanpa token ditolak 401.
+
+**Yang tidak dikerjakan:** pencatatan pembayaran (transisi ke
+PARTIALLY_PAID/PAID), integrasi `PaymentPort`, portal wali untuk melihat
+dan membayar tagihannya sendiri (bergantung EP-K), pembatalan (VOID), dan
+rekap tunggakan. Tagihan yang dibuat sesi ini berhenti pada status ISSUED —
+jujur sesuai §6, bukan diklaim sebagai alur pembayaran yang lengkap.
+
 ## Sesudah EP-A
 
 ```text
-EP-F   Tagihan pendidikan di atas mesin faktur
 EP-G   Asrama dan penempatan kamar
 EP-H   Diniyah, halaqah, kitab
 EP-I   Tahfiz

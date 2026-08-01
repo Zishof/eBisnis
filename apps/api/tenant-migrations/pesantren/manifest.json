@@ -17,6 +17,12 @@
       "file": "20260802T150000__pesantren__presensi.sql",
       "name": "EP-E: Presensi harian santri (ibadah/kegiatan)",
       "description": "pesantren_presensi -- satu baris per santri per tanggal per jenis kegiatan (SEKOLAH, DINIYAH, IBADAH, KEGIATAN), ditegakkan indeks unik parsial. Presensi kelas formal (yang menuntut rombongan belajar) belum ada -- lihat docs/santri-info/05, MISSING."
+    },
+    {
+      "id": "20260802T160000__pesantren__tagihan",
+      "file": "20260802T160000__pesantren__tagihan.sql",
+      "name": "EP-F: Tagihan pendidikan (SPP)",
+      "description": "pesantren_tagihan, pesantren_tagihan_item -- piutang internal penyewa, TERPISAH dari platform.billing_invoice (mesin faktur langganan platform, membebankan Tenant, bukan wali santri). Satu tagihan per santri per periode ditegakkan indeks unik parsial. Status memakai kosakata platform.InvoiceStatus demi konsistensi istilah, bukan tabel yang sama."
     }
   ]
 }
