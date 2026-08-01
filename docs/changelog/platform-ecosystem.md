@@ -52,7 +52,7 @@ Digabungkan ke `CHANGELOG.md` akar pada integration gate (§63).
 - Seed portal pada `PlatformSeedService`, idempoten, termasuk tautan silang
   penuh dua arah.
 - `GET /api/v1/public/portals` (§39.1).
-- `deploy/apache/ekosistem.conf` — satu vhost untuk kelima domain.
+- `deploy/apache/ebisnis.conf` — satu vhost untuk kelima domain.
 - `deploy/ekosistem.sh` — satu perintah `pasang | perbarui | periksa`.
 - `docs/ecosystem/13-penyebaran-lima-domain.md`.
 

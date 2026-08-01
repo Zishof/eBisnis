@@ -41,8 +41,8 @@ tepat satu entri.
 # 2. Sertifikat TLS yang memuat kelima domain (satu sertifikat SAN lebih mudah
 #    diperbarui daripada lima yang kedaluwarsa pada tanggal berbeda)
 # 3. Apache
-sudo cp deploy/apache/ekosistem.conf /etc/apache2/sites-available/
-sudo a2ensite ekosistem && sudo apache2ctl configtest
+sudo cp deploy/apache/ebisnis.conf /etc/apache2/sites-available/
+sudo a2ensite ebisnis && sudo apache2ctl configtest
 sudo systemctl reload apache2
 
 # 4. Seed portal + periksa
