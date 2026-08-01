@@ -27,6 +27,14 @@ import { Check, Loader2, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { api } from '../../lib/api';
 import { useErrorMessage } from '../../app/auth-context';
+import {
+  AFILIASI_BAWAAN,
+  DOMAIN_SITUS_BAWAAN,
+  JENJANG_BAWAAN,
+  SANTRI_DILAYANI_BAWAAN,
+  TIPE_PESANTREN_BAWAAN,
+  pilihanDipakai,
+} from './pilihan-pesantren';
 
 interface Pilihan {
   code: string;
@@ -153,11 +161,33 @@ export function DaftarPesantrenPage() {
   const konfig = useQuery({
     queryKey: ['pesantren-registration-config'],
     queryFn: () => api.get<KonfigPesantren>('/public/pesantren/registration-config'),
+    /*
+     * Satu percobaan ulang, bukan tiga.
+     *
+     * Katalognya sudah ada di peramban, jadi kegagalan di sini tidak menghalangi
+     * apa pun — yang tersisa hanyalah memberitahu pengurus bahwa daftarnya
+     * mungkin belum termutakhir. Tiga percobaan berjeda menunda pemberitahuan itu
+     * lewat dari sepuluh detik, dan selama itu halaman tampak baik-baik saja.
+     */
+    retry: 1,
   });
 
   const { register, handleSubmit, watch, setValue, trigger, formState } = useForm<Formulir>({
     defaultValues: { tipePesantren: 'KOMBINASI', santriDilayani: 'PUTRA_PUTRI' },
   });
+
+  /*
+   * Pilihan yang digambar.
+   *
+   * Jawaban peladen menang bila ada isinya; bila tidak, dipakai katalog bawaan.
+   * Tanpa cadangan ini, kegagalan satu permintaan konfigurasi membuat tiga
+   * pertanyaan wajib tergambar sebagai judul tanpa pilihan — tanpa galat, pada
+   * langkah yang tidak dapat dilewati.
+   */
+  const pilihanTipe = pilihanDipakai(konfig.data?.tipePesantren, TIPE_PESANTREN_BAWAAN);
+  const pilihanSantri = pilihanDipakai(konfig.data?.santriDilayani, SANTRI_DILAYANI_BAWAAN);
+  const pilihanJenjang = pilihanDipakai(konfig.data?.jenjang, JENJANG_BAWAAN);
+  const pilihanAfiliasi = pilihanDipakai(konfig.data?.afiliasi, AFILIASI_BAWAAN);
 
   const namaPondok = watch('namaPondok', '');
   const slugSitus = watch('slugSitus', '');
@@ -300,7 +330,7 @@ export function DaftarPesantrenPage() {
     }
   };
 
-  const domain = konfig.data?.domainSitus ?? 'santri.info';
+  const domain = konfig.data?.domainSitus ?? DOMAIN_SITUS_BAWAAN;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
@@ -420,7 +450,7 @@ export function DaftarPesantrenPage() {
               <label className="field-label" htmlFor="afiliasi">Afiliasi</label>
               <input id="afiliasi" className="field-input" list="daftar-afiliasi" {...register('afiliasi')} />
               <datalist id="daftar-afiliasi">
-                {(konfig.data?.afiliasi ?? []).map((a) => (
+                {pilihanAfiliasi.map((a) => (
                   <option key={a} value={a} />
                 ))}
               </datalist>
@@ -431,10 +461,27 @@ export function DaftarPesantrenPage() {
         {/* --- 2. Penyelenggaraan --------------------------------------- */}
         {langkah === 1 && (
           <div className="space-y-6">
+            {konfig.isError && (
+              /*
+               * Kemunduran yang diberitahukan, bukan yang didiamkan.
+               *
+               * Pilihannya tetap tergambar dari katalog bawaan, jadi formulir ini
+               * dapat diisi terus. Yang perlu diketahui pengurus hanyalah bahwa
+               * daftarnya mungkin belum yang termutakhir — tanpa keterangan itu,
+               * halaman yang bekerja setengah tampak seperti halaman yang utuh.
+               */
+              <div
+                role="status"
+                className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+              >
+                Daftar pilihan tidak dapat diambil dari peladen, jadi yang ditampilkan
+                adalah daftar bawaan. Pendaftaran tetap dapat dilanjutkan.
+              </div>
+            )}
             <fieldset>
               <legend className="field-label">Tipe pesantren *</legend>
               <div className="mt-2 space-y-2">
-                {(konfig.data?.tipePesantren ?? []).map((p) => (
+                {pilihanTipe.map((p) => (
                   <label key={p.code} className="flex items-start gap-2 text-sm">
                     <input type="radio" className="mt-1" value={p.code} {...register('tipePesantren')} />
                     <span className="text-slate-700 dark:text-slate-200">{p.label}</span>
@@ -446,7 +493,7 @@ export function DaftarPesantrenPage() {
             <fieldset>
               <legend className="field-label">Santri yang dilayani *</legend>
               <div className="mt-2 space-y-2">
-                {(konfig.data?.santriDilayani ?? []).map((p) => (
+                {pilihanSantri.map((p) => (
                   <label key={p.code} className="flex items-start gap-2 text-sm">
                     <input type="radio" className="mt-1" value={p.code} {...register('santriDilayani')} />
                     <span className="text-slate-700 dark:text-slate-200">{p.label}</span>
@@ -461,7 +508,7 @@ export function DaftarPesantrenPage() {
                 Pilih sedikitnya satu. Dapat ditambah kemudian tanpa mendaftar ulang.
               </p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {(konfig.data?.jenjang ?? []).map((j) => (
+                {pilihanJenjang.map((j) => (
                   <label
                     key={j.code}
                     className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"
