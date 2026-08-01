@@ -10,12 +10,18 @@
 /// kasirnya sendiri tidak perlu berubah, sebab keduanya sudah berupa antarmuka.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'aturan/harga_luring.dart';
 import 'layar/layar_kasir.dart';
 import 'layar/sumber.dart';
 import 'layar/tampilan_pelanggan.dart';
+import 'layar/tema.dart';
+import 'pembaruan/pengelola_pembaruan.dart';
+import 'pembaruan/sumber_pembaruan.dart';
+import 'pembaruan/versi_aplikasi.dart';
 import 'perangkat/pencetak_jaringan.dart';
 import 'perangkat/pencetak_perangkat.dart';
 
@@ -40,6 +46,12 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
   );
 
   late final Pencetak _pencetak = _pilihPencetak();
+  late final PengelolaPembaruan _pembaruan = PengelolaPembaruan(
+    sumber: _pilihSumberPembaruan(),
+    versiBerjalan: versiAplikasi,
+  );
+
+  Timer? _jadwalPembaruan;
 
   /// Memilih pengangkutan printer dari argumen saat dibangun.
   ///
@@ -63,12 +75,54 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
     return PencetakPerangkat(setelan);
   }
 
+  /// Memilih sumber pembaruan.
+  ///
+  ///   --dart-define=PEMBARUAN_REPO=Zishof/eBisnis   (bawaan)
+  ///   --dart-define=PEMBARUAN_URL=https://…         (menimpa yang di atas)
+  ///
+  /// Alamat penuh disediakan supaya rilis dapat diperantarai peladen eBisnis
+  /// kelak — bentuk jawabannya sama, dan penguraiannya tidak perlu berubah.
+  SumberPembaruan _pilihSumberPembaruan() {
+    const alamatPenuh = String.fromEnvironment('PEMBARUAN_URL');
+    final akhiran = akhiranPemasang();
+
+    if (alamatPenuh.isNotEmpty) {
+      return SumberRilisGitHub(alamat: Uri.parse(alamatPenuh), akhiranBerkas: akhiran);
+    }
+
+    const repo = String.fromEnvironment('PEMBARUAN_REPO', defaultValue: 'Zishof/eBisnis');
+    final pisah = repo.split('/');
+    return SumberRilisGitHub.repo(
+      pemilik: pisah.first,
+      repo: pisah.length > 1 ? pisah[1] : repo,
+      akhiranBerkas: akhiran,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     // Diperiksa sekali di awal supaya layar dapat mengatakan keadaannya sebelum
     // kasir menekan bayar, bukan sesudah struknya gagal tercetak.
     unawaitedPeriksa();
+
+    /*
+     * Pemeriksaan pembaruan otomatis.
+     *
+     * Berjalan sekali saat dibuka lalu setiap enam jam — cukup untuk mesin yang
+     * dibiarkan menyala berhari-hari, dan cukup jarang untuk tidak menjadi
+     * beban pada jaringan gerai.
+     *
+     * Ia TIDAK PERNAH membuka dialog. Yang dilakukannya hanya menyalakan tanda
+     * pada tombol di bilah atas; dialognya hanya terbuka ketika kasir
+     * menekannya sendiri. Jendela yang muncul sendiri di atas layar kasir akan
+     * ditutup dengan tekanan tombol yang sedang dituju jari.
+     */
+    unawaited(_pembaruan.periksa());
+    _jadwalPembaruan = Timer.periodic(
+      const Duration(hours: 6),
+      (_) => unawaited(_pembaruan.periksa()),
+    );
   }
 
   void unawaitedPeriksa() {
@@ -85,6 +139,8 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
 
   @override
   void dispose() {
+    _jadwalPembaruan?.cancel();
+    _pembaruan.dispose();
     _pelanggan.dispose();
     super.dispose();
   }
@@ -93,16 +149,19 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Kasir eBisnis.id',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F172A)),
-        useMaterial3: true,
-      ),
+      theme: temaKasir(),
       home: LayarKasir(
         katalog: _KatalogContoh(),
-        metode: const [MetodeBayar(id: 'TUNAI', nama: 'Tunai', memberiKembalian: true)],
+        metode: const [
+          MetodeBayar(id: 'TUNAI', nama: 'Tunai', memberiKembalian: true),
+          MetodeBayar(id: 'QRIS', nama: 'QRIS', memberiKembalian: false),
+          MetodeBayar(id: 'KARTU', nama: 'Kartu', memberiKembalian: false),
+          MetodeBayar(id: 'TRANSFER', nama: 'Transfer', memberiKembalian: false),
+        ],
         pencetak: _pencetak,
         namaToko: 'eBisnis.id',
         pelanggan: _pelanggan,
+        pembaruan: _pembaruan,
       ),
     );
   }
@@ -112,25 +171,63 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
 ///
 /// Namanya menyebut dirinya contoh supaya tidak ada yang mengiranya sumber data
 /// sungguhan. Ia akan digantikan salinan katalog dari peladen.
-class _KatalogContoh implements SumberKatalog {
+class _KatalogContoh extends SumberKatalog {
   static const _produk = [
     ProdukLokal(
       productId: 'P1',
-      nama: 'Kopi Susu Gula Aren',
-      harga: '18000',
+      nama: 'Es Kopi Gula Aren',
+      harga: '28000',
       barcodes: ['8991234567890'],
+      kategori: 'Kopi',
+      varian: 'Reguler',
+      stok: 32,
+      favorit: true,
     ),
     ProdukLokal(
       productId: 'P2',
-      nama: 'Teh Manis',
-      harga: '8000',
+      nama: 'Cappuccino',
+      harga: '27000',
       barcodes: ['8991111111111'],
+      kategori: 'Kopi',
+      varian: 'Reguler',
+      stok: 18,
+      favorit: true,
     ),
     ProdukLokal(
       productId: 'P3',
+      nama: 'Teh Manis',
+      harga: '8000',
+      barcodes: ['8992222222222'],
+      kategori: 'Non Kopi',
+      varian: 'Reguler',
+      stok: 24,
+    ),
+    ProdukLokal(
+      productId: 'P4',
+      nama: 'Chicken Sandwich',
+      harga: '38000',
+      barcodes: ['8993333333333'],
+      kategori: 'Makanan',
+      varian: 'Reguler',
+      stok: 12,
+    ),
+    ProdukLokal(
+      productId: 'P5',
       nama: 'Roti Bakar Cokelat',
       harga: '15000',
-      barcodes: ['8992222222222'],
+      barcodes: ['8994444444444'],
+      kategori: 'Makanan',
+      varian: 'Reguler',
+      stok: 8,
+    ),
+    ProdukLokal(
+      productId: 'P6',
+      nama: 'Cheesecake',
+      harga: '32000',
+      barcodes: ['8995555555555'],
+      kategori: 'Dessert',
+      varian: 'Slice',
+      stok: 0,
     ),
   ];
 

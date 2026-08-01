@@ -1,7 +1,9 @@
 /// Layar kasir.
 ///
-/// Bentuknya mengikuti layar kasir web, dan itu disengaja: kasir yang berpindah
-/// antara keduanya tidak boleh perlu belajar ulang. Yang menentukannya sama:
+/// Bentuknya mengikuti rancangan eBisnis POS: bilah samping gelap, bilah atas
+/// berisi keadaan mesin, kisi produk di tengah, dan panel keranjang di kanan.
+///
+/// Yang menentukan perilakunya tetap sama seperti sebelum tampilannya berubah:
 ///
 /// - **Fokus selalu kembali ke kotak pindai.** Pemindai barcode mengetik lalu
 ///   menekan Enter; bila fokus berpindah, pindaian berikutnya mendarat di tempat
@@ -12,19 +14,27 @@
 ///   dibekukan peladen pada salinan katalog, lewat modul aturan yang sama dengan
 ///   klien web dan diikat vektor konformansi bersama.
 ///
-/// Yang berbeda dari klien web hanya tiga: seluruh tombol fungsi tersedia,
-/// printer dan laci kas terjangkau langsung, dan ada layar kedua yang menghadap
-/// pembeli.
+/// Satu kotak melayani dua hal, sebagaimana rancangan: pemindai **dan**
+/// pengetikan nama. Yang menentukan perlakuannya adalah bentuk teksnya, bukan
+/// tombol mode yang harus diingat kasir.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../aturan/harga_luring.dart';
+import '../aturan/koneksi.dart';
+import '../pembaruan/pengelola_pembaruan.dart';
+import '../pembaruan/versi.dart';
 import '../perangkat/escpos.dart';
+import 'bilah_atas.dart';
+import 'bilah_samping.dart';
+import 'kisi_produk.dart';
+import 'panel_keranjang.dart';
 import 'pintasan.dart';
 import 'sumber.dart';
 import 'tampilan_pelanggan.dart';
+import 'tema.dart';
 
 class LayarKasir extends StatefulWidget {
   const LayarKasir({
@@ -33,6 +43,11 @@ class LayarKasir extends StatefulWidget {
     required this.pencetak,
     required this.namaToko,
     this.pelanggan,
+    this.namaOutlet,
+    this.shift,
+    this.koneksi,
+    this.namaPengguna,
+    this.pembaruan,
     super.key,
   });
 
@@ -48,6 +63,12 @@ class LayarKasir extends StatefulWidget {
   /// pada mesin render yang berbeda.
   final ValueNotifier<KeadaanPelanggan>? pelanggan;
 
+  final String? namaOutlet;
+  final String? shift;
+  final KeadaanKoneksi? koneksi;
+  final String? namaPengguna;
+  final PengelolaPembaruan? pembaruan;
+
   @override
   State<LayarKasir> createState() => _LayarKasirState();
 }
@@ -55,12 +76,17 @@ class LayarKasir extends StatefulWidget {
 class _LayarKasirState extends State<LayarKasir> {
   final List<BarisLuring> _baris = [];
   final TextEditingController _pindai = TextEditingController();
+  final TextEditingController _catatan = TextEditingController();
   final FocusNode _fokusPindai = FocusNode();
   final FocusNode _fokusLayar = FocusNode();
 
   String? _pesan;
   bool _pesanGalat = false;
   BarisLuring? _terakhir;
+
+  String _kategori = kategoriSemua;
+  String _kunciCari = '';
+  JenisPesanan _jenis = JenisPesanan.dineIn;
 
   HasilKeranjang get _total =>
       hitungKeranjangLuring(_baris, widget.katalog.tarif, widget.katalog.mataUang);
@@ -75,6 +101,7 @@ class _LayarKasirState extends State<LayarKasir> {
   @override
   void dispose() {
     _pindai.dispose();
+    _catatan.dispose();
     _fokusPindai.dispose();
     _fokusLayar.dispose();
     super.dispose();
@@ -133,6 +160,29 @@ class _LayarKasirState extends State<LayarKasir> {
     });
   }
 
+  // --- Katalog --------------------------------------------------------------
+
+  List<ProdukLokal> get _produkTampil {
+    var daftar = widget.katalog.semua();
+
+    if (_kategori == kategoriFavorit) {
+      daftar = daftar.where((p) => p.favorit).toList();
+    } else if (_kategori != kategoriSemua) {
+      daftar = daftar.where((p) => p.kategori == _kategori).toList();
+    }
+
+    final kunci = _kunciCari.trim();
+    if (kunci.isNotEmpty) {
+      final kecil = kunci.toLowerCase();
+      daftar = daftar
+          .where((p) =>
+              p.nama.toLowerCase().contains(kecil) ||
+              p.barcodes.any((b) => b.contains(kunci)))
+          .toList();
+    }
+    return daftar;
+  }
+
   void _tambah(ProdukLokal p) {
     setState(() {
       final i = _baris.indexWhere((b) => b.productId == p.productId);
@@ -169,17 +219,34 @@ class _LayarKasirState extends State<LayarKasir> {
   /// Dipanggil dari mana pun, termasuk sesudah dialog tertutup: pemindai tidak
   /// tahu dialog apa yang barusan terbuka, dan pindaian berikutnya akan datang
   /// entah kapan.
-  void _kembalikanFokus() {
-    _pindai.clear();
+  void _kembalikanFokus({bool bersihkanCari = true}) {
+    if (bersihkanCari) {
+      _pindai.clear();
+      if (_kunciCari.isNotEmpty) setState(() => _kunciCari = '');
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _fokusPindai.requestFocus());
   }
+
+  /// Benar bila teksnya berbentuk barcode: hanya angka dan cukup panjang.
+  ///
+  /// Dipakai untuk membedakan pindaian yang gagal dari pencarian nama. Keduanya
+  /// tiba lewat kotak yang sama dan menuntut jawaban yang sama sekali berbeda:
+  /// barcode yang tak dikenal adalah masalah data master, sedangkan nama yang
+  /// tak ditemukan cukup dijawab dengan mempersempit kisi.
+  static bool _tampakBarcode(String teks) =>
+      teks.length >= 8 && RegExp(r'^\d+$').hasMatch(teks);
 
   void _pindaiMasuk(String kode) {
     final bersih = kode.trim();
     if (bersih.isEmpty) return;
 
     final p = widget.katalog.dariBarcode(bersih);
-    if (p == null) {
+    if (p != null) {
+      _tambah(p);
+      return;
+    }
+
+    if (_tampakBarcode(bersih)) {
       /*
        * Menyebutkan kodenya dan apa yang dapat dilakukan berikutnya.
        * "Barcode tidak dikenali" tanpa kodenya tidak memberi tahu kasir apakah
@@ -193,7 +260,19 @@ class _LayarKasirState extends State<LayarKasir> {
       _kembalikanFokus();
       return;
     }
-    _tambah(p);
+
+    // Bukan barcode: perlakukan sebagai pencarian nama dan persempit kisi.
+    // Tidak langsung dimasukkan meski hanya satu yang cocok — memasukkan barang
+    // yang tidak sempat dilihat kasir adalah cara termudah menjual barang yang
+    // salah kepada orang yang sedang menunggu.
+    final cocok = widget.katalog.cari(bersih);
+    setState(() {
+      _kunciCari = bersih;
+      _kategori = kategoriSemua;
+      _pesan = cocok.isEmpty ? 'Tidak ada produk bernama "$bersih".' : null;
+      _pesanGalat = cocok.isEmpty;
+    });
+    _kembalikanFokus(bersihkanCari: false);
   }
 
   void _ubahJumlah(int index, int selisih) {
@@ -213,6 +292,15 @@ class _LayarKasirState extends State<LayarKasir> {
           taxRateId: b.taxRateId,
         );
       }
+    });
+    _perbaruiPelanggan();
+    _kembalikanFokus();
+  }
+
+  void _hapusBaris(int index) {
+    setState(() {
+      final b = _baris.removeAt(index);
+      if (_terakhir?.productId == b.productId) _terakhir = null;
     });
     _perbaruiPelanggan();
     _kembalikanFokus();
@@ -261,11 +349,12 @@ class _LayarKasirState extends State<LayarKasir> {
           _baris.clear();
           _terakhir = null;
           _pesan = null;
+          _catatan.clear();
         });
         _perbaruiPelanggan();
         _kembalikanFokus();
       case AksiKasir.hapusBaris:
-        if (_baris.isNotEmpty) _ubahJumlah(_baris.length - 1, -_baris.last.quantity);
+        if (_baris.isNotEmpty) _hapusBaris(_baris.length - 1);
       case AksiKasir.tutupDialog:
         _kembalikanFokus();
       default:
@@ -324,6 +413,84 @@ class _LayarKasirState extends State<LayarKasir> {
     );
   }
 
+  // --- Pembaruan ------------------------------------------------------------
+
+  Future<void> _cekPembaruan() async {
+    final p = widget.pembaruan;
+    if (p == null) return;
+
+    await p.periksa();
+    if (!mounted) return;
+
+    final h = p.hasil;
+    if (h == null) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (c) => AlertDialog(
+        key: const Key('dialog-pembaruan'),
+        title: Text(switch (h.keadaan) {
+          KeadaanPembaruan.tersedia => 'Pembaruan tersedia',
+          KeadaanPembaruan.mutakhir => 'Sudah versi terbaru',
+          KeadaanPembaruan.lebihBaru => 'Versi ini lebih baru',
+          KeadaanPembaruan.gagalDiperiksa => 'Tidak dapat diperiksa',
+        }),
+        content: SizedBox(
+          width: 460,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(h.pesan),
+              if (h.rilis?.catatan case final catatan? when catatan.trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text('Catatan rilis', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 160),
+                  child: SingleChildScrollView(child: Text(catatan)),
+                ),
+              ],
+              if (h.rilis case final rilis?) ...[
+                const SizedBox(height: 14),
+                /*
+                 * Tautannya ditampilkan dan disalin, bukan dijalankan.
+                 *
+                 * Klien ini sengaja tidak mengunduh dan tidak memasang apa pun
+                 * sendiri: mengganti berkas aplikasi kasir di tengah hari kerja
+                 * adalah tindakan yang harus dipilih manusia, pada saat yang ia
+                 * pilih sendiri — dan gerai umumnya memperbarui sesudah tutup.
+                 */
+                const Text('Tautan unduhan', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                SelectableText(
+                  rilis.jalurUnduh,
+                  key: const Key('tautan-unduh'),
+                  style: const TextStyle(fontSize: 12, color: Warna.utama),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          if (h.rilis case final rilis?)
+            TextButton(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: rilis.jalurUnduh));
+                if (c.mounted) Navigator.pop(c);
+                _kabar('Tautan unduhan disalin. Pasang sesudah gerai tutup.');
+              },
+              child: const Text('Salin tautan'),
+            ),
+          FilledButton(onPressed: () => Navigator.pop(c), child: const Text('Tutup')),
+        ],
+      ),
+    );
+    _kembalikanFokus();
+  }
+
+  // --- Perangkat ------------------------------------------------------------
+
   Future<void> _bukaLaci() async {
     if (!widget.pencetak.siap) {
       // Laci dibuka lewat printer. Tanpa printer tidak ada jalan lain, dan itu
@@ -338,14 +505,14 @@ class _LayarKasirState extends State<LayarKasir> {
     _kembalikanFokus();
   }
 
-  Future<void> _bayar() async {
+  Future<void> _bayar([MetodeBayar? pilihan]) async {
     if (_baris.isEmpty) {
       _kabar('Keranjang masih kosong.');
       _kembalikanFokus();
       return;
     }
     final t = _total;
-    final metode = widget.metode.isEmpty ? null : widget.metode.first;
+    final metode = pilihan ?? (widget.metode.isEmpty ? null : widget.metode.first);
     if (metode == null) {
       _kabar('Belum ada metode pembayaran pada salinan di mesin ini.', galat: true);
       _kembalikanFokus();
@@ -380,10 +547,15 @@ class _LayarKasirState extends State<LayarKasir> {
     }
 
     final kembalian = hitungKembalian(t.grandTotal, diserahkan, widget.katalog.mataUang);
-    await _selesaikan(t, diserahkan, kembalian.change);
+    await _selesaikan(t, metode, diserahkan, kembalian.change);
   }
 
-  Future<void> _selesaikan(HasilKeranjang t, String diserahkan, String kembalian) async {
+  Future<void> _selesaikan(
+    HasilKeranjang t,
+    MetodeBayar metode,
+    String diserahkan,
+    String kembalian,
+  ) async {
     /*
      * Struk dicetak dan laci dibuka pada perintah yang sama.
      *
@@ -399,6 +571,7 @@ class _LayarKasirState extends State<LayarKasir> {
         ..baris(widget.namaToko)
         ..ukuranGanda()
         ..rata(Rata.kiri)
+        ..baris(namaJenisPesanan[_jenis]!)
         ..garis();
       for (final l in t.lines) {
         struk
@@ -410,8 +583,16 @@ class _LayarKasirState extends State<LayarKasir> {
         ..tebal(true)
         ..barisKiriKanan('TOTAL', _uang(t.grandTotal))
         ..tebal(false)
-        ..barisKiriKanan('Tunai', _uang(diserahkan))
-        ..barisKiriKanan('Kembali', _uang(kembalian))
+        ..barisKiriKanan(metode.nama, _uang(diserahkan))
+        ..barisKiriKanan('Kembali', _uang(kembalian));
+      // Catatan pesanan ikut tercetak. Ia ditulis untuk dapur atau barista, dan
+      // struk adalah satu-satunya kertas yang sampai ke sana.
+      if (_catatan.text.trim().isNotEmpty) {
+        struk
+          ..barisKosong()
+          ..baris('Catatan: ${_catatan.text.trim()}');
+      }
+      struk
         ..barisKosong()
         ..rata(Rata.tengah)
         ..baris('Terima kasih')
@@ -425,6 +606,7 @@ class _LayarKasirState extends State<LayarKasir> {
     setState(() {
       _baris.clear();
       _terakhir = null;
+      _catatan.clear();
     });
     _kabar(
       widget.pencetak.siap
@@ -435,6 +617,8 @@ class _LayarKasirState extends State<LayarKasir> {
     _kembalikanFokus();
   }
 
+  // --- Tampilan -------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     final t = _total;
@@ -443,115 +627,162 @@ class _LayarKasirState extends State<LayarKasir> {
       focusNode: _fokusLayar,
       onKeyEvent: _tangkapTombol,
       child: Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: TextField(
-                  key: const Key('kotak-pindai'),
-                  controller: _pindai,
-                  focusNode: _fokusPindai,
-                  autofocus: true,
-                  style: const TextStyle(fontSize: 22),
-                  decoration: const InputDecoration(
-                    labelText: 'Pindai barcode di sini (F2)',
-                    border: OutlineInputBorder(),
+        backgroundColor: Warna.halaman,
+        body: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            BilahSamping(
+              terpilih: 'kasir',
+              onPilih: (m) {
+                if (m.diKlienIni) return;
+                // Menu yang layarnya ada di aplikasi web menjawab di mana
+                // layarnya berada. Diam akan membuat kasir menekannya lagi.
+                _kabar('${m.label} ada pada aplikasi web eBisnis, belum pada klien kasir ini.');
+              },
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  BilahAtas(
+                    namaOutlet: widget.namaOutlet ?? widget.namaToko,
+                    printerSiap: widget.pencetak.siap,
+                    shift: widget.shift,
+                    koneksi: widget.koneksi,
+                    namaPengguna: widget.namaPengguna,
+                    pembaruan: widget.pembaruan,
+                    onCekPembaruan: _cekPembaruan,
                   ),
-                  onSubmitted: _pindaiMasuk,
-                ),
-              ),
-              if (_pesan != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Container(
-                    key: const Key('pesan'),
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    color: _pesanGalat ? const Color(0xFFFEE2E2) : const Color(0xFFE0F2FE),
-                    child: Text(_pesan!),
-                  ),
-                ),
-              Expanded(
-                child: _baris.isEmpty
-                    ? const Center(
-                        key: Key('keranjang-kosong'),
-                        child: Text('Pindai barang untuk mulai melayani pembeli.'),
-                      )
-                    : ListView.builder(
-                        key: const Key('daftar-keranjang'),
-                        itemCount: t.lines.length,
-                        itemBuilder: (c, i) {
-                          final l = t.lines[i];
-                          return ListTile(
-                            title: Text(l.name),
-                            subtitle: Text('${l.quantity} × ${_uang(l.unitPrice)}'),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  key: Key('kurang-$i'),
-                                  onPressed: () => _ubahJumlah(i, -1),
-                                  icon: const Icon(Icons.remove),
-                                ),
-                                IconButton(
-                                  key: Key('tambah-$i'),
-                                  onPressed: () => _ubahJumlah(i, 1),
-                                  icon: const Icon(Icons.add),
-                                ),
-                                SizedBox(
-                                  width: 120,
-                                  child: Text(
-                                    _uang(l.lineTotal),
-                                    textAlign: TextAlign.end,
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: _tengah(t)),
+                          const SizedBox(width: 12),
+                          PanelKeranjang(
+                            hasil: t,
+                            metode: widget.metode,
+                            uang: _uang,
+                            jenis: _jenis,
+                            onJenis: (j) => setState(() => _jenis = j),
+                            onUbahJumlah: _ubahJumlah,
+                            onHapus: _hapusBaris,
+                            onBayar: _bayar,
+                            kendaliCatatan: _catatan,
+                          ),
+                        ],
                       ),
+                    ),
+                  ),
+                ],
               ),
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.all(12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tengah(HasilKeranjang t) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: hiasanKartu(),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: TextField(
+            key: const Key('kotak-pindai'),
+            controller: _pindai,
+            focusNode: _fokusPindai,
+            autofocus: true,
+            style: const TextStyle(fontSize: 15),
+            decoration: const InputDecoration(
+              icon: Icon(Icons.search, color: Warna.teksRedup, size: 20),
+              hintText: 'Cari produk, barcode, atau SKU… (F2)',
+              hintStyle: TextStyle(color: Warna.teksRedup, fontSize: 15),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(vertical: 14),
+            ),
+            onChanged: (v) => setState(() => _kunciCari = v),
+            onSubmitted: _pindaiMasuk,
+          ),
+        ),
+        if (_pesan != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            key: const Key('pesan'),
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: _pesanGalat ? const Color(0xFFFEE2E2) : const Color(0xFFE0F2FE),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(_pesan!, style: const TextStyle(fontSize: 13)),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Expanded(
+          child: KisiProduk(
+            produk: _produkTampil,
+            kategori: widget.katalog.kategori(),
+            terpilih: _kategori,
+            kunciCari: _kunciCari,
+            onKategori: (k) => setState(() => _kategori = k),
+            onPilih: _tambah,
+            uang: _uang,
+          ),
+        ),
+        const SizedBox(height: 10),
+        const _BilahPintasan(),
+      ],
+    );
+  }
+}
+
+/// Bilah pintasan di kaki kolom tengah.
+///
+/// Selalu terlihat: kasir baru tidak perlu membuka bantuan untuk tahu tombol
+/// mana yang membayar. Isinya dibangkitkan dari `pintasan.dart`, sehingga peta
+/// tombol yang berubah tidak dapat meninggalkan bilah ini menampilkan yang lama.
+class _BilahPintasan extends StatelessWidget {
+  const _BilahPintasan();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        key: const Key('bilah-pintasan'),
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final p in daftarPintasan())
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: hiasanKartu(radius: 8),
                 child: Row(
                   children: [
-                    Text('${t.itemCount} barang'),
-                    const Spacer(),
                     Text(
-                      _uang(t.grandTotal),
-                      key: const Key('total'),
-                      style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
+                      keteranganAksi[p.aksi]!,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                     ),
-                    const SizedBox(width: 16),
-                    FilledButton(
-                      key: const Key('tombol-bayar'),
-                      onPressed: _baris.isEmpty ? null : () => _jalankan(AksiKasir.bayar),
-                      child: const Text('Bayar (F9)'),
+                    const SizedBox(width: 7),
+                    Text(
+                      p.tombol,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Warna.utama,
+                      ),
                     ),
                   ],
                 ),
               ),
-              // Bilah pintasan selalu terlihat. Kasir baru tidak perlu membuka
-              // bantuan untuk tahu tombol mana yang membayar.
-              Container(
-                width: double.infinity,
-                color: const Color(0xFFF1F5F9),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Text(
-                  daftarPintasan()
-                      .map((p) => '${p.tombol} ${keteranganAksi[p.aksi]}')
-                      .join('   ·   '),
-                  style: const TextStyle(fontSize: 11),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }

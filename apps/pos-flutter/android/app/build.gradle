@@ -5,6 +5,29 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+/*
+ * Kunci penandatanganan rilis.
+ *
+ * Dibaca dari `android/key.properties`, yang TIDAK pernah masuk Git — begitu
+ * pula berkas keystore-nya. Keduanya ada di .gitignore, dan itu bukan kerapian
+ * melainkan syarat: siapa pun yang memegang keystore dapat menerbitkan aplikasi
+ * yang dipercaya Android sebagai eBisnis POS di setiap mesin kasir yang sudah
+ * memasangnya.
+ *
+ * Kunci ini PERMANEN. Android menolak memasang pembaruan yang ditandatangani
+ * kunci berbeda dari yang terpasang; satu-satunya jalan keluarnya adalah kasir
+ * mencopot aplikasinya lebih dahulu — dan mencopot aplikasi kasir berarti
+ * menghapus buku transaksi luring yang belum terkirim.
+ *
+ * Karena itu keystore harus dicadangkan di tempat yang bertahan lebih lama
+ * daripada laptop siapa pun.
+ */
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
 android {
     namespace = "id.ebisnis.ebisnis_pos"
     compileSdk = flutter.compileSdkVersion
@@ -20,21 +43,39 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "id.ebisnis.ebisnis_pos"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"]
+                keyPassword = keystoreProperties["keyPassword"]
+                storeFile = file(keystoreProperties["storeFile"])
+                storePassword = keystoreProperties["storePassword"]
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            /*
+             * Tanpa key.properties, rilis ditandatangani kunci debug.
+             *
+             * Itu tetap berjalan di mesin uji, dan sengaja dibiarkan supaya
+             * `flutter run --release` bekerja tanpa menyiapkan apa pun. Yang
+             * TIDAK boleh terjadi adalah APK berkunci debug ikut terbit ke
+             * publik: ia tidak akan pernah dapat diperbarui menjadi APK berkunci
+             * rilis. Alur rilis menjaganya — APK hanya dilampirkan ke rilis
+             * GitHub bila rahasia penandatanganan ada.
+             */
+            signingConfig = keystorePropertiesFile.exists()
+                ? signingConfigs.release
+                : signingConfigs.debug
         }
     }
 }

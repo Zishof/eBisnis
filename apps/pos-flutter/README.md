@@ -4,6 +4,29 @@ Klien **kedua** dari sistem yang sama — bukan POS berdiri sendiri. Satu pelade
 satu basis data, satu jalur penerimaan transaksi luring. Alasannya, batasnya, dan
 ongkosnya ada di [ADR-012](../../docs/architecture/ADR-012-klien-kasir-kedua-flutter.md).
 
+## Memasang di gerai
+
+Unduh pemasangnya dari rilis GitHub — `ebisnis-pos-X.Y.Z-windows.exe` untuk
+Windows, `ebisnis-pos-X.Y.Z.apk` untuk tablet Android.
+
+> **Belum dapat diunduh publik.** Repo ini privat, sehingga aset rilis hanya
+> terjangkau oleh akun yang punya akses repo. Jalan keluarnya ada di
+> [15-rilis-dan-pembaruan.md](../../docs/pos-web-priority/15-rilis-dan-pembaruan.md)
+> §1 — dan itu keputusan pemilik, bukan bagian yang dapat diselesaikan kode.
+
+Menerbitkan versi baru:
+
+```bash
+git tag pos-v1.2.0
+git push origin pos-v1.2.0
+```
+
+Aplikasi memeriksa pembaruan sendiri saat dibuka dan setiap enam jam, dan dapat
+diperiksa kapan saja lewat tombol **Cek pembaruan** di bilah atas. Ia
+memberitahu, lalu berhenti di situ — tidak mengunduh dan tidak memasang apa pun.
+Mengganti berkas aplikasi kasir di tengah hari kerja adalah tindakan yang harus
+dipilih manusia, pada saat yang ia pilih sendiri.
+
 ## Menjalankannya di mesin kasir
 
 ```bash
@@ -46,6 +69,38 @@ Sebagian printer memasang lacinya pada pin 1, bukan pin 0 — ubah `bukaLaci(pin
 Bila lacinya hanya berbunyi klik tanpa terbuka, pulsanya terlalu pendek: naikkan
 `nyalaMs`.
 
+## Bentuk layar
+
+Mengikuti rancangan eBisnis POS: bilah samping gelap, bilah atas berisi keadaan
+mesin, kisi produk di tengah, panel keranjang di kanan.
+
+Satu kotak melayani dua hal sekaligus — pemindai **dan** pengetikan nama. Yang
+menentukan perlakuannya adalah bentuk teksnya, bukan tombol mode yang harus
+diingat kasir: teks yang hanya angka dan cukup panjang diperlakukan sebagai
+barcode, selebihnya sebagai pencarian nama. Barcode tak dikenal adalah masalah
+data master; nama yang tak ditemukan cukup dijawab dengan mempersempit kisi.
+
+Kisi produknya bukan pelengkap. Sebagian besar barang di gerai makanan dan
+minuman tidak punya barcode — kopi yang baru diseduh tidak dapat dipindai — dan
+bagi gerai seperti itu kisi inilah jalan utamanya.
+
+### Yang tampil apa adanya, bukan yang enak dilihat
+
+| Di layar | Mengapa begitu |
+| --- | --- |
+| Menu selain Kasir/POS ditulis lebih redup dan menjawab "ada pada aplikasi web" | Menyembunyikannya membuat orang mengira aplikasi ini kehilangan fitur; menampilkannya seolah bekerja lebih buruk lagi |
+| Penanda Sync berbunyi "Belum tersambung", bukan hijau | Klien API belum ada. Penanda hijau yang tidak pernah memeriksa apa pun membuat gerai menutup buku dengan yakin bahwa transaksinya sudah sampai |
+| Pemilih pelanggan dan meja dimatikan | Daftarnya datang dari peladen. Tombol yang terbuka lalu menampilkan daftar kosong membuat kasir mengira data pelanggannya hilang |
+| Barang habis tetap tampil, tetapi tidak dapat ditekan | Menyembunyikannya membuat kasir mencarinya berulang kali dan menyimpulkan katalognya rusak |
+| Stok yang tidak diketahui tidak menampilkan badge sama sekali | "Stok 0" untuk stok yang tidak diketahui membuat kasir menolak menjual barang yang ada di rak |
+| Baris pajak hilang bila tarifnya nol | "Pajak Rp 0" pada gerai non-PKP terlihat seperti pajak yang gagal terpasang |
+| Kotak gambar berwarna dengan huruf awal, bukan foto | Salinan katalog belum membawa foto, dan memuatnya dari jaringan merusak alasan klien ini ada |
+
+Tombol pembayaran dibangkitkan dari metode yang ada pada salinan peladen, bukan
+dari daftar tetap. Warnanya dipetakan dari kode metode — kasir menghafal warna,
+dan warna yang berpindah ketika gerai menambah satu metode akan membuat tangan
+yang terlatih menekan tombol yang salah.
+
 ## Pintasan papan ketik
 
 Tekan **F1** untuk daftar lengkapnya di dalam aplikasi.
@@ -77,7 +132,7 @@ Windows multi-window). Yang sudah ada adalah isinya, beserta ujinya.
 flutter test
 ```
 
-76 uji, seluruhnya berjalan tanpa emulator, tanpa perangkat, dan tanpa printer.
+126 uji, seluruhnya berjalan tanpa emulator, tanpa perangkat, dan tanpa printer.
 
 `test/konformansi_test.dart` yang paling menentukan: ia membaca
 `packages/pos-rules-vectors/vectors.json` — berkas yang **sama** dengan yang
@@ -94,13 +149,16 @@ mengirim ke `COM3`.
 
 | Belum ada | Akibatnya sekarang |
 | --- | --- |
-| Klien API | Katalog masih contoh yang tertanam pada `main.dart` |
+| Klien API | Katalog masih contoh yang tertanam pada `main.dart`; pelanggan, meja, shift, dan sesi kasir ikut kosong |
 | Penyimpanan lokal | Keranjang hilang bila aplikasi ditutup |
 | Buku transaksi luring | Penjualan belum tersimpan maupun terkirim ke peladen |
+| Jenis pesanan terkirim | Dine In / Take Away / Delivery tercetak pada struk, tetapi belum tercatat di peladen |
 | Pengangkutan Bluetooth | Printer Bluetooth belum dapat dipakai |
 | Jendela layar kedua | Isi layar pelanggan sudah ada, jendelanya belum |
+| Penandatanganan kode Windows | SmartScreen memperingatkan pada pemasangan pertama |
 
-Tiga yang pertama menunggu pekerjaan berikutnya. Dua yang terakhir menunggu
+Empat yang pertama menunggu pekerjaan berikutnya. Dua berikutnya menunggu
 pengujian pada perangkat sungguhan — keduanya tidak dapat dibuktikan tanpa mesin
 kasir, dan menulisnya tanpa pernah menjalankannya hanya akan memindahkan
-kegagalannya ke tempat yang lebih mahal untuk ditemukan.
+kegagalannya ke tempat yang lebih mahal untuk ditemukan. Yang terakhir menunggu
+sertifikat yang harus dibeli.

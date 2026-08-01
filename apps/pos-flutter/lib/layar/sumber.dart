@@ -21,6 +21,10 @@ class ProdukLokal {
     required this.barcodes,
     this.uomId,
     this.taxRateId,
+    this.kategori,
+    this.varian,
+    this.stok,
+    this.favorit = false,
   });
 
   final String productId;
@@ -32,9 +36,30 @@ class ProdukLokal {
   final List<String> barcodes;
   final String? uomId;
   final String? taxRateId;
+
+  /// Kategori untuk penyaring di atas kisi produk. Null berarti tidak
+  /// berkategori, dan produknya hanya muncul pada "Semua".
+  final String? kategori;
+
+  /// Keterangan varian yang tampil di bawah nama, misalnya `Reguler`, `Slice`.
+  final String? varian;
+
+  /// Sisa stok pada salinan katalog, atau **null bila tidak diketahui**.
+  ///
+  /// Dibedakan tegas dari nol. Salinan katalog tidak selalu membawa stok, dan
+  /// menampilkan "Stok 0" untuk stok yang tidak diketahui membuat kasir menolak
+  /// menjual barang yang sebenarnya ada di rak.
+  final int? stok;
+
+  /// Ditandai kasir atau gerai sebagai barang yang paling sering terjual.
+  final bool favorit;
 }
 
 /// Salinan katalog di mesin kasir.
+///
+/// Diturunkan dengan `extends`, bukan `implements`: sebagian anggotanya sudah
+/// punya isi bawaan yang cukup, dan `implements` menuntut seluruhnya ditulis
+/// ulang — termasuk yang tidak perlu diubah.
 abstract class SumberKatalog {
   /// Produk untuk sebuah barcode, atau null bila tidak ada pada salinan.
   ///
@@ -44,6 +69,28 @@ abstract class SumberKatalog {
 
   /// Pencarian menurut nama untuk kasir yang mengetik, bukan memindai.
   List<ProdukLokal> cari(String kunci);
+
+  /// Seluruh produk pada salinan, untuk kisi yang ditekan kasir dengan jari.
+  ///
+  /// Bawaannya adalah pencarian dengan kunci kosong, sehingga implementasi yang
+  /// sudah ada tidak perlu berubah. Sumber yang katalognya besar sebaiknya
+  /// menimpanya dengan pembacaan berhalaman.
+  List<ProdukLokal> semua() => cari('');
+
+  /// Kategori yang benar-benar dipakai produk pada salinan ini.
+  ///
+  /// Diturunkan, bukan didaftar terpisah: daftar kategori yang disimpan sendiri
+  /// akan memuat kategori kosong — penyaring yang ditekan lalu tidak
+  /// menampilkan apa pun, dan kasir menyimpulkan aplikasinya rusak.
+  List<String> kategori() {
+    final terpakai = <String>{};
+    for (final p in semua()) {
+      final k = p.kategori;
+      if (k != null && k.trim().isNotEmpty) terpakai.add(k);
+    }
+    final urut = terpakai.toList()..sort();
+    return urut;
+  }
 
   /// Tarif pajak yang berlaku, dari salinan yang sama dengan harganya.
   List<TarifLuring> get tarif;
