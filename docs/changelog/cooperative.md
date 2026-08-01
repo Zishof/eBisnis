@@ -3,6 +3,85 @@
 Changelog modular sesuai panduan koordinasi §11. Sesi Core/Integrator yang
 menggabungkan entri terpilih ke `CHANGELOG.md` induk.
 
+## K-14 — Data contoh: satu koperasi lengkap, dua tombol
+
+Data contoh yang benar-benar disemai, bukan hanya didefinisikan. K-10 menyusun
+kelompok, sifat, urutan, dan penyaringnya; fase ini yang mengisinya.
+
+### Ditambahkan
+- **`sample/cooperative-sample-data.ts`** — pembangkit deterministik.
+  **30 pengujian.**
+- **`sample/cooperative-sample.service.ts`** — pemasangan dan penghapusan,
+  seluruhnya dalam satu transaksi.
+- **Tiga endpoint** `/cooperative/sample/{,install,remove}`.
+- **`DataContohPage.tsx`** — dua tombol, dengan konfirmasi ketik pada
+  penghapusan.
+- **Migrasi `20260801T120000`** — pengecualian penghapusan bagi rapat contoh.
+- **`prove-cooperative-sample.mjs`** — **30 pemeriksaan**, dan mencetak tiga
+  laporan sungguhan ke berkas bukti.
+
+### Isinya
+
+| | Jumlah |
+| --- | --- |
+| Anggota | 60 — 55 aktif, 3 calon, 2 berhenti |
+| Rekening simpanan | 149 |
+| Mutasi simpanan | 916 |
+| Pinjaman | 21 — lancar, lunas, menunggak |
+| Baris jadwal angsuran | 260 |
+| Suara pada RAT | 132 |
+| Anggota penerima SHU | 55 |
+| **Total baris pokok** | **± 1.700** |
+
+### Keputusan yang perlu dicatat
+- **Deterministik, tanpa `Math.random()`.** Diperiksa dengan membekukan
+  `Math.random` saat pengujian. Pemasangan yang sama menghasilkan angka yang
+  sama, sehingga laporan dapat dibandingkan dan penyewa yang
+  memasang-menghapus-memasang tidak mengira sistemnya berubah sendiri.
+- **Surplus sengaja tidak bulat** (Rp87.413.650). Surplus yang membagi habis
+  membuat pembulatan SHU — bagian yang paling mudah salah — tidak pernah
+  terlihat pada laporan contoh.
+- **Pembagian memakai sisa-terbesar.** Jumlah kolom per anggota terbukti
+  **persis** sama dengan alokasi komponennya; selisih beberapa rupiah adalah
+  hal pertama yang ditanyakan anggota saat membaca laporan SHU.
+- **Datanya sengaja tidak rapi.** Ada calon anggota dan bekas anggota, 44 dari
+  55 hadir RAT, suara menolak dan abstain, pinjaman menunggak. Data yang
+  seluruhnya rapi tidak menguji apa pun — dan laporan yang dibuat darinya
+  menyesatkan.
+- **Menumpang pada koperasi yang sudah ada.** Satu penyewa hanya boleh punya
+  satu koperasi (`ux_cooperative_single_per_tenant`, K-1). Pengurus yang sudah
+  mengisi profilnya memperoleh anggota contoh **di dalam** koperasinya — bukan
+  koperasi kedua yang tidak dapat dibuat sistemnya. Profil itu tidak ikut
+  terhapus.
+- **Penghapusan menyaring pada awalan `CONTOH-` huruf besar persis.**
+  Dibuktikan dengan menyelipkan tiga anggota sungguhan berkode mirip —
+  `TOKO-CONTOH-RASA` dan `contoh-` huruf kecil — dan ketiganya bertahan.
+
+### Dua penjaga saya sendiri menghalangi, dan keduanya benar
+
+- **Trigger K-5 menolak penghapusan keputusan RAT.** Alasannya tetap berlaku:
+  keputusan RAT adalah dasar keabsahan pembagian SHU. Diselesaikan dengan
+  pengecualian yang **dipersempit pada nomor rapat berkode `CONTOH-`**, bukan
+  pada `is_sample` — kolom biasa yang dapat tertulis pada baris sungguhan
+  karena kekeliruan, dan sekali itu terjadi keputusan RAT sungguhan menjadi
+  dapat dihapus. Pengaduan tidak dikecualikan sama sekali.
+- **Penjaga keamanan K-11 menolak `DELETE` pada tabel koperasi.** Pengecualian
+  dipersempit dua kali: hanya berkas penghapus data contoh, dan **setiap**
+  `DELETE` di dalamnya wajib menyaring `LIKE $1` — diperiksa pengujian baru.
+
+### Laporan yang dapat dicetak dari data ini
+
+Bukti mencetak ketiganya ke `docs/ekoperasi/bukti-data-contoh.txt`:
+
+- **Berita Acara RAT** — 55 anggota aktif, 44 hadir, kuorum 28, tercapai;
+  rincian luring/daring/kuasa; tiga keputusan beserta perolehan suaranya.
+- **Pembagian SHU** — enam komponen yang berjumlah persis Rp87.413.650, dan
+  daftar penerima per anggota.
+- **Rekapitulasi Simpanan** — tiga jenis, Rp79.950.000, 916 mutasi; setiap
+  saldo terbukti sama dengan jumlah mutasinya.
+
+---
+
 ## K-13 — Peristiwa akuntansi koperasi terdaftar dan terbit
 
 Menyelesaikan IR-003. Katalognya sudah lengkap sejak K-8; yang belum ada

@@ -175,15 +175,43 @@ describe('tidak ada penilaian ekspresi bebas', () => {
 });
 
 describe('tidak ada penghapusan keras', () => {
-  it('tidak ada DELETE atas tabel koperasi di dalam layanan', () => {
+  it('tidak ada DELETE atas tabel koperasi, kecuali penghapus data contoh', () => {
     /*
      * Tidak ada catatan koperasi yang boleh dihapus. Yang ada hanyalah
-     * perubahan status. Satu-satunya penghapusan yang sah adalah pembersihan
-     * data contoh, dan itu berada pada skrip terpisah dengan penyaring
-     * tersendiri.
+     * perubahan status.
+     *
+     * Satu pengecualian: penghapus data contoh. Ia memang bertugas menghapus,
+     * dan pengecualiannya dipersempit dua kali — hanya berkas ITU, dan setiap
+     * DELETE di dalamnya wajib menyaring pada awalan kode contoh (diperiksa
+     * pengujian berikutnya).
      */
-    const temuan = cari(/DELETE\s+FROM\s+["'`]?\$?\{?\w*\}?["'`]?\.?cooperative_/i);
+    const temuan = cari(/DELETE\s+FROM\s+["'`]?\$?\{?\w*\}?["'`]?\.?cooperative_/i).filter(
+      (t) => !t.berkas.includes('cooperative-sample.service.ts'),
+    );
     expect(temuan).toEqual([]);
+  });
+
+  it('SETIAP penghapusan data contoh menyaring pada awalan kodenya', () => {
+    /*
+     * Inilah yang membuat pengecualian di atas bukan lubang.
+     *
+     * Sebuah `DELETE` tanpa penyaring awalan akan menghapus data penyewa yang
+     * sungguhan — dan penghapus data contoh adalah satu-satunya tempat di
+     * modul ini yang punya wewenang menghapus sama sekali.
+     *
+     * Penyaringnya boleh langsung (`WHERE ... LIKE $1`) atau lewat induknya
+     * (`WHERE parent_id IN (SELECT ... LIKE $1)`); keduanya berakhir pada
+     * pembanding `LIKE $1` yang diisi `CONTOH-%`.
+     */
+    const berkas = [...ISI].find(([f]) => f.includes('cooperative-sample.service.ts'));
+    expect(berkas).toBeDefined();
+
+    const isi = berkas![1];
+    const pernyataan = isi.match(/DELETE\s+FROM[\s\S]*?`/g) ?? [];
+    expect(pernyataan.length).toBeGreaterThan(10);
+
+    const tanpaPenyaring = pernyataan.filter((p) => !/LIKE\s+\$1/.test(p));
+    expect(tanpaPenyaring).toEqual([]);
   });
 
   it('tidak ada TRUNCATE maupun DROP', () => {

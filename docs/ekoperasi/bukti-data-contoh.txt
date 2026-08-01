@@ -1,0 +1,113 @@
+==============================================================================
+BUKTI DATA CONTOH KOPERASI
+Waktu  : 2026-08-01T00:20:59.094Z
+Schema : demo
+==============================================================================
+
+1. Data SUNGGUHAN diselipkan lebih dahulu
+  LULUS  3 anggota sungguhan tersimpan, dua berkode mirip
+
+2. Data contoh dipasang
+  LULUS  60 anggota tersemai
+  LULUS  149 rekening simpanan
+  LULUS  916 mutasi simpanan
+  LULUS  21 pinjaman
+  LULUS  260 baris jadwal angsuran
+  LULUS  132 suara pada RAT
+  LULUS  55 anggota memperoleh SHU
+  LULUS  pemasangan kedua DITOLAK — tidak menggandakan
+
+3. LAPORAN — Berita Acara Rapat Anggota Tahunan
+
+  Rapat Anggota Tahunan Tahun Buku 2025
+  Nomor    : CONTOH-RAT-2025
+  Tempat   : Aula Koperasi Sejahtera Bersama
+
+  Anggota aktif       : 55 orang
+  Hadir               : 44 orang
+  Kuorum diperlukan   : 28 orang
+  Kuorum              : TERCAPAI
+
+  Rincian kehadiran   : IN_PERSON 34, ONLINE 6, PROXY 4
+
+  Hasil pemungutan suara:
+    · Pengesahan Laporan Keuangan Tahun Buku 2025         setuju  40  tolak  2  abstain  2
+    · Penetapan Pembagian Sisa Hasil Usaha                setuju  32  tolak  8  abstain  4
+    · Rencana Kerja dan Anggaran Tahun Berikutnya         setuju  32  tolak  5  abstain  7
+
+  LULUS  kuorum tercapai dan angkanya konsisten
+  LULUS  tidak seluruh anggota aktif hadir
+  LULUS  tiga keputusan tercatat
+  LULUS  ada suara menolak dan abstain — bukan bulat
+
+4. LAPORAN — Pembagian Sisa Hasil Usaha
+
+  Surplus tahun buku 2025 : Rp 87.413.650
+
+    PATRONAGE_SERVICE     30%   Rp     26.224.095
+    RESERVE               25%   Rp     21.853.413
+    CAPITAL_SERVICE       25%   Rp     21.853.413
+    BOARD_INCENTIVE       10%   Rp      8.741.365
+    EDUCATION_FUND         5%   Rp      4.370.682
+    SOCIAL_FUND            5%   Rp      4.370.682
+                                    —————————————————
+    JUMLAH                          Rp     87.413.650
+
+  LULUS  jumlah komponen PERSIS sama dengan surplus
+  Sepuluh penerima SHU terbesar:
+
+    Nomor Anggota        Nama                      Jasa Modal    Jasa Usaha       Jumlah
+    ------------------------------------------------------------------------------------
+    CONTOH-2025001       Hesti Zulkarnain             488.826       969.734    1.458.560
+    CONTOH-2025018       Hesti Maulana                488.826       928.469    1.417.295
+    CONTOH-2025008       Lestari Firmansyah           488.826       887.204    1.376.030
+    CONTOH-2025016       Dewi Anggraini               488.826       825.306    1.314.132
+    CONTOH-2025007       Kartika Firmansyah           488.826       784.041    1.272.867
+    CONTOH-2025028       Gunawan Zulkarnain           402.563       866.571    1.269.134
+    CONTOH-2025009       Gita Setiawan                488.826       763.408    1.252.234
+    CONTOH-2025017       Zaenal Pratama               488.826       763.408    1.252.234
+    CONTOH-2025011       Lestari Firmansyah           488.826       701.510    1.190.336
+    CONTOH-2025022       Lestari Pratama              402.563       784.041    1.186.604
+
+    … dan 45 anggota lainnya.
+
+    Jumlah jasa modal anggota  : Rp 21.853.413  (alokasi Rp 21.853.413)
+    Jumlah jasa usaha anggota  : Rp 26.224.095  (alokasi Rp 26.224.095)
+
+  LULUS  jumlah jasa modal seluruh anggota PERSIS sama dengan alokasinya
+  LULUS  jumlah jasa usaha seluruh anggota PERSIS sama dengan alokasinya
+  LULUS  55 anggota memperoleh SHU
+  LULUS  hanya anggota AKTIF yang memperoleh SHU
+
+5. LAPORAN — Rekapitulasi Simpanan Anggota
+
+    Jenis Simpanan            Rekening              Saldo
+    --------------------------------------------------------
+    Simpanan Sukarela              39   Rp     41.950.000
+    Simpanan Wajib                 55   Rp     24.250.000
+    Simpanan Pokok                 55   Rp     13.750.000
+    --------------------------------------------------------
+    JUMLAH                              Rp     79.950.000
+
+    Mutasi sepanjang tahun buku: 916 baris
+
+  LULUS  tiga jenis simpanan terisi
+  LULUS  total simpanan lebih dari Rp 50 juta
+  LULUS  saldo setiap rekening sama dengan jumlah mutasinya
+
+6. Data contoh dihapus — data sungguhan tidak tersentuh
+  1712 baris terhapus
+  LULUS  tidak ada anggota contoh tersisa
+  LULUS  tidak ada mutasi contoh tersisa
+  LULUS  tidak ada perhitungan SHU contoh tersisa
+  LULUS  SELURUH 3 anggota sungguhan masih ada
+  LULUS  anggota berkode "TOKO-CONTOH-RASA" TIDAK terhapus
+  LULUS  anggota berawalan huruf kecil TIDAK terhapus
+  LULUS  koperasi sungguhan masih ada
+  LULUS  dapat dipasang ulang setelah dihapus
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Seluruh perubahan digulung balik — basis data tidak berubah.
