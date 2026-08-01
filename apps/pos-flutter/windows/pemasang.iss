@@ -24,6 +24,19 @@
   #define Keluaran "..\build\pemasang"
 #endif
 
+; Versi tanpa bagian pratayang, untuk `VersionInfoVersion`.
+;
+; Windows menyimpan versi berkas sebagai empat angka; ia menolak "0.1.0-uji"
+; maupun "1.0.0-beta.1" dan pemasangnya gagal dirakit sama sekali. Yang ditolak
+; hanya medan itu — `AppVersion` dan nama berkas tetap memakai versi penuh,
+; sebab yang dibaca manusia adalah keduanya, dan pratayang justru perlu terlihat.
+;
+; Ketahuan dari uji bangun, bukan dari rilis yang gagal.
+#define VersiNumerik Versi
+#if Pos("-", VersiNumerik) > 0
+  #define VersiNumerik Copy(VersiNumerik, 1, Pos("-", VersiNumerik) - 1)
+#endif
+
 [Setup]
 ; AppId ini PERMANEN.
 ;
@@ -37,7 +50,7 @@ AppVersion={#Versi}
 AppVerName={#NamaApl} {#Versi}
 AppPublisher={#Penerbit}
 AppPublisherURL={#Situs}
-VersionInfoVersion={#Versi}
+VersionInfoVersion={#VersiNumerik}
 
 ; Dipasang per pengguna, tanpa hak administrator.
 ;
