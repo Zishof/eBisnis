@@ -122,6 +122,28 @@ const BerandaPondokPage = lazy(() =>
     default: m.BerandaPondokPage,
   })),
 );
+// Dokumen komersial khusus pesantren. Terpisah dari milik eBisnis karena isinya
+// berbeda — delapan pilar pesantren, harga per santri, dan kemitraan BMT.
+const PresentasiPesantrenPage = lazy(() =>
+  import('../verticals/pesantren/PresentasiPesantrenPage').then((m) => ({
+    default: m.PresentasiPesantrenPage,
+  })),
+);
+const ProposalPesantrenPage = lazy(() =>
+  import('../verticals/pesantren/ProposalPesantrenPage').then((m) => ({
+    default: m.ProposalPesantrenPage,
+  })),
+);
+const PksPesantrenPage = lazy(() =>
+  import('../verticals/pesantren/PksPesantrenPage').then((m) => ({
+    default: m.PksPesantrenPage,
+  })),
+);
+const PenawaranPesantrenPage = lazy(() =>
+  import('../verticals/pesantren/PenawaranPesantrenPage').then((m) => ({
+    default: m.PenawaranPesantrenPage,
+  })),
+);
 
 /**
  * Apa yang dilihat pengunjung di akar situs, menurut alamat yang ia ketik.
@@ -197,6 +219,19 @@ export function App() {
           <Route index element={<DaftarPesantrenPage />} />
           <Route path="berhasil" element={<DaftarPesantrenBerhasilPage />} />
         </Route>
+
+        {/*
+          Dokumen komersial pesantren.
+
+          Di luar `SantriLayout`: presentasi memakai layar penuh sendiri, dan
+          ketiga dokumen lain memakai kerangka cetak yang menghilangkan navigasi
+          saat dicetak. Menaruhnya di dalam kerangka portal membuat kop dan
+          footer portal ikut tercetak di atas kertas.
+        */}
+        <Route path="/santri/presentasi" element={<PresentasiPesantrenPage />} />
+        <Route path="/santri/proposal" element={<ProposalPesantrenPage />} />
+        <Route path="/santri/pks" element={<PksPesantrenPage />} />
+        <Route path="/santri/penawaran" element={<PenawaranPesantrenPage />} />
 
         {/* Beranda penyewa pondok — terpisah dari ruang kerja eBisnis di `/app`. */}
         <Route

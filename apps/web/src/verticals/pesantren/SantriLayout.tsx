@@ -158,6 +158,34 @@ export function SantriLayout() {
             </div>
           )}
 
+          <div className="mt-8">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+              Materi untuk pengurus pondok
+            </h2>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { ke: '/santri/presentasi', label: 'Presentasi', isi: 'Paparan yang dapat dijalankan di layar rapat' },
+                { ke: '/santri/proposal', label: 'Proposal', isi: 'Usulan kerja sama beserta ruang lingkupnya' },
+                { ke: '/santri/penawaran', label: 'Surat Penawaran', isi: 'Penawaran beserta simulasi biaya' },
+                { ke: '/santri/pks', label: 'Draft PKS', isi: 'Rancangan perjanjian kerja sama' },
+              ].map((d) => (
+                <li key={d.ke}>
+                  <Link
+                    to={d.ke}
+                    className="block rounded-lg border border-slate-200 p-3 hover:border-emerald-400 dark:border-slate-700"
+                  >
+                    <span className="text-sm font-medium text-slate-900 dark:text-white">
+                      {d.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                      {d.isi}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-200 pt-6 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
             <Link to="/kontak" className="hover:text-emerald-700 dark:hover:text-emerald-400">
               Kontak
