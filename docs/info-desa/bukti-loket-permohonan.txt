@@ -1,0 +1,53 @@
+==============================================================================
+BUKTI ALUR LOKET PERMOHONAN SURAT
+Waktu : 2026-08-01T00:35:06.335Z
+==============================================================================
+
+1. Migrasi dijalankan bertahap
+  LULUS  migrasi indeks unik ada pada manifest
+
+2. Berkas ganda yang terlanjur ada
+  LULUS  dua baris untuk satu persyaratan memang dapat terjadi
+       Akibatnya bukan sekadar baris berlebih: cacah kelengkapan menggelembung,
+       dan permohonan terlihat lengkap padahal syarat lain belum terpenuhi.
+
+3. Migrasi indeks unik
+  LULUS  baris ganda dibersihkan menjadi satu
+  LULUS  yang disisakan adalah penandaan TERBARU
+  LULUS  baris kedua untuk persyaratan yang sama DITOLAK
+
+4. Menandai ulang memperbarui, bukan menambah
+  LULUS  tetap satu baris, isinya diperbarui
+
+4b. Catatan berkas tanpa bukti apa pun DITOLAK
+  LULUS  tanpa berkas unggahan DAN tanpa pernyataan petugas, barisnya ditolak
+       Karena itu layanan menetapkan received_physically = TRUE sendiri, bukan
+       menerimanya dari pemanggil: bendera yang hanya punya satu nilai sah adalah
+       jebakan, dan yang mengirim nilai satunya menerima galat basis data mentah.
+
+5. Kelengkapan dihitung dari syarat WAJIB
+  LULUS  KK masih kurang, SURAT_RT tidak dihitung karena opsional
+  LULUS  setelah KK ditandai, tidak ada lagi yang kurang
+
+6. Perjalanan status sampai surat diserahkan
+  LULUS  permohonan mencapai DISERAHKAN
+       Langkah ini ada pada mesin status sejak D-4 tetapi belum pernah dijalankan
+       apa pun. Tanpanya, permohonan berhenti selamanya di DITERBITKAN, dan tidak
+       ada yang dapat membedakan surat yang menunggu diambil dari yang sudah pulang.
+
+7. Riwayat
+  LULUS  setiap perpindahan meninggalkan satu baris
+  LULUS  rantai status tidak terputus
+  LULUS  catatan penyerahan menyebut siapa yang menerima
+       Penerima boleh bukan pemohonnya: surat sering diambil anak, tetangga, atau
+       ketua RT. Memaksa pemohon datang sendiri berarti lansia dan orang sakit
+       tidak akan pernah menerima suratnya.
+
+8. Permohonan yang sudah selesai
+  LULUS  statusnya akhir, sehingga layanan menolak perubahan berkas
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Skema uji dibuang.

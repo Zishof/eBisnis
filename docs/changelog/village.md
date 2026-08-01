@@ -2061,3 +2061,132 @@ gabungan yang keliru atau agregat tanpa GROUP BY.
 - `vitest` — **94 tes lulus** (bertambah 6)
 - `vite build` — berhasil; empat potongan terpisah, terbesar 17,5 kB
 - `tsc --noEmit` dan `eslint --max-warnings=0` API dan web — bersih
+
+---
+
+## Layar tulis D-4 — loket permohonan surat
+
+**Cabang:** `feature/v12-info-desa`
+
+Layar tulis pertama pada vertikal ini. Petugas loket dapat menandai berkas
+diterima, memverifikasi kelengkapan, meneruskan untuk persetujuan, memutuskan,
+menerbitkan surat, dan **mencatat penyerahannya**.
+
+### Tiga hal yang ternyata belum ada
+
+Membangun layarnya menyingkap bahwa alurnya belum utuh:
+
+1. **Tidak ada cara mencatat berkas persyaratan diterima.** Verifikasi
+   kelengkapan membandingkan daftar syarat dengan `village_request_document`,
+   dan tidak ada satu pun jalur yang mengisi tabel itu. Artinya verifikasi
+   **selalu** menyatakan berkas kurang pada layanan yang punya syarat wajib —
+   dan seluruh D-4 sebenarnya tidak dapat dijalankan sampai selesai.
+2. **`DISERAHKAN` tidak pernah dijalankan apa pun.** Ia ada pada mesin status
+   sejak D-4, tetapi permohonan berhenti selamanya di `DITERBITKAN`. Tidak ada
+   yang dapat membedakan surat yang menunggu diambil dari surat yang sudah
+   dibawa pulang — perbedaan yang ditanyakan warga lewat telepon, dan yang
+   dicari petugas di tumpukan map ketika ia tidak dapat menjawabnya.
+3. **Tidak ada endpoint rincian.** Yang ada hanya `lacak` berdasarkan nomor,
+   dengan proyeksi tipis untuk warga.
+
+### Rincian dikumpulkan dalam SATU pemanggilan
+
+Permohonan, persyaratan beserta berkas yang sudah tercatat, riwayat, keadaan
+alur persetujuan, dan langkah berikutnya yang sah — seluruhnya sekaligus.
+
+Layar yang memanggil lima endpoint berurutan akan menampilkan bagiannya satu per
+satu di depan warga yang sedang berdiri menunggu, dan setiap kegagalan
+menghasilkan layar setengah terisi yang tidak dapat dipahami petugas.
+
+### Tombol yang tampil adalah tombol yang boleh ditekan
+
+`nextStates` dihitung **peladen**, dari mesin status yang sama yang akan menolak
+permintaannya. Layar tidak menebak sendiri.
+
+Perbedaannya terasa di loket: petugas yang menekan tombol lalu menerima
+penolakan tidak menyimpulkan "langkah ini memang belum boleh" — ia menyimpulkan
+sistemnya rusak, lalu menelepon orang, sementara warga menunggu berdiri.
+
+### Cacat yang ditemukan pengujian terhadap basis data
+
+**Berkas ganda.** `village_request_document` dibuat D-4 tanpa indeks unik.
+Selama tidak ada yang mengisinya, itu tidak berakibat apa-apa. Begitu layar
+loket mengisinya, petugas yang menandai "KTP sudah diterima" lalu ragu lalu
+menandainya lagi menghasilkan dua baris untuk satu syarat — dan cacah
+kelengkapan yang menggelembung membuat permohonan **terlihat lengkap padahal
+ada syarat lain yang belum terpenuhi sama sekali**. Surat terbit atas berkas
+yang tidak pernah diserahkan.
+
+Migrasi `20260731000016` memasang indeks uniknya, dan membersihkan baris ganda
+yang mungkin sudah ada dengan menyisakan catatan **terbaru**: bila petugas
+menandai dua kali, yang kedua adalah yang ia maksud.
+
+**Bendera yang hanya punya satu nilai sah.** Layanan semula menerima
+`receivedPhysically`, dan basis data menuntut setiap catatan berkas membawa
+bukti — berkas terunggah **atau** pernyataan petugas
+(`village_request_document_has_evidence`, D-4). Selama persyaratan permohonan
+belum dapat membawa berkas unggahan, mengirim `false` menghasilkan galat basis
+data mentah yang tidak dijelaskan layar mana pun.
+
+Benderanya dibuang. Nilainya ditetapkan layanan, bukan diserahkan kepada
+pemanggil.
+
+### Pemisahan tugas terlihat di layar, dan ditegakkan peladen
+
+Di desa kecil, operator layanan juga warga yang suatu saat mengajukan surat
+untuk dirinya sendiri. Ia boleh mengajukannya; yang tidak boleh adalah ia
+sendiri yang memverifikasi dan menyetujuinya.
+
+Ketika permohonan itu miliknya, seluruh tombol **diganti** peringatan — bukan
+didampingi. Peringatan yang berdampingan dengan tombol yang masih dapat ditekan
+bukan pembatasan, melainkan saran.
+
+### Alasan diminta ketika wajib, dan hanya ketika wajib
+
+Transisi yang merugikan atau menunda warga wajib beralasan: ditolak,
+dikembalikan, dibatalkan. Kotaknya menyebutkan bahwa **warga yang membacanya**,
+dan menolak alasan yang terlalu pendek untuk dapat dimengerti.
+
+Yang tidak merugikan tidak diminta beralasan. Kotak alasan yang selalu muncul
+akan diisi "ok" dalam seminggu.
+
+### Penerima surat boleh bukan pemohonnya
+
+Surat keterangan sering diambil anak, tetangga, atau ketua RT. Memaksa pemohon
+datang sendiri berarti lansia dan orang sakit tidak akan pernah menerima
+suratnya.
+
+Yang dicatat adalah siapa yang **benar-benar menerima** beserta hubungannya —
+sehingga ketika surat itu dipersoalkan, pertanyaan "siapa yang membawanya keluar
+dari kantor" dapat dijawab. Namanya wajib diisi.
+
+### NIK dan telepon tampil di rincian, tidak di daftar
+
+Rincian dibuka satu per satu untuk melayani satu orang, dan petugas memerlukan
+keduanya untuk mencocokkan kartu identitas yang sedang dipegangnya. Yang tidak
+boleh adalah menampilkannya berbaris-baris pada layar yang terbaca dari antrean
+dan dapat difoto dalam satu kali jepret.
+
+### Bukti
+
+`docs/info-desa/bukti-loket-permohonan.txt` — **14 pemeriksaan** terhadap
+PostgreSQL sungguhan. Migrasinya dijalankan **bertahap**: baris ganda dibuat
+lebih dahulu, lalu indeks uniknya dipasang, persis seperti yang akan terjadi
+pada penyewa yang datanya sudah berjalan.
+
+### Yang TIDAK selesai
+
+- **Mengajukan permohonan dari layar loket** belum ada. Endpoint-nya ada
+  (`POST /village/requests`), formulirnya belum. Petugas masih memerlukannya
+  untuk warga yang datang tanpa mengajukan lewat aplikasi.
+- **Mencetak surat** belum ada; ekspor PDF masih `BLOCKED` sejak V8-7.
+- **Persyaratan belum dapat membawa berkas unggahan.** Penyimpanan berkas
+  village sudah ada sejak foto pengaduan, tetapi `subject_type`-nya masih
+  terbatas pada `PENGADUAN`.
+
+### Gerbang mutu
+
+- `jest` — **2492 tes lulus**
+- `vitest` — **95 tes lulus** (bertambah 1)
+- `vite build` — berhasil; `PermohonanDetailPage` 16,8 kB
+- `tsc --noEmit` dan `eslint --max-warnings=0` API dan web — bersih

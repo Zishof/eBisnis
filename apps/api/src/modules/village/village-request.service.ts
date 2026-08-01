@@ -22,10 +22,12 @@ import { VillageUnitService } from './village-unit.service';
 import { VillageWorkflowService } from './village-workflow.service';
 import type { CuplikanAlur, LangkahWorkflow } from './ports/workflow.port';
 import {
+  TRANSISI_PERMOHONAN,
   bolehMemproses,
   bolehPindahPermohonan,
   hitungSla,
   periksaKelengkapan,
+  statusAkhir,
   susunNomorSurat,
   type StatusPermohonan,
 } from './village-service';
@@ -407,6 +409,286 @@ export class VillageRequestService {
 
       return { letterId: surat.rows[0].id, letterNumber: nomor, verificationToken: token };
     });
+  }
+
+  // --- Penyerahan -----------------------------------------------------------
+
+  /**
+   * Menandai surat sudah diserahkan kepada pemohon.
+   *
+   * Langkah ini ada pada mesin status sejak D-4 tetapi belum pernah dijalankan
+   * apa pun - permohonan berhenti selamanya di `DITERBITKAN`, dan tidak ada yang
+   * dapat membedakan surat yang menunggu diambil dari surat yang sudah dibawa
+   * pulang.
+   *
+   * Perbedaan itu yang ditanyakan warga lewat telepon, dan yang dicari petugas
+   * di tumpukan map ketika ia tidak dapat menjawabnya.
+   *
+   * ## Nama penerima dicatat, dan ia boleh bukan pemohonnya
+   *
+   * Surat keterangan sering diambil anak, tetangga, atau ketua RT. Memaksa
+   * pemohon datang sendiri berarti lansia dan orang sakit tidak akan pernah
+   * menerima suratnya. Yang dicatat adalah **siapa yang benar-benar menerima**
+   * beserta hubungannya - sehingga ketika surat itu dipersoalkan, pertanyaan
+   * "siapa yang membawanya keluar dari kantor" dapat dijawab.
+   */
+  async serahkan(
+    schemaName: string,
+    requestId: string,
+    input: { receivedBy: string; relation?: string; note?: string },
+    user: AuthenticatedUser,
+  ) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.PENERBITAN');
+
+    const nama = (input.receivedBy ?? '').trim();
+    if (nama.length < 3) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Nama penerima wajib diisi. Surat yang keluar dari kantor tanpa catatan penerimanya ' +
+          'tidak dapat ditelusuri ketika isinya dipersoalkan.',
+      );
+    }
+
+    return this.tenantDb.transaction(
+      schemaName,
+      async (client) => {
+        const p = await this.ambilTerkunci(client, schemaName, requestId);
+        const v = bolehPindahPermohonan(p.status as StatusPermohonan, 'DISERAHKAN');
+        if (!v.boleh) throw AppError.conflict(ErrorCodes.CONFLICT, v.alasan!);
+
+        const keterangan = [
+          `Diserahkan kepada ${nama}`,
+          input.relation?.trim() ? `(${input.relation.trim()})` : null,
+          input.note?.trim() || null,
+        ]
+          .filter(Boolean)
+          .join(' ');
+
+        await client.query(
+          `UPDATE "${schemaName}".village_service_request
+              SET status = 'DISERAHKAN', updated_at = now(), updated_by = $2,
+                  version = version + 1
+            WHERE id = $1`,
+          [requestId, user.userId],
+        );
+        await this.catatRiwayatDi(
+          client,
+          schemaName,
+          requestId,
+          p.status,
+          'DISERAHKAN',
+          keterangan,
+          user,
+        );
+
+        return { status: 'DISERAHKAN', receivedBy: nama, note: keterangan };
+      },
+      { userId: user.userId, moduleCode: 'VILLAGE_SERVICE_REQUEST', actionCode: 'HANDOVER' },
+    );
+  }
+
+  // --- Berkas persyaratan ---------------------------------------------------
+
+  /**
+   * Mencatat satu berkas persyaratan sudah diterima.
+   *
+   * Tanpa ini, verifikasi kelengkapan **selalu** menyatakan berkas kurang pada
+   * layanan yang punya persyaratan wajib: pemeriksaannya membandingkan daftar
+   * syarat dengan `village_request_document`, dan sebelum ini tidak ada satu pun
+   * jalur yang mengisi tabel itu.
+   *
+   * ## Tidak ada pilihan "diterima tanpa bukti apa pun"
+   *
+   * Basis data menuntut setiap catatan berkas membawa bukti: berkas terunggah,
+   * ATAU pernyataan petugas bahwa ia melihat kertasnya
+   * (`village_request_document_has_evidence`, D-4).
+   *
+   * Selama persyaratan permohonan belum dapat membawa berkas unggahan, satu-
+   * satunya bukti yang mungkin adalah yang kedua — dan karena itu nilainya
+   * ditetapkan di sini, bukan diserahkan kepada pemanggil.
+   *
+   * Menyediakan bendera yang hanya punya satu nilai sah adalah jebakan: yang
+   * mengirim nilai satunya akan menerima galat basis data mentah, dan tidak ada
+   * pada layar mana pun yang menjelaskan mengapa.
+   */
+  async catatBerkas(
+    schemaName: string,
+    requestId: string,
+    input: { requirementCode: string; note?: string },
+    user: AuthenticatedUser,
+  ) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.VERIFIKASI');
+
+    const p = await this.ambil(schemaName, requestId);
+    this.pastikanBukanPemohon(p, user);
+
+    if (statusAkhir(p.status as StatusPermohonan)) {
+      throw AppError.conflict(
+        ErrorCodes.CONFLICT,
+        `Permohonan berstatus ${p.status} sudah selesai; berkasnya tidak dapat diubah lagi.`,
+      );
+    }
+
+    // Kode persyaratan wajib benar-benar milik layanan yang diminta. Kode yang
+    // tidak dikenal DITOLAK, bukan disimpan: baris yang tidak cocok dengan
+    // syarat mana pun membuat verifikasi terlihat lengkap padahal masih ada
+    // syarat yang belum terpenuhi.
+    const syarat = await this.tenantDb.query<{ code: string; name: string }>(
+      schemaName,
+      `SELECT code, name FROM "${schemaName}".village_service_requirement
+        WHERE service_catalog_id = $1 AND code = $2 AND deleted_at IS NULL`,
+      [p.service_catalog_id, input.requirementCode],
+    );
+    if (!syarat.length) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        `Persyaratan "${input.requirementCode}" bukan bagian dari layanan ini.`,
+      );
+    }
+
+    return this.tenantDb.transaction(
+      schemaName,
+      async (client) => {
+        // Satu persyaratan satu baris. Menyerahkan berkas yang sama dua kali
+        // memperbarui catatannya, bukan menambah baris kedua - dua baris untuk
+        // satu syarat membuat cacah kelengkapan tidak lagi berarti.
+        await client.query(
+          `INSERT INTO "${schemaName}".village_request_document
+             (service_request_id, requirement_code, received_physically, note,
+              verified_by, verified_at, created_by)
+           VALUES ($1,$2,TRUE,$3,$4,now(),$4)
+           ON CONFLICT (service_request_id, requirement_code)
+           DO UPDATE SET note = EXCLUDED.note,
+                         verified_by = EXCLUDED.verified_by,
+                         verified_at = now()`,
+          [requestId, input.requirementCode, input.note?.trim() || null, user.userId],
+        );
+
+        return { requirementCode: input.requirementCode, name: syarat[0].name, recorded: true };
+      },
+      { userId: user.userId, moduleCode: 'VILLAGE_SERVICE_REQUEST', actionCode: 'DOCUMENT' },
+    );
+  }
+
+  /** Membatalkan satu catatan berkas - dipakai ketika petugas salah menandai. */
+  async hapusBerkas(
+    schemaName: string,
+    requestId: string,
+    requirementCode: string,
+    user: AuthenticatedUser,
+  ) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.VERIFIKASI');
+    const p = await this.ambil(schemaName, requestId);
+    this.pastikanBukanPemohon(p, user);
+
+    if (statusAkhir(p.status as StatusPermohonan)) {
+      throw AppError.conflict(
+        ErrorCodes.CONFLICT,
+        `Permohonan berstatus ${p.status} sudah selesai; berkasnya tidak dapat diubah lagi.`,
+      );
+    }
+
+    await this.tenantDb.query(
+      schemaName,
+      `DELETE FROM "${schemaName}".village_request_document
+        WHERE service_request_id = $1 AND requirement_code = $2`,
+      [requestId, requirementCode],
+    );
+    return { requirementCode, removed: true };
+  }
+
+  // --- Rincian untuk layar petugas ------------------------------------------
+
+  /**
+   * Satu permohonan beserta segala yang dibutuhkan layar loket.
+   *
+   * Dikumpulkan dalam satu pemanggilan dengan sengaja. Layar yang memanggil
+   * lima endpoint berurutan akan menampilkan bagian-bagiannya satu per satu di
+   * depan warga yang sedang berdiri menunggu, dan setiap kegagalan menghasilkan
+   * layar setengah terisi yang tidak dapat dipahami petugas.
+   *
+   * ## Yang ikut, dan yang sengaja tidak
+   *
+   * NIK dan telepon pemohon **ikut** di sini, berbeda dari daftarnya. Layar
+   * rincian dibuka satu per satu untuk melayani satu orang, dan petugas
+   * memerlukan keduanya untuk mencocokkan kartu identitas yang sedang
+   * dipegangnya. Yang tidak boleh adalah menampilkannya berbaris-baris pada
+   * layar yang terbaca dari antrean.
+   *
+   * Langkah berikutnya dihitung di sini, bukan ditebak layar. Layar yang
+   * menebak sendiri akan menampilkan tombol yang ditolak peladen - dan petugas
+   * yang menekannya lalu menerima penolakan menyimpulkan sistemnya rusak, bukan
+   * bahwa langkahnya memang belum boleh.
+   */
+  async rincian(schemaName: string, requestId: string, user: AuthenticatedUser) {
+    await this.unit.pastikanLayak(schemaName, 'LAYANAN.PERMOHONAN');
+
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT r.id, r.request_number, r.status, r.applicant_name, r.applicant_nik,
+              r.applicant_phone, r.applicant_user_id, r.purpose, r.form_data,
+              r.submitted_at, r.documents_completed_at, r.finished_at, r.due_date::text,
+              r.reject_reason, r.return_reason, r.workflow_instance_id, r.version,
+              r.definition_version, r.village_resident_id,
+              c.id AS service_catalog_id, c.code AS service_code, c.name AS service_name,
+              c.letter_code, c.sla_working_days, c.fee_amount,
+              l.id AS letter_id, l.letter_number, l.letter_date::text, l.is_revoked,
+              l.print_count
+         FROM "${schemaName}".village_service_request r
+         JOIN "${schemaName}".village_service_catalog c ON c.id = r.service_catalog_id
+    LEFT JOIN "${schemaName}".village_letter l ON l.service_request_id = r.id
+        WHERE r.id = $1`,
+      [requestId],
+    );
+    if (!rows.length) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Permohonan tidak ditemukan.');
+    const p = rows[0];
+
+    // Persyaratan digabung dengan berkas yang sudah tercatat, sehingga layar
+    // tidak perlu mencocokkan keduanya sendiri - dan tidak ada dua tempat yang
+    // dapat berbeda pendapat tentang apa yang masih kurang.
+    const syarat = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT q.code, q.name, q.description, q.is_mandatory, q.accepts_upload, q.sort_order,
+              d.id AS document_id, d.received_physically, d.note, d.verified_at
+         FROM "${schemaName}".village_service_requirement q
+    LEFT JOIN "${schemaName}".village_request_document d
+           ON d.requirement_code = q.code AND d.service_request_id = $2
+        WHERE q.service_catalog_id = $1 AND q.deleted_at IS NULL
+        ORDER BY q.sort_order, q.name`,
+      [p.service_catalog_id, requestId],
+    );
+
+    const riwayat = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT from_status, to_status, reason, visible_to_citizen, occurred_at
+         FROM "${schemaName}".village_request_history
+        WHERE service_request_id = $1
+        ORDER BY occurred_at`,
+      [requestId],
+    );
+
+    const alur = p.workflow_instance_id
+      ? await this.alur.keadaan(schemaName, String(p.workflow_instance_id))
+      : null;
+
+    const status = p.status as StatusPermohonan;
+    const langkahBerikut = (TRANSISI_PERMOHONAN[status] ?? []).map((ke) => {
+      const v = bolehPindahPermohonan(status, ke);
+      return { to: ke, allowed: v.boleh, reasonRequired: Boolean(v.wajibBeralasan) };
+    });
+
+    return {
+      request: p,
+      requirements: syarat,
+      history: riwayat,
+      workflow: alur,
+      nextStates: langkahBerikut,
+      // Dinyatakan terpisah: petugas yang MENGAJUKAN permohonan ini tidak boleh
+      // memverifikasi maupun menyetujuinya sendiri. Layar menyembunyikan
+      // tombolnya, dan peladen tetap menolaknya bila tombolnya dipanggil juga.
+      processableByMe: bolehMemproses((p.applicant_user_id as string) ?? null, user.userId).boleh,
+      finalState: statusAkhir(status),
+    };
   }
 
   /**

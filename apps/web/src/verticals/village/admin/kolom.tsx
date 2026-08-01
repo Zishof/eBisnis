@@ -8,6 +8,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Code, StatusBadge, type GridColumn } from '../../../components/ui';
 import { formatDate, formatDateTime, formatMoney, formatNumber } from '../../../lib/api';
 import type { BarisDaftar } from './useVillageAdmin';
@@ -169,6 +170,32 @@ export function bertumpuk(
         <div className="text-xs text-slate-500 dark:text-slate-400">{bawah(r)}</div>
       </div>
     ),
+  };
+}
+
+/**
+ * Kolom yang membuka rincian.
+ *
+ * Nomor dokumen dipakai sebagai tautannya, bukan tombol "buka" tersendiri.
+ * Nomor itu yang dicari petugas ketika warga menyebutkannya lewat telepon, dan
+ * kolom tambahan hanya memakan lebar tanpa menambah apa pun.
+ */
+export function tautanKolom(key: string, header: string, ke: (id: string) => string): Kolom {
+  return {
+    key,
+    header,
+    render: (r) => {
+      const isi = nilai(r, key);
+      if (isi === null) return '—';
+      return (
+        <Link
+          to={ke(String(r.id))}
+          className="font-medium text-brand-700 hover:underline dark:text-brand-300"
+        >
+          <Code>{String(isi)}</Code>
+        </Link>
+      );
+    },
   };
 }
 

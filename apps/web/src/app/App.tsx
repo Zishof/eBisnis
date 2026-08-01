@@ -128,6 +128,11 @@ const DesaJenisLayananPage = lazy(() =>
 const DesaPermohonanPage = lazy(() =>
   import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.PermohonanPage })),
 );
+const DesaPermohonanDetailPage = lazy(() =>
+  import('../verticals/village/admin/PermohonanDetailPage').then((m) => ({
+    default: m.PermohonanDetailPage,
+  })),
+);
 const DesaAntreanPage = lazy(() =>
   import('../verticals/village/admin/halaman-daftar').then((m) => ({ default: m.AntreanPage })),
 );
@@ -338,6 +343,12 @@ export function App() {
 
           <Route path="info-desa/layanan/jenis" element={<DesaJenisLayananPage />} />
           <Route path="info-desa/layanan/permohonan" element={<DesaPermohonanPage />} />
+          {/*
+            Rincian permohonan tidak punya menunya sendiri — ia dibuka dari
+            daftar. Karena itu pengujian keselarasan rute mengabaikan rute
+            berparameter: menu untuk satu berkas tertentu tidak masuk akal.
+          */}
+          <Route path="info-desa/layanan/permohonan/:id" element={<DesaPermohonanDetailPage />} />
           <Route path="info-desa/layanan/antrean" element={<DesaAntreanPage />} />
 
           <Route path="info-desa/pengaduan" element={<DesaPengaduanPage />} />

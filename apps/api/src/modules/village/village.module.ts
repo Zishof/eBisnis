@@ -381,6 +381,44 @@ class AjukanLayananDto {
   purpose?: string;
 }
 
+class SerahkanSuratDto {
+  @ApiProperty({
+    description:
+      'Nama orang yang BENAR-BENAR menerima surat, dan ia boleh bukan pemohonnya. Surat ' +
+      'keterangan sering diambil anak, tetangga, atau ketua RT; memaksa pemohon datang sendiri ' +
+      'berarti lansia dan orang sakit tidak akan pernah menerima suratnya.',
+  })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(120)
+  receivedBy!: string;
+
+  @ApiPropertyOptional({ description: 'Hubungan penerima dengan pemohon, misalnya "anak kandung".' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  relation?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  note?: string;
+}
+
+class CatatBerkasDto {
+  @ApiProperty({ description: 'Kode persyaratan; wajib milik layanan yang diminta.' })
+  @IsString()
+  @MaxLength(64)
+  requirementCode!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  note?: string;
+}
+
 class PutusanDto {
   @ApiProperty({ enum: ['APPROVE', 'REJECT', 'REQUEST_CHANGES'] })
   @IsIn(['APPROVE', 'REJECT', 'REQUEST_CHANGES'])
@@ -3367,6 +3405,85 @@ export class VillageController {
   @ApiOperation({ summary: 'Mengambil nomor antrean' })
   ambilAntrean(@Body() dto: AmbilAntreanDto, @CurrentUser() user: AuthenticatedUser) {
     return this.permohonan.ambilNomorAntrean(requireSchema(user), dto.counterCode, dto.requestId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.READ')
+  @Get('requests/:id')
+  @ApiOperation({
+    summary: 'Rincian permohonan untuk layar loket',
+    description:
+      'Permohonan, persyaratan beserta berkas yang sudah tercatat, riwayat, keadaan alur ' +
+      'persetujuan, dan LANGKAH BERIKUTNYA yang sah - seluruhnya dalam satu pemanggilan. ' +
+      'Layar yang memanggil lima endpoint berurutan akan menampilkan bagiannya satu per satu di ' +
+      'depan warga yang sedang berdiri menunggu. Langkah berikutnya dihitung peladen, bukan ' +
+      'ditebak layar: layar yang menebak akan menampilkan tombol yang kemudian ditolak, dan ' +
+      'petugas menyimpulkan sistemnya rusak alih-alih bahwa langkahnya memang belum boleh. ' +
+      'NIK dan telepon pemohon IKUT di sini, berbeda dari daftarnya - rincian dibuka satu per ' +
+      'satu untuk melayani satu orang, dan petugas memerlukan keduanya untuk mencocokkan kartu ' +
+      'identitas yang sedang dipegangnya.',
+  })
+  rincianPermohonan(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.permohonan.rincian(requireSchema(user), id, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.UPDATE')
+  @Post('requests/:id/documents')
+  @ApiOperation({
+    summary: 'Mencatat satu berkas persyaratan sudah diterima',
+    description:
+      'Tanpa endpoint ini, verifikasi kelengkapan SELALU menyatakan berkas kurang pada layanan ' +
+      'yang punya persyaratan wajib: pemeriksaannya membandingkan daftar syarat dengan ' +
+      'village_request_document, dan sebelum ini tidak ada satu pun jalur yang mengisinya. ' +
+      'Kode persyaratan yang bukan milik layanan ini DITOLAK, bukan disimpan - baris yang tidak ' +
+      'cocok dengan syarat mana pun membuat verifikasi terlihat lengkap padahal ada syarat lain ' +
+      'yang belum terpenuhi. Petugas yang mengajukan permohonan ini tidak boleh mencatat ' +
+      'berkasnya sendiri.',
+  })
+  catatBerkas(
+    @Param('id') id: string,
+    @Body() dto: CatatBerkasDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.permohonan.catatBerkas(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.UPDATE')
+  @Delete('requests/:id/documents/:code')
+  @ApiOperation({
+    summary: 'Membatalkan catatan berkas yang salah ditandai',
+    description:
+      'Permohonan yang sudah berstatus akhir tidak dapat diubah berkasnya. Riwayat penandaan ' +
+      'tetap tercatat pada jejak audit.',
+  })
+  hapusBerkas(
+    @Param('id') id: string,
+    @Param('code') code: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.permohonan.hapusBerkas(requireSchema(user), id, code, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('VILLAGE_SERVICE_REQUEST.UPDATE')
+  @Post('requests/:id/handover')
+  @ApiOperation({
+    summary: 'Menandai surat sudah diserahkan kepada pemohon',
+    description:
+      'Langkah ini ada pada mesin status sejak D-4 tetapi belum pernah dijalankan apa pun - ' +
+      'permohonan berhenti selamanya di DITERBITKAN, dan tidak ada yang dapat membedakan surat ' +
+      'yang menunggu diambil dari surat yang sudah dibawa pulang. Perbedaan itu yang ditanyakan ' +
+      'warga lewat telepon, dan yang dicari petugas di tumpukan map ketika ia tidak dapat ' +
+      'menjawabnya. Nama penerima WAJIB diisi dan boleh bukan pemohonnya.',
+  })
+  serahkanSurat(
+    @Param('id') id: string,
+    @Body() dto: SerahkanSuratDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.permohonan.serahkan(requireSchema(user), id, dto, user);
   }
 
   @ApiBearerAuth('access-token')

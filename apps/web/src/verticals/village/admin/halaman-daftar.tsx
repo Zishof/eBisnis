@@ -20,6 +20,7 @@ import {
   statusKolom,
   tanggalKolom,
   teksKolom,
+  tautanKolom,
   uangKolom,
   waktuKolom,
   yaTidakKolom,
@@ -150,7 +151,7 @@ export function PermohonanPage() {
       judul="Permohonan Surat"
       uraian="Berkas yang masuk dari loket, anjungan, dan aplikasi warga."
       kolom={[
-        kodeKolom('request_number', 'Nomor'),
+        tautanKolom('request_number', 'Nomor', (id) => `/app/info-desa/layanan/permohonan/${id}`),
         teksKolom('applicant_name', 'Pemohon'),
         teksKolom('service_name', 'Layanan'),
         teksKolom('purpose', 'Keperluan'),

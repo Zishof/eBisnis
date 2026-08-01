@@ -37,9 +37,17 @@ const router = readFileSync(ROUTER, 'utf8');
 const ruteMenu = [...katalog.matchAll(/route:\s*'\/app\/(info-desa\/[^']+)'/g)].map((m) => m[1]);
 
 /** Rute yang benar-benar terdaftar pada router, di bawah `/app`. */
-const ruteRouter = new Set(
-  [...router.matchAll(/<Route path="(info-desa\/[^"]+)"/g)].map((m) => m[1]),
-);
+const ruteSemua = [...router.matchAll(/<Route path="(info-desa\/[^"]+)"/g)].map((m) => m[1]);
+
+/**
+ * Rute berparameter tidak ikut dicocokkan dengan menu.
+ *
+ * `layanan/permohonan/:id` adalah rincian satu berkas, dan ia dibuka dari
+ * daftarnya. Menu untuk satu berkas tertentu tidak masuk akal — sidebar tidak
+ * dapat menautkan ke permohonan yang belum ada.
+ */
+const ruteRouter = new Set(ruteSemua.filter((r) => !r.includes(':')));
+const ruteBerparameter = ruteSemua.filter((r) => r.includes(':'));
 
 describe('rute info-desa', () => {
   it('membaca kedua berkas dengan benar', () => {
@@ -90,6 +98,17 @@ describe('rute info-desa', () => {
   it('setiap pengecualian menyebutkan alasannya', () => {
     for (const [rute, alasan] of Object.entries(BELUM_DIBANGUN)) {
       expect([rute, alasan.length > 40]).toEqual([rute, true]);
+    }
+  });
+
+  it('setiap rute berparameter berada di bawah rute daftarnya', () => {
+    // Rincian yang jalurnya tidak bersarang di bawah daftarnya akan kehilangan
+    // penanda menu aktif pada sidebar: petugas yang membuka satu permohonan
+    // melihat menu yang tidak tersorot, dan tidak lagi tahu ia sedang di bagian
+    // mana.
+    for (const r of ruteBerparameter) {
+      const induk = r.slice(0, r.indexOf('/:'));
+      expect([r, ruteRouter.has(induk)]).toEqual([r, true]);
     }
   });
 
