@@ -158,6 +158,41 @@ async function refreshAccessToken(): Promise<boolean> {
   return refreshPromise;
 }
 
+/**
+ * Menyegarkan sesi dari refresh token yang tersimpan.
+ *
+ * ## Mengapa ini satu-satunya pintu
+ *
+ * Peladen **memutar** refresh token dan mendeteksi pemakaian ulang: token yang
+ * sudah dipakai sekali, bila dikirim lagi, membuatnya mencabut **seluruh
+ * keluarga token** sesi itu. Itu perilaku yang benar — begitulah pencurian
+ * token ketahuan.
+ *
+ * Akibatnya klien tidak boleh mengirim dua penyegaran serentak dengan token
+ * yang sama. Dan itu persis yang terjadi setiap kali halaman dimuat penuh:
+ * `auth-context` memulihkan sesi, sementara permintaan halaman lain sudah
+ * terbang tanpa access token, menerima 401, lalu ikut menyegarkan. Keduanya
+ * membaca refresh token yang sama.
+ *
+ * Yang menang balapan menentukan hasilnya. Bila yang kedua tiba sebelum yang
+ * pertama menandai tokennya terpakai, keduanya dijawab 200 dan tidak ada yang
+ * menyadari apa pun. Bila ia tiba sesudahnya, peladen membaca pemakaian ulang,
+ * mencabut seluruh keluarga token, dan pengguna terlempar ke halaman masuk —
+ * pada mesin kasir, di tengah shift, dengan keranjang yang sedang dilayani.
+ *
+ * Selisihnya beberapa milidetik, sehingga kegagalannya jarang dan tampak acak.
+ * Satu-satunya perbaikan yang benar adalah membuatnya mustahil: seluruh
+ * penyegaran melewati fungsi ini, yang berbagi satu janji lewat
+ * `refreshPromise`.
+ *
+ * Mengembalikan false bila gagal. Token hanya dibuang ketika peladen benar-benar
+ * menyatakan sesinya tidak sah (401/403); 429 dan 5xx dibiarkan supaya dapat
+ * dicoba lagi.
+ */
+export function segarkanSesi(): Promise<boolean> {
+  return refreshAccessToken();
+}
+
 /** Mengembalikan keadaan modul ke titik awal. Dipakai pengujian. */
 export function _setelUlangUntukUji(): void {
   refreshPromise = null;

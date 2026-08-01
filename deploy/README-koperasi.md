@@ -135,15 +135,42 @@ tepercaya.
 dari layar `/ekoperasi/data-contoh`, bukan dari skrip server. Ia menulis ke
 skema penyewa, dan yang berhak memutuskannya adalah pengurus koperasinya.
 
+**Terbitkan situsnya.** Jalur publik hanya melayani situs yang sudah
+diterbitkan pengurus. Selama `is_published` masih false, `koperasi.ebisnis.id`
+menjawab 404 — jawaban yang sama persis dengan host yang tidak terdaftar, dan
+itu disengaja.
+
+### Yang dilihat pengunjung di akar subdomain
+
+`https://koperasi.ebisnis.id/` mengalihkan ke `/ekoperasi/situs`, mengikuti
+cara yang sudah dipakai `belanja.ebisnis.id`. Tanpa pengalihan itu subdomainnya
+menjawab 200 dan tampak berhasil dipasang, sementara satu-satunya jalan menuju
+situs koperasi adalah mengetik `/ekoperasi/situs` — alamat yang tidak akan
+pernah ditebak pengunjung.
+
+Alamat lain tetap dapat dibuka dari subdomain ini: `/masuk`, `/harga`,
+`/ekoperasi/portal` untuk anggota, dan `/app/koperasi` untuk pengurus.
+
 ---
 
 ## Yang belum ada
 
-**Situs publik koperasi belum melayani pengunjung.** Mekanismenya sudah
-(`PublicTenantResolver`), tetapi `CooperativeWebsiteController` masih memakai
-jalur pratinjau bersesi. Sampai jalur publiknya disambungkan, subdomain ini
-melayani aplikasi biasa: `/ekoperasi/portal` untuk anggota dan `/app/koperasi`
-untuk pengurus.
+**TLS belum terpasang, dan ini yang paling penting.** Formulir pendaftaran
+calon anggota menerima nama, nomor telepon, pekerjaan, dan alamat rumah. Selama
+subdomainnya dilayani lewat HTTP, seluruh isian itu melintas terbaca. Pasang
+sertifikatnya **sebelum** memberitahukan alamatnya kepada calon anggota:
 
-**Pembatasan laju formulir pendaftaran calon anggota belum ada.** Sebaiknya
-tersedia sebelum pendaftaran daring dibuka ke internet.
+```bash
+sudo certbot --apache -d koperasi.ebisnis.id
+```
+
+**Pembatas laju per alamat IP belum bekerja di belakang Apache.**
+`ThrottlerGuard` menghitung per `req.ip`, dan aplikasi belum menyetel
+`trust proxy` — sehingga setiap pengunjung tampak datang dari alamat proxy.
+Diajukan lewat [IR-006](../docs/integration-requests/cooperative/006-alamat-asli-di-belakang-proxy.md);
+perbaikannya satu baris pada `main.ts` dan milik sesi Core.
+
+Sampai itu dikerjakan, yang menahan banjir adalah batas yang **tidak
+bergantung pada alamat IP**: 50 lamaran per koperasi per hari dan jeda 6 jam
+per nomor telepon. Batas kerusakan terburuk: 50 baris karantina per koperasi
+per hari, tanpa satu pun baris anggota terbentuk.
