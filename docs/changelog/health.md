@@ -5,6 +5,53 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## W-3 — Layar klaim dan BPJS
+
+### Ditambahkan
+
+- **`ClaimPage`** (`/app/emedik/klaim`, `/telaah-klaim`) — **selisih ditampilkan
+  sebagai uang, bukan sebagai status.** Klaim sepuluh juta berstatus
+  `RECONCILED` tampak beres; yang tidak tampak adalah tiga juta yang tidak
+  disetujui dan setengah juta yang belum dibayar. Rumah sakit yang tidak
+  melihatnya baru menyadari kekurangannya ketika arus kasnya tidak cocok —
+  biasanya sesudah alasannya tidak lagi dapat ditelusuri.
+- **`BpjsPage`** (`/app/emedik/bpjs`, `/sep`, `/kepesertaan`) — layar yang tugas
+  utamanya **mengatakan apa yang belum ada**. Penghalang tiap adapter
+  ditampilkan apa adanya, bukan diringkas jadi lencana merah: petugas yang tahu
+  "kredensial belum ada" berhenti mencoba; petugas yang hanya melihat merah akan
+  mencoba lagi besok, dan besoknya lagi. Disertai daftar apa yang **tetap dapat
+  dikerjakan** tanpa kredensial.
+- **`H062__health__menu_truth_w3.sql`** — 30 menu berlayar, 43 masih segera
+  hadir.
+- **`claim-pages.spec.tsx`** — 12 uji komponen.
+
+### Yang ditandai alih-alih didiamkan
+
+**Naik kelas.** `billedClass` yang berbeda dari `entitledClass` — dan pada SEP,
+`benefit_class` yang berbeda dari `occupied_class` — berarti pasien menempati
+kelas di atas haknya. Itu sah dan lazim, tetapi ia mengubah siapa yang membayar
+selisihnya. Layar yang hanya menampilkan satu kolom kelas menyembunyikannya
+sampai klaimnya ditolak berbulan-bulan kemudian.
+
+**Sebab penolakan diurut menurut UANG, bukan jumlah klaim** — mengikuti
+`ORDER BY sum(submitted - approved) DESC` milik peladen, yang diperiksa sebelum
+kalimatnya ditulis di layar. Mengatakan sesuatu di layar tentang urutan yang
+tidak diperiksa akan menjadi kebohongan yang tampak seperti bantuan.
+
+### Konvensi yang berbeda pada satu domain
+
+Daftar kerja klaim memakai `snake_case`; satu klaim memakai `camelCase`.
+Keduanya diperiksa langsung ke peladen sebelum satu baris layar ditulis — dan
+itu persis jenis hal yang akan salah bila ditebak, sebab salah tebak di sini
+tidak menghasilkan galat kompilasi melainkan halaman kosong.
+
+Naskah bukti kontrak diperluas ke seluruh jalan W-3: **23 pemeriksaan**, lulus
+dua kali.
+
+Uji web 115 -> 127.
+
+---
+
 ## W-2 — Layar rekam medis dan telaah darurat
 
 ### Ditambahkan

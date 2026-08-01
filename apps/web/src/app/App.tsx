@@ -128,6 +128,12 @@ const HealthSafetyPage = lazy(() =>
 const HealthQualityPage = lazy(() =>
   import('../verticals/health/QualityPage').then((m) => ({ default: m.QualityPage })),
 );
+const HealthClaimPage = lazy(() =>
+  import('../verticals/health/ClaimPage').then((m) => ({ default: m.ClaimPage })),
+);
+const HealthBpjsPage = lazy(() =>
+  import('../verticals/health/BpjsPage').then((m) => ({ default: m.BpjsPage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -275,6 +281,20 @@ export function App() {
             <Route path="telaah-darurat" element={<HealthBreakGlassPage />} />
             <Route path="keselamatan" element={<HealthSafetyPage />} />
             <Route path="mutu" element={<HealthQualityPage />} />
+
+            {/*
+              Klaim dan BPJS — W-3.
+
+              `telaah-klaim` menunjuk layar klaim yang sama: penelaah membuka
+              klaim yang sama dengan yang dibuka petugas, hanya menekan tombol
+              yang berbeda. Dua layar untuk satu berkas berarti dua tempat yang
+              harus tetap sepakat.
+            */}
+            <Route path="klaim" element={<HealthClaimPage />} />
+            <Route path="telaah-klaim" element={<HealthClaimPage />} />
+            <Route path="bpjs" element={<HealthBpjsPage />} />
+            <Route path="sep" element={<HealthBpjsPage />} />
+            <Route path="kepesertaan" element={<HealthBpjsPage />} />
           </Route>
           <Route path="*" element={<ComingSoonPage />} />
         </Route>

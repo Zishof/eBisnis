@@ -90,9 +90,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-11 | 25 | **35** | `health-sample.spec.ts` |
 | H-12 | 40 | **75** | `health-security.spec.ts` |
 
-API keseluruhan: **2506** pengujian pada 72 berkas. Web: **115** pada 7 berkas,
-80 di antaranya kesehatan (`health-api.spec.ts` 40, `puskesmas-pages.spec.tsx` 16,
-`him-pages.spec.tsx` 24).
+API keseluruhan: **2506** pengujian pada 72 berkas. Web: **127** pada 8 berkas,
+92 di antaranya kesehatan (`health-api.spec.ts` 40, `puskesmas-pages.spec.tsx` 16,
+`him-pages.spec.tsx` 24, `claim-pages.spec.tsx` 12).
 
 Seluruh dua belas fase melampaui sasaran minimumnya. Jumlah minimum yang
 ditetapkan H-0 adalah 370 pengujian baru; yang terpasang jauh di atasnya.
@@ -135,7 +135,7 @@ sungguhan, pada basis data sungguhan:
 | H-10 | `prove-health-portal.mjs` | 63 pemeriksaan, seluruhnya lulus — [bukti-h10-portal.txt](bukti-h10-portal.txt) |
 | H-11 | `prove-health-sample.mjs` | 55 pemeriksaan, seluruhnya lulus — [bukti-h11-data-contoh.txt](bukti-h11-data-contoh.txt) |
 | H-12 | `prove-health-security.mjs` | 92 pemeriksaan, seluruhnya lulus — [bukti-h12-keamanan.txt](bukti-h12-keamanan.txt) |
-| W-2 | `prove-web-contract.mjs` | 17 pemeriksaan, seluruhnya lulus — [bukti-kontrak-web.txt](bukti-kontrak-web.txt) |
+| W-2/W-3 | `prove-web-contract.mjs` | 23 pemeriksaan, seluruhnya lulus — [bukti-kontrak-web.txt](bukti-kontrak-web.txt) |
 
 ### W-1 · Layar Puskesmas — dan batas uji komponen
 

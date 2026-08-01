@@ -139,6 +139,10 @@ try {
     HEALTH_BREAK_GLASS: ['READ'],
     HEALTH_SAFETY: ['READ', 'CREATE'],
     HEALTH_QUALITY: ['READ'],
+    HEALTH_CLAIM: ['READ'],
+    HEALTH_CLAIM_REVIEW: ['READ'],
+    HEALTH_BPJS: ['READ'],
+    HEALTH_BPJS_SEP: ['READ'],
   };
   for (const [m, aa] of Object.entries(hak)) {
     const mid = menus.get(m);
@@ -350,6 +354,71 @@ try {
       ambil: (d) => d,
     },
   ];
+  /*
+   * Klaim dan SEP dipilih dari fasilitas yang benar-benar memilikinya, bukan
+   * dari fasilitas jangkar — keduanya dibuat naskah bukti fase API pada
+   * fasilitasnya sendiri, dan memakai jangkar akan melaporkan "tidak ada
+   * baris" untuk jalan yang sebenarnya berisi.
+   */
+  const fasKlaim = (
+    await q(
+      `SELECT facility_id::text AS id FROM "${SCHEMA}".health_claim
+        GROUP BY facility_id ORDER BY count(*) DESC LIMIT 1`,
+    )
+  )[0]?.id;
+  const fasSep = (
+    await q(
+      `SELECT facility_id::text AS id FROM "${SCHEMA}".bpjs_sep
+        GROUP BY facility_id ORDER BY count(*) DESC LIMIT 1`,
+    )
+  )[0]?.id;
+  const satuKlaim = (
+    await q(`SELECT id::text AS id FROM "${SCHEMA}".health_claim ORDER BY created_at DESC LIMIT 1`)
+  )[0];
+
+  kontrak.push({
+    nama: 'bpjsCatalog',
+    jalan: '/health/bpjs/catalog',
+    antarmuka: 'KatalogBpjs',
+    ambil: (d) => d,
+  });
+  kontrak.push({
+    nama: 'bpjsAdapters',
+    jalan: `/health/bpjs/adapters?facilityId=${fasKlaim ?? facilityId}`,
+    antarmuka: 'KemampuanBpjs',
+    ambil: (d) => d,
+  });
+  if (fasKlaim) {
+    kontrak.push({
+      nama: 'claims',
+      jalan: `/health/claims?facilityId=${fasKlaim}`,
+      antarmuka: 'BarisKlaim',
+      ambil: (d) => d?.[0],
+    });
+    kontrak.push({
+      nama: 'claimRejectionReport',
+      jalan: `/health/claims/rejection-report?facilityId=${fasKlaim}&year=${tahun}`,
+      antarmuka: 'BarisSebabTolak',
+      ambil: (d) => d?.[0],
+    });
+  }
+  if (fasSep) {
+    kontrak.push({
+      nama: 'bpjsSep',
+      jalan: `/health/bpjs/sep?facilityId=${fasSep}`,
+      antarmuka: 'BarisSep',
+      ambil: (d) => d?.[0],
+    });
+  }
+  if (satuKlaim) {
+    kontrak.push({
+      nama: 'claim',
+      jalan: `/health/claims/${satuKlaim.id}`,
+      antarmuka: 'RincianKlaim',
+      ambil: (d) => d,
+    });
+  }
+
   if (pasien) {
     kontrak.push({
       nama: 'legalHolds',

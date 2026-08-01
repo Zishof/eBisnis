@@ -575,6 +575,13 @@
       "file": "H061__health__menu_truth_w2b.sql",
       "name": "eMedik: menu berlayar mutu dan keselamatan",
       "description": "Sisa W-2. Dua menu yang dilewati H060 dan disebut apa adanya sebagai belum selesai alih-alih didiamkan: mutu dan keselamatan. Keduanya kini berlayar, sehingga 25 menu berlayar dan 48 masih segera hadir. Pola yang sama dengan H059 dan H060: daftar yang PUNYA layar, gagal berisik bila satu utas pun tidak cocok."
+    },
+    {
+      "version": "H062",
+      "sequence": 1062,
+      "file": "H062__health__menu_truth_w3.sql",
+      "name": "eMedik: menu berlayar W-3",
+      "description": "Lima utas W-3: klaim, telaah-klaim, bpjs, sep, kepesertaan. Sesudahnya 30 menu berlayar dan 43 masih segera hadir. Beberapa menu menunjuk layar yang SAMA dengan sengaja: penelaah membuka klaim yang sama dengan yang dibuka petugas, hanya menekan tombol yang berbeda, dan dua layar untuk satu berkas berarti dua tempat yang harus tetap sepakat — pada saatnya salah satunya akan tertinggal. Pola sama dengan H059-H061: daftar yang PUNYA layar, gagal berisik bila satu utas pun tidak cocok."
     }
   ]
 }

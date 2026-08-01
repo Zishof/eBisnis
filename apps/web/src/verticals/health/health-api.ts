@@ -700,6 +700,116 @@ export interface PapanMutu {
   recordCompleteness: { score: number; message: string };
 }
 
+/*
+ * --- W-3: klaim dan BPJS ---------------------------------------------------
+ *
+ * PERHATIKAN KONVENSI YANG BERBEDA pada satu domain yang sama: daftar kerja
+ * klaim memakai `snake_case`, satu klaim memakai `camelCase`. Keduanya
+ * diperiksa langsung ke peladen; tidak ada yang disimpulkan dari yang lain.
+ *
+ * Ini persis jenis hal yang akan salah bila ditebak — dan yang salah tebak
+ * tidak menghasilkan galat kompilasi, melainkan halaman kosong.
+ */
+
+export interface BarisKlaim {
+  id: string;
+  claim_number: string;
+  status: string;
+  service_date: string | null;
+  submitted_amount: number | null;
+  approved_amount: number | null;
+  paid_amount: number | null;
+  rejection_reason: string | null;
+  needs_review: boolean;
+  patient_name: string;
+  blocking_findings: number;
+  open_flags: number;
+}
+
+export interface TemuanKlaim {
+  finding_type: string;
+  message: string;
+  blocks_submission: boolean;
+  responsible_role: string | null;
+  detected_at: string | null;
+  resolved_at: string | null;
+}
+
+export interface PenandaKlaim {
+  id: string;
+  flag_type: string;
+  message: string;
+  raised_at: string | null;
+  reviewed_at: string | null;
+  review_outcome: string | null;
+  review_note: string | null;
+}
+
+export interface RincianKlaim {
+  id: string;
+  claimNumber: string;
+  status: string;
+  patientId: string;
+  facilityId: string;
+  encounterId: string | null;
+  admissionId: string | null;
+  codingId: string | null;
+  sepNumber: string | null;
+  serviceDate: string | null;
+  admittedAt: string | null;
+  dischargedAt: string | null;
+  billedClass: string | null;
+  entitledClass: string | null;
+  submittedAmount: number | null;
+  approvedAmount: number | null;
+  paidAmount: number | null;
+  rejectionReason: string | null;
+  needsReview: boolean;
+  codedBy: string | null;
+  approvalGap: number | null;
+  paymentGap: number | null;
+  needsReason: string | null;
+  message: string | null;
+  findings: TemuanKlaim[];
+  flags: PenandaKlaim[];
+}
+
+export interface BarisSebabTolak {
+  rejection_reason: string;
+  claim_count: number;
+  total_gap: number;
+}
+
+export interface KatalogBpjs {
+  adapters: Array<{ kode: string; nama: string; cakupan: string; penghalang: string }>;
+  paymentMethods: unknown;
+  itemDataPurpose: unknown;
+  note: string;
+}
+
+export interface KemampuanBpjs {
+  items: Array<{
+    id: string;
+    adapterCode: string;
+    status: string;
+    blocker: string | null;
+    verifiedAt: string | null;
+    scope: string;
+  }>;
+  summary: unknown;
+}
+
+export interface BarisSep {
+  id: string;
+  sep_number: string;
+  sep_date: string | null;
+  service_type: string | null;
+  benefit_class: string | null;
+  occupied_class: string | null;
+  status: string | null;
+  patient_name: string;
+}
+
 export const healthApi = {
   // Fasilitas dan katalog tidak menyentuh rekam medis, sehingga tidak menuntut
   // tujuan penggunaan.
@@ -1215,6 +1325,45 @@ export const healthApi = {
     api.post<Record<string, unknown>>('/health/him/quality/measurements', body, {
       headers: tajuk(ctx),
     }),
+
+  // --- W-3: klaim dan BPJS ---------------------------------------------------
+  //
+  // Daftar kerja klaim, laporan sebab penolakan, katalog dan kemampuan adapter
+  // TIDAK membawa tujuan penggunaan: peladennya tidak menuntutnya, sebab
+  // seluruhnya daftar kerja dan agregat. Satu klaim membawanya — ia menyebut
+  // satu pasien.
+
+  claims: (facilityId: string, status?: string) =>
+    api.get<BarisKlaim[]>(
+      `/health/claims?facilityId=${facilityId}${status ? `&status=${status}` : ''}`,
+    ),
+
+  claim: (id: string, ctx: KonteksAkses) =>
+    api.get<RincianKlaim>(`/health/claims/${id}`, { headers: tajuk(ctx) }),
+
+  claimRejectionReport: (facilityId: string, year: number) =>
+    api.get<BarisSebabTolak[]>(
+      `/health/claims/rejection-report?facilityId=${facilityId}&year=${year}`,
+    ),
+
+  verifyClaim: (id: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>(`/health/claims/${id}/verify`, body, { headers: tajuk(ctx) }),
+
+  submitClaim: (id: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>(`/health/claims/${id}/submit`, body, { headers: tajuk(ctx) }),
+
+  reviewClaimFlag: (id: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>(`/health/claims/flags/${id}/review`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  bpjsCatalog: () => api.get<KatalogBpjs>('/health/bpjs/catalog'),
+
+  bpjsAdapters: (facilityId: string) =>
+    api.get<KemampuanBpjs>(`/health/bpjs/adapters?facilityId=${facilityId}`),
+
+  bpjsSep: (facilityId: string) =>
+    api.get<BarisSep[]>(`/health/bpjs/sep?facilityId=${facilityId}`),
 
   // --- W-2: telaah darurat ---------------------------------------------------
 

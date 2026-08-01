@@ -1,6 +1,6 @@
 ==============================================================================
 BUKTI KONTRAK — BENTUK JAWABAN PELADEN vs TIPE KLIEN WEB
-Waktu   : 2026-08-01T14:31:01.547Z
+Waktu   : 2026-08-01T14:47:36.093Z
 Schema  : demo
 ==============================================================================
 
@@ -22,6 +22,12 @@ Schema  : demo
   LULUS  breakGlassQueue → AntreanTelaah (3 medan wajib)
   LULUS  breakGlassReviews → RiwayatTelaah (2 medan wajib)
   LULUS  breakGlassSummary → RingkasTelaah (5 medan wajib)
+  LULUS  bpjsCatalog → KatalogBpjs (4 medan wajib)
+  LULUS  bpjsAdapters → KemampuanBpjs (2 medan wajib)
+  LULUS  claims → BarisKlaim (12 medan wajib)
+  LULUS  claimRejectionReport → BarisSebabTolak (3 medan wajib)
+  LULUS  bpjsSep → BarisSep (8 medan wajib)
+  LULUS  claim → RincianKlaim (26 medan wajib)
   LULUS  legalHolds → StatusPenahanan (3 medan wajib)
   LULUS  immunizationStatus → StatusImunisasi (4 medan wajib)
   LULUS  growthHistory → BarisPertumbuhan (15 medan wajib)
@@ -35,5 +41,5 @@ Schema  : demo
   Angka itu BUKAN kelulusan. Ia daftar yang masih harus dilihat orang.
 
 ==============================================================================
-SELURUH KONTRAK YANG DAPAT DIPERIKSA COCOK (17)
+SELURUH KONTRAK YANG DAPAT DIPERIKSA COCOK (23)
 ==============================================================================

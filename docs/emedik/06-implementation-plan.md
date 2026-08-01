@@ -2064,15 +2064,41 @@ pelepasan informasi, telaah darurat, keselamatan pasien, indikator mutu.
 naskah bukti kontrak dan bukan oleh uji mana pun. Rinciannya pada
 [changelog](../changelog/health.md).
 
+### W-3 · Klaim dan BPJS — **SELESAI**
+
+Dua layar untuk lima menu: klaim (juga dipakai telaah klaim) dan BPJS (juga
+dipakai SEP dan kepesertaan).
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H062__health__menu_truth_w3.sql` |
+| Layar | `ClaimPage`, `BpjsPage` |
+| Klien | `health-api.ts` — 9 jalan, 8 antarmuka baru |
+| Uji | `claim-pages.spec.tsx` 12 |
+| Bukti | `prove-web-contract.mjs` diperluas: 17 -> 23 pemeriksaan |
+
+**Keputusan yang menentukan bentuknya**
+
+- **Selisih ditampilkan sebagai uang, bukan sebagai status.** Klaim yang
+  "dibayar" belum tentu dibayar penuh, dan angka itu tidak muncul di mana pun
+  kecuali dihitung.
+- **Naik kelas ditandai**, pada klaim maupun pada SEP. Sah dan lazim, tetapi ia
+  mengubah siapa yang membayar selisihnya.
+- **Penghalang adapter ditampilkan apa adanya.** Layar yang meringkasnya jadi
+  lencana merah membuat petugas mencoba lagi besok; layar yang menyebutkan
+  "kredensial belum ada" membuatnya berhenti mencoba dan mulai bekerja.
+- **Beberapa menu menunjuk layar yang sama.** Penelaah membuka klaim yang sama
+  dengan yang dibuka petugas, hanya menekan tombol berbeda — dua layar untuk
+  satu berkas berarti dua tempat yang harus tetap sepakat.
+
 ### Yang belum berlayar
 
-48 menu masih bertanda "segera hadir", dan kini menunya **berkata begitu
+43 menu masih bertanda "segera hadir", dan kini menunya **berkata begitu
 sebelum diklik**, bukan sesudah. Urutan berikutnya yang disarankan, menurut
 ukuran yang sama — berapa orang tidak dapat bekerja tanpanya:
 
 | Fase | Cakupan | Sebab didahulukan |
 |---|---|---|
-| W-3 | Klaim dan BPJS: kepesertaan, SEP, klaim, telaah, rekonsiliasi | Pendapatan rumah sakit; tertunda berarti kas tertunda |
 | W-4 | Tarif dan jasa: tarif, kebijakan jasa, kontributor, settlement, kontrak fee | Penagihan tidak benar tanpa tarif |
 | W-5 | Alat: registri, gateway, pemeliharaan, keamanan, pesan/hasil | Keselamatan pasien |
 | W-6 | Master data, terminologi, KFA, pemetaan kode, SATUSEHAT | Prasyarat mutu data, bukan kerja harian |
