@@ -33,9 +33,10 @@ import { SuratModule } from './modules/surat/surat.module';
 import { CooperativeModule } from './modules/cooperative/cooperative.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { AiModule } from './modules/ai/ai.module';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
+import { EducationSchemaGuard } from './infrastructure/tenant/education-schema.guard';
 
 @Module({
   providers: [
@@ -45,6 +46,18 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
     // pernah memperoleh pengumpul metrik.
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: PerformanceInterceptor },
+    /*
+     * Guard schema pendidikan didaftarkan GLOBAL, bukan dipasang per controller.
+     *
+     * Controller pendidikan yang lupa memasangnya tidak akan gagal — ia akan
+     * memakai schema inti dari sesi, dan kueri pendidikan di schema inti
+     * menghasilkan galat "relasi tidak ada" yang membuat pembacanya mencari
+     * sebabnya pada migrasi, bukan pada schema yang keliru.
+     *
+     * Permintaan di luar `/api/v1/education/` melewatinya dengan satu
+     * pemeriksaan awalan string.
+     */
+    { provide: APP_GUARD, useClass: EducationSchemaGuard },
   ],
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [appConfig], cache: true }),
