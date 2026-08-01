@@ -159,12 +159,34 @@ export class TenantMigrationService {
    * Terapkan seluruh migration yang belum diterapkan pada satu schema tenant.
    * Idempotent: migration yang sudah tercatat dilewati; checksum yang berbeda
    * menghasilkan error, bukan penerapan diam-diam.
+   *
+   * ## `modules`: menerapkan sebagian ke schema yang berbeda
+   *
+   * Tanpa `modules`, seluruh katalog diterapkan ke satu schema — perilaku sejak
+   * Versi 5, dan yang dipakai schema inti beserta modul yang menumpang di sana
+   * (koperasi).
+   *
+   * Dengan `modules`, hanya migration milik modul yang disebut yang diterapkan,
+   * dan migration inti dilewati. Itulah yang membuat `{username}_eschool` berisi
+   * tabel sekolah saja alih-alih salinan seluruh tabel inti.
+   *
+   * Daftar kosong ditolak, bukan diperlakukan sebagai "semua". Pemanggil yang
+   * menghitung daftar modulnya dan memperoleh kosong hampir selalu salah; kalau
+   * ia lolos sebagai "semua", seluruh tabel inti akan terbentuk di schema
+   * vertical dan tidak ada satu pun galat yang muncul.
    */
   async applyAll(
     schemaName: string,
     auditSchemaName: string,
-    options: { tenantId?: string | null } = {},
+    options: { tenantId?: string | null; modules?: readonly string[] } = {},
   ): Promise<MigrationApplyResult[]> {
+    if (options.modules && options.modules.length === 0) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Daftar modul kosong. Hilangkan `modules` untuk menerapkan seluruh katalog, ' +
+          'atau sebutkan modulnya — daftar kosong hampir selalu berarti pemanggilnya salah hitung.',
+      );
+    }
     if (!SCHEMA_NAME_REGEX.test(schemaName)) {
       throw AppError.badRequest(ErrorCodes.INVALID_SCHEMA_NAME, `Schema tidak valid: ${schemaName}`);
     }
@@ -204,7 +226,26 @@ export class TenantMigrationService {
 
     const results: MigrationApplyResult[] = [];
 
+    const modulDiminta = options.modules ? new Set(options.modules) : null;
+
     for (const definition of this.getManifest().migrations) {
+      if (modulDiminta) {
+        // Migration inti tidak punya `module`. Ketika sebuah daftar modul
+        // diminta, keduanya sama-sama dilewati bila tidak disebut.
+        if (!definition.module || !modulDiminta.has(definition.module)) continue;
+      } else if (definition.ownSchema) {
+        /*
+         * Tanpa daftar modul, yang diterapkan adalah schema INTI — dan modul
+         * yang tinggal di schema sendiri tidak boleh ikut ke sana.
+         *
+         * Bila ikut, setiap tenant memperoleh tabel pendidikan di schema
+         * intinya. Tidak ada galat yang muncul: tabelnya terbentuk, kueri
+         * berhasil, dan isolasi antarvertical yang seharusnya ditegakkan
+         * PostgreSQL berubah menjadi konvensi penamaan.
+         */
+        continue;
+      }
+
       const { sql, checksum } = this.loadSql(definition);
       const existingChecksum = appliedMap.get(definition.version);
 

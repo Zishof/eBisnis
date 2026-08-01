@@ -1,0 +1,18 @@
+{
+  "$comment": "Manifest migrasi vertical eSchool (Versi 13 E13-6 fondasi). Diterapkan ke schema {username}_eschool. Merujuk tabel kernel di {username}_education lewat id, tanpa foreign key lintas schema — rujukannya ditegakkan aplikasi, sebab FK lintas schema mengikat urutan penghapusan dan membuat penonaktifan modul mustahil tanpa menyentuh kernel.",
+  "module": "eschool",
+  "schemaVersion": 1,
+  "dependsOn": [
+    "core",
+    "education"
+  ],
+  "ownSchema": true,
+  "migrations": [
+    {
+      "id": "20260801T180000__eschool__pupil_and_class",
+      "file": "20260801T180000__eschool__pupil_and_class.sql",
+      "name": "Murid, rombel, dan otoritas wali",
+      "description": "eschool_pupil_profile, eschool_grade_level, eschool_homeroom_class, eschool_pupil_placement, eschool_guardian_authority. `eschool_guardian_authority` yang paling menentukan keamanannya: ia satu-satunya sumber kebenaran bagi cakupan data GUARDIAN_CHILD, dan ia bertanggal berlaku karena hak asuh dapat berubah — portal wali harus mengikuti keadaan yang berlaku saat diakses, bukan saat tautan dibuat. Penempatan murid disimpan sebagai riwayat, bukan kolom pada murid, sebab rapor semester lalu milik rombel lama dan menimpanya membuat rapor menunjuk wali kelas yang tidak pernah mengajarnya."
+    }
+  ]
+}
