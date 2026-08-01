@@ -5,6 +5,33 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9M — Kerangka impor KFA dan terminologi resmi
+
+### Ditambahkan
+
+- **`H048__health__kfa_import.sql`** — `terminology_catalog`,
+  `terminology_import`, `kfa_mapping`. Constraint
+  `terminology_official_has_edition`, `terminology_import_applied_clean`,
+  `terminology_import_apply_not_self`, `kfa_mapping_method_valid`.
+- **`H049__health__kfa_permissions.sql`** — satu menu baru, aksi `VERIFY` pada
+  menu terminologi yang sudah ada sejak H-9, satu peran baru (Penanggung Jawab
+  Farmasi), dan satu aturan pemisahan wewenang.
+- **`health-kfa.ts`** — sumber data, klaim resmi, terminologi, penilaian tanpa
+  katalog, pemetaan KFA, berkas impor, dan penerapannya. **41 pengujian.**
+- **`health-kfa.service.ts`** dan **`health-kfa.controller.ts`** — 8 jalan pada
+  `/api/v1/health/terminology/**`.
+- **`prove-health-kfa.mjs`** — naskah bukti, **52 pemeriksaan**, seluruhnya
+  lulus dan lulus pula pada pengulangan.
+
+### Catatan bagi Core
+
+Tidak ada permintaan perubahan shared Core. Katalog terminologi bersifat
+tenant-wide — ICD-10 tidak berbeda antar fasilitas — dan penanda sumbernya
+memastikan katalog yang kosong tidak pernah menyamar sebagai yang terisi.
+
+Uji: API 2290 → **2334**.
+
+---
 ## H-9B — Kerangka BPJS/JKN dan gerbang adapternya
 
 ### Ditambahkan

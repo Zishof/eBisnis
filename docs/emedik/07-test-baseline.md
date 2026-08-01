@@ -85,8 +85,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9I | 25 | **88** | `health-device-adapter.spec.ts` |
 | H-9A | 20 | **48** | `health-satusehat.spec.ts` |
 | H-9B | 20 | **51** | `health-bpjs.spec.ts` |
+| H-9M | 20 | **41** | `health-kfa.spec.ts` |
 
-API keseluruhan: **2290** pengujian pada 68 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **2334** pengujian pada 69 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -123,6 +124,36 @@ sungguhan, pada basis data sungguhan:
 | H-9I | `prove-health-device-adapter.mjs` | 58 pemeriksaan, seluruhnya lulus — [bukti-h9i-adapter-alat.txt](bukti-h9i-adapter-alat.txt) |
 | H-9A | `prove-health-satusehat.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9a-satusehat.txt](bukti-h9a-satusehat.txt) |
 | H-9B | `prove-health-bpjs.mjs` | 62 pemeriksaan, seluruhnya lulus — [bukti-h9b-bpjs.txt](bukti-h9b-bpjs.txt) |
+| H-9M | `prove-health-kfa.mjs` | 52 pemeriksaan, seluruhnya lulus — [bukti-h9m-kfa.txt](bukti-h9m-kfa.txt) |
+
+**Naskah H-9M mengulang pelajaran H-9E dengan bentuk yang sedikit berbeda, dan
+kali ini ia lulus pada jalan pertama lalu GAGAL pada jalan kedua.**
+
+Uji "seluruh katalog kosong" benar pada jalan pertama. Pada jalan kedua ia
+gagal — sebab jalan pertama sudah menerapkan impor KFA, dan katalog terminologi
+bersifat tenant-wide: ICD-10 tidak berbeda antar fasilitas, sehingga penerapan
+impor mengubah barisnya untuk seluruh tenant.
+
+Pelajaran H-9E berbunyi *"naskah bukti yang mengukur keadaan seluruh basis data
+harus mengukur sesuatu yang tidak dapat diubahnya sendiri"*. Di sana bentuknya
+adalah menghitung baris yang lahir tanpa pembuat; di sini bentuknya adalah
+**memilih katalog yang tidak pernah disentuh naskahnya** — naskah ini mengimpor
+KFA dan LOINC, sehingga ICD-10, ICD-9-CM, SNOMED, dan WHO Growth adalah empat
+saksi yang tidak dapat dipengaruhinya.
+
+Uji "menembus klaim resmi lewat basis data" gagal dengan sebab yang sama dan
+diperbaiki dengan cara yang sama: ia semula menguji KFA, yang sesudah jalan
+pertama memang sudah berterbitan sehingga perubahannya menjadi sah. Kini ia
+menguji ICD-10.
+
+**Pengujian katalog menangkap satu hal lagi**: `HEALTH_TERMINOLOGY` sudah ada
+sejak H-9, dan H-9M sempat menambahkannya sebagai menu kedua. Uji "kode menu
+unik" menolaknya seketika. Migrasi `H049` sendiri sudah benar — penyisipan
+menunya dijaga `WHERE NOT EXISTS`, sehingga basis data hanya menerima aksi
+`VERIFY` yang baru — dan yang keliru hanyalah katalognya. Ini kebalikan dari
+cacat H037: di sana penjaga `IF NOT EXISTS` membuat migrasi diam ketika ada
+salah ketik; di sini penjaga yang sama membuat migrasi benar ketika kodenya
+kebetulan sudah ada.
 
 **Pengujian satuan H-9B menangkap sesuatu yang lebih halus daripada cacat
 kode: ia menangkap saya sedang MENGARANG.**

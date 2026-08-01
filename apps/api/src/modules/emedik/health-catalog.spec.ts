@@ -590,6 +590,33 @@ describe('peran kesehatan', () => {
     expect(clerk?.permissions).not.toContain('HEALTH_BPJS.MANAGE_CREDENTIAL');
   });
 
+  it('apoteker memvalidasi impor tetapi TIDAK menerapkannya', () => {
+    /*
+     * Katalog obat menentukan apa yang boleh diresepkan seluruh rumah sakit,
+     * dan berkas dua ribu baris adalah tempat paling mudah bagi satu baris
+     * yang keliru untuk lolos tanpa dilihat siapa pun.
+     */
+    const apoteker = HEALTH_ROLES.find((r) => r.code === 'HEALTH_PHARMACIST');
+    expect(apoteker?.permissions).toContain('HEALTH_TERMINOLOGY.VERIFY');
+    expect(apoteker?.permissions).not.toContain('HEALTH_TERMINOLOGY.APPROVE');
+  });
+
+  it('penanggung jawab farmasi menerapkan tetapi TIDAK memvalidasi', () => {
+    const pj = HEALTH_ROLES.find((r) => r.code === 'HEALTH_PHARMACY_MANAGER');
+    expect(pj?.permissions).toContain('HEALTH_TERMINOLOGY.APPROVE');
+    expect(pj?.permissions).not.toContain('HEALTH_TERMINOLOGY.VERIFY');
+    expect(pj?.permissions).not.toContain('HEALTH_TERMINOLOGY.IMPORT');
+  });
+
+  it('yang memetakan KFA adalah yang mengenal obatnya', () => {
+    // Sama seperti pemetaan kode alat pada H-9I: yang dapat membedakan
+    // Amlodipine 5 mg dari 10 mg adalah apotekernya.
+    const pemetaKfa = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_KFA_MAPPING.CREATE'),
+    ).map((r) => r.code);
+    expect(pemetaKfa).toEqual(['HEALTH_PHARMACIST']);
+  });
+
   it('tidak ada peran yang memiliki hak atas menu yang belum dibangun', () => {
     /*
      * Peran yang sudah diberi hak atas modul yang belum ada akan tampak

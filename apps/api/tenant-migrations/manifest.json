@@ -491,6 +491,20 @@
       "file": "H047__health__bpjs_permissions.sql",
       "name": "eMedik: menu, hak akses, dan peran BPJS/JKN",
       "description": "Tiga menu (HEALTH_BPJS, HEALTH_BPJS_ELIGIBILITY, HEALTH_BPJS_SEP) dan satu aturan pemisahan wewenang. Menu BPJS sengaja TERPISAH dari menu SATUSEHAT, dan pemisahannya bukan kerapian tampilan: keduanya konteks terbatas yang berbeda, dan petugas yang mengurus klaim tidak perlu — dan tidak boleh — memegang kredensial pertukaran data klinis. Yang mengaktifkan akun BPJS tidak memverifikasi adapternya, sama seperti SATUSEHAT. Petugas pendaftaran memeriksa kepesertaan dan mencatat SEP tanpa menuntut kredensial siapa pun selama adapternya belum ada."
+    },
+    {
+      "version": "H048",
+      "sequence": 1048,
+      "file": "H048__health__kfa_import.sql",
+      "name": "eMedik: kerangka impor KFA dan terminologi resmi",
+      "description": "terminology_catalog, terminology_import, kfa_mapping. Kekeliruan mahal yang ditahan migrasi ini adalah HARGA SINTETIS YANG TAMPAK RESMI: data contoh dibuat supaya penyewa baru dapat melihat sistemnya bekerja tanpa mengetik dua ribu baris, dan bila harga contoh itu tidak dibedakan dari harga resmi, seseorang akan memakainya menagih pasien — lalu ketika ketahuan, tidak ada cara membedakan mana yang contoh dan mana yang sungguhan. Karena itu setiap baris membawa data_source, dan constraint terminology_official_has_edition menegakkan bahwa hanya OFFICIAL_REFERENCE yang boleh menyebut dirinya terbitan resmi, dan hanya bila terbitannya benar-benar disebutkan: rujukan resmi tanpa nama terbitan tidak dapat diperiksa siapa pun, dan yang tidak dapat diperiksa akan dipercaya. ATURAN KEDUA, dan ia berbentuk KETIADAAN: tidak ada kolom kfa_code NOT NULL pada rx_product, tidak ada constraint yang menahan resep tanpa pemetaan, dan tidak ada trigger yang menonaktifkan obat yang belum terpetakan. Obat yang belum terpetakan ke KFA TETAP dapat dipakai di dalam rumah sakit; ia hanya tidak dapat dikirim ke SATUSEHAT. Menahan seluruh farmasi sampai pemetaannya selesai akan menghentikan pelayanan demi kerapian data, dan pelayanan yang berhenti demi kerapian data akan dijalankan di luar sistem tempat tidak ada yang mencatatnya sama sekali. Cara pemetaan adalah daftar TERTUTUP yang TIDAK MEMUAT kemiripan nama (kfa_mapping_method_valid): Amlodipine 5 mg dan Amlodipine 10 mg berbeda satu karakter dan berbeda dua kali lipat dosisnya, dan yang salah petakan akan dikirim ke SATUSEHAT sebagai obat yang bukan diberikan. Berkas impor wajib bersidik jari, dan yang diterapkan wajib nol galat (terminology_import_applied_clean) — impor sebagian menghasilkan katalog yang separuhnya baru dan separuhnya lama. Riwayat impor tidak dapat dihapus."
+    },
+    {
+      "version": "H049",
+      "sequence": 1049,
+      "file": "H049__health__kfa_permissions.sql",
+      "name": "eMedik: menu, hak akses, dan peran impor KFA",
+      "description": "Dua menu (HEALTH_TERMINOLOGY, HEALTH_KFA_MAPPING), satu peran baru (Penanggung Jawab Farmasi), dan satu aturan pemisahan wewenang. Pemisahannya: YANG MEMVALIDASI IMPOR TIDAK MENERAPKANNYA. Katalog obat menentukan apa yang boleh diresepkan seluruh rumah sakit, dan penerapan oleh pemeriksanya sendiri hanya membaca ulang keyakinannya — berkas dua ribu baris adalah tempat paling mudah bagi satu baris yang keliru untuk lolos tanpa dilihat siapa pun. Apoteker mengimpor, memvalidasi, dan memetakan KFA sebab pemetaan obat menuntut orang yang mengenal obatnya; penanggung jawab farmasi menerapkan. Ditegakkan constraint terminology_import_apply_not_self pada basis data pula."
     }
   ]
 }

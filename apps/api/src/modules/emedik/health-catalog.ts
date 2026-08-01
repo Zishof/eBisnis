@@ -501,7 +501,10 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     label: 'Terminologi',
     route: '/app/emedik/terminologi',
     icon: 'book-open',
-    actions: ['READ', 'IMPORT', 'APPROVE'],
+    // VERIFY ditambahkan H-9M: memvalidasi berkas impor sebelum diterapkan.
+    // Sengaja terpisah dari APPROVE — yang memeriksa dan yang menerapkan
+    // harus dua orang.
+    actions: ['READ', 'IMPORT', 'VERIFY', 'APPROVE'],
     sortOrder: 95,
   },
   // Katalog layanan dan master data — H-9L.
@@ -848,6 +851,23 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'CANCEL'],
     sortOrder: 124,
   },
+  // Pemetaan KFA — H-9M.
+  //
+  // Menu HEALTH_TERMINOLOGY sudah ada sejak H-9; H-9M menambahkan VERIFY
+  // padanya, bukan menu kedua. IMPORT menerima berkas, VERIFY memvalidasinya,
+  // APPROVE menerapkannya — ketiganya terpisah, sebab katalog obat menentukan
+  // apa yang boleh diresepkan seluruh rumah sakit dan berkas dua ribu baris
+  // adalah tempat paling mudah bagi satu baris yang keliru untuk lolos tanpa
+  // dilihat siapa pun.
+  {
+    code: 'HEALTH_KFA_MAPPING',
+    parentCode: 'HEALTH',
+    label: 'Pemetaan KFA',
+    route: '/app/emedik/kfa',
+    icon: 'pill',
+    actions: ['READ', 'CREATE', 'UPDATE'],
+    sortOrder: 126,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -1147,6 +1167,14 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_DRUG_MASTER.CREATE',
       'HEALTH_DRUG_MASTER.UPDATE',
       ...LAPOR_DAN_LIHAT_INSIDEN,
+      // Impor terminologi dan pemetaan KFA — H-9M. Ia mengimpor dan
+      // memvalidasi; ia TIDAK menerapkan. Pemetaan obat menuntut orang yang
+      // mengenal obatnya, sama seperti pemetaan kode alat pada H-9I.
+      'HEALTH_TERMINOLOGY.READ',
+      'HEALTH_TERMINOLOGY.IMPORT',
+      'HEALTH_TERMINOLOGY.VERIFY',
+      'HEALTH_KFA_MAPPING.READ',
+      'HEALTH_KFA_MAPPING.CREATE',
     ],
     sortOrder: 7,
   },
@@ -1702,6 +1730,29 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     sortOrder: 38,
   },
   {
+    code: 'HEALTH_PHARMACY_MANAGER',
+    name: 'Penanggung Jawab Farmasi',
+    description:
+      'Menerapkan impor katalog obat dan menelaah pemetaan KFA. TIDAK memvalidasi berkas ' +
+      'impornya sendiri — yang memeriksa dan yang menerapkan harus dua orang.',
+    /*
+     * Sengaja TANPA IMPORT dan TANPA VERIFY.
+     *
+     * Menerapkan impor mengubah apa yang boleh diresepkan SELURUH rumah sakit.
+     * Penerapan oleh pemeriksanya sendiri hanya membaca ulang keyakinannya, dan
+     * berkas dua ribu baris adalah tempat paling mudah bagi satu baris yang
+     * keliru untuk lolos tanpa dilihat siapa pun.
+     */
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_TERMINOLOGY.READ',
+      'HEALTH_TERMINOLOGY.APPROVE',
+      'HEALTH_KFA_MAPPING.READ',
+      'HEALTH_KFA_MAPPING.UPDATE',
+    ],
+    sortOrder: 41,
+  },
+  {
     code: 'HEALTH_INTEROP_OFFICER',
     name: 'Petugas Interoperabilitas',
     description:
@@ -1998,6 +2049,19 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'pada basis data pula — kendali jarak jauh menuntut enam syarat sekaligus, dan basis ' +
       'data menolak baris yang kurang satu pun.',
     conflictingPermissions: ['HEALTH_DEVICE.MANAGE_DEVICE', 'HEALTH_DEVICE.ACTIVATE'],
+  },
+  {
+    code: 'HEALTH_SOD_TERMINOLOGY_APPLY',
+    name: 'Yang memvalidasi impor terminologi tidak menerapkannya',
+    description:
+      'Katalog obat menentukan apa yang boleh diresepkan seluruh rumah sakit. Penerapan oleh ' +
+      'pemeriksanya sendiri hanya membaca ulang keyakinannya — dan berkas dua ribu baris adalah ' +
+      'tempat paling mudah bagi satu baris yang keliru untuk lolos tanpa dilihat siapa pun. ' +
+      'Ditegakkan constraint terminology_import_apply_not_self pada basis data pula, beserta ' +
+      'terminology_import_applied_clean yang menolak penerapan impor yang masih bergalat: impor ' +
+      'sebagian menghasilkan katalog yang separuhnya baru dan separuhnya lama, dan tidak ada ' +
+      'yang tahu baris mana yang mana.',
+    conflictingPermissions: ['HEALTH_TERMINOLOGY.VERIFY', 'HEALTH_TERMINOLOGY.APPROVE'],
   },
   {
     code: 'HEALTH_SOD_BPJS_VERIFY',

@@ -1616,6 +1616,75 @@ Uji >= 20 -> **51 tercapai**, ditambah naskah bukti 62 pemeriksaan.
 nilai tarif resmi. `kelompokkanInacbg()` ada sebagai fungsi yang **melempar**
 beserta penjelasannya.
 
+### H-9M · Kerangka impor KFA dan terminologi resmi — **SELESAI**
+
+Katalog terminologi beserta penanda sumbernya, berkas impor bersidik jari,
+alur terima–validasi–terapkan yang dipegang dua orang, dan pemetaan KFA.
+
+Uji >= 20 -> **41 tercapai**, ditambah naskah bukti 52 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H048__health__kfa_import.sql`, `H049__health__kfa_permissions.sql` |
+| Aturan murni | `health-kfa.ts` + 41 pengujian |
+| Layanan | `health-kfa.service.ts` |
+| Endpoint | `health-kfa.controller.ts` — 8 jalan di `/api/v1/health/terminology/**` |
+| Katalog | `health-catalog.ts` — 1 menu baru, `VERIFY` pada menu H-9, 1 peran, 1 aturan SoD |
+| Bukti | `scripts/prove-health-kfa.mjs` -> [bukti-h9m-kfa.txt](bukti-h9m-kfa.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **HARGA SINTETIS TIDAK DAPAT MENYEBUT DIRINYA RESMI.** Data contoh dibuat
+  supaya penyewa baru dapat melihat sistemnya bekerja tanpa mengetik dua ribu
+  baris. Bila harga contoh itu tidak dibedakan dari harga resmi, seseorang akan
+  memakainya menagih pasien — dan ketika ketahuan, tidak ada cara membedakan
+  mana yang contoh dan mana yang sungguhan. Setiap baris membawa `data_source`,
+  dan constraint `terminology_official_has_edition` menuntut yang mengaku resmi
+  menyebutkan terbitan beserta tanggalnya: rujukan "resmi" tanpa nama terbitan
+  tidak dapat diperiksa siapa pun, dan **yang tidak dapat diperiksa akan
+  dipercaya**.
+
+- **OBAT YANG BELUM TERPETAKAN KE KFA TETAP DAPAT DIPAKAI**, dan itu berbentuk
+  **ketiadaan**: tidak ada kolom `kfa_code NOT NULL` pada tabel produk, tidak
+  ada constraint yang menahan resep tanpa pemetaan, dan tidak ada trigger yang
+  menonaktifkan obat yang belum terpetakan. Naskah bukti memeriksa ketiganya.
+  Yang tidak dapat dilakukan hanyalah mengirimkannya ke SATUSEHAT. Menahan
+  seluruh farmasi sampai pemetaannya selesai akan menghentikan pelayanan demi
+  kerapian data — dan pelayanan yang berhenti demi kerapian data akan
+  dijalankan **di luar sistem**, tempat tidak ada yang mencatatnya sama sekali.
+
+- **PEMETAAN BERDASARKAN KEMIRIPAN NAMA DITOLAK**, pada layanan maupun pada
+  basis data — daftar cara pemetaannya tertutup dan tidak memuatnya sama sekali.
+  "Amlodipine 5 mg" dan "Amlodipine 10 mg" berbeda satu karakter dan berbeda dua
+  kali lipat dosisnya, dan yang salah petakan akan dikirim ke SATUSEHAT sebagai
+  obat yang bukan diberikan.
+
+- **Tanpa katalognya, sistem berkata "belum dapat dinilai"** — bukan "tidak ada
+  masalah". "Tidak ada interaksi obat" pada sistem yang belum punya katalog
+  interaksinya adalah kebohongan yang berbeda, dan yang membacanya bertindak
+  berbeda pula.
+
+- **Berkas impor disimpan beserta sidik jarinya**, dan duplikat dikenali dari
+  isinya — berkas yang sama dengan nama berbeda tetap berkas yang sama.
+
+- **Impor yang masih bergalat tidak diterapkan.** Impor sebagian menghasilkan
+  katalog yang separuhnya baru dan separuhnya lama, dan tidak ada yang tahu
+  baris mana yang mana.
+
+- **Yang memvalidasi tidak menerapkannya sendiri.** Katalog obat menentukan apa
+  yang boleh diresepkan seluruh rumah sakit, dan berkas dua ribu baris adalah
+  tempat paling mudah bagi satu baris yang keliru untuk lolos tanpa dilihat
+  siapa pun.
+
+- **Yang memetakan KFA adalah apotekernya**, sama seperti yang memetakan kode
+  alat pada H-9I adalah analis laboratoriumnya. Bukan soal kepercayaan melainkan
+  soal siapa yang sanggup melihat kekeliruannya.
+
+**Yang belum:** isi seluruh katalog. Strukturnya ada, dan penanda sumbernya
+memastikan yang kosong tidak pernah menyamar sebagai yang terisi.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -1691,7 +1760,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 12. H-9I   Adapter HL7/ASTM; DICOM menunggu PACS           [SELESAI]
 13. H-9A   Kerangka SATUSEHAT beserta gerbang kemampuan    [SELESAI]
 14. H-9B   Kerangka BPJS beserta gerbang kemampuan         [SELESAI]
-15. H-9M   Kerangka impor KFA
+15. H-9M   Kerangka impor KFA                              [SELESAI]
 ```
 
 Tiga yang terakhir sengaja diletakkan paling belakang: keluarannya adalah
