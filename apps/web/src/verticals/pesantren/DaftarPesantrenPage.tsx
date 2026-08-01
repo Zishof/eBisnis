@@ -23,7 +23,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { Check, Loader2, X } from 'lucide-react';
+import { AlertCircle, Check, Clock, Loader2, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { api } from '../../lib/api';
 import { useErrorMessage } from '../../app/auth-context';
@@ -35,6 +35,7 @@ import {
   TIPE_PESANTREN_BAWAAN,
   pilihanDipakai,
 } from './pilihan-pesantren';
+import { halanganKirim, type KeadaanFormulir } from './halangan-kirim';
 
 interface Pilihan {
   code: string;
@@ -297,21 +298,47 @@ export function DaftarPesantrenPage() {
     },
   });
 
-  const bolehKirim =
-    setujuSyarat &&
-    setujuPrivasi &&
-    jenjang.length > 0 &&
-    cekSlug.data?.tersedia === true &&
-    cekUsername.data?.available === true;
+  /*
+   * Mengapa tombol kirim belum dapat ditekan — dihitung terus-menerus, bukan
+   * hanya saat tombolnya ditekan.
+   *
+   * Tombol yang mati tidak dapat ditekan, sehingga penjelasan yang baru muncul
+   * "saat ditekan" tidak akan pernah muncul. Karena itu daftarnya digambar di
+   * atas tombol, selalu.
+   */
+  const keadaan: KeadaanFormulir = {
+    namaPondok,
+    email: watch('email', ''),
+    slugSitus,
+    desiredUsername: username,
+    jumlahJenjangDipilih: jenjang.length,
+
+    slugSedangDiperiksa: cekSlug.isFetching,
+    slugTersedia: cekSlug.data?.tersedia,
+    slugGagalDiperiksa: cekSlug.isError,
+    slugSudahDijawab: cekSlug.isFetched,
+    slugPesan: cekSlug.data?.pesan,
+
+    usernameSedangDiperiksa: cekUsername.isFetching,
+    usernameTersedia: cekUsername.data?.available,
+    usernameGagalDiperiksa: cekUsername.isError,
+    usernameSudahDijawab: cekUsername.isFetched,
+    usernamePesan: cekUsername.data?.message,
+
+    setujuSyarat,
+    setujuPrivasi,
+  };
+
+  const halangan = halanganKirim(keadaan);
+  const bisaKirim = halangan.length === 0;
 
   const onSubmit = handleSubmit((nilai) => {
     setGalat(null);
     setGalatMedan({});
-    if (!bolehKirim) {
-      setGalat(
-        'Lengkapi alamat situs dan nama pengguna yang tersedia, pilih jenjang, ' +
-          'dan setujui syarat serta kebijakan privasi.',
-      );
+    if (!bisaKirim) {
+      // Tidak menyusun kalimat baru di sini. Daftarnya sudah tergambar di atas
+      // tombol; kalimat kedua yang berbeda bunyinya justru membingungkan.
+      setLangkah(halangan[0].langkah - 1);
       return;
     }
     kirim.mutate(nilai);
@@ -688,6 +715,7 @@ export function DaftarPesantrenPage() {
               <KotakPeriksa
                 aktif={slugQuery.length >= 3}
                 memuat={cekSlug.isFetching}
+                gagal={cekSlug.isError}
                 tersedia={cekSlug.data?.tersedia}
                 pesan={cekSlug.data?.pesan}
                 keterangan={cekSlug.data?.host ? `https://${cekSlug.data.host}` : undefined}
@@ -716,6 +744,7 @@ export function DaftarPesantrenPage() {
               <KotakPeriksa
                 aktif={usernameQuery.length >= 3}
                 memuat={cekUsername.isFetching}
+                gagal={cekUsername.isError}
                 tersedia={cekUsername.data?.available}
                 pesan={cekUsername.data?.message}
                 usulan={cekUsername.data?.suggestions}
@@ -786,6 +815,67 @@ export function DaftarPesantrenPage() {
           </div>
         )}
 
+        {/*
+          Daftar alasan tombol kirim belum dapat ditekan.
+
+          Hanya tampil pada langkah terakhir — di langkah sebelumnya tombolnya
+          memang "Lanjut", dan menampilkan daftar ini di sana berarti memarahi
+          orang yang belum sampai pada isian yang bersangkutan.
+        */}
+        {langkah === LANGKAH.length - 1 && halangan.length > 0 && (
+          <div
+            className="mt-8 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40"
+            role="status"
+            data-testid="halangan-kirim"
+          >
+            <p className="flex items-center gap-2 font-semibold text-amber-900 dark:text-amber-100">
+              <AlertCircle className="h-5 w-5 shrink-0" aria-hidden />
+              Tombol &ldquo;Daftarkan pondok&rdquo; belum dapat ditekan
+            </p>
+            <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+              Ada {halangan.length} hal yang perlu diselesaikan lebih dahulu:
+            </p>
+
+            <ol className="mt-3 space-y-3">
+              {halangan.map((h, i) => (
+                <li
+                  key={h.kode}
+                  className="rounded-lg border border-amber-200 bg-white p-3 dark:border-amber-900 dark:bg-slate-900"
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-amber-600 text-xs font-bold text-white">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-start gap-1.5 font-medium text-slate-900 dark:text-white">
+                        {h.menunggu && (
+                          <Clock
+                            className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+                            aria-hidden
+                          />
+                        )}
+                        <span className="break-words">{h.apa}</span>
+                      </p>
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                        {h.tindakan}
+                      </p>
+                      {h.langkah !== LANGKAH.length && (
+                        <button
+                          type="button"
+                          className="mt-2 rounded-lg border border-amber-400 px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-100 dark:hover:bg-amber-950"
+                          onClick={() => setLangkah(h.langkah - 1)}
+                        >
+                          Buka langkah {h.langkah}: {LANGKAH[h.langkah - 1]}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
         <div className="mt-8 flex items-center justify-between gap-3">
           <button
             type="button"
@@ -808,7 +898,7 @@ export function DaftarPesantrenPage() {
             <button
               type="submit"
               className="rounded-lg bg-emerald-700 px-5 py-2.5 font-semibold text-white hover:bg-emerald-800 disabled:opacity-40"
-              disabled={!bolehKirim || kirim.isPending}
+              disabled={!bisaKirim || kirim.isPending}
               data-testid="kirim-pendaftaran-pesantren"
             >
               {kirim.isPending ? 'Menyiapkan…' : 'Daftarkan pondok'}
@@ -830,6 +920,7 @@ export function DaftarPesantrenPage() {
 function KotakPeriksa({
   aktif,
   memuat,
+  gagal,
   tersedia,
   pesan,
   keterangan,
@@ -837,6 +928,7 @@ function KotakPeriksa({
 }: {
   aktif: boolean;
   memuat: boolean;
+  gagal?: boolean;
   tersedia?: boolean;
   pesan?: string;
   keterangan?: string;
@@ -851,7 +943,26 @@ function KotakPeriksa({
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           Memeriksa…
         </p>
-      ) : tersedia === undefined ? null : (
+      ) : gagal ? (
+        /*
+         * Sambungan yang putus dikatakan apa adanya.
+         *
+         * Sebelumnya keadaan ini menggambar kotak bergaris tanpa satu huruf pun
+         * di dalamnya — kotak kosong yang tampak seperti kolom isian yang rusak.
+         */
+        <p className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>
+            Belum dapat diperiksa — sambungan ke server terputus. Ubah sedikit isi
+            kolom di atas untuk mencoba lagi.
+          </span>
+        </p>
+      ) : tersedia === undefined ? (
+        <p className="flex items-center gap-2 text-sm text-slate-500">
+          <Clock className="h-4 w-4" aria-hidden />
+          Menunggu hasil pemeriksaan…
+        </p>
+      ) : (
         <>
           <p
             className={clsx(
