@@ -1,0 +1,85 @@
+==============================================================================
+BUKTI H-9G — KONTRAK FEE SISTEM DAN FEE INVESTOR
+Waktu   : 2026-08-01T00:57:54.442Z
+Schema  : demo
+==============================================================================
+
+Tiga pengguna. Penyusun sengaja DIBERI hak menelaah hukum pula — supaya
+penolakannya datang dari pemeriksaan baris, bukan sekadar dari ketiadaan
+hak akses. Hak akses menjaga siapa yang boleh membuka pintu; pemeriksaan
+baris menjaga siapa yang boleh melewatinya kali ini.
+
+1. BAWAANNYA NONE
+  LULUS  migrasi tidak menyemai satu pun kontrak
+  LULUS  perhitungan tanpa kontrak berjalan
+  LULUS  dan hasilnya NOL
+  LULUS  sebabnya disebutkan: bukan taksiran, nol
+  LULUS  dan dicatat bahwa tidak ada kontraknya
+  LULUS  penerapan bernilai nol pun DICATAT, bukan didiamkan
+
+2. Tiga orang berbeda: penyusun, pemeriksa hukum, penyetuju manajemen
+  LULUS  kontrak disusun sebagai DRAFT
+  LULUS  dan diberi tahu bahwa sampai aktif fee-nya nol
+  LULUS  penyusun yang BERHAK menelaah pun ditolak
+  LULUS  penolakannya menyebut membaca ulang kalimatnya sendiri
+  LULUS  telaah hukum tanpa catatan yang bermakna ditolak
+  LULUS  pemeriksa hukum menelaahnya
+  LULUS  pemeriksa hukum yang BERHAK menyetujui pun ditolak
+  LULUS  penolakannya menyebut yang dirugikannya tidak duduk di ruangan itu
+  LULUS  penyetuju manajemen menyetujuinya
+  LULUS  menembus rantai tiga orang lewat basis data ditolak constraint
+  LULUS  kontrak diaktifkan
+
+3. Aktif menuntut SELURUH syaratnya
+  LULUS  kontrak yang kurang syaratnya DITOLAK
+  LULUS    yang kurang disebut: nomor kontrak
+  LULUS    yang kurang disebut: perlakuan pajak
+  LULUS    yang kurang disebut: batas maksimum
+  LULUS    yang kurang disebut: tanggal berlaku
+  LULUS  menembusnya lewat basis data ditolak constraint
+
+4. Kontrak tidak berlaku surut melampaui telaah hukumnya
+  LULUS  kontrak yang berlaku sejak sebelum telaahnya ditolak constraint
+
+5. Satu kontrak aktif per jenis per fasilitas
+  LULUS  kontrak aktif kedua untuk jenis yang sama ditolak indeks unik
+
+6. Syarat kontrak yang sudah aktif tidak dapat diubah
+  LULUS  menaikkan batas maksimum pada kontrak berjalan ditolak trigger
+  LULUS  penolakannya menyebut cara paling sunyi untuk mengambil lebih banyak
+  LULUS  kontrak tidak dapat dihapus
+
+7. Batas maksimum ditegakkan saat MENGHITUNG, bukan sekadar dicatat
+  LULUS  fee dihitung menurut kontraknya
+  LULUS  dan tidak dibatasi
+  LULUS  persentase yang melampaui batas DIBATASI, bukan ditolak diam-diam
+  LULUS  dan pembatasannya dinyatakan
+  LULUS  sebabnya disebutkan: perhitungan yang tidak pernah membacanya
+  LULUS  sebelum tanggal berlakunya, fee-nya nol
+  LULUS  jejak penerapannya tercatat
+  LULUS  termasuk yang dibatasi
+  LULUS  jejak yang persentase terpakainya melebihi yang diminta ditolak constraint
+
+8. Investor TIDAK PERNAH memperoleh akses data pasien
+  LULUS  peran investor tidak memegang satu pun hak atas menu klinis
+  LULUS  aturan pemisahannya terpasang dan bertingkat CRITICAL
+  LULUS  ringkasan investor terbaca
+  LULUS  tidak satu pun medan pasien di dalamnya
+  LULUS  dan penyaringannya dilaporkan, bukan diam-diam
+  LULUS  catatannya menyatakan daftar PUTIH
+
+9. Pengecualian layanan disimpan sebagai baris, bukan sebagai daftar teks
+  LULUS  pengecualian dicatat
+  LULUS  layanan yang dikecualikan tidak dikenai fee
+  LULUS  sebabnya disebutkan
+  LULUS  pengecualian ganda atas layanan yang sama ditolak indeks unik
+
+10. Kontrak yang sudah diakhiri tidak dihidupkan kembali
+  LULUS  kontrak diakhiri
+  LULUS  dan diberi tahu bahwa kontrak baru menuntut telaah hukum baru
+  LULUS  sesudah diakhiri, fee-nya kembali NOL
+  LULUS  menghidupkannya kembali ditolak
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

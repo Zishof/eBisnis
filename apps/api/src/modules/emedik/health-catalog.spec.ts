@@ -329,6 +329,41 @@ describe('peran kesehatan', () => {
     }
   });
 
+  it('pemegang kontrak investor TIDAK memperoleh satu pun hak klinis', () => {
+    /*
+     * Yang membedakan pembagian hasil dari pembukaan rekam medis bukan niat,
+     * melainkan hak akses mana yang pernah diberikan — dan hak yang pernah
+     * diberikan jarang ditarik kembali, sebab menariknya menuntut seseorang
+     * menyadari bahwa ia pernah diberikan.
+     */
+    const investor = HEALTH_ROLES.find((r) => r.code === 'HEALTH_INVESTOR_VIEWER');
+    expect(investor?.permissions).toEqual(['HEALTH.READ', 'HEALTH_FEE_CONTRACT.READ']);
+
+    const terlarang = [
+      'HEALTH_PATIENT',
+      'HEALTH_HIM_CODING',
+      'HEALTH_SAFETY',
+      'HEALTH_LAB_RESULT',
+      'HEALTH_PRESCRIPTION',
+      'HEALTH_ACCESS_LOG',
+      'HEALTH_LEGAL_HOLD',
+      'HEALTH_INFO_RELEASE',
+    ];
+    for (const p of investor?.permissions ?? []) {
+      expect(terlarang.some((t) => p.startsWith(`${t}.`))).toBe(false);
+    }
+  });
+
+  it('kontrak fee menuntut tiga peran berbeda', () => {
+    const pemegang = (aksi: string) =>
+      HEALTH_ROLES.filter((r) => r.permissions.includes(`HEALTH_FEE_CONTRACT.${aksi}`))
+        .map((r) => r.code);
+
+    expect(pemegang('CREATE')).toEqual(['HEALTH_CONTRACT_DRAFTER']);
+    expect(pemegang('REVIEW')).toEqual(['HEALTH_LEGAL_OFFICER']);
+    expect(pemegang('APPROVE')).toEqual(['HEALTH_CONTRACT_APPROVER']);
+  });
+
   it('penghapusan data contoh hanya dipegang administrator', () => {
     // Penghapusannya menolak bila ada data nyata yang merujuknya, dan keputusan
     // atas penolakan itu harus diambil orang yang dapat menilai akibatnya.

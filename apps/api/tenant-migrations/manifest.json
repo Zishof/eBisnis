@@ -351,6 +351,27 @@
       "file": "H027__health__settlement_permissions.sql",
       "name": "eMedik: menu, hak akses, dan peran settlement jasa",
       "description": "Dua menu (HEALTH_FEE_SETTLEMENT, HEALTH_FEE_STATEMENT), dua peran baru (Petugas Kalkulasi Jasa, Petugas Pembayaran Jasa), dan tiga aturan pemisahan wewenang. Empat wewenang, empat pemegang berbeda: menghitung, menyetujui, mengunci dan membayar, lalu mengoreksi. Yang menghitung tidak menyetujui sebab perhitungan yang diperiksa oleh yang menghitungnya bukan pemeriksaan. Yang menyetujui tidak membayar sebab persetujuan yang langsung menjadi transfer menghilangkan jeda terakhir sebelum uang berpindah, dan jeda itu satu-satunya kesempatan bagi orang ketiga untuk melihat angkanya sebelum ia tidak dapat ditarik kembali. Koreksi diberikan kepada petugas keuangan yang tidak menghitung maupun membayar, sehingga koreksinya diperiksa orang keempat: koreksi adalah tempat paling mudah untuk memindahkan uang tanpa ada yang melihat, sebab ia terlihat seperti pembetulan."
+    },
+    {
+      "version": "H028",
+      "sequence": 1028,
+      "file": "H028__health__fee_contract.sql",
+      "name": "eMedik: kontrak fee sistem dan fee investor",
+      "description": "fee_contract, fee_contract_exclusion, fee_contract_application. BAWAANNYA NONE: migrasi ini tidak menyemai satu pun kontrak, dan tanpa kontrak yang aktif fee sistem serta bagian investor bernilai nol — bukan nilai bawaan yang kecil, bukan taksiran, nol. TIGA ORANG BERBEDA ditegakkan berpasangan lewat constraint fee_contract_prepare_review_differ, fee_contract_review_approve_differ, dan fee_contract_prepare_approve_differ: penyusun, pemeriksa hukum, dan penyetuju manajemen. Dua orang cukup untuk sebagian besar keputusan; kontrak yang mengambil bagian dari kumpulan jasa tenaga medis menuntut tiga, sebab yang dirugikannya tidak duduk di ruangan itu dan satu-satunya pengganti kehadirannya adalah jumlah mata yang melihat. Kontrak tidak berlaku surut melampaui telaah hukumnya, ditegakkan constraint fee_contract_not_backdated: kontrak yang berlaku sejak sebelum diperiksa berarti pemeriksaannya tidak pernah menahan apa pun. Aktif menuntut SELURUH syaratnya, bukan sebagian — kontrak yang aktif dengan satu syarat kosong mengambil uang yang sama besarnya dengan kontrak yang lengkap. Syarat kontrak yang sudah aktif tidak dapat diubah, ditegakkan trigger forbid_active_contract_change: menaikkan batas maksimum pada kontrak yang sedang berjalan adalah cara paling sunyi untuk mengambil lebih banyak, sebab perubahannya tidak menimbulkan satu pun peristiwa yang terlihat dan akibatnya baru muncul pada perhitungan bulan berikutnya. Satu kontrak aktif per jenis per fasilitas: dua kontrak aktif membuat fee terhitung dua kali, dan yang menerimanya tidak akan mempersoalkannya. Kontrak dan jejak penerapannya tidak dapat dihapus — keduanya bukti bahwa uang pernah keluar dari kumpulan jasa dengan izin siapa. Pengecualian layanan disimpan sebagai baris, bukan sebagai daftar di dalam satu kolom, supaya dapat ditanyakan layanan apa saja yang dikecualikan bulan lalu."
+    },
+    {
+      "version": "H029",
+      "sequence": 1029,
+      "file": "H029__health__fee_contract_permissions.sql",
+      "name": "eMedik: menu, hak akses, dan peran kontrak fee",
+      "description": "Satu menu (HEALTH_FEE_CONTRACT), tiga peran baru (Penyusun Kontrak Fee, Penyetuju Kontrak Fee, Pemegang Kontrak Investor), dan tiga aturan pemisahan wewenang. Tiga peran, tiga orang, satu kontrak: penyusun, pemeriksa hukum, dan penyetuju manajemen. Telaah hukum menyatakan kontraknya sah; persetujuan manajemen menyatakan kontraknya dikehendaki — dua pertanyaan yang berbeda, dan menyatukan penjawabnya membuat pertanyaan kedua tidak pernah benar-benar ditanyakan. PERAN INVESTOR TIDAK MEMPEROLEH SATU PUN HAK ATAS MENU PASIEN, dan ia dibuat pada fase ini justru supaya batasnya tercatat sejak sekarang, sebelum ada dasbor yang menggodanya: yang membedakan pembagian hasil dari pembukaan rekam medis bukan niat melainkan hak akses mana yang pernah diberikan, dan hak yang pernah diberikan jarang ditarik kembali sebab menariknya menuntut seseorang menyadari bahwa ia pernah diberikan. Aturan HEALTH_SOD_INVESTOR_PATIENT bertingkat CRITICAL."
+    },
+    {
+      "version": "H030",
+      "sequence": 1030,
+      "file": "H030__health__fee_application_capped_fix.sql",
+      "name": "eMedik: pembetulan constraint penanda pembatasan fee",
+      "description": "Membetulkan fee_application_capped_consistent yang dipasang H028. Constraint itu menyamakan dua hal yang berbeda: was_capped = (applied_percent < requested_percent). Persentase terpakai yang lebih kecil daripada yang diminta punya EMPAT sebab — tidak ada kontraknya, kontraknya belum atau sudah lewat masa berlaku, layanannya dikecualikan, dan melampaui batas maksimum — dan hanya yang terakhir yang merupakan pembatasan. Akibatnya setiap perhitungan tanpa kontrak, yaitu keadaan bawaan seluruh fasilitas, ditolak basis data: fee yang bawaannya NONE justru tidak dapat dicatat sebagai nol. Pembatasan mengandaikan pengurangan, tetapi pengurangan tidak mengandaikan pembatasan; constraint-nya menjadi satu arah saja lewat fee_application_capped_implies_reduced. H028 sengaja TIDAK disunting: ia sudah diterapkan, dan checksum-nya menjaga supaya migrasi yang sudah berjalan tidak berubah diam-diam di belakang punggung lingkungan lain."
     }
   ]
 }

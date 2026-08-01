@@ -5,6 +5,69 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9G — Kontrak fee sistem dan fee investor
+
+### Ditambahkan
+
+- **`H028__health__fee_contract.sql`** — `fee_contract`,
+  `fee_contract_exclusion`, `fee_contract_application`. Beserta tiga constraint
+  berpasangan yang menegakkan rantai tiga orang, `fee_contract_not_backdated`,
+  `fee_contract_active_complete`, trigger `forbid_active_contract_change`, dan
+  indeks unik satu kontrak aktif per jenis.
+- **`H029__health__fee_contract_permissions.sql`** — satu menu, tiga peran baru,
+  tiga aturan pemisahan wewenang (satu di antaranya bertingkat `CRITICAL`).
+- **`H030__health__fee_application_capped_fix.sql`** — pembetulan constraint,
+  lihat di bawah.
+- **`health-fee-contract.ts`** — aturan sebagai fungsi murni: daur hidup
+  kontrak, rantai tiga orang, kelayakan aktivasi, perhitungan berbatas, dan
+  daftar putih medan investor. **42 pengujian.**
+- **`health-fee-contract.service.ts`** dan
+  **`health-fee-contract.controller.ts`** — sembilan jalan pada
+  `/api/v1/health/fee-contract/**`.
+- **`prove-health-fee-contract.mjs`** — naskah bukti, **52 pemeriksaan**,
+  seluruhnya lulus dan lulus pula pada pengulangan.
+
+Uji: API 1799 → **1843**.
+
+### Diperbaiki
+
+- **`fee_application_capped_consistent` menyamakan dua hal yang berbeda.**
+  Constraint itu berbunyi `was_capped = (applied_percent < requested_percent)`,
+  padahal persentase terpakai yang lebih kecil punya empat sebab — tidak ada
+  kontraknya, kontraknya belum atau sudah lewat, layanannya dikecualikan, dan
+  melampaui batas — dan hanya yang terakhir merupakan pembatasan. Akibatnya
+  setiap perhitungan **tanpa kontrak**, yaitu keadaan bawaan seluruh fasilitas,
+  ditolak basis data: fee yang bawaannya NONE justru tidak dapat dicatat sebagai
+  nol.
+
+  Pembetulannya dibawa **migrasi baru**, bukan dengan menyunting H028: yang
+  sudah diterapkan tidak diubah diam-diam di belakang punggung lingkungan lain.
+
+### Keputusan yang perlu dicatat
+
+- **BAWAANNYA NONE**, dan perhitungan bernilai nol tetap dicatat — pertanyaan
+  "mengapa bulan ini tidak ada fee" dijawab dengan barisnya sendiri, bukan
+  dengan ketiadaan baris.
+
+- **Tiga orang berbeda**, ditegakkan tiga constraint berpasangan. Naskah
+  buktinya sengaja memberi penyusun hak menelaah, supaya penolakannya datang
+  dari pemeriksaan baris — bukan dari ketiadaan hak akses.
+
+- **Batas maksimum ditegakkan saat menghitung**, dan yang melampaui dibatasi
+  serta dinyatakan, bukan ditolak diam-diam.
+
+- **Syarat kontrak yang sudah aktif tidak dapat diubah.** Menaikkan batas pada
+  kontrak berjalan adalah cara paling sunyi untuk mengambil lebih banyak.
+
+- **Kontrak yang habis masa berlakunya menghentikan fee-nya sendiri**, tanpa
+  menunggu seseorang ingat.
+
+- **Investor tidak pernah memperoleh akses data pasien**, dijaga dari dua arah:
+  peran bawaannya hanya dua hak, dan ringkasannya disaring lewat **daftar
+  putih** — daftar hitam melewatkan setiap medan yang ditambahkan kelak.
+
+---
+
 ## H-9F — Settlement jasa, koreksi, dan pernyataan
 
 ### Ditambahkan

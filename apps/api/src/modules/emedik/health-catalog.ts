@@ -617,6 +617,20 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'EXPORT'],
     sortOrder: 105,
   },
+  // Kontrak fee — H-9G.
+  //
+  // Tiga wewenang, tiga orang: CREATE menyusun, REVIEW menelaah hukum,
+  // APPROVE dan ACTIVATE menyetujui manajemen. Tanpa kontrak yang aktif, fee
+  // sistem dan bagian investor bernilai nol.
+  {
+    code: 'HEALTH_FEE_CONTRACT',
+    parentCode: 'HEALTH',
+    label: 'Kontrak Fee',
+    route: '/app/emedik/kontrak-fee',
+    icon: 'file-signature',
+    actions: ['READ', 'CREATE', 'UPDATE', 'REVIEW', 'APPROVE', 'ACTIVATE', 'CANCEL'],
+    sortOrder: 106,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -713,6 +727,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_FEE_CONTRIBUTOR.READ',
       'HEALTH_FEE_SETTLEMENT.READ',
       'HEALTH_FEE_STATEMENT.READ',
+      'HEALTH_FEE_CONTRACT.READ',
     ],
     sortOrder: 2,
   },
@@ -1162,6 +1177,55 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     sortOrder: 28,
   },
   {
+    code: 'HEALTH_CONTRACT_DRAFTER',
+    name: 'Penyusun Kontrak Fee',
+    description:
+      'Menyusun kontrak fee sistem dan fee investor. TIDAK menelaah hukum, TIDAK menyetujui, ' +
+      'dan TIDAK mengaktifkan.',
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_FEE_CONTRACT.READ',
+      'HEALTH_FEE_CONTRACT.CREATE',
+      'HEALTH_FEE_CONTRACT.UPDATE',
+      'HEALTH_SERVICE_CATALOG.READ',
+    ],
+    sortOrder: 31,
+  },
+  {
+    code: 'HEALTH_CONTRACT_APPROVER',
+    name: 'Penyetuju Kontrak Fee',
+    description:
+      'Menyetujui kontrak fee atas nama manajemen dan mengaktifkannya. TIDAK menyusun dan ' +
+      'TIDAK menelaah hukum — ketiganya harus tiga orang yang berbeda.',
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_FEE_CONTRACT.READ',
+      'HEALTH_FEE_CONTRACT.APPROVE',
+      'HEALTH_FEE_CONTRACT.ACTIVATE',
+      'HEALTH_FEE_CONTRACT.CANCEL',
+    ],
+    sortOrder: 32,
+  },
+  {
+    code: 'HEALTH_INVESTOR_VIEWER',
+    name: 'Pemegang Kontrak Investor',
+    description:
+      'Melihat ringkasan hasil usaha menurut kontraknya. TIDAK memperoleh satu pun hak atas ' +
+      'data pasien.',
+    /*
+     * Sengaja HANYA dua hak, dan keduanya bukan data pasien.
+     *
+     * Perannya dibuat lebih awal daripada dasbornya justru supaya batasnya
+     * tercatat sejak sekarang — sebelum ada layar yang menggodanya. Yang
+     * membedakan pembagian hasil dari pembukaan rekam medis bukan niat,
+     * melainkan hak akses mana yang pernah diberikan; dan hak yang pernah
+     * diberikan jarang ditarik kembali, sebab menariknya menuntut seseorang
+     * menyadari bahwa ia pernah diberikan.
+     */
+    permissions: ['HEALTH.READ', 'HEALTH_FEE_CONTRACT.READ'],
+    sortOrder: 33,
+  },
+  {
     code: 'HEALTH_SETTLEMENT_CLERK',
     name: 'Petugas Kalkulasi Jasa',
     description:
@@ -1238,6 +1302,7 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_FEE_SETTLEMENT.READ',
       'HEALTH_FEE_SETTLEMENT.REVERSE',
       'HEALTH_FEE_STATEMENT.READ',
+      'HEALTH_FEE_CONTRACT.READ',
     ],
     sortOrder: 25,
   },
@@ -1256,6 +1321,11 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_LEGAL_HOLD.DELETE',
       'HEALTH_INFO_RELEASE.READ',
       'HEALTH_INFO_RELEASE.CREATE',
+      // Menelaah hukum kontrak fee. Ia memang orang yang menelaah kontrak —
+      // dan ia TIDAK menyetujuinya, sebab telaah hukum menyatakan kontraknya
+      // sah sedangkan persetujuan menyatakan kontraknya dikehendaki.
+      'HEALTH_FEE_CONTRACT.READ',
+      'HEALTH_FEE_CONTRACT.REVIEW',
     ],
     sortOrder: 23,
   },
@@ -1414,6 +1484,27 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'settlement aslinya tidak dapat dibedakan dari pembetulan atas kekeliruan yang disengaja. ' +
       'Ditegakkan constraint fee_correction_approval_not_self pula.',
     conflictingPermissions: ['HEALTH_FEE_SETTLEMENT.CREATE', 'HEALTH_FEE_SETTLEMENT.REVERSE'],
+  },
+  {
+    code: 'HEALTH_SOD_CONTRACT_DRAFT_REVIEW',
+    name: 'Penyusun kontrak fee tidak menelaah hukumnya',
+    description:
+      'Telaah hukum yang dilakukan penyusunnya sendiri hanya membaca ulang kalimat yang baru ' +
+      'saja ditulisnya. Kontrak fee mengambil bagian dari kumpulan yang sama dengan jasa tenaga ' +
+      'medis, dan yang dirugikannya tidak duduk di ruangan itu — satu-satunya pengganti ' +
+      'kehadirannya adalah jumlah mata yang melihat. Ditegakkan constraint ' +
+      'fee_contract_prepare_review_differ pada basis data pula.',
+    conflictingPermissions: ['HEALTH_FEE_CONTRACT.CREATE', 'HEALTH_FEE_CONTRACT.REVIEW'],
+  },
+  {
+    code: 'HEALTH_SOD_CONTRACT_REVIEW_APPROVE',
+    name: 'Pemeriksa hukum tidak menyetujui kontraknya',
+    description:
+      'Telaah hukum menyatakan kontraknya sah; persetujuan manajemen menyatakan kontraknya ' +
+      'dikehendaki. Dua pertanyaan yang berbeda, dan menyatukan penjawabnya membuat pertanyaan ' +
+      'kedua tidak pernah benar-benar ditanyakan. Ditegakkan constraint ' +
+      'fee_contract_review_approve_differ pula.',
+    conflictingPermissions: ['HEALTH_FEE_CONTRACT.REVIEW', 'HEALTH_FEE_CONTRACT.APPROVE'],
   },
   /*
    * HEALTH_SOD_FEE_RECIPIENT_APPROVE sengaja TIDAK ada di sini.

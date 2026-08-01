@@ -77,8 +77,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9D | 25 | **46** | `health-tariff.spec.ts` |
 | H-9E | 25 | **56** | `health-fee.spec.ts` |
 | H-9F | 25 | **42** | `health-settlement.spec.ts` |
+| H-9G | 20 | **42** | `health-fee-contract.spec.ts` |
 
-API keseluruhan: **1799** pengujian pada 60 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **1843** pengujian pada 61 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -107,6 +108,22 @@ sungguhan, pada basis data sungguhan:
 | H-9D | `prove-health-tariff.mjs` | 43 pemeriksaan, seluruhnya lulus — [bukti-h9d-tarif.txt](bukti-h9d-tarif.txt) |
 | H-9E | `prove-health-fee.mjs` | 50 pemeriksaan, seluruhnya lulus — [bukti-h9e-jasa.txt](bukti-h9e-jasa.txt) |
 | H-9F | `prove-health-settlement.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9f-settlement.txt](bukti-h9f-settlement.txt) |
+| H-9G | `prove-health-fee-contract.mjs` | 52 pemeriksaan, seluruhnya lulus — [bukti-h9g-kontrak-fee.txt](bukti-h9g-kontrak-fee.txt) |
+
+Naskah H-9G menemukan cacat pada **constraint yang ditulis fase itu sendiri**,
+dan itulah nilainya. `fee_application_capped_consistent` menyamakan "persentase
+terpakai lebih kecil daripada yang diminta" dengan "dibatasi", padahal yang
+pertama punya empat sebab dan hanya satu di antaranya pembatasan. Akibatnya
+setiap perhitungan tanpa kontrak — keadaan bawaan seluruh fasilitas — ditolak
+basis data: fee yang bawaannya NONE justru tidak dapat dicatat sebagai nol.
+Pengujian satuannya lulus seluruhnya; aturan murninya memang benar.
+
+Naskah ini juga mengubah satu kebiasaan kecil: **tanggal dihitung relatif
+terhadap hari berjalan, tidak ditulis tetap.** Uji "kontrak tidak berlaku surut
+melampaui telaah hukumnya" semula memakai tanggal tetap yang kebetulan sudah
+lewat, sehingga naskahnya gagal karena datanya sendiri melanggar aturan yang
+hendak diujinya. Naskah bukti bertanggal tetap akan lulus hari ini dan gagal
+bulan depan — dan yang gagal bulan depan akan disangka kerusakan kode.
 
 Naskah H-9F mengulang pelajaran H-9 dengan bentuk yang berbeda. Uji "membayar
 simulasi lewat basis data ditolak constraint" semula gagal — bukan karena

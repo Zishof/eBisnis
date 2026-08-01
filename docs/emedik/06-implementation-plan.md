@@ -942,6 +942,87 @@ berpenjaga banyak, "gagal" saja tidak membuktikan penjaga yang mana yang bekerja
 **Yang belum:** penjurnalannya — settlement belum menghasilkan `accounting_event`
 karena kode peristiwa `HEALTH_*` masih menunggu Core (lihat H-9N).
 
+### H-9G · Gerbang kontrak fee sistem dan investor — **SELESAI**
+
+Kontrak fee beserta daur hidupnya, rantai tiga orang, pengecualian layanan,
+penerapan berbatas, dan jejaknya. Serta batas akses pemegang kontrak investor.
+
+Uji >= 20 -> **42 tercapai**, ditambah naskah bukti 52 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H028__health__fee_contract.sql`, `H029__health__fee_contract_permissions.sql`, `H030__health__fee_application_capped_fix.sql` |
+| Aturan murni | `health-fee-contract.ts` + 42 pengujian |
+| Layanan | `health-fee-contract.service.ts` |
+| Endpoint | `health-fee-contract.controller.ts` — 9 jalan di `/api/v1/health/fee-contract/**` |
+| Katalog | `health-catalog.ts` — 1 menu, 3 peran, 2 aturan SoD |
+| Bukti | `scripts/prove-health-fee-contract.mjs` -> [bukti-h9g-kontrak-fee.txt](bukti-h9g-kontrak-fee.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **BAWAANNYA NONE.** Tanpa kontrak yang aktif, fee sistem dan bagian investor
+  bernilai **nol** — bukan nilai bawaan yang kecil, bukan taksiran, nol. Dan
+  perhitungan bernilai nol itu tetap **dicatat**: pertanyaan "mengapa bulan ini
+  tidak ada fee" harus dapat dijawab dengan barisnya sendiri, bukan dengan
+  ketiadaan baris.
+
+- **TIGA ORANG BERBEDA:** penyusun, pemeriksa hukum, penyetuju manajemen. Dua
+  orang cukup untuk sebagian besar keputusan; kontrak yang mengambil bagian dari
+  kumpulan jasa tenaga medis menuntut tiga, sebab yang dirugikannya tidak duduk
+  di ruangan itu — dan satu-satunya pengganti kehadirannya adalah jumlah mata
+  yang melihat. Ditegakkan tiga constraint berpasangan, dan naskah buktinya
+  sengaja **memberi penyusun hak menelaah** supaya penolakannya datang dari
+  pemeriksaan baris, bukan dari ketiadaan hak akses.
+
+- **Telaah hukum dan persetujuan manajemen adalah dua pertanyaan berbeda.**
+  Yang pertama menyatakan kontraknya sah; yang kedua menyatakan kontraknya
+  dikehendaki. Menyatukan penjawabnya membuat pertanyaan kedua tidak pernah
+  benar-benar ditanyakan.
+
+- **Kontrak tidak berlaku surut melampaui telaah hukumnya.** Kontrak yang
+  berlaku sejak sebelum diperiksa berarti pemeriksaannya tidak pernah menahan
+  apa pun.
+
+- **Batas maksimum ditegakkan saat MENGHITUNG**, bukan sekadar dicatat pada
+  kontraknya. Batas yang hanya tertulis akan dilampaui oleh perhitungan yang
+  tidak pernah membacanya. Yang melampaui **dibatasi dan dinyatakan**, bukan
+  ditolak diam-diam.
+
+- **Syarat kontrak yang sudah aktif tidak dapat diubah.** Menaikkan batas
+  maksimum pada kontrak yang sedang berjalan adalah cara paling sunyi untuk
+  mengambil lebih banyak: perubahannya tidak menimbulkan satu pun peristiwa yang
+  terlihat, dan akibatnya baru muncul pada perhitungan bulan berikutnya.
+
+- **Kontrak yang habis masa berlakunya menghentikan fee-nya sendiri.** Yang
+  mengingat akhir masa kontrak adalah pihak yang menerima uangnya, dan ia tidak
+  akan mengingatkan siapa pun.
+
+- **Investor tidak pernah memperoleh akses data pasien**, dijaga dari dua arah:
+  peran bawaannya hanya memegang dua hak — `HEALTH.READ` dan
+  `HEALTH_FEE_CONTRACT.READ` — dan ringkasan yang dikirimkan kepadanya disaring
+  lewat **daftar putih**, bukan daftar hitam. Daftar hitam melewatkan setiap
+  medan yang ditambahkan kelak oleh orang yang tidak membaca aturannya.
+  Perannya dibuat lebih awal daripada dasbornya justru supaya batasnya tercatat
+  sebelum ada layar yang menggodanya.
+
+**Cacat yang ditemukan naskah bukti**
+
+| Cacat | Akibatnya di produksi |
+|---|---|
+| Constraint `fee_application_capped_consistent` menyamakan "terpakai lebih kecil" dengan "dibatasi" | Setiap perhitungan **tanpa kontrak** — keadaan bawaan seluruh fasilitas — ditolak basis data. Fee yang bawaannya NONE justru tidak dapat dicatat sebagai nol |
+
+Persentase terpakai yang lebih kecil daripada yang diminta punya empat sebab —
+tidak ada kontraknya, kontraknya belum atau sudah lewat, layanannya
+dikecualikan, dan melampaui batas — dan hanya yang terakhir merupakan
+pembatasan. Pembetulannya dibawa **migrasi baru** (`H030`), bukan dengan
+menyunting `H028`: yang sudah diterapkan tidak diubah diam-diam di belakang
+punggung lingkungan lain.
+
+**Yang belum:** penjurnalan fee-nya menunggu kode peristiwa `HEALTH_*` dari Core
+(lihat H-9N), dan dasbor investor beserta waterfall-nya adalah H-9K.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -1009,7 +1090,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 4.  H-9D   Struktur tarif berversi — isinya menunggu           [SELESAI]
 5.  H-9E   Kebijakan jasa dan kontributor                    [SELESAI]
 6.  H-9F   Simulasi, settlement, reversal                    [SELESAI]
-7.  H-9G   Gerbang kontrak fee sistem dan investor
+7.  H-9G   Gerbang kontrak fee sistem dan investor           [SELESAI]
 8.  H-9C   Siklus klaim internal — koding sampai rekonsiliasi
 9.  H-9H   Registri alat dan gateway
 10. H-9J   Pemeliharaan, kalibrasi, keamanan siber

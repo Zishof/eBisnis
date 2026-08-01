@@ -44,6 +44,7 @@ import { HealthAccountingService } from './health-accounting.service';
 import { HealthTariffService } from './health-tariff.service';
 import { HealthFeeService } from './health-fee.service';
 import { HealthSettlementService } from './health-settlement.service';
+import { HealthFeeContractService } from './health-fee-contract.service';
 import { HealthClinicalController } from './health-clinical.controller';
 import { HealthPharmacyController } from './health-pharmacy.controller';
 import { HealthLabController } from './health-lab.controller';
@@ -56,6 +57,7 @@ import { HealthAccountingController } from './health-accounting.controller';
 import { HealthTariffController } from './health-tariff.controller';
 import { HealthFeeController } from './health-fee.controller';
 import { HealthSettlementController } from './health-settlement.controller';
+import { HealthFeeContractController } from './health-fee-contract.controller';
 import {
   CoreAuditAdapter,
   CoreIdentityAdapter,
@@ -393,7 +395,7 @@ export class HealthController {
 
 @Module({
   imports: [InfrastructureModule, AuthModule],
-  controllers: [HealthController, HealthClinicalController, HealthPharmacyController, HealthLabController, HealthInpatientController, HealthAcuteController, HealthCommunityController, HealthHimController, HealthMasterDataController, HealthAccountingController, HealthTariffController, HealthFeeController, HealthSettlementController],
+  controllers: [HealthController, HealthClinicalController, HealthPharmacyController, HealthLabController, HealthInpatientController, HealthAcuteController, HealthCommunityController, HealthHimController, HealthMasterDataController, HealthAccountingController, HealthTariffController, HealthFeeController, HealthSettlementController, HealthFeeContractController],
   providers: [
     HealthFacilityService,
     HealthPatientService,
@@ -409,6 +411,7 @@ export class HealthController {
     HealthTariffService,
     HealthFeeService,
     HealthSettlementService,
+    HealthFeeContractService,
     CoreIdentityAdapter,
     CoreAuditAdapter,
     CoreNotificationAdapter,
@@ -436,6 +439,7 @@ export class HealthController {
     HealthTariffService,
     HealthFeeService,
     HealthSettlementService,
+    HealthFeeContractService,
     IDENTITY_PORT,
     AUDIT_PORT,
     NOTIFICATION_PORT,
