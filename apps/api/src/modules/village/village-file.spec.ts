@@ -23,6 +23,9 @@ import {
   masihAdaMetadata,
   periksaBerkas,
 } from './village-file';
+import { Readable } from 'node:stream';
+import type { IncomingMessage } from 'node:http';
+import { VillageFileService } from './village-file.service';
 
 // --- Berkas contoh yang benar-benar memuat metadata --------------------------
 
@@ -274,5 +277,77 @@ describe('nama berkas', () => {
   it('nama kosong tetap menghasilkan nama', () => {
     expect(amankanNama('').length).toBeGreaterThan(0);
     expect(amankanNama('/')).toBe('foto');
+  });
+});
+
+// --- Membaca badan permintaan ------------------------------------------------
+
+describe('bacaBadan', () => {
+  /**
+   * Layanannya dibuat tanpa ketergantungan.
+   *
+   * `bacaBadan` tidak menyentuh basis data, unit, maupun penyimpanan — ia hanya
+   * membaca aliran. Menyuntikkan tiruan bertingkat untuk menguji sesuatu yang
+   * tidak memakainya hanya menambah kode yang harus ikut diperbaiki setiap kali
+   * konstruktornya berubah.
+   */
+  const layanan = new VillageFileService(
+    null as never,
+    null as never,
+    null as never,
+  );
+
+  /** Aliran yang meniru permintaan HTTP masuk. */
+  function aliran(isi: Buffer): IncomingMessage {
+    const r = Readable.from([isi]) as unknown as IncomingMessage;
+    return r;
+  }
+
+  it('membaca isi permintaan apa adanya', async () => {
+    const isi = Buffer.from([0xff, 0xd8, 0xff, 0x01, 0x02, 0x03]);
+    const hasil = await layanan.bacaBadan(aliran(isi));
+    expect(Buffer.from(hasil)).toEqual(isi);
+  });
+
+  it('MENOLAK aliran yang isinya sudah terbaca, bukan menggantung selamanya', async () => {
+    // Inilah yang terjadi ketika permintaan menyebut dirinya `application/json`:
+    // body-parser bawaan menghabiskan alirannya sebelum sampai ke sini.
+    //
+    // Sebelum penjaga ini ada, `'end'` pada aliran yang sudah berakhir tidak
+    // pernah menyala lagi, dan Promise-nya TIDAK PERNAH SELESAI — permintaannya
+    // menggantung menahan satu koneksi sampai batas waktu soket, tanpa galat,
+    // tanpa log, tanpa apa pun yang menunjukkan sebabnya.
+    const habis = aliran(Buffer.from([1, 2, 3]));
+    for await (const _ of habis as unknown as AsyncIterable<Buffer>) {
+      // sengaja dihabiskan, meniru body-parser
+    }
+
+    await expect(layanan.bacaBadan(habis)).rejects.toThrow(/sudah terbaca/i);
+  });
+
+  it('penolakannya menyebutkan Content-Type yang benar', async () => {
+    const habis = aliran(Buffer.from([1]));
+    for await (const _ of habis as unknown as AsyncIterable<Buffer>) {
+      // dihabiskan
+    }
+
+    // Pesan yang hanya menyatakan "permintaan tidak sah" membuat pengembang
+    // aplikasi menebak-nebak. Yang menyebut jalan keluarnya dapat diikuti.
+    await expect(layanan.bacaBadan(habis)).rejects.toThrow(/image\/jpeg/);
+  });
+
+  it('memutus aliran yang melewati batas ukuran', async () => {
+    const kelewat = Buffer.alloc(UKURAN_MAKSIMAL_BYTE + 1024);
+    await expect(layanan.bacaBadan(aliran(kelewat))).rejects.toThrow(/melebihi/i);
+  });
+
+  it('meneruskan galat aliran, tidak menelannya', async () => {
+    const rusak = new Readable({
+      read() {
+        this.destroy(new Error('sambungan terputus'));
+      },
+    }) as unknown as IncomingMessage;
+
+    await expect(layanan.bacaBadan(rusak)).rejects.toThrow(/sambungan terputus/);
   });
 });

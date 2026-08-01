@@ -254,22 +254,88 @@ describe('batas vertikal: awalan', () => {
     }
   });
 
-  it('setiap hak akses yang dipakai rute BENAR-BENAR ada pada katalog', () => {
-    // Rute yang menuntut hak akses yang tidak ada pada katalog tidak akan
-    // pernah dapat dipanggil siapa pun: hak itu tidak dapat diberikan kepada
-    // peran mana pun. Kekeliruannya tidak terlihat sampai seseorang mencobanya.
+  /**
+   * Seluruh tempat hak akses village dinyatakan.
+   *
+   * Dikumpulkan dari **dua** sumber, dan itu bukan kelengkapan yang berlebihan:
+   * pemeriksaan ini semula hanya memindai dekorator `@Permissions()` pada
+   * `village.module.ts`. Ketika lapisan daftar lahir, dua puluh dua hak akses
+   * pindah menjadi nilai `hakAkses` pada `village-listing.ts` — dan tidak lagi
+   * diperiksa siapa pun, meskipun nama pengujiannya tetap berbunyi "setiap hak
+   * akses yang dipakai rute".
+   *
+   * Yang baru ditambahkan cenderung memakai cara yang baru pula. Sumbernya
+   * didaftar di sini supaya cara ketiga kelak ikut ditambahkan ke tempat yang
+   * sama, bukan lolos diam-diam seperti yang kedua.
+   */
+  function hakAksesYangDipakai(): Array<{ izin: string; asal: string }> {
+    const hasil: Array<{ izin: string; asal: string }> = [];
+
     const modul = isi.get(join(AKAR, 'village.module.ts'))!;
+    for (const m of modul.matchAll(/@Permissions\('([^']+)'\)/g)) {
+      hasil.push({ izin: m[1], asal: '@Permissions pada village.module.ts' });
+    }
+
+    const daftar = isi.get(join(AKAR, 'village-listing.ts'))!;
+    for (const m of daftar.matchAll(/hakAkses:\s*'([^']+)'/g)) {
+      hasil.push({ izin: m[1], asal: 'hakAkses pada village-listing.ts' });
+    }
+
+    return hasil;
+  }
+
+  it('menemukan hak akses dari SELURUH sumbernya', () => {
+    // Bila salah satu sumber berhenti terbaca, pengujian di bawah akan lulus
+    // tanpa memeriksa apa pun dari sumber itu — persis kegagalan yang sedang
+    // diperbaiki. Jumlahnya diperiksa supaya kegagalan itu terlihat.
+    const dipakai = hakAksesYangDipakai();
+    const dariModul = dipakai.filter((d) => d.asal.includes('village.module'));
+    const dariDaftar = dipakai.filter((d) => d.asal.includes('village-listing'));
+
+    expect(dariModul.length).toBeGreaterThan(50);
+    expect(dariDaftar.length).toBeGreaterThan(15);
+  });
+
+  it('setiap hak akses yang dipakai BENAR-BENAR ada pada katalog, menu DAN aksinya', () => {
+    // Hak akses yang tidak ada pada katalog tidak akan pernah dapat dipanggil
+    // siapa pun: ia tidak dapat diberikan kepada peran mana pun. Gagalnya
+    // tertutup — jadi bukan lubang keamanan, melainkan satu layar penuh yang
+    // mati diam-diam, dengan pesan "Hak akses tidak mencukupi" bagi SEMUA
+    // orang termasuk admin.
+    //
+    // Paruh AKSI ikut diperiksa. `VILLAGE_COMPLAINT.HAPUS_SEMUA` menyebut menu
+    // yang ada dengan aksi yang tidak pernah didaftarkan menu itu, dan
+    // akibatnya sama persis — sementara pemeriksaan yang hanya memastikan
+    // aksinya "tidak kosong" akan meloloskannya.
     const katalog = isi.get(join(AKAR, 'catalog', 'village-permission.catalog.ts'))!;
-    const menuKatalog = new Set(
-      [...katalog.matchAll(/code:\s*'(VILLAGE_[A-Z_]+)'/g)].map((m) => m[1]),
-    );
+
+    const aksiPerMenu = new Map<string, Set<string>>();
+    for (const m of katalog.matchAll(
+      /code:\s*'(VILLAGE[A-Z_]*)'[\s\S]*?actions:\s*\[([^\]]*)\]/g,
+    )) {
+      aksiPerMenu.set(
+        m[1],
+        new Set([...m[2].matchAll(/'([A-Z_]+)'/g)].map((a) => a[1])),
+      );
+    }
 
     const pelanggaran: string[] = [];
-    for (const m of modul.matchAll(/@Permissions\('([^']+)'\)/g)) {
-      const [menu, aksi] = m[1].split('.');
-      if (!menuKatalog.has(menu)) pelanggaran.push(`${m[1]} (menu ${menu} tidak ada di katalog)`);
-      else if (!aksi) pelanggaran.push(`${m[1]} (tanpa aksi)`);
+    for (const { izin, asal } of hakAksesYangDipakai()) {
+      const [menu, aksi] = izin.split('.');
+      const aksiSah = aksiPerMenu.get(menu);
+
+      if (!aksiSah) {
+        pelanggaran.push(`${izin} — menu ${menu} tidak ada di katalog (${asal})`);
+      } else if (!aksi) {
+        pelanggaran.push(`${izin} — tanpa aksi (${asal})`);
+      } else if (!aksiSah.has(aksi)) {
+        pelanggaran.push(
+          `${izin} — aksi ${aksi} tidak terdaftar pada ${menu}; ` +
+            `yang ada: ${[...aksiSah].sort().join(', ')} (${asal})`,
+        );
+      }
     }
+
     expect([...new Set(pelanggaran)]).toEqual([]);
   });
 

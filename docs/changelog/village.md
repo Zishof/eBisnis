@@ -2295,3 +2295,87 @@ dirinya sendiri.
 - `vitest` — **95 tes lulus**
 - `vite build` — berhasil; `PermohonanBaruPage` 12,7 kB
 - `tsc --noEmit` dan `eslint --max-warnings=0` API dan web — bersih
+
+---
+
+## Perbaikan hasil tinjauan kode
+
+**Cabang:** `feature/v12-info-desa`
+
+Tiga temuan dari tinjauan PR #41, kedua dan ketiganya adalah **celah pada
+penjaganya sendiri** — bukan pada datanya.
+
+### 1. Unggah foto menggantung selamanya bila badannya sudah terbaca
+
+`bacaBadan` memasang pendengar `'end'` tanpa memeriksa apakah alirannya sudah
+berakhir. `body-parser` bawaan Nest melewatkan `image/jpeg`, sehingga jalur
+normal aman — tetapi permintaan yang menyebut dirinya `application/json`
+dihabiskan lebih dahulu, dan `'end'` pada aliran yang sudah berakhir **tidak
+akan pernah menyala lagi**.
+
+Akibatnya bukan galat melainkan permintaan yang tidak pernah menjawab: tidak
+melempar, tidak tercatat, menahan satu koneksi sampai batas waktu soket.
+Pengguna terautentikasi mana pun dapat memicunya berulang kali hanya dengan satu
+header yang keliru.
+
+Menggantung selalu lebih buruk daripada menolak. Yang menolak dapat dibaca
+pengembang aplikasi dari pesannya; yang menggantung terlihat seperti jaringan
+desa yang memang lambat.
+
+Diperiksa **dua kali** — sebelum dan sesudah pendengar terpasang, sebab di
+antara keduanya ada satu putaran event loop, dan itu cukup bagi alirannya untuk
+berakhir. Lima pengujian baru menutupinya, termasuk galat aliran yang harus
+diteruskan alih-alih ditelan.
+
+### 2. Uji batas tidak menjangkau hak akses pada konfigurasi daftar
+
+Pengujian bernama *"setiap hak akses yang dipakai rute BENAR-BENAR ada pada
+katalog"* hanya memindai dekorator `@Permissions()` pada `village.module.ts`.
+Ketika lapisan daftar lahir, **22 hak akses** pindah menjadi nilai `hakAkses`
+pada `village-listing.ts` — dan berhenti diperiksa siapa pun, sementara nama
+pengujiannya tetap menjanjikan sebaliknya.
+
+Dibuktikan dengan merusak satu nilai dengan sengaja: **619 tes lulus** dengan
+hak akses yang menunjuk menu yang tidak ada. Gagalnya tertutup, jadi bukan
+lubang keamanan — melainkan satu layar penuh yang mati diam-diam, dengan pesan
+"Hak akses tidak mencukupi" bagi semua orang termasuk admin.
+
+Sumbernya kini didaftar pada satu fungsi, dengan pengujian tersendiri yang
+memastikan **kedua** sumber benar-benar terbaca. Yang baru ditambahkan cenderung
+memakai cara yang baru pula; sumber ketiga kelak ikut ke tempat yang sama alih-
+alih lolos diam-diam seperti yang kedua.
+
+### 3. Paruh AKSI tidak pernah diperiksa
+
+Pemeriksaan lama memastikan menunya ada, lalu hanya memastikan aksinya tidak
+kosong. `VILLAGE_COMPLAINT.HAPUS_SEMUA` menyebut menu yang ada dengan aksi yang
+tidak pernah didaftarkan menu itu, dan akibatnya sama persis dengan temuan
+kedua. Seluruh 79 hak akses dekorator + 22 dari daftar **cocok hari ini**; yang
+cacat penjaganya, bukan datanya.
+
+### Ketiga perbaikan dibuktikan dengan merusaknya kembali
+
+Uji yang tidak pernah dibuktikan gagal adalah uji yang belum diketahui menjaga
+apa pun. Tiga mutasi dijalankan, masing-masing persis celah yang diperbaiki:
+
+| Mutasi | Hasil |
+|---|---|
+| Daftar → menu yang tidak ada | ditangkap |
+| Daftar → aksi yang tidak terdaftar | ditangkap |
+| Dekorator → aksi yang tidak terdaftar | ditangkap |
+
+### Gerbang mutu
+
+- `jest` — **2498 tes lulus** (bertambah 6)
+- `tsc --noEmit` dan `eslint --max-warnings=0` — bersih
+
+### Yang TIDAK diperbaiki
+
+Temuan #4 dan #5 dari tinjauan sengaja ditinggalkan, dan sebaiknya diurus
+terpisah:
+
+- `catatBerkas` membaca status di luar transaksinya (tanpa `FOR UPDATE`),
+  menyimpang dari pola jalur tulis lain pada berkas yang sama.
+- `offset` pada lapisan daftar tanpa batas atas.
+- Penulisan cakram di dalam transaksi basis data menahan koneksi kolam selama
+  I/O 8 MB.

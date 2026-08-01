@@ -83,12 +83,51 @@ export class VillageFileService {
    * Yang membedakannya dari `body-parser` berbatas: di sini pemutusan terjadi
    * pada potongan yang melewati batas. Permintaan lima ratus megabita tidak
    * pernah sempat menempati memori peladen — ia ditolak pada megabita kesembilan.
+   *
+   * ## Alirannya wajib belum tersentuh, dan itu diperiksa
+   *
+   * `body-parser` bawaan Nest melewatkan `image/jpeg`, sehingga jalur normal
+   * sampai ke sini dengan aliran yang masih utuh. Tetapi permintaan yang
+   * menyebut dirinya `application/json` **dihabiskan** body-parser lebih
+   * dahulu — dan `'end'` pada aliran yang sudah berakhir tidak akan pernah
+   * menyala lagi.
+   *
+   * Tanpa pemeriksaan di bawah, akibatnya bukan galat melainkan permintaan yang
+   * **menggantung selamanya**: tidak menjawab, tidak melempar, tidak tercatat,
+   * dan menahan satu koneksi sampai batas waktu soket. Pengguna mana pun dapat
+   * memicunya berulang kali hanya dengan satu header yang keliru.
+   *
+   * Menggantung selalu lebih buruk daripada menolak. Yang menolak dapat dibaca
+   * pengembang aplikasi dari pesannya; yang menggantung terlihat seperti
+   * jaringan desa yang memang lambat.
    */
   async bacaBadan(req: IncomingMessage): Promise<Uint8Array> {
+    if (req.readableEnded || req.complete) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Isi permintaan sudah terbaca sebelum sampai ke penyimpan foto. Kirim foto sebagai ' +
+          'badan permintaan mentah dengan Content-Type: image/jpeg atau image/png — bukan JSON, ' +
+          'bukan multipart.',
+      );
+    }
+
     const potongan: Buffer[] = [];
     let jumlah = 0;
 
     return new Promise<Uint8Array>((selesai, gagal) => {
+      // Diperiksa sekali lagi setelah listener terpasang. Antara pemeriksaan di
+      // atas dan baris ini ada satu putaran event loop, dan itu cukup bagi
+      // aliran untuk berakhir.
+      if (req.readableEnded || req.complete) {
+        gagal(
+          AppError.badRequest(
+            ErrorCodes.VALIDATION_FAILED,
+            'Isi permintaan berakhir sebelum sempat dibaca. Kirim ulang fotonya.',
+          ),
+        );
+        return;
+      }
+
       req.on('data', (c: Buffer) => {
         jumlah += c.length;
         if (jumlah > UKURAN_MAKSIMAL_BYTE) {
