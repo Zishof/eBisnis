@@ -2091,15 +2091,44 @@ dipakai SEP dan kepesertaan).
   dengan yang dibuka petugas, hanya menekan tombol berbeda — dua layar untuk
   satu berkas berarti dua tempat yang harus tetap sepakat.
 
+### W-4 · Tarif, jasa, settlement, kontrak fee — **SELESAI**
+
+Empat layar untuk tujuh menu.
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H063__health__menu_truth_w4.sql` |
+| Layar | `TariffPage`, `FeePolicyPage`, `SettlementPage`, `FeeContractPage` |
+| Klien | `health-api.ts` — 8 jalan, 8 antarmuka baru |
+| Uji | `fee-pages.spec.tsx` 13 |
+| Bukti | `prove-web-contract.mjs` diperluas: 23 -> 31 pemeriksaan |
+
+**Keputusan yang menentukan bentuknya** — seluruhnya satu tema: gabungan
+keadaan yang berbahaya dan tidak menimbulkan galat apa pun.
+
+- **Aktif, data contoh, dan disetujui-produksi adalah tiga hal berbeda.** Yang
+  aktif tetapi belum disetujui produksi menghitung uang sungguhan memakai
+  persentase yang belum disepakati siapa pun.
+- **Simulasi ditandai sebelum statusnya.** Simulasi berstatus "dibayar" tidak
+  pernah membayar siapa pun.
+- **Kontrak yang disetujui tanpa telaah hukum dihitung tersendiri.** Ia berlaku
+  tanpa ada yang membaca pasalnya — lebih berbahaya daripada yang belum
+  disetujui sama sekali.
+- **Fee sistem dan investor NONE sampai ada kontraknya**, dan layar
+  mengatakannya ketika memang begitu.
+- **Peraturan tarif yang dicabut tetap ditampilkan.** Klaim atas layanan bulan
+  lalu dinilai dengan peraturan bulan lalu.
+- **`_filtered` ditampilkan.** Pemegang kontrak investor berhak tahu bahwa ia
+  melihat pandangan yang disaring.
+
 ### Yang belum berlayar
 
-43 menu masih bertanda "segera hadir", dan kini menunya **berkata begitu
+36 menu masih bertanda "segera hadir", dan kini menunya **berkata begitu
 sebelum diklik**, bukan sesudah. Urutan berikutnya yang disarankan, menurut
 ukuran yang sama — berapa orang tidak dapat bekerja tanpanya:
 
 | Fase | Cakupan | Sebab didahulukan |
 |---|---|---|
-| W-4 | Tarif dan jasa: tarif, kebijakan jasa, kontributor, settlement, kontrak fee | Penagihan tidak benar tanpa tarif |
 | W-5 | Alat: registri, gateway, pemeliharaan, keamanan, pesan/hasil | Keselamatan pasien |
 | W-6 | Master data, terminologi, KFA, pemetaan kode, SATUSEHAT | Prasyarat mutu data, bukan kerja harian |
 | W-7 | Portal pasien, website fasilitas, data contoh, laporan | Menghadap keluar |

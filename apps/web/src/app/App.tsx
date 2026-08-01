@@ -134,6 +134,18 @@ const HealthClaimPage = lazy(() =>
 const HealthBpjsPage = lazy(() =>
   import('../verticals/health/BpjsPage').then((m) => ({ default: m.BpjsPage })),
 );
+const HealthTariffPage = lazy(() =>
+  import('../verticals/health/TariffPage').then((m) => ({ default: m.TariffPage })),
+);
+const HealthFeePolicyPage = lazy(() =>
+  import('../verticals/health/FeePolicyPage').then((m) => ({ default: m.FeePolicyPage })),
+);
+const HealthSettlementPage = lazy(() =>
+  import('../verticals/health/SettlementPage').then((m) => ({ default: m.SettlementPage })),
+);
+const HealthFeeContractPage = lazy(() =>
+  import('../verticals/health/FeeContractPage').then((m) => ({ default: m.FeeContractPage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -295,6 +307,15 @@ export function App() {
             <Route path="bpjs" element={<HealthBpjsPage />} />
             <Route path="sep" element={<HealthBpjsPage />} />
             <Route path="kepesertaan" element={<HealthBpjsPage />} />
+
+            {/* Tarif dan jasa — W-4. */}
+            <Route path="tarif" element={<HealthTariffPage />} />
+            <Route path="kebijakan-jasa" element={<HealthFeePolicyPage />} />
+            <Route path="kontributor" element={<HealthFeePolicyPage />} />
+            <Route path="settlement" element={<HealthSettlementPage />} />
+            <Route path="distribusi" element={<HealthSettlementPage />} />
+            <Route path="pernyataan" element={<HealthSettlementPage />} />
+            <Route path="kontrak-fee" element={<HealthFeeContractPage />} />
           </Route>
           <Route path="*" element={<ComingSoonPage />} />
         </Route>

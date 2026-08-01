@@ -5,6 +5,58 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## W-4 — Layar tarif, jasa, settlement, dan kontrak fee
+
+Empat layar untuk tujuh menu. Yang menyatukan keempatnya: **gabungan keadaan
+yang berbahaya dan tidak menimbulkan galat apa pun**.
+
+### Ditambahkan
+
+- **`TariffPage`** (`/app/emedik/tarif`) — tiga keadaan versi ditampilkan
+  terpisah: terimpor, disetujui, aktif. Versi yang terimpor tetapi belum
+  disetujui berisi angka yang belum diperiksa siapa pun; meringkasnya menjadi
+  satu lencana membuatnya tampak sama dengan versi yang sudah dipakai menagih.
+  **Peraturan yang dicabut tetap ditampilkan** — "tarif mana yang berlaku bulan
+  Maret" adalah pertanyaan yang muncul setiap kali klaim lama ditolak.
+- **`FeePolicyPage`** (`/app/emedik/kebijakan-jasa`, `/kontributor`) — `active`,
+  `is_sample_data`, dan `production_approved` adalah **tiga hal yang berbeda**,
+  dan gabungan yang berbahaya adalah *aktif tetapi belum disetujui untuk
+  produksi*: ia menghitung uang sungguhan memakai persentase yang belum
+  disepakati siapa pun. Dihitung sebagai angka tersendiri. Kebijakan yang
+  `total_percent`-nya bukan 100 ditandai pula — berarti ada uang yang tidak
+  diberikan kepada siapa pun, atau diberikan dua kali.
+- **`SettlementPage`** (`/app/emedik/settlement`, `/distribusi`, `/pernyataan`)
+  — **simulasi ditandai sebelum statusnya**. Simulasi berstatus `PAID` tidak
+  pernah membayar siapa pun, dan lencana status sendirian membacanya seperti
+  pembayaran sungguhan — dokter yang ditunjukkan angka simulasi akan
+  mengingatnya sebagai janji.
+- **`FeeContractPage`** (`/app/emedik/kontrak-fee`) — **fee sistem dan fee
+  investor bernilai NONE sampai ada kontraknya**, dan layar mengatakannya
+  ketika memang begitu. Tiga tahap ditampilkan terpisah: telaah hukum,
+  persetujuan, berlaku. Kontrak yang **disetujui tanpa telaah hukum** dihitung
+  tersendiri — ia lebih berbahaya daripada kontrak yang belum disetujui sama
+  sekali, sebab yang kedua tidak berlaku sedangkan yang pertama berlaku tanpa
+  ada yang membaca pasalnya.
+- **`H063__health__menu_truth_w4.sql`** — 37 menu berlayar, 36 masih segera
+  hadir.
+- **`fee-pages.spec.tsx`** — 13 uji komponen.
+
+### Penyaringan yang ditampilkan, bukan disembunyikan
+
+Ringkasan investor mengembalikan `_filtered`: berapa medan yang **dibuang**
+karena tidak ada pada daftar putih. Angka itu ditampilkan di layar. Pemegang
+kontrak berhak tahu bahwa ia melihat pandangan yang disaring, dan rumah sakit
+berhak menunjukkan bahwa penyaringannya bekerja.
+
+Naskah bukti kontrak diperluas: **31 pemeriksaan**, lulus dua kali. Tabelnya
+bernama `fee_policy`, `fee_settlement`, `fee_contract` — tanpa awalan
+`health_`, berbeda dari sebagian besar tabel kesehatan lain, dan itu diperiksa
+alih-alih ditebak.
+
+Uji web 127 -> 140.
+
+---
+
 ## W-3 — Layar klaim dan BPJS
 
 ### Ditambahkan

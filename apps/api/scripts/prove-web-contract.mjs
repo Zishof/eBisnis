@@ -143,6 +143,10 @@ try {
     HEALTH_CLAIM_REVIEW: ['READ'],
     HEALTH_BPJS: ['READ'],
     HEALTH_BPJS_SEP: ['READ'],
+    HEALTH_TARIFF: ['READ'],
+    HEALTH_FEE_POLICY: ['READ'],
+    HEALTH_FEE_SETTLEMENT: ['READ'],
+    HEALTH_FEE_CONTRACT: ['READ'],
   };
   for (const [m, aa] of Object.entries(hak)) {
     const mid = menus.get(m);
@@ -415,6 +419,88 @@ try {
       nama: 'claim',
       jalan: `/health/claims/${satuKlaim.id}`,
       antarmuka: 'RincianKlaim',
+      ambil: (d) => d,
+    });
+  }
+
+  /*
+   * W-4 dipilih dari fasilitas yang benar-benar memilikinya. Tabelnya bernama
+   * `fee_policy`, `fee_settlement`, `fee_contract` — TANPA awalan `health_`,
+   * berbeda dari sebagian besar tabel kesehatan lain. Diperiksa, tidak ditebak.
+   */
+  const fasDari = async (tabel) =>
+    (
+      await q(
+        `SELECT facility_id::text AS id FROM "${SCHEMA}".${tabel}
+          GROUP BY facility_id ORDER BY count(*) DESC LIMIT 1`,
+      )
+    )[0]?.id;
+
+  const fasKebijakan = await fasDari('fee_policy');
+  const fasSettle = await fasDari('fee_settlement');
+  const fasKontrak = await fasDari('fee_contract');
+  const satuKebijakan = (
+    await q(`SELECT id::text AS id FROM "${SCHEMA}".fee_policy ORDER BY created_at DESC LIMIT 1`)
+  )[0];
+  const satuSettle = (
+    await q(`SELECT id::text AS id FROM "${SCHEMA}".fee_settlement ORDER BY created_at DESC LIMIT 1`)
+  )[0];
+
+  kontrak.push({
+    nama: 'tariffRegulations',
+    jalan: '/health/tariff/regulations',
+    antarmuka: 'BarisPeraturanTarif',
+    ambil: (d) => d?.[0],
+  });
+  kontrak.push({
+    nama: 'tariffVersions',
+    jalan: '/health/tariff/versions',
+    antarmuka: 'BarisVersiTarif',
+    ambil: (d) => d?.[0],
+  });
+  if (fasKebijakan) {
+    kontrak.push({
+      nama: 'feePolicies',
+      jalan: `/health/fee/policies?facilityId=${fasKebijakan}`,
+      antarmuka: 'BarisKebijakanJasa',
+      ambil: (d) => d?.[0],
+    });
+  }
+  if (satuKebijakan) {
+    kontrak.push({
+      nama: 'feePolicy',
+      jalan: `/health/fee/policies/${satuKebijakan.id}`,
+      antarmuka: 'RincianKebijakanJasa',
+      ambil: (d) => d,
+    });
+  }
+  if (fasSettle) {
+    kontrak.push({
+      nama: 'settlements',
+      jalan: `/health/settlement?facilityId=${fasSettle}&year=${tahun}`,
+      antarmuka: 'BarisSettlement',
+      ambil: (d) => d?.[0],
+    });
+  }
+  if (satuSettle) {
+    kontrak.push({
+      nama: 'settlement',
+      jalan: `/health/settlement/${satuSettle.id}`,
+      antarmuka: 'RincianSettlement',
+      ambil: (d) => d,
+    });
+  }
+  if (fasKontrak) {
+    kontrak.push({
+      nama: 'feeContracts',
+      jalan: `/health/fee-contract?facilityId=${fasKontrak}`,
+      antarmuka: 'BarisKontrakFee',
+      ambil: (d) => d?.[0],
+    });
+    kontrak.push({
+      nama: 'investorSummary',
+      jalan: `/health/fee-contract/investor-summary?facilityId=${fasKontrak}&year=${tahun}`,
+      antarmuka: 'RingkasInvestor',
       ambil: (d) => d,
     });
   }

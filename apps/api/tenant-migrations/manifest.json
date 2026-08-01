@@ -582,6 +582,13 @@
       "file": "H062__health__menu_truth_w3.sql",
       "name": "eMedik: menu berlayar W-3",
       "description": "Lima utas W-3: klaim, telaah-klaim, bpjs, sep, kepesertaan. Sesudahnya 30 menu berlayar dan 43 masih segera hadir. Beberapa menu menunjuk layar yang SAMA dengan sengaja: penelaah membuka klaim yang sama dengan yang dibuka petugas, hanya menekan tombol yang berbeda, dan dua layar untuk satu berkas berarti dua tempat yang harus tetap sepakat — pada saatnya salah satunya akan tertinggal. Pola sama dengan H059-H061: daftar yang PUNYA layar, gagal berisik bila satu utas pun tidak cocok."
+    },
+    {
+      "version": "H063",
+      "sequence": 1063,
+      "file": "H063__health__menu_truth_w4.sql",
+      "name": "eMedik: menu berlayar W-4",
+      "description": "Tujuh utas W-4 untuk empat layar: tarif, kebijakan-jasa, kontributor, settlement, distribusi, pernyataan, kontrak-fee. Sesudahnya 37 menu berlayar dan 36 masih segera hadir. kontributor menunjuk layar kebijakan jasa; distribusi dan pernyataan menunjuk layar settlement — satu berkas, satu layar, sama alasannya dengan W-2 dan W-3. Pola sama dengan H059-H062: daftar yang PUNYA layar, gagal berisik bila satu utas pun tidak cocok."
     }
   ]
 }

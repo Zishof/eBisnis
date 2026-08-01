@@ -810,6 +810,142 @@ export interface BarisSep {
   patient_name: string;
 }
 
+/*
+ * --- W-4: tarif, jasa, settlement, kontrak fee ------------------------------
+ *
+ * Seluruhnya diperiksa ke peladen sebelum satu baris layar ditulis. Konvensinya
+ * campur lagi: daftar `snake_case`, satu baris `camelCase`.
+ */
+
+export interface BarisPeraturanTarif {
+  id: string;
+  reference: string;
+  year: number;
+  title: string;
+  scope: string | null;
+  effective_from: string | null;
+  revoked_at: string | null;
+  revokes_reference: string | null;
+  source_file: string | null;
+  source_hash: string | null;
+}
+
+export interface BarisVersiTarif {
+  id: string;
+  code: string;
+  name: string;
+  regulation_reference: string | null;
+  source_file: string | null;
+  source_hash: string | null;
+  row_count: number;
+  is_active: boolean;
+  imported_at: string | null;
+  approved_at: string | null;
+  retired_at: string | null;
+}
+
+export interface BarisKebijakanJasa {
+  id: string;
+  code: string;
+  name: string;
+  basis: string;
+  effective_from: string | null;
+  effective_to: string | null;
+  active: boolean;
+  is_sample_data: boolean;
+  production_approved: boolean;
+  approved_at: string | null;
+  line_count: number;
+  total_percent: number | null;
+}
+
+export interface RincianKebijakanJasa {
+  id: string;
+  code: string;
+  name: string;
+  basis: string;
+  createdBy: string | null;
+  active: boolean;
+  isSampleData: boolean;
+  productionApproved: boolean;
+  version: number;
+  lines: Array<{
+    recipient: string;
+    method: string;
+    value: number;
+    providerId: string | null;
+    contributorRole: string | null;
+    note: string | null;
+  }>;
+  note: string | null;
+}
+
+export interface BarisSettlement {
+  id: string;
+  settlement_number: string;
+  status: string;
+  is_simulation: boolean;
+  period_year: number;
+  period_month: number | null;
+  basis: string;
+  basis_amount: number | null;
+  policy_version: number;
+  policy_code: string;
+  calculated_at: string | null;
+  paid_at: string | null;
+  line_count: number;
+  corrected_amount: number | null;
+}
+
+export interface RincianSettlement {
+  id: string;
+  settlementNumber: string;
+  status: string;
+  isSimulation: boolean;
+  basisAmount: number | null;
+  basis: string;
+  policyVersion: number;
+  calculatedBy: string | null;
+  periodYear: number;
+  periodMonth: number | null;
+  lines: Array<{
+    recipient: string;
+    provider_id: string | null;
+    provider_name: string | null;
+    gross_amount: number;
+    tax_amount: number;
+    net_amount: number;
+    method: string;
+  }>;
+  corrections: unknown[];
+}
+
+export interface BarisKontrakFee {
+  id: string;
+  contract_type: string;
+  contract_reference: string;
+  counterparty_name: string;
+  status: string;
+  maximum_percent: number | null;
+  effective_from: string | null;
+  effective_to: string | null;
+  legal_reviewed_at: string | null;
+  approved_at: string | null;
+  is_sample_data: boolean;
+  exclusion_count: number;
+}
+
+/** `_filtered` = berapa medan DIBUANG penyaring daftar putih. Ditampilkan. */
+export interface RingkasInvestor {
+  periodYear: number;
+  facilityCount: number;
+  grossRevenue: number;
+  distributionAmount: number;
+  contractReference: string | null;
+  _filtered: number;
+  note: string;
+}
+
 export const healthApi = {
   // Fasilitas dan katalog tidak menyentuh rekam medis, sehingga tidak menuntut
   // tujuan penggunaan.
@@ -1364,6 +1500,33 @@ export const healthApi = {
 
   bpjsSep: (facilityId: string) =>
     api.get<BarisSep[]>(`/health/bpjs/sep?facilityId=${facilityId}`),
+
+  // --- W-4: tarif, jasa, settlement, kontrak fee -----------------------------
+  //
+  // Seluruhnya agregat atau daftar kerja; tidak satu pun menyebut pasien, dan
+  // karena itu tidak membawa tujuan penggunaan.
+
+  tariffRegulations: () => api.get<BarisPeraturanTarif[]>('/health/tariff/regulations'),
+
+  tariffVersions: () => api.get<BarisVersiTarif[]>('/health/tariff/versions'),
+
+  feePolicies: (facilityId: string) =>
+    api.get<BarisKebijakanJasa[]>(`/health/fee/policies?facilityId=${facilityId}`),
+
+  feePolicy: (id: string) => api.get<RincianKebijakanJasa>(`/health/fee/policies/${id}`),
+
+  settlements: (facilityId: string, year: number) =>
+    api.get<BarisSettlement[]>(`/health/settlement?facilityId=${facilityId}&year=${year}`),
+
+  settlement: (id: string) => api.get<RincianSettlement>(`/health/settlement/${id}`),
+
+  feeContracts: (facilityId: string) =>
+    api.get<BarisKontrakFee[]>(`/health/fee-contract?facilityId=${facilityId}`),
+
+  investorSummary: (facilityId: string, year: number) =>
+    api.get<RingkasInvestor>(
+      `/health/fee-contract/investor-summary?facilityId=${facilityId}&year=${year}`,
+    ),
 
   // --- W-2: telaah darurat ---------------------------------------------------
 
