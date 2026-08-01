@@ -337,6 +337,20 @@
       "file": "H025__health__fee_permissions.sql",
       "name": "eMedik: menu, hak akses, dan peran kebijakan jasa",
       "description": "Dua menu (HEALTH_FEE_POLICY, HEALTH_FEE_CONTRIBUTOR), dua peran baru (Petugas Kebijakan Jasa, Penyetuju Kebijakan Jasa), dan dua aturan pemisahan wewenang. Tiga pemisahan menentukan bentuknya, dan yang ketiga paling sulit dilihat: pembuat kebijakan tidak menyetujui versinya sendiri; petugas kalkulasi tidak menyetujui settlement sendiri; dan PENERIMA JASA TIDAK MENGUBAH ATURAN YANG MEMBAYAR DIRINYA. Yang ketiga tidak dapat ditegakkan hanya dengan hak akses sebab dokter yang juga administrator sistem memegang dua peran yang sah masing-masing; karena itu ia diperiksa pada tingkat baris — penyetuju yang tertaut pada pemberi layanan yang tersebut di dalam kebijakannya ditolak sekalipun hak aksesnya lengkap. Hak akses menjaga siapa yang boleh membuka pintu; pemeriksaan baris menjaga siapa yang boleh melewatinya kali ini. Perawat instrumen diberi hak mencatat kontributor sebab merekalah yang melihat siapa yang hadir di kamar operasi, bukan bagian keuangan."
+    },
+    {
+      "version": "H026",
+      "sequence": 1026,
+      "file": "H026__health__fee_settlement.sql",
+      "name": "eMedik: settlement jasa, koreksi, dan pernyataan",
+      "description": "fee_settlement, fee_settlement_line, fee_settlement_correction, fee_statement. SETTLEMENT YANG SUDAH DIKUNCI TIDAK DAPAT DIHAPUS: kekeliruan diperbaiki lewat penyesuaian atau pembalikan, yang keduanya meninggalkan barisnya sendiri. Yang dipegang dokter adalah kertas yang sudah dicetak; menghapus catatannya membuat kertas itu tidak lagi cocok dengan apa pun. Simulasi tidak pernah menjadi utang, ditegakkan constraint fee_settlement_simulation_never_paid dan trigger forbid_settlement_identity_change yang menolak setiap perubahan atas tanda simulasi — simulasi yang berubah menjadi settlement sungguhan lewat satu UPDATE adalah pintu paling sunyi untuk membuat utang yang tidak pernah dihitung siapa pun. Nilai bersih DIHITUNG, bukan diketik: constraint menuntut bersih sama dengan kotor dikurangi pajak, sebab nilai bersih yang diketik terpisah akan berselisih dengan hitungannya dan yang menerima kertasnya akan menagih selisihnya. Dasar dan kebijakan settlement yang sudah disetujui terkunci; barisnya sudah dibagi menurut angka itu. Baris settlement yang sudah dikunci tidak dapat diubah maupun dihapus. Jumlah koreksi tidak melebihi nilai settlement, ditegakkan constraint trigger check_correction_total: melebihinya berarti rumah sakit menagih kembali kepada dokter, dan itu keputusan tersendiri bukan akibat sampingan koreksi kelima yang dibuat orang yang tidak melihat keempat koreksi sebelumnya. Yang menghitung tidak menyetujui, dan yang membuat koreksi tidak menyetujuinya sendiri. Satu pernyataan asli per penerima per periode; koreksinya menunjuk pernyataan yang dikoreksinya, sebab yang dipegang penerimanya harus dua kertas bukan satu kertas yang diam-diam berganti isi. Settlement, koreksi, dan pernyataan seluruhnya tidak dapat dihapus."
+    },
+    {
+      "version": "H027",
+      "sequence": 1027,
+      "file": "H027__health__settlement_permissions.sql",
+      "name": "eMedik: menu, hak akses, dan peran settlement jasa",
+      "description": "Dua menu (HEALTH_FEE_SETTLEMENT, HEALTH_FEE_STATEMENT), dua peran baru (Petugas Kalkulasi Jasa, Petugas Pembayaran Jasa), dan tiga aturan pemisahan wewenang. Empat wewenang, empat pemegang berbeda: menghitung, menyetujui, mengunci dan membayar, lalu mengoreksi. Yang menghitung tidak menyetujui sebab perhitungan yang diperiksa oleh yang menghitungnya bukan pemeriksaan. Yang menyetujui tidak membayar sebab persetujuan yang langsung menjadi transfer menghilangkan jeda terakhir sebelum uang berpindah, dan jeda itu satu-satunya kesempatan bagi orang ketiga untuk melihat angkanya sebelum ia tidak dapat ditarik kembali. Koreksi diberikan kepada petugas keuangan yang tidak menghitung maupun membayar, sehingga koreksinya diperiksa orang keempat: koreksi adalah tempat paling mudah untuk memindahkan uang tanpa ada yang melihat, sebab ia terlihat seperti pembetulan."
     }
   ]
 }

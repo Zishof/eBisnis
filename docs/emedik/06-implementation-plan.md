@@ -858,6 +858,90 @@ Uji >= 25 -> **56 tercapai**, ditambah naskah bukti 50 pemeriksaan.
 pembalikannya — itu H-9F. Gerbang kontrak fee sistem dan investor baru berupa
 penolakan; pencatatan kontraknya sendiri H-9G.
 
+### H-9F · Simulasi, settlement, dan pembalikan — **SELESAI**
+
+Perhitungan settlement dari kebijakan, simulasi, penguncian, pembayaran,
+penyesuaian dan pembalikan, serta penerbitan pernyataan bagi tiap penerima.
+
+Uji >= 25 -> **42 tercapai**, ditambah naskah bukti 56 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H026__health__fee_settlement.sql`, `H027__health__settlement_permissions.sql` |
+| Aturan murni | `health-settlement.ts` + 42 pengujian |
+| Layanan | `health-settlement.service.ts` |
+| Endpoint | `health-settlement.controller.ts` — 9 jalan di `/api/v1/health/settlement/**` |
+| Katalog | `health-catalog.ts` — 2 menu, 2 peran, 3 aturan SoD |
+| Bukti | `scripts/prove-health-settlement.mjs` -> [bukti-h9f-settlement.txt](bukti-h9f-settlement.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **TIDAK ADA SATU PUN JALAN YANG MENGHAPUS.** Settlement, koreksi, dan
+  pernyataan seluruhnya kekal; ketiganya berpenjaga `forbid_ledger_mutation`.
+  Yang dipegang dokter adalah kertas yang sudah dicetak, dan menghapus
+  catatannya membuat kertas itu tidak lagi cocok dengan apa pun.
+
+- **Empat wewenang, empat pemegang berbeda:** menghitung, menyetujui, mengunci
+  dan membayar, lalu mengoreksi. Yang menghitung tidak menyetujui — perhitungan
+  yang diperiksa oleh yang menghitungnya bukan pemeriksaan. Yang menyetujui
+  tidak membayar — persetujuan yang langsung menjadi transfer menghilangkan
+  jeda terakhir sebelum uang berpindah, dan jeda itu satu-satunya kesempatan
+  bagi orang ketiga untuk melihat angkanya sebelum ia tidak dapat ditarik
+  kembali.
+
+- **Simulasi tidak pernah menjadi utang**, dan tandanya **tidak dapat diubah** —
+  ditegakkan trigger tersendiri. Simulasi yang berubah menjadi settlement
+  sungguhan lewat satu `UPDATE` adalah pintu paling sunyi untuk membuat utang
+  yang tidak pernah dihitung siapa pun. Nomornya pun berawalan berbeda
+  (`SIM-` dan `STL-`): nomor yang tidak dapat dibedakan akan tertukar pada
+  percakapan lisan, dan percakapan lisan adalah tempat sebagian besar
+  kekeliruan pembayaran bermula.
+
+- **Simulasi dan settlement sungguhan dihitung dengan jalan yang SAMA.**
+  Menghitungnya dengan dua jalan berbeda akan membuat simulasi memberi angka
+  yang tidak pernah benar-benar terjadi.
+
+- **Pembalikan wajib sama besar dengan yang tersisa.** Pembalikan sebagian yang
+  menyamar sebagai pembalikan penuh akan menyisakan selisih yang ditemukan
+  setahun kemudian oleh orang yang tidak tahu apa-apa tentang kejadiannya.
+  Penyesuaian boleh sebagian, tetapi tidak boleh membuat nilai akhirnya
+  negatif — settlement yang berakhir negatif berarti rumah sakit menagih
+  kembali kepada dokter, dan itu keputusan tersendiri.
+
+- **Nilai bersih dihitung, bukan diketik.** Constraint menuntut bersih sama
+  dengan kotor dikurangi pajak. Pajak hanya dipotong dari jasa perorangan;
+  bagian fasilitas dan kumpulan bukan penghasilan seseorang.
+
+- **Sisa pembagian menjadi baris bagian fasilitas, bukan dibuang.**
+  Membuangnya berarti jumlah baris tidak sama dengan dasarnya, dan pemeriksaan
+  berikutnya akan menolak seluruh settlement tanpa ada yang tahu ke mana
+  sisanya pergi.
+
+- **Pernyataan hanya memuat yang BENAR-BENAR dibayarkan.** Pernyataan yang
+  memuat angka yang belum tentu dibayarkan akan dibaca sebagai janji — dan janji
+  yang tercetak lebih sulit ditarik daripada janji yang diucapkan. Satu
+  pernyataan asli per penerima per periode; bila angkanya berubah, terbitkan
+  pernyataan koreksi yang menunjuk pernyataan lamanya. Yang dipegang penerimanya
+  harus **dua kertas**, bukan satu kertas yang diam-diam berganti isi.
+
+- **Pembayaran wajib menyebut rujukan transaksinya.** Pembayaran tanpa rujukan
+  tidak dapat dicocokkan dengan rekening koran, dan yang tidak dapat dicocokkan
+  akan dibayarkan dua kali.
+
+**Catatan dari naskah buktinya**
+
+Uji "membayar simulasi lewat basis data ditolak constraint" semula gagal — bukan
+karena constraint-nya tidak ada, melainkan karena constraint **lain** menolaknya
+lebih dahulu: simulasi itu belum disetujui siapa pun. Kini naskah itu memenuhi
+seluruh syarat lain sekaligus, sehingga satu-satunya yang tersisa untuk
+menolaknya adalah tanda simulasinya. Pelajaran yang sama seperti H-9: pada tabel
+berpenjaga banyak, "gagal" saja tidak membuktikan penjaga yang mana yang bekerja.
+
+**Yang belum:** penjurnalannya — settlement belum menghasilkan `accounting_event`
+karena kode peristiwa `HEALTH_*` masih menunggu Core (lihat H-9N).
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -924,7 +1008,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 3.  H-9N   COA dan pemetaan akuntansi — strukturnya          [SELESAI]
 4.  H-9D   Struktur tarif berversi — isinya menunggu           [SELESAI]
 5.  H-9E   Kebijakan jasa dan kontributor                    [SELESAI]
-6.  H-9F   Simulasi, settlement, reversal
+6.  H-9F   Simulasi, settlement, reversal                    [SELESAI]
 7.  H-9G   Gerbang kontrak fee sistem dan investor
 8.  H-9C   Siklus klaim internal — koding sampai rekonsiliasi
 9.  H-9H   Registri alat dan gateway

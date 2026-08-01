@@ -5,6 +5,60 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9F — Settlement jasa, koreksi, dan pernyataan
+
+### Ditambahkan
+
+- **`H026__health__fee_settlement.sql`** — `fee_settlement`,
+  `fee_settlement_line`, `fee_settlement_correction`, `fee_statement`. Beserta
+  trigger `forbid_settlement_identity_change`, `forbid_locked_settlement_line`,
+  constraint trigger `check_correction_total`, dan penjaga anti-hapus pada
+  ketiga tabel yang menyangkut uang.
+- **`H027__health__settlement_permissions.sql`** — dua menu, dua peran baru,
+  tiga aturan pemisahan wewenang.
+- **`health-settlement.ts`** — aturan sebagai fungsi murni: pemeriksaan jumlah
+  baris, kelayakan pembayaran, penyesuaian dan pembalikan, penyusunan dan
+  penerbitan pernyataan, serta potongan pajak. **42 pengujian.**
+- **`health-settlement.service.ts`** dan **`health-settlement.controller.ts`** —
+  sembilan jalan pada `/api/v1/health/settlement/**`.
+- **`prove-health-settlement.mjs`** — naskah bukti, **56 pemeriksaan**,
+  seluruhnya lulus dan lulus pula pada pengulangan.
+
+Uji: API 1755 → **1799**.
+
+### Keputusan yang perlu dicatat
+
+- **TIDAK ADA SATU PUN JALAN YANG MENGHAPUS.** Settlement, koreksi, dan
+  pernyataan seluruhnya kekal.
+
+- **Empat wewenang, empat pemegang berbeda:** menghitung, menyetujui, mengunci
+  dan membayar, lalu mengoreksi.
+
+- **Simulasi tidak pernah menjadi utang**, tandanya tidak dapat diubah, dan
+  nomornya berawalan berbeda — nomor yang tidak dapat dibedakan akan tertukar
+  pada percakapan lisan.
+
+- **Pembalikan wajib sama besar dengan yang tersisa.** Penyesuaian boleh
+  sebagian, tetapi tidak boleh membuat nilai akhirnya negatif.
+
+- **Nilai bersih dihitung, bukan diketik.** Pajak hanya dipotong dari jasa
+  perorangan.
+
+- **Pernyataan hanya memuat yang benar-benar dibayarkan**, dan bila angkanya
+  berubah, penerimanya memegang dua kertas — bukan satu kertas yang diam-diam
+  berganti isi.
+
+### Catatan bagi naskah bukti berikutnya
+
+Uji "membayar simulasi lewat basis data ditolak constraint" semula gagal bukan
+karena constraint-nya tidak ada, melainkan karena constraint **lain** menolaknya
+lebih dahulu. Pada H-9 pelajarannya *periksa bunyi penolakannya*; sejak H-9F
+satu langkah lebih jauh: **susun keadaannya sehingga hanya satu penjaga yang
+mungkin berbunyi.** Pada tabel yang dijaga tujuh constraint, uji yang tidak
+melakukannya hanya membuktikan bahwa salah satu dari ketujuhnya bekerja.
+
+---
+
 ## H-9E — Kebijakan pembagian jasa dan kontributor
 
 ### Ditambahkan

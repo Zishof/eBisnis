@@ -76,8 +76,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9N | 20 | **45** | `health-accounting.spec.ts` |
 | H-9D | 25 | **46** | `health-tariff.spec.ts` |
 | H-9E | 25 | **56** | `health-fee.spec.ts` |
+| H-9F | 25 | **42** | `health-settlement.spec.ts` |
 
-API keseluruhan: **1755** pengujian pada 59 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **1799** pengujian pada 60 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -105,6 +106,21 @@ sungguhan, pada basis data sungguhan:
 | H-9N | `prove-health-accounting.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9n-akuntansi.txt](bukti-h9n-akuntansi.txt) |
 | H-9D | `prove-health-tariff.mjs` | 43 pemeriksaan, seluruhnya lulus — [bukti-h9d-tarif.txt](bukti-h9d-tarif.txt) |
 | H-9E | `prove-health-fee.mjs` | 50 pemeriksaan, seluruhnya lulus — [bukti-h9e-jasa.txt](bukti-h9e-jasa.txt) |
+| H-9F | `prove-health-settlement.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9f-settlement.txt](bukti-h9f-settlement.txt) |
+
+Naskah H-9F mengulang pelajaran H-9 dengan bentuk yang berbeda. Uji "membayar
+simulasi lewat basis data ditolak constraint" semula gagal — bukan karena
+constraint-nya tidak ada, melainkan karena constraint **lain** menolaknya lebih
+dahulu: simulasi itu belum disetujui siapa pun, sehingga yang berbunyi adalah
+constraint kelengkapan persetujuan. Kini naskah itu memenuhi seluruh syarat
+lain sekaligus, sehingga satu-satunya yang tersisa untuk menolaknya adalah tanda
+simulasinya.
+
+Pada H-9 pelajarannya adalah *periksa bunyi penolakannya*; di sini pelajarannya
+satu langkah lebih jauh: **susun keadaannya sedemikian rupa sehingga hanya satu
+penjaga yang mungkin berbunyi.** Pada tabel yang dijaga tujuh constraint, uji
+yang tidak melakukannya hanya membuktikan bahwa salah satu dari ketujuhnya
+bekerja.
 
 Naskah H-9E membuktikan **ketiadaan** seperti H-9N, tetapi dengan satu
 pelajaran tambahan. Pemeriksaan pertamanya menghitung seluruh baris kebijakan

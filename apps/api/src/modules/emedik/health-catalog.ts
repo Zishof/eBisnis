@@ -594,6 +594,29 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'UPDATE'],
     sortOrder: 103,
   },
+  // Settlement jasa — H-9F.
+  //
+  // Empat wewenang, empat pemegang: CREATE menghitung, APPROVE menyetujui,
+  // POST mengunci dan membayar, REVERSE mengoreksi. Tidak ada satu pun aksi
+  // yang menghapus.
+  {
+    code: 'HEALTH_FEE_SETTLEMENT',
+    parentCode: 'HEALTH',
+    label: 'Settlement Jasa',
+    route: '/app/emedik/settlement',
+    icon: 'wallet',
+    actions: ['READ', 'CREATE', 'APPROVE', 'POST', 'REVERSE'],
+    sortOrder: 104,
+  },
+  {
+    code: 'HEALTH_FEE_STATEMENT',
+    parentCode: 'HEALTH',
+    label: 'Pernyataan Jasa',
+    route: '/app/emedik/pernyataan',
+    icon: 'file-text',
+    actions: ['READ', 'CREATE', 'EXPORT'],
+    sortOrder: 105,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -688,6 +711,8 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_PAYER.READ',
       'HEALTH_FEE_POLICY.READ',
       'HEALTH_FEE_CONTRIBUTOR.READ',
+      'HEALTH_FEE_SETTLEMENT.READ',
+      'HEALTH_FEE_STATEMENT.READ',
     ],
     sortOrder: 2,
   },
@@ -1129,8 +1154,43 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_FEE_POLICY.APPROVE',
       'HEALTH_FEE_POLICY.ACTIVATE',
       'HEALTH_FEE_CONTRIBUTOR.READ',
+      // Menyetujui settlement dan koreksinya pula; ia tidak menghitung dan
+      // tidak membayar.
+      'HEALTH_FEE_SETTLEMENT.READ',
+      'HEALTH_FEE_SETTLEMENT.APPROVE',
     ],
     sortOrder: 28,
+  },
+  {
+    code: 'HEALTH_SETTLEMENT_CLERK',
+    name: 'Petugas Kalkulasi Jasa',
+    description:
+      'Menghitung dan menyimulasikan settlement jasa. TIDAK menyetujui, TIDAK membayar, dan ' +
+      'TIDAK mengoreksi — ketiganya dipegang orang lain.',
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_FEE_SETTLEMENT.READ',
+      'HEALTH_FEE_SETTLEMENT.CREATE',
+      'HEALTH_FEE_POLICY.READ',
+      'HEALTH_FEE_CONTRIBUTOR.READ',
+    ],
+    sortOrder: 29,
+  },
+  {
+    code: 'HEALTH_SETTLEMENT_PAYER',
+    name: 'Petugas Pembayaran Jasa',
+    description:
+      'Mengunci settlement yang sudah disetujui, mencatat pembayarannya, dan menerbitkan ' +
+      'pernyataan. TIDAK menghitung dan TIDAK menyetujui.',
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_FEE_SETTLEMENT.READ',
+      'HEALTH_FEE_SETTLEMENT.POST',
+      'HEALTH_FEE_STATEMENT.READ',
+      'HEALTH_FEE_STATEMENT.CREATE',
+      'HEALTH_FEE_STATEMENT.EXPORT',
+    ],
+    sortOrder: 30,
   },
   {
     code: 'HEALTH_TARIFF_OFFICER',
@@ -1173,6 +1233,11 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_TARIFF.READ',
       'HEALTH_PAYER.READ',
       'HEALTH_FEE_POLICY.READ',
+      // Membuat penyesuaian dan pembalikan. Ia tidak menghitung maupun
+      // membayar, sehingga koreksinya diperiksa orang keempat.
+      'HEALTH_FEE_SETTLEMENT.READ',
+      'HEALTH_FEE_SETTLEMENT.REVERSE',
+      'HEALTH_FEE_STATEMENT.READ',
     ],
     sortOrder: 25,
   },
@@ -1320,6 +1385,35 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'menjadi pokok sengketa — dan sengketanya akan menyangkut uang yang sudah terlanjur ' +
       'dibayarkan. Ditegakkan constraint fee_policy_approval_not_self pada basis data pula.',
     conflictingPermissions: ['HEALTH_FEE_POLICY.CREATE', 'HEALTH_FEE_POLICY.APPROVE'],
+  },
+  {
+    code: 'HEALTH_SOD_SETTLEMENT_APPROVE',
+    name: 'Petugas kalkulasi tidak menyetujui settlement sendiri',
+    description:
+      'Perhitungan yang diperiksa oleh yang menghitungnya bukan pemeriksaan. Settlement ' +
+      'menentukan berapa uang yang berpindah dari kas rumah sakit ke rekening tenaga medisnya, ' +
+      'dan angka yang keliru pada tahap ini akan ditemukan berbulan-bulan kemudian — bila ' +
+      'ditemukan sama sekali. Ditegakkan constraint fee_settlement_approval_not_self pula.',
+    conflictingPermissions: ['HEALTH_FEE_SETTLEMENT.CREATE', 'HEALTH_FEE_SETTLEMENT.APPROVE'],
+  },
+  {
+    code: 'HEALTH_SOD_SETTLEMENT_PAY',
+    name: 'Penyetuju settlement tidak membayarkannya',
+    description:
+      'Persetujuan yang langsung menjadi transfer menghilangkan jeda terakhir sebelum uang ' +
+      'berpindah. Jeda itu bukan birokrasi: ia satu-satunya kesempatan bagi orang ketiga untuk ' +
+      'melihat angkanya sebelum ia tidak dapat ditarik kembali.',
+    conflictingPermissions: ['HEALTH_FEE_SETTLEMENT.APPROVE', 'HEALTH_FEE_SETTLEMENT.POST'],
+  },
+  {
+    code: 'HEALTH_SOD_SETTLEMENT_CORRECT',
+    name: 'Pembuat koreksi tidak menghitung settlement yang dikoreksinya',
+    description:
+      'Koreksi adalah tempat paling mudah untuk memindahkan uang tanpa ada yang melihat, sebab ' +
+      'ia terlihat seperti pembetulan. Penyesuaian yang dibuat oleh orang yang juga menghitung ' +
+      'settlement aslinya tidak dapat dibedakan dari pembetulan atas kekeliruan yang disengaja. ' +
+      'Ditegakkan constraint fee_correction_approval_not_self pula.',
+    conflictingPermissions: ['HEALTH_FEE_SETTLEMENT.CREATE', 'HEALTH_FEE_SETTLEMENT.REVERSE'],
   },
   /*
    * HEALTH_SOD_FEE_RECIPIENT_APPROVE sengaja TIDAK ada di sini.

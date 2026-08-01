@@ -304,6 +304,31 @@ describe('peran kesehatan', () => {
     expect(mencatat).toEqual(['HEALTH_FEE_ADMINISTRATOR', 'HEALTH_SCRUB_NURSE']);
   });
 
+  it('empat wewenang settlement dipegang empat peran berbeda', () => {
+    /*
+     * Menghitung, menyetujui, mengunci dan membayar, lalu mengoreksi. Tidak
+     * satu pun peran bawaan memegang dua di antaranya — dan aturan SoD-nya
+     * menegakkan itu pula.
+     */
+    const pemegang = (aksi: string) =>
+      HEALTH_ROLES.filter((r) => r.permissions.includes(`HEALTH_FEE_SETTLEMENT.${aksi}`))
+        .map((r) => r.code);
+
+    expect(pemegang('CREATE')).toEqual(['HEALTH_SETTLEMENT_CLERK']);
+    expect(pemegang('APPROVE')).toEqual(['HEALTH_FEE_APPROVER']);
+    expect(pemegang('POST')).toEqual(['HEALTH_SETTLEMENT_PAYER']);
+    expect(pemegang('REVERSE')).toEqual(['HEALTH_FINANCE_OFFICER']);
+  });
+
+  it('tidak ada peran yang dapat menerbitkan pernyataan sekaligus menghitungnya', () => {
+    const menerbitkan = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_FEE_STATEMENT.CREATE'),
+    );
+    for (const r of menerbitkan) {
+      expect(r.permissions).not.toContain('HEALTH_FEE_SETTLEMENT.CREATE');
+    }
+  });
+
   it('penghapusan data contoh hanya dipegang administrator', () => {
     // Penghapusannya menolak bila ada data nyata yang merujuknya, dan keputusan
     // atas penolakan itu harus diambil orang yang dapat menilai akibatnya.
