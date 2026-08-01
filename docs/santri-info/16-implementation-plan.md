@@ -97,10 +97,33 @@ mengelola situs SATU PONDOK (mis. `/pesantren/public/site`, editor berita
 tenant). Perbaikan ini hanya menutup risiko kebocoran data sebagai prasyarat
 — situs pondok itu sendiri belum dibangun.
 
+## Status EP-E — SEBAGIAN, presensi ibadah/kegiatan saja
+
+**Yang dikerjakan:** tabel `pesantren_presensi` (migrasi modul
+`20260802T150000__pesantren__presensi`) — satu baris per santri per tanggal
+per jenis kegiatan (`SEKOLAH`, `DINIYAH`, `IBADAH`, `KEGIATAN`), status
+`HADIR/IZIN/SAKIT/ALPA`, ditegakkan indeks unik parsial. Menu
+`EPESANTREN_PRESENSI` dan hak `EPESANTREN_ADMIN` ditambahkan ke katalog yang
+sama dengan EP-A. API `PesantrenPresensiController`
+(`/pesantren/presensi` — GET daftar, POST catat) dibuktikan live terhadap
+`ponpes_demo`: pencatatan berhasil, jenis berbeda pada tanggal sama
+diperbolehkan, tanggal+jenis yang sama pada santri yang sama ditolak dengan
+pesan konflik yang jelas, santri tak dikenal ditolak 404, dan permintaan
+tanpa token ditolak 401.
+
+Dipilih **presensi ibadah/kegiatan** (`EPESANTREN_IBADAH_ATTENDANCE` pada
+§8.3 perintah master), BUKAN presensi kelas formal (`ESCHOOL_ATTENDANCE`),
+sebab presensi kelas menuntut struktur rombongan belajar yang dicatat
+MISSING pada `05-eschool-gap-matrix.md` — membangun di atasnya sekarang
+berarti mengarang struktur kelas yang belum diaudit.
+
+**Yang tidak dikerjakan:** rombongan belajar/kelas dan presensi sekolah
+formal; rekap/laporan presensi (harian, mingguan, per santri); notifikasi ke
+wali saat status bukan HADIR (bergantung EP-K, portal wali, yang belum ada).
+
 ## Sesudah EP-A
 
 ```text
-EP-E   Presensi
 EP-F   Tagihan pendidikan di atas mesin faktur
 EP-G   Asrama dan penempatan kamar
 EP-H   Diniyah, halaqah, kitab

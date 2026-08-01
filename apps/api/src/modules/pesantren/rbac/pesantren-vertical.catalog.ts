@@ -46,6 +46,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 500,
     actions: CATAT,
   },
+  {
+    code: 'EPESANTREN_PRESENSI',
+    label: 'Presensi Santri',
+    translationKey: 'menu.epesantren.presensi',
+    route: '/app/pesantren/presensi',
+    icon: 'CalendarCheck',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 510,
+    actions: CATAT,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -59,7 +69,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
     name: 'Administrator ePesantren',
     family: 'ePesantren',
     profile: 'P7',
-    modules: { ...DASAR, EPESANTREN_SANTRI: 'P7' },
+    modules: { ...DASAR, EPESANTREN_SANTRI: 'P7', EPESANTREN_PRESENSI: 'P7' },
     dataScope: 'TENANT',
     core: false,
     description:

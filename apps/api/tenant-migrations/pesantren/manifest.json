@@ -11,6 +11,12 @@
       "file": "20260802T140000__pesantren__foundation.sql",
       "name": "Fondasi ePesantren: tahun ajaran, unit pendidikan, wali, dan santri",
       "description": "pesantren_tahun_ajaran, pesantren_unit_pendidikan, pesantren_wali, pesantren_santri, pesantren_santri_wali. Prasyarat mutlak seluruh modul ePesantren lain (EP-0.17). Satu tahun ajaran ACTIVE ditegakkan indeks unik parsial. Santri AKTIF wajib tidak punya tanggal keluar dan sebaliknya, ditegakkan CHECK -- tanpa ini 'santri aktif' (dasar penagihan Rp 2.000/santri/bulan, §13.4) dapat dihitung dari status ATAU dari tanggal keluar, dan keduanya dapat berselisih tanpa satu pun galat. Maksimal satu wali utama per santri ditegakkan indeks unik parsial, sebab portal wali (EP-K) menuntut satu jawaban pasti atas siapa yang menerima pemberitahuan utama."
+    },
+    {
+      "id": "20260802T150000__pesantren__presensi",
+      "file": "20260802T150000__pesantren__presensi.sql",
+      "name": "EP-E: Presensi harian santri (ibadah/kegiatan)",
+      "description": "pesantren_presensi -- satu baris per santri per tanggal per jenis kegiatan (SEKOLAH, DINIYAH, IBADAH, KEGIATAN), ditegakkan indeks unik parsial. Presensi kelas formal (yang menuntut rombongan belajar) belum ada -- lihat docs/santri-info/05, MISSING."
     }
   ]
 }
