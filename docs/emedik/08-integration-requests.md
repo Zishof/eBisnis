@@ -11,6 +11,7 @@ adalah daftarnya.
 | [003](../integration-requests/health/003-enterprise-patient-index.md) | Indeks pasien lintas fasilitas | 31 Jul 2026 | Menunggu Core | Tidak | Disimpan pada skema tenant |
 | [004](../integration-requests/health/004-r2-namespace-and-shared-ports.md) | Namespace R2 dan port bersama belum ada | 1 Agu 2026 | Menunggu Core | Tidak | Tetap `modules/emedik/`; rute tetap `/health/**` |
 | [005](../integration-requests/health/005-riwayat-migrasi-gagal-mengunci-versi.md) | Riwayat migrasi GAGAL mengunci nomor versinya selamanya | 1 Agu 2026 | Menunggu Core | **Ya** — migrasi yang gagal lalu diulang tanpa diubah dilaporkan *sudah diterapkan* padahal tabelnya tidak pernah dibuat | Nomor yang hangus ditinggalkan; H055/H056 -> H057/H058 |
+| [006](../integration-requests/health/006-pemulihan-sesi-melewati-dedupe-refresh.md) | Pemulihan sesi melewati dedupe refresh dan mencabut sesinya sendiri | 1 Agu 2026 | Menunggu Core | Hanya mode pengembangan — tetapi setiap muat ulang halaman | Masuk ulang setiap kali memeriksa layar |
 
 ---
 

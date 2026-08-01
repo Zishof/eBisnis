@@ -1973,6 +1973,73 @@ nomor H055 dan H056 dihanguskan.
 
 ---
 
+## Fase layar (W)
+
+Dua belas fase H membangun API. Fase W membangun layarnya, dengan urutan yang
+berbeda dari urutan H: yang menentukan bukan urutan pembangunan API-nya,
+melainkan **berapa banyak orang yang tidak dapat bekerja tanpa layarnya**.
+
+### W-1 · Puskesmas dan Posyandu — **SELESAI**
+
+Lima layar: folder keluarga, pertumbuhan, imunisasi, kunjungan rumah, cakupan.
+
+Didahulukan sebab ia satu-satunya perkara di mana **satu kategori fasilitas
+penuh tidak dapat memakai sistemnya sama sekali** untuk kerja hariannya. Rumah
+sakit sudah punya delapan layar sejak H-7; Puskesmas punya nol, sekalipun
+API-nya lengkap sejak H-8.
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H059__health__menu_truth_fix.sql` |
+| Layar | `FamilyPage`, `GrowthPage`, `ImmunizationPage`, `HomeVisitPage`, `CoveragePage` |
+| Klien | `health-api.ts` — 7 jalan komunitas, 3 peta label |
+| Uji | `puskesmas-pages.spec.tsx` 16; `health-api.spec.ts` 34 -> 40 |
+
+**Keputusan yang menentukan bentuknya**
+
+- **Urutan daftar kunjungan rumah tidak dapat diubah pengguna.** Setiap daftar
+  lain boleh diurut sesuka penggunanya; yang ini tidak. Peladen sudah
+  mengurutkannya menurut kemendesakan, dan kolom yang dapat diklik akan diklik —
+  diurut menurut nama, anak bergizi buruk berpindah ke tengah daftar dan tidak
+  dikunjungi hari itu, tanpa satu pun galat yang memberi tahu. Daftarnya `<ol>`
+  bernomor, bukan tabel.
+- **Yang belum boleh diimunisasi tidak diberi tombol** — tetapi tetap
+  ditampilkan, beserta kalimat sebabnya dan **tanggal paling awalnya**. Ibu yang
+  bertanya "kapan giliran anak saya" berhak dijawab dengan tanggal.
+- **Penilaian gizi muncul sebelum kader beranjak**, bukan pada laporan bulan
+  depan. Kader menimbang dua puluh anak dalam satu pagi; yang bergizi buruk pagi
+  ini pulang tanpa ada yang tahu kalau penilaiannya menyusul.
+- **Cakupan menonjolkan yang BELUM TERSENTUH**, bukan persentasenya. Ambang
+  warnanya sengaja tidak simetris — hijau mulai 95%, sebab di bawah itu tidak
+  ada kekebalan kelompok.
+- **Tombol yang tidak dapat dipakai dimatikan beserta jalan keluarnya.** Anak
+  tanpa folder keluarga tidak dapat dicatat kunjungannya; tombolnya mati dan
+  sebabnya tertulis, bukan gagal dengan 400 di tangan kader yang sedang berdiri
+  di depan rumah orang.
+
+**Yang ditemukan** — satu cacat yang lolos dari seluruh uji komponennya, dan
+satu cacat Core yang menyembunyikannya. Rinciannya pada
+[07 — garis dasar pengujian](07-test-baseline.md) dan
+[006](../integration-requests/health/006-pemulihan-sesi-melewati-dedupe-refresh.md).
+
+### Yang belum berlayar
+
+55 menu masih bertanda "segera hadir", dan kini menunya **berkata begitu
+sebelum diklik**, bukan sesudah. Urutan berikutnya yang disarankan, menurut
+ukuran yang sama — berapa orang tidak dapat bekerja tanpanya:
+
+| Fase | Cakupan | Sebab didahulukan |
+|---|---|---|
+| W-2 | Rekam medis: koding, kelengkapan, penahanan, pelepasan, jejak akses, telaah darurat | Dipakai harian; H-12 membangun telaah break-glass yang belum punya layar sama sekali |
+| W-3 | Klaim dan BPJS: kepesertaan, SEP, klaim, telaah, rekonsiliasi | Pendapatan rumah sakit; tertunda berarti kas tertunda |
+| W-4 | Tarif dan jasa: tarif, kebijakan jasa, kontributor, settlement, kontrak fee | Penagihan tidak benar tanpa tarif |
+| W-5 | Alat: registri, gateway, pemeliharaan, keamanan, pesan/hasil | Keselamatan pasien |
+| W-6 | Master data, terminologi, KFA, pemetaan kode, SATUSEHAT | Prasyarat mutu data, bukan kerja harian |
+| W-7 | Portal pasien, website fasilitas, data contoh, laporan | Menghadap keluar |
+| W-8 | Investor, akuntansi, zona data, penjaga AI | Paling jarang dibuka |
+
+---
+
 ## Revisi 2 — fase tambahan H-9A sampai H-9N
 
 Paket **eMedik V12 Revisi 2** (1 Agustus 2026) menggantikan spesifikasi

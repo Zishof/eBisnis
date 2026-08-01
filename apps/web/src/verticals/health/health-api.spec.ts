@@ -26,6 +26,8 @@ import {
   LABEL_TOLAK_SPESIMEN,
   RUPA_HASIL,
   RUPA_PERINGATAN,
+  RUPA_GIZI,
+  LABEL_HUBUNGAN_KELUARGA,
   TUJUAN_LABEL,
   type PurposeOfUse,
 } from './health-api';
@@ -154,6 +156,14 @@ describe('tujuan penggunaan pada pembacaan rekam medis', () => {
       ['incision', () => healthApi.incision('C1', ctx)],
       ['leaveTheatre', () => healthApi.leaveTheatre('C1', {}, ctx)],
       ['icuAssessment', () => healthApi.icuAssessment({}, ctx)],
+      // Puskesmas dan Posyandu.
+      ['createFamilyFolder', () => healthApi.createFamilyFolder({}, ctx)],
+      ['familyFolder', () => healthApi.familyFolder('F1', ctx)],
+      ['recordGrowth', () => healthApi.recordGrowth({}, ctx)],
+      ['growthHistory', () => healthApi.growthHistory('P1', ctx)],
+      ['immunizationStatus', () => healthApi.immunizationStatus('P1', ctx)],
+      ['recordImmunization', () => healthApi.recordImmunization({}, ctx)],
+      ['recordHomeVisit', () => healthApi.recordHomeVisit({}, ctx)],
     ];
 
     const tanpaTujuan: string[] = [];
@@ -163,6 +173,31 @@ describe('tujuan penggunaan pada pembacaan rekam medis', () => {
       if (!tercatat[0]?.headers?.['X-Purpose-Of-Use']) tanpaTujuan.push(nama);
     }
     expect(tanpaTujuan).toEqual([]);
+  });
+
+  it('cakupan dan daftar kunjungan SENGAJA tidak membawa tujuan penggunaan', async () => {
+    /*
+     * Bukan kelalaian, dan diuji supaya tidak "diperbaiki" oleh orang yang
+     * mengira begitu.
+     *
+     * Keduanya endpoint agregat/kerja yang peladennya memang tidak menuntut
+     * tajuk: cakupan tidak menyebut satu pasien pun, dan daftar kunjungan
+     * adalah daftar kerja kader — menuntut tujuan penggunaan pada layar yang
+     * dibuka setiap pagi akan membuat tajuk itu diisi otomatis, dan yang diisi
+     * otomatis tidak menyatakan apa pun.
+     */
+    tercatat.length = 0;
+    await healthApi.coverage('F1', 2026, 8);
+    expect(tercatat[0].headers?.['X-Purpose-Of-Use']).toBeUndefined();
+
+    tercatat.length = 0;
+    await healthApi.homeVisitWorklist('F1');
+    expect(tercatat[0].headers?.['X-Purpose-Of-Use']).toBeUndefined();
+  });
+
+  it('membaca isi folder keluarga membawa tujuan — ia menyebut nama anggotanya', async () => {
+    await healthApi.familyFolder('F1', ctx);
+    expect(tercatat[0].headers?.['X-Purpose-Of-Use']).toBe('TREATMENT');
   });
 
   it('akses darurat membawa alasannya, bukan hanya penandanya', async () => {
@@ -383,5 +418,69 @@ describe('rupa gawat darurat dan bedah', () => {
     // panduannya; "jeda sebelum sayatan" mengatakan kapan ia terjadi.
     expect(LABEL_TAHAP_BEDAH.TIME_OUT).toBe('Jeda sebelum sayatan');
     expect(LABEL_TAHAP_BEDAH.SIGN_IN).toContain('pembiusan');
+  });
+});
+
+
+describe('rupa status gizi', () => {
+  it('yang menuntut tindakan ditandai mendesak, yang normal tidak', () => {
+    /*
+     * Warna yang dipakai untuk segalanya sama saja dengan tidak berwarna. Layar
+     * Posyandu dipakai kader sambil berdiri di antara puluhan ibu.
+     */
+    for (const k of [
+      'SEVERELY_WASTED',
+      'WASTED',
+      'SEVERELY_STUNTED',
+      'STUNTED',
+      'SEVERELY_UNDERWEIGHT',
+      'UNDERWEIGHT',
+      'OBESE',
+      'OVERWEIGHT',
+    ]) {
+      expect(RUPA_GIZI[k]?.mendesak).toBe(true);
+    }
+    for (const k of ['NORMAL', 'TALL', 'RISK_OVERWEIGHT']) {
+      expect(RUPA_GIZI[k]?.mendesak).toBe(false);
+    }
+  });
+
+  it('KOSAKATANYA LENGKAP terhadap yang dapat dikembalikan peladen', () => {
+    /*
+     * Disalin dari `health-community.ts`, tidak disusun dari ingatan. Status
+     * yang tidak dikenal akan tampil sebagai kode mentah di hadapan kader —
+     * dan kader yang membaca "SEVERELY_WASTED" tidak tahu itu artinya gizi
+     * buruk.
+     *
+     * Pelajaran H-12: kosakata yang disusun dari ingatan meleset, dan
+     * melesetnya baru terlihat di hadapan pengguna.
+     */
+    const dariPeladen = [
+      'SEVERELY_STUNTED',
+      'STUNTED',
+      'NORMAL',
+      'TALL',
+      'SEVERELY_WASTED',
+      'WASTED',
+      'OVERWEIGHT',
+      'OBESE',
+      'SEVERELY_UNDERWEIGHT',
+      'UNDERWEIGHT',
+      'RISK_OVERWEIGHT',
+    ];
+    const hilang = dariPeladen.filter((k) => !RUPA_GIZI[k]);
+    expect(hilang).toEqual([]);
+  });
+
+  it('setiap status punya label berbahasa Indonesia, bukan kode mentah', () => {
+    for (const [kode, rupa] of Object.entries(RUPA_GIZI)) {
+      expect(rupa.label).not.toBe(kode);
+      expect(rupa.label.length).toBeGreaterThan(3);
+    }
+  });
+
+  it('hubungan keluarga punya label untuk kepala keluarga dan anak', () => {
+    expect(LABEL_HUBUNGAN_KELUARGA.HEAD).toBeTruthy();
+    expect(LABEL_HUBUNGAN_KELUARGA.CHILD).toBeTruthy();
   });
 });

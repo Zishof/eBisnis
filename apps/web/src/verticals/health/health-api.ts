@@ -453,6 +453,139 @@ export interface BarisPapanIcu {
 
 // --- Panggilan ---------------------------------------------------------------
 
+export interface AnggotaKeluarga {
+  id: string;
+  relationship: string;
+  joined_at: string | null;
+  patient_id: string;
+  full_name: string;
+  birth_date: string | null;
+  gender: string | null;
+  haz_status: string | null;
+  whz_status: string | null;
+  waz_status: string | null;
+  last_measured_at: string | null;
+  weight_flat_count: number | null;
+}
+
+export interface BarisPertumbuhan {
+  id: string;
+  measured_at: string;
+  age_months: number;
+  weight_kg: number;
+  height_cm: number;
+  height_measured_as: string | null;
+  height_adjusted: boolean | null;
+  waz: number | null;
+  haz: number | null;
+  whz: number | null;
+  waz_status: string | null;
+  haz_status: string | null;
+  whz_status: string | null;
+  weight_flat_count: number | null;
+  posyandu_name: string | null;
+}
+
+export interface HasilPengukuran {
+  id: string;
+  waz: number | null;
+  haz: number | null;
+  whz: number | null;
+  wazStatus: string | null;
+  hazStatus: string | null;
+  whzStatus: string | null;
+  weightFlatCount: number | null;
+  alerts?: string[];
+}
+
+/**
+ * DISALIN dari `PutusanImunisasi` pada `health-community.ts`.
+ *
+ * Perhatikan bahwa `reason` adalah **KODE**, bukan kalimat — dan `message`
+ * yang berisi kalimatnya. Rancangan pertama layar ini merender `reason`,
+ * sehingga kader membaca `TOO_YOUNG` alih-alih "Umur minimum 9 bulan".
+ *
+ * `earliestDate` adalah jawaban atas pertanyaan yang paling sering diajukan
+ * ibu: kapan giliran anak saya. Peladen menyediakannya sejak awal.
+ */
+export interface PutusanImunisasi {
+  allowed: boolean;
+  reason?: 'TOO_YOUNG' | 'INTERVAL_TOO_SHORT' | 'ALREADY_GIVEN' | 'OUT_OF_ORDER';
+  message?: string;
+  earliestDate?: string;
+}
+
+export interface JadwalImunisasi {
+  vaccineCode: string;
+  doseNumber: number;
+  minAgeDays: number;
+  minIntervalDays?: number | null;
+  recommendedAgeDays?: number | null;
+  verdict: PutusanImunisasi;
+}
+
+export interface ImunisasiTertunggak {
+  vaccineCode: string;
+  doseNumber: number;
+  overdueDays: number;
+}
+
+export interface StatusImunisasi {
+  given: Array<{
+    id: string;
+    vaccine_code: string;
+    dose_number: number;
+    given_at: string;
+    batch_number?: string | null;
+  }>;
+  overdue: ImunisasiTertunggak[];
+  upcoming: JadwalImunisasi[];
+  dueToday: JadwalImunisasi[];
+}
+
+export interface BarisCakupan {
+  id: string;
+  program_code: string;
+  program_name: string;
+  village: string | null;
+  target_count: number;
+  achieved_count: number;
+  period_year: number;
+  period_month: number | null;
+  /*
+   * `coverage`, `gap`, `message` — DISALIN dari nilai kembali `hitungCakupan`
+   * pada `health-community.ts`, tidak disusun sendiri.
+   *
+   * Rancangan pertamanya menamainya `percentage` dan `shortfall`. Keduanya
+   * nama yang masuk akal dan keduanya tidak ada, sehingga
+   * `r.percentage.toFixed(1)` MELEMPAR dan seluruh halamannya kosong — bukan
+   * menampilkan angka yang salah, melainkan tidak menampilkan apa pun.
+   */
+  coverage: number;
+  gap: number;
+  message: string;
+}
+
+export interface BarisKunjunganRumah {
+  patient_id: string;
+  full_name: string;
+  birth_date: string | null;
+  family_folder_id: string | null;
+  folder_number: string | null;
+  village: string | null;
+  rt: string | null;
+  rw: string | null;
+  haz_status: string | null;
+  whz_status: string | null;
+  weight_flat_count: number | null;
+  last_measured_at: string | null;
+  severelyWasted: boolean;
+  wasted: boolean;
+  stunted: boolean;
+  weightFlat: boolean;
+  overdueDays: number;
+}
+
 export const healthApi = {
   // Fasilitas dan katalog tidak menyentuh rekam medis, sehingga tidak menuntut
   // tujuan penggunaan.
@@ -841,6 +974,60 @@ export const healthApi = {
 
   icuBoard: (facilityId: string) =>
     api.get<BarisPapanIcu[]>(`/health/acute/icu/board?facilityId=${facilityId}`),
+
+  // --- Puskesmas: keluarga, pertumbuhan, imunisasi, kunjungan rumah ---------
+  //
+  // Cakupan dan daftar kunjungan TIDAK membawa tujuan penggunaan, dan itu
+  // bukan kelalaian: keduanya endpoint agregat/kerja yang peladennya sengaja
+  // tidak menuntut tajuk. Yang menyentuh satu pasien — isi folder, riwayat
+  // pertumbuhan, status imunisasi — membawanya.
+
+  createFamilyFolder: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; folderNumber: string; alreadyElsewhere: string[] }>(
+      '/health/community/folders',
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  familyFolder: (id: string, ctx: KonteksAkses) =>
+    api.get<{ id: string; members: AnggotaKeluarga[] }>(`/health/community/folders/${id}`, {
+      headers: tajuk(ctx),
+    }),
+
+  recordGrowth: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<HasilPengukuran>('/health/community/growth', body, { headers: tajuk(ctx) }),
+
+  growthHistory: (patientId: string, ctx: KonteksAkses) =>
+    api.get<BarisPertumbuhan[]>(`/health/community/growth/${patientId}`, { headers: tajuk(ctx) }),
+
+  immunizationStatus: (patientId: string, ctx: KonteksAkses) =>
+    api.get<StatusImunisasi>(`/health/community/immunization/${patientId}`, {
+      headers: tajuk(ctx),
+    }),
+
+  recordImmunization: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; vaccineCode: string; doseNumber: number }>(
+      '/health/community/immunization',
+      body,
+      { headers: tajuk(ctx) },
+    ),
+
+  coverage: (facilityId: string, year: number, month?: number) =>
+    api.get<BarisCakupan[]>(
+      `/health/community/coverage?facilityId=${facilityId}&year=${year}${
+        month ? `&month=${month}` : ''
+      }`,
+    ),
+
+  homeVisitWorklist: (facilityId: string, limit = 50) =>
+    api.get<BarisKunjunganRumah[]>(
+      `/health/community/home-visits/worklist?facilityId=${facilityId}&limit=${limit}`,
+    ),
+
+  recordHomeVisit: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; visitedAt: string }>('/health/community/home-visits', body, {
+      headers: tajuk(ctx),
+    }),
 };
 
 // --- Bantuan tampilan --------------------------------------------------------
@@ -1072,6 +1259,96 @@ export const LABEL_TAHAP_BEDAH: Record<string, string> = {
   SIGN_IN: 'Sebelum pembiusan',
   TIME_OUT: 'Jeda sebelum sayatan',
   SIGN_OUT: 'Sebelum keluar',
+};
+
+/**
+ * Rupa status gizi.
+ *
+ * Yang `actionable` diberi warna yang menuntut perhatian; yang normal tidak.
+ * Layar Posyandu dipakai kader sambil berdiri di antara puluhan ibu, dan warna
+ * yang dipakai untuk segalanya sama saja dengan tidak berwarna.
+ */
+export const RUPA_GIZI: Record<string, { kelas: string; label: string; mendesak: boolean }> = {
+  SEVERELY_WASTED: {
+    kelas: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
+    label: 'Gizi buruk',
+    mendesak: true,
+  },
+  WASTED: {
+    kelas: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+    label: 'Gizi kurang',
+    mendesak: true,
+  },
+  SEVERELY_STUNTED: {
+    kelas: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
+    label: 'Sangat pendek',
+    mendesak: true,
+  },
+  STUNTED: {
+    kelas: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+    label: 'Pendek',
+    mendesak: true,
+  },
+  SEVERELY_UNDERWEIGHT: {
+    kelas: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
+    label: 'Berat sangat kurang',
+    mendesak: true,
+  },
+  UNDERWEIGHT: {
+    kelas: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+    label: 'Berat kurang',
+    mendesak: true,
+  },
+  OBESE: {
+    kelas: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
+    label: 'Obesitas',
+    mendesak: true,
+  },
+  OVERWEIGHT: {
+    kelas: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
+    label: 'Gizi lebih',
+    mendesak: true,
+  },
+  RISK_OVERWEIGHT: {
+    kelas: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+    label: 'Berisiko gizi lebih',
+    mendesak: false,
+  },
+  TALL: {
+    kelas: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+    label: 'Tinggi',
+    mendesak: false,
+  },
+  NORMAL: {
+    kelas: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
+    label: 'Normal',
+    mendesak: false,
+  },
+};
+
+/**
+ * Terjemahan kode penolakan imunisasi.
+ *
+ * Cadangan saja: peladen hampir selalu mengirim `message` yang sudah berupa
+ * kalimat lengkap beserta tanggalnya. Yang ini dipakai bila `message` kosong —
+ * supaya yang muncul di layar tetap bahasa manusia, bukan `TOO_YOUNG`.
+ */
+export const LABEL_TOLAK_IMUNISASI: Record<string, string> = {
+  TOO_YOUNG: 'Umurnya belum cukup.',
+  INTERVAL_TOO_SHORT: 'Jaraknya dari dosis sebelumnya belum cukup.',
+  ALREADY_GIVEN: 'Dosis ini sudah pernah diberikan.',
+  OUT_OF_ORDER: 'Dosis sebelumnya belum lengkap.',
+};
+
+export const LABEL_HUBUNGAN_KELUARGA: Record<string, string> = {
+  HEAD: 'Kepala keluarga',
+  SPOUSE: 'Istri/suami',
+  CHILD: 'Anak',
+  PARENT: 'Orang tua',
+  SIBLING: 'Saudara',
+  GRANDPARENT: 'Kakek/nenek',
+  GRANDCHILD: 'Cucu',
+  OTHER: 'Lainnya',
 };
 
 export const LABEL_KEGAWATAN: Record<string, string> = {

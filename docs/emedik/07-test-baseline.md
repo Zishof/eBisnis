@@ -90,8 +90,8 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-11 | 25 | **35** | `health-sample.spec.ts` |
 | H-12 | 40 | **75** | `health-security.spec.ts` |
 
-API keseluruhan: **2506** pengujian pada 72 berkas. Web: **69** pada 5 berkas,
-34 di antaranya pada `health-api.spec.ts`.
+API keseluruhan: **2506** pengujian pada 72 berkas. Web: **91** pada 6 berkas,
+56 di antaranya kesehatan (`health-api.spec.ts` 40, `puskesmas-pages.spec.tsx` 16).
 
 Seluruh dua belas fase melampaui sasaran minimumnya. Jumlah minimum yang
 ditetapkan H-0 adalah 370 pengujian baru; yang terpasang jauh di atasnya.
@@ -134,6 +134,38 @@ sungguhan, pada basis data sungguhan:
 | H-10 | `prove-health-portal.mjs` | 63 pemeriksaan, seluruhnya lulus — [bukti-h10-portal.txt](bukti-h10-portal.txt) |
 | H-11 | `prove-health-sample.mjs` | 55 pemeriksaan, seluruhnya lulus — [bukti-h11-data-contoh.txt](bukti-h11-data-contoh.txt) |
 | H-12 | `prove-health-security.mjs` | 92 pemeriksaan, seluruhnya lulus — [bukti-h12-keamanan.txt](bukti-h12-keamanan.txt) |
+
+### W-1 · Layar Puskesmas — dan batas uji komponen
+
+Fase layar pertama menemukan cacat yang **lolos dari seluruh uji komponennya**,
+dan cara ia lolos lebih berharga daripada cacatnya sendiri.
+
+`CoveragePage` membaca `percentage` dan `shortfall`; peladen mengirim
+`coverage`, `gap`, dan `message`. Halamannya melempar TypeError dan **kosong
+sama sekali** — bukan menampilkan angka yang salah, melainkan tidak menampilkan
+apa pun.
+
+Enam uji komponen atas halaman itu lulus, sebab perlengkapan datanya ditulis
+tangan **dengan andaian yang sama kelirunya**. Perlengkapan yang keliru dan kode
+yang keliru saling menyetujui, dan keduanya tidak sesuai kenyataan.
+
+> **Uji yang perlengkapannya ditulis penulis kodenya sendiri tidak dapat
+> membuktikan kontrak dengan peladen.** Ia membuktikan bahwa komponennya
+> berperilaku benar terhadap bentuk data yang diandaikan penulisnya — pernyataan
+> yang jauh lebih lemah daripada yang tampak.
+
+Yang menemukannya: membuka halamannya pada peladen sungguhan. Sesudah itu
+seluruh bentuk jawaban H-8 diperiksa langsung ke peladen, dan menemukan
+kekeliruan kedua — `verdict.reason` pada imunisasi berisi KODE (`TOO_YOUNG`),
+bukan kalimat; kalimatnya pada `verdict.message`, dan `verdict.earliestDate`
+yang menjawab "kapan giliran anak saya" tidak pernah dipakai.
+
+Perlengkapan ujinya kini disalin dari jawaban peladen sungguhan, dan peringatan
+tentang batas ini ditulis di kepala berkas ujinya — supaya yang menambah uji
+berikutnya tahu apa yang sedang dan tidak sedang dibuktikannya.
+
+Ini kemunculan **ketiga dan keempat** cacat yang sama sepanjang dua fase
+terakhir: nama yang ditulis dari dugaan, bukan dibaca dari sumbernya.
 
 **H-12 menemukan tiga cacat, dan dua di antaranya adalah cacat yang sama
 berulang: kosakata yang disusun dari ingatan alih-alih dibaca dari skema.**

@@ -95,6 +95,21 @@ const HealthWardPage = lazy(() =>
 const HealthEmergencyPage = lazy(() =>
   import('../verticals/health/EmergencyPage').then((m) => ({ default: m.EmergencyPage })),
 );
+const HealthFamilyPage = lazy(() =>
+  import('../verticals/health/FamilyPage').then((m) => ({ default: m.FamilyPage })),
+);
+const HealthGrowthPage = lazy(() =>
+  import('../verticals/health/GrowthPage').then((m) => ({ default: m.GrowthPage })),
+);
+const HealthImmunizationPage = lazy(() =>
+  import('../verticals/health/ImmunizationPage').then((m) => ({ default: m.ImmunizationPage })),
+);
+const HealthHomeVisitPage = lazy(() =>
+  import('../verticals/health/HomeVisitPage').then((m) => ({ default: m.HomeVisitPage })),
+);
+const HealthCoveragePage = lazy(() =>
+  import('../verticals/health/CoveragePage').then((m) => ({ default: m.CoveragePage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -210,6 +225,22 @@ export function App() {
             <Route path="keperawatan" element={<HealthWardPage />} />
             <Route path="tempat-tidur" element={<HealthWardPage />} />
             <Route path="igd" element={<HealthEmergencyPage />} />
+
+            {/*
+              Puskesmas dan Posyandu.
+
+              `kunjungan-rumah` SENGAJA bukan `kunjungan`. Menu HEALTH_HOME_VISIT
+              semula berutas `/app/emedik/kunjungan`, dan NavLink mencocokkan
+              awalan — sehingga membuka kunjungan klinis mana pun
+              (`kunjungan/:id`) menyorot menu "Kunjungan Rumah" di bilah samping.
+              Dokter yang sedang membaca rekam medis melihat menu Posyandu
+              tersorot. Diperbaiki migrasi H059.
+            */}
+            <Route path="keluarga" element={<HealthFamilyPage />} />
+            <Route path="pertumbuhan" element={<HealthGrowthPage />} />
+            <Route path="imunisasi" element={<HealthImmunizationPage />} />
+            <Route path="kunjungan-rumah" element={<HealthHomeVisitPage />} />
+            <Route path="cakupan" element={<HealthCoveragePage />} />
           </Route>
           <Route path="*" element={<ComingSoonPage />} />
         </Route>

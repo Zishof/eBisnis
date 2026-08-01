@@ -5,6 +5,84 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## W-1 — Layar Puskesmas dan Posyandu
+
+Fase layar pertama. Sampai fase ini, satu kategori fasilitas penuh — Puskesmas —
+tidak punya satu pun layar untuk kerja hariannya, sekalipun API-nya lengkap
+sejak H-8.
+
+### Ditambahkan
+
+- **`FamilyPage`** (`/app/emedik/keluarga`) — folder keluarga beserta status
+  gizi SELURUH anggotanya sekaligus. Anak yang gizinya buruk hampir selalu punya
+  saudara yang gizinya juga buruk; yang perlu terlihat polanya, bukan satu
+  anaknya.
+- **`GrowthPage`** (`/app/emedik/pertumbuhan`) — penimbangan Posyandu.
+  Penilaiannya muncul di layar **sebelum kader beranjak**, bukan pada laporan
+  bulan depan; anak yang bergizi buruk pagi ini kalau tidak begitu pulang tanpa
+  ada yang tahu.
+- **`ImmunizationPage`** (`/app/emedik/imunisasi`) — tiga daftar terpisah:
+  tertunggak, boleh hari ini, dan **belum boleh — tanpa tombol**. Vaksin sebelum
+  umur minimum akan tercatat sebagai diberikan, lalu anaknya tampak lengkap pada
+  laporan cakupan dan tidak dikejar siapa pun.
+- **`HomeVisitPage`** (`/app/emedik/kunjungan-rumah`) — daftar kerja kader,
+  **urutannya tidak dapat diubah**. Peladen sudah mengurutkannya menurut
+  kemendesakan; tajuk kolom yang dapat diklik akan diklik, dan diurut menurut
+  nama anak bergizi buruk berpindah ke tengah daftar tanpa satu pun galat.
+- **`CoveragePage`** (`/app/emedik/cakupan`) — penyebutnya SASARAN, bukan yang
+  datang, dan yang ditonjolkan **berapa yang belum tersentuh**. Persentase 82%
+  terbaca lumayan; "134 anak belum diimunisasi" tidak.
+- **`H059__health__menu_truth_fix.sql`** — dua koreksi; lihat di bawah.
+- **`puskesmas-pages.spec.tsx`** — 16 uji komponen. Klien API: 40 uji (dari 34).
+
+### Diperbaiki
+
+- **Menu "Kunjungan Rumah" menyorot dirinya pada layar yang bukan miliknya.**
+  H015 memberinya utas `/app/emedik/kunjungan`, kunjungan klinis berada pada
+  `/app/emedik/kunjungan/:id`, dan `NavLink` mencocokkan **awalan** — sehingga
+  sejak H-3 setiap dokter yang membuka rekam medis melihat menu Posyandu
+  tersorot di bilah sampingnya. Tidak ada galat, tidak ada catatan, dan setiap
+  orang yang melihatnya menganggap dirinya salah membaca.
+- **Menu berkata "siap" dan layarnya berkata "segera hadir".** Seluruh menu
+  kesehatan terdaftar `is_coming_soon = FALSE` padahal hanya sebagian punya
+  layar. Kini 18 berlayar, 55 bertanda segera hadir — dan penandanya sudah
+  didukung bilah samping sejak awal; yang tidak ada hanyalah datanya.
+
+### Cacat yang HANYA ditemukan dengan membuka halamannya
+
+**`CoveragePage` melempar TypeError dan kosong sama sekali.** Kliennya membaca
+`percentage` dan `shortfall`; peladen mengirim `coverage`, `gap`, dan `message`.
+
+Seluruh uji komponennya **lulus** — sebab perlengkapan datanya ditulis tangan
+dengan andaian yang sama kelirunya. Perlengkapan yang keliru dan kode yang
+keliru saling menyetujui, dan keduanya tidak sesuai kenyataan.
+
+Kekeliruan kedua ditemukan pada pemeriksaan yang sama: `verdict.reason` pada
+imunisasi berisi **kode** (`TOO_YOUNG`, `OUT_OF_ORDER`), sedangkan kalimatnya
+ada pada `verdict.message` — dan `verdict.earliestDate` yang menjawab "kapan
+giliran anak saya" disediakan peladen sejak awal dan tidak pernah dipakai.
+
+Keduanya kini diperbaiki, seluruh bentuk jawaban H-8 diperiksa langsung ke
+peladen sungguhan, dan perlengkapan ujinya disalin dari jawaban itu. Peringatan
+tertulis di kepala berkas ujinya: perlengkapan yang ditulis tangan tidak dapat
+membuktikan bentuk jawaban peladen, dan tidak pernah akan dapat.
+
+### Cacat pada Core yang ditemukan sepanjang jalan
+
+**Pemulihan sesi melewati dedupe refresh yang justru dibuat untuknya.**
+`auth-context.tsx` memanggil `/auth/refresh` langsung dengan `skipRefresh`,
+bukan lewat `refreshAccessToken()` yang sudah ter-dedupe. Di bawah `StrictMode`
+efeknya berjalan dua kali, pemakaian ulang token memicu pencabutan family, dan
+pemulihan sesi **tidak pernah berhasil pada mode pengembangan**.
+
+Diajukan lewat
+[006](../integration-requests/health/006-pemulihan-sesi-melewati-dedupe-refresh.md).
+Berkas Core tidak disentuh.
+
+Uji web 75 -> 91.
+
+---
+
 ## H-12 — Keamanan, zona data, telaah break-glass, dan penjaga AI
 
 Fase terakhir. Ia tidak menambah kemampuan; ia memeriksa bahwa penjaga sebelas
