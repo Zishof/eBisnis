@@ -18,6 +18,10 @@ import { PesantrenKitabController, PesantrenHalaqahController } from './pesantre
 import { PesantrenDiniyahService } from './pesantren-diniyah.service';
 import { PesantrenTahfizController } from './pesantren-tahfiz.controller';
 import { PesantrenTahfizService } from './pesantren-tahfiz.service';
+import { PesantrenPerizinanController } from './pesantren-perizinan.controller';
+import { PesantrenPerizinanService } from './pesantren-perizinan.service';
+import { PesantrenGerbangController } from './pesantren-gerbang.controller';
+import { PesantrenGerbangService } from './pesantren-gerbang.service';
 
 function paramtypes(target: unknown): unknown[] {
   return (Reflect.getMetadata('design:paramtypes', target as object) as unknown[]) ?? [];
@@ -108,6 +112,39 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(tipe.filter((t) => t === undefined)).toEqual([]);
   });
 
+  it('setiap dependensi controller perizinan punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenPerizinanController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi service perizinan punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenPerizinanService);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi controller gerbang punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenGerbangController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi service gerbang punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenGerbangService);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('layanan gerbang tidak memiliki metode yang menyentuh status izin (docs/santri-info/13 R10)', () => {
+    // Pemeriksaan langsung terhadap bentuk kelas: metode yang dimilikinya
+    // hanya `daftar` dan `catat` -- tidak ada `setujui`/`tolak`/`ubah` apa pun.
+    const metode = Object.getOwnPropertyNames(PesantrenGerbangService.prototype).filter(
+      (m) => m !== 'constructor',
+    );
+    expect(metode.sort()).toEqual(['catat', 'daftar'].sort());
+  });
+
   it('controller dan service terdaftar pada pesantren.module.ts', () => {
     const sumber = readFileSync(join(__dirname, 'pesantren.module.ts'), 'utf8');
     expect(sumber).toContain('PesantrenSantriController');
@@ -124,6 +161,10 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(sumber).toContain('PesantrenDiniyahService');
     expect(sumber).toContain('PesantrenTahfizController');
     expect(sumber).toContain('PesantrenTahfizService');
+    expect(sumber).toContain('PesantrenPerizinanController');
+    expect(sumber).toContain('PesantrenPerizinanService');
+    expect(sumber).toContain('PesantrenGerbangController');
+    expect(sumber).toContain('PesantrenGerbangService');
   });
 
   it('modul terdaftar pada app.module.ts', () => {

@@ -243,10 +243,80 @@ capaian santri yang belum pernah setor mengembalikan `juz_tertinggi: null`
 **Yang tidak dikerjakan:** target hafalan per santri/kelas, jadwal setoran,
 dan rapor tahfiz cetak.
 
+## Status EP-J — SEBAGIAN, perizinan dan gerbang dengan SoD terbukti
+
+**Mengapa modul ini berbeda dari yang lain:**
+`docs/santri-info/13-security-and-privacy-risk-register.md` R10 mencatat
+"Petugas gerbang mengubah persetujuan izin" sebagai risiko BELUM ADA
+PENAHAN, dan secara eksplisit menulis "wajib menjadi uji". §14.8 perintah
+master: "petugas gerbang != pengubah persetujuan izin". Ini satu-satunya EP
+sesi ini yang menuntut peran BARU (`EPESANTREN_PETUGAS_GERBANG`) dibuat
+lebih awal dari kelaziman §6 — bukan mengklaim modul yang belum ada,
+melainkan sebab satu-satunya cara pemisahan tugas dapat DIUJI adalah dengan
+adanya peran yang benar-benar terpisah dari `EPESANTREN_ADMIN`.
+
+**Yang dikerjakan:** tabel `pesantren_izin`, `pesantren_gerbang_log`
+(migrasi modul `20260802T200000__pesantren__perizinan`). Pemisahan
+ditegakkan pada TIGA lapis: (1) dua service TERPISAH —
+`PesantrenPerizinanService` (ajukan/setujui/tolak) dan
+`PesantrenGerbangService` (catat lintasan) — yang kedua secara harfiah
+tidak punya satu pun metode yang menulis `pesantren_izin.status`, dibuktikan
+uji yang memeriksa daftar metode kelasnya; (2) dua menu dengan aksi
+berbeda — `EPESANTREN_GERBANG` tidak pernah menawarkan aksi APPROVE/REJECT
+sama sekali; (3) peran `EPESANTREN_PETUGAS_GERBANG` (profil P2, operator)
+hanya memegang menu gerbang, TIDAK PERNAH `EPESANTREN_PERIZINAN`.
+
+Dibuktikan live end-to-end terhadap `ponpes_demo` memakai dua akun sungguhan
+dengan peran berbeda (lihat bagian akun uji coba di bawah): admin
+mengajukan izin, petugas gerbang mencoba mencatat lintasan SEBELUM disetujui
+(ditolak dengan pesan status), petugas gerbang mencoba menyetujui izin
+langsung (403 — tidak punya `EPESANTREN_PERIZINAN.APPROVE`), petugas gerbang
+mencoba sekadar MEMBACA daftar izin (403 — tidak punya
+`EPESANTREN_PERIZINAN.READ` sama sekali), admin menyetujui, petugas gerbang
+BERHASIL mencatat KELUAR lalu MASUK, menyetujui izin yang sama dua kali
+ditolak, dan alur tolak (DITOLAK) diverifikasi terpisah.
+
+**Bug yang tertangkap live test:** `disetujui_oleh` semula dibuat FK ke
+`user_subject(id)`, padahal `AuthenticatedUser.userId` yang dikirim service
+adalah `platform_user_id` — ruang ID yang berbeda. Percobaan menyetujui izin
+sungguhan gagal dengan pelanggaran foreign key. Diperbaiki dengan menjadikan
+kolom itu UUID polos, konsisten dengan konvensi `created_by`/`updated_by`
+pada seluruh tabel pesantren lain. Migrasi belum pernah di-commit saat
+diperbaiki, sehingga diedit langsung (bukan migrasi susulan) dan checksum
+yang sudah terekam di 20 skema lokal direkonsiliasi ke isi berkas yang benar.
+
+**Yang tidak dikerjakan:** notifikasi ke wali saat izin diputuskan
+(bergantung EP-K), pembatalan izin oleh pengaju, dan laporan rekap keluar-
+masuk.
+
+## Akun uji coba EPESANTREN_ADMIN dan EPESANTREN_PETUGAS_GERBANG (tenant `ponpes_demo`)
+
+Atas permintaan eksplisit agar pengujian dapat dilakukan leluasa dari
+berbagai posisi hak akses, dibuat 10 akun untuk setiap peran ePesantren yang
+BENAR-BENAR ada implementasinya saat ini:
+
+```text
+EPESANTREN_ADMIN            admin1_ponpesdemo .. admin10_ponpesdemo
+EPESANTREN_PETUGAS_GERBANG  gerbang1_ponpesdemo .. gerbang10_ponpesdemo
+```
+
+Kata sandi seluruh akun uji: sama dengan akun `ponpes_demo` pemilik pondok
+yang sudah dipakai sepanjang sesi ini (tidak dicatat di sini maupun di
+Git — hanya digunakan sebagai variabel lingkungan sementara saat pengujian
+lokal). `mustChangePassword` sengaja `false` khusus akun sampel ini supaya
+tidak menghalangi pengujian berulang.
+
+**Peran lain yang DIMINTA tetapi BELUM dibuat akunnya, dan sengaja:** Guru,
+Pimpinan, Wali Kelas, dan peran-peran lain pada §14.6 perintah master TIDAK
+memiliki satu pun modul atau menu yang benar-benar berfungsi pada sesi ini —
+membuat akun untuk peran yang tidak berdaya apa-apa hanya akan
+menyesatkan, seolah kapasitasnya sudah ada. Akun untuk peran-peran itu akan
+dibuat bersamaan dengan modul yang menjadi dasarnya (EP-K portal wali, dan
+seterusnya), mengikuti disiplin §6 yang sama dengan seluruh EP sesi ini.
+
 ## Sesudah EP-A
 
 ```text
-EP-J   Perizinan dan gerbang
 EP-K   Portal wali beserta cakupan DEPENDENT_CHILD
 EP-L   Dompet santri dan batas belanja
 EP-M   Anjungan dan kartu RFID

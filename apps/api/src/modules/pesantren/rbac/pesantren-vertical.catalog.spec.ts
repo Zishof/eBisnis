@@ -11,8 +11,10 @@ import {
   PESANTREN_ROLES,
   PESANTREN_VERTICAL_CATALOG,
   ROLE_ADMIN_EPESANTREN,
+  ROLE_PETUGAS_GERBANG,
 } from './pesantren-vertical.catalog';
 import { VERTICAL_CATALOGS } from '../../../infrastructure/provisioning/vertical-catalogs';
+import { PROFILE_ACTIONS } from '../../../infrastructure/provisioning/role-profile';
 
 describe('katalog vertikal ePesantren', () => {
   it('setiap menu berawalan EPESANTREN_', () => {
@@ -63,6 +65,44 @@ describe('katalog vertikal ePesantren', () => {
         .map((modul) => `${peran.code} -> ${modul}`),
     );
     expect(takDikenali).toEqual([]);
+  });
+
+  it('EPESANTREN_PETUGAS_GERBANG tidak dapat menyetujui atau menolak izin (docs/santri-info/13 R10)', () => {
+    /*
+     * Ini bukan pemeriksaan gaya, melainkan uji satu-satunya yang membuktikan
+     * pemisahan tugas benar-benar berdiri: petugas gerbang TIDAK memegang
+     * modul EPESANTREN_PERIZINAN sama sekali (tidak dapat READ/CREATE/APPROVE/
+     * REJECT-nya), dan modul EPESANTREN_GERBANG yang dipegangnya tidak pernah
+     * menghasilkan aksi APPROVE/REJECT walau lewat profil manapun.
+     */
+    const petugas = PESANTREN_ROLES.find((r) => r.code === ROLE_PETUGAS_GERBANG);
+    expect(petugas).toBeDefined();
+    expect(petugas!.modules.EPESANTREN_PERIZINAN).toBeUndefined();
+    expect(petugas!.allModules).not.toBe(true);
+
+    const profilGerbang = petugas!.modules.EPESANTREN_GERBANG;
+    expect(profilGerbang).toBeDefined();
+    const aksiGerbang = PROFILE_ACTIONS[profilGerbang as keyof typeof PROFILE_ACTIONS];
+    expect(aksiGerbang).not.toContain('APPROVE');
+    expect(aksiGerbang).not.toContain('REJECT');
+  });
+
+  it('EPESANTREN_ADMIN memegang EPESANTREN_PERIZINAN dengan APPROVE dan REJECT', () => {
+    const admin = PESANTREN_ROLES.find((r) => r.code === ROLE_ADMIN_EPESANTREN);
+    const profilAdmin = admin!.modules.EPESANTREN_PERIZINAN;
+    expect(profilAdmin).toBeDefined();
+    const aksiAdmin = PROFILE_ACTIONS[profilAdmin as keyof typeof PROFILE_ACTIONS];
+    expect(aksiAdmin).toContain('APPROVE');
+    expect(aksiAdmin).toContain('REJECT');
+  });
+
+  it('menu EPESANTREN_GERBANG tidak menawarkan aksi APPROVE atau REJECT', () => {
+    // Bahkan bila kelak diberikan ke peran lain, menu ini secara struktural
+    // tidak dapat menyetujui apa pun -- aksinya sendiri tidak menyediakannya.
+    const gerbang = PESANTREN_MENUS.find((m) => m.code === 'EPESANTREN_GERBANG');
+    expect(gerbang).toBeDefined();
+    expect(gerbang!.actions).not.toContain('APPROVE');
+    expect(gerbang!.actions).not.toContain('REJECT');
   });
 
   it('terdaftar pada VERTICAL_CATALOGS', () => {

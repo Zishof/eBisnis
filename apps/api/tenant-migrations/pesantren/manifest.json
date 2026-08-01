@@ -41,6 +41,12 @@
       "file": "20260802T190000__pesantren__tahfiz.sql",
       "name": "EP-I: Tahfiz (setoran hafalan)",
       "description": "pesantren_tahfiz_setoran -- log transaksional setiap setoran/murajaah. Capaian tertinggi per santri dihitung dari log ini di service, bukan disimpan berduplikasi pada tabel ringkasan terpisah."
+    },
+    {
+      "id": "20260802T200000__pesantren__perizinan",
+      "file": "20260802T200000__pesantren__perizinan.sql",
+      "name": "EP-J: Perizinan dan gerbang",
+      "description": "pesantren_izin, pesantren_gerbang_log. Menegakkan docs/santri-info/13 R10 secara struktural -- pesantren_gerbang_log tidak pernah menulis status izin, dan hanya menunjuk izin yang sudah DISETUJUI."
     }
   ]
 }

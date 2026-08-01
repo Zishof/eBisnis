@@ -1,17 +1,18 @@
 /**
- * Katalog vertikal ePesantren (EP-A) — menu dan peran, mengikuti pola IR-004
- * yang sudah dipakai `cooperative-vertical.catalog.ts`.
+ * Katalog vertikal ePesantren — menu dan peran, mengikuti pola IR-004 yang
+ * sudah dipakai `cooperative-vertical.catalog.ts`.
  *
- * ## Mengapa hanya satu menu
+ * ## Mengapa tidak seluruh 41 peran §14.6
  *
- * Audit EP-0 mencatat hanya fondasi (santri, wali, unit, tahun ajaran) yang
- * benar-benar dibangun. Perintah master §14.6 meminta 41 peran tenant
- * ePesantren; mendaftarkannya sekarang berarti menyemai peran untuk layar yang
- * belum ada — persis larangan §6 "mengklaim fitur selesai hanya karena menu
- * sudah tampil", hanya dipindahkan dari menu ke peran.
- *
- * Menu dan peran lain ditambahkan satu per satu, setiap kali modulnya
- * benar-benar selesai.
+ * Perintah master §14.6 meminta 41 peran tenant ePesantren; mendaftarkannya
+ * sekarang berarti menyemai peran untuk layar yang belum ada — persis
+ * larangan §6 "mengklaim fitur selesai hanya karena menu sudah tampil",
+ * hanya dipindahkan dari menu ke peran. Peran ditambahkan satu per satu,
+ * hanya ketika modul yang menjadi dasarnya benar-benar selesai — kecuali
+ * `EPESANTREN_PETUGAS_GERBANG` (EP-J), yang ditambahkan lebih awal dari
+ * modulnya sendiri sebab satu-satunya cara docs/santri-info/13 R10 (petugas
+ * gerbang tidak boleh mengubah persetujuan izin) dapat diuji adalah dengan
+ * ADANYA peran yang benar-benar terpisah dari `EPESANTREN_ADMIN`.
  *
  * ## Mengapa OWNER saja tidak cukup
  *
@@ -33,7 +34,21 @@ export const PESANTREN_PREFIX = 'EPESANTREN';
 /** Kode peran yang diberikan kepada pemilik pondok saat pendaftaran. */
 export const ROLE_ADMIN_EPESANTREN = 'EPESANTREN_ADMIN';
 
+/**
+ * Kode peran petugas gerbang (EP-J).
+ *
+ * Peran TERPISAH dari `EPESANTREN_ADMIN`, sengaja hanya memegang menu
+ * `EPESANTREN_GERBANG` — TIDAK PERNAH `EPESANTREN_PERIZINAN`. Ini menegakkan
+ * docs/santri-info/13 R10 ("petugas gerbang mengubah persetujuan izin") dan
+ * §14.8 perintah master ("petugas gerbang != pengubah persetujuan izin")
+ * sebagai pemisahan PERAN yang benar-benar dapat diuji, bukan sekadar janji
+ * di dokumentasi.
+ */
+export const ROLE_PETUGAS_GERBANG = 'EPESANTREN_PETUGAS_GERBANG';
+
 const CATAT = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
+const PERIZINAN_AKSI = ['READ', 'CREATE', 'APPROVE', 'REJECT', 'CANCEL', 'PRINT', 'EXPORT'];
+const GERBANG_AKSI = ['READ', 'CREATE', 'PRINT'];
 
 export const PESANTREN_MENUS: MenuNodeSeed[] = [
   {
@@ -96,6 +111,26 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 550,
     actions: CATAT,
   },
+  {
+    code: 'EPESANTREN_PERIZINAN',
+    label: 'Perizinan Santri',
+    translationKey: 'menu.epesantren.perizinan',
+    route: '/app/pesantren/perizinan',
+    icon: 'FileCheck',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 560,
+    actions: PERIZINAN_AKSI,
+  },
+  {
+    code: 'EPESANTREN_GERBANG',
+    label: 'Gerbang Keluar-Masuk',
+    translationKey: 'menu.epesantren.gerbang',
+    route: '/app/pesantren/gerbang',
+    icon: 'DoorOpen',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 570,
+    actions: GERBANG_AKSI,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -117,6 +152,8 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_ASRAMA: 'P7',
       EPESANTREN_DINIYAH: 'P7',
       EPESANTREN_TAHFIZ: 'P7',
+      EPESANTREN_PERIZINAN: 'P7',
+      EPESANTREN_GERBANG: 'P7',
     },
     dataScope: 'TENANT',
     core: false,
@@ -124,6 +161,19 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       'Mencatat dan mengubah data santri. Diberikan kepada pemilik pondok saat ' +
       'pendaftaran sebagai peran tambahan di samping OWNER — bukan pengganti, ' +
       'sebab izin dari kedua peran digabungkan.',
+  },
+  {
+    code: ROLE_PETUGAS_GERBANG,
+    name: 'Petugas Gerbang',
+    family: 'ePesantren',
+    profile: 'P2',
+    modules: { ...DASAR, EPESANTREN_GERBANG: 'P2' },
+    dataScope: 'TENANT',
+    core: false,
+    description:
+      'Mencatat lintasan keluar-masuk santri pada izin yang SUDAH disetujui. ' +
+      'Sengaja TIDAK memegang EPESANTREN_PERIZINAN — tidak dapat menyetujui, ' +
+      'menolak, atau mengubah izin apa pun (docs/santri-info/13 R10).',
   },
 ];
 
