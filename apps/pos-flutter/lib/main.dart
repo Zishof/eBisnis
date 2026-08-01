@@ -22,6 +22,7 @@ import 'layar/tema.dart';
 import 'pembaruan/pengelola_pembaruan.dart';
 import 'pembaruan/sumber_pembaruan.dart';
 import 'pembaruan/versi_aplikasi.dart';
+import 'perangkat/antrean_cetak.dart';
 import 'perangkat/pencetak_jaringan.dart';
 import 'perangkat/pencetak_perangkat.dart';
 
@@ -45,6 +46,11 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
     const PelangganMenunggu(namaToko: 'eBisnis.id', sapaan: 'Selamat datang'),
   );
 
+  /// Pengangkutan mentahnya, disimpan terpisah.
+  ///
+  /// Pemeriksaan kesiapan bertanya kepada pengangkutan, bukan kepada antreannya
+  /// — antrean tidak tahu apa-apa tentang soket maupun simpul perangkat.
+  late final Pencetak _pengangkut = _pengangkutan();
   late final Pencetak _pencetak = _pilihPencetak();
   late final PengelolaPembaruan _pembaruan = PengelolaPembaruan(
     sumber: _pilihSumberPembaruan(),
@@ -64,7 +70,15 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
   ///
   /// Tanpa argumen, klien berjalan tanpa printer dan mengatakannya apa adanya
   /// pada layar — bukan diam-diam gagal mencetak.
-  Pencetak _pilihPencetak() {
+  /// Selalu dibungkus antrean.
+  ///
+  /// Spesifikasi AIS §19 mencatat dari lapangan bahwa panggilan cetak yang
+  /// bertumpuk membuat aplikasi kasir keluar sendiri. Di sini jalannya mudah
+  /// dicapai tanpa niat: struk sedang dikirim, kasir menekan buka laci, dan
+  /// byte kedua perintah berselang-seling pada soket yang sama.
+  Pencetak _pilihPencetak() => PencetakBerantre(_pengangkut);
+
+  Pencetak _pengangkutan() {
     const setelan = String.fromEnvironment('PRINTER');
     if (setelan.isEmpty) return const TanpaPencetak();
 
@@ -126,7 +140,9 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
   }
 
   void unawaitedPeriksa() {
-    final p = _pencetak;
+    // Bertanya kepada pengangkutan, bukan kepada antreannya. Antrean hanya
+    // meneruskan `siap`; ia tidak punya soket untuk diperiksa.
+    final p = _pengangkut;
     final Future<bool>? periksa = switch (p) {
       PencetakJaringan() => p.periksa(),
       PencetakPerangkat() => p.periksa(),

@@ -293,18 +293,37 @@ export function PosPage() {
     [katalog, toast, fokusPindai, jualLuring],
   );
 
-  // Pintasan papan ketik. F9 membayar, F6 menahan, Esc menutup dialog.
+  /*
+   * Pintasan papan ketik — peta spesifikasi AIS POS §21.
+   *
+   * F2 membayar, F3 menahan, Esc menutup dialog.
+   *
+   * Peta ini SAMA PERSIS dengan klien kasir Flutter (`layar/pintasan.dart`).
+   * Peta yang berbeda antar klien lebih buruk daripada peta mana pun yang
+   * dipilih: kasir yang berpindah di tengah shift menekan tombol yang sama dan
+   * mendapat hal yang berbeda.
+   *
+   * Dua yang berubah, dan keduanya menyentuh uang:
+   *
+   * - **F9 tidak lagi membayar** — pindah ke F2. Di klien Flutter F9 membuka
+   *   layar pelanggan; di sini ia tidak melakukan apa-apa.
+   * - **F6 tidak lagi menahan** — pindah ke F3. Di klien Flutter F6 membuka laci
+   *   kas, dan peramban memang tidak dapat menjangkau laci sama sekali.
+   *
+   * F2 sebelumnya memfokuskan kotak pindai. Penggantinya bukan tombol lain:
+   * kotak itu sudah difokuskan ulang sesudah setiap aksi.
+   *
+   * F1, F5, F11, F12 sengaja tidak dipetakan — peramban menahannya untuk
+   * dirinya sendiri dan `preventDefault` tidak dapat merebutnya.
+   */
   useEffect(() => {
     const pada = (e: KeyboardEvent) => {
-      if (e.key === 'F2') {
-        e.preventDefault();
-        kotakPindai.current?.focus();
-      } else if (e.key === 'F6' && saleId) {
-        e.preventDefault();
-        tahan.mutate();
-      } else if (e.key === 'F9' && saleId) {
+      if (e.key === 'F2' && saleId) {
         e.preventDefault();
         setBukaBayar(true);
+      } else if (e.key === 'F3' && saleId) {
+        e.preventDefault();
+        tahan.mutate();
       }
     };
     window.addEventListener('keydown', pada);
@@ -392,7 +411,7 @@ export function PosPage() {
                   if (pakaiLokal) pindaiLokal(pindai.trim());
                   else if (saleId) denganBarcode.mutate(pindai.trim());
                 }}
-                placeholder="Pindai barcode di sini (F2)"
+                placeholder="Pindai barcode di sini"
                 autoFocus
                 disabled={!bolehCari}
                 className="field-input w-full ps-9 text-lg"
@@ -536,7 +555,7 @@ export function PosPage() {
                   className="btn-ghost px-2 py-1 text-xs"
                   onClick={() => tahan.mutate()}
                   disabled={tahan.isPending || baris.length === 0}
-                  title="Tahan keranjang (F6)"
+                  title="Tahan keranjang (F3)"
                 >
                   <Pause className="h-3.5 w-3.5" aria-hidden />
                   Tahan
@@ -657,7 +676,7 @@ export function PosPage() {
               onClick={() => setBukaBayar(true)}
             >
               <Banknote className="h-5 w-5" aria-hidden />
-              Bayar (F9)
+              Bayar (F2)
             </button>
           </footer>
         </section>

@@ -1,11 +1,35 @@
 /// Peta pintasan papan ketik layar kasir.
 ///
-/// ## Mengapa ini terpisah dan murni
+/// ## Peta ini mengikuti spesifikasi AIS POS §21
 ///
-/// Peta tombol adalah hal yang paling sering ditanyakan dan paling sering
-/// berubah pada mesin kasir: setiap toko punya kebiasaan, dan kasir yang pindah
-/// dari sistem lama membawa jarinya. Menyimpannya sebagai tabel yang dapat
-/// dibaca dan diuji membuat pertanyaan "F7 itu apa" punya satu jawaban.
+/// Bukan peta yang dikarang di sini. Ia diambil dari sistem kasir yang sudah
+/// dipakai bertahun-tahun di gerai sungguhan, sehingga jari kasir yang berpindah
+/// ke eBisnis sudah tahu tempatnya.
+///
+/// **Kedua klien memakai peta yang sama.** Peta yang berbeda antara klien web
+/// dan klien ini lebih buruk daripada peta mana pun yang dipilih: kasir yang
+/// berpindah di tengah shift menekan tombol yang sama dan mendapat hal yang
+/// berbeda.
+///
+/// ## Yang berubah, dan mengapa itu perlu dikatakan
+///
+/// | Tombol | Sebelumnya | Sekarang |
+/// | --- | --- | --- |
+/// | F2 | Fokus kotak pindai | **Bayar** |
+/// | F3 | Cari produk | Tahan keranjang |
+/// | F5 | Hapus baris | Pilih member |
+/// | F6 | Tahan keranjang | **Buka laci kas** |
+/// | F8 | Buka laci kas | Sinkronkan |
+/// | F9 | **Bayar** | Layar pelanggan |
+///
+/// Jari yang terlatih akan salah tekan pada minggu pertama. Karena itu aksi yang
+/// menyentuh uang atau menghilangkan pekerjaan tetap dikonfirmasi lebih dahulu
+/// — lihat [wajibKonfirmasi] — dan bilah pintasan di kaki layar selalu terlihat,
+/// dibangkitkan dari berkas ini sehingga tidak mungkin menampilkan peta lama.
+///
+/// F2 kehilangan "fokus kotak pindai" tanpa penggantinya berupa tombol lain:
+/// kotak pindai kini merebut kembali fokus dengan sendirinya (spesifikasi §3.2),
+/// sehingga tombol untuk itu memang tidak diperlukan lagi.
 ///
 /// ## Mengapa Flutter, bukan peramban
 ///
@@ -13,27 +37,36 @@
 /// F5 memuat ulang, F11 layar penuh, F12 alat pengembang. `preventDefault` tidak
 /// dapat merebutnya. Pada aplikasi asli seluruh tombol tersedia — dan itulah
 /// satu-satunya keunggulan pintasan yang tidak dapat dikejar PWA.
-///
-/// Tombol lainnya (F2, F3, F4, F6 sampai F10, Esc) **sudah bekerja** pada layar
-/// kasir web. Klien ini tidak menambah apa pun untuk tombol-tombol itu.
 library;
 
 import 'package:flutter/services.dart';
 
 enum AksiKasir {
   bantuan,
-  fokusPindai,
-  cariProduk,
-  ubahJumlah,
-  hapusBaris,
-  tahanKeranjang,
-  ambilTertahan,
-  bukaLaci,
   bayar,
+  tahanKeranjang,
+  pilihMetodeBayar,
+  pilihMember,
+  bukaLaci,
+  modeFokus,
+  sinkronkan,
+  layarPelanggan,
   batalTransaksi,
   cetakUlangStruk,
   tutupShift,
   tutupDialog,
+
+  /// Masih ada sebagai aksi, tetapi **tanpa tombol**.
+  ///
+  /// Spesifikasi AIS memakai F1–F9 seluruhnya, dan jumlah baris diubah dengan
+  /// menekan +/− pada barisnya. Dipertahankan supaya layar tetap punya satu nama
+  /// untuk aksinya.
+  ubahJumlah,
+  hapusBaris,
+
+  /// Mengambil keranjang yang ditahan. Tanpa tombol: tempatnya di layar Pesanan
+  /// (spesifikasi §5), bukan di layar kasir.
+  ambilTertahan,
 }
 
 /// Keterangan yang ditampilkan pada bilah bantuan di kaki layar.
@@ -42,18 +75,21 @@ enum AksiKasir {
 /// terjadi kalau saya tekan ini", bukan nama internal fiturnya.
 const Map<AksiKasir, String> keteranganAksi = {
   AksiKasir.bantuan: 'Bantuan',
-  AksiKasir.fokusPindai: 'Ke kotak pindai',
-  AksiKasir.cariProduk: 'Cari produk',
-  AksiKasir.ubahJumlah: 'Ubah jumlah',
-  AksiKasir.hapusBaris: 'Hapus baris',
-  AksiKasir.tahanKeranjang: 'Tahan keranjang',
-  AksiKasir.ambilTertahan: 'Ambil yang ditahan',
-  AksiKasir.bukaLaci: 'Buka laci kas',
   AksiKasir.bayar: 'Bayar',
+  AksiKasir.tahanKeranjang: 'Tahan keranjang',
+  AksiKasir.pilihMetodeBayar: 'Pilih metode bayar',
+  AksiKasir.pilihMember: 'Pilih member',
+  AksiKasir.bukaLaci: 'Buka laci kas',
+  AksiKasir.modeFokus: 'Fokus keranjang',
+  AksiKasir.sinkronkan: 'Sinkronkan',
+  AksiKasir.layarPelanggan: 'Layar pelanggan',
   AksiKasir.batalTransaksi: 'Batalkan transaksi',
   AksiKasir.cetakUlangStruk: 'Cetak ulang struk',
   AksiKasir.tutupShift: 'Tutup shift',
   AksiKasir.tutupDialog: 'Tutup / batal',
+  AksiKasir.ubahJumlah: 'Ubah jumlah',
+  AksiKasir.hapusBaris: 'Hapus baris',
+  AksiKasir.ambilTertahan: 'Ambil yang ditahan',
 };
 
 /// Tombol yang tidak dapat direbut peramban, sehingga hanya bekerja di sini.
@@ -63,7 +99,7 @@ const Map<AksiKasir, String> keteranganAksi = {
 /// rusak.
 const Set<AksiKasir> hanyaDiAplikasiAsli = {
   AksiKasir.bantuan, // F1
-  AksiKasir.hapusBaris, // F5
+  AksiKasir.pilihMember, // F5
   AksiKasir.cetakUlangStruk, // F11
   AksiKasir.tutupShift, // F12
 };
@@ -77,7 +113,9 @@ const Set<AksiKasir> hanyaDiAplikasiAsli = {
 /// selain dengan memindai ulang seluruhnya di depan antrean.
 ///
 /// `bukaLaci` termasuk bukan karena merusak, melainkan karena membuka laci di
-/// luar transaksi adalah tindakan yang harus dapat dipertanggungjawabkan.
+/// luar transaksi adalah tindakan yang harus dapat dipertanggungjawabkan — dan
+/// ia kini menempati F6, tombol yang **sebelumnya menahan keranjang**. Justru
+/// pada pergantian peta inilah konfirmasi itu paling berguna.
 const Set<AksiKasir> wajibKonfirmasi = {
   AksiKasir.batalTransaksi,
   AksiKasir.hapusBaris,
@@ -87,16 +125,20 @@ const Set<AksiKasir> wajibKonfirmasi = {
 
 // `final`, bukan `const`: Dart melarang kunci map konstan dari kelas yang
 // menimpa `==`, dan `LogicalKeyboardKey` menimpanya.
+//
+// F1–F9 persis spesifikasi AIS §21. F10–F12 dibiarkan untuk aksi eBisnis yang
+// tidak ada padanannya di sana — spesifikasi memang tidak memakai ketiganya,
+// jadi tidak ada yang bertabrakan.
 final Map<LogicalKeyboardKey, AksiKasir> _peta = {
   LogicalKeyboardKey.f1: AksiKasir.bantuan,
-  LogicalKeyboardKey.f2: AksiKasir.fokusPindai,
-  LogicalKeyboardKey.f3: AksiKasir.cariProduk,
-  LogicalKeyboardKey.f4: AksiKasir.ubahJumlah,
-  LogicalKeyboardKey.f5: AksiKasir.hapusBaris,
-  LogicalKeyboardKey.f6: AksiKasir.tahanKeranjang,
-  LogicalKeyboardKey.f7: AksiKasir.ambilTertahan,
-  LogicalKeyboardKey.f8: AksiKasir.bukaLaci,
-  LogicalKeyboardKey.f9: AksiKasir.bayar,
+  LogicalKeyboardKey.f2: AksiKasir.bayar,
+  LogicalKeyboardKey.f3: AksiKasir.tahanKeranjang,
+  LogicalKeyboardKey.f4: AksiKasir.pilihMetodeBayar,
+  LogicalKeyboardKey.f5: AksiKasir.pilihMember,
+  LogicalKeyboardKey.f6: AksiKasir.bukaLaci,
+  LogicalKeyboardKey.f7: AksiKasir.modeFokus,
+  LogicalKeyboardKey.f8: AksiKasir.sinkronkan,
+  LogicalKeyboardKey.f9: AksiKasir.layarPelanggan,
   LogicalKeyboardKey.f10: AksiKasir.batalTransaksi,
   LogicalKeyboardKey.f11: AksiKasir.cetakUlangStruk,
   LogicalKeyboardKey.f12: AksiKasir.tutupShift,
@@ -105,10 +147,14 @@ final Map<LogicalKeyboardKey, AksiKasir> _peta = {
 
 /// Aksi untuk sebuah tombol, atau null bila tombolnya bukan pintasan.
 ///
-/// Tombol bermodifier (Ctrl, Alt, Shift) sengaja **tidak** dipetakan. Pemindai
-/// barcode HID mengetik seperti papan ketik, dan sebagian model mengirim
-/// modifier saat mengetik huruf besar; memetakan kombinasi bermodifier membuat
-/// pindaian tertentu memicu aksi alih-alih masuk ke kotak pindai.
+/// Tombol bermodifier (Ctrl, Alt, Shift) sengaja **tidak** dipetakan di sini.
+/// Pemindai barcode HID mengetik seperti papan ketik, dan sebagian model
+/// mengirim modifier saat mengetik huruf besar; memetakan kombinasi bermodifier
+/// membuat pindaian tertentu memicu aksi alih-alih masuk ke kotak pindai.
+///
+/// Ctrl+angka (spesifikasi §21, memilih baris ke-N) belum dipetakan: ia menunggu
+/// daftar yang memang dapat dipilih dengan angka, dan memetakannya sekarang
+/// hanya menghasilkan tombol yang tidak melakukan apa pun.
 AksiKasir? aksiUntukTombol(LogicalKeyboardKey tombol, {bool adaModifier = false}) {
   if (adaModifier) return null;
   return _peta[tombol];

@@ -211,11 +211,11 @@ void main() {
     expect(tombol.onPressed, isNull);
   });
 
-  testWidgets('F9 membuka dialog bayar', (tester) async {
+  testWidgets('F2 membuka dialog bayar', (tester) async {
     await pasang(tester);
     await pindai(tester, '8991234567890');
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.f9);
+    await tester.sendKeyEvent(LogicalKeyboardKey.f2);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('dialog-bayar')), findsOneWidget);
@@ -229,7 +229,7 @@ void main() {
      */
     await pasang(tester);
     await pindai(tester, '8991234567890');
-    await tester.sendKeyEvent(LogicalKeyboardKey.f9);
+    await tester.sendKeyEvent(LogicalKeyboardKey.f2);
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byKey(const Key('uang-diserahkan')), '10000');
@@ -247,7 +247,7 @@ void main() {
     await pasang(tester, pencetak: pencetak);
     await pindai(tester, '8991234567890');
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.f9);
+    await tester.sendKeyEvent(LogicalKeyboardKey.f2);
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('uang-diserahkan')), '20000');
     await tester.pumpAndSettle();
@@ -276,7 +276,7 @@ void main() {
     await pasang(tester, pencetak: PencetakPalsu(siap: false));
     await pindai(tester, '8991111111111');
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.f9);
+    await tester.sendKeyEvent(LogicalKeyboardKey.f2);
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('uang-diserahkan')), '10000');
     await tester.pumpAndSettle();
@@ -307,11 +307,11 @@ void main() {
     expect(find.byKey(const Key('keranjang-kosong')), findsOneWidget);
   });
 
-  testWidgets('F8 membuka laci lewat printer, setelah dikonfirmasi', (tester) async {
+  testWidgets('F6 membuka laci lewat printer, setelah dikonfirmasi', (tester) async {
     final pencetak = PencetakPalsu();
     await pasang(tester, pencetak: pencetak);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.f8);
+    await tester.sendKeyEvent(LogicalKeyboardKey.f6);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lanjutkan'));
     await tester.pumpAndSettle();
@@ -319,11 +319,11 @@ void main() {
     expect(pencetak.terkirim.single, [0x1B, 0x70, 0x00, 25, 125]);
   });
 
-  testWidgets('tanpa printer, F8 mengatakan lacinya tidak dapat dibuka', (tester) async {
+  testWidgets('tanpa printer, F6 mengatakan lacinya tidak dapat dibuka', (tester) async {
     // Laci dibuka lewat printer; tanpa printer tidak ada jalan lain.
     await pasang(tester, pencetak: PencetakPalsu(siap: false));
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.f8);
+    await tester.sendKeyEvent(LogicalKeyboardKey.f6);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lanjutkan'));
     await tester.pumpAndSettle();
@@ -338,7 +338,7 @@ void main() {
     // F1 tidak dikonfirmasi: ia aksi sehari-hari, dan konfirmasi yang terlalu
     // sering berhenti dibaca.
     expect(find.byKey(const Key('dialog-bantuan')), findsOneWidget);
-    expect(diBantuan('Ke kotak pindai'), findsOneWidget);
+    expect(diBantuan('Bantuan'), findsOneWidget);
 
     /*
      * Digulung untuk mencapai baris di bawah, sebagaimana kasir menggulungnya.
@@ -556,7 +556,7 @@ void main() {
        */
       final p = await pasang(tester);
       await pindai(tester, '8991234567890');
-      await tester.sendKeyEvent(LogicalKeyboardKey.f9);
+      await tester.sendKeyEvent(LogicalKeyboardKey.f2);
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('uang-diserahkan')), '20000');
