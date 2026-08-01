@@ -12,6 +12,8 @@ import { PesantrenPresensiController } from './pesantren-presensi.controller';
 import { PesantrenPresensiService } from './pesantren-presensi.service';
 import { PesantrenTagihanController } from './pesantren-tagihan.controller';
 import { PesantrenTagihanService } from './pesantren-tagihan.service';
+import { PesantrenAsramaController, PesantrenPenempatanController } from './pesantren-asrama.controller';
+import { PesantrenAsramaService } from './pesantren-asrama.service';
 
 function paramtypes(target: unknown): unknown[] {
   return (Reflect.getMetadata('design:paramtypes', target as object) as unknown[]) ?? [];
@@ -54,6 +56,24 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(tipe.filter((t) => t === undefined)).toEqual([]);
   });
 
+  it('setiap dependensi controller asrama punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenAsramaController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi controller penempatan punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenPenempatanController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi service asrama punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenAsramaService);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
   it('controller dan service terdaftar pada pesantren.module.ts', () => {
     const sumber = readFileSync(join(__dirname, 'pesantren.module.ts'), 'utf8');
     expect(sumber).toContain('PesantrenSantriController');
@@ -62,6 +82,9 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(sumber).toContain('PesantrenPresensiService');
     expect(sumber).toContain('PesantrenTagihanController');
     expect(sumber).toContain('PesantrenTagihanService');
+    expect(sumber).toContain('PesantrenAsramaController');
+    expect(sumber).toContain('PesantrenPenempatanController');
+    expect(sumber).toContain('PesantrenAsramaService');
   });
 
   it('modul terdaftar pada app.module.ts', () => {

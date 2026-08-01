@@ -158,10 +158,43 @@ dan membayar tagihannya sendiri (bergantung EP-K), pembatalan (VOID), dan
 rekap tunggakan. Tagihan yang dibuat sesi ini berhenti pada status ISSUED —
 jujur sesuai §6, bukan diklaim sebagai alur pembayaran yang lengkap.
 
+## Status EP-G — SEBAGIAN, asrama/kamar/penempatan tanpa penguncian konkuren
+
+**Yang dikerjakan:** tabel `pesantren_asrama`, `pesantren_kamar`,
+`pesantren_penempatan` (migrasi modul `20260802T170000__pesantren__asrama`).
+Satu santri hanya boleh punya satu penempatan aktif ditegakkan indeks unik
+parsial (pola sama dengan satu-wali-utama EP-A). API
+`PesantrenAsramaController`/`PesantrenPenempatanController`
+(`/pesantren/asrama`, `/pesantren/asrama/:id/kamar`, `/pesantren/penempatan`)
+dibuktikan live dengan data sampel nyata terhadap `ponpes_demo`: kamar
+berkapasitas 1 menolak penempatan kedua dengan pesan penuh yang jelas,
+santri yang sudah punya penempatan aktif ditolak dipindah ke kamar lain
+tanpa mengakhiri yang lama terlebih dahulu, mengakhiri lalu memindah
+berhasil, kode asrama dan nomor kamar ganda ditolak konflik, jumlah `terisi`
+pada daftar kamar terhitung benar sebelum dan sesudah penempatan, santri tak
+dikenal 404, dan tanpa token 401.
+
+**Keterbatasan yang diketahui, bukan yang tidak disadari:** pemeriksaan
+kapasitas kamar (`COUNT` lintas baris) dan penulisan penempatan TIDAK berada
+dalam satu penguncian baris (`SELECT ... FOR UPDATE`) — pada beban bersamaan
+yang tinggi, dua permintaan penempatan ke kamar yang sama dengan sisa satu
+slot dapat lolos pemeriksaan kapasitas sekaligus. Indeks unik menjaga satu
+santri tidak dobel penempatan aktif, tetapi TIDAK menjaga kamar melebihi
+kapasitas. Untuk skala penggunaan wajar (petugas asrama menempatkan santri
+satu per satu, bukan sistem otomatis bervolume tinggi), risiko ini rendah;
+diperbaiki nanti dengan `SELECT ... FOR UPDATE` pada baris kamar sebelum
+menghitung penghuni, bila terbukti dibutuhkan.
+
+Kecocokan jenis kelamin santri terhadap jenis asrama (PUTRA/PUTRI) DITEGAKKAN
+di service — santri laki-laki ditolak ditempatkan ke kamar pada asrama putri
+dan sebaliknya, dibuktikan live.
+
+**Yang tidak dikerjakan:** riwayat pindah kamar sebagai laporan (data ada di
+`pesantren_penempatan`, tampilan rekapnya belum ada).
+
 ## Sesudah EP-A
 
 ```text
-EP-G   Asrama dan penempatan kamar
 EP-H   Diniyah, halaqah, kitab
 EP-I   Tahfiz
 EP-J   Perizinan dan gerbang

@@ -23,6 +23,12 @@
       "file": "20260802T160000__pesantren__tagihan.sql",
       "name": "EP-F: Tagihan pendidikan (SPP)",
       "description": "pesantren_tagihan, pesantren_tagihan_item -- piutang internal penyewa, TERPISAH dari platform.billing_invoice (mesin faktur langganan platform, membebankan Tenant, bukan wali santri). Satu tagihan per santri per periode ditegakkan indeks unik parsial. Status memakai kosakata platform.InvoiceStatus demi konsistensi istilah, bukan tabel yang sama."
+    },
+    {
+      "id": "20260802T170000__pesantren__asrama",
+      "file": "20260802T170000__pesantren__asrama.sql",
+      "name": "EP-G: Asrama, kamar, dan penempatan santri",
+      "description": "pesantren_asrama, pesantren_kamar, pesantren_penempatan. Satu santri hanya boleh punya satu penempatan aktif ditegakkan indeks unik parsial. Batas kapasitas kamar ditegakkan di service (COUNT lintas baris), bukan CHECK per baris."
     }
   ]
 }

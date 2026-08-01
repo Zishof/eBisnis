@@ -66,6 +66,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 520,
     actions: CATAT,
   },
+  {
+    code: 'EPESANTREN_ASRAMA',
+    label: 'Asrama dan Kamar',
+    translationKey: 'menu.epesantren.asrama',
+    route: '/app/pesantren/asrama',
+    icon: 'Building2',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 530,
+    actions: CATAT,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -79,7 +89,13 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
     name: 'Administrator ePesantren',
     family: 'ePesantren',
     profile: 'P7',
-    modules: { ...DASAR, EPESANTREN_SANTRI: 'P7', EPESANTREN_PRESENSI: 'P7', EPESANTREN_TAGIHAN: 'P7' },
+    modules: {
+      ...DASAR,
+      EPESANTREN_SANTRI: 'P7',
+      EPESANTREN_PRESENSI: 'P7',
+      EPESANTREN_TAGIHAN: 'P7',
+      EPESANTREN_ASRAMA: 'P7',
+    },
     dataScope: 'TENANT',
     core: false,
     description:
