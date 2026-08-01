@@ -1,0 +1,95 @@
+==============================================================================
+BUKTI H-10 — PORTAL PASIEN DAN WEBSITE FASILITAS
+Waktu   : 2026-08-01T06:44:19.810Z
+Schema  : demo
+==============================================================================
+
+Lima pengguna. Ani dan Budi adalah pasien; petugas memverifikasi akun,
+klinisi melepas hasil, editor mengelola website. Ani menjadi wali anaknya.
+
+1. AKUN PORTAL TIDAK AKTIF TANPA VERIFIKASI TATAP MUKA
+  LULUS  akun PENDING tidak dapat membuka portal
+  LULUS  penolakannya menyebut statusnya
+  LULUS  mengaktifkannya lewat basis data tanpa verifikasi ditolak constraint
+  LULUS  akun AKTIF dapat membuka portal
+  LULUS  dan yang dikembalikan adalah pasiennya sendiri
+
+2. SATU AKUN, SATU PASIEN — DAN SEBALIKNYA
+  LULUS  satu pengguna tidak menaut dua pasien
+  LULUS  dan satu pasien tidak punya dua akun
+
+3. IDENTITAS DARI TOKEN, TIDAK PERNAH DARI PARAMETER
+   Ani mengirimkan nomor pasien Budi pada SETIAP jalan portal.
+  LULUS    /appointments menolak nomor pasien lain
+  LULUS    /queue menolak nomor pasien lain
+  LULUS    /lab-results menolak nomor pasien lain
+  LULUS    /visits menolak nomor pasien lain
+  LULUS    /prescriptions menolak nomor pasien lain
+  LULUS  SELURUH jalan portal menolak, bukan sebagian
+  LULUS  penolakannya menjelaskan mengapa parameter bukan jawaban
+  LULUS  UJI KENDALI: tanpa parameter, Ani membaca datanya sendiri
+
+4. Penolakan TERCATAT, beserta pasien mana yang dicoba
+  LULUS  penolakannya tercatat
+  LULUS  dan seluruhnya menyebutkan sebabnya
+  LULUS  penolakan tanpa sebab ditolak constraint
+  LULUS  jejak akses portal tidak dapat dihapus
+
+5. Wali melihat sesuai tingkatnya, tidak lebih
+  LULUS  anaknya muncul pada daftar perwalian
+  LULUS  wali SUMMARY_ONLY melihat ringkasan kunjungan anaknya
+  LULUS  TETAPI TIDAK melihat hasil laboratoriumnya
+  LULUS  penolakannya menyebut wali yang ditunjuk untuk satu keperluan
+  LULUS  PERWALIAN YANG DICABUT langsung berlaku
+
+6. HASIL KRITIS TIDAK MUNCUL DI PORTAL SAMPAI DILEPAS
+  LULUS  daftar hasil terbaca
+  LULUS  hasil KRITIS muncul sebagai baris
+  LULUS  TETAPI ANGKANYA TIDAK
+  LULUS  dan pesannya menyuruh jangan menunggu bila merasa tidak enak badan
+  LULUS  UJI KENDALI: hasil biasa yang sudah dilepas MENAMPILKAN angkanya
+  LULUS  hasil yang belum diverifikasi tidak menampilkan angkanya
+  LULUS  dan pesannya menyebut sedang diperiksa petugas laboratorium
+  LULUS  ANGKA KRITIS TIDAK ADA PADA JAWABANNYA SAMA SEKALI
+
+7. Hasil kritis tidak dilepas tanpa menghubungi pasiennya
+  LULUS  melepas hasil kritis tanpa menghubungi ditolak constraint
+  LULUS  UJI KENDALI: dengan catatan menghubungi, ia diterima
+  LULUS  sesudah dilepas, angkanya muncul
+  LULUS  catatan pelepasan tidak dapat dihapus
+
+8. Pasien membuat dan membatalkan janji temunya sendiri
+  LULUS  janji temu dibuat
+  LULUS  DAN PEMILIKNYA ADALAH ANI, bukan siapa pun yang dikirimkan
+  LULUS  Ani tidak dapat membuat janji atas nama Budi
+  LULUS  janji pada waktu yang sudah lewat ditolak
+  LULUS  janji terlalu jauh ke depan ditolak
+  LULUS  penolakannya menyebut dibatalkan sepihak
+  LULUS  pasien membatalkan janjinya sendiri
+  LULUS  ANI TIDAK DAPAT MEMBATALKAN JANJI BUDI
+  LULUS  dan janji Budi tidak berubah
+
+9. Website publik tidak dapat memuat data pasien
+  LULUS  tabel konten tidak punya satu pun kolom pasien
+  LULUS  dan tidak satu pun kunci asing ke tabel klinis
+  LULUS  konten bersih diterima
+  LULUS  KONTEN YANG MEMUAT NIK DITOLAK
+  LULUS  penolakannya menyebut mesin pencari sudah menyalinnya
+  LULUS  konten yang memuat nomor rekam medis pun ditolak
+  LULUS  website publik dapat dibaca TANPA masuk
+  LULUS  konten DRAFT belum tampil
+  LULUS  sesudah diterbitkan, ia tampil
+  LULUS  penarikan tanpa alasan yang bermakna ditolak
+  LULUS  YANG DITARIK LANGSUNG HILANG dari website publik
+  LULUS  jawaban website publik tidak memuat satu pun nama pasien
+
+10. Jalur pasien dan jalur petugas terpisah
+  LULUS  pasien tidak dapat membuka jalur petugas
+  LULUS  petugas tanpa akun portal tidak dapat membuka jalur pasien
+  LULUS  penolakannya menyebut akun yang tidak tertaut pasien
+  LULUS  UJI KENDALI: parameter kosong diperlakukan sebagai dirinya sendiri
+  LULUS  di SELURUH tenant, tidak ada akun aktif tanpa verifikasi
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

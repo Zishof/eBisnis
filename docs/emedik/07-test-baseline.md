@@ -86,8 +86,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9A | 20 | **48** | `health-satusehat.spec.ts` |
 | H-9B | 20 | **51** | `health-bpjs.spec.ts` |
 | H-9M | 20 | **41** | `health-kfa.spec.ts` |
+| H-10 | 25 | **54** | `health-portal.spec.ts` |
 
-API keseluruhan: **2334** pengujian pada 69 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **2390** pengujian pada 70 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -125,6 +126,41 @@ sungguhan, pada basis data sungguhan:
 | H-9A | `prove-health-satusehat.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9a-satusehat.txt](bukti-h9a-satusehat.txt) |
 | H-9B | `prove-health-bpjs.mjs` | 62 pemeriksaan, seluruhnya lulus — [bukti-h9b-bpjs.txt](bukti-h9b-bpjs.txt) |
 | H-9M | `prove-health-kfa.mjs` | 52 pemeriksaan, seluruhnya lulus — [bukti-h9m-kfa.txt](bukti-h9m-kfa.txt) |
+| H-10 | `prove-health-portal.mjs` | 63 pemeriksaan, seluruhnya lulus — [bukti-h10-portal.txt](bukti-h10-portal.txt) |
+
+**H-10 ditangkap oleh penjaga yang sudah ada sejak sebelum eMedik, dan itu
+pelajaran tersendiri.**
+
+Aplikasi **menolak menyala** ketika delapan rute portal ditambahkan tanpa
+penanda hak akses. `route-authorization.audit.ts` menghitung setiap rute yang
+terpasang dan melemparkan galat bila ada yang tidak menyatakan penandanya —
+`@Permissions`, `@AuthenticatedOnly`, `@Public`, atau salah satu lainnya.
+
+Yang membuatnya berharga bukan sekadar bahwa ia menangkap kelalaian. Rute portal
+memang **tidak boleh** memakai `@Permissions`: pasien tidak punya peran pada
+mesin hak akses menu, dan memberinya satu peran di sana berarti satu kekeliruan
+konfigurasi memberinya hak yang dimiliki petugas. Penjaga itu memaksa keputusan
+tersebut **dinyatakan**, bukan tersirat dari ketiadaan — dan pernyataan yang
+tertulis dapat ditinjau, sedangkan ketiadaan tidak.
+
+Ini kebalikan dari cacat H037: di sana penjaga yang lunak (`IF a_id IS NOT
+NULL`) membuat migrasi diam ketika ada salah ketik. Di sini penjaga yang keras
+menolak menyala. Yang kedua jauh lebih baik, dan alasannya sederhana: kegagalan
+yang berisik ditemukan pada menit pertama; kelalaian yang diam ditemukan oleh
+orang luar.
+
+**Naskah bukti H-10 memakai bentuk yang belum pernah dipakai fase mana pun:
+menjalankan SATU serangan pada SELURUH jalan.** Pasien A mengirimkan nomor
+pasien B pada kelima jalan portal, dan naskahnya menuntut kelimanya menolak —
+lalu menghitungnya, sebab "sebagian menolak" adalah kegagalan yang terlihat
+seperti keberhasilan. Satu jalan yang lolos cukup untuk membocorkan seluruh
+rekam medis rumah sakit, dan jalan yang lolos hampir selalu yang paling baru
+ditambahkan.
+
+Naskah ini pula yang memeriksa hal yang tidak dapat diperiksa dengan membaca
+status: bahwa **angka hasil kritis tidak ada pada badan jawabannya sama
+sekali**. Menyaringnya di layar akan lulus setiap uji yang memeriksa apa yang
+tampak, dan gagal pada orang pertama yang membuka alat pengembang peramban.
 
 **Naskah H-9M mengulang pelajaran H-9E dengan bentuk yang sedikit berbeda, dan
 kali ini ia lulus pada jalan pertama lalu GAGAL pada jalan kedua.**

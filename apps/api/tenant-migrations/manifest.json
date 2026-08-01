@@ -505,6 +505,20 @@
       "file": "H049__health__kfa_permissions.sql",
       "name": "eMedik: menu, hak akses, dan peran impor KFA",
       "description": "Dua menu (HEALTH_TERMINOLOGY, HEALTH_KFA_MAPPING), satu peran baru (Penanggung Jawab Farmasi), dan satu aturan pemisahan wewenang. Pemisahannya: YANG MEMVALIDASI IMPOR TIDAK MENERAPKANNYA. Katalog obat menentukan apa yang boleh diresepkan seluruh rumah sakit, dan penerapan oleh pemeriksanya sendiri hanya membaca ulang keyakinannya — berkas dua ribu baris adalah tempat paling mudah bagi satu baris yang keliru untuk lolos tanpa dilihat siapa pun. Apoteker mengimpor, memvalidasi, dan memetakan KFA sebab pemetaan obat menuntut orang yang mengenal obatnya; penanggung jawab farmasi menerapkan. Ditegakkan constraint terminology_import_apply_not_self pada basis data pula."
+    },
+    {
+      "version": "H050",
+      "sequence": 1050,
+      "file": "H050__health__patient_portal.sql",
+      "name": "eMedik: portal pasien dan website fasilitas",
+      "description": "patient_portal_account, patient_portal_access_log, portal_result_release, facility_web_content. INVARIAN YANG MENENTUKAN SELURUH FASE: pasien hanya melihat datanya sendiri, dan identitas datang dari token bukan dari parameter. Basis data menegakkan separuhnya lewat dua indeks unik — satu akun menaut tepat satu pasien, dan satu pasien punya tepat satu akun; dua indeks bukan satu, sebab hanya memasang salah satunya meninggalkan separuh pintunya terbuka. Akun yang menaut dua pasien membuat jejak akses tidak dapat dibaca: yang tercatat adalah akun ini membuka rekam medis, dan pertanyaan yang sesungguhnya siapa yang membukanya tidak terjawab; wali diselesaikan lewat patient_proxy yang sudah ada sejak H-3, bukan lewat akun ganda, sebab orang tua yang membuka rekam medis anaknya TETAP DIRINYA SENDIRI pada jejak akses. AKUN AKTIF WAJIB TERVERIFIKASI TATAP MUKA (portal_account_active_verified): akun portal yang dibuat tanpa verifikasi adalah rekam medis yang diserahkan kepada siapa pun yang mengetahui tanggal lahir seseorang. HASIL KRITIS TIDAK DILEPAS TANPA MENGHUBUNGI PASIENNYA (portal_release_critical_contacted) — melepasnya ke portal tanpa menghubungi lebih dahulu adalah menyerahkan kabar buruk kepada layar telepon, dan layar telepon tidak dapat menjawab pertanyaan. Penolakan akses diindeks tersendiri: penolakan beruntun dari satu akun adalah tanda seseorang sedang mencoba nomor pasien lain, dan yang mencarinya tidak boleh menyaring jutaan baris yang berhasil untuk menemukan puluhan yang ditolak. Tabel konten website TIDAK punya satu pun kolom pasien maupun kunci asing ke tabel klinis. Tidak ada tabel yang menyalin data klinis untuk portal: salinan untuk portal akan berbeda dari aslinya dalam waktu satu minggu, dan yang dibaca pasien adalah salinannya."
+    },
+    {
+      "version": "H051",
+      "sequence": 1051,
+      "file": "H051__health__portal_permissions.sql",
+      "name": "eMedik: menu, hak akses, dan peran portal pasien",
+      "description": "Tiga menu, satu peran baru (Pengelola Website Fasilitas), dan satu aturan pemisahan wewenang. Menu di sini adalah menu PETUGAS yang mengelola portal, BUKAN menu yang dilihat pasien: pasien tidak punya peran pada tenant ini sama sekali, ia masuk lewat jalur portal yang identitasnya dicocokkan dengan patient_portal_account dan jalur itu tidak memakai mesin hak akses menu. Perbedaan itu disengaja — memberi pasien satu peran pada mesin yang sama dengan petugas berarti satu kekeliruan konfigurasi memberinya hak yang dimiliki petugas, dan kekeliruan konfigurasi peran terjadi setiap bulan pada rumah sakit mana pun. Pemisahan kedua: YANG MEMVERIFIKASI IDENTITAS PEMOHON AKUN BUKAN YANG MELEPAS HASIL KRITIS. Memverifikasi identitas adalah pekerjaan pendaftaran — berhadapan dengan orangnya, memegang kartu identitasnya; melepas hasil kritis adalah keputusan klinis — memutuskan bahwa pasiennya siap membacanya. Keduanya kebetulan sering orang yang sama di rumah sakit kecil, dan justru karena itu pemisahannya perlu tertulis. Pengelola website TIDAK memperoleh satu pun hak atas data pasien."
     }
   ]
 }

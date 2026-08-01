@@ -868,6 +868,40 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'UPDATE'],
     sortOrder: 126,
   },
+  // Portal pasien dan website — H-10.
+  //
+  // Ketiga menu ini adalah menu PETUGAS yang mengelola portal, bukan menu yang
+  // dilihat pasien. Pasien tidak punya peran pada mesin hak akses ini sama
+  // sekali: ia masuk lewat jalur portal yang identitasnya dicocokkan dengan
+  // patient_portal_account. Memberinya satu peran di sini berarti satu
+  // kekeliruan konfigurasi memberinya hak yang dimiliki petugas.
+  {
+    code: 'HEALTH_PORTAL_ACCOUNT',
+    parentCode: 'HEALTH',
+    label: 'Akun Portal Pasien',
+    route: '/app/emedik/akun-portal',
+    icon: 'user-check',
+    actions: ['READ', 'CREATE', 'VERIFY', 'ACTIVATE', 'HOLD'],
+    sortOrder: 127,
+  },
+  {
+    code: 'HEALTH_PORTAL_RELEASE',
+    parentCode: 'HEALTH',
+    label: 'Pelepasan Hasil',
+    route: '/app/emedik/pelepasan-hasil',
+    icon: 'send',
+    actions: ['READ', 'RELEASE'],
+    sortOrder: 128,
+  },
+  {
+    code: 'HEALTH_WEB_CONTENT',
+    parentCode: 'HEALTH',
+    label: 'Konten Website',
+    route: '/app/emedik/website',
+    icon: 'globe',
+    actions: ['READ', 'CREATE', 'UPDATE', 'PUBLISH', 'UNPUBLISH'],
+    sortOrder: 129,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -987,6 +1021,12 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_BPJS_ELIGIBILITY.CREATE',
       'HEALTH_BPJS_SEP.READ',
       'HEALTH_BPJS_SEP.CREATE',
+      // Akun portal pasien — H-10. Ia yang berhadapan dengan orangnya dan
+      // memegang kartu identitasnya; ia TIDAK melepas hasil.
+      'HEALTH_PORTAL_ACCOUNT.READ',
+      'HEALTH_PORTAL_ACCOUNT.CREATE',
+      'HEALTH_PORTAL_ACCOUNT.VERIFY',
+      'HEALTH_PORTAL_ACCOUNT.ACTIVATE',
       // Tanggungan penjamin perlu diketahui saat pasien datang, bukan saat
       // tagihannya dicetak.
       'HEALTH_PAYER.READ',
@@ -1730,6 +1770,30 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     sortOrder: 38,
   },
   {
+    code: 'HEALTH_WEB_EDITOR',
+    name: 'Pengelola Website Fasilitas',
+    description:
+      'Menyusun dan menerbitkan konten website fasilitas. TIDAK memperoleh satu pun hak atas ' +
+      'data pasien.',
+    /*
+     * Sengaja TANPA satu pun hak klinis.
+     *
+     * Ia menyusun halaman "Poliklinik Anak", bukan membaca rekam medis. Website
+     * dibaca tanpa masuk sama sekali; satu nama pasien yang lolos ke halaman
+     * publik adalah pelanggaran kerahasiaan medis yang tidak dapat ditarik
+     * kembali — mesin pencari sudah menyalinnya sebelum ada yang menyadarinya.
+     */
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_WEB_CONTENT.READ',
+      'HEALTH_WEB_CONTENT.CREATE',
+      'HEALTH_WEB_CONTENT.UPDATE',
+      'HEALTH_WEB_CONTENT.PUBLISH',
+      'HEALTH_WEB_CONTENT.UNPUBLISH',
+    ],
+    sortOrder: 42,
+  },
+  {
     code: 'HEALTH_PHARMACY_MANAGER',
     name: 'Penanggung Jawab Farmasi',
     description:
@@ -2049,6 +2113,18 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'pada basis data pula — kendali jarak jauh menuntut enam syarat sekaligus, dan basis ' +
       'data menolak baris yang kurang satu pun.',
     conflictingPermissions: ['HEALTH_DEVICE.MANAGE_DEVICE', 'HEALTH_DEVICE.ACTIVATE'],
+  },
+  {
+    code: 'HEALTH_SOD_PORTAL_VERIFY_RELEASE',
+    name: 'Yang memverifikasi akun portal tidak melepas hasilnya',
+    description:
+      'Memverifikasi identitas pemohon akun adalah pekerjaan pendaftaran: berhadapan dengan ' +
+      'orangnya, memegang kartu identitasnya. Melepas hasil kritis ke portal adalah keputusan ' +
+      'klinis: memutuskan bahwa pasiennya siap membacanya. Keduanya kebetulan sering orang yang ' +
+      'sama di rumah sakit kecil, dan justru karena itu pemisahannya perlu tertulis — sebab ' +
+      'yang menggabungkannya tidak akan menyadari bahwa ia sedang menggabungkan dua hal yang ' +
+      'berbeda.',
+    conflictingPermissions: ['HEALTH_PORTAL_ACCOUNT.VERIFY', 'HEALTH_PORTAL_RELEASE.RELEASE'],
   },
   {
     code: 'HEALTH_SOD_TERMINOLOGY_APPLY',

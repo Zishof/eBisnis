@@ -5,6 +5,36 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-10 — Portal pasien dan website fasilitas
+
+### Ditambahkan
+
+- **`H050__health__patient_portal.sql`** — `patient_portal_account`,
+  `patient_portal_access_log`, `portal_result_release`, `facility_web_content`.
+  Dua indeks unik menegakkan satu akun satu pasien dan sebaliknya; constraint
+  `portal_account_active_verified` menuntut verifikasi tatap muka; 
+  `portal_release_critical_contacted` menolak pelepasan hasil kritis tanpa
+  menghubungi pasiennya.
+- **`H051__health__portal_permissions.sql`** — tiga menu PETUGAS, satu peran
+  baru (Pengelola Website Fasilitas), dan satu aturan pemisahan wewenang.
+- **`health-portal.ts`** — keputusan akses, akses wali berjenjang, pelepasan
+  hasil, janji temu, konten publik, dan ringkasan antrean. **54 pengujian.**
+- **`health-portal.service.ts`** dan **`health-portal.controller.ts`** — 15
+  jalan pada tiga pengendali terpisah: portal pasien, pengelolaan portal, dan
+  website publik.
+- **`prove-health-portal.mjs`** — naskah bukti, **63 pemeriksaan**, seluruhnya
+  lulus dan lulus pula pada pengulangan.
+
+### Catatan bagi Core
+
+Tidak ada permintaan perubahan shared Core. Rute portal ditandai
+`@AuthenticatedOnly` alih-alih `@Permissions`: pasien tidak punya peran pada
+mesin hak akses menu, dan yang menjaganya adalah `patient_portal_account` —
+penjaga yang lebih sempit, sebab ia menentukan pasien MANA yang dibaca.
+
+Uji: API 2334 → **2390**.
+
+---
 ## H-9M — Kerangka impor KFA dan terminologi resmi
 
 ### Ditambahkan

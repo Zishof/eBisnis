@@ -617,6 +617,26 @@ describe('peran kesehatan', () => {
     expect(pemetaKfa).toEqual(['HEALTH_PHARMACIST']);
   });
 
+  it('PENGELOLA WEBSITE TIDAK MEMPEROLEH SATU PUN HAK KLINIS', () => {
+    /*
+     * Website dibaca tanpa masuk sama sekali. Satu nama pasien yang lolos ke
+     * halaman publik adalah pelanggaran kerahasiaan medis yang tidak dapat
+     * ditarik kembali.
+     */
+    const editor = HEALTH_ROLES.find((r) => r.code === 'HEALTH_WEB_EDITOR');
+    const klinis = ['HEALTH_PATIENT', 'HEALTH_LAB_RESULT', 'HEALTH_PRESCRIPTION',
+      'HEALTH_HIM_CODING', 'HEALTH_PORTAL_RELEASE'];
+    expect(
+      editor?.permissions.filter((p) => klinis.some((k) => p.startsWith(k))),
+    ).toEqual([]);
+  });
+
+  it('yang memverifikasi akun portal bukan yang melepas hasilnya', () => {
+    const clerk = HEALTH_ROLES.find((r) => r.code === 'HEALTH_REGISTRATION_CLERK');
+    expect(clerk?.permissions).toContain('HEALTH_PORTAL_ACCOUNT.VERIFY');
+    expect(clerk?.permissions).not.toContain('HEALTH_PORTAL_RELEASE.RELEASE');
+  });
+
   it('tidak ada peran yang memiliki hak atas menu yang belum dibangun', () => {
     /*
      * Peran yang sudah diberi hak atas modul yang belum ada akan tampak

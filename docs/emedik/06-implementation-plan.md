@@ -1685,17 +1685,94 @@ Uji >= 20 -> **41 tercapai**, ditambah naskah bukti 52 pemeriksaan.
 **Yang belum:** isi seluruh katalog. Strukturnya ada, dan penanda sumbernya
 memastikan yang kosong tidak pernah menyamar sebagai yang terisi.
 
-### H-10 · Portal pasien, website, integrasi
+### H-10 · Portal pasien dan website fasilitas — **SELESAI**
 
-Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
-temu, antrean, hasil yang boleh dibuka, resep, ringkasan kunjungan, akses wali.
+Akun portal beserta verifikasi tatap muka, janji temu, antrean, hasil yang boleh
+dibuka, resep, ringkasan kunjungan, akses wali berjenjang, dan website fasilitas.
 
-Uji ≥ 25. **Invarian:** pasien hanya melihat datanya sendiri; identitas dari
-token, tidak pernah dari parameter.
+Uji >= 25 -> **54 tercapai**, ditambah naskah bukti 63 pemeriksaan.
 
-SATUSEHAT, BPJS, alat laboratorium, dan PACS dibangun sebagai antarmuka dengan
-implementasi tiruan — kredensialnya belum ada, dan perintah §25 melarang
-mengarangnya.
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H050__health__patient_portal.sql`, `H051__health__portal_permissions.sql` |
+| Aturan murni | `health-portal.ts` + 54 pengujian |
+| Layanan | `health-portal.service.ts` |
+| Endpoint | `health-portal.controller.ts` — 15 jalan pada tiga pengendali terpisah |
+| Katalog | `health-catalog.ts` — 3 menu, 1 peran, 1 aturan SoD |
+| Bukti | `scripts/prove-health-portal.mjs` -> [bukti-h10-portal.txt](bukti-h10-portal.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **IDENTITAS DARI TOKEN, TIDAK PERNAH DARI PARAMETER.** Tidak satu pun metode
+  portal menerima `patientId`; yang diterimanya adalah `platformUserId` dari
+  token, dan pasien mana yang dibaca ditentukan dengan membaca
+  `patient_portal_account`. Naskah bukti menguji ini dengan cara paling
+  langsung: **pasien A mengirimkan nomor pasien B pada setiap jalan portal**,
+  dan seluruhnya harus 403 — bukan sebagian, sebab satu jalan yang lolos cukup
+  untuk membocorkan seluruh rekam medis rumah sakit.
+
+- **`subjectPatientId` bukan pengecualiannya.** Ia pilihan di antara yang sudah
+  dimiliki tokennya, dicocokkan dengan daftar perwalian sebelum dipakai.
+  Perbedaannya menentukan: parameter yang dipakai apa adanya adalah kebocoran;
+  parameter yang dicocokkan dengan daftar milik tokennya adalah penyaring.
+
+- **Tiga kelompok jalan yang sengaja terpisah**: `/health/portal/**` untuk
+  pasien, `/health/portal-admin/**` untuk petugas, `/health/public/**` tanpa
+  masuk sama sekali. Menyatukannya akan membuat satu kekeliruan pada penjaga
+  rute memberi pasien jalan petugas.
+
+- **Pasien tidak punya peran pada mesin hak akses menu.** Rute portal ditandai
+  `@AuthenticatedOnly`, dan yang menjaganya adalah `patient_portal_account` —
+  penjaga yang lebih sempit, sebab ia menentukan pasien MANA yang dibaca, bukan
+  sekadar boleh atau tidak. Memberi pasien satu peran pada mesin yang sama
+  dengan petugas berarti satu kekeliruan konfigurasi memberinya hak petugas.
+
+- **Satu akun, satu pasien — dan sebaliknya.** Dua indeks unik, bukan satu:
+  hanya memasang salah satunya meninggalkan separuh pintunya terbuka. Akun yang
+  menaut dua pasien membuat jejak akses tidak dapat dibaca — yang tercatat
+  adalah "akun ini membuka rekam medis", dan pertanyaan yang sesungguhnya tidak
+  terjawab. Wali diselesaikan lewat `patient_proxy`: orang tua yang membuka
+  rekam medis anaknya **tetap dirinya sendiri** pada jejak akses.
+
+- **Akun aktif wajib terverifikasi tatap muka.** Akun portal yang dibuat tanpa
+  verifikasi adalah rekam medis yang diserahkan kepada siapa pun yang mengetahui
+  tanggal lahir seseorang.
+
+- **HASIL KRITIS TIDAK MUNCUL DI PORTAL SAMPAI DILEPAS**, dan tidak dapat
+  dilepas tanpa menghubungi pasiennya lebih dahulu. Pasien yang membaca "kalium
+  6,8" tengah malam tanpa seorang pun yang menjelaskan akan panik atau
+  mengabaikannya; keduanya lebih buruk daripada menunggu sampai dokternya
+  menelepon. Naskah bukti memeriksa bahwa **angkanya tidak ada pada jawabannya
+  sama sekali** — bukan disertakan lalu disembunyikan di layar.
+
+- **Yang ditahan tetap muncul sebagai baris**, dengan pesannya sendiri.
+  Menyembunyikan barisnya akan membuat pasien mengira pemeriksaannya belum
+  dikerjakan, lalu datang menanyakannya — dan itulah yang justru hendak
+  dihindari.
+
+- **Catatan klinis tidak dibuka kepada siapa pun lewat portal**, termasuk
+  kepada pasiennya sendiri. Ia memuat dugaan dan kemungkinan yang belum
+  dipastikan: "curiga keganasan, singkirkan dulu" ditulis untuk dibaca dokter
+  berikutnya, bukan untuk dibaca pasiennya pada pukul dua pagi.
+
+- **Perwalian berjenjang, dan pencabutannya langsung berlaku.** Wali
+  `SUMMARY_ONLY` melihat ringkasan kunjungan tetapi tidak hasil laboratorium.
+
+- **Penolakan dicatat dan diindeks tersendiri.** Penolakan beruntun dari satu
+  akun adalah tanda seseorang sedang mencoba nomor pasien lain, dan yang
+  mencarinya tidak boleh menyaring jutaan baris berhasil untuk menemukan
+  puluhan yang ditolak.
+
+- **Website publik tidak dapat memuat data pasien**, dan diperiksa dua kali:
+  tabelnya tidak punya kolom pasien maupun kunci asing ke tabel klinis, dan
+  teksnya ditolak bila memuat NIK atau nomor rekam medis. Satu nomor yang lolos
+  tidak dapat ditarik kembali — mesin pencari sudah menyalinnya.
+
+**Yang belum:** SATUSEHAT, BPJS, alat laboratorium, dan PACS. Ketiganya sudah
+dibangun sebagai kerangka bergerbang pada H-9A, H-9B, dan H-9I — bukan sebagai
+implementasi tiruan yang berpura-pura bekerja.
 
 ### H-11 · Peran, Help, data contoh, laporan
 
