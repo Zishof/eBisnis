@@ -589,6 +589,13 @@
       "file": "H063__health__menu_truth_w4.sql",
       "name": "eMedik: menu berlayar W-4",
       "description": "Tujuh utas W-4 untuk empat layar: tarif, kebijakan-jasa, kontributor, settlement, distribusi, pernyataan, kontrak-fee. Sesudahnya 37 menu berlayar dan 36 masih segera hadir. kontributor menunjuk layar kebijakan jasa; distribusi dan pernyataan menunjuk layar settlement — satu berkas, satu layar, sama alasannya dengan W-2 dan W-3. Pola sama dengan H059-H062: daftar yang PUNYA layar, gagal berisik bila satu utas pun tidak cocok."
+    },
+    {
+      "version": "H065",
+      "sequence": 1065,
+      "file": "H065__health__menu_truth_w5.sql",
+      "name": "eMedik: menu berlayar W-5",
+      "description": "Tujuh utas W-5 untuk tiga layar alat medis. Sesudahnya 44 menu berlayar dan 29 masih segera hadir. H064 HANGUS: ia berkas ini dengan satu utas keliru, /app/emedik/gateway-alat, padahal H034 menyemainya sebagai /app/emedik/gateway. Yang menemukannya penjaga migrasi itu sendiri — bukan uji mana pun dan bukan manusia — dan itu justru maksudnya, sebab utas yang salah ketik akan menandai menu yang layarnya ADA sebagai segera hadir sehingga penggunanya berhenti mengkliknya. Sumber kekeliruannya health-catalog.ts, cerminan dari migrasi yang berbeda dari aslinya; katalognya dibetulkan dan kini dijaga naskah bukti kontrak. Nomor H064 hangus sesuai cacat Core pada integration request 005."
     }
   ]
 }

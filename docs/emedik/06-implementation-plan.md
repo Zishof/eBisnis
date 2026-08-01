@@ -2121,15 +2121,45 @@ keadaan yang berbahaya dan tidak menimbulkan galat apa pun.
 - **`_filtered` ditampilkan.** Pemegang kontrak investor berhak tahu bahwa ia
   melihat pandangan yang disaring.
 
+### W-5 · Alat medis — **SELESAI**
+
+Tiga layar untuk tujuh menu.
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H065__health__menu_truth_w5.sql` (H064 hangus) |
+| Layar | `DevicePage`, `DeviceMaintenancePage`, `DeviceAdapterPage` |
+| Klien | `health-api.ts` — 9 jalan, 8 antarmuka baru |
+| Uji | `device-pages.spec.tsx` 11 |
+| Bukti | `prove-web-contract.mjs` diperluas: 31 -> 40 pemeriksaan |
+
+**Keputusan yang menentukan bentuknya**
+
+- **Kendali jarak jauh mati secara bawaan, dan yang menyala dihitung.** Perintah
+  yang diizinkan disebut satu per satu, bukan diringkas jadi "menyala".
+- **Gagal uji keselamatan terpisah dari pemeliharaan yang lewat.** Yang pertama
+  sudah diperiksa dan hasilnya buruk; yang kedua belum diperiksa.
+- **Yang terlambat menandai, tidak menghentikan.** Ventilator yang mati sendiri
+  karena jadwalnya lewat lebih berbahaya daripada ventilator yang jadwalnya
+  lewat.
+- **"Siap" tidak sama dengan "dapat dibaca".** Protokol tanpa pengurai menerima
+  pesan tetapi belum membacanya.
+- **Penilaian risiko tanpa keputusan ditandai.** Ia catatan bahwa seseorang
+  pernah melihat masalahnya dan tidak melakukan apa pun.
+
+**Penjaga baru:** naskah bukti kontrak kini memeriksa bahwa setiap utas pada
+`health-catalog.ts` ada sebagai menu pada basis data. Ia langsung menemukan dua
+ketidakcocokan — satu di antaranya kelalaian W-1 yang lolos dari 73 uji katalog,
+sebab seluruh uji itu membandingkan katalog dengan dirinya sendiri.
+
 ### Yang belum berlayar
 
-36 menu masih bertanda "segera hadir", dan kini menunya **berkata begitu
+29 menu masih bertanda "segera hadir", dan kini menunya **berkata begitu
 sebelum diklik**, bukan sesudah. Urutan berikutnya yang disarankan, menurut
 ukuran yang sama — berapa orang tidak dapat bekerja tanpanya:
 
 | Fase | Cakupan | Sebab didahulukan |
 |---|---|---|
-| W-5 | Alat: registri, gateway, pemeliharaan, keamanan, pesan/hasil | Keselamatan pasien |
 | W-6 | Master data, terminologi, KFA, pemetaan kode, SATUSEHAT | Prasyarat mutu data, bukan kerja harian |
 | W-7 | Portal pasien, website fasilitas, data contoh, laporan | Menghadap keluar |
 | W-8 | Investor, akuntansi, zona data, penjaga AI | Paling jarang dibuka |

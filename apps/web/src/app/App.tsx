@@ -146,6 +146,17 @@ const HealthSettlementPage = lazy(() =>
 const HealthFeeContractPage = lazy(() =>
   import('../verticals/health/FeeContractPage').then((m) => ({ default: m.FeeContractPage })),
 );
+const HealthDevicePage = lazy(() =>
+  import('../verticals/health/DevicePage').then((m) => ({ default: m.DevicePage })),
+);
+const HealthDeviceMaintenancePage = lazy(() =>
+  import('../verticals/health/DeviceMaintenancePage').then((m) => ({
+    default: m.DeviceMaintenancePage,
+  })),
+);
+const HealthDeviceAdapterPage = lazy(() =>
+  import('../verticals/health/DeviceAdapterPage').then((m) => ({ default: m.DeviceAdapterPage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -316,6 +327,15 @@ export function App() {
             <Route path="distribusi" element={<HealthSettlementPage />} />
             <Route path="pernyataan" element={<HealthSettlementPage />} />
             <Route path="kontrak-fee" element={<HealthFeeContractPage />} />
+
+            {/* Alat medis — W-5. */}
+            <Route path="alat" element={<HealthDevicePage />} />
+            <Route path="gateway" element={<HealthDevicePage />} />
+            <Route path="pemeliharaan-alat" element={<HealthDeviceMaintenancePage />} />
+            <Route path="keamanan-alat" element={<HealthDeviceMaintenancePage />} />
+            <Route path="pesan-alat" element={<HealthDeviceAdapterPage />} />
+            <Route path="pemetaan-kode" element={<HealthDeviceAdapterPage />} />
+            <Route path="hasil-alat" element={<HealthDeviceAdapterPage />} />
           </Route>
           <Route path="*" element={<ComingSoonPage />} />
         </Route>

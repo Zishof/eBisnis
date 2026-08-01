@@ -946,6 +946,148 @@ export interface RingkasInvestor {
   note: string;
 }
 
+/*
+ * --- W-5: alat medis --------------------------------------------------------
+ *
+ * Diperiksa ke peladen sebelum satu baris layar ditulis. DUA tebakan pertama
+ * meleset dan dibetulkan dari sumbernya: pesan alat memakai `source_protocol`
+ * dan `parse_status` (bukan `protocol`/`status`), dan antrean pemetaan memakai
+ * `device_code`/`occurrence_count` (bukan `deviceCode`/`count`).
+ */
+
+export interface BarisAlat {
+  id: string;
+  code: string;
+  name: string;
+  device_category: string;
+  manufacturer: string | null;
+  model: string | null;
+  source_protocol: string | null;
+  status: string;
+  software_version: string | null;
+  software_version_changed_at: string | null;
+  calibration_due_at: string | null;
+  calibration_overdue: boolean;
+  /** Bawaannya FALSE. Alat medis menyentuh pasien. */
+  remote_control_enabled: boolean;
+  remote_allowed_commands: string[];
+}
+
+export interface ProtokolAlat {
+  code: string;
+  usable: boolean;
+  blockedBy: string | null;
+}
+
+export interface BarisGateway {
+  id: string;
+  code: string;
+  name: string;
+  vendor: string | null;
+  network_segment: string | null;
+  status: string;
+  has_credential: boolean;
+  last_seen_at: string | null;
+  device_count: number;
+}
+
+/** `menghentikanLayanan` selalu false: yang terlambat MENANDAI, tidak menghentikan. */
+export interface StatusPemeliharaan {
+  jatuhTempo: string;
+  terlambatHari: number;
+  terlambat: boolean;
+  menghentikanLayanan: false;
+  keterangan: string;
+}
+
+export interface JadwalAlat {
+  items: Array<{
+    id: string;
+    code: string;
+    name: string;
+    status: string;
+    maintenance: StatusPemeliharaan | null;
+    calibrationOverdue: boolean;
+    safetyInspectionFailed: boolean;
+  }>;
+  overdueCount: number;
+  note: string;
+}
+
+export interface BarisPerintahKerja {
+  id: string;
+  work_order_number: string;
+  work_type: string;
+  status: string;
+  priority: string;
+  description: string | null;
+  requested_at: string | null;
+  completed_at: string | null;
+  inspection_result: string | null;
+  downtime_minutes: number | null;
+  affected_patient: boolean;
+  linked_to_safety: boolean;
+  device_code: string;
+  device_name: string;
+}
+
+export interface RisikoAlat {
+  items: Array<{
+    assessmentId: string;
+    deviceId: string;
+    deviceCode: string;
+    deviceName: string;
+    tingkat: string;
+    skorSisa: number;
+    decision: string | null;
+    tenggatKeputusan: string | null;
+    adaKeputusanBerlaku: boolean;
+    keterangan: string;
+  }>;
+  note: string;
+}
+
+export interface ProtokolAdapter {
+  protocols: Array<{
+    code: string;
+    ready: boolean;
+    hasParser: boolean;
+    blockedBy: string | null;
+  }>;
+  note: string;
+}
+
+export interface BarisPesanAlat {
+  id: string;
+  source_protocol: string;
+  message_control_id: string | null;
+  message_type: string | null;
+  parse_status: string;
+  parse_findings: unknown;
+  order_identifier: string | null;
+  patient_identifier: string | null;
+  device_identifier: string | null;
+  observation_count: number;
+  ack_code: string | null;
+  received_at: string | null;
+  processed_at: string | null;
+  raw_length: number;
+}
+
+export interface AntreanPemetaan {
+  items: Array<{
+    id: string;
+    device_code: string;
+    device_unit: string | null;
+    sample_value: string | null;
+    occurrence_count: number;
+    first_seen_at: string | null;
+    last_seen_at: string | null;
+    device_code_ref: string | null;
+  }>;
+  note: string;
+}
+
 export const healthApi = {
   // Fasilitas dan katalog tidak menyentuh rekam medis, sehingga tidak menuntut
   // tujuan penggunaan.
@@ -1527,6 +1669,35 @@ export const healthApi = {
     api.get<RingkasInvestor>(
       `/health/fee-contract/investor-summary?facilityId=${facilityId}&year=${year}`,
     ),
+
+  // --- W-5: alat medis -------------------------------------------------------
+
+  devices: (facilityId: string) =>
+    api.get<BarisAlat[]>(`/health/devices?facilityId=${facilityId}`),
+
+  deviceProtocols: () => api.get<ProtokolAlat[]>('/health/devices/protocols'),
+
+  deviceGateways: (facilityId: string) =>
+    api.get<BarisGateway[]>(`/health/devices/gateways?facilityId=${facilityId}`),
+
+  deviceSchedule: (facilityId: string) =>
+    api.get<JadwalAlat>(`/health/device-maintenance/schedule?facilityId=${facilityId}`),
+
+  deviceWorkOrders: (facilityId: string) =>
+    api.get<BarisPerintahKerja[]>(
+      `/health/device-maintenance/work-orders?facilityId=${facilityId}`,
+    ),
+
+  deviceRisk: (facilityId: string) =>
+    api.get<RisikoAlat>(`/health/device-maintenance/risk?facilityId=${facilityId}`),
+
+  adapterProtocols: () => api.get<ProtokolAdapter>('/health/device-adapter/protocols'),
+
+  adapterMessages: (facilityId: string) =>
+    api.get<BarisPesanAlat[]>(`/health/device-adapter/messages?facilityId=${facilityId}`),
+
+  codeMapPending: (facilityId: string) =>
+    api.get<AntreanPemetaan>(`/health/device-adapter/code-map/pending?facilityId=${facilityId}`),
 
   // --- W-2: telaah darurat ---------------------------------------------------
 

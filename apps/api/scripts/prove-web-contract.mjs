@@ -147,6 +147,13 @@ try {
     HEALTH_FEE_POLICY: ['READ'],
     HEALTH_FEE_SETTLEMENT: ['READ'],
     HEALTH_FEE_CONTRACT: ['READ'],
+    HEALTH_DEVICE: ['READ'],
+    HEALTH_DEVICE_GATEWAY: ['READ'],
+    HEALTH_DEVICE_MAINTENANCE: ['READ'],
+    HEALTH_DEVICE_SECURITY: ['READ'],
+    HEALTH_DEVICE_MESSAGE: ['READ'],
+    HEALTH_DEVICE_CODE_MAP: ['READ'],
+    HEALTH_DEVICE_INBOX: ['READ'],
   };
   for (const [m, aa] of Object.entries(hak)) {
     const mid = menus.get(m);
@@ -505,6 +512,66 @@ try {
     });
   }
 
+  /* W-5: alat medis. Fasilitasnya diambil dari `medical_device`. */
+  const fasAlat = await fasDari('medical_device');
+
+  kontrak.push({
+    nama: 'deviceProtocols',
+    jalan: '/health/devices/protocols',
+    antarmuka: 'ProtokolAlat',
+    ambil: (d) => d?.[0],
+  });
+  kontrak.push({
+    nama: 'adapterProtocols',
+    jalan: '/health/device-adapter/protocols',
+    antarmuka: 'ProtokolAdapter',
+    ambil: (d) => d,
+  });
+  if (fasAlat) {
+    kontrak.push({
+      nama: 'devices',
+      jalan: `/health/devices?facilityId=${fasAlat}`,
+      antarmuka: 'BarisAlat',
+      ambil: (d) => d?.[0],
+    });
+    kontrak.push({
+      nama: 'deviceGateways',
+      jalan: `/health/devices/gateways?facilityId=${fasAlat}`,
+      antarmuka: 'BarisGateway',
+      ambil: (d) => d?.[0],
+    });
+    kontrak.push({
+      nama: 'deviceSchedule',
+      jalan: `/health/device-maintenance/schedule?facilityId=${fasAlat}`,
+      antarmuka: 'JadwalAlat',
+      ambil: (d) => d,
+    });
+    kontrak.push({
+      nama: 'deviceWorkOrders',
+      jalan: `/health/device-maintenance/work-orders?facilityId=${fasAlat}`,
+      antarmuka: 'BarisPerintahKerja',
+      ambil: (d) => d?.[0],
+    });
+    kontrak.push({
+      nama: 'deviceRisk',
+      jalan: `/health/device-maintenance/risk?facilityId=${fasAlat}`,
+      antarmuka: 'RisikoAlat',
+      ambil: (d) => d,
+    });
+    kontrak.push({
+      nama: 'codeMapPending',
+      jalan: `/health/device-adapter/code-map/pending?facilityId=${fasAlat}`,
+      antarmuka: 'AntreanPemetaan',
+      ambil: (d) => d,
+    });
+    kontrak.push({
+      nama: 'adapterMessages',
+      jalan: `/health/device-adapter/messages?facilityId=${fasAlat}`,
+      antarmuka: 'BarisPesanAlat',
+      ambil: (d) => d?.[0],
+    });
+  }
+
   if (pasien) {
     kontrak.push({
       nama: 'legalHolds',
@@ -569,6 +636,42 @@ try {
       hilang.length ? `hilang: ${hilang.join(', ')}` : '',
     );
   }
+
+  log('');
+  log('--- Katalog menu pada kode SAMA dengan menu pada basis data ------------');
+
+  /*
+   * `health-catalog.ts` adalah CERMINAN dari migrasi, bukan penyemainya. Yang
+   * menyemai menu adalah H005 dan seterusnya; katalog itu dipakai dokumentasi,
+   * uji pemisahan wewenang, dan pembaca manusia.
+   *
+   * Cerminan yang berbeda dari aslinya lebih buruk daripada tidak ada cerminan,
+   * sebab ia dipercaya. Ketidakcocokan pertama ditemukan penjaga migrasi H065 —
+   * katalog menuliskan `/app/emedik/gateway-alat` untuk menu yang basis datanya
+   * menyebut `/app/emedik/gateway` — dan tidak satu pun uji menangkapnya.
+   */
+  const sumberKatalog = readFileSync(
+    new URL('../src/modules/emedik/health-catalog.ts', import.meta.url),
+    'utf8',
+  );
+  const utasKatalog = [...sumberKatalog.matchAll(/^    route: '(\/app\/emedik\/[^']*)'/gm)].map(
+    (m) => m[1],
+  );
+  const utasBasisData = new Set(
+    (
+      await q(
+        `SELECT route FROM "${SCHEMA}".menu
+          WHERE module_code = 'HEALTH' AND deleted_at IS NULL AND route IS NOT NULL`,
+      )
+    ).map((r) => r.route),
+  );
+  const takAdaDiBasisData = [...new Set(utasKatalog)].filter((u) => !utasBasisData.has(u));
+
+  check(
+    `setiap utas pada health-catalog.ts ada sebagai menu (${utasKatalog.length} diperiksa)`,
+    takAdaDiBasisData.length === 0,
+    takAdaDiBasisData.join(', '),
+  );
 
   log('');
   log('--- Penolakan yang dapat dibaca, bukan 500 -----------------------------');

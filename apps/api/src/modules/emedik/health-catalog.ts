@@ -428,7 +428,13 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     code: 'HEALTH_HOME_VISIT',
     parentCode: 'HEALTH',
     label: 'Kunjungan Rumah',
-    route: '/app/emedik/kunjungan',
+    // `/app/emedik/kunjungan-rumah`, diubah H059.
+    //
+    // Semula `/app/emedik/kunjungan` — dan itu menyorot menu Posyandu setiap
+    // kali dokter membuka kunjungan klinis, sebab NavLink mencocokkan awalan.
+    // Migrasinya dibetulkan pada W-1; KATALOG INI TIDAK, dan kelalaian itu
+    // baru ketahuan pada W-5 lewat penjaga baru pada naskah bukti kontrak.
+    route: '/app/emedik/kunjungan-rumah',
     icon: 'map-pin',
     actions: ['READ', 'CREATE'],
     sortOrder: 73,
@@ -688,7 +694,12 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     code: 'HEALTH_DEVICE_GATEWAY',
     parentCode: 'HEALTH',
     label: 'Gateway Alat',
-    route: '/app/emedik/gateway-alat',
+    // `/app/emedik/gateway`, BUKAN `gateway-alat`. Yang menyemai menu adalah
+    // H034, dan katalog ini hanya cerminannya — cerminan yang berbeda dari
+    // aslinya lebih buruk daripada tidak ada cerminan, sebab ia dipercaya.
+    // Ketidakcocokan ini ditemukan penjaga migrasi H065, bukan oleh uji mana
+    // pun, dan kini dijaga naskah bukti kontrak.
+    route: '/app/emedik/gateway',
     icon: 'router',
     actions: ['READ', 'CREATE', 'UPDATE', 'MANAGE_CREDENTIAL'],
     sortOrder: 111,

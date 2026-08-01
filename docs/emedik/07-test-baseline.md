@@ -90,9 +90,10 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-11 | 25 | **35** | `health-sample.spec.ts` |
 | H-12 | 40 | **75** | `health-security.spec.ts` |
 
-API keseluruhan: **2506** pengujian pada 72 berkas. Web: **140** pada 9 berkas,
-105 di antaranya kesehatan (`health-api.spec.ts` 40, `puskesmas-pages.spec.tsx` 16,
-`him-pages.spec.tsx` 24, `claim-pages.spec.tsx` 12, `fee-pages.spec.tsx` 13).
+API keseluruhan: **2506** pengujian pada 72 berkas. Web: **151** pada 10 berkas,
+116 di antaranya kesehatan (`health-api.spec.ts` 40, `puskesmas-pages.spec.tsx` 16,
+`him-pages.spec.tsx` 24, `claim-pages.spec.tsx` 12, `fee-pages.spec.tsx` 13,
+`device-pages.spec.tsx` 11).
 
 Seluruh dua belas fase melampaui sasaran minimumnya. Jumlah minimum yang
 ditetapkan H-0 adalah 370 pengujian baru; yang terpasang jauh di atasnya.
@@ -135,7 +136,7 @@ sungguhan, pada basis data sungguhan:
 | H-10 | `prove-health-portal.mjs` | 63 pemeriksaan, seluruhnya lulus — [bukti-h10-portal.txt](bukti-h10-portal.txt) |
 | H-11 | `prove-health-sample.mjs` | 55 pemeriksaan, seluruhnya lulus — [bukti-h11-data-contoh.txt](bukti-h11-data-contoh.txt) |
 | H-12 | `prove-health-security.mjs` | 92 pemeriksaan, seluruhnya lulus — [bukti-h12-keamanan.txt](bukti-h12-keamanan.txt) |
-| W-2 s.d. W-4 | `prove-web-contract.mjs` | 31 pemeriksaan, seluruhnya lulus — [bukti-kontrak-web.txt](bukti-kontrak-web.txt) |
+| W-2 s.d. W-5 | `prove-web-contract.mjs` | 40 pemeriksaan, seluruhnya lulus — [bukti-kontrak-web.txt](bukti-kontrak-web.txt) |
 
 ### W-1 · Layar Puskesmas — dan batas uji komponen
 
@@ -189,6 +190,30 @@ dan jalan keluarnya.
 
 Ini kemunculan **ketiga dan keempat** cacat yang sama sepanjang dua fase
 terakhir: nama yang ditulis dari dugaan, bukan dibaca dari sumbernya.
+
+### W-5 · Uji yang membandingkan kode dengan dirinya sendiri
+
+`health-catalog.ts` punya **73 uji**, dan tidak satu pun menangkap bahwa dua
+utas menunya berbeda dari menu yang sungguhan ada pada basis data.
+
+Sebabnya bukan uji yang kurang teliti. Seluruh 73 uji itu membandingkan katalog
+dengan **dirinya sendiri**: apakah kode menunya unik, apakah tiap peran menunjuk
+menu yang ada pada daftar yang sama, apakah aturan pemisahan wewenang menyebut
+hak yang ada pada daftar yang sama. Semuanya benar, dan semuanya tidak
+membuktikan bahwa daftar itu sesuai kenyataan.
+
+> **Uji yang membandingkan sebuah berkas dengan dirinya sendiri membuktikan
+> konsistensi, bukan kebenaran.** Ia akan lulus dengan sempurna pada daftar yang
+> seluruh isinya keliru.
+
+Yang menemukannya: penjaga pada migrasi H065 (satu utas), lalu penjaga baru pada
+naskah bukti kontrak (satu lagi). Penjaga kedua itu kini permanen — ia membaca
+`health-catalog.ts` dan membandingkan setiap utasnya dengan tabel `menu` pada
+basis data sungguhan.
+
+Salah satu dari dua ketidakcocokan itu **kelalaian W-1 sendiri**: H059
+memindahkan `HEALTH_HOME_VISIT` ke `/app/emedik/kunjungan-rumah`, dan katalognya
+tidak pernah ikut dibetulkan. Ia bertahan empat fase.
 
 **H-12 menemukan tiga cacat, dan dua di antaranya adalah cacat yang sama
 berulang: kosakata yang disusun dari ingatan alih-alih dibaca dari skema.**

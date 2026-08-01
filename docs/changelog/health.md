@@ -5,6 +5,73 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## W-5 — Layar alat medis
+
+Tiga layar untuk tujuh menu. Alat medis menyentuh pasien, dan itu yang
+menentukan seluruh bentuknya.
+
+### Ditambahkan
+
+- **`DevicePage`** (`/app/emedik/alat`, `/gateway`) — **kendali jarak jauh mati
+  secara bawaan, dan berapa yang menyala DIHITUNG**. Angka yang seharusnya nol
+  pada sebagian besar fasilitas; bila bukan, ia pertanyaan — dan pertanyaan itu
+  tidak muncul bila angkanya tidak ada. Perintah yang diizinkan disebut satu per
+  satu: "kendali jarak jauh menyala" tanpa daftar perintahnya tidak memberi tahu
+  apakah yang menyala sekadar pembacaan status atau penyetelan alarm.
+- **`DeviceMaintenancePage`** (`/pemeliharaan-alat`, `/keamanan-alat`) — **gagal
+  uji keselamatan dihitung TERPISAH dari pemeliharaan yang lewat**. Keduanya
+  sering disamakan dan berbeda sama sekali: gagal uji berarti *sudah diperiksa
+  dan hasilnya buruk*; pemeliharaan lewat berarti *belum diperiksa*.
+  Menggabungkannya membuat yang mendesak tenggelam. Penilaian risiko siber yang
+  lewat tenggat **tanpa keputusan** ditandai — penilaian tanpa keputusan bukan
+  penilaian, melainkan catatan bahwa seseorang pernah melihat masalahnya dan
+  tidak melakukan apa pun.
+- **`DeviceAdapterPage`** (`/pesan-alat`, `/pemetaan-kode`, `/hasil-alat`) —
+  **"siap" tidak sama dengan "dapat dibaca"**. Protokol yang siap tanpa pengurai
+  menerima pesan dan menyimpannya, tetapi belum membacanya; petugas yang melihat
+  "siap" akan mengira hasilnya sudah masuk ke rekam medis. Dihitung tersendiri.
+- **`H065__health__menu_truth_w5.sql`** — 44 menu berlayar, 29 masih segera
+  hadir.
+- **`device-pages.spec.tsx`** — 11 uji komponen.
+
+### Yang ditegaskan ulang di layar
+
+Alat berbicara kepada gateway; gateway berbicara kepada sistem. **Alat tidak
+pernah menulis langsung ke basis data** — sambungan langsung berarti alat yang
+salah kirim merusak rekam medis tanpa satu pun lapisan yang dapat menolaknya.
+
+Kalibrasi dan pemeliharaan yang lewat **menandai, tidak menghentikan**.
+Ventilator yang mati sendiri karena jadwalnya lewat lebih berbahaya daripada
+ventilator yang jadwalnya lewat: yang pertama berhenti pada saat yang dipilih
+kalender, bukan pada saat yang dipilih orang yang tahu ada pasien memakainya.
+
+### Dua ketidakcocokan katalog yang ditemukan penjaga, bukan uji
+
+**H064 hangus.** Ia berkas H065 dengan satu utas keliru — `/app/emedik/gateway-alat`,
+padahal H034 menyemainya sebagai `/app/emedik/gateway`. Yang menemukannya
+**penjaga migrasi itu sendiri**, dan itu justru maksudnya: utas yang salah ketik
+akan menandai menu yang layarnya ADA sebagai "segera hadir", lalu penggunanya
+berhenti mengkliknya. Nomornya hangus sesuai cacat Core pada
+[005](../integration-requests/health/005-riwayat-migrasi-gagal-mengunci-versi.md).
+
+Sumbernya `health-catalog.ts`, yang merupakan **cerminan** dari migrasi, bukan
+penyemainya — dan cerminan yang berbeda dari aslinya lebih buruk daripada tidak
+ada cerminan, sebab ia dipercaya.
+
+Karena itu naskah bukti kontrak diberi penjaga baru: **setiap utas pada
+`health-catalog.ts` harus ada sebagai menu pada basis data.** Penjaga itu
+langsung menemukan yang **kedua**, dan itu kelalaian dari W-1 sendiri:
+`HEALTH_HOME_VISIT` sudah dipindahkan ke `/app/emedik/kunjungan-rumah` oleh
+H059, tetapi katalognya tidak pernah ikut dibetulkan. Tidak satu pun dari 73 uji
+katalog menangkapnya, sebab seluruhnya membandingkan katalog dengan dirinya
+sendiri.
+
+Naskah bukti kontrak: **40 pemeriksaan**, lulus dua kali.
+
+Uji web 140 -> 151.
+
+---
+
 ## W-4 — Layar tarif, jasa, settlement, dan kontrak fee
 
 Empat layar untuk tujuh menu. Yang menyatukan keempatnya: **gabungan keadaan
