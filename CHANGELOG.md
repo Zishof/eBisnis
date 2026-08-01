@@ -5,6 +5,47 @@ Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 
+## Subdomain koperasi.ebisnis.id dapat dipasang dan diperbarui
+
+### Ditambahkan
+- **`deploy/koperasi.sh`** — `install`, `update`, `status`, `uninstall-domain`.
+- **`pnpm domain:vertical`** — CLI pendaftaran host situs vertikal ke control
+  plane: `list`, `register`, `verify`, `suspend`.
+- **`koperasi.ebisnis.id`** pada `ServerAlias` kedua vhost.
+- **`deploy/README-koperasi.md`**.
+
+### Keputusan yang perlu dicatat
+- **Pembaruan vertikal koperasi tidak punya jalur tersendiri.**
+  `koperasi.sh update` memanggil `update.sh` apa adanya lalu memeriksa
+  subdomainnya. Dua jalur pembaruan yang harus dijaga tetap sama akan berbeda
+  pada suatu hari, dan yang jarang dipakai akan tertinggal tanpa ada yang tahu.
+  Migrasi, build, dan penyemaian RBAC koperasi memang sudah otomatis sejak
+  IR-001 dan IR-004.
+- **`apache2ctl configtest` dijalankan SEBELUM `reload`.** Konfigurasi Apache
+  yang salah dan sudah dimuat ulang mematikan seluruh situs, bukan hanya
+  subdomain baru. Vhost disunting di tempat dengan cadangan bertanggal —
+  menulis ulang seluruh berkas akan menghapus penyesuaian operator server.
+- **`--verify` terpisah dari `register`.** Operator server yang memasang DNS
+  memang mengetahui kepemilikannya; untuk domain yang dibawa penyewa,
+  pembuktiannya harus lewat DNS. Tanpa pemisahan itu, siapa pun dapat
+  mendaftarkan host milik orang lain dan memperoleh permintaan yang ditujukan
+  ke sana beserta konteks penyewanya.
+- **Penghentian host tidak menghapus barisnya.** Host yang dihapus dapat
+  didaftarkan ulang penyewa lain tanpa jejak.
+- **Host dinormalkan dengan penormal yang SAMA dengan jalur pembacaan.**
+  Penyimpanan dan pembacaan yang berbeda penormalnya menghasilkan baris yang
+  tersimpan tetapi tidak pernah ditemukan — gejalanya hanyalah situs yang
+  "tidak bekerja", tanpa galat apa pun.
+- **Pendaftaran menolak penyewa yang skemanya belum `READY`.** Menolak di depan
+  lebih baik daripada mendaftarkan host yang kelak menjawab 404 tanpa ada yang
+  tahu sebabnya.
+
+### Yang masih perlu dikerjakan tangan
+- Sertifikat TLS: `certbot --apache -d koperasi.ebisnis.id`.
+- Pengalihan HTTP → HTTPS pada `ebisnis.conf`, masih nonaktif dengan sengaja.
+- Situs publik koperasi belum melayani pengunjung — mekanismenya ada, tetapi
+  `CooperativeWebsiteController` masih memakai jalur pratinjau bersesi.
+
 ## Gangguan sesaat tidak lagi melempar pengguna ke halaman masuk
 
 ### Diperbaiki

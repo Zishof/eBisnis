@@ -32,6 +32,9 @@ const PortalPengaduan = lazy(() =>
 const PortalPemberitahuan = lazy(() =>
   import('./PortalPemberitahuan').then((m) => ({ default: m.PortalPemberitahuan })),
 );
+const DataContohPage = lazy(() =>
+  import('./DataContohPage').then((m) => ({ default: m.DataContohPage })),
+);
 const SitusKoperasi = lazy(() =>
   import('./SitusKoperasi').then((m) => ({ default: m.SitusKoperasi })),
 );
@@ -67,13 +70,24 @@ export function CooperativeRoutes() {
         </Route>
 
         {/*
-          Situs koperasi. Rutenya sudah ada, tetapi jalur publiknya belum —
-          pengunjung tanpa sesi tidak membawa konteks penyewa, dan menerima
-          nama skema dari alamat adalah hal yang dilarang tegas. Menunggu
-          IR-005; sampai saat itu layar ini menjelaskan keadaannya alih-alih
-          berpura-pura bekerja.
+          Situs koperasi — publik, tanpa sesi. Koperasinya ditentukan host
+          permintaan (IR-005), bukan alamat; karena itu rutenya tidak memuat
+          slug sama sekali.
         */}
-        <Route path="situs/:slug" element={<SitusKoperasi />} />
+        <Route path="situs" element={<SitusKoperasi />} />
+
+        {/*
+          Data contoh — dua tombol. Di balik RequireAuth: memasang 1.700 baris
+          dan menghapusnya kembali bukan sesuatu yang boleh dilakukan pengunjung.
+        */}
+        <Route
+          path="data-contoh"
+          element={
+            <RequireAuth>
+              <DataContohPage />
+            </RequireAuth>
+          }
+        />
         <Route path="*" element={<Memuat />} />
       </Routes>
     </Suspense>

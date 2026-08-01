@@ -20,6 +20,8 @@ import {
   Param,
   Patch,
   Post,
+  Headers,
+  Ip,
   type OnModuleInit,
 } from '@nestjs/common';
 import {
@@ -44,8 +46,10 @@ import {
 } from 'class-validator';
 import { CooperativeProfileService } from './cooperative-profile.service';
 import { CooperativePortalService } from './cooperative-portal.service';
+import { CooperativePublicService } from './public/cooperative-public.service';
 import { CooperativePosAdapter } from './adapters/pos.adapter';
 import { MemberBalanceService } from './payment/member-balance.service';
+import { CooperativeSampleService } from './sample/cooperative-sample.service';
 import { CooperativeAccountingEventService } from './accounting/cooperative-accounting-event.service';
 import { COOPERATIVE_EVENT_CATALOG } from './accounting/cooperative-events.catalog';
 import { AccountingEventCatalogRegistry } from '../accounting/event-catalog.registry';
@@ -59,7 +63,9 @@ import {
   BlockDemo,
   CurrentUser,
   Permissions,
+  Public,
 } from '../../common/decorators';
+import { Throttle } from '@nestjs/throttler';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import {
   COOPERATIVE_LEVELS,
@@ -538,28 +544,185 @@ export class CooperativePortalController {
 }
 
 /**
- * Situs koperasi — pratinjau dan penerimaan lamaran.
+ * Situs koperasi untuk pengunjung yang belum masuk.
  *
- * **Endpoint ini BUKAN endpoint publik, dan itu disengaja.**
+ * Jalur ini **publik** — tanpa sesi, tanpa hak akses, dapat dipanggil siapa
+ * saja. Yang membuatnya boleh ada adalah `PublicTenantResolver` (IR-005):
+ * koperasi mana yang dilayani ditentukan **host permintaan**, dicocokkan ke
+ * baris terdaftar di control plane.
  *
- * Situs koperasi seharusnya dapat dibuka siapa saja tanpa sesi. Tetapi
- * pengunjung tanpa sesi tidak membawa konteks ruang kerja, sehingga sesuatu
- * harus menentukan skema mana yang dibaca. Satu-satunya cara yang tersedia
- * hari ini adalah menerima nama skema dari alamat — dan itu justru yang
- * dilarang tegas: nama skema tidak boleh datang dari badan permintaan, query,
- * header, maupun parameter jalur; ia hanya boleh datang dari
- * `platform.tenant_schema_registry`.
+ * Nama skema tidak pernah datang dari alamat. Sebelum IR-005 disetujui, jalur
+ * ini memang tidak dibuat sama sekali — bukan ditunda karena belum sempat.
  *
- * Melanggarnya berarti siapa pun di internet dapat mencoba nama skema mana
- * pun sampai menemukan yang ada. Jadi jalur publiknya DITUNDA sampai
- * [IR-005](../../../../docs/integration-requests/cooperative/005-resolusi-tenant-situs-publik.md)
- * — yang meminta Core menyediakan pemetaan host → skema seperti yang sudah
- * dipakai marketplace — disetujui.
+ * ## Pembatas laju
  *
- * Sampai saat itu pengurus tetap dapat menyusun dan melihat pratinjau
- * situsnya, dan lamaran tetap dapat diuji lewat jalur bersesi. Yang belum ada
- * hanyalah pintunya dari internet.
+ * Dua lapis, menjaga hal yang berbeda:
+ *
+ *   · `@Throttle` menahan satu mesin yang mengirim cepat.
+ *   · `public-intake.ts` menjaga ANTREAN PENGURUS — berapa lamaran boleh masuk
+ *     ke satu koperasi sehari, dan berapa sering satu nomor boleh mengirim.
+ *     Lapis pertama tidak menahan seratus mesin yang masing-masing mengirim
+ *     sekali; lapis kedua menahannya.
+ *
+ * ## Lapis pertama lumpuh di belakang proxy, dan itu disebutkan di sini
+ *
+ * `ThrottlerGuard` menghitung per `req.ip`. Aplikasi ini **tidak** menyetel
+ * `trust proxy`, sehingga di belakang Apache (`koperasi.ebisnis.id`) `req.ip`
+ * bernilai alamat proxy untuk SETIAP pengunjung — seluruh internet berbagi satu
+ * ember hitungan.
+ *
+ * Akibatnya bukan sekadar "pembatasnya tidak bekerja", melainkan lebih buruk:
+ * batas yang ketat berubah menjadi penolakan layanan terhadap pelamar
+ * sungguhan. Lima kiriman per jam per alamat akan menjadi lima kiriman per jam
+ * bagi seluruh koperasi di seluruh platform, dan satu pengirim sampah cukup
+ * untuk menutup pintu bagi semua orang.
+ *
+ * Sampai [IR-006](../../../../docs/integration-requests/cooperative/006-alamat-asli-di-belakang-proxy.md)
+ * dikerjakan Core, angkanya dipilih supaya benar pada KEDUA keadaan:
+ *
+ *   · **Pembacaan tidak diberi batas khusus.** Ia mewarisi batas umum seperti
+ *     route lain. Memberinya batas lebih ketat justru membuat situs publik
+ *     lebih rapuh daripada bagian API lainnya — kebalikan dari yang diinginkan.
+ *   · **Penulisan diberi angka yang longgar** — cukup longgar untuk tidak
+ *     menolak pelamar sungguhan ketika embernya berbagi, cukup ketat untuk
+ *     tetap berguna setelah IR-006 mendudukkan alamat aslinya.
+ *
+ * Yang benar-benar menahan banjir tetap lapis kedua: batas harian per koperasi
+ * dan jeda per nomor telepon, keduanya **tidak bergantung pada alamat IP** dan
+ * karenanya bekerja sama benarnya di kedua keadaan. Batas kerusakan terburuk
+ * tidak berubah: lima puluh baris karantina per koperasi per hari, tanpa satu
+ * pun baris anggota terbentuk.
+ *
+ * `ThrottlerGuard` milik modul auth tidak disentuh sama sekali (panduan §3).
  */
+@ApiTags('cooperative-public')
+@Controller('cooperative/public')
+export class CooperativePublicController {
+  constructor(private readonly situs: CooperativePublicService) {}
+
+  /*
+   * Tanpa @Throttle: mewarisi batas umum. Lihat catatan kelas di atas — batas
+   * per-route yang lebih ketat akan lumpuh menjadi satu ember bersama di
+   * belakang proxy, dan menolak pengunjung biasa lebih dahulu daripada
+   * penyerang.
+   */
+  @Public()
+  @Get('site')
+  @ApiOperation({
+    summary: 'Isi situs koperasi',
+    description:
+      'Koperasi ditentukan host permintaan, bukan alamat. Hanya yang situsnya sudah diterbitkan. Jumlah anggota disertakan hanya bila pengurus memilih menampilkannya.',
+  })
+  async isi(@Headers('host') host: string) {
+    return this.situs.situs(host);
+  }
+
+  @Public()
+  @Get('pages/:slug')
+  @ApiOperation({ summary: 'Satu halaman situs koperasi' })
+  async halaman(@Headers('host') host: string, @Param('slug') slug: string) {
+    return this.situs.halaman(host, slug);
+  }
+
+  /*
+   * Tiga puluh kiriman per jam. Bukan angka yang dipilih untuk menahan
+   * penyerang — lapis kedualah yang melakukannya — melainkan angka yang tidak
+   * melukai siapa pun ketika embernya berbagi di belakang proxy, sambil tetap
+   * memangkas kiriman bertubi-tubi dari satu mesin bila alamatnya kelak
+   * terbaca benar.
+   *
+   * Orang yang mendaftar sungguhan mengirim sekali; tiga puluh tidak akan
+   * pernah ia sentuh.
+   */
+  @Public()
+  @Throttle({ default: { ttl: 3_600_000, limit: 30 } })
+  @Post('applications')
+  @HttpCode(201)
+  @ApiOperation({
+    summary: 'Mengirim pendaftaran calon anggota',
+    description:
+      'Berhenti pada tabel karantina. TIDAK membentuk baris anggota — pengurus yang menerbitkannya setelah memeriksa berkas. Yang menahan banjir adalah batas harian per koperasi dan jeda per nomor telepon; keduanya tidak bergantung pada alamat IP.',
+  })
+  async lamar(
+    @Headers('host') host: string,
+    @Body() dto: LamaranPublikDto,
+    @Ip() ip: string,
+  ) {
+    return this.situs.terimaLamaran(
+      host,
+      {
+        fullName: dto.fullName,
+        phone: dto.phone,
+        email: dto.email ?? null,
+        occupation: dto.occupation ?? null,
+        address: dto.address ?? null,
+        motivation: dto.motivation ?? null,
+        consentGiven: dto.consentGiven,
+      },
+      ip,
+    );
+  }
+}
+
+/**
+ * Pratinjau situs bagi pengurus.
+ *
+ * Tetap ada meski jalur publiknya sudah dibuka: pengurus perlu melihat
+ * situsnya **sebelum** diterbitkan, dan jalur publik hanya melayani yang sudah
+ * terbit.
+ */
+/**
+ * Data contoh koperasi — dua tombol.
+ *
+ * Terpisah dari permukaan data contoh milik Core (`/sample-data/*`) dengan
+ * sengaja: yang ini menyemai koperasi lengkap beserta RAT dan SHU-nya, dan
+ * penghapusannya menyaring pada awalan kode koperasi sendiri.
+ */
+@ApiTags('cooperative-sample')
+@Controller('cooperative/sample')
+export class CooperativeSampleController {
+  constructor(private readonly contoh: CooperativeSampleService) {}
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PROFILE.READ')
+  @Get()
+  @ApiOperation({
+    summary: 'Keadaan data contoh',
+    description: 'Apakah terpasang, berapa anggotanya, dan tahun bukunya.',
+  })
+  async status(@CurrentUser() user: AuthenticatedUser) {
+    return this.contoh.status(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PROFILE.CREATE')
+  @BlockDemo()
+  @Post('install')
+  @HttpCode(201)
+  @ApiOperation({
+    summary: 'Memasang data contoh',
+    description:
+      'Satu koperasi lengkap: 60 anggota, setahun simpanan wajib, 25 pinjaman, satu RAT beserta kuorum dan pemungutan suaranya, dan satu perhitungan SHU yang dibagikan. Menolak bila sudah terpasang — pemasangan ulang akan menggandakan mutasi dan membuat laporan SHU memuat angka yang tidak dapat dijelaskan.',
+  })
+  async pasang(@CurrentUser() user: AuthenticatedUser) {
+    return this.contoh.pasang(requireSchema(user), user.userId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PROFILE.UPDATE')
+  @BlockDemo()
+  @Post('remove')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menghapus data contoh',
+    description:
+      'Menyaring pada awalan kode CONTOH-, bukan pada tanggal maupun tanda is_sample. Peran, menu, dan hak akses TIDAK ikut terhapus — menghapusnya mengunci pengurus keluar dari koperasinya sendiri.',
+  })
+  async hapus(@CurrentUser() user: AuthenticatedUser) {
+    return this.contoh.hapus(requireSchema(user));
+  }
+}
+
 @ApiTags('cooperative-website')
 @Controller('cooperative/website')
 export class CooperativeWebsiteController {
@@ -571,41 +734,10 @@ export class CooperativeWebsiteController {
   @ApiOperation({
     summary: 'Pratinjau situs koperasi',
     description:
-      'Isi yang akan dilihat pengunjung. Jumlah anggota dan besar aset disertakan hanya bila pengurus memilih menampilkannya.',
+      'Melayani pula situs yang BELUM diterbitkan — itulah gunanya. Jalur publik hanya melayani yang sudah terbit.',
   })
   async pratinjau(@Param('slug') slug: string, @CurrentUser() user: AuthenticatedUser) {
     return this.portal.situsPublik(requireSchema(user), slug);
-  }
-
-  @ApiBearerAuth('access-token')
-  @Permissions('COOPERATIVE_WEBSITE.WRITE')
-  @BlockDemo()
-  @Post('preview/:slug/applications')
-  @HttpCode(201)
-  @ApiOperation({
-    summary: 'Mengirim lamaran calon anggota',
-    description:
-      'Berhenti pada tabel karantina. TIDAK membentuk baris anggota — pengurus yang menerbitkannya setelah memeriksa berkas. Jalur dari internet menunggu IR-005.',
-  })
-  async lamar(
-    @Param('slug') slug: string,
-    @Body() dto: LamaranPublikDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.portal.terimaLamaran(
-      requireSchema(user),
-      slug,
-      {
-        fullName: dto.fullName,
-        phone: dto.phone,
-        email: dto.email ?? null,
-        occupation: dto.occupation ?? null,
-        address: dto.address ?? null,
-        motivation: dto.motivation ?? null,
-        consentGiven: dto.consentGiven,
-      },
-      null,
-    );
   }
 }
 
@@ -787,7 +919,13 @@ export class CooperativeController {
    * koperasi tidak menyentuh satu baris pun miliknya.
    */
   imports: [InfrastructureModule, PosModule, AccountingModule],
-  controllers: [CooperativeController, CooperativePortalController, CooperativeWebsiteController],
+  controllers: [
+    CooperativeController,
+    CooperativePortalController,
+    CooperativeWebsiteController,
+    CooperativePublicController,
+    CooperativeSampleController,
+  ],
   providers: [
     CooperativeProfileService,
     CooperativePortalService,
@@ -795,6 +933,8 @@ export class CooperativeController {
     MemberBalanceService,
     MemberBalancePaymentHandler,
     CooperativeAccountingEventService,
+    CooperativePublicService,
+    CooperativeSampleService,
   ],
   exports: [CooperativeProfileService, CooperativePortalService, CooperativePosAdapter],
 })
