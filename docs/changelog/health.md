@@ -5,6 +5,44 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-9A — Kerangka SATUSEHAT dan gerbang kemampuannya
+
+### Ditambahkan
+
+- **`H044__health__satusehat_skeleton.sql`** — `satusehat_environment`,
+  `satusehat_capability`, `satusehat_resource_mapping`, `satusehat_transaction`,
+  `satusehat_attempt`. Constraint `satusehat_env_secret_is_ref`,
+  `satusehat_cap_verified_complete`, `satusehat_txn_success_has_id`, dan
+  trigger `forbid_capability_status_skip`. Matriks kemampuan disemai seluruhnya
+  BLOCKED bagi setiap fasilitas, termasuk yang lahir kemudian.
+- **`H045__health__satusehat_permissions.sql`** — dua menu, satu peran baru
+  (Petugas Interoperabilitas), dan satu aturan pemisahan wewenang CRITICAL.
+- **`health-satusehat.ts`** — matriks kemampuan, syarat verifikasi, gerbang
+  pengiriman, kenaikan status, kredensial, idempotensi, pengulangan percobaan,
+  dan rekonsiliasi. **48 pengujian.**
+- **`health-satusehat.service.ts`** dan **`health-satusehat.controller.ts`** —
+  8 jalan pada `/api/v1/health/satusehat/**`.
+- **`prove-health-satusehat.mjs`** — naskah bukti, **56 pemeriksaan**,
+  seluruhnya lulus pada jalan pertama dan lulus pula pada pengulangan.
+
+### Yang sengaja tidak dibangun
+
+Payload FHIR, alur OAuth, dan jalur pengiriman otomatis. Ketiganya menuntut
+dokumentasi profil berversi dan akses sandbox yang belum ada; mengarangnya akan
+menghasilkan adapter yang diterima sandbox, ditolak produksi, dan di antara
+keduanya membuat seseorang menyimpulkan bahwa integrasinya berfungsi.
+`susunPayload()` ada sebagai fungsi yang melempar beserta penjelasannya.
+
+### Catatan bagi Core
+
+Tidak ada permintaan perubahan shared Core. Ketika kredensial tersedia, yang
+perlu dibangun adalah pemetaan dan pengiriman — bukan pengumpulan datanya:
+delapan belas dari dua puluh sumber daya sudah punya tabelnya sendiri sejak H-1
+sampai H-8.
+
+Uji: API 2186 → **2237**.
+
+---
 ## H-9I — Adapter protokol alat HL7 v2 dan ASTM
 
 ### Ditambahkan

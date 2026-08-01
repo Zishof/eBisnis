@@ -463,6 +463,20 @@
       "file": "H043__health__device_adapter_permissions.sql",
       "name": "eMedik: menu, hak akses, dan peran adapter protokol alat",
       "description": "Dua menu (HEALTH_DEVICE_MESSAGE, HEALTH_DEVICE_CODE_MAP) dan satu aturan pemisahan wewenang. Pemisahannya tidak lazim: YANG MEMETAKAN KODE ALAT BUKAN YANG MENERIMA PESANNYA. Pemetaan kode menentukan angka mana yang tersimpan pada baris mana — kode K yang dipetakan ke kalium alih-alih kreatinin menghasilkan hasil laboratorium yang tampak sempurna dan salah seluruhnya, dan kekeliruannya tidak akan terlihat siapa pun sampai seseorang diberi obat berdasarkan angka itu. Karena itu pemetaan dipegang analis dan penanggung jawab laboratorium yang mengenal pemeriksaannya, bukan teknisi yang mengurus lalu lintas pesannya. Ini bukan soal kepercayaan melainkan soal siapa yang sanggup melihat kekeliruannya."
+    },
+    {
+      "version": "H044",
+      "sequence": 1044,
+      "file": "H044__health__satusehat_skeleton.sql",
+      "name": "eMedik: kerangka SATUSEHAT dan gerbang kemampuannya",
+      "description": "satusehat_environment, satusehat_capability, satusehat_resource_mapping, satusehat_transaction, satusehat_attempt. Migrasi ini membangun KERANGKA YANG MENOLAK BERJALAN, dan itulah maksudnya: perintah R2 paragraf 5 menyebutnya tegas, jangan mengarang endpoint maupun payload. Perhatikan apa yang TIDAK ADA — tidak ada tabel payload, tidak ada kolom yang menampung badan permintaan FHIR, dan tidak ada satu pun kolom yang menyimpan rahasia; ketiganya dipertimbangkan dan ditolak dengan alasan yang sama, sebab menyediakan tempat menyimpannya sebelum bentuknya diketahui akan mengundang orang pertama yang membutuhkannya untuk mengarangnya, dan payload yang dikarang akan diterima sandbox, ditolak produksi, serta di antara keduanya seseorang akan menyimpulkan bahwa integrasinya berfungsi. RAHASIA TIDAK PERNAH MASUK BASIS DATA TENANT (satusehat_env_secret_is_ref): kredensial sistem nasional yang bocor tidak hanya membuka data satu fasilitas, ia membuka jalan mengirimkan data ATAS NAMA fasilitas itu dan yang menerima tidak punya cara membedakannya. VERIFIED MENUNTUT NAMA MANUSIANYA, keenam buktinya, dan keterangan sekurangnya dua puluh huruf (satusehat_cap_verified_complete) — status yang dapat dinaikkan tanpa nama adalah status yang akan dinaikkan oleh naskah penyemaian. KENAIKAN STATUS TIDAK BOLEH MELOMPAT (trigger forbid_capability_status_skip): tahap yang dilompati justru yang menemukan bahwa dokumentasinya berbeda dari sandbox-nya, dan perbedaan itu selalu ada; penurunan selalu diizinkan sebab yang ternyata tidak bekerja harus dapat dikembalikan tanpa perdebatan. Kunci idempotensi unik per fasilitas dan deterministik dari isinya bukan dari waktunya — kunci yang bergantung waktu membuat setiap percobaan ulang menjadi pengiriman baru, dan sumber daya ganda di sistem nasional tidak dapat dihapus dari sini. Yang berstatus SUCCESS wajib membawa pengenal dari sisi sana: tanpa itu, berhasil hanya berarti tidak ada galat. Matriks kemampuan disemai seluruhnya BLOCKED beserta penghalangnya bagi setiap fasilitas, termasuk yang lahir kemudian lewat trigger — pelajaran H041."
+    },
+    {
+      "version": "H045",
+      "sequence": 1045,
+      "file": "H045__health__satusehat_permissions.sql",
+      "name": "eMedik: menu, hak akses, dan peran SATUSEHAT",
+      "description": "Dua menu, satu peran baru (Petugas Interoperabilitas), dan satu aturan pemisahan wewenang bertingkat CRITICAL. Pemisahannya: YANG MENGAKTIFKAN LINGKUNGAN TIDAK MEMVERIFIKASI KEMAMPUANNYA. Memverifikasi kemampuan berarti menyatakan saya sudah menjalankan panggilan ini terhadap sandbox dan ia bekerja; pernyataan itu membuka gerbang yang mengirimkan data pasien ke sistem nasional, dan pengiriman itu tidak dapat ditarik kembali. Administrator yang memasang kredensial adalah orang yang paling ingin gerbangnya terbuka — sebab pekerjaannya belum selesai sampai ia terbuka — dan justru karena itu ia bukan orang yang tepat untuk menyatakan bahwa ia bekerja."
     }
   ]
 }

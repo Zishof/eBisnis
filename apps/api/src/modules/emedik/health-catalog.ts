@@ -790,6 +790,31 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'CREATE', 'UPDATE'],
     sortOrder: 119,
   },
+  // SATUSEHAT — H-9A.
+  //
+  // ACTIVATE menyalakan lingkungan; VERIFY menyatakan satu kemampuan sudah
+  // dicoba terhadap sandbox dan bekerja. Keduanya sengaja terpisah, dan
+  // terpisah pada MENU yang berbeda pula: administrator yang memasang
+  // kredensial adalah orang yang paling ingin gerbangnya terbuka, sebab
+  // pekerjaannya belum selesai sampai ia terbuka.
+  {
+    code: 'HEALTH_SATUSEHAT',
+    parentCode: 'HEALTH',
+    label: 'SATUSEHAT',
+    route: '/app/emedik/satusehat',
+    icon: 'network',
+    actions: ['READ', 'CREATE', 'UPDATE', 'ACTIVATE', 'MANAGE_CREDENTIAL'],
+    sortOrder: 120,
+  },
+  {
+    code: 'HEALTH_SATUSEHAT_CAPABILITY',
+    parentCode: 'HEALTH',
+    label: 'Kemampuan SATUSEHAT',
+    route: '/app/emedik/satusehat-kemampuan',
+    icon: 'list-checks',
+    actions: ['READ', 'UPDATE', 'VERIFY'],
+    sortOrder: 121,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -1638,6 +1663,32 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
     sortOrder: 38,
   },
   {
+    code: 'HEALTH_INTEROP_OFFICER',
+    name: 'Petugas Interoperabilitas',
+    description:
+      'Memverifikasi kemampuan pertukaran data terhadap sandbox dan menelaah jejak ' +
+      'pengirimannya. TIDAK memasang kredensial dan TIDAK mengaktifkan lingkungan.',
+    /*
+     * Sengaja TANPA MANAGE_CREDENTIAL dan TANPA ACTIVATE.
+     *
+     * Memverifikasi kemampuan berarti menyatakan "saya sudah menjalankan
+     * panggilan ini terhadap sandbox, dan ia bekerja". Pernyataan itu membuka
+     * gerbang yang mengirimkan data pasien ke sistem nasional, dan pengiriman
+     * itu tidak dapat ditarik kembali.
+     *
+     * Sengaja pula tanpa satu pun hak atas data pasien: ia memeriksa apakah
+     * jalurnya bekerja, bukan apa yang lewat di dalamnya.
+     */
+    permissions: [
+      'HEALTH.READ',
+      'HEALTH_SATUSEHAT.READ',
+      'HEALTH_SATUSEHAT_CAPABILITY.READ',
+      'HEALTH_SATUSEHAT_CAPABILITY.UPDATE',
+      'HEALTH_SATUSEHAT_CAPABILITY.VERIFY',
+    ],
+    sortOrder: 40,
+  },
+  {
     code: 'HEALTH_INVESTOR_ANALYST',
     name: 'Analis Investasi Rumah Sakit',
     description:
@@ -1903,6 +1954,19 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'pada basis data pula — kendali jarak jauh menuntut enam syarat sekaligus, dan basis ' +
       'data menolak baris yang kurang satu pun.',
     conflictingPermissions: ['HEALTH_DEVICE.MANAGE_DEVICE', 'HEALTH_DEVICE.ACTIVATE'],
+  },
+  {
+    code: 'HEALTH_SOD_SATUSEHAT_VERIFY',
+    name: 'Yang mengaktifkan lingkungan tidak memverifikasi kemampuannya',
+    description:
+      'Memverifikasi kemampuan berarti menyatakan "saya sudah menjalankan panggilan ini ' +
+      'terhadap sandbox, dan ia bekerja". Pernyataan itu membuka gerbang yang mengirimkan data ' +
+      'pasien ke sistem nasional, dan pengiriman itu tidak dapat ditarik kembali. Administrator ' +
+      'yang memasang kredensial adalah orang yang paling ingin gerbangnya terbuka — sebab ' +
+      'pekerjaannya belum selesai sampai ia terbuka — dan justru karena itu ia bukan orang yang ' +
+      'tepat untuk menyatakan bahwa ia bekerja. Ditegakkan constraint ' +
+      'satusehat_cap_verified_complete pada basis data pula.',
+    conflictingPermissions: ['HEALTH_SATUSEHAT.ACTIVATE', 'HEALTH_SATUSEHAT_CAPABILITY.VERIFY'],
   },
   {
     code: 'HEALTH_SOD_DEVICE_CODE_MAP',

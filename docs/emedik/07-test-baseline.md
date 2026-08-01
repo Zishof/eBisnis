@@ -83,8 +83,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9J | 25 | **76** | `health-device-maintenance.spec.ts` |
 | H-9K | 20 | **56** | `health-investor.spec.ts` |
 | H-9I | 25 | **88** | `health-device-adapter.spec.ts` |
+| H-9A | 20 | **48** | `health-satusehat.spec.ts` |
 
-API keseluruhan: **2186** pengujian pada 66 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **2237** pengujian pada 67 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
@@ -119,6 +120,33 @@ sungguhan, pada basis data sungguhan:
 | H-9J | `prove-health-device-maintenance.mjs` | 81 pemeriksaan, seluruhnya lulus — [bukti-h9j-pemeliharaan-alat.txt](bukti-h9j-pemeliharaan-alat.txt) |
 | H-9K | `prove-health-investor.mjs` | 62 pemeriksaan, seluruhnya lulus — [bukti-h9k-investor.txt](bukti-h9k-investor.txt) |
 | H-9I | `prove-health-device-adapter.mjs` | 58 pemeriksaan, seluruhnya lulus — [bukti-h9i-adapter-alat.txt](bukti-h9i-adapter-alat.txt) |
+| H-9A | `prove-health-satusehat.mjs` | 56 pemeriksaan, seluruhnya lulus — [bukti-h9a-satusehat.txt](bukti-h9a-satusehat.txt) |
+
+**Naskah H-9A membuktikan sesuatu yang bentuknya berbeda dari seluruh fase
+sebelumnya: bahwa sebuah kerangka MENOLAK BERJALAN.**
+
+Membuktikan penolakan lebih sulit daripada membuktikan keberhasilan, sebab
+penolakan yang benar dan penolakan yang kebetulan tampak sama dari luar. Naskah
+ini memakai tiga bentuk sekaligus:
+
+1. **Ketiadaan pada `information_schema`** — tidak ada kolom bernama payload,
+   badan permintaan, kata sandi, token, maupun kunci; dan tabel transaksinya
+   tidak punya satu pun kolom JSON yang dapat menampungnya diam-diam.
+
+2. **Keadaan yang tidak berubah** — seluruh dua puluh kemampuan tetap `BLOCKED`
+   sesudah lingkungannya didaftarkan DAN diaktifkan. Inilah pemeriksaan yang
+   paling penting: ia membuktikan bahwa lingkungan aktif bukan gerbangnya.
+
+3. **Pengukuran seluruh tenant** — berapa kemampuan berstatus `VERIFIED` tanpa
+   nama manusianya, dituntut nol.
+
+Naskah ini juga menerapkan pelajaran H-9J dan H-9K **sejak awal**, bukan sesudah
+lulus karena penjaga yang keliru: uji "yang mengaktifkan tidak memverifikasi"
+disusun supaya penolakannya datang dari pemeriksaan hak akses yang memang
+dimaksudkan, dan uji kendalinya membuktikan penurunan status lewat basis data
+**diizinkan** sebelum membuktikan kenaikan yang melompat ditolak. Tanpa uji
+kendali itu, trigger yang menolak SEMUA perubahan akan lulus dengan cara yang
+sama.
 
 **H-9I adalah fase pertama yang naskah buktinya LULUS PADA JALAN PERTAMA**, dan
 sebabnya layak dicatat: pengujian satuannya menanggung hampir seluruh beban — 88

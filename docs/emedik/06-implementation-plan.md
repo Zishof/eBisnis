@@ -1463,6 +1463,85 @@ Uji >= 25 -> **88 tercapai**, ditambah naskah bukti 58 pemeriksaan.
 MQTT tercatat pada katalog beserta **penghalangnya masing-masing**, dan pesan
 yang memakainya ditolak dengan menyebutkan penghalang itu.
 
+### H-9A · Kerangka SATUSEHAT — **SELESAI**
+
+Pendaftaran lingkungan beserta rujukan kredensialnya, matriks kemampuan dua
+puluh sumber daya FHIR, pemetaan entitas lokal, jejak percobaan pengiriman
+berkunci idempotensi, dan rekonsiliasi.
+
+Uji >= 20 -> **48 tercapai**, ditambah naskah bukti 56 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H044__health__satusehat_skeleton.sql`, `H045__health__satusehat_permissions.sql` |
+| Aturan murni | `health-satusehat.ts` + 48 pengujian |
+| Layanan | `health-satusehat.service.ts` |
+| Endpoint | `health-satusehat.controller.ts` — 8 jalan di `/api/v1/health/satusehat/**` |
+| Katalog | `health-catalog.ts` — 2 menu, 1 peran, 1 aturan SoD |
+| Bukti | `scripts/prove-health-satusehat.mjs` -> [bukti-h9a-satusehat.txt](bukti-h9a-satusehat.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **INI KERANGKA YANG MENOLAK BERJALAN, DAN ITULAH MAKSUDNYA.** Perintah R2 §5:
+  *"Jangan mengarang endpoint/payload."* Adapter yang berpura-pura bekerja akan
+  tampak berhasil pada pengembangan lalu mengirimkan data pasien ke tempat yang
+  salah pada hari pertama produksi. `POST /transmissions` menyiapkan, memeriksa
+  gerbangnya, mencatat percobaannya, dan **menolak**.
+
+- **Tidak ada satu pun kolom yang menampung payload FHIR maupun rahasia.**
+  Diperiksa naskah bukti pada `information_schema`, termasuk ketiadaan kolom
+  JSON pada tabel transaksi. Menyediakan tempat menyimpannya sebelum bentuknya
+  diketahui akan mengundang orang pertama yang membutuhkannya untuk
+  mengarangnya.
+
+- **Seluruh dua puluh kemampuan `BLOCKED`**, dan itu bukan nilai bawaan yang
+  menunggu diisi melainkan keadaan yang sesungguhnya. Naskah bukti membuktikan
+  keduanya tetap `BLOCKED` **sesudah** lingkungannya didaftarkan dan
+  diaktifkan: lingkungan aktif tidak membuka gerbang.
+
+- **Matriksnya mencatat sumber datanya di sisi kami.** Delapan belas dari dua
+  puluh sudah punya tabelnya sendiri sejak H-1 sampai H-8. Ini yang membedakan
+  "belum dibangun" dari "belum dapat dibangun": penghalangnya benar-benar hanya
+  pada lapisan pertukaran.
+
+- **`VERIFIED` hanya boleh diberikan MANUSIA** yang sudah menjalankan
+  panggilannya terhadap sandbox — bukan program, dan bukan berdasarkan
+  dokumentasi saja. Ditegakkan constraint `satusehat_cap_verified_complete`:
+  nama, keenam buktinya, dan keterangan sekurangnya dua puluh huruf.
+
+- **Kenaikan status tidak boleh melompat**, ditegakkan trigger
+  `forbid_capability_status_skip`. Tahap yang dilompati justru yang menemukan
+  bahwa dokumentasinya berbeda dari sandbox-nya, dan perbedaan itu selalu ada.
+  **Penurunan selalu diizinkan**: yang ternyata tidak bekerja harus dapat
+  dikembalikan tanpa perdebatan, dan penurunan yang sulit adalah penurunan yang
+  tidak akan dilakukan.
+
+- **Yang mengaktifkan lingkungan tidak memverifikasi kemampuannya.**
+  Administrator yang memasang kredensial adalah orang yang paling ingin
+  gerbangnya terbuka — sebab pekerjaannya belum selesai sampai ia terbuka.
+  Severity CRITICAL.
+
+- **Kunci idempotensi deterministik dari isinya, bukan dari waktunya.** Kunci
+  yang bergantung waktu membuat setiap percobaan ulang menjadi pengiriman baru,
+  dan sumber daya ganda di sistem nasional tidak dapat dihapus dari sini. Yang
+  sudah `SUCCESS` tidak diulang; yang `REJECTED` pun tidak — yang perlu
+  diperbaiki adalah datanya, bukan percobaannya.
+
+- **Percobaan yang tertahan gerbang tetap dicatat.** Ia menunjukkan bahwa
+  seseorang mencoba, dan kapan.
+
+- **Rekonsiliasi wajib.** Tanpa itu, "sudah dikirim" hanya berarti "sudah kami
+  coba" — dan perbedaan antara keduanya baru terlihat ketika ada yang
+  menanyakan data yang seharusnya ada di sana.
+
+**Yang belum, dan sengaja:** payload FHIR, alur OAuth, dan jalur pengiriman
+otomatis. `susunPayload()` ada sebagai fungsi yang **melempar** beserta
+penjelasannya — supaya orang yang mencari "di mana payload-nya dibuat"
+menemukan alasan alih-alih ketiadaan. Ketiadaan akan ditafsirkan sebagai
+kelalaian, dan orang yang menafsirkannya begitu akan menuliskannya sendiri.
+
 ### H-10 · Portal pasien, website, integrasi
 
 Website fasilitas, profil, dokter, jadwal, layanan; portal pasien dengan janji
@@ -1536,7 +1615,7 @@ kredensial tidak dapat ditunjukkan kepada siapa pun.
 10. H-9J   Pemeliharaan, kalibrasi, keamanan siber          [SELESAI]
 11. H-9K   Dasbor investor agregat                         [SELESAI]
 12. H-9I   Adapter HL7/ASTM; DICOM menunggu PACS           [SELESAI]
-13. H-9A   Kerangka SATUSEHAT beserta gerbang kemampuan
+13. H-9A   Kerangka SATUSEHAT beserta gerbang kemampuan    [SELESAI]
 14. H-9B   Kerangka BPJS beserta gerbang kemampuan
 15. H-9M   Kerangka impor KFA
 ```

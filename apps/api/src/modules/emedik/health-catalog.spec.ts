@@ -552,6 +552,28 @@ describe('peran kesehatan', () => {
     expect(teknisi?.permissions).not.toContain('HEALTH_DEVICE_CODE_MAP.CREATE');
   });
 
+  it('petugas interoperabilitas memverifikasi tetapi TIDAK memasang kredensial', () => {
+    const io = HEALTH_ROLES.find((r) => r.code === 'HEALTH_INTEROP_OFFICER');
+    expect(io?.permissions).toContain('HEALTH_SATUSEHAT_CAPABILITY.VERIFY');
+    expect(io?.permissions).not.toContain('HEALTH_SATUSEHAT.MANAGE_CREDENTIAL');
+    expect(io?.permissions).not.toContain('HEALTH_SATUSEHAT.ACTIVATE');
+  });
+
+  it('petugas interoperabilitas TIDAK membaca data pasien', () => {
+    // Ia memeriksa apakah jalurnya bekerja, bukan apa yang lewat di dalamnya.
+    const io = HEALTH_ROLES.find((r) => r.code === 'HEALTH_INTEROP_OFFICER');
+    expect(io?.permissions.some((p) => p.startsWith('HEALTH_PATIENT'))).toBe(false);
+  });
+
+  it('tidak ada peran bawaan yang memverifikasi kemampuan SATUSEHAT sekaligus mengaktifkannya', () => {
+    const bahaya = HEALTH_ROLES.filter(
+      (r) =>
+        r.permissions.includes('HEALTH_SATUSEHAT.ACTIVATE') &&
+        r.permissions.includes('HEALTH_SATUSEHAT_CAPABILITY.VERIFY'),
+    ).map((r) => r.code);
+    expect(bahaya).toEqual([]);
+  });
+
   it('tidak ada peran yang memiliki hak atas menu yang belum dibangun', () => {
     /*
      * Peran yang sudah diberi hak atas modul yang belum ada akan tampak
