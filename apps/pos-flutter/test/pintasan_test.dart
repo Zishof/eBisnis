@@ -32,11 +32,53 @@ void main() {
       }
     });
 
-    test('F9 membayar dan F2 kembali ke kotak pindai', () {
-      // Dua yang paling sering ditekan; keduanya sama dengan layar kasir web,
-      // supaya kasir yang berpindah tidak perlu belajar ulang.
-      expect(aksiUntukTombol(LogicalKeyboardKey.f9), AksiKasir.bayar);
-      expect(aksiUntukTombol(LogicalKeyboardKey.f2), AksiKasir.fokusPindai);
+    test('peta F1-F9 persis spesifikasi AIS §21', () {
+      /*
+       * Peta ini bukan karangan sendiri. Ia diambil dari sistem kasir yang
+       * sudah dipakai bertahun-tahun di gerai, sehingga jari kasir yang
+       * berpindah ke eBisnis sudah tahu tempatnya.
+       *
+       * Diuji satu per satu, bukan sebagai gumpalan: bila kelak ada yang
+       * menggeser satu tombol, yang merah adalah tombol itu — bukan seluruh
+       * peta sekaligus tanpa menyebut yang mana.
+       */
+      expect(aksiUntukTombol(LogicalKeyboardKey.f1), AksiKasir.bantuan);
+      expect(aksiUntukTombol(LogicalKeyboardKey.f2), AksiKasir.bayar);
+      expect(aksiUntukTombol(LogicalKeyboardKey.f3), AksiKasir.tahanKeranjang);
+      expect(aksiUntukTombol(LogicalKeyboardKey.f4), AksiKasir.pilihMetodeBayar);
+      expect(aksiUntukTombol(LogicalKeyboardKey.f5), AksiKasir.pilihMember);
+      expect(aksiUntukTombol(LogicalKeyboardKey.f6), AksiKasir.bukaLaci);
+      expect(aksiUntukTombol(LogicalKeyboardKey.f7), AksiKasir.modeFokus);
+      expect(aksiUntukTombol(LogicalKeyboardKey.f8), AksiKasir.sinkronkan);
+      expect(aksiUntukTombol(LogicalKeyboardKey.f9), AksiKasir.layarPelanggan);
+    });
+
+    test('F10-F12 milik eBisnis, dan spesifikasi memang tidak memakainya', () {
+      // Ketiganya kosong pada spesifikasi AIS, jadi memakainya untuk aksi
+      // eBisnis tidak menabrak apa pun yang sudah dihafal kasir.
+      expect(aksiUntukTombol(LogicalKeyboardKey.f10), AksiKasir.batalTransaksi);
+      expect(aksiUntukTombol(LogicalKeyboardKey.f11), AksiKasir.cetakUlangStruk);
+      expect(aksiUntukTombol(LogicalKeyboardKey.f12), AksiKasir.tutupShift);
+    });
+
+    test('aksi tanpa tombol tetap tidak terpetakan ke tombol mana pun', () {
+      /*
+       * Tiga aksi sengaja kehilangan tombolnya: mengubah jumlah dan menghapus
+       * baris dilakukan pada barisnya, dan mengambil keranjang tertahan
+       * tempatnya di layar Pesanan.
+       *
+       * Diuji supaya tidak ada yang "mengembalikan" salah satunya ke tombol
+       * yang sudah dipakai spesifikasi — yang akan menghasilkan dua arti untuk
+       * satu tombol.
+       */
+      final terpetakan = daftarPintasan().map((d) => d.aksi).toSet();
+      for (final a in [
+        AksiKasir.ubahJumlah,
+        AksiKasir.hapusBaris,
+        AksiKasir.ambilTertahan,
+      ]) {
+        expect(terpetakan.contains(a), isFalse, reason: a.name);
+      }
     });
 
     test('Esc menutup dialog', () {
@@ -90,9 +132,9 @@ void main() {
        */
       for (final a in [
         AksiKasir.bayar,
-        AksiKasir.fokusPindai,
-        AksiKasir.cariProduk,
         AksiKasir.tahanKeranjang,
+        AksiKasir.pilihMetodeBayar,
+        AksiKasir.pilihMember,
         AksiKasir.ubahJumlah,
       ]) {
         expect(wajibKonfirmasi.contains(a), isFalse, reason: a.name);
@@ -109,10 +151,10 @@ void main() {
        * web kurang mampu padahal tidak.
        */
       expect(hanyaDiAplikasiAsli, {
-        AksiKasir.bantuan,
-        AksiKasir.hapusBaris,
-        AksiKasir.cetakUlangStruk,
-        AksiKasir.tutupShift,
+        AksiKasir.bantuan, // F1
+        AksiKasir.pilihMember, // F5
+        AksiKasir.cetakUlangStruk, // F11
+        AksiKasir.tutupShift, // F12
       });
     });
 
@@ -120,7 +162,6 @@ void main() {
       // Kalau membayar atau memindai hanya bekerja di salah satunya, kasir tidak
       // dapat berpindah klien di tengah shift.
       expect(hanyaDiAplikasiAsli.contains(AksiKasir.bayar), isFalse);
-      expect(hanyaDiAplikasiAsli.contains(AksiKasir.fokusPindai), isFalse);
       expect(hanyaDiAplikasiAsli.contains(AksiKasir.tahanKeranjang), isFalse);
     });
   });

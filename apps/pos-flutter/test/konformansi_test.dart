@@ -224,13 +224,25 @@ void main() {
       /// pemisahnya diketik sebagai karakter U+001F harfiah, sehingga barisnya
       /// terbaca `.join('')` pada editor dan diff mana pun. Siapa pun yang
       /// merapikan tanda kutip itu mengubah setiap hash, tanpa diff yang terlihat.
-      for (final f in Directory('lib').listSync(recursive: true).whereType<File>()) {
-        if (!f.path.endsWith('.dart')) continue;
-        final kendali = f
-            .readAsStringSync()
-            .codeUnits
-            .where((k) => k < 32 && k != 9 && k != 10 && k != 13);
-        expect(kendali, isEmpty, reason: '${f.path} memuat karakter kendali');
+      /*
+       * `test/` ikut disapu, bukan hanya `lib/`.
+       *
+       * Semula penjaga ini hanya menyapu `lib/`. Sebuah uji yang justru menguji
+       * PENOLAKAN karakter kendali kemudian ditulis dengan mengetikkan karakter
+       * itu harfiah ke dalam sumbernya — uji yang benar, ditulis dengan cara
+       * yang persis dijaga di sini, dan ia lulus tanpa ada yang tahu. Siapa pun
+       * yang merapikan barisnya kelak akan mengubah apa yang diuji tanpa diff
+       * yang terlihat.
+       */
+      for (final akar in ['lib', 'test']) {
+        for (final f in Directory(akar).listSync(recursive: true).whereType<File>()) {
+          if (!f.path.endsWith('.dart')) continue;
+          final kendali = f
+              .readAsStringSync()
+              .codeUnits
+              .where((k) => k < 32 && k != 9 && k != 10 && k != 13);
+          expect(kendali, isEmpty, reason: '${f.path} memuat karakter kendali');
+        }
       }
     });
   });

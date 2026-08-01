@@ -335,8 +335,6 @@ class _LayarKasirState extends State<LayarKasir> {
     }
 
     switch (aksi) {
-      case AksiKasir.fokusPindai:
-        _kembalikanFokus();
       case AksiKasir.bantuan:
         await _tampilkanBantuan();
         _kembalikanFokus();
@@ -666,7 +664,10 @@ class _LayarKasirState extends State<LayarKasir> {
                             metode: widget.metode,
                             uang: _uang,
                             jenis: _jenis,
-                            onJenis: (j) => setState(() => _jenis = j),
+                            onJenis: (j) {
+                              setState(() => _jenis = j);
+                              _kembalikanFokus(bersihkanCari: false);
+                            },
                             onUbahJumlah: _ubahJumlah,
                             onHapus: _hapusBaris,
                             onBayar: _bayar,
@@ -729,7 +730,23 @@ class _LayarKasirState extends State<LayarKasir> {
             kategori: widget.katalog.kategori(),
             terpilih: _kategori,
             kunciCari: _kunciCari,
-            onKategori: (k) => setState(() => _kategori = k),
+            /*
+             * Fokus dikembalikan ke kotak pindai sesudah menekan chip kategori.
+             *
+             * Spesifikasi §3.2 menyelesaikan ini dengan perebutan fokus global
+             * berjeda 50 ms. Cara itu TIDAK dipakai di sini: layar ini punya
+             * kotak catatan pesanan dan dialog pembayaran, dan perebut fokus
+             * global akan menarik kursor keluar dari keduanya saat kasir sedang
+             * mengetik.
+             *
+             * Yang dilakukan adalah versi sempitnya — setiap tempat yang
+             * meninggalkan fokus pada tombol dikembalikan satu per satu. Lebih
+             * sedikit yang tercakup, tetapi tidak ada yang dirusak.
+             */
+            onKategori: (k) {
+              setState(() => _kategori = k);
+              _kembalikanFokus(bersihkanCari: false);
+            },
             onPilih: _tambah,
             uang: _uang,
           ),
