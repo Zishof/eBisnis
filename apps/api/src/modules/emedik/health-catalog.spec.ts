@@ -650,6 +650,54 @@ describe('peran kesehatan', () => {
     expect(direktur?.permissions).not.toContain('HEALTH_SAMPLE_DATA.CREATE');
   });
 
+  it('YANG MENGGOLONGKAN MEDAN BUKAN YANG MENELAAH AKSESNYA', () => {
+    /*
+     * Satu orang yang memegang keduanya dapat menurunkan zona sebuah medan
+     * pada pagi hari dan menyatakan aksesnya wajar pada sore hari.
+     */
+    const admin = HEALTH_ROLES.find((r) => r.code === 'HEALTH_ADMIN');
+    const rekamMedis = HEALTH_ROLES.find((r) => r.code === 'HEALTH_MEDICAL_RECORD_OFFICER');
+    expect(admin?.permissions).toContain('HEALTH_DATA_ZONE.UPDATE');
+    expect(admin?.permissions).not.toContain('HEALTH_BREAK_GLASS.APPROVE');
+    expect(rekamMedis?.permissions).toContain('HEALTH_BREAK_GLASS.APPROVE');
+    expect(rekamMedis?.permissions).not.toContain('HEALTH_DATA_ZONE.UPDATE');
+  });
+
+  it('penelaah break-glass lebih dari satu peran', () => {
+    // Telaah yang hanya dipegang satu peran akan berhenti ketika orangnya
+    // cuti, dan yang berhenti pada akhirnya dianggap tidak perlu.
+    const penelaah = HEALTH_ROLES.filter((r) =>
+      r.permissions.includes('HEALTH_BREAK_GLASS.APPROVE'),
+    );
+    expect(penelaah.length).toBeGreaterThanOrEqual(2);
+    expect(penelaah.map((r) => r.code).sort()).toEqual(
+      ['HEALTH_MEDICAL_RECORD_OFFICER', 'HEALTH_QUALITY_MANAGER'].sort(),
+    );
+  });
+
+  it('penelaah break-glass BUKAN pemakainya yang paling sering', () => {
+    /*
+     * Dokter dan perawat adalah pemakai break-glass yang sah dan sering.
+     * Tidak satu pun dari keduanya menelaahnya.
+     */
+    for (const kode of ['HEALTH_DOCTOR', 'HEALTH_NURSE', 'HEALTH_TRIAGE_NURSE']) {
+      const peran = HEALTH_ROLES.find((r) => r.code === kode);
+      if (!peran) continue;
+      expect(peran.permissions).not.toContain('HEALTH_BREAK_GLASS.APPROVE');
+    }
+  });
+
+  it('direktur melihat seluruh keamanan data dan TIDAK mengubah apa pun di sana', () => {
+    // Yang melihat tanpa dapat mengubah adalah satu-satunya pembaca yang
+    // kesaksiannya tidak dapat dipertanyakan.
+    const direktur = HEALTH_ROLES.find((r) => r.code === 'HEALTH_DIRECTOR');
+    expect(direktur?.permissions).toContain('HEALTH_DATA_ZONE.READ');
+    expect(direktur?.permissions).toContain('HEALTH_BREAK_GLASS.READ');
+    expect(direktur?.permissions).toContain('HEALTH_AI_GUARD.READ');
+    expect(direktur?.permissions).not.toContain('HEALTH_DATA_ZONE.UPDATE');
+    expect(direktur?.permissions).not.toContain('HEALTH_BREAK_GLASS.APPROVE');
+  });
+
   it('laporan dapat dibuka TANPA satu pun hak atas data pasien', () => {
     // Laporan yang menuntut hak pasien akan membuat direktur diberi hak
     // pasien — dan hak yang diberikan jarang ditarik kembali.

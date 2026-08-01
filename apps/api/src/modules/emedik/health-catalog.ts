@@ -931,6 +931,48 @@ export const HEALTH_MENU: HealthMenuNode[] = [
     actions: ['READ', 'EXPORT'],
     sortOrder: 131,
   },
+  // Keamanan data kesehatan — H-12.
+  //
+  // Tiga menu ini tidak menambah kemampuan apa pun. Ia MEMERIKSA bahwa penjaga
+  // sebelas fase sebelumnya berdiri — dan menambahkan yang terlewat, yaitu
+  // telaah break-glass, yang selama sebelas fase tidak pernah dibangun
+  // sekalipun setiap fase mencatat aksesnya dengan rajin.
+  {
+    code: 'HEALTH_DATA_ZONE',
+    parentCode: 'HEALTH',
+    label: 'Zona Data',
+    route: '/app/emedik/zona-data',
+    icon: 'shield',
+    actions: ['READ', 'UPDATE'],
+    sortOrder: 132,
+  },
+  // APPROVE di sini berarti MENELAAH, bukan menyetujui aksesnya: aksesnya
+  // sudah terjadi dan tidak pernah dapat ditarik kembali. Break-glass TIDAK
+  // PERNAH ditolak dan SELALU ditelaah — dan yang pertama tanpa yang kedua
+  // adalah pintu belakang yang dipakai setiap hari oleh orang yang merasa
+  // lebih cepat begitu.
+  {
+    code: 'HEALTH_BREAK_GLASS',
+    parentCode: 'HEALTH',
+    label: 'Telaah Darurat',
+    route: '/app/emedik/telaah-darurat',
+    icon: 'siren',
+    actions: ['READ', 'APPROVE'],
+    sortOrder: 133,
+  },
+  // Yang dicatat penjaga AI adalah permintaan yang TIDAK PERNAH sampai ke AI
+  // Gateway bersama. Seorang petugas yang tiga puluh kali mencoba mengirim
+  // rekam medis ke model bahasa tidak muncul sama sekali pada log gateway, dan
+  // tampak sebagai pengguna yang tidak pernah memakai AI.
+  {
+    code: 'HEALTH_AI_GUARD',
+    parentCode: 'HEALTH',
+    label: 'Penjaga AI',
+    route: '/app/emedik/penjaga-ai',
+    icon: 'bot',
+    actions: ['READ'],
+    sortOrder: 134,
+  },
 ];
 
 // --- Peran -------------------------------------------------------------------
@@ -1000,6 +1042,14 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_SAMPLE_DATA.READ',
       'HEALTH_SAMPLE_DATA.CREATE',
       'HEALTH_REPORT.READ',
+      // Menggolongkan medan ke dalam zona — H-12. Ia TIDAK menelaah akses
+      // darurat: satu orang yang memegang keduanya dapat menurunkan zona
+      // sebuah medan pada pagi hari dan menyatakan aksesnya wajar pada sore
+      // hari, dan kedua tindakannya akan tampak benar bila diperiksa
+      // sendiri-sendiri.
+      'HEALTH_DATA_ZONE.READ',
+      'HEALTH_DATA_ZONE.UPDATE',
+      'HEALTH_AI_GUARD.READ',
       // Administrator TIDAK diberi hak membaca rekam medis pasien. Mengelola
       // sistem tidak menuntut membaca diagnosis siapa pun, dan hak yang tidak
       // dibutuhkan adalah hak yang akan disalahgunakan.
@@ -1020,6 +1070,12 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       // Laporan agregat — dapat dibuka tanpa satu pun hak atas data pasien.
       'HEALTH_REPORT.READ',
       'HEALTH_REPORT.EXPORT',
+      // Melihat seluruh keamanan data dan TIDAK mengubah apa pun di sana —
+      // H-12. Yang melihat tanpa dapat mengubah adalah satu-satunya pembaca
+      // yang kesaksiannya tidak dapat dipertanyakan.
+      'HEALTH_DATA_ZONE.READ',
+      'HEALTH_BREAK_GLASS.READ',
+      'HEALTH_AI_GUARD.READ',
       'HEALTH.READ',
       'HEALTH_FACILITY.READ',
       'HEALTH_SERVICE_UNIT.READ',
@@ -1094,6 +1150,20 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH_PATIENT_DUPLICATE.MERGE_PATIENT',
       'HEALTH_PATIENT.MERGE_PATIENT',
       'HEALTH_ACCESS_LOG.READ',
+      // MENELAAH AKSES DARURAT — H-12.
+      //
+      // Dokter dan perawat adalah pemakai break-glass yang sah dan sering;
+      // petugas rekam medis nyaris tidak pernah memakainya. Justru itu yang
+      // membuatnya menjadi penelaah: ia tidak sedang menelaah tetangganya
+      // sendiri.
+      //
+      // Perhatikan bahwa larangan menelaah akses SENDIRI tidak muncul sebagai
+      // pasangan hak yang bertentangan di bawah, dan itu disengaja — lihat
+      // catatan pada HEALTH_SOD_ZONE_REVIEW.
+      'HEALTH_BREAK_GLASS.READ',
+      'HEALTH_BREAK_GLASS.APPROVE',
+      // Ia MEMBACA penggolongan medan dan tidak mengubahnya.
+      'HEALTH_DATA_ZONE.READ',
       // Kelengkapan berkas, terminologi, dan penyerahan berkas yang sudah
       // diputuskan petugas hukum. Ia MENYERAHKAN; ia tidak memutuskan.
       'HEALTH_HIM_CODING.READ',
@@ -1398,6 +1468,18 @@ export const HEALTH_ROLES: HealthRoleTemplate[] = [
       'HEALTH.READ',
       'HEALTH_ACCESS_LOG.READ',
       'HEALTH_ACCESS_LOG.EXPORT',
+      // Menelaah akses darurat — H-12.
+      //
+      // Uraian peran ini sudah berbunyi "menelaah akses darurat" sejak H-2,
+      // sebelas fase sebelum telaahnya ada. Baru sekarang kalimat itu menjadi
+      // benar.
+      //
+      // Penelaahnya sengaja lebih dari satu peran: telaah yang hanya dipegang
+      // satu peran akan berhenti ketika orangnya cuti, dan yang berhenti pada
+      // akhirnya dianggap tidak perlu.
+      'HEALTH_BREAK_GLASS.READ',
+      'HEALTH_BREAK_GLASS.APPROVE',
+      'HEALTH_AI_GUARD.READ',
       'HEALTH_PATIENT_DUPLICATE.READ',
       'HEALTH_SAFETY.READ',
       'HEALTH_SAFETY.UPDATE',
@@ -2171,6 +2253,23 @@ export const HEALTH_SOD_RULES: HealthSodRule[] = [
       'Ditegakkan constraint sample_count_real_unchanged pada basis data pula: jumlah baris ' +
       'sungguhan sebelum dan sesudah pembersihan harus sama persis.',
     conflictingPermissions: ['HEALTH_SAMPLE_DATA.CREATE', 'HEALTH_SAMPLE_DATA.HARD_DELETE'],
+  },
+  {
+    code: 'HEALTH_SOD_ZONE_REVIEW',
+    name: 'Yang menggolongkan medan tidak menelaah aksesnya',
+    description:
+      'Penggolongan menentukan medan mana yang disamarkan dan medan mana yang boleh sampai ke ' +
+      'AI; telaah break-glass memeriksa siapa membacanya. Satu orang yang memegang keduanya ' +
+      'dapat menurunkan zona sebuah medan pada pagi hari dan menyatakan aksesnya wajar pada ' +
+      'sore hari — dan kedua tindakannya akan tampak benar bila diperiksa sendiri-sendiri. ' +
+      'PERHATIKAN apa yang TIDAK ada di sini: larangan menelaah akses SENDIRI. Itu bukan ' +
+      'kelalaian. Setiap penelaah memegang hak yang sama, jadi tidak ada dua hak yang dapat ' +
+      'dipertentangkan; yang terlarang adalah hubungan antara SATU ORANG dan SATU BARIS, dan ' +
+      'tidak ada daftar hak akses yang dapat menyatakannya. Mendaftarkannya justru akan ' +
+      'melumpuhkan telaahnya, sebab satu-satunya cara memenuhinya adalah mencabut hak telaah ' +
+      'dari seluruh dokter — dan yang paling memahami apakah suatu akses darurat wajar adalah ' +
+      'dokter. Ditegakkan trigger check_break_glass_review pada basis data.',
+    conflictingPermissions: ['HEALTH_DATA_ZONE.UPDATE', 'HEALTH_BREAK_GLASS.APPROVE'],
   },
   {
     code: 'HEALTH_SOD_PORTAL_VERIFY_RELEASE',

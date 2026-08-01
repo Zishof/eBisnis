@@ -8,6 +8,9 @@ adalah daftarnya.
 |---|---|---|---|---|---|
 | [001](../integration-requests/health/001-health-namespace-collision.md) | Nama `modules/health` sudah dipakai pemeriksa ketersediaan | 31 Jul 2026 | Menunggu Core | Tidak | Memakai `modules/emedik/` |
 | [002](../integration-requests/health/002-modular-migration-catalog.md) | Katalog migrasi modular belum ada | 31 Jul 2026 | Menunggu Core | Tidak | Awalan `H###`, `sequence` mulai 1000 |
+| [003](../integration-requests/health/003-enterprise-patient-index.md) | Indeks pasien lintas fasilitas | 31 Jul 2026 | Menunggu Core | Tidak | Disimpan pada skema tenant |
+| [004](../integration-requests/health/004-r2-namespace-and-shared-ports.md) | Namespace R2 dan port bersama belum ada | 1 Agu 2026 | Menunggu Core | Tidak | Tetap `modules/emedik/`; rute tetap `/health/**` |
+| [005](../integration-requests/health/005-riwayat-migrasi-gagal-mengunci-versi.md) | Riwayat migrasi GAGAL mengunci nomor versinya selamanya | 1 Agu 2026 | Menunggu Core | **Ya** — migrasi yang gagal lalu diulang tanpa diubah dilaporkan *sudah diterapkan* padahal tabelnya tidak pernah dibuat | Nomor yang hangus ditinggalkan; H055/H056 -> H057/H058 |
 
 ---
 
@@ -20,7 +23,7 @@ Dicatat sekarang supaya Core dapat merencanakan, bukan menerima kejutan.
 | Kode peristiwa akuntansi `HEALTH_*` | H-4 | Mesin posting Core hanya mengenal `MARKETPLACE_*` dan `POS_*`. Menambah kode kesehatan menyentuh `posting-engine.ts` |
 | Aksi hak akses klinis | H-11 | `PRESCRIBE`, `DISPENSE`, `VERIFY_RESULT`, `ACKNOWLEDGE_CRITICAL`, `ADMIT`, `DISCHARGE`, `BREAK_GLASS` belum ada pada 40 aksi yang tersedia |
 | Kontrak plugin katalog menu | H-11 | Panduan §9 menyebutnya, tetapi mekanismenya belum ada. Tanpa itu, katalog menu kesehatan harus disisipkan ke berkas global |
-| Pola redaksi AI untuk data kesehatan | H-12 | Redaksi yang ada disetel untuk surel, NPWP, dan nomor telepon. Nomor rekam medis dan NIK belum |
+| ~~Pola redaksi AI untuk data kesehatan~~ | ~~H-12~~ | **TIDAK JADI DIPERLUKAN.** H-12 menambahkan `POLA_KESEHATAN` (nomor rekam medis, SEP, ICD-10, kepesertaan JKN) sebagai lapisan **di atas** `redactText` bersama, bukan sebagai perubahan padanya. Dua penyamar yang saling menggantikan akan berbeda dalam waktu enam bulan dan tidak ada yang tahu yang mana yang berjalan; dua penyamar yang bertumpuk keduanya berjalan |
 | `apps/web/src/verticals/` | H-1 (UI) | Direktori tidak ada; antarmuka web belum bervertikal |
 | Kerangka Pusat Bantuan | H-11 | Tidak pernah dibangun. Bukan permintaan perubahan, melainkan permintaan pembangunan |
 

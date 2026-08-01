@@ -1,0 +1,121 @@
+==============================================================================
+BUKTI H-12 — KEAMANAN, ISOLASI, BREAK-GLASS, DAN REDAKSI AI
+Waktu   : 2026-08-01T11:38:02.699Z
+Schema  : demo  (tenant kedua: tokosaya)
+==============================================================================
+
+--- 1. Zona data --------------------------------------------------------
+  LULUS  daftar zona terbuka
+  LULUS  lima zona tercatat pada basis data
+  LULUS  tiga zona terlarang bagi AI, dibaca dari BASIS DATA bukan dari kode
+  LULUS  setiap zona terlarang AI juga disamarkan pada ekspor
+  LULUS  basis data menolak zona terlarang-AI yang tidak disamarkan pada ekspor
+  LULUS  penggolongan medan terbuka
+  LULUS  penggolongan memuat lebih dari dua puluh medan
+  LULUS  medan patient.full_name tergolong
+  LULUS  medan patient_identifier.identifier_value tergolong
+  LULUS  medan clinical_note.free_text tergolong
+  LULUS  medan encounter_diagnosis.code tergolong
+  LULUS  medan lab_result.value_text tergolong
+  LULUS  keterbatasan per-BARIS dinyatakan, bukan disembunyikan
+  LULUS  TIDAK ADA penggolongan yang menunjuk kolom yang tidak ada
+
+--- 2. Penyamaran medan -------------------------------------------------
+  LULUS  penyamaran berjalan
+  LULUS  penyamaran MENYISAKAN BENTUKNYA, bukan menghapusnya
+  LULUS  nomor menyisakan empat huruf terakhir
+  LULUS  kolom yang BELUM tergolong dikembalikan apa adanya
+  LULUS  dan kolom yang belum tergolong DISEBUTKAN, tidak didiamkan
+  LULUS  dua nama berbeda tetap terlihat berbeda sesudah disamarkan
+
+--- 3. Tujuan penggunaan ------------------------------------------------
+  LULUS  daftar tujuan tertutup
+  LULUS  kosakata tujuan pada API SAMA PERSIS dengan constraint pada basis data
+  LULUS  setiap tujuan yang diterima API benar-benar dapat dicatat pada jejak akses
+  LULUS  tujuan bebas-teks ditolak
+  LULUS  tujuan yang sah DITERIMA — uji kendali
+  LULUS  RESEARCH tanpa persetujuan etik ditolak
+  LULUS  RESEARCH dengan persetujuan etik DITERIMA — uji kendali
+  LULUS  EMERGENCY tanpa break-glass ditolak
+  LULUS  EMERGENCY bersama break-glass DITERIMA — uji kendali
+  LULUS  jalan yang menyebut patientId menuntut X-Purpose-Of-Use
+
+--- 4. Break-glass: tidak pernah ditolak, selalu ditelaah ---------------
+  LULUS  akses darurat TANPA alasan ditolak basis data — sejak H002
+  LULUS  dan alasan tiga huruf ditolak pula — sepuluh huruf, bukan "ada isinya"
+  LULUS  alasan sepuluh huruf DITERIMA — uji kendali pada batasnya
+  LULUS  antrean telaah terbuka
+  LULUS  SELURUH akses darurat masuk antrean telaah — termasuk yang beralasan pendek
+  LULUS  akses BIASA tidak masuk antrean telaah darurat
+  LULUS  yang beralasan pendek berada DI ATAS yang beralasan lengkap
+  LULUS  prioritasnya HIGH dan sebabnya disebutkan
+
+--- 5. Telaah: tidak menelaah diri sendiri, dan tidak dapat diubah ------
+  LULUS  TIDAK SEORANG PUN menelaah akses daruratnya sendiri
+  LULUS  akses yang BUKAN darurat tidak dapat ditelaah
+  LULUS  putusan yang tidak wajar menuntut langkah berikutnya
+  LULUS  penelaah lain MENELAAHNYA — uji kendali
+  LULUS  satu akses, SATU telaah
+  LULUS  telaah TIDAK DAPAT DIUBAH
+  LULUS  telaah TIDAK DAPAT DIHAPUS
+  LULUS  telaah berisi "ok" ditolak basis data
+  LULUS  ringkasan break-glass terbuka
+  LULUS  ringkasan menghitung yang BELUM ditelaah
+
+--- 6. Penjaga AI -------------------------------------------------------
+  LULUS  zona klinis TIDAK PERNAH sampai ke AI
+  LULUS  zona operasional dengan teks bersih DILOLOSKAN — uji kendali
+  LULUS  permintaan LINTAS-TENANT ditolak sekalipun zonanya boleh
+  LULUS  nomor rekam medis, diagnosis, dan SEP disamarkan
+  LULUS  yang disamarkan DILAPORKAN, tidak dibuang diam-diam
+  LULUS  log penjaga AI TIDAK punya kolom untuk teks permintaan
+  LULUS  dan teks yang baru dikirim TIDAK tersimpan pada barisnya
+  LULUS  riwayat penjaga AI terbuka
+  LULUS  penolakannya TERCATAT — yang tidak pernah sampai ke gateway tetap terlihat
+  LULUS  AI tidak melakukan PAYMENT
+  LULUS  AI tidak melakukan POSTING
+  LULUS  AI tidak melakukan APPROVAL
+  LULUS  AI tidak melakukan DELETE
+  LULUS  AI tidak melakukan RBAC
+  LULUS  AI tidak melakukan PRESCRIBE
+  LULUS  AI tidak melakukan DEVICE_COMMAND
+  LULUS  pemeriksaan tindakan terlarang menolak dengan menyebutkan sebabnya
+  LULUS  tindakan yang tidak terlarang DILOLOSKAN — uji kendali
+
+--- 7. ISOLASI ANTAR-TENANT: seluruh jalan, bukan sebagian -------------
+  LULUS  /health/security/zones tidak mengembalikan data demo kepada token tokosaya
+  LULUS  /health/security/fields tidak mengembalikan data demo kepada token tokosaya
+  LULUS  /health/security/purposes tidak mengembalikan data demo kepada token tokosaya
+  LULUS  /health/security/break-glass/queue tidak mengembalikan data demo kepada token tokosaya
+  LULUS  /health/security/break-glass/reviews tidak mengembalikan data demo kepada token tokosaya
+  LULUS  /health/security/break-glass/summary tidak mengembalikan data demo kepada token tokosaya
+  LULUS  /health/security/ai/log tidak mengembalikan data demo kepada token tokosaya
+  LULUS  /health/security/isolation tidak mengembalikan data demo kepada token tokosaya
+  LULUS  /health/security/posture tidak mengembalikan data demo kepada token tokosaya
+  LULUS  TIDAK SATU PUN jalan keamanan bocor lintas-tenant
+  LULUS  token tenant kedua TIDAK DAPAT menelaah akses tenant pertama
+  LULUS  dan barisnya benar-benar tidak bertambah — bukan sekadar galat yang dikembalikan
+  LULUS  menyebut skema lain pada parameter ditolak, tidak diikuti
+  LULUS  menyebut skemanya SENDIRI diterima — uji kendali
+
+--- 8. Isolasi antar-vertical ------------------------------------------
+  LULUS  pemeriksaan isolasi terbuka
+  LULUS  TIDAK ADA tabel kesehatan pada skema public
+  LULUS  diperiksa langsung ke information_schema pula: public bersih
+  LULUS  jumlah tabel kesehatan pada tenant ini lebih dari lima puluh
+
+--- 9. Sikap keamanan ---------------------------------------------------
+  LULUS  sikap keamanan terbuka
+  LULUS  lima zona
+  LULUS  medan tergolong lebih dari dua puluh
+  LULUS  penolakan AI terhitung
+  LULUS  isolasi dinyatakan utuh
+
+--- 10. Hak akses: pemisahannya berdiri --------------------------------
+  LULUS  yang menggolongkan medan TIDAK dapat menelaah akses
+  LULUS  tetapi ia tetap dapat membaca zona — uji kendali
+  LULUS  aturan pemisahan wewenang H-12 tercatat
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS (92)
+==============================================================================

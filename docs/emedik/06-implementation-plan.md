@@ -1866,12 +1866,110 @@ dinyatakan **tanpa satu pun hak atas data pasien**, dan naskah bukti memeriksa
 kedelapannya menurut namanya — bukan menurut ambang persentase yang berubah
 setiap kali satu peran ditambahkan.
 
-### H-12 · Keamanan, E2E, kinerja, UAT
+### H-12 · Keamanan, E2E, kinerja, UAT — **SELESAI**
 
-Zona data kesehatan, tujuan penggunaan, break-glass, penyamaran medan, isolasi
-antar-tenant dan antar-vertical, pola redaksi AI untuk data kesehatan.
+Lima zona data yang digolongkan menurut akibat kebocorannya, tiga puluh satu
+medan yang tergolong sebagai baris basis data, telaah break-glass yang selama
+sebelas fase tidak pernah dibangun, penyamaran yang menyisakan bentuknya, dan
+penjaga AI yang mencatat apa yang **tidak** dikirimnya.
 
-Uji ≥ 40.
+Uji >= 40 -> **75 tercapai**, ditambah naskah bukti 92 pemeriksaan.
+
+**Yang dibangun**
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H057__health__security_zone.sql`, `H058__health__security_permissions.sql` |
+| Aturan murni | `health-security.ts` + 75 pengujian |
+| Layanan | `health-security.service.ts` |
+| Endpoint | `health-security.controller.ts` — 14 jalan di `/api/v1/health/security/**` |
+| Katalog | `health-catalog.ts` — 3 menu, 1 aturan SoD |
+| Bukti | `scripts/prove-health-security.mjs` -> [bukti-h12-keamanan.txt](bukti-h12-keamanan.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **FASE INI TIDAK MENAMBAH KEMAMPUAN; IA MEMERIKSA BAHWA PENJAGA SEBELAS FASE
+  SEBELUMNYA BERDIRI.** Karena itu sebagian besar isinya berbentuk pemeriksaan,
+  bukan tindakan — dan sebagian besar naskah buktinya berbentuk serangan, bukan
+  penggunaan.
+
+- **Zona digolongkan menurut AKIBAT KEBOCORANNYA, bukan menurut tingkat
+  rendah/sedang/tinggi.** Tingkat bernomor ditafsirkan sendiri oleh setiap orang
+  yang membacanya. Zona `IDENTIFYING` belum menyebut penyakit apa pun — dan
+  justru karena itu sering dianggap tidak berbahaya, padahal ia kunci yang
+  membuka seluruh sisanya.
+
+- **Ia TIDAK menambahkan pencatatan akses.** `health_access_log` sudah ada sejak
+  H002 lengkap dengan `purpose_of_use`, `break_glass`, dan `break_glass_reason`.
+  Tabel kedua yang mencatat hal yang sama akan menghasilkan dua jawaban berbeda
+  atas pertanyaan "siapa membuka rekam medis ini", dan yang bertanya tidak akan
+  tahu mana yang benar. Yang ditambahkannya adalah **telaahnya**.
+
+- **Break-glass tidak pernah ditolak atas dasar penilaian tentang keadaan
+  daruratnya, dan selalu ditelaah.** Rancangan pertamanya menyingkatnya menjadi
+  "tidak pernah ditolak", dan basis datalah yang membetulkannya: H002 menuntut
+  alasan sekurang-kurangnya sepuluh huruf. Tuntutan itu dipertahankan, bukan
+  dilonggarkan — break-glass tanpa satu pun kata tidak dapat ditelaah siapa pun,
+  dan yang tidak dapat ditelaah sama saja dengan yang tidak dicatat.
+
+- **Antrean telaah diurut menurut yang paling mencurigakan, BUKAN menurut
+  waktu.** Antrean yang diurut waktu akan membuat yang paling mencurigakan
+  tenggelam di bawah ratusan akses yang wajar, dan yang menelaahnya berhenti
+  pada halaman kedua.
+
+- **Penyamaran menyisakan bentuknya.** "Tono Suryo" menjadi "T*** S****", bukan
+  "[DISAMARKAN]" — sebab petugas yang membandingkan dua daftar perlu tahu bahwa
+  keduanya menunjuk orang yang berbeda, dan "[DISAMARKAN]" pada dua baris tampak
+  seperti orang yang sama.
+
+- **Kolom yang belum tergolong dikembalikan apa adanya DAN disebutkan.**
+  Menyamarkannya diam-diam akan menyembunyikan bahwa daftar penggolongannya
+  belum lengkap — dan daftar yang belum lengkap yang tidak diketahui siapa pun
+  adalah keadaan yang paling berbahaya.
+
+- **Permintaan AI yang menggabungkan dua tenant tidak pernah sah, sekalipun
+  seluruhnya sudah disamarkan.** Yang bocor bukan hanya nilainya melainkan fakta
+  bahwa keduanya dibandingkan.
+
+- **Log penjaga AI mencatat yang DITOLAK, dan tidak menyimpan teksnya.** AI
+  Gateway bersama sudah mencatat yang dikirim; yang tidak dapat dicatatnya
+  adalah yang tidak pernah sampai kepadanya. Seorang petugas yang tiga puluh
+  kali mencoba mengirim rekam medis ke model bahasa tidak muncul sama sekali
+  pada log gateway. Teksnya tidak disimpan sebab log yang menyimpan teks yang
+  ditolak akan menyimpan persis data yang penolakannya bermaksud melindungi.
+
+- **KEMUNCULAN KEENAM POLA YANG SAMA:** larangan menelaah akses sendiri
+  **tidak** didaftarkan sebagai pasangan hak yang bertentangan. Setiap penelaah
+  memegang hak yang sama, jadi tidak ada dua hak yang dapat dipertentangkan;
+  yang terlarang adalah hubungan antara **satu orang dan satu baris**.
+  Mendaftarkannya justru akan melumpuhkan telaahnya — satu-satunya cara
+  memenuhinya adalah mencabut hak telaah dari seluruh dokter, dan yang paling
+  memahami apakah suatu akses darurat wajar adalah dokter. Ditegakkan trigger
+  `check_break_glass_review`. Yang **didaftarkan** adalah yang lain: yang
+  menggolongkan medan bukan yang menelaah aksesnya.
+
+- **Uraian peran Manajer Mutu sudah berbunyi "menelaah akses darurat" sejak
+  H-2**, sebelas fase sebelum telaahnya ada. Baru sekarang kalimat itu menjadi
+  benar.
+
+**Yang ditemukan naskah buktinya** — tiga cacat, dua di antaranya cacat yang
+sama berulang: kosakata yang disusun dari ingatan alih-alih dibaca dari skema.
+Rinciannya pada [07 — garis dasar pengujian](07-test-baseline.md).
+
+**Cacat pada Core yang ditemukan sepanjang jalan:** penjaga checksum migrasi
+tidak membedakan percobaan yang GAGAL dari yang BERHASIL, sehingga migrasi yang
+gagal lalu dijalankan ulang tanpa diubah dilaporkan sebagai *sudah diterapkan*
+padahal tabelnya tidak pernah dibuat. Diajukan lewat
+[005](../integration-requests/health/005-riwayat-migrasi-gagal-mengunci-versi.md);
+nomor H055 dan H056 dihanguskan.
+
+**Yang TIDAK dikerjakan fase ini, dan sebabnya**
+
+- **Uji E2E, uji kinerja, dan UAT.** Ketiganya menuntut layar. Tiga puluh satu
+  modul API kini berdiri di belakang **empat** layar web, dan uji penerimaan
+  pengguna atas API tanpa layar bukan uji penerimaan pengguna — ia uji API
+  dengan nama yang lain. Dicatat sebagai penghalang, bukan sebagai pekerjaan
+  yang terlewat.
 
 ---
 

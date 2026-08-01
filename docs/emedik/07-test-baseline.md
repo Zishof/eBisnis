@@ -88,9 +88,13 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-9M | 20 | **41** | `health-kfa.spec.ts` |
 | H-10 | 25 | **54** | `health-portal.spec.ts` |
 | H-11 | 25 | **35** | `health-sample.spec.ts` |
+| H-12 | 40 | **75** | `health-security.spec.ts` |
 
-API keseluruhan: **2427** pengujian pada 71 berkas. Web: **69** pada 5 berkas,
+API keseluruhan: **2506** pengujian pada 72 berkas. Web: **69** pada 5 berkas,
 34 di antaranya pada `health-api.spec.ts`.
+
+Seluruh dua belas fase melampaui sasaran minimumnya. Jumlah minimum yang
+ditetapkan H-0 adalah 370 pengujian baru; yang terpasang jauh di atasnya.
 
 Jumlah H-1 pada tabel di atas naik dari 56 menjadi 62: enam pengujian katalog
 baru mengunci dua keputusan hak akses H-9 yang berlawanan arah — pelaporan
@@ -129,6 +133,101 @@ sungguhan, pada basis data sungguhan:
 | H-9M | `prove-health-kfa.mjs` | 52 pemeriksaan, seluruhnya lulus — [bukti-h9m-kfa.txt](bukti-h9m-kfa.txt) |
 | H-10 | `prove-health-portal.mjs` | 63 pemeriksaan, seluruhnya lulus — [bukti-h10-portal.txt](bukti-h10-portal.txt) |
 | H-11 | `prove-health-sample.mjs` | 55 pemeriksaan, seluruhnya lulus — [bukti-h11-data-contoh.txt](bukti-h11-data-contoh.txt) |
+| H-12 | `prove-health-security.mjs` | 92 pemeriksaan, seluruhnya lulus — [bukti-h12-keamanan.txt](bukti-h12-keamanan.txt) |
+
+**H-12 menemukan tiga cacat, dan dua di antaranya adalah cacat yang sama
+berulang: kosakata yang disusun dari ingatan alih-alih dibaca dari skema.**
+
+### 1. Kosakata tujuan penggunaan yang tidak pernah ada
+
+Modul H-12 menyusun delapan tujuan penggunaan, memuat `PUBLIC_HEALTH` dan
+menghilangkan `QUALITY`. Constraint `health_access_purpose_valid` pada H002
+memuat `QUALITY` dan tidak pernah memuat `PUBLIC_HEALTH`.
+
+Akibatnya bukan galat pada saat itu juga, melainkan sesuatu yang jauh lebih
+sulit ditemukan: sebuah jalan yang **menerima** tajuk `X-Purpose-Of-Use:
+PUBLIC_HEALTH`, membiarkan aksesnya berjalan, lalu gagal ketika mencatatnya.
+**Aksesnya terjadi; catatannya tidak.** Rekam medis terbuka tanpa meninggalkan
+jejak — kegagalan terburuk yang mungkin terjadi pada sistem jejak akses.
+
+Ini kemunculan **kedua** cacat yang sama. Yang pertama H-9J: aksi `CLOSE`
+disusun dari ingatan, tidak ada pada kosakata hak akses, dan teknisi tidak
+dapat menutup perintah kerjanya.
+
+Naskah buktinya kini membaca constraint itu langsung dari `pg_constraint` dan
+membandingkannya dengan daftar yang dikembalikan API — lalu **menuliskan setiap
+tujuan ke jejak akses** untuk memastikan yang diterima API benar-benar dapat
+dicatat. Daftar yang cocok belum membuktikan apa pun bila tidak satu pun
+barisnya pernah ditulis.
+
+### 2. "Break-glass tidak pernah ditolak" ternyata tidak benar pada sistem ini
+
+Rancangan H-12 menyatakan prinsip: break-glass tidak pernah ditolak, sebab
+menolaknya akan menghentikan dokter yang menangani pasien tidak sadarkan diri.
+
+Basis data membetulkannya. Constraint `health_access_breakglass_needs_reason`
+dari H002 menuntut alasan sekurang-kurangnya **sepuluh huruf**, dan yang lebih
+pendek ditolak — termasuk yang kosong dan yang berbunyi `cek`.
+
+Tuntutan itu benar dan dipertahankan, bukan dilonggarkan: sepuluh huruf
+kira-kira dua kata, bukan hambatan bagi orang yang sedang menolong, sedangkan
+break-glass tanpa satu pun kata tidak dapat ditelaah siapa pun — dan yang tidak
+dapat ditelaah sama saja dengan yang tidak dicatat.
+
+Yang diperbaiki adalah modulnya, sehingga prinsipnya menjadi tepat: break-glass
+tidak pernah ditolak **atas dasar penilaian tentang keadaan daruratnya**, dan
+satu-satunya dasar penolakan adalah alasan yang terlalu pendek untuk ditelaah.
+Modulnya kini menyalin angka sepuluh dari constraint itu, bukan memilih
+angkanya sendiri: fungsi yang memakai angka berbeda akan meloloskan permintaan
+yang kemudian ditolak basis data, dengan pesan galat yang tidak dapat dibaca
+siapa pun.
+
+### 3. Dua belas dari dua puluh nama kolom keliru — dan tidak ada yang gagal
+
+Migrasi penggolongan medan menyebut dua puluh kolom. Diuji ke skema sungguhan,
+hanya delapan yang ada. `patient.nik`, `patient.medical_record_number`,
+`clinical_note.content`, `encounter_diagnosis.diagnosis_code`,
+`rx_prescription_item.*` — tidak satu pun ada; nama sebenarnya berbeda, dan
+sebagian datanya berada di tabel lain sama sekali.
+
+Rancangan pertamanya melewati kolom yang tidak ditemukan dan mencatatnya
+sebagai NOTICE. Yang dihasilkannya bukan daftar yang kurang lengkap melainkan
+**daftar yang tampak penuh**: delapan baris terpasang, tidak ada galat, dan
+siapa pun yang membuka layar penggolongan melihat perlindungan yang berdiri —
+padahal NIK, nomor rekam medis, isi catatan klinis, dan kode diagnosis tidak
+ada di dalamnya sama sekali.
+
+Migrasinya kini **gagal** bila satu kolom pun tidak ada, dan naskah buktinya
+memeriksa ke `information_schema` bahwa tidak ada penggolongan yang menunjuk
+kolom yang tidak ada. Pelajaran H037 berlaku persis: lewatan yang diam lebih
+buruk daripada kegagalan yang berisik.
+
+### Cacat pada Core yang ditemukan sepanjang jalan
+
+Ketika kekeliruan tipe kolom pada migrasi pertama diperbaiki dan dijalankan
+ulang, penjaga checksum menolaknya: **percobaan yang GAGAL sudah menuliskan
+checksum-nya pada riwayat, dan penjaga itu tidak membedakan GAGAL dari
+BERHASIL.** Cabang yang lebih berbahaya bukan penolakan itu, melainkan
+kebalikannya — migrasi yang gagal lalu dijalankan ulang **tanpa diubah**
+dilaporkan sebagai *sudah diterapkan*, padahal tabelnya tidak pernah dibuat.
+
+Diajukan lewat
+[005 — riwayat migrasi gagal mengunci versi](../integration-requests/health/005-riwayat-migrasi-gagal-mengunci-versi.md).
+Berkas Core tidak disentuh; nomor H055 dan H056 dihanguskan dan isinya
+dipindahkan ke H057 dan H058, persis seperti yang diperintahkan pesan galatnya.
+
+### Yang paling penting dibuktikan naskah H-12
+
+Isolasi antar-tenant dibuktikan sebagaimana H-10 membuktikan isolasi portal:
+bukan dengan memeriksa satu jalan lalu menyimpulkan sisanya, melainkan dengan
+**mencoba seluruhnya**. Naskah ini membuat pengguna sungguhan pada tenant
+kedua — dengan hak akses keamanan yang **penuh** pada tenantnya sendiri,
+sehingga penolakannya datang dari isolasi dan bukan dari ketiadaan hak — lalu
+memakainya menembak kesembilan jalan keamanan milik tenant pertama.
+
+Yang diperiksa bukan status kodenya melainkan **isinya**: token tenant kedua
+boleh saja menerima 200, sebab ia memang punya zona dan antrean sendiri. Yang
+tidak boleh adalah barisnya berasal dari tenant pertama.
 
 **H-11 menemukan cacat yang paling halus di antara seluruh fase, dan ia
 ditemukan sebelum naskah buktinya dijalankan sama sekali.**

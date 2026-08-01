@@ -153,6 +153,35 @@ polanya disetel untuk data perdagangan (surel, NPWP, nomor telepon). Pola untuk
 data kesehatan — nomor rekam medis, NIK, nama pasien — harus ditambahkan pada
 H-12, dan diuji.
 
+**Terpasang pada H-12** (`health-security.ts`), dan cara memasangnya disengaja:
+`POLA_KESEHATAN` — nomor rekam medis, SEP, ICD-10, nomor kepesertaan JKN —
+adalah lapisan **di atas** `redactText` bersama, bukan perubahan padanya. Dua
+penyamar yang saling menggantikan akan berbeda dalam waktu enam bulan dan tidak
+ada yang tahu yang mana yang berjalan; dua penyamar yang bertumpuk keduanya
+berjalan. Gerbang AI bersama tidak disentuh sama sekali.
+
+Penjaganya ada tiga, dan yang ketiga paling sering terlupakan:
+
+1. **zonanya boleh** — `IDENTIFYING`, `CLINICAL`, dan `SENSITIVE_CLINICAL`
+   tidak pernah dikirim, apa pun alasannya;
+2. **teksnya bersih sesudah penyamaran** — bila masih ada pola yang terdeteksi,
+   permintaannya tidak dikirim sama sekali, sebab penyamaran yang gagal sekali
+   menghasilkan satu catatan permanen pada log penyedia model;
+3. **seluruh isinya berasal dari satu tenant** — permintaan yang menggabungkan
+   dua tenant tidak pernah sah sekalipun seluruhnya sudah disamarkan, sebab yang
+   bocor bukan hanya nilainya melainkan **fakta bahwa keduanya dibandingkan**.
+
+Yang ditolak **dicatat** pada `health_ai_guard_log`, dan **teksnya tidak
+disimpan**: log yang menyimpan teks permintaan yang ditolak akan menyimpan
+persis data yang penolakannya bermaksud melindungi, pada tabel yang haknya lebih
+longgar daripada rekam medis. Yang dicatat hanyalah keputusannya, zonanya, dan
+berapa pola yang disamarkan.
+
+Log itu perlu ada sebab AI Gateway bersama mencatat yang **dikirim** — dan tidak
+dapat mencatat yang tidak pernah sampai kepadanya. Seorang petugas yang tiga
+puluh kali mencoba mengirim rekam medis ke model bahasa tidak muncul sama sekali
+pada log gateway, dan tampak sebagai pengguna yang tidak pernah memakai AI.
+
 ---
 
 ## Yang diputuskan sekarang, bukan nanti
@@ -174,3 +203,37 @@ sudah dibangun:
 
 Keempatnya masuk H-1 dan H-2, bukan H-12. H-12 memverifikasinya; ia tidak
 membangunnya.
+
+### Yang terlihat ketika H-12 benar-benar memverifikasinya
+
+Keempatnya berdiri. Tetapi verifikasi itu memperlihatkan satu **lubang yang
+tidak ada pada daftar mana pun**: sebelas fase mencatat akses darurat dengan
+rajin, dan tidak satu pun pernah membangun **telaahnya**.
+
+Break-glass punya dua sifat yang harus ada bersama — tidak pernah ditolak, dan
+selalu ditelaah. Yang pertama berdiri sejak H-2. Yang kedua tidak ada sama
+sekali sampai H-12, dan yang pertama tanpa yang kedua **bukan akses darurat
+melainkan pintu belakang**: ia akan dipakai setiap hari oleh orang yang merasa
+lebih cepat begitu, dan tidak ada yang pernah melihatnya.
+
+Uraian peran Manajer Mutu bahkan sudah berbunyi "menelaah akses darurat" sejak
+H-2 — sebelas fase sebelum telaahnya ada. Kalimat yang benar pada dokumen dan
+kosong pada sistem adalah bentuk kegagalan yang paling sukar dilihat, sebab
+setiap orang yang membacanya mengira pekerjaannya sudah dilakukan orang lain.
+
+Butir kelima, karena itu, ditambahkan surut ke daftar di atas:
+
+5. **Yang dicatat harus ada yang menelaahnya, dan penelaahnya bukan pelakunya.**
+   Pencatatan tanpa telaah menghasilkan tabel yang bertambah besar dan tidak
+   pernah dibaca. Ditegakkan trigger `check_break_glass_review` pada basis data,
+   bukan di lapisan aplikasi: penegakan di aplikasi terlewat oleh setiap jalan
+   yang tidak melewatinya.
+
+Larangan itu **tidak** dapat dinyatakan sebagai pasangan hak akses yang
+bertentangan, dan sebabnya perlu dipahami sebelum ada yang mencoba
+menuliskannya begitu: setiap penelaah memegang hak yang sama, jadi tidak ada dua
+hak yang dapat dipertentangkan. Yang terlarang adalah hubungan antara **satu
+orang dan satu baris**. Mendaftarkannya sebagai pasangan hak justru akan
+melumpuhkan telaahnya — satu-satunya cara memenuhinya adalah mencabut hak telaah
+dari seluruh dokter, dan yang paling memahami apakah suatu akses darurat wajar
+adalah dokter.

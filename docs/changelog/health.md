@@ -5,6 +5,86 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## H-12 — Keamanan, zona data, telaah break-glass, dan penjaga AI
+
+Fase terakhir. Ia tidak menambah kemampuan; ia memeriksa bahwa penjaga sebelas
+fase sebelumnya berdiri — dan menambahkan yang terlewat.
+
+### Ditambahkan
+
+- **`H057__health__security_zone.sql`** — `health_data_zone`,
+  `health_field_classification`, `health_break_glass_review`,
+  `health_ai_guard_log`. Lima zona digolongkan menurut **akibat kebocorannya**,
+  bukan menurut tingkat rendah/sedang/tinggi; 31 medan tergolong sebagai baris
+  basis data. Trigger `forbid_review_mutation` membuat telaah tambah-saja, dan
+  `check_break_glass_review` melarang seseorang menelaah aksesnya sendiri.
+- **`H058__health__security_permissions.sql`** — tiga menu dan satu aturan
+  pemisahan wewenang HIGH: yang menggolongkan medan bukan yang menelaah
+  aksesnya.
+- **`health-security.ts`** — zona, tujuan penggunaan, break-glass, antrean
+  telaah, penyamaran medan, isolasi antar-tenant dan antar-vertical, pola
+  redaksi kesehatan, dan daftar tindakan terlarang bagi AI. **75 pengujian.**
+- **`health-security.service.ts`** dan **`health-security.controller.ts`** —
+  14 jalan pada `/api/v1/health/security/**`.
+- **`prove-health-security.mjs`** — naskah bukti, **92 pemeriksaan**, seluruhnya
+  lulus dan lulus pula pada pengulangan. Isolasi antar-tenant dibuktikan dengan
+  pengguna sungguhan pada tenant kedua yang menembak kesembilan jalan keamanan
+  milik tenant pertama — dan yang diperiksa adalah **isi jawabannya**, bukan
+  status kodenya.
+
+### Yang TIDAK diubah, dan sebabnya
+
+- **AI Gateway bersama tidak disentuh.** `POLA_KESEHATAN` (nomor rekam medis,
+  SEP, ICD-10, kepesertaan JKN) dipasang sebagai lapisan **di atas**
+  `redactText`, bukan sebagai perubahan padanya. Dua penyamar yang saling
+  menggantikan akan berbeda dalam waktu enam bulan dan tidak ada yang tahu yang
+  mana yang berjalan; dua penyamar yang bertumpuk keduanya berjalan.
+- **`health_access_log` tidak diduplikasi.** Ia sudah memuat `purpose_of_use`,
+  `break_glass`, dan `break_glass_reason` sejak H002. Yang ditambahkan adalah
+  **telaahnya**.
+
+### Diperbaiki sebelum sempat terpasang
+
+- **Kosakata tujuan penggunaan disusun dari ingatan.** Memuat `PUBLIC_HEALTH`
+  yang tidak ada pada skema, menghilangkan `QUALITY` yang ada. Sebuah jalan yang
+  menerima tajuk itu akan membiarkan aksesnya berjalan lalu gagal ketika
+  mencatatnya: **aksesnya terjadi, catatannya tidak.** Kemunculan kedua cacat
+  yang sama — yang pertama H-9J. Naskah buktinya kini membaca
+  `health_access_purpose_valid` langsung dari `pg_constraint` dan menuliskan
+  setiap tujuan ke jejak akses.
+- **"Break-glass tidak pernah ditolak" tidak benar pada sistem ini.** H002
+  menuntut alasan sekurang-kurangnya sepuluh huruf. Tuntutan itu dipertahankan
+  dan modulnya yang diperbaiki: penolakan hanya atas dasar alasan yang terlalu
+  pendek untuk ditelaah, tidak pernah atas dasar penilaian tentang keadaan
+  daruratnya. Angka sepuluh disalin dari constraint, tidak dipilih sendiri.
+- **Dua belas dari dua puluh nama kolom penggolongan keliru.** Rancangan
+  pertamanya melewati yang tidak ditemukan secara diam-diam, menghasilkan daftar
+  yang **tampak penuh** — tanpa NIK, nomor rekam medis, isi catatan klinis, dan
+  kode diagnosis. Migrasinya kini gagal bila satu kolom pun tidak ada.
+
+### Cacat pada Core yang ditemukan sepanjang jalan
+
+**`tenant-migration.service.ts` tidak membedakan migrasi yang GAGAL dari yang
+BERHASIL.** `applyAll()` membaca riwayat tanpa menyaring `status`, sedangkan
+cabang penanganan galat menuliskan checksum-nya juga. Migrasi yang gagal lalu
+dijalankan ulang **tanpa diubah** dilaporkan sebagai *sudah diterapkan* padahal
+tabelnya tidak pernah dibuat.
+
+Diajukan lewat
+[005](../integration-requests/health/005-riwayat-migrasi-gagal-mengunci-versi.md).
+Berkas Core tidak disentuh. Nomor H055 dan H056 dihanguskan dan isinya
+dipindahkan ke H057 dan H058, persis seperti yang diperintahkan pesan galatnya.
+
+### Yang terhalang, dicatat apa adanya
+
+**Uji E2E, uji kinerja, dan UAT menuntut layar.** Tiga puluh satu modul API kini
+berdiri di belakang empat layar web. Uji penerimaan pengguna atas API tanpa
+layar bukan uji penerimaan pengguna — ia uji API dengan nama yang lain.
+
+Uji API 2427 -> 2506.
+
+---
+
 ## H-11 — Peran, data contoh, dan laporan
 
 ### Ditambahkan
