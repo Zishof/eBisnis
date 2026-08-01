@@ -115,6 +115,7 @@ model Tenant {
 
   registration      Registration?               @relation(fields: [registrationId], references: [id], onDelete: SetNull)
   schemaRegistry    TenantSchemaRegistry?
+  verticalModules   TenantVerticalModule[]
   siteDomains       VerticalSiteDomain[]
   memberships       TenantMembership[]
   provisioningJobs  ProvisioningJob[]
@@ -145,6 +146,15 @@ model Tenant {
   @@schema("platform")
 }
 
+/// Schema INTI tenant. Satu per tenant, sebagaimana sejak Versi 5.
+///
+/// Sengaja tidak diubah oleh Versi 13. Menambahkan `moduleCode` ke sini dan
+/// memindahkan keunikan ke (tenantId, moduleCode) memaksa relasi `Tenant.schemaRegistry`
+/// menjadi daftar, dan 14 pemanggil — termasuk `auth.service.ts` yang memilih
+/// schema saat login — harus berubah untuk menyaring baris inti.
+///
+/// Schema per modul dicapai lewat `TenantVerticalModule`, yang menyimpan nama
+/// schema-nya sendiri. Hasilnya sama; jalur login tidak tersentuh.
 model TenantSchemaRegistry {
   id              String             @id @default(uuid()) @db.Uuid
   tenantId        String             @unique @map("tenant_id") @db.Uuid
@@ -167,6 +177,68 @@ model TenantSchemaRegistry {
   @@unique([username])
   @@index([status])
   @@map("tenant_schema_registry")
+  @@schema("platform")
+}
+
+/// Modul non-inti yang diaktifkan tenant, beserta schema-nya (BRD Versi 13 §214).
+///
+/// Inilah yang membuat satu tenant memiliki banyak schema:
+/// `{username}_education`, `{username}_eschool`, dan seterusnya. Modul `core`
+/// tidak dicatat di sini — schema intinya sudah ada di `TenantSchemaRegistry`,
+/// dan mencatatnya dua kali membuat dua sumber kebenaran untuk satu nama.
+///
+/// Menonaktifkan modul TIDAK menghapus schema-nya. Data akademik milik
+/// institusi, dan berlangganan yang berakhir bukan alasan menghapusnya.
+model TenantVerticalModule {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  /// `education`, `ecampus`, `eschool`, `epesantren`.
+  moduleCode      String    @map("module_code") @db.VarChar(32)
+  status          String    @default("DRAFT") @db.VarChar(24)
+  schemaName      String    @map("schema_name") @db.VarChar(64)
+  auditSchemaName String    @map("audit_schema_name") @db.VarChar(72)
+  schemaVersion   String    @default("V000") @map("schema_version") @db.VarChar(16)
+  /// Paket yang menyebabkan modul ini aktif, misalnya `ESCHOOL_ONLY`.
+  packageCode     String?   @map("package_code") @db.VarChar(48)
+  activatedAt     DateTime? @map("activated_at") @db.Timestamptz(6)
+  deactivatedAt   DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version         Int       @default(1)
+
+  tenant     Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  migrations TenantModuleMigration[]
+
+  @@unique([tenantId, moduleCode])
+  @@unique([schemaName])
+  @@unique([auditSchemaName])
+  @@index([status])
+  @@map("tenant_vertical_module")
+  @@schema("platform")
+}
+
+/// Riwayat penerapan migration per modul tenant.
+///
+/// `checksum` membuat berkas migration yang sudah diterapkan tidak dapat diubah
+/// diam-diam: perubahan isinya menghasilkan checksum berbeda dan penerapan
+/// berikutnya berhenti, alih-alih menjalankan sesuatu yang berbeda dari yang
+/// pernah dijalankan.
+model TenantModuleMigration {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantModuleId String    @map("tenant_module_id") @db.Uuid
+  migrationId    String    @map("migration_id") @db.VarChar(128)
+  checksum       String    @db.VarChar(64)
+  status         String    @default("PENDING") @db.VarChar(24)
+  errorMessage   String?   @map("error_message")
+  appliedAt      DateTime? @map("applied_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenantModule TenantVerticalModule @relation(fields: [tenantModuleId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantModuleId, migrationId])
+  @@index([status])
+  @@map("tenant_module_migration")
   @@schema("platform")
 }
 

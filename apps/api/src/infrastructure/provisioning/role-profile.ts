@@ -45,7 +45,25 @@ export type DataScopeCode =
   | 'ASSIGNED_TRIP'   // perjalanan yang ditugaskan
   | 'ASSIGNED_QUEUE'  // antrean tiket yang ditugaskan
   | 'OWNERSHIP'       // kepemilikan investor sendiri
-  | 'API_SCOPE';      // scope klien API
+  | 'API_SCOPE'       // scope klien API
+  // --- Pendidikan (Versi 13 §8) --------------------------------------------
+  //
+  // `GUARDIAN_CHILD` yang paling menentukan di antara semuanya: ia satu-satunya
+  // cakupan yang dipegang orang di LUAR institusi. Portal wali adalah permukaan
+  // terluas dengan pengguna paling sedikit terlatih, dan cakupan yang bocor di
+  // sana berarti seorang wali membaca data anak orang lain.
+  | 'INSTITUTION'     // satu perguruan tinggi/sekolah/pesantren dalam yayasan
+  | 'CAMPUS'          // kampus/cabang yang ditugaskan
+  | 'FACULTY'         // fakultas yang ditugaskan
+  | 'STUDY_PROGRAM'   // program studi yang ditugaskan
+  | 'SCHOOL_UNIT'     // unit sekolah yang ditugaskan
+  | 'GRADE'           // tingkat kelas yang ditugaskan
+  | 'CLASS_GROUP'     // rombel/kelas/halaqah yang diampu
+  | 'PESANTREN_UNIT'  // unit pesantren yang ditugaskan
+  | 'DORMITORY'       // asrama yang diampu
+  | 'ROOM'            // kamar yang diampu
+  | 'LEARNER_SELF'    // peserta didik: hanya dirinya sendiri
+  | 'GUARDIAN_CHILD'; // wali: hanya anak yang menjadi tanggungannya
 
 const READ_ONLY = ['READ', 'PRINT'] as const;
 
