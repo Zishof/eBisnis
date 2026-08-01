@@ -18,6 +18,7 @@
  */
 
 import { Link } from 'react-router-dom';
+import { ManfaatPeranSection } from './ManfaatPeranSection';
 
 const MODUL_INTI = [
   {
@@ -178,6 +179,9 @@ export function SantriInfoHomePage() {
           </div>
         </div>
       </section>
+
+      {/* --- Manfaat bagi setiap bagian --------------------------------- */}
+      <ManfaatPeranSection />
 
       {/* --- Situs pondok ----------------------------------------------- */}
       <section className="px-4 py-14">
