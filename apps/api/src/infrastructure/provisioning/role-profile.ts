@@ -28,42 +28,61 @@ export type ProfileCode =
  * Tingkat pembatasan data. Menentukan baris mana yang terlihat, bukan tombol
  * mana yang tampil — keduanya lapisan berbeda dan keduanya ditegakkan server.
  */
-export type DataScopeCode =
-  | 'PLATFORM'        // seluruh platform
-  | 'TENANT'          // seluruh organisasi tenant
-  | 'LEGAL_ENTITY'    // badan hukum yang ditugaskan
-  | 'BRAND'           // brand yang ditugaskan
-  | 'OUTLET'          // outlet yang ditugaskan
-  | 'OUTLET_TERMINAL' // outlet + terminal + shift, khusus kasir
-  | 'STORE'           // toko online yang ditugaskan (Versi 9)
-  | 'WAREHOUSE'       // gudang yang ditugaskan
-  | 'FULFILLMENT_LOCATION' // lokasi pemenuhan pesanan online (Versi 9)
-  | 'PAYMENT_PROVIDER_ACCOUNT' // akun provider pembayaran tertentu (Versi 9)
-  | 'DEPARTMENT'      // unit kerja
-  | 'TEAM'            // bawahan langsung
-  | 'SELF'            // hanya data milik sendiri
-  | 'ASSIGNED_TRIP'   // perjalanan yang ditugaskan
-  | 'ASSIGNED_QUEUE'  // antrean tiket yang ditugaskan
-  | 'OWNERSHIP'       // kepemilikan investor sendiri
-  | 'API_SCOPE'       // scope klien API
+/**
+ * Daftar berjalan, bukan hanya tipe.
+ *
+ * Tingkat cakupan punya **kembaran di basis data**: dua CHECK constraint pada
+ * `role_data_scope` dan `user_scope_assignment` yang mengenumerasi nilai yang
+ * sah. Menambah nilai pada tipe saja membuat kode menyemai peran dengan tingkat
+ * yang ditolak constraint — dan penolakannya muncul saat provisioning tenant,
+ * bukan saat kompilasi.
+ *
+ * Itu sudah terjadi sekali: `CLASS_GROUP` dan `GUARDIAN_CHILD` ditambahkan,
+ * seluruh uji satuan hijau, lalu provisioning demo berhenti di CI dengan
+ * "violates check constraint ck_role_data_scope_level".
+ *
+ * Daftar ini ada supaya `education-data-scope.spec.ts` dapat membandingkannya
+ * dengan SQL-nya dan menyalakan merah sebelum sampai ke basis data.
+ */
+export const DATA_SCOPE_CODES = [
+  'PLATFORM',        // seluruh platform
+  'TENANT',          // seluruh organisasi tenant
+  'LEGAL_ENTITY',    // badan hukum yang ditugaskan
+  'BRAND',           // brand yang ditugaskan
+  'OUTLET',          // outlet yang ditugaskan
+  'OUTLET_TERMINAL', // outlet + terminal + shift, khusus kasir
+  'STORE',           // toko online yang ditugaskan (Versi 9)
+  'WAREHOUSE',       // gudang yang ditugaskan
+  'FULFILLMENT_LOCATION', // lokasi pemenuhan pesanan online (Versi 9)
+  'PAYMENT_PROVIDER_ACCOUNT', // akun provider pembayaran tertentu (Versi 9)
+  'DEPARTMENT',      // unit kerja
+  'TEAM',            // bawahan langsung
+  'SELF',            // hanya data milik sendiri
+  'ASSIGNED_TRIP',   // perjalanan yang ditugaskan
+  'ASSIGNED_QUEUE',  // antrean tiket yang ditugaskan
+  'OWNERSHIP',       // kepemilikan investor sendiri
+  'API_SCOPE',       // scope klien API
   // --- Pendidikan (Versi 13 §8) --------------------------------------------
   //
   // `GUARDIAN_CHILD` yang paling menentukan di antara semuanya: ia satu-satunya
   // cakupan yang dipegang orang di LUAR institusi. Portal wali adalah permukaan
   // terluas dengan pengguna paling sedikit terlatih, dan cakupan yang bocor di
   // sana berarti seorang wali membaca data anak orang lain.
-  | 'INSTITUTION'     // satu perguruan tinggi/sekolah/pesantren dalam yayasan
-  | 'CAMPUS'          // kampus/cabang yang ditugaskan
-  | 'FACULTY'         // fakultas yang ditugaskan
-  | 'STUDY_PROGRAM'   // program studi yang ditugaskan
-  | 'SCHOOL_UNIT'     // unit sekolah yang ditugaskan
-  | 'GRADE'           // tingkat kelas yang ditugaskan
-  | 'CLASS_GROUP'     // rombel/kelas/halaqah yang diampu
-  | 'PESANTREN_UNIT'  // unit pesantren yang ditugaskan
-  | 'DORMITORY'       // asrama yang diampu
-  | 'ROOM'            // kamar yang diampu
-  | 'LEARNER_SELF'    // peserta didik: hanya dirinya sendiri
-  | 'GUARDIAN_CHILD'; // wali: hanya anak yang menjadi tanggungannya
+  'INSTITUTION',     // satu perguruan tinggi/sekolah/pesantren dalam yayasan
+  'CAMPUS',          // kampus/cabang yang ditugaskan
+  'FACULTY',         // fakultas yang ditugaskan
+  'STUDY_PROGRAM',   // program studi yang ditugaskan
+  'SCHOOL_UNIT',     // unit sekolah yang ditugaskan
+  'GRADE',           // tingkat kelas yang ditugaskan
+  'CLASS_GROUP',     // rombel/kelas/halaqah yang diampu
+  'PESANTREN_UNIT',  // unit pesantren yang ditugaskan
+  'DORMITORY',       // asrama yang diampu
+  'ROOM',            // kamar yang diampu
+  'LEARNER_SELF',    // peserta didik: hanya dirinya sendiri
+  'GUARDIAN_CHILD',  // wali: hanya anak yang menjadi tanggungannya
+] as const;
+
+export type DataScopeCode = (typeof DATA_SCOPE_CODES)[number];
 
 const READ_ONLY = ['READ', 'PRINT'] as const;
 

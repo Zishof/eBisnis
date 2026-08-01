@@ -260,6 +260,13 @@
       "file": "V037__pos_offline_sale.sql",
       "name": "Penjualan luring: jatah nomor struk dan karantina",
       "description": "pos_receipt_block memesan potongan rentang dari number_sequence yang sudah ada, supaya register yang luring menerbitkan nomor struk yang tidak mungkin bertabrakan dengan register lain maupun dengan penjualan daring — tanpa membuat sumber penomoran kedua. pos_offline_quarantine menahan transaksi luring yang tidak dapat dibukukan apa adanya (harga berbeda dari hitungan peladen, stok kurang, shift sudah tertutup, nomor di luar jatah) beserta KEDUA angkanya, karena menolaknya berarti transaksi yang uangnya sudah berpindah tangan tidak muncul di pembukuan, sedangkan menerimanya diam-diam dengan angka peladen berarti struk di tangan pembeli menyebut angka lain. Saklar POS_OFFLINE_SALE_ENABLED bawaannya mati. Bernomor V037, bukan V035: sesi paralel eKoperasi sudah memakai V035 dan V036 pada basis data bersama sebelum berkasnya masuk Git. Migrasi yang sudah diterapkan tidak boleh diubah nomornya."
+    },
+    {
+      "version": "V038",
+      "sequence": 38,
+      "file": "V038__education_data_scope.sql",
+      "name": "Cakupan data pendidikan",
+      "description": "Menambahkan dua belas tingkat cakupan data pendidikan (Versi 13 §8) pada ck_role_data_scope_level dan ck_user_scope_type: INSTITUTION, CAMPUS, FACULTY, STUDY_PROGRAM, SCHOOL_UNIT, GRADE, CLASS_GROUP, PESANTREN_UNIT, DORMITORY, ROOM, LEARNER_SELF, GUARDIAN_CHILD."
     }
   ]
 }
