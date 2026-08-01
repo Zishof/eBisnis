@@ -18,6 +18,8 @@
  * TIDAK boleh terjadi ketika refresh gagal untuk alasan yang sementara.**
  */
 
+import { readFileSync } from 'node:fs';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
@@ -25,6 +27,7 @@ import {
   apiRequest,
   getAccessToken,
   getRefreshToken,
+  segarkanSesi,
   setAccessToken,
   setRefreshToken,
 } from './api';
@@ -214,5 +217,113 @@ describe('pembeda penolakan yang mengakhiri sesi', () => {
     globalThis.fetch = vi.fn(async () => jawab(401, {}, false)) as typeof fetch;
     const galat = await apiRequest('/a', { skipRefresh: true }).catch((e) => e);
     expect((galat as ApiError).status).toBe(401);
+  });
+});
+
+/*
+ * Penyegaran serentak: cacat yang paling mahal di berkas ini.
+ *
+ * Peladen MEMUTAR refresh token dan mendeteksi pemakaian ulang — token yang
+ * sudah dipakai sekali, bila dikirim lagi, membuatnya mencabut **seluruh
+ * keluarga token** sesi itu (`auth.service.ts`, `TOKEN_REUSE_DETECTED`). Itu
+ * perilaku yang benar; begitulah pencurian token ketahuan.
+ *
+ * Karena itu dua penyegaran serentak dengan token yang sama bukan sekadar
+ * boros — ia menghancurkan sesinya. Dan itu persis yang terjadi pada setiap
+ * pemuatan halaman penuh: pemulihan sesi berjalan bersamaan dengan permintaan
+ * halaman yang menerima 401 lalu ikut menyegarkan.
+ *
+ * Yang menang balapan menentukan hasilnya, dan selisihnya beberapa milidetik.
+ * Karena itu kegagalannya jarang, tampak acak, dan di CI muncul sebagai uji
+ * kasir yang goyah — bukan sebagai galat yang menyebut sebabnya.
+ */
+describe('penyegaran tidak pernah dikirim dua kali serentak', () => {
+  it('pemulihan sesi dan permintaan yang 401 berbagi satu permintaan refresh', async () => {
+    let refreshKe = 0;
+    let bolehJawab: (() => void) | null = null;
+    const tertahan = new Promise<void>((r) => {
+      bolehJawab = r;
+    });
+
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes('/auth/refresh')) {
+        refreshKe += 1;
+        // Ditahan supaya keduanya benar-benar tumpang tindih, bukan berurutan.
+        await tertahan;
+        return jawab(200, { accessToken: 'token-baru', refreshToken: 'refresh-baru' });
+      }
+      return jawab(getAccessToken() === 'token-baru' ? 200 : 401, {}, getAccessToken() === 'token-baru');
+    }) as typeof fetch;
+
+    // Keduanya berangkat sebelum salah satunya selesai — persis seperti saat
+    // halaman dimuat penuh.
+    const pemulihanSesi = segarkanSesi();
+    const permintaanHalaman = apiRequest('/pos/context');
+
+    await Promise.resolve();
+    bolehJawab!();
+    await Promise.all([pemulihanSesi, permintaanHalaman]);
+
+    expect(refreshKe).toBe(1);
+  });
+
+  it('penyegaran beruntun sesudahnya tetap satu permintaan per gelombang', async () => {
+    let refreshKe = 0;
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes('/auth/refresh')) {
+        refreshKe += 1;
+        return jawab(200, { accessToken: 'token-baru', refreshToken: 'refresh-baru' });
+      }
+      return jawab(200);
+    }) as typeof fetch;
+
+    await Promise.all([segarkanSesi(), segarkanSesi(), segarkanSesi()]);
+    expect(refreshKe).toBe(1);
+  });
+
+  /*
+   * Penjaga di tingkat sumber, bukan perilaku.
+   *
+   * Cacat aslinya bukan peredamnya rusak — peredamnya benar. Cacatnya adalah
+   * ADA JALUR KEDUA yang memanggil `/auth/refresh` sendiri dan melewatinya.
+   * Uji perilaku mana pun pada `lib/api.ts` tidak akan pernah menangkap itu,
+   * sebab jalur keduanya tidak melewati berkas ini.
+   *
+   * Karena itu yang dijaga adalah pintunya: hanya `lib/api.ts` yang boleh
+   * memanggil alamat itu.
+   *
+   * Komentar dibuang lebih dahulu. Tanpa itu, penjaga ini menyalakan merah pada
+   * penjelasan yang justru menerangkan aturannya — dan penjaga yang menghukum
+   * penjelasan akan dijawab dengan menghapus penjelasannya.
+   *
+   * Ia memang tidak menangkap jalur yang dirakit dari potongan. Yang dicegah
+   * adalah pengulangan cacat yang sudah pernah terjadi, bukan setiap cara
+   * membayangkannya.
+   */
+  it('hanya lib/api.ts yang memanggil /auth/refresh', () => {
+    const berkas = [
+      'src/app/auth-context.tsx',
+      'src/pos-offline/useKoneksi.ts',
+      'src/pos-offline/buku-lokal.ts',
+    ];
+    for (const b of berkas) {
+      let isi: string;
+      try {
+        isi = readFileSync(b, 'utf8');
+      } catch {
+        continue; // Berkasnya berpindah atau belum ada; bukan urusan uji ini.
+      }
+      const kode = isi
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .split('\n')
+        .filter((baris) => !/^\s*(\/\/|\*)/.test(baris))
+        .join('\n');
+
+      expect(kode, `${b} memanggil /auth/refresh sendiri`).not.toMatch(
+        /['"`]\/auth\/refresh/,
+      );
+    }
   });
 });

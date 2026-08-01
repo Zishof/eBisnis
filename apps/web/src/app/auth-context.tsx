@@ -15,6 +15,7 @@ import {
   ApiError,
   api,
   getRefreshToken,
+  segarkanSesi,
   setAccessToken,
   setRefreshToken,
 } from '../lib/api';
@@ -103,34 +104,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const refreshed = await api.post<{ accessToken: string; refreshToken: string }>(
-          '/auth/refresh',
-          { refreshToken: getRefreshToken() },
-          { skipRefresh: true },
-        );
-        setAccessToken(refreshed.accessToken);
-        setRefreshToken(refreshed.refreshToken);
-        await loadSession();
-      } catch (e) {
         /*
-         * Hanya penolakan yang benar-benar berarti "sesi ini tidak sah lagi"
-         * yang membuang tokennya.
+         * Lewat `segarkanSesi`, BUKAN dengan memanggil `/auth/refresh` sendiri.
          *
-         * Semula SETIAP galat di sini membuang sesi — termasuk 429 dari pembatas
-         * laju dan 5xx dari peladen yang sedang tersedak. Keduanya sementara,
-         * tetapi akibatnya permanen: refresh token terhapus, tidak ada lagi yang
-         * dapat dipakai mencoba, dan pengguna mendarat di halaman masuk.
+         * Semula jalur ini mengirim permintaannya sendiri dengan `skipRefresh`,
+         * sehingga ia tidak melewati peredam di `lib/api.ts` sama sekali. Pada
+         * setiap pemuatan halaman penuh, pemulihan sesi ini berjalan bersamaan
+         * dengan permintaan halaman yang menerima 401 lalu ikut menyegarkan —
+         * dua `POST /auth/refresh` serentak membawa refresh token yang sama.
          *
-         * Cacat yang sama sempat diperbaiki di `lib/api.ts` tetapi terlewat di
-         * sini — dan justru jalur inilah yang menyala, sebab `loadSession()`
-         * berada di dalam `try` yang sama: `/auth/me` yang dijawab 429 ikut
-         * menjatuhkan sesinya.
+         * Peladen memutar refresh token dan mendeteksi pemakaian ulang. Bila
+         * yang kedua tiba sesudah yang pertama menandai tokennya terpakai, ia
+         * mencabut SELURUH keluarga token sesi itu — dan kasir terlempar ke
+         * halaman masuk di tengah shift, dengan keranjang yang sedang dilayani.
+         * Selisihnya beberapa milidetik, sehingga kegagalannya jarang dan
+         * tampak acak; pada CI ia muncul sebagai uji kasir yang goyah.
+         *
+         * Peredamnya hanya bekerja bila seluruh penyegaran melewati satu pintu.
          */
-        const status = e instanceof ApiError ? e.status : 0;
-        if (status === 401 || status === 403) {
-          setAccessToken(null);
-          setRefreshToken(null);
-        }
+        const berhasil = await segarkanSesi();
+        // Penolakan yang benar-benar berarti "sesi tidak sah lagi" sudah
+        // membuang tokennya di dalam `segarkanSesi`. Yang sementara — 429 dari
+        // pembatas laju, 5xx dari peladen yang tersedak — sengaja tidak, supaya
+        // masih dapat dicoba lagi.
+        if (berhasil) await loadSession();
       } finally {
         setLoading(false);
       }
