@@ -7,6 +7,7 @@ import { AppError, ErrorCodes } from '../../../common/errors/app-error';
 import { IS_PUBLIC_KEY, DEMO_BLOCKED_KEY } from '../../../common/decorators';
 import { AccessTokenPayload, AuthService } from '../auth.service';
 import { currentScope } from '../../../common/context/request-context';
+import { bolehSaatWajibGantiKataSandi } from './password-change-allowlist';
 
 /**
  * Guard autentikasi global. Endpoint publik ditandai eksplisit dengan @Public().
@@ -61,7 +62,7 @@ export class JwtAuthGuard implements CanActivate {
 
     // Forced password change: seluruh endpoint terlindungi diblokir sampai
     // kata sandi diganti, kecuali endpoint yang memang dibutuhkan untuk itu.
-    if (user?.mustChangePassword && !isPasswordChangeAllowed(request.path)) {
+    if (user?.mustChangePassword && !bolehSaatWajibGantiKataSandi(request.path)) {
       throw AppError.forbidden(
         ErrorCodes.PASSWORD_CHANGE_REQUIRED,
         'Anda wajib mengganti kata sandi sebelum melanjutkan.',
@@ -119,18 +120,6 @@ export class JwtAuthGuard implements CanActivate {
       };
     }
   }
-}
-
-/** Endpoint yang tetap boleh diakses saat pengguna wajib mengganti kata sandi. */
-const PASSWORD_CHANGE_ALLOWLIST = [
-  '/auth/change-password',
-  '/auth/logout',
-  '/auth/me',
-  '/me/context',
-];
-
-function isPasswordChangeAllowed(path: string): boolean {
-  return PASSWORD_CHANGE_ALLOWLIST.some((allowed) => path.endsWith(allowed));
 }
 
 function extractToken(request: Request): string | undefined {

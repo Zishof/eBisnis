@@ -34,6 +34,8 @@ import {
   SANTRI_DILAYANI_BAWAAN,
   TIPE_PESANTREN_BAWAAN,
   pilihanDipakai,
+  rapikanNamaPengguna,
+  rapikanSlug,
 } from './pilihan-pesantren';
 import { halanganKirim, type KeadaanFormulir } from './halangan-kirim';
 
@@ -701,7 +703,14 @@ export function DaftarPesantrenPage() {
                   autoComplete="off"
                   {...register('slugSitus', {
                     required: true,
-                    onChange: () => setSlugDisunting(true),
+                    // Dibetulkan sambil diketik: huruf besar, spasi, dan garis
+                    // bawah tidak pernah sah pada alamat situs, dan menolaknya
+                    // dengan pesan merah memaksa pengurus menebak bentuk yang benar.
+                    onChange: (e) => {
+                      setSlugDisunting(true);
+                      const rapi = rapikanSlug(e.target.value);
+                      if (rapi !== e.target.value) setValue('slugSitus', rapi);
+                    },
                   })}
                 />
                 <span className="ltr-code shrink-0 text-sm text-slate-500 dark:text-slate-400">
@@ -732,7 +741,11 @@ export function DaftarPesantrenPage() {
                   required: true,
                   minLength: 3,
                   maxLength: 48,
-                  onChange: () => setUsernameDisunting(true),
+                  onChange: (e) => {
+                    setUsernameDisunting(true);
+                    const rapi = rapikanNamaPengguna(e.target.value);
+                    if (rapi !== e.target.value) setValue('desiredUsername', rapi);
+                  },
                 })}
               />
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">

@@ -21,6 +21,8 @@ import {
   SANTRI_DILAYANI_BAWAAN,
   TIPE_PESANTREN_BAWAAN,
   pilihanDipakai,
+  rapikanNamaPengguna,
+  rapikanSlug,
 } from './pilihan-pesantren';
 
 const SUMBER_API = '../api/src/modules/public/pesantren-registration.ts';
@@ -132,5 +134,71 @@ describe('sepadan dengan katalog peladen', () => {
     if (!sumber) return;
     const cocok = sumber.match(/DOMAIN_PESANTREN\s*=\s*'([^']+)'/);
     expect(cocok?.[1]).toBe(DOMAIN_SITUS_BAWAAN);
+  });
+});
+
+describe('merapikan ketikan alamat situs', () => {
+  it('huruf besar dan spasi dibetulkan', () => {
+    // Persis yang diketik orang: "Raudlatul Ulum" dan "RaudlatulUlum".
+    expect(rapikanSlug('Raudlatul Ulum')).toBe('raudlatul-ulum');
+    expect(rapikanSlug('RaudlatulUlum')).toBe('raudlatululum');
+  });
+
+  it('garis bawah menjadi tanda hubung', () => {
+    // Alamat situs adalah label DNS; garis bawah tidak pernah sah di sana.
+    expect(rapikanSlug('raudlatul_ulum')).toBe('raudlatul-ulum');
+  });
+
+  it('karakter yang tidak pernah sah dibuang', () => {
+    expect(rapikanSlug('PP. Nurul Jadid!')).toBe('pp-nurul-jadid');
+  });
+
+  it('tanda hubung di ujung TIDAK dibuang', () => {
+    /*
+     * Orang yang baru mengetik "raudlatul-" sedang menuju "raudlatul-ulum".
+     * Membuangnya membuat tanda hubung mustahil diketik.
+     */
+    expect(rapikanSlug('raudlatul-')).toBe('raudlatul-');
+  });
+
+  it('tanda hubung di awal dibuang, dan yang berlipat dirapatkan', () => {
+    expect(rapikanSlug('--raudlatul--ulum')).toBe('raudlatul-ulum');
+  });
+
+  it('hasilnya tidak pernah melebihi batas label DNS', () => {
+    expect(rapikanSlug('a'.repeat(200)).length).toBe(63);
+  });
+});
+
+describe('merapikan ketikan nama pengguna', () => {
+  it('huruf besar dan spasi menjadi garis bawah', () => {
+    expect(rapikanNamaPengguna('Raudlatul Ulum')).toBe('raudlatul_ulum');
+    expect(rapikanNamaPengguna('RaudlatulUlum')).toBe('raudlatululum');
+  });
+
+  it('tanda hubung menjadi garis bawah', () => {
+    // Nama pengguna menjadi nama schema PostgreSQL; tanda hubung tidak sah.
+    expect(rapikanNamaPengguna('raudlatul-ulum')).toBe('raudlatul_ulum');
+  });
+
+  it('angka di awal dibiarkan, bukan diberi awalan huruf', () => {
+    /*
+     * Membubuhkan huruf sambil orang mengetik memindahkan kursornya dan mengubah
+     * apa yang baru saja ia ketik. Yang tersisa salah tetap ditangkap pemeriksa,
+     * dengan pesan yang menjelaskan.
+     */
+    expect(rapikanNamaPengguna('3 Muhammadiyah')).toBe('3_muhammadiyah');
+  });
+
+  it('bentuk kedua kolom memang berbeda', () => {
+    // Bila suatu hari salah satunya disalin dari yang lain, uji ini menyala.
+    const ketikan = 'Raudlatul Ulum';
+    expect(rapikanSlug(ketikan)).not.toBe(rapikanNamaPengguna(ketikan));
+    expect(rapikanSlug(ketikan)).toContain('-');
+    expect(rapikanNamaPengguna(ketikan)).toContain('_');
+  });
+
+  it('hasilnya tidak pernah melebihi batas nama schema', () => {
+    expect(rapikanNamaPengguna('a'.repeat(200)).length).toBe(48);
   });
 });

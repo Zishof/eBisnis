@@ -81,3 +81,56 @@ export const DOMAIN_SITUS_BAWAAN = 'santri.info';
 export function pilihanDipakai<T>(dariPeladen: T[] | undefined, bawaan: T[]): T[] {
   return dariPeladen && dariPeladen.length > 0 ? dariPeladen : bawaan;
 }
+
+/**
+ * Merapikan ketikan menjadi alamat situs yang sah.
+ *
+ * Orang mengetik "Raudlatul Ulum" atau "RaudlatulUlum" — keduanya wajar, dan
+ * keduanya ditolak aturan label DNS. Menolaknya dengan pesan merah memaksa
+ * pengurus pondok menebak bentuk yang benar; membetulkannya sambil diketik
+ * tidak.
+ *
+ * Yang dibetulkan hanya yang tidak mungkin dimaksudkan lain: huruf besar
+ * menjadi kecil, spasi dan garis bawah menjadi tanda hubung, dan karakter yang
+ * tidak pernah sah dibuang.
+ *
+ * Tanda hubung di ujung TIDAK dibuang. Orang yang baru mengetik "raudlatul-"
+ * sedang menuju "raudlatul-ulum"; membuangnya membuat tanda hubung mustahil
+ * diketik.
+ */
+export function rapikanSlug(ketikan: string): string {
+  return ketikan
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+/, '')
+    .slice(0, 63);
+}
+
+/**
+ * Merapikan ketikan menjadi nama pengguna yang sah.
+ *
+ * Bentuknya berbeda dari alamat situs, dan perbedaannya bukan gaya: nama
+ * pengguna menjadi nama schema PostgreSQL, yang memakai garis bawah dan tidak
+ * boleh memakai tanda hubung.
+ *
+ * Angka di awal tidak diberi awalan huruf di sini. Membubuhkan huruf sambil
+ * orang mengetik memindahkan kursornya dan mengubah apa yang baru saja ia
+ * ketik — yang dibetulkan diam-diam saat mengetik haruslah yang tidak
+ * mengagetkan. Bentuk yang tersisa salah tetap ditangkap pemeriksa, dengan
+ * pesan yang menjelaskan.
+ */
+export function rapikanNamaPengguna(ketikan: string): string {
+  return ketikan
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[\s-]+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_+/, '')
+    .slice(0, 48);
+}
