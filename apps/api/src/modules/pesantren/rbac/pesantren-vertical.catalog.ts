@@ -86,6 +86,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 540,
     actions: CATAT,
   },
+  {
+    code: 'EPESANTREN_TAHFIZ',
+    label: 'Tahfiz',
+    translationKey: 'menu.epesantren.tahfiz',
+    route: '/app/pesantren/tahfiz',
+    icon: 'BookMarked',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 550,
+    actions: CATAT,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -106,6 +116,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_TAGIHAN: 'P7',
       EPESANTREN_ASRAMA: 'P7',
       EPESANTREN_DINIYAH: 'P7',
+      EPESANTREN_TAHFIZ: 'P7',
     },
     dataScope: 'TENANT',
     core: false,

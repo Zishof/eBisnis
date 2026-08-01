@@ -218,10 +218,34 @@ dikenal 404, dan tanpa token 401.
 progres hafalan/bacaan per pertemuan (itu domain EP-I Tahfiz), dan laporan
 rekap keanggotaan.
 
+## Status EP-I — SEBAGIAN, log setoran tanpa target/rapor tahfiz
+
+**Yang dikerjakan:** tabel `pesantren_tahfiz_setoran` (migrasi modul
+`20260802T190000__pesantren__tahfiz`) — log transaksional setiap
+setoran/murajaah per santri (juz 1-30, predikat LANCAR/KURANG_LANCAR/
+TIDAK_LANCAR). Sengaja TIDAK ada tabel ringkasan/capaian terpisah: capaian
+juz tertinggi dihitung dari log ini di service (`MAX(juz) WHERE jenis =
+'SETORAN' AND predikat = 'LANCAR'`) — baris ringkasan yang berduplikasi
+dari sumbernya cepat berselisih begitu satu diperbarui dan yang lain
+tertinggal.
+
+API `PesantrenTahfizController` (`/pesantren/tahfiz`,
+`/pesantren/tahfiz/capaian/:santriId`) dibuktikan live dengan data sampel
+nyata terhadap `ponpes_demo`: empat setoran dicatat (juz 1 LANCAR, juz 3
+LANCAR, juz 5 KURANG_LANCAR, murajaah juz 10 LANCAR) lalu SELURUHNYA
+terbaca kembali lewat daftar; `capaian` menghitung `juz_tertinggi=3` dengan
+benar — BUKAN 5 (predikat KURANG_LANCAR tidak dihitung) dan BUKAN 10
+(jenis MURAJAAH bukan hafalan baru); `total_setoran=4` mencakup seluruh
+jenis. Juz di luar rentang 1-30 ditolak validasi, santri tak dikenal 404,
+capaian santri yang belum pernah setor mengembalikan `juz_tertinggi: null`
+(bukan error), dan tanpa token 401.
+
+**Yang tidak dikerjakan:** target hafalan per santri/kelas, jadwal setoran,
+dan rapor tahfiz cetak.
+
 ## Sesudah EP-A
 
 ```text
-EP-I   Tahfiz
 EP-J   Perizinan dan gerbang
 EP-K   Portal wali beserta cakupan DEPENDENT_CHILD
 EP-L   Dompet santri dan batas belanja

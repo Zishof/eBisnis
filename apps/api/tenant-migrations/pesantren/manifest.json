@@ -35,6 +35,12 @@
       "file": "20260802T180000__pesantren__diniyah.sql",
       "name": "EP-H: Diniyah, halaqah, dan kitab",
       "description": "pesantren_kitab, pesantren_halaqah, pesantren_halaqah_santri. Santri boleh mengikuti lebih dari satu halaqah sekaligus -- berbeda dari penempatan kamar EP-G -- yang dicegah hanya keanggotaan ganda pada halaqah yang sama, ditegakkan indeks unik parsial."
+    },
+    {
+      "id": "20260802T190000__pesantren__tahfiz",
+      "file": "20260802T190000__pesantren__tahfiz.sql",
+      "name": "EP-I: Tahfiz (setoran hafalan)",
+      "description": "pesantren_tahfiz_setoran -- log transaksional setiap setoran/murajaah. Capaian tertinggi per santri dihitung dari log ini di service, bukan disimpan berduplikasi pada tabel ringkasan terpisah."
     }
   ]
 }
