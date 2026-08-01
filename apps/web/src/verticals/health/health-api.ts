@@ -586,6 +586,120 @@ export interface BarisKunjunganRumah {
   overdueDays: number;
 }
 
+/*
+ * --- W-2: rekam medis, penahanan, pelepasan, jejak akses, telaah darurat ----
+ *
+ * SELURUH bentuk di bawah diperiksa langsung ke peladen sungguhan sebelum satu
+ * baris layar ditulis, bukan disimpulkan dari nama yang masuk akal. Pelajaran
+ * W-1: `percentage` dan `shortfall` keduanya nama yang masuk akal, keduanya
+ * tidak ada, dan halamannya kosong sama sekali.
+ */
+
+export interface BarisKoding {
+  id: string;
+  status: string;
+  service_date: string | null;
+  encounter_type: string | null;
+  deficiency_count: number;
+  blocking_count: number;
+  checked_at: string | null;
+  patient_name: string;
+  open_deficiencies: number;
+}
+
+export interface BarisKekurangan {
+  id: string;
+  deficiency_type: string;
+  message: string;
+  blocks_coding: boolean;
+  detected_at: string | null;
+  coding_id: string;
+  service_date: string | null;
+  patient_name: string;
+}
+
+export interface BarisPenahanan {
+  id: string;
+  reason: string;
+  case_reference: string | null;
+  placed_at: string | null;
+  released_at: string | null;
+}
+
+/** `canAmend` = bolehkah berkasnya diubah. Penahanan aktif membekukannya. */
+export interface StatusPenahanan {
+  holds: BarisPenahanan[];
+  canAmend: boolean;
+  message: string | null;
+}
+
+export interface AntreanTelaah {
+  queue: Array<{
+    accessLogId: string;
+    alasan: string;
+    prioritas: 'HIGH' | 'MEDIUM' | 'LOW';
+    patientId: string | null;
+    actorUserId: string | null;
+    purposeOfUse: string | null;
+    occurredAt: string | null;
+    breakGlassReason: string | null;
+  }>;
+  total: number;
+  note: string;
+}
+
+export interface RiwayatTelaah {
+  reviews: Array<{
+    id: string;
+    access_log_id: string;
+    reviewed_by: string;
+    reviewed_at: string;
+    verdict: string;
+    notes: string;
+    follow_up: string | null;
+    patient_id: string | null;
+    actor_user_id: string | null;
+    occurred_at: string;
+    break_glass_reason: string | null;
+  }>;
+  note: string;
+}
+
+export interface RingkasTelaah {
+  total: number;
+  reviewed: number;
+  pending: number;
+  adverse: number;
+  note: string;
+}
+
+export interface BarisInsiden {
+  id: string;
+  incident_number: string;
+  incident_type: string;
+  grade: string;
+  harm_level: string;
+  occurred_at: string;
+  review_due_at: string | null;
+  closed_at: string | null;
+  is_anonymous: boolean;
+  action_count: number;
+}
+
+export interface PapanMutu {
+  indicators: Array<{
+    id: string;
+    code: string;
+    name: string;
+    category: string | null;
+    direction: string;
+    target_value: number | null;
+    value: number | null;
+    meets_target: boolean | null;
+  }>;
+  recordCompleteness: { score: number; message: string };
+}
+
 export const healthApi = {
   // Fasilitas dan katalog tidak menyentuh rekam medis, sehingga tidak menuntut
   // tujuan penggunaan.
@@ -1026,6 +1140,80 @@ export const healthApi = {
 
   recordHomeVisit: (body: Record<string, unknown>, ctx: KonteksAkses) =>
     api.post<{ id: string; visitedAt: string }>('/health/community/home-visits', body, {
+      headers: tajuk(ctx),
+    }),
+
+  // --- W-2: rekam medis ------------------------------------------------------
+  //
+  // Daftar kerja pengkodean, kekurangan berkas, papan insiden, dan papan mutu
+  // TIDAK membawa tujuan penggunaan: peladennya tidak menuntutnya, sebab
+  // seluruhnya daftar kerja dan agregat. Yang menyentuh satu pasien — penahanan
+  // hukum, pelepasan informasi, jejak akses — membawanya.
+
+  codingWorklist: (facilityId: string, status?: string) =>
+    api.get<BarisKoding[]>(
+      `/health/him/coding/worklist?facilityId=${facilityId}${status ? `&status=${status}` : ''}`,
+    ),
+
+  deficiencies: (facilityId: string, role: string) =>
+    api.get<BarisKekurangan[]>(
+      `/health/him/deficiencies?facilityId=${facilityId}&role=${encodeURIComponent(role)}`,
+    ),
+
+  checkRecord: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>('/health/him/records/check', body, { headers: tajuk(ctx) }),
+
+  addCode: (codingId: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>(`/health/him/coding/${codingId}/code`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  verifyCoding: (codingId: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>(`/health/him/coding/${codingId}/verify`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  legalHolds: (patientId: string, ctx: KonteksAkses) =>
+    api.get<StatusPenahanan>(`/health/him/legal-holds/${patientId}`, { headers: tajuk(ctx) }),
+
+  placeLegalHold: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string }>('/health/him/legal-holds', body, { headers: tajuk(ctx) }),
+
+  releaseLegalHold: (id: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string }>(`/health/him/legal-holds/${id}/release`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  requestRelease: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>('/health/him/releases', body, { headers: tajuk(ctx) }),
+
+  fulfilRelease: (id: string, body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<Record<string, unknown>>(`/health/him/releases/${id}/release`, body, {
+      headers: tajuk(ctx),
+    }),
+
+  incidents: (facilityId: string) =>
+    api.get<BarisInsiden[]>(`/health/him/incidents?facilityId=${facilityId}`),
+
+  qualityDashboard: (facilityId: string, year: number) =>
+    api.get<PapanMutu>(`/health/him/quality/dashboard?facilityId=${facilityId}&year=${year}`),
+
+  // --- W-2: telaah darurat ---------------------------------------------------
+
+  breakGlassQueue: (limit = 50, ctx: KonteksAkses) =>
+    api.get<AntreanTelaah>(`/health/security/break-glass/queue?limit=${limit}`, {
+      headers: tajuk(ctx),
+    }),
+
+  breakGlassReviews: (limit = 50, ctx: KonteksAkses) =>
+    api.get<RiwayatTelaah>(`/health/security/break-glass/reviews?limit=${limit}`, {
+      headers: tajuk(ctx),
+    }),
+
+  breakGlassSummary: () => api.get<RingkasTelaah>('/health/security/break-glass/summary'),
+
+  reviewBreakGlass: (body: Record<string, unknown>, ctx: KonteksAkses) =>
+    api.post<{ id: string; reviewed: boolean }>('/health/security/break-glass/review', body, {
       headers: tajuk(ctx),
     }),
 };

@@ -212,6 +212,31 @@ export class HealthCommunityService {
     const lahir = Date.parse(pasien[0].birth_date);
     const umurBulan = (Date.now() - lahir) / (30.4375 * 86_400_000);
 
+    /*
+     * BATAS UMUR, DIPERIKSA DI SINI ALIH-ALIH DIBIARKAN KE CONSTRAINT.
+     *
+     * `growth_measure_age_valid` membatasi umur 0–300 bulan, dan pelanggarannya
+     * keluar sebagai 500 INTERNAL_ERROR — pesan yang tidak memberi tahu apa pun
+     * kepada petugas yang kebetulan memilih pasien dewasa dari hasil pencarian.
+     *
+     * Ini bukan kemungkinan teoretis: layar Pertumbuhan mencari SELURUH pasien,
+     * bukan hanya balita, sebab pencarian yang menyaring umur akan
+     * menyembunyikan anak yang tanggal lahirnya keliru tercatat — dan anak itu
+     * justru yang paling perlu ditemukan.
+     *
+     * Jadi yang benar bukan mempersempit pencariannya, melainkan menolak di
+     * sini dengan kalimat yang dapat dibaca. Constraint-nya tetap berdiri
+     * sebagai penjaga terakhir bagi jalan yang tidak melewati layanan ini.
+     */
+    if (umurBulan < 0 || umurBulan > 300) {
+      throw AppError.unprocessable(
+        ErrorCodes.VALIDATION_FAILED,
+        'Pemantauan pertumbuhan hanya untuk umur 0 sampai 300 bulan (25 tahun); pasien ini ' +
+          `berumur sekitar ${Math.floor(Math.abs(umurBulan) / 12)} tahun. Bila umurnya tampak ` +
+          'keliru, tanggal lahirnya yang perlu diperbaiki — bukan pengukurannya yang dipaksakan.',
+      );
+    }
+
     // Pembetulan cara pengukuran tinggi, bila perlu.
     let tinggi = input.heightCm ?? null;
     const tinggiAsli = input.heightCm ?? null;

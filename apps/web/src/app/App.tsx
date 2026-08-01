@@ -110,6 +110,18 @@ const HealthHomeVisitPage = lazy(() =>
 const HealthCoveragePage = lazy(() =>
   import('../verticals/health/CoveragePage').then((m) => ({ default: m.CoveragePage })),
 );
+const HealthCodingPage = lazy(() =>
+  import('../verticals/health/CodingPage').then((m) => ({ default: m.CodingPage })),
+);
+const HealthLegalHoldPage = lazy(() =>
+  import('../verticals/health/LegalHoldPage').then((m) => ({ default: m.LegalHoldPage })),
+);
+const HealthInfoReleasePage = lazy(() =>
+  import('../verticals/health/InfoReleasePage').then((m) => ({ default: m.InfoReleasePage })),
+);
+const HealthBreakGlassPage = lazy(() =>
+  import('../verticals/health/BreakGlassPage').then((m) => ({ default: m.BreakGlassPage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -241,6 +253,20 @@ export function App() {
             <Route path="imunisasi" element={<HealthImmunizationPage />} />
             <Route path="kunjungan-rumah" element={<HealthHomeVisitPage />} />
             <Route path="cakupan" element={<HealthCoveragePage />} />
+
+            {/*
+              Rekam medis dan telaah darurat — W-2.
+
+              `jejak-akses` dan `penahanan` menunjuk layar yang SAMA dengan
+              sengaja: petugas rekam medis yang menerima surat pengadilan
+              menanyakan keduanya dalam satu napas, dan memisahkannya berarti ia
+              mencari nomor pasien yang sama dua kali.
+            */}
+            <Route path="koding" element={<HealthCodingPage />} />
+            <Route path="penahanan" element={<HealthLegalHoldPage />} />
+            <Route path="jejak-akses" element={<HealthLegalHoldPage />} />
+            <Route path="pelepasan" element={<HealthInfoReleasePage />} />
+            <Route path="telaah-darurat" element={<HealthBreakGlassPage />} />
           </Route>
           <Route path="*" element={<ComingSoonPage />} />
         </Route>

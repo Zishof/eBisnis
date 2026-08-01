@@ -1,0 +1,39 @@
+==============================================================================
+BUKTI KONTRAK — BENTUK JAWABAN PELADEN vs TIPE KLIEN WEB
+Waktu   : 2026-08-01T14:11:04.306Z
+Schema  : demo
+==============================================================================
+
+--- Menyiapkan baris uji ------------------------------------------------
+  periksa berkas  : 201
+  insiden         : 201
+  pengukuran      : 201
+
+--- Medan wajib klien harus ada pada jawaban peladen -------------------
+  LULUS  facilities → Fasilitas (11 medan wajib)
+  LULUS  searchPatients → HasilCari (4 medan wajib)
+  LULUS  searchPatients.results[] → RingkasPasien (10 medan wajib)
+  LULUS  coverage → BarisCakupan (11 medan wajib)
+  LULUS  homeVisitWorklist → BarisKunjunganRumah (17 medan wajib)
+  LULUS  codingWorklist → BarisKoding (9 medan wajib)
+  LEWAT  deficiencies — tidak ada baris untuk diperiksa (BarisKekurangan)
+  LULUS  incidents → BarisInsiden (10 medan wajib)
+  LULUS  qualityDashboard → PapanMutu (2 medan wajib)
+  LULUS  breakGlassQueue → AntreanTelaah (3 medan wajib)
+  LULUS  breakGlassReviews → RiwayatTelaah (2 medan wajib)
+  LULUS  breakGlassSummary → RingkasTelaah (5 medan wajib)
+  LULUS  legalHolds → StatusPenahanan (3 medan wajib)
+  LULUS  immunizationStatus → StatusImunisasi (4 medan wajib)
+  LULUS  growthHistory → BarisPertumbuhan (15 medan wajib)
+  LULUS  accessLog → JejakAkses (8 medan wajib)
+
+--- Penolakan yang dapat dibaca, bukan 500 -----------------------------
+  LULUS  menimbang pasien dewasa ditolak 422, BUKAN 500
+  LULUS  dan penolakannya menyebutkan umurnya serta jalan keluarnya
+
+  1 jalan tidak dapat dibuktikan karena tidak ada barisnya.
+  Angka itu BUKAN kelulusan. Ia daftar yang masih harus dilihat orang.
+
+==============================================================================
+SELURUH KONTRAK YANG DAPAT DIPERIKSA COCOK (17)
+==============================================================================

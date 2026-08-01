@@ -561,6 +561,13 @@
       "file": "H059__health__menu_truth_fix.sql",
       "name": "eMedik: utas menu kunjungan rumah dan menu yang berkata jujur",
       "description": "Dua koreksi yang keduanya terlihat setiap hari dan tidak pernah menimbulkan galat. PERTAMA: H015 memberi HEALTH_HOME_VISIT utas /app/emedik/kunjungan, sedangkan kunjungan klinis berada pada /app/emedik/kunjungan/:id dan NavLink pada bilah samping mencocokkan AWALAN. Akibatnya sejak H-3 setiap dokter yang membuka rekam medis melihat menu Posyandu tersorot di bilah sampingnya; tidak ada galat, tidak ada catatan, dan setiap orang yang melihatnya menganggap dirinya salah membaca. Diubah menjadi /app/emedik/kunjungan-rumah; kode menunya TIDAK diubah sebab kode itulah yang dipakai hak akses. KEDUA: seluruh menu kesehatan terdaftar is_coming_soon = FALSE padahal hanya sebagian punya layar — menunya berkata siap dan layarnya berkata segera hadir, dan pengguna baru mengetahuinya SESUDAH mengklik, lalu mengklik berulang kali sebab tidak ada tanda yang membedakan menu yang bekerja dari yang tidak. Sesudah migrasi ini: 18 menu berlayar, 55 masih segera hadir. Migrasi ini memuat daftar utas YANG PUNYA layar, bukan yang tidak — satu daftar, satu sumber kebenaran — dan GAGAL bila satu utas pun tidak cocok dengan menu mana pun, sebab utas yang salah ketik akan menandai menu yang layarnya ada sebagai segera hadir dan penggunanya berhenti mengkliknya. RALAT: komentar di dalam berkas SQL-nya menyebut angka 71/19/52; yang benar 73/18/55. Berkasnya sudah diterapkan dan tidak boleh disunting, jadi ralatnya dicatat di sini. Yang keliru hanya aritmetika pada komentar; logika migrasinya memeriksa dirinya sendiri dan tidak bergantung pada angka itu."
+    },
+    {
+      "version": "H060",
+      "sequence": 1060,
+      "file": "H060__health__menu_truth_w2.sql",
+      "name": "eMedik: menu berlayar W-2",
+      "description": "Melanjutkan pola H059: setiap fase layar menambahkan migrasi kecil yang mengembalikan is_coming_soon = FALSE untuk utas yang baru dibangunnya. Menambahkan lima utas W-2 — koding, penahanan, jejak-akses, pelepasan, telaah-darurat — sehingga 23 menu berlayar dan 50 masih segera hadir. Daftarnya tetap daftar yang PUNYA layar, bukan yang tidak, dan gagal berisik bila satu utas pun tidak cocok dengan menu mana pun. Perhatikan bahwa jejak-akses dan penahanan menunjuk layar yang SAMA: petugas rekam medis yang menerima surat pengadilan menanyakan siapa yang tidak boleh mengubah berkas ini dan siapa yang sudah membacanya dalam satu napas, dan memisahkannya berarti ia mencari nomor pasien yang sama dua kali."
     }
   ]
 }

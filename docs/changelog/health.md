@@ -5,6 +5,73 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## W-2 — Layar rekam medis dan telaah darurat
+
+### Ditambahkan
+
+- **`BreakGlassPage`** (`/app/emedik/telaah-darurat`) — layar yang seharusnya
+  ada sebelas fase lalu. Break-glass punya dua sifat yang harus ada bersama:
+  tidak pernah ditolak, dan **selalu ditelaah**. Yang pertama berdiri sejak H-2;
+  yang kedua baru dibangun H-12 dan belum pernah punya layar. Angka **belum
+  ditelaah** diletakkan paling atas: bila ia terus naik, sifat kedua sudah
+  berhenti berlaku dan yang tersisa hanya pintu yang tidak pernah menolak siapa
+  pun.
+- **`CodingPage`** (`/app/emedik/koding`) — dua daftar untuk dua orang berbeda:
+  daftar kerja pengkodean bagi petugas koding, kekurangan berkas bagi dokter
+  atau perawat. Yang **menghalangi** dibedakan dari yang tidak — menyamakannya
+  membuat petugas mengejar yang mudah lebih dahulu, dan yang menahan tagihan
+  justru mengendap.
+- **`LegalHoldPage`** (`/app/emedik/penahanan` dan `/app/emedik/jejak-akses`) —
+  satu layar, dua menu. Petugas rekam medis yang menerima surat pengadilan
+  menanyakan "siapa yang tidak boleh mengubah berkas ini" dan "siapa yang sudah
+  membacanya" dalam satu napas.
+- **`InfoReleasePage`** (`/app/emedik/pelepasan`) — dua dasar pelepasan
+  (persetujuan pasien atau dasar hukum), dan **rujukannya disimpan, bukan
+  sekadar dicentang**. Cakupan dipilih per bagian: penjamin yang menanyakan satu
+  tindakan tidak berhak atas seluruh riwayat pasiennya.
+- **`H060__health__menu_truth_w2.sql`** — 23 menu berlayar, 50 masih segera
+  hadir.
+- **`him-pages.spec.tsx`** — 14 uji komponen.
+
+### Naskah bukti baru: kontrak klien-peladen
+
+**`prove-web-contract.mjs`** — 17 pemeriksaan, lulus dua kali.
+
+Ia memanggil setiap jalan yang dipakai klien web pada peladen sungguhan, lalu
+membandingkan medan jawabannya dengan **medan wajib yang dideklarasikan
+`health-api.ts`** — dibaca dari berkasnya, bukan disalin.
+
+Naskah ini ada karena W-1: uji komponen tidak dapat menutup celah antara klien
+dan peladen, dan tidak akan pernah dapat, sebab ia menguji komponen terhadap
+data yang bentuknya ditentukan penulisnya sendiri.
+
+Naskah ini **membuat sendiri baris yang diperlukannya** lewat jalan API
+sungguhan. Alasannya sama: bukti yang melewatkan jalan tanpa data akan berkata
+seluruh kontrak cocok sekalipun jalan paling rawan tidak pernah dilihat — dan
+pada W-1 jalan yang rusak justru `coverage`, yang pada mulanya kosong. Jalan
+yang tetap tidak ada barisnya **dilaporkan sebagai belum terbukti**, bukan
+dihitung lulus.
+
+### Diperbaiki
+
+**Menimbang pasien dewasa menjawab 500 INTERNAL_ERROR.** `growth_measurement`
+membatasi umur 0–300 bulan lewat constraint, dan pelanggarannya keluar sebagai
+galat peladen — pesan yang tidak memberi tahu apa pun kepada petugas yang
+memilih pasien dewasa dari hasil pencarian.
+
+Ini terjangkau langsung dari layar Pertumbuhan yang dibangun W-1, sebab
+pencariannya sengaja **tidak** menyaring umur: pencarian yang menyaring umur
+akan menyembunyikan anak yang tanggal lahirnya keliru tercatat, dan anak itu
+justru yang paling perlu ditemukan. Jadi yang dibetulkan bukan pencariannya,
+melainkan penolakannya — kini 422 beserta umurnya dan jalan keluarnya.
+Constraint-nya tetap berdiri sebagai penjaga terakhir.
+
+Ditemukan oleh naskah bukti kontrak, bukan oleh uji mana pun.
+
+Uji web 91 -> 105.
+
+---
+
 ## W-1 — Layar Puskesmas dan Posyandu
 
 Fase layar pertama. Sampai fase ini, satu kategori fasilitas penuh — Puskesmas —

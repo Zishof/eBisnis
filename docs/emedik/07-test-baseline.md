@@ -90,8 +90,9 @@ Jumlah minimum H-1 sampai H-12: **370 pengujian baru**.
 | H-11 | 25 | **35** | `health-sample.spec.ts` |
 | H-12 | 40 | **75** | `health-security.spec.ts` |
 
-API keseluruhan: **2506** pengujian pada 72 berkas. Web: **91** pada 6 berkas,
-56 di antaranya kesehatan (`health-api.spec.ts` 40, `puskesmas-pages.spec.tsx` 16).
+API keseluruhan: **2506** pengujian pada 72 berkas. Web: **105** pada 7 berkas,
+70 di antaranya kesehatan (`health-api.spec.ts` 40, `puskesmas-pages.spec.tsx` 16,
+`him-pages.spec.tsx` 14).
 
 Seluruh dua belas fase melampaui sasaran minimumnya. Jumlah minimum yang
 ditetapkan H-0 adalah 370 pengujian baru; yang terpasang jauh di atasnya.
@@ -134,6 +135,7 @@ sungguhan, pada basis data sungguhan:
 | H-10 | `prove-health-portal.mjs` | 63 pemeriksaan, seluruhnya lulus — [bukti-h10-portal.txt](bukti-h10-portal.txt) |
 | H-11 | `prove-health-sample.mjs` | 55 pemeriksaan, seluruhnya lulus — [bukti-h11-data-contoh.txt](bukti-h11-data-contoh.txt) |
 | H-12 | `prove-health-security.mjs` | 92 pemeriksaan, seluruhnya lulus — [bukti-h12-keamanan.txt](bukti-h12-keamanan.txt) |
+| W-2 | `prove-web-contract.mjs` | 17 pemeriksaan, seluruhnya lulus — [bukti-kontrak-web.txt](bukti-kontrak-web.txt) |
 
 ### W-1 · Layar Puskesmas — dan batas uji komponen
 
@@ -163,6 +165,27 @@ yang menjawab "kapan giliran anak saya" tidak pernah dipakai.
 Perlengkapan ujinya kini disalin dari jawaban peladen sungguhan, dan peringatan
 tentang batas ini ditulis di kepala berkas ujinya — supaya yang menambah uji
 berikutnya tahu apa yang sedang dan tidak sedang dibuktikannya.
+
+**W-2 menutup celahnya secara permanen.** `prove-web-contract.mjs` memanggil
+setiap jalan yang dipakai klien web pada peladen sungguhan, lalu membandingkan
+medan jawabannya dengan medan wajib yang **dibaca dari `health-api.ts`** —
+bukan disalin ke dalam naskahnya, sebab naskah yang membandingkan salinan
+dengan salinan tidak membuktikan apa pun.
+
+Dua sifat naskah itu yang menentukan:
+
+1. **Ia membuat sendiri baris yang diperlukannya** lewat jalan API sungguhan.
+   Bukti yang melewatkan jalan tanpa data akan berkata seluruh kontrak cocok
+   sekalipun jalan paling rawan tidak pernah dilihat — dan pada W-1 jalan yang
+   rusak justru `coverage`, yang pada mulanya kosong.
+2. **Jalan yang tetap kosong dilaporkan sebagai belum terbukti**, bukan
+   dihitung lulus. Angkanya dicetak sebagai "daftar yang masih harus dilihat
+   orang".
+
+Naskah itu segera menemukan cacat yang tidak ditemukan uji mana pun: menimbang
+pasien dewasa menjawab **500 INTERNAL_ERROR** dari pelanggaran constraint umur,
+dan itu terjangkau langsung dari layar Pertumbuhan W-1. Kini 422 beserta umurnya
+dan jalan keluarnya.
 
 Ini kemunculan **ketiga dan keempat** cacat yang sama sepanjang dua fase
 terakhir: nama yang ditulis dari dugaan, bukan dibaca dari sumbernya.

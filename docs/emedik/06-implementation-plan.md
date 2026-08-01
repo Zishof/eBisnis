@@ -2022,15 +2022,50 @@ satu cacat Core yang menyembunyikannya. Rinciannya pada
 [07 — garis dasar pengujian](07-test-baseline.md) dan
 [006](../integration-requests/health/006-pemulihan-sesi-melewati-dedupe-refresh.md).
 
+### W-2 · Rekam medis dan telaah darurat — **SELESAI**
+
+Empat layar untuk lima menu: pengkodean, penahanan hukum, jejak akses,
+pelepasan informasi, telaah darurat. `penahanan` dan `jejak-akses` menunjuk
+layar yang sama dengan sengaja.
+
+| Bagian | Berkas |
+|---|---|
+| Migrasi | `H060__health__menu_truth_w2.sql` |
+| Layar | `CodingPage`, `LegalHoldPage`, `InfoReleasePage`, `BreakGlassPage` |
+| Klien | `health-api.ts` — 13 jalan, 9 antarmuka baru |
+| Uji | `him-pages.spec.tsx` 14 |
+| Bukti | `scripts/prove-web-contract.mjs` -> [bukti-kontrak-web.txt](bukti-kontrak-web.txt) |
+
+**Keputusan yang menentukan bentuknya**
+
+- **Angka "belum ditelaah" di atas antreannya sendiri.** Ia satu-satunya yang
+  memberi tahu bahwa sifat kedua break-glass sudah berhenti berlaku; membaca
+  antrean halaman per halaman tidak.
+- **Alasan yang ditulis pelakunya dikutip apa adanya**, termasuk yang berbunyi
+  "perlu cepat". Yang menuliskan sepatah kata sedang tergesa atau sedang tidak
+  jujur, dan keduanya hilang bila kalimatnya diperhalus.
+- **Langkah berikutnya wajib hanya ketika putusannya bukan wajar.** Telaah yang
+  menemukan sesuatu tanpa menyebutkan langkah berikutnya berhenti pada dirinya
+  sendiri.
+- **Tidak ada tombol hapus pada jejak akses, dan tidak boleh pernah ada.** Ada
+  uji yang menegaskan ketiadaannya.
+- **Rujukan dasar pelepasan disimpan, bukan dicentang.** Kotak centang tanpa
+  rujukan menghasilkan berkas yang dilepaskan dengan keterangan "ada
+  persetujuan", dan enam bulan kemudian tidak seorang pun dapat menunjukkan
+  kertasnya.
+
+**Yang ditemukan** — satu cacat 500 yang terjangkau dari layar W-1, ditemukan
+naskah bukti kontrak dan bukan oleh uji mana pun. Rinciannya pada
+[changelog](../changelog/health.md).
+
 ### Yang belum berlayar
 
-55 menu masih bertanda "segera hadir", dan kini menunya **berkata begitu
+50 menu masih bertanda "segera hadir", dan kini menunya **berkata begitu
 sebelum diklik**, bukan sesudah. Urutan berikutnya yang disarankan, menurut
 ukuran yang sama — berapa orang tidak dapat bekerja tanpanya:
 
 | Fase | Cakupan | Sebab didahulukan |
 |---|---|---|
-| W-2 | Rekam medis: koding, kelengkapan, penahanan, pelepasan, jejak akses, telaah darurat | Dipakai harian; H-12 membangun telaah break-glass yang belum punya layar sama sekali |
 | W-3 | Klaim dan BPJS: kepesertaan, SEP, klaim, telaah, rekonsiliasi | Pendapatan rumah sakit; tertunda berarti kas tertunda |
 | W-4 | Tarif dan jasa: tarif, kebijakan jasa, kontributor, settlement, kontrak fee | Penagihan tidak benar tanpa tarif |
 | W-5 | Alat: registri, gateway, pemeliharaan, keamanan, pesan/hasil | Keselamatan pasien |
