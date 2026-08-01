@@ -19,6 +19,7 @@
 
 import { Link } from 'react-router-dom';
 import { ManfaatPeranSection } from './ManfaatPeranSection';
+import { SalamPembukaSection } from './SalamPembukaSection';
 
 const MODUL_INTI = [
   {
@@ -107,6 +108,15 @@ const LANGKAH = [
 export function SantriInfoHomePage() {
   return (
     <div className="bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      {/*
+        Salam dan muqaddimah mendahului segalanya.
+
+        Bukan hiasan: pada majelis mana pun, yang datang disapa lebih dahulu
+        sebelum maksudnya disampaikan. Halaman yang langsung menjual tanpa
+        menyapa terbaca sebagai brosur, bukan sebagai ajakan bekerja sama.
+      */}
+      <SalamPembukaSection />
+
       {/* --- Pembuka --------------------------------------------------- */}
       <section className="border-b border-slate-200 bg-gradient-to-b from-emerald-50 to-white px-4 py-16 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950">
         <div className="mx-auto max-w-4xl text-center">
