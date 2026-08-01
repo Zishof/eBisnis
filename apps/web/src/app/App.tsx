@@ -107,6 +107,21 @@ const SantriInfoHomePage = lazy(() =>
 const SitusPondokPage = lazy(() =>
   import('../verticals/pesantren/SitusPondokPage').then((m) => ({ default: m.SitusPondokPage })),
 );
+const DaftarPesantrenPage = lazy(() =>
+  import('../verticals/pesantren/DaftarPesantrenPage').then((m) => ({
+    default: m.DaftarPesantrenPage,
+  })),
+);
+const DaftarPesantrenBerhasilPage = lazy(() =>
+  import('../verticals/pesantren/DaftarPesantrenBerhasilPage').then((m) => ({
+    default: m.DaftarPesantrenBerhasilPage,
+  })),
+);
+const BerandaPondokPage = lazy(() =>
+  import('../verticals/pesantren/BerandaPondokPage').then((m) => ({
+    default: m.BerandaPondokPage,
+  })),
+);
 
 /**
  * Apa yang dilihat pengunjung di akar situs, menurut alamat yang ia ketik.
@@ -168,6 +183,30 @@ export function App() {
         </Route>
         {/* Di luar kerangka portal: subdomain pondok bukan halaman platform. */}
         <Route path="/santri/pondok" element={<SitusPondokPage />} />
+
+        {/*
+          Pendaftaran pesantren TERPISAH dari `/daftar`.
+
+          Yang ditanyakan berbeda dan yang dihasilkan berbeda: pendaftaran ini
+          membuat situs pondok, bukan hanya ruang kerja. Formulir gabungan yang
+          menukar setengah pertanyaannya menurut satu pilihan di awal akan
+          menampilkan pertanyaan retail kepada pengurus pondok setiap kali
+          pilihan itu tergeser.
+        */}
+        <Route path="/daftar-pesantren" element={<SantriLayout />}>
+          <Route index element={<DaftarPesantrenPage />} />
+          <Route path="berhasil" element={<DaftarPesantrenBerhasilPage />} />
+        </Route>
+
+        {/* Beranda penyewa pondok — terpisah dari ruang kerja eBisnis di `/app`. */}
+        <Route
+          path="/pesantren"
+          element={
+            <RequireAuth>
+              <BerandaPondokPage />
+            </RequireAuth>
+          }
+        />
 
         {/* Marketplace publik (belanja.ebisnis.id) */}
         <Route path="/belanja" element={<BelanjaLayout />}>

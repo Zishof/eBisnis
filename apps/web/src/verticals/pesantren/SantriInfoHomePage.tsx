@@ -122,7 +122,7 @@ export function SantriInfoHomePage() {
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
-              to="/daftar"
+              to="/daftar-pesantren"
               className="rounded-lg bg-emerald-700 px-6 py-3 font-semibold text-white hover:bg-emerald-800"
             >
               Daftarkan pondok

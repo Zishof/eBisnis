@@ -107,7 +107,7 @@ export function SantriLayout() {
               Masuk
             </Link>
             <Link
-              to="/daftar"
+              to="/daftar-pesantren"
               className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
             >
               Daftarkan pondok

@@ -156,6 +156,10 @@ export class AuthController {
     const tenantPermissions = user.schemaName
       ? [...(await this.tenantPermissions.resolve(user.schemaName, user.userId, user.activeRoleId))]
       : [];
+    // Vertikal ikut pada setiap pemulihan sesi, bukan hanya saat masuk. Tanpa
+    // ini, pengurus pondok yang memuat ulang halamannya terlempar ke beranda
+    // bawaan — sesi yang sama, tujuan yang berbeda.
+    const verticalCode = await this.authService.verticalPenyewa(user.tenantId);
     return {
       userId: user.userId,
       username: user.username,
@@ -166,7 +170,7 @@ export class AuthController {
       localeCode: user.localeCode,
       platformPermissions: user.platformPermissions,
       tenant: user.tenantId
-        ? { tenantId: user.tenantId, schemaName: user.schemaName }
+        ? { tenantId: user.tenantId, schemaName: user.schemaName, verticalCode }
         : null,
       activeRoleId: user.activeRoleId ?? null,
       activeRoleCode: user.activeRoleCode ?? null,

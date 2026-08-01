@@ -38,12 +38,63 @@ model Registration {
   provisioningJobs   ProvisioningJob[]
   reservation        SchemaNameReservation?
   credentialDelivery RegistrationCredentialDelivery[]
+  pesantren          RegistrationPesantren?
 
   @@unique([registrationCode])
   @@index([normalizedUsername])
   @@index([status, createdAt])
   @@index([email])
   @@map("registration")
+  @@schema("platform")
+}
+
+/// Identitas pondok pesantren pada pendaftaran.
+///
+/// Terpisah dari `Registration` dengan sengaja. Yang umum — nama, alamat,
+/// kontak, surel — tetap di sana; yang khas pesantren ada di sini. Menaruhnya
+/// bersama berarti setiap pendaftaran eBisnis membawa belasan kolom kosong, dan
+/// vertikal berikutnya menambah belasan lagi.
+model RegistrationPesantren {
+  id             String @id @default(uuid()) @db.Uuid
+  registrationId String @unique @map("registration_id") @db.Uuid
+
+  nomorStatistik        String?   @map("nomor_statistik") @db.VarChar(32)
+  nomorIzinOperasional  String?   @map("nomor_izin_operasional") @db.VarChar(64)
+  tanggalIzin           DateTime? @map("tanggal_izin") @db.Date
+  tahunBerdiri          Int?      @map("tahun_berdiri")
+  namaYayasan           String?   @map("nama_yayasan") @db.VarChar(255)
+  aktaYayasan           String?   @map("akta_yayasan") @db.VarChar(128)
+  namaPengasuh          String?   @map("nama_pengasuh") @db.VarChar(255)
+  afiliasi              String?   @db.VarChar(64)
+
+  /// SALAFIYAH | KHALAFIYAH | KOMBINASI — dibatasi CHECK di basis data.
+  tipePesantren  String @map("tipe_pesantren") @db.VarChar(32)
+  /// PUTRA | PUTRI | PUTRA_PUTRI — dibatasi CHECK di basis data.
+  santriDilayani String @map("santri_dilayani") @db.VarChar(16)
+  /// Larik kode jenjang. CHECK memastikan bentuknya larik, bukan objek.
+  jenjang        Json   @default("[]")
+
+  jumlahSantriMukim    Int? @map("jumlah_santri_mukim")
+  jumlahSantriNonmukim Int? @map("jumlah_santri_nonmukim")
+  jumlahUstaz          Int? @map("jumlah_ustaz")
+
+  desaKelurahan String? @map("desa_kelurahan") @db.VarChar(128)
+  kodePos       String? @map("kode_pos") @db.VarChar(16)
+  whatsapp      String? @db.VarChar(32)
+  situsWeb      String? @map("situs_web") @db.VarChar(255)
+
+  /// Label DNS untuk `<slug>.santri.info`. BUKAN nama pengguna: nama pengguna
+  /// menjadi nama schema dan boleh memakai garis bawah, label DNS tidak.
+  slugSitus String @map("slug_situs") @db.VarChar(63)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version   Int      @default(1)
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([slugSitus])
+  @@map("registration_pesantren")
   @@schema("platform")
 }
 
@@ -88,6 +139,14 @@ model Tenant {
   name           String       @db.VarChar(255)
   slug           String       @db.VarChar(64)
   status         TenantStatus @default(PENDING)
+  /// Vertikal yang dilayani penyewa ini — menentukan beranda mana yang dilihat
+  /// sesudah masuk. Boleh null: penyewa yang sudah ada sebelum kolom ini
+  /// memakai beranda bawaan, dan itu memang perilaku yang benar bagi mereka.
+  ///
+  /// Tidak disimpulkan dari `VerticalSiteDomain`. Penyewa yang situsnya belum
+  /// dibuat tetap seorang pesantren, dan menyimpulkannya dari ada atau tidaknya
+  /// situs membuat berandanya berganti sendiri saat domain dicabut.
+  verticalCode   String?      @map("vertical_code") @db.VarChar(32)
   isDemo         Boolean      @default(false) @map("is_demo")
   localeCode     String       @default("id") @map("locale_code") @db.VarChar(16)
   timezone       String       @default("Asia/Jakarta") @db.VarChar(64)

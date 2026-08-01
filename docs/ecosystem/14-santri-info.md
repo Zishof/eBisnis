@@ -97,3 +97,86 @@ sekadar rencana:
 
 Ketiganya menghalangi pondok pertama benar-benar dipakai, bukan hanya
 mendaftar.
+
+---
+
+## 5. Pendaftaran pondok — jalur tersendiri
+
+`/daftar-pesantren`, terpisah dari `/daftar`.
+
+Bukan soal tampilan. Yang ditanyakan berbeda — NSPP, izin operasional, tipe
+pesantren, jenjang, pengasuh — dan yang **dihasilkan** juga berbeda: pendaftaran
+ini membuat situs pondok dan menandai penyewanya sebagai pesantren, dua hal yang
+tidak dilakukan pendaftaran eBisnis.
+
+Formulir gabungan yang menukar setengah pertanyaannya menurut satu pilihan di
+awal akan menampilkan pertanyaan retail kepada pengurus pondok setiap kali
+pilihan itu tergeser.
+
+### Dua nama yang tidak boleh tertukar
+
+| | Menjadi | Pola | Contoh |
+| --- | --- | --- | --- |
+| Nama pengguna | nama schema | `^[a-z][a-z0-9_]{2,47}$` | `raudlatul_ulum` |
+| Alamat situs | label DNS | `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$` | `raudlatul-ulum` |
+
+Garis bawah sah pada yang pertama dan **tidak sah** pada yang kedua. Menyamakan
+keduanya membuat pondok bernama `raudlatul_ulum` memperoleh host
+`raudlatul_ulum.santri.info` — tersimpan, tercatat aktif, dan tidak pernah dapat
+dibuka siapa pun.
+
+Karena itu keduanya diminta terpisah, diperiksa terpisah, dan dijaga CHECK
+terpisah di basis data.
+
+### Urutan, dan mengapa begitu
+
+1. Validasi bentuk — murni, tanpa basis data
+2. Kunci penasihat atas host situs
+3. Pastikan host belum diklaim
+4. Pendaftaran umum: schema, penyewa, pengguna, credential
+5. Identitas pesantren + penanda vertikal + situs — satu transaksi
+
+Langkah 3 mendahului langkah 4 dengan sengaja. Kegagalan yang paling mungkin
+adalah "alamat situs sudah dipakai", dan menemukannya sesudah schema dibuat
+berarti meninggalkan schema yang tidak dipakai siapa pun.
+
+Bila langkah 5 gagal sesudah langkah 4 berhasil, yang dilakukan adalah mencatat
+dan memberitahu — bukan membatalkan. Penyewanya sudah sehat dan credential-nya
+sudah dibuat; credential tidak dapat ditarik kembali.
+
+### Kata sandi
+
+Selalu dibuat peladen pada jalur ini. `generatePassword` **tidak** ada pada DTO —
+bukan sekadar dipaksa `true` di service, melainkan tidak dapat dikirim sama
+sekali. Nilai dari luar yang menentukan hal ini berarti pendaftar dapat memilih
+kata sandinya sendiri lewat permintaan langsung, melewati formulir yang tidak
+pernah menawarkannya.
+
+Kata sandi ditampilkan **sekali** pada response, tidak pernah disimpan (hanya
+hash Argon2), dan wajib diganti saat masuk pertama.
+
+## 6. Beranda penyewa yang terpisah
+
+Sesudah masuk, penyewa pesantren mendarat di `/pesantren`, bukan `/app`.
+
+Keputusannya dibawa **sesi**, lewat `tenant.verticalCode` — bukan lewat alamat.
+Sebabnya: kata sandi buatan peladen wajib diganti saat masuk pertama, sehingga
+masuk pertama selalu berbelok ke halaman ganti kata sandi, dan tujuan yang
+dititipkan pada query tidak selamat melewati belokan itu.
+
+Aturannya ada di `apps/web/src/app/beranda-sesudah-masuk.ts`, dengan tiga hal
+yang diuji:
+
+- tujuan yang tadinya hendak dibuka menang atas beranda vertikal;
+- staf platform menang atas vertikal — staf yang kebetulan anggota sebuah pondok
+  tetap mendarat di konsol platform;
+- vertikal yang belum punya beranda jatuh ke bawaan, bukan ke alamat yang belum
+  ada.
+
+`verticalCode` juga ikut pada `GET /auth/me`, dibaca dari basis data dan bukan
+dari klaim token. Token berumur panjang; vertikal yang tertanam di dalamnya akan
+tetap menunjuk beranda lama sampai tokennya kedaluwarsa.
+
+Beranda pondok menyebutkan dengan jujur mana modul yang sudah dapat dibuka dan
+mana yang belum. Yang belum tidak dibuat menjadi tombol: kartu yang dapat ditekan
+tetapi mendarat di halaman kosong membuat pengurus mengira ia salah memakai.

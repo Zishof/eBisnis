@@ -124,3 +124,52 @@ Digabungkan ke `CHANGELOG.md` akar pada integration gate (§63).
 ### Uji
 
 Web: 206 lulus (13 baru). API: 2124 lulus, 80 berkas.
+
+---
+
+## santri.info — pendaftaran pondok yang terpisah
+
+### Yang ditambahkan
+
+**Basis data** — migrasi aditif `20260802100000_registration_pesantren`:
+`platform.registration_pesantren` (identitas pondok, 1:1 dengan pendaftaran) dan
+`platform.tenant.vertical_code` yang boleh null.
+
+**API**
+- `pesantren-registration.ts` — aturan murni: bentuk slug, usulan slug dari nama,
+  dan validasi yang melaporkan seluruh galat sekaligus. 24 uji.
+- `PesantrenRegistrationService` — memanggil `RegistrationService`, bukan
+  menyalinnya; menambah identitas, penanda vertikal, dan situs pondok.
+- `PesantrenRegistrationController` — `GET public/pesantren/registration-config`,
+  `GET .../site-slug/check`, `GET .../site-slug/suggest`,
+  `POST .../registrations`.
+- `verticalCode` pada jawaban `POST /auth/login` dan `GET /auth/me`.
+
+**Web**
+- `/daftar-pesantren` lima langkah, `/daftar-pesantren/berhasil`, `/pesantren`.
+- `beranda-sesudah-masuk.ts` — satu tempat yang memutuskan tujuan sesudah masuk.
+
+### Keputusan yang perlu diketahui
+
+- **Nama pengguna dan alamat situs adalah dua hal.** Yang pertama menjadi nama
+  schema dan boleh garis bawah; yang kedua menjadi label DNS dan tidak boleh.
+  Menyamakannya menghasilkan host yang tersimpan, aktif, dan tidak pernah dapat
+  dibuka. Dijaga pola terpisah di aplikasi dan CHECK terpisah di basis data.
+- **`generatePassword` tidak ada pada DTO pesantren.** Bukan dipaksa `true` di
+  service — tidak dapat dikirim sama sekali.
+- **Host diperiksa sebelum schema dibuat.** Kegagalan paling mungkin adalah
+  "alamat sudah dipakai"; menemukannya belakangan meninggalkan schema yatim.
+- **Kegagalan sesudah credential dibuat tidak dibatalkan.** Dicatat dan
+  diberitahukan; penyewanya sehat dan credential tidak dapat ditarik kembali.
+- **Tujuan sesudah masuk dibawa sesi, bukan alamat.** Kata sandi buatan peladen
+  wajib diganti saat masuk pertama, dan `?lanjut=` tidak selamat melewati
+  belokan itu.
+- **`verticalCode` dibaca dari basis data pada `/auth/me`**, bukan dari klaim
+  token. Token berumur panjang; vertikal di dalamnya menunjuk beranda lama sampai
+  kedaluwarsa.
+- **Situs pondok langsung `ACTIVE` + terverifikasi.** `<slug>.santri.info` ada di
+  zona kita. Domain milik pondok sendiri tetap wajib melewati verifikasi.
+
+### Uji
+
+Web: 213 lulus (7 baru). API: 2151 lulus, 82 berkas (27 baru).
