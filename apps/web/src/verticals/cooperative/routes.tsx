@@ -32,6 +32,9 @@ const PortalPengaduan = lazy(() =>
 const PortalPemberitahuan = lazy(() =>
   import('./PortalPemberitahuan').then((m) => ({ default: m.PortalPemberitahuan })),
 );
+const DataContohPage = lazy(() =>
+  import('./DataContohPage').then((m) => ({ default: m.DataContohPage })),
+);
 const SitusKoperasi = lazy(() =>
   import('./SitusKoperasi').then((m) => ({ default: m.SitusKoperasi })),
 );
@@ -73,6 +76,19 @@ export function CooperativeRoutes() {
           IR-005; sampai saat itu layar ini menjelaskan keadaannya alih-alih
           berpura-pura bekerja.
         */}
+        {/*
+          Data contoh — dua tombol. Di balik RequireAuth: memasang 1.700 baris
+          dan menghapusnya kembali bukan sesuatu yang boleh dilakukan pengunjung.
+        */}
+        <Route
+          path="data-contoh"
+          element={
+            <RequireAuth>
+              <DataContohPage />
+            </RequireAuth>
+          }
+        />
+
         <Route path="situs/:slug" element={<SitusKoperasi />} />
         <Route path="*" element={<Memuat />} />
       </Routes>

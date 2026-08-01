@@ -46,6 +46,7 @@ import { CooperativeProfileService } from './cooperative-profile.service';
 import { CooperativePortalService } from './cooperative-portal.service';
 import { CooperativePosAdapter } from './adapters/pos.adapter';
 import { MemberBalanceService } from './payment/member-balance.service';
+import { CooperativeSampleService } from './sample/cooperative-sample.service';
 import { CooperativeAccountingEventService } from './accounting/cooperative-accounting-event.service';
 import { COOPERATIVE_EVENT_CATALOG } from './accounting/cooperative-events.catalog';
 import { AccountingEventCatalogRegistry } from '../accounting/event-catalog.registry';
@@ -560,6 +561,58 @@ export class CooperativePortalController {
  * situsnya, dan lamaran tetap dapat diuji lewat jalur bersesi. Yang belum ada
  * hanyalah pintunya dari internet.
  */
+/**
+ * Data contoh koperasi — dua tombol.
+ *
+ * Terpisah dari permukaan data contoh milik Core (`/sample-data/*`) dengan
+ * sengaja: yang ini menyemai koperasi lengkap beserta RAT dan SHU-nya, dan
+ * penghapusannya menyaring pada awalan kode koperasi sendiri.
+ */
+@ApiTags('cooperative-sample')
+@Controller('cooperative/sample')
+export class CooperativeSampleController {
+  constructor(private readonly contoh: CooperativeSampleService) {}
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PROFILE.READ')
+  @Get()
+  @ApiOperation({
+    summary: 'Keadaan data contoh',
+    description: 'Apakah terpasang, berapa anggotanya, dan tahun bukunya.',
+  })
+  async status(@CurrentUser() user: AuthenticatedUser) {
+    return this.contoh.status(requireSchema(user));
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PROFILE.CREATE')
+  @BlockDemo()
+  @Post('install')
+  @HttpCode(201)
+  @ApiOperation({
+    summary: 'Memasang data contoh',
+    description:
+      'Satu koperasi lengkap: 60 anggota, setahun simpanan wajib, 25 pinjaman, satu RAT beserta kuorum dan pemungutan suaranya, dan satu perhitungan SHU yang dibagikan. Menolak bila sudah terpasang — pemasangan ulang akan menggandakan mutasi dan membuat laporan SHU memuat angka yang tidak dapat dijelaskan.',
+  })
+  async pasang(@CurrentUser() user: AuthenticatedUser) {
+    return this.contoh.pasang(requireSchema(user), user.userId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('COOPERATIVE_PROFILE.UPDATE')
+  @BlockDemo()
+  @Post('remove')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menghapus data contoh',
+    description:
+      'Menyaring pada awalan kode CONTOH-, bukan pada tanggal maupun tanda is_sample. Peran, menu, dan hak akses TIDAK ikut terhapus — menghapusnya mengunci pengurus keluar dari koperasinya sendiri.',
+  })
+  async hapus(@CurrentUser() user: AuthenticatedUser) {
+    return this.contoh.hapus(requireSchema(user));
+  }
+}
+
 @ApiTags('cooperative-website')
 @Controller('cooperative/website')
 export class CooperativeWebsiteController {
@@ -787,7 +840,12 @@ export class CooperativeController {
    * koperasi tidak menyentuh satu baris pun miliknya.
    */
   imports: [InfrastructureModule, PosModule, AccountingModule],
-  controllers: [CooperativeController, CooperativePortalController, CooperativeWebsiteController],
+  controllers: [
+    CooperativeController,
+    CooperativePortalController,
+    CooperativeWebsiteController,
+    CooperativeSampleController,
+  ],
   providers: [
     CooperativeProfileService,
     CooperativePortalService,
@@ -795,6 +853,7 @@ export class CooperativeController {
     MemberBalanceService,
     MemberBalancePaymentHandler,
     CooperativeAccountingEventService,
+    CooperativeSampleService,
   ],
   exports: [CooperativeProfileService, CooperativePortalService, CooperativePosAdapter],
 })
