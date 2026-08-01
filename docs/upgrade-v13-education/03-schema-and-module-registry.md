@@ -63,7 +63,7 @@ Tidak mengubah registry. Tabel pendidikan diberi awalan (`ecampus_student`, …)
   isolation**; pilihan ini menghapus mitigasinya.
 - **Putusan:** ditolak.
 
-### Pilihan B — Baris registry per (tenant, modul)  ← **disarankan**
+### Pilihan B — Baris registry per (tenant, modul)  ← disarankan saat audit, **tidak dipakai**
 
 `TenantSchemaRegistry` berubah kuncinya:
 
@@ -93,6 +93,34 @@ TenantModuleMigration(tenant_module_id, migration_id, checksum, applied_at)
 - **Rugi:** menghapus kemungkinan join lintas domain yang sah, menggandakan biaya
   operasi, dan tidak diminta BRD.
 - **Putusan:** ditolak.
+
+### Pilihan D — Tabel modul tersendiri  ← **yang dilaksanakan (E13-1)**
+
+Ditemukan saat melaksanakan Pilihan B, dan mencapai tujuan yang sama dengan
+risiko yang jauh lebih kecil.
+
+`TenantSchemaRegistry` **tidak disentuh sama sekali**. Ia tetap satu baris per
+tenant, berisi schema inti. Schema modul hidup di tabel baru:
+
+```text
+TenantVerticalModule(tenantId, moduleCode, schemaName, auditSchemaName,
+                     schemaVersion, status, packageCode, ...)
+TenantModuleMigration(tenantModuleId, migrationId, checksum, status, ...)
+```
+
+**Mengapa berubah dari Pilihan B.** Mengganti kunci `TenantSchemaRegistry`
+memaksa relasi Prisma `Tenant.schemaRegistry` menjadi daftar, dan 14 pemanggil
+harus berubah untuk menyaring baris inti — termasuk `auth.service.ts` yang
+memilih schema saat login. Jalur login adalah tempat terakhir yang pantas
+disentuh oleh migrasi penamaan schema.
+
+Hasil yang diperoleh sama: satu tenant, banyak schema. Yang dihindari adalah
+perubahan pada jalur yang sudah teruji, dan migrasinya menjadi murni penambahan —
+tidak ada kolom berubah, tidak ada indeks dilepas, tidak ada data berpindah.
+
+Konsekuensi yang perlu diketahui: `username` tetap di `TenantSchemaRegistry`
+(langkah 3 pada rencana semula menjadi tidak perlu), dan pembacaan "schema modul
+X milik tenant Y" menjadi kueri ke tabel yang berbeda dari pembacaan schema inti.
 
 ---
 

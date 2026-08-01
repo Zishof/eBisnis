@@ -27,24 +27,49 @@ E13-8 bergantung pada E13-2 dan itu tidak jelas dari urutan nomornya: deduplikas
 lintas vertical (§187.4) memerlukan `Person` canonical. Tanpa itu, policy
 `UNIQUE_PERSON_ACROSS_VERTICALS` tidak dapat dihitung.
 
-## 2. E13-1 secara rinci
+## 2. E13-1 — keadaan sesudah dilaksanakan
 
-Fase pertama menyentuh kunci tabel yang dipakai setiap tenant berjalan, sehingga
-urutannya di dalam fase juga penting.
+Rencana semula membuka dengan mengubah kunci `TenantSchemaRegistry`. Itu
+**tidak** dilakukan; alasannya ada pada
+[dokumen 03](03-schema-and-module-registry.md) Pilihan D. Daftar berikut adalah
+keadaan sebenarnya, bukan rencananya.
 
-1. Migration additive: `moduleCode` pada `TenantSchemaRegistry`, backfill `'core'`.
-2. Ganti kunci unik `tenantId` → `(tenantId, moduleCode)`.
-3. Pindahkan `username` ke `Tenant` (kolom lama dibiarkan sampai tidak terpakai).
-4. Tabel `TenantVerticalModule`, `TenantModuleMigration`.
-5. Batas username 3–30 karakter **saat dibuat**; tambah 3 kode modul ke reserved.
-6. Resolver schema menerima (tenant, modul); modul berasal dari rute.
-7. Katalog produk pendidikan dan 7 kombinasi vertical (§186.1).
-8. State machine provisioning (§186.2), termasuk rollback.
-9. Tiga `VerticalCatalog` baru mengikuti pola `COOPERATIVE_VERTICAL_CATALOG`.
-10. Manifest migration per modul.
+| # | Pekerjaan | Status |
+| --- | --- | --- |
+| 1 | Schema per modul lewat `TenantVerticalModule` + `TenantModuleMigration` | **SELESAI** — migrasi murni penambahan |
+| 2 | Kunci `TenantSchemaRegistry` diubah | **TIDAK DIPERLUKAN** — diganti Pilihan D |
+| 3 | `username` dipindah ke `Tenant` | **TIDAK DIPERLUKAN** — akibat Pilihan D |
+| 4 | Batas username 3–30 saat dibuat; kode modul dicadangkan | **SELESAI** |
+| 5 | Kode modul canonical; salah eja ditolak, bukan diperbaiki | **SELESAI** |
+| 6 | Tujuh kombinasi paket (§186.1) sebagai konstanta teruji | **SELESAI** |
+| 7 | State machine provisioning 14 keadaan (§186.2) | **SELESAI** |
+| 8 | Katalog vertical eSchool: 7 modul, 9 peran | **SELESAI** |
+| 9 | Manifest migration `education` dan `eschool`, berschema sendiri | **SELESAI** |
+| 10 | Cakupan data pendidikan pada tipe **dan** constraint basis data | **SELESAI** |
+| 11 | Resolver schema saat permintaan menerima (tenant, modul) | **BELUM** |
+| 12 | Layanan provisioning yang benar-benar membuat schema modul | **BELUM** |
+| 13 | Katalog produk dipersistensi dan tersambung ke subscription | **BELUM** |
+| 14 | Katalog vertical eCampus dan ePesantren | **BELUM** — sengaja |
 
-Langkah 1–3 tidak boleh dipisah antar rilis: keadaan antara membuat sebagian tenant
-punya `moduleCode` dan sebagian tidak.
+Empat yang belum bukan sisa yang terlupa.
+
+Nomor 12 memerlukan `Person` (E13-2) supaya ada yang disemai ke schema yang baru
+dibuat. Nomor 13 memerlukan model harga (E13-8). Nomor 14 menunggu eSchool
+terbukti pada pilot — membangun tiga katalog sebelum satu pun dipakai berarti
+mengulang kesalahan yang sama tiga kali.
+
+Nomor 11 yang paling mendesak: schema modul sudah dapat terbentuk, tetapi belum
+ada permintaan HTTP yang dapat mencapainya.
+
+### Penjaga yang lahir dari kegagalan nyata
+
+`DataScopeCode` punya kembaran di basis data. Menambah nilai pada tipe saja lolos
+kompilasi, lolos 2.107 uji, lalu berhenti saat provisioning tenant di CI.
+`education-data-scope.spec.ts` kini membandingkan keduanya sebelum commit.
+
+Pelajaran yang berlaku untuk seluruh fase berikutnya: **setiap enumerasi yang
+ditulis dua kali perlu uji yang membandingkannya**, sebab tidak satu pun
+pemeriksaan yang berjalan tanpa basis data akan menangkap penyimpangannya.
 
 ## 3. Vertical slice pertama
 
