@@ -439,6 +439,49 @@ export class TenantBootstrapService {
         menuIds.set(node.code, id);
         menuCount += 1;
 
+        /*
+         * Sama seperti kolom tata kelola `role` di bawah: `upsertByCode`
+         * sengaja tidak memperbarui baris yang sudah ada. Untuk `menu` itu
+         * berarti tenant yang sudah lebih dulu tersemai TIDAK PERNAH mengikuti
+         * perubahan struktur katalog (mis. menu yang semula tanpa induk lalu
+         * dikelompokkan di bawah induk baru) -- padahal `menu` sepenuhnya
+         * milik katalog kode, bukan sesuatu yang disunting tenant. Tanpa
+         * penyusulan ini, reorganisasi menu ePesantren hanya berlaku untuk
+         * tenant yang BARU didaftarkan setelah baris ini ada, dan tenant lama
+         * (termasuk yang sudah dipakai di produksi) tetap tertahan pada
+         * struktur lama walau `migrate:tenants` dijalankan ulang.
+         */
+        await client.query(
+          `UPDATE ${S}.menu
+              SET name = $2, translation_key = $3, parent_id = $4, route = $5,
+                  icon = $6, module_code = $7, level = $8, path = $9,
+                  sort_order = $10, is_coming_soon = $11, updated_at = now()
+            WHERE id = $1 AND is_system = TRUE
+              AND (name IS DISTINCT FROM $2
+                OR translation_key IS DISTINCT FROM $3
+                OR parent_id IS DISTINCT FROM $4
+                OR route IS DISTINCT FROM $5
+                OR icon IS DISTINCT FROM $6
+                OR module_code IS DISTINCT FROM $7
+                OR level IS DISTINCT FROM $8
+                OR path IS DISTINCT FROM $9
+                OR sort_order IS DISTINCT FROM $10
+                OR is_coming_soon IS DISTINCT FROM $11)`,
+          [
+            id,
+            node.label,
+            node.translationKey,
+            parentId,
+            node.route ?? null,
+            node.icon ?? null,
+            node.moduleCode ?? null,
+            node.parentCode ? 1 : 0,
+            path,
+            node.sortOrder,
+            node.comingSoon ?? false,
+          ],
+        );
+
         for (const actionCode of node.actions ?? ['READ']) {
           const actionId = actionIds.get(actionCode);
           if (!actionId) continue;

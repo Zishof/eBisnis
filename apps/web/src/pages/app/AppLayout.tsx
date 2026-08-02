@@ -297,9 +297,12 @@ function MenuList({
 
         // Node dengan anak menjadi grup yang dapat dilipat. Node yang punya rute
         // sekaligus anak tetap dapat dibuka melalui tautan pada barisnya.
+        // Tertutup secara default di semua kedalaman -- termasuk menu utama --
+        // supaya sisi navigasi tidak langsung memanjang begitu sebuah tenant
+        // memiliki banyak modul (mis. seluruh submenu vertikal ePesantren).
         return (
           <li key={menu.id}>
-            <details className="group" open={depth === 0}>
+            <details className="group">
               <summary
                 className={clsx(
                   'flex cursor-pointer items-center justify-between rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800',
