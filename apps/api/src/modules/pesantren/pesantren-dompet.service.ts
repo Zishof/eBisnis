@@ -114,8 +114,14 @@ export class PesantrenDompetService {
     return this.transaksi(schemaName, dompetId, 'TOPUP', masukan, dicatatOleh);
   }
 
-  /** Mencatat belanja. Ditolak bila melebihi saldo atau batas harian. */
-  async belanja(schemaName: string, dompetId: string, masukan: MasukanTransaksi, dicatatOleh: string): Promise<BarisTransaksi> {
+  /**
+   * Mencatat belanja. Ditolak bila melebihi saldo atau batas harian.
+   *
+   * `dicatatOleh` opsional -- EP-N memanggil ini dari `capture()` milik
+   * `PesantrenDompetPaymentHandler`, yang tidak punya pengguna platform yang
+   * bertindak (kasir mengoperasikan POS, bukan dompet ini secara langsung).
+   */
+  async belanja(schemaName: string, dompetId: string, masukan: MasukanTransaksi, dicatatOleh?: string): Promise<BarisTransaksi> {
     return this.transaksi(schemaName, dompetId, 'BELANJA', masukan, dicatatOleh);
   }
 
@@ -124,7 +130,7 @@ export class PesantrenDompetService {
     dompetId: string,
     jenis: 'TOPUP' | 'BELANJA',
     masukan: MasukanTransaksi,
-    dicatatOleh: string,
+    dicatatOleh?: string,
   ): Promise<BarisTransaksi> {
     const galat = validasiTransaksi(masukan);
     if (galat.length) {
@@ -184,14 +190,14 @@ export class PesantrenDompetService {
         `UPDATE ${S}.pesantren_dompet
             SET saldo = $2, updated_at = now(), updated_by = $3, version = version + 1
           WHERE id = $1`,
-        [dompetId, saldoBaru, dicatatOleh],
+        [dompetId, saldoBaru, dicatatOleh ?? null],
       );
 
       const hasil = await client.query<BarisTransaksi>(
         `INSERT INTO ${S}.pesantren_dompet_transaksi (dompet_id, jenis, jumlah, saldo_sesudah, keterangan, dicatat_oleh)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id::text, jenis, jumlah::text, saldo_sesudah::text, keterangan, created_at::text`,
-        [dompetId, jenis, jumlah, saldoBaru, bersihkan(masukan.keterangan), dicatatOleh],
+        [dompetId, jenis, jumlah, saldoBaru, bersihkan(masukan.keterangan), dicatatOleh ?? null],
       );
       return hasil.rows[0];
     });

@@ -59,6 +59,12 @@
       "file": "20260802T220000__pesantren__kartu.sql",
       "name": "EP-M: Anjungan dan kartu RFID",
       "description": "pesantren_kartu -- registry kartu RFID/QR. Satu kartu aktif per santri dan satu nomor kartu aktif secara global, ditegakkan indeks unik parsial. Anjungan memakai akun peran perangkat (SERVICE_ACCOUNT_KIOSK_PONDOK, P12), bukan login pribadi santri."
+    },
+    {
+      "id": "20260802T230000__pesantren__pos_adapter",
+      "file": "20260802T230000__pesantren__pos_adapter.sql",
+      "name": "EP-N: Dompet santri sebagai metode bayar kasir",
+      "description": "pesantren_dompet_hold, dan baris katalog payment_method EPESANTREN_DOMPET_SANTRI. Adapter ke ExternalPaymentRegistry milik POS (IR-002) yang sudah ada -- BUKAN kasir kedua. Kolom external_handler/external_reference/external_state pada pos_payment sudah ada sejak V036 (koperasi), dipakai bersama."
     }
   ]
 }

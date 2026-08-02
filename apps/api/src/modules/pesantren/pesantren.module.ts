@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { PesantrenSantriController } from './pesantren-santri.controller';
 import { PesantrenSantriService } from './pesantren-santri.service';
 import { PesantrenPresensiController } from './pesantren-presensi.controller';
@@ -23,8 +23,18 @@ import { PesantrenKartuController } from './pesantren-kartu.controller';
 import { PesantrenKartuService } from './pesantren-kartu.service';
 import { PesantrenKioskController } from './pesantren-kiosk.controller';
 import { PesantrenKioskService } from './pesantren-kiosk.service';
+import { PesantrenDompetPaymentHandler } from './pesantren-dompet-payment.handler';
+import { ExternalPaymentRegistry } from '../pos/external-payment.registry';
+import { PosModule } from '../pos/pos.module';
 
 @Module({
+  /*
+   * `PosModule` diimpor demi `ExternalPaymentRegistry` saja (EP-N) — pola
+   * yang sama dengan `CooperativeModule`. Arahnya sengaja begini: ePesantren
+   * bergantung pada POS, bukan sebaliknya. POS tidak mengetahui apa pun
+   * tentang dompet santri.
+   */
+  imports: [PosModule],
   controllers: [
     PesantrenSantriController,
     PesantrenPresensiController,
@@ -54,6 +64,25 @@ import { PesantrenKioskService } from './pesantren-kiosk.service';
     PesantrenDompetService,
     PesantrenKartuService,
     PesantrenKioskService,
+    PesantrenDompetPaymentHandler,
   ],
 })
-export class PesantrenModule {}
+export class PesantrenModule implements OnModuleInit {
+  constructor(
+    private readonly pembayaranEksternal: ExternalPaymentRegistry,
+    private readonly penanganDompet: PesantrenDompetPaymentHandler,
+  ) {}
+
+  /**
+   * Mendaftarkan penangan pembayaran dompet santri (EP-N, IR-002).
+   *
+   * Satu-satunya tempat modul ePesantren menyentuh alur kasir — lewat
+   * kontrak milik Core, bukan dengan menyunting POS. Pola sama dengan
+   * `CooperativeModule.onModuleInit()`.
+   */
+  onModuleInit(): void {
+    if (!this.pembayaranEksternal.has(this.penanganDompet.handlerCode)) {
+      this.pembayaranEksternal.register(this.penanganDompet);
+    }
+  }
+}

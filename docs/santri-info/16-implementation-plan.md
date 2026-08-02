@@ -483,10 +483,74 @@ integrasi pembaca RFID fisik) — API ini adalah backend yang akan dipanggil
 anjungan semacam itu, bukan anjungannya sendiri; layar tampilan kiosk
 (frontend) juga belum dibangun.
 
+## Status EP-N (bagian POS) — SEBAGIAN, dompet santri sebagai metode bayar kasir
+
+**Diriset lebih dulu, sebelum menulis kode apa pun:** §6 perintah master
+melarang keras membuat POS/inventory/accounting KEDUA di dalam ePesantren.
+Sebelum implementasi, ditemukan bahwa koperasi sudah menyelesaikan
+persoalan yang identik lewat `ExternalPaymentRegistry` milik POS (IR-002,
+`apps/api/src/modules/pos/external-payment.registry.ts`) — anggota
+koperasi membayar di kasir memakai saldo simpanan lewat kontrak
+`authorize()`/`capture()`/`reverse()`, TANPA menyunting mesin POS.
+Dompet santri (EP-L) meniru pola ini persis, bukan membangun jalur baru.
+
+Ditemukan pula: repositori punya DUA klien kasir — web (React,
+`apps/web/src/pages/pos/`) dan `apps/pos-flutter/` (tablet Android/Windows,
+"klien KEDUA dari sistem yang sama, bukan POS berdiri sendiri — ADR-012").
+Keduanya memanggil backend yang SAMA; perubahan sesi ini murni backend,
+sehingga otomatis berlaku untuk keduanya tanpa disunting satu per satu.
+
+**Yang dikerjakan:** `pesantren_dompet_hold` (migrasi modul
+`20260802T230000__pesantren__pos_adapter`) — penahanan dua-langkah, pola
+sama dengan `cooperative_payment_hold`, sebab `authorize()` MENAHAN dana
+saat kasir memasukkan pembayaran dan `capture()` baru mewujudkannya saat
+penjualan selesai. `PesantrenDompetPaymentHandler` mengimplementasikan
+kontrak `ExternalPaymentHandler` dan didaftarkan lewat `onModuleInit()`,
+pola sama dengan `CooperativeModule`. Baris katalog `payment_method`
+(`EPESANTREN_DOMPET_SANTRI`) diseed lewat migrasi yang sama.
+
+`capture()` memanggil `PesantrenDompetService.belanja()` — pemeriksaan
+saldo dan batas harian yang SEBENARNYA (satu-satunya, tidak diduplikasi)
+tetap di EP-L; `authorize()` hanya pratinjau supaya kasir tahu lebih awal.
+
+**Keputusan desain yang sengaja berbeda dari koperasi:** `authToken` adalah
+NOMOR KARTU (EP-M) yang dipindai, bukan bukti persetujuan dari layar portal
+milik pemiliknya. Santri tidak (dan sengaja belum) punya akun portal
+sendiri, dan wali tidak berada di kantin saat anaknya jajan. Untuk
+transaksi kantin bernilai kecil, memindai kartu sebagai bukti hadir setara
+dengan kartu prabayar kantin fisik — dicatat eksplisit sebagai keputusan,
+bukan kelalaian meniru pola koperasi apa adanya (yang menuntut PIN/proof
+token dari portal, sesuai untuk transaksi besar seperti simpanan/pinjaman).
+
+Dibuktikan live end-to-end lewat API POS SUNGGUHAN terhadap `ponpes_demo`
+(bukan panggilan langsung ke kelas handler) — sample data POS dipasang,
+kasir ditugaskan ke register, shift dibuka, penjualan Rp17.000 dibuat:
+kartu tak dikenal ditolak saat `authorize()`; kartu Ahmad Fulan (sudah
+membelanjakan Rp15.000 hari itu pada EP-L) ditolak "melebihi batas harian"
+— pesan yang SAMA dengan yang EP-L hasilkan, membuktikan jalur tunggal
+pemeriksaan; kartu Ridwan Hakim (dompet baru, tanpa batas harian) berhasil
+menahan dana TANPA memotong saldo (diverifikasi langsung ke basis data:
+saldo tetap 50.000 setelah `authorize()`); menyelesaikan penjualan memicu
+`capture()` — saldo berkurang tepat menjadi 33.000 dan baris
+`pesantren_dompet_transaksi` tercatat merujuk id penahanannya; penjualan
+kedua yang DIBATALKAN memicu `reverse()` — status penahanan menjadi
+REVERSED dan saldo TIDAK tersentuh; memanggil endpoint pembayaran dua kali
+dengan `Idempotency-Key` yang sama menghasilkan `duplicate: true` dan
+hanya SATU baris penahanan di basis data.
+
+**Yang tidak dikerjakan:** adapter koperasi/klinik lain pada EP-N (baru
+POS); perubahan frontend web maupun Flutter (backend sudah menerima
+`authToken` secara generik lewat DTO yang sama dipakai koperasi — field
+input UI-nya belum ditambahkan pada `PosPaymentDialog.tsx` maupun layar
+kasir Flutter, dan menambah hanya pada satu klien akan membuat keduanya
+tidak sinkron); retur/refund dompet santri (pembayaran yang sudah
+`CAPTURED` tidak dapat di-`reverse()`, sama seperti koperasi — memerlukan
+alur retur tersendiri yang belum ada).
+
 ## Sesudah EP-A
 
 ```text
-EP-N   Adapter POS, koperasi, klinik
+EP-N2  Adapter koperasi dan klinik untuk ePesantren (POS sudah selesai)
 EP-O   Nilai dan rapor
 EP-P   Pelaporan
 EP-Q   UAT bersama pondok pertama
