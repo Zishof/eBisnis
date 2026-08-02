@@ -28,6 +28,8 @@ import { ExternalPaymentRegistry } from '../pos/external-payment.registry';
 import { PosModule } from '../pos/pos.module';
 import { PesantrenNilaiController } from './pesantren-nilai.controller';
 import { PesantrenNilaiService } from './pesantren-nilai.service';
+import { PesantrenPsbGelombangController, PesantrenPsbPendaftarController } from './pesantren-psb.controller';
+import { PesantrenPsbService } from './pesantren-psb.service';
 
 @Module({
   /*
@@ -53,6 +55,8 @@ import { PesantrenNilaiService } from './pesantren-nilai.service';
     PesantrenKartuController,
     PesantrenKioskController,
     PesantrenNilaiController,
+    PesantrenPsbGelombangController,
+    PesantrenPsbPendaftarController,
   ],
   providers: [
     PesantrenSantriService,
@@ -69,6 +73,7 @@ import { PesantrenNilaiService } from './pesantren-nilai.service';
     PesantrenKioskService,
     PesantrenDompetPaymentHandler,
     PesantrenNilaiService,
+    PesantrenPsbService,
   ],
 })
 export class PesantrenModule implements OnModuleInit {

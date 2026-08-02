@@ -600,13 +600,64 @@ rombongan belajar/kelas; kurikulum dan jadwal pelajaran; cetak rapor PDF
 ganjil/genap (saat ini satu nilai per komponen per TAHUN ajaran, belum
 membedakan semester dalam tahun yang sama).
 
+## Status EP-O2 — SELESAI, PSB/PPDB bergelombang
+
+Dikerjakan langsung sesudah EP-O, mengisi kekosongan PSB/PPDB yang tercatat
+di atas. Perintah pengguna eksplisit meminta modul ini lebih canggih
+daripada pendaftaran pondok (`modules/public/pesantren-registration.*`)
+yang sudah ada -- riset membuktikan keduanya memang berbeda alur sama
+sekali: pendaftaran pondok mendaftarkan sebuah TENANT baru, PSB/PPDB
+mendaftarkan seorang CALON SANTRI ke pondok yang sudah berjalan.
+
+Tiga tabel (`pesantren_psb_gelombang`, `pesantren_psb_pendaftar`,
+`pesantren_psb_jadwal`) mengangkut alur penuh: gelombang dibuka/ditutup,
+pendaftar mendaftar dengan nomor pendaftaran yang dibentuk atomik di dalam
+transaksi (kunci baris gelombang lewat `FOR UPDATE`, naikkan
+`nomor_urut_terakhir`, baru tulis baris pendaftar -- dua pendaftaran
+bersamaan tidak pernah menerima nomor kembar), diverifikasi, dijadwalkan
+ujian/wawancara (banyak jadwal per pendaftar), diluluskan/ditidakluluskan
+(menuntut minimal satu jadwal berstatus SELESAI sebelum diluluskan --
+ditegakkan di service, bukan sekadar tombol UI), diterima (menolak bila
+kuota gelombang sudah tercapai), lalu daftar ulang -- yang memanggil
+`PesantrenSantriService.catat()` langsung, bukan menulis ulang logikanya,
+sehingga NIS duplikat dan validasi santri tetap satu sumber kebenaran.
+
+Penempatan pasca-diterima SENGAJA hanya menyentuh
+`unit_pendidikan_tujuan_id` (sudah ada sejak EP-A) -- rombongan
+belajar/kelas (EP-O3) belum punya tabel, jadi PSB tidak berpura-pura bisa
+menempatkan ke kelas yang belum ada.
+
+Menu baru `EPESANTREN_PSB` diberikan ke `EPESANTREN_ADMIN` (P7) yang sudah
+ada -- tidak ada peran baru dibuat, sebab tidak ada kebutuhan pemisahan
+tugas yang eksplisit untuk PSB seperti halnya gerbang/izin (R10). Bila
+pondok tertentu kelak butuh panitia PSB yang terpisah dari admin penuh,
+peran baru dapat ditambahkan tanpa mengubah service ini sama sekali --
+hanya menambah baris `RoleCatalogEntry`.
+
+Live-test terhadap `ponpes_demo`: membuat gelombang G1 (kuota 2), menolak
+pendaftaran sebelum gelombang dibuka, mendaftarkan tiga calon santri
+(nomor `PSB-2026-2027-G1-00001/00002/00003` berurutan tanpa celah),
+menjalankan alur penuh calon pertama sampai daftar ulang (memverifikasi
+baris `pesantren_santri` baru benar-benar muncul di `GET
+/pesantren/santri`), menerima calon kedua (kuota terisi 2/2), menolak
+penerimaan calon ketiga dengan pesan "kuota sudah tercapai", membatalkan
+calon ketiga, dan menolak pembatalan kedua atas pendaftar yang sama.
+Ditemukan dan diperbaiki satu bug kecil saat live-test: `luluskan()`
+memvalidasi kelengkapan jadwal SEBELUM memvalidasi status pendaftar,
+sehingga pesan galat pada percobaan meluluskan pendaftar yang masih
+berstatus TERDAFTAR keliru menyebut jadwal, bukan status -- diperbaiki
+dengan menambah pemeriksaan status DIJADWALKAN terlebih dahulu.
+
+**Yang tidak dikerjakan:** rombongan belajar/kelas (EP-O3, belum ada tabel
+untuk ditempati); pembayaran biaya pendaftaran (kolom
+`biaya_pendaftaran` tercatat sebagai referensi, belum terhubung ke
+`pesantren_tagihan`/gateway pembayaran); notifikasi WhatsApp/SMS nomor
+pendaftaran ke orang tua (perlu NotificationPort, belum dikaitkan);
+pencetakan kartu ujian/bukti pendaftaran.
+
 ## Sesudah EP-A
 
 ```text
-EP-O2  PSB/PPDB -- pendaftaran calon santri bergelombang (ditemukan lewat
-       audit sistem lama, lebih canggih daripada pendaftaran pondok yang
-       sudah ada: jadwal ujian/wawancara, verifikasi calon, penomoran
-       otomatis, penempatan kelas pasca-diterima)
 EP-O3  Rombongan belajar/kelas (ditemukan lewat audit sistem lama --
        prasyarat presensi dan nilai per-kelas, bukan hanya per-santri)
 EP-O4  Kurikulum dan jadwal pelajaran (ditemukan lewat audit sistem lama)

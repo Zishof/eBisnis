@@ -77,6 +77,7 @@ const PERIZINAN_AKSI = ['READ', 'CREATE', 'APPROVE', 'REJECT', 'CANCEL', 'PRINT'
 const GERBANG_AKSI = ['READ', 'CREATE', 'PRINT'];
 const PORTAL_WALI_AKSI = ['READ'];
 const KIOSK_AKSI = ['READ'];
+const PSB_AKSI = ['READ', 'CREATE', 'UPDATE', 'REVIEW', 'APPROVE', 'REJECT', 'CANCEL', 'PRINT', 'EXPORT'];
 
 export const PESANTREN_MENUS: MenuNodeSeed[] = [
   {
@@ -209,6 +210,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 620,
     actions: CATAT,
   },
+  {
+    code: 'EPESANTREN_PSB',
+    label: 'PSB/PPDB',
+    translationKey: 'menu.epesantren.psb',
+    route: '/app/pesantren/psb',
+    icon: 'ClipboardList',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 630,
+    actions: PSB_AKSI,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -235,6 +246,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_DOMPET: 'P7',
       EPESANTREN_KARTU: 'P7',
       EPESANTREN_NILAI: 'P7',
+      EPESANTREN_PSB: 'P7',
     },
     dataScope: 'TENANT',
     core: false,

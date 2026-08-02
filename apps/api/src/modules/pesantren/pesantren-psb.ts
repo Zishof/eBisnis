@@ -1,0 +1,218 @@
+/**
+ * Aturan PSB/PPDB (EP-O2) — bagian yang dapat dibuktikan tanpa basis data.
+ *
+ * Mengikuti pola `pesantren-nilai.ts`/`pesantren-santri.ts`: aturan sebagai
+ * fungsi murni, dipanggil dari service yang membaca/menulis schema penyewa
+ * lewat SQL mentah.
+ */
+
+export const STATUS_GELOMBANG = ['DRAFT', 'DIBUKA', 'DITUTUP', 'SELESAI'] as const;
+export type StatusGelombang = (typeof STATUS_GELOMBANG)[number];
+
+export const STATUS_PENDAFTAR = [
+  'TERDAFTAR',
+  'VERIFIKASI',
+  'DIJADWALKAN',
+  'LULUS_SELEKSI',
+  'TIDAK_LULUS',
+  'DITERIMA',
+  'DAFTAR_ULANG',
+  'DIBATALKAN',
+] as const;
+export type StatusPendaftar = (typeof STATUS_PENDAFTAR)[number];
+
+export const JENIS_JADWAL = ['UJIAN_TULIS', 'TES_BACA_QURAN', 'WAWANCARA', 'TES_KESEHATAN', 'LAINNYA'] as const;
+export type JenisJadwal = (typeof JENIS_JADWAL)[number];
+
+export const STATUS_JADWAL = ['DIJADWALKAN', 'SELESAI', 'TIDAK_HADIR', 'DIBATALKAN'] as const;
+export type StatusJadwal = (typeof STATUS_JADWAL)[number];
+
+export const JENIS_KELAMIN_PENDAFTAR = ['L', 'P'] as const;
+
+export interface Galat {
+  field: string;
+  code: string;
+  message: string;
+}
+
+const POLA_KODE_GELOMBANG = /^[A-Za-z0-9_-]{1,16}$/;
+
+export interface MasukanGelombang {
+  tahunAjaranId?: string;
+  kode?: string;
+  nama?: string;
+  tanggalBuka?: string;
+  tanggalTutup?: string;
+  kuota?: number | null;
+  biayaPendaftaran?: number | null;
+}
+
+export function validasiGelombang(masukan: MasukanGelombang): Galat[] {
+  const galat: Galat[] = [];
+
+  if (!(masukan.tahunAjaranId ?? '').trim()) {
+    galat.push({ field: 'tahunAjaranId', code: 'WAJIB', message: 'Tahun ajaran wajib dipilih.' });
+  }
+
+  const kode = (masukan.kode ?? '').trim();
+  if (!kode) {
+    galat.push({ field: 'kode', code: 'WAJIB', message: 'Kode gelombang wajib diisi.' });
+  } else if (!POLA_KODE_GELOMBANG.test(kode)) {
+    galat.push({
+      field: 'kode',
+      code: 'TIDAK_SAH',
+      message: 'Kode gelombang hanya boleh huruf, angka, garis bawah, dan tanda hubung, maksimal 16 karakter.',
+    });
+  }
+
+  if (!(masukan.nama ?? '').trim()) {
+    galat.push({ field: 'nama', code: 'WAJIB', message: 'Nama gelombang wajib diisi.' });
+  }
+
+  if (!masukan.tanggalBuka) {
+    galat.push({ field: 'tanggalBuka', code: 'WAJIB', message: 'Tanggal buka wajib diisi.' });
+  }
+  if (!masukan.tanggalTutup) {
+    galat.push({ field: 'tanggalTutup', code: 'WAJIB', message: 'Tanggal tutup wajib diisi.' });
+  }
+  if (masukan.tanggalBuka && masukan.tanggalTutup) {
+    const buka = new Date(masukan.tanggalBuka);
+    const tutup = new Date(masukan.tanggalTutup);
+    if (!Number.isNaN(buka.getTime()) && !Number.isNaN(tutup.getTime()) && tutup.getTime() <= buka.getTime()) {
+      galat.push({
+        field: 'tanggalTutup',
+        code: 'SEBELUM_BUKA',
+        message: 'Tanggal tutup harus setelah tanggal buka.',
+      });
+    }
+  }
+
+  if (masukan.kuota != null && masukan.kuota <= 0) {
+    galat.push({ field: 'kuota', code: 'TIDAK_SAH', message: 'Kuota harus lebih besar dari nol bila diisi.' });
+  }
+
+  if (masukan.biayaPendaftaran != null && masukan.biayaPendaftaran < 0) {
+    galat.push({
+      field: 'biayaPendaftaran',
+      code: 'TIDAK_SAH',
+      message: 'Biaya pendaftaran tidak boleh negatif.',
+    });
+  }
+
+  return galat;
+}
+
+export interface MasukanPendaftar {
+  gelombangId?: string;
+  namaLengkap?: string;
+  jenisKelamin?: string;
+  tempatLahir?: string | null;
+  tanggalLahir?: string | null;
+  namaOrangTua?: string | null;
+  noHpOrangTua?: string | null;
+  alamat?: string | null;
+  asalSekolah?: string | null;
+  unitPendidikanTujuanId?: string | null;
+}
+
+export function validasiPendaftar(masukan: MasukanPendaftar): Galat[] {
+  const galat: Galat[] = [];
+
+  if (!(masukan.gelombangId ?? '').trim()) {
+    galat.push({ field: 'gelombangId', code: 'WAJIB', message: 'Gelombang wajib dipilih.' });
+  }
+
+  const nama = (masukan.namaLengkap ?? '').trim();
+  if (!nama) {
+    galat.push({ field: 'namaLengkap', code: 'WAJIB', message: 'Nama lengkap calon santri wajib diisi.' });
+  } else if (nama.length > 160) {
+    galat.push({ field: 'namaLengkap', code: 'TERLALU_PANJANG', message: 'Nama maksimal 160 karakter.' });
+  }
+
+  if (!JENIS_KELAMIN_PENDAFTAR.includes(masukan.jenisKelamin as 'L' | 'P')) {
+    galat.push({
+      field: 'jenisKelamin',
+      code: 'TIDAK_DIKENALI',
+      message: 'Jenis kelamin wajib dipilih (Laki-laki atau Perempuan).',
+    });
+  }
+
+  if (masukan.tanggalLahir) {
+    const d = new Date(masukan.tanggalLahir);
+    if (Number.isNaN(d.getTime())) {
+      galat.push({ field: 'tanggalLahir', code: 'TIDAK_SAH', message: 'Tanggal lahir tidak sah.' });
+    } else if (d.getTime() > Date.now()) {
+      galat.push({ field: 'tanggalLahir', code: 'DI_MASA_DEPAN', message: 'Tanggal lahir tidak boleh di masa depan.' });
+    }
+  }
+
+  return galat;
+}
+
+export interface MasukanJadwal {
+  pendaftarId?: string;
+  jenis?: string;
+  tanggal?: string;
+  waktuMulai?: string | null;
+  waktuSelesai?: string | null;
+  lokasi?: string | null;
+  penguji?: string | null;
+}
+
+export function validasiJadwal(masukan: MasukanJadwal): Galat[] {
+  const galat: Galat[] = [];
+
+  if (!(masukan.pendaftarId ?? '').trim()) {
+    galat.push({ field: 'pendaftarId', code: 'WAJIB', message: 'Pendaftar wajib dipilih.' });
+  }
+
+  if (!JENIS_JADWAL.includes(masukan.jenis as JenisJadwal)) {
+    galat.push({ field: 'jenis', code: 'TIDAK_DIKENALI', message: 'Jenis jadwal tidak dikenali.' });
+  }
+
+  if (!masukan.tanggal) {
+    galat.push({ field: 'tanggal', code: 'WAJIB', message: 'Tanggal jadwal wajib diisi.' });
+  } else if (Number.isNaN(new Date(masukan.tanggal).getTime())) {
+    galat.push({ field: 'tanggal', code: 'TIDAK_SAH', message: 'Tanggal jadwal tidak sah.' });
+  }
+
+  if (masukan.waktuMulai && masukan.waktuSelesai && masukan.waktuSelesai <= masukan.waktuMulai) {
+    galat.push({
+      field: 'waktuSelesai',
+      code: 'SEBELUM_MULAI',
+      message: 'Waktu selesai harus setelah waktu mulai.',
+    });
+  }
+
+  return galat;
+}
+
+export interface HasilJadwal {
+  status?: string;
+  nilai?: number | null;
+  catatanHasil?: string | null;
+}
+
+export function validasiHasilJadwal(masukan: HasilJadwal): Galat[] {
+  const galat: Galat[] = [];
+
+  if (!STATUS_JADWAL.includes(masukan.status as StatusJadwal)) {
+    galat.push({ field: 'status', code: 'TIDAK_DIKENALI', message: 'Status jadwal tidak dikenali.' });
+  }
+
+  if (masukan.nilai != null && (masukan.nilai < 0 || masukan.nilai > 100)) {
+    galat.push({ field: 'nilai', code: 'TIDAK_SAH', message: 'Nilai harus antara 0 dan 100.' });
+  }
+
+  return galat;
+}
+
+/**
+ * Membentuk nomor pendaftaran dari kode tahun ajaran, kode gelombang, dan
+ * urutan yang sudah dinaikkan atomik oleh service (`nomor_urut_terakhir`).
+ * Format: `PSB-{tahunAjaranCode}-{gelombangKode}-{00001}`.
+ */
+export function bentukNomorPendaftaran(tahunAjaranCode: string, gelombangKode: string, urutan: number): string {
+  const nomorUrut = String(urutan).padStart(5, '0');
+  return `PSB-${tahunAjaranCode}-${gelombangKode}-${nomorUrut}`;
+}

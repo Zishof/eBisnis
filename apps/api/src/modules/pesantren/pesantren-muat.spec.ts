@@ -33,6 +33,8 @@ import { PesantrenKioskService } from './pesantren-kiosk.service';
 import { PesantrenDompetPaymentHandler } from './pesantren-dompet-payment.handler';
 import { PesantrenNilaiController } from './pesantren-nilai.controller';
 import { PesantrenNilaiService } from './pesantren-nilai.service';
+import { PesantrenPsbGelombangController, PesantrenPsbPendaftarController } from './pesantren-psb.controller';
+import { PesantrenPsbService } from './pesantren-psb.service';
 
 function paramtypes(target: unknown): unknown[] {
   return (Reflect.getMetadata('design:paramtypes', target as object) as unknown[]) ?? [];
@@ -227,6 +229,24 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(tipe.filter((t) => t === undefined)).toEqual([]);
   });
 
+  it('setiap dependensi controller gelombang psb punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenPsbGelombangController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi controller pendaftar psb punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenPsbPendaftarController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi service psb punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenPsbService);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
   it('controller dan service terdaftar pada pesantren.module.ts', () => {
     const sumber = readFileSync(join(__dirname, 'pesantren.module.ts'), 'utf8');
     expect(sumber).toContain('PesantrenNilaiController');
@@ -258,6 +278,9 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(sumber).toContain('PesantrenKartuService');
     expect(sumber).toContain('PesantrenKioskController');
     expect(sumber).toContain('PesantrenKioskService');
+    expect(sumber).toContain('PesantrenPsbGelombangController');
+    expect(sumber).toContain('PesantrenPsbPendaftarController');
+    expect(sumber).toContain('PesantrenPsbService');
   });
 
   it('modul terdaftar pada app.module.ts', () => {
