@@ -16,6 +16,16 @@
 #   dapat berjalan di atas schema yang sudah dimutakhirkan. Bila suatu rilis
 #   memuat migration yang tidak reversible, hal itu dinyatakan pada catatan
 #   rilisnya dan pemulihan database memakai backup yang dibuat langkah pertama.
+#
+# CATATAN PENTING TENTANG SKRIP INI MENGUBAH DIRINYA SENDIRI
+#   `git pull` pada langkah "Ambil source" dapat menimpa update.sh ini
+#   SENDIRI. bash sudah membaca isi lamanya ke buffer sebelum baris itu
+#   berjalan, sehingga TANPA penanganan khusus, seluruh langkah SESUDAHNYA
+#   tetap memakai isi lama walau berkas di disk sudah baru (lihat variabel
+#   EBISNIS_REEXECED). Skrip ini menjalankan ulang dirinya sendiri persis
+#   sekali, tepat setelah source dimutakhirkan, supaya perubahan pada
+#   update.sh sendiri ikut aktif pada deploy yang SAMA yang menariknya --
+#   bukan baru pada deploy berikutnya.
 
 set -Eeuo pipefail
 
@@ -53,7 +63,26 @@ die()  { printf '\033[1;31m[x] %s\033[0m\n' "$*" >&2; exit 1; }
 [[ -f "$ENV_FILE" ]] || die "$ENV_FILE tidak ditemukan."
 
 as_app() { sudo -u "$APP_USER" bash -lc "$*"; }
-PREVIOUS=$(as_app "git -C '$APP_DIR' rev-parse HEAD")
+
+# Menjalankan ulang diri sendiri sekali, TEPAT SETELAH source dimutakhirkan
+# (lihat titik `exec` di bawah), sebab bash membaca skrip yang sedang berjalan
+# dari buffer yang sama sepanjang eksekusi -- `git pull` yang menimpa berkas
+# skrip ini SENDIRI di tengah jalan tidak membuat langkah-langkah SESUDAHNYA
+# ikut memakai isi yang baru. Tanpa ini, setiap perubahan pada update.sh
+# sendiri (mis. langkah baru) baru benar-benar aktif pada deploy KEDUA
+# setelahnya -- persis apa yang terjadi pada langkah "Sandbox demo
+# ePesantren": deploy yang menambahkannya berjalan tanpa satu pun jejaknya.
+#
+# `PREVIOUS` wajib disusulkan lewat environment, bukan dihitung ulang: pada
+# proses yang dijalankan ulang, HEAD git SUDAH berada di commit baru (checkout
+# di langkah berikutnya sudah terjadi pada proses sebelumnya), sehingga
+# menghitungnya ulang di sini akan salah menganggap commit baru sebagai
+# commit lama.
+if [[ -n "${EBISNIS_REEXECED:-}" ]]; then
+  PREVIOUS="$EBISNIS_PREVIOUS"
+else
+  PREVIOUS=$(as_app "git -C '$APP_DIR' rev-parse HEAD")
+fi
 
 # ---------------------------------------------------------------------------
 log "1/8  Backup database"
@@ -115,13 +144,21 @@ Pilihan:
 Rincian: docs/deployment/ubuntu.md bagian \"Backup ketika pg_dump lebih tua\"."
   fi
 
-  echo "    memakai $PG_DUMP (versi $CLIENT_VER), server versi ${SERVER_VER:-?}"
-  if "$PG_DUMP" --dbname="$ADMIN_URL" --format=custom --file="$BACKUP_FILE" 2>/tmp/pgdump.err; then
-    chmod 600 "$BACKUP_FILE"
-    echo "    $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+  if [[ -n "${EBISNIS_REEXECED:-}" ]]; then
+    # Sudah dibuat pada proses sebelum dijalankan ulang (lihat catatan
+    # EBISNIS_REEXECED di atas) -- membuatnya lagi di sini akan menghasilkan
+    # dump kedua yang percuma dari database yang belum sempat berubah.
+    BACKUP_FILE="$EBISNIS_BACKUP_FILE"
+    echo "    sudah dibuat sebelum menjalankan ulang skrip: $BACKUP_FILE"
   else
-    cat /tmp/pgdump.err >&2
-    die "Backup gagal. Pembaruan dihentikan — tidak ada perubahan yang dilakukan."
+    echo "    memakai $PG_DUMP (versi $CLIENT_VER), server versi ${SERVER_VER:-?}"
+    if "$PG_DUMP" --dbname="$ADMIN_URL" --format=custom --file="$BACKUP_FILE" 2>/tmp/pgdump.err; then
+      chmod 600 "$BACKUP_FILE"
+      echo "    $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+    else
+      cat /tmp/pgdump.err >&2
+      die "Backup gagal. Pembaruan dihentikan — tidak ada perubahan yang dilakukan."
+    fi
   fi
 fi
 
@@ -160,6 +197,15 @@ elif [[ "$DEPLOYED" == "$NEW" ]]; then
 fi
 echo "    ${PREVIOUS:0:7} -> ${NEW:0:7}"
 as_app "git -C '$APP_DIR' log --oneline '$PREVIOUS'..'$NEW'" | sed 's/^/      /' || true
+
+# Menjalankan ulang diri sendiri TEPAT SEKALI, sekarang bahwa source sudah
+# berada di commit baru -- lihat catatan panjang pada EBISNIS_REEXECED di
+# atas. Sesudah titik ini, seluruh langkah memakai isi update.sh yang baru
+# saja ditarik, bukan isi yang sudah dibaca bash sebelum `git pull` berjalan.
+if [[ -z "${EBISNIS_REEXECED:-}" ]]; then
+  export EBISNIS_REEXECED=1 EBISNIS_PREVIOUS="$PREVIOUS" EBISNIS_BACKUP_FILE="$BACKUP_FILE"
+  exec bash "$APP_DIR/deploy/update.sh" "$@"
+fi
 
 # Symlink .env dipastikan tetap benar setelah checkout.
 ln -sfn "$ENV_FILE" "$APP_DIR/apps/api/.env"
