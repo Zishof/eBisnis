@@ -49,16 +49,27 @@ status_registry() {
 }
 
 jalankan_seed() {
-  local SKRIP_SRC="$APP_DIR/scripts/onboard-raudlatul-ulum/seed.js"
+  local SKRIP_DIR="$APP_DIR/scripts/onboard-raudlatul-ulum"
   local WORKDIR="$APP_DIR/apps/api"
   local SKRIP_DEST="$WORKDIR/onboard-raudlatul-ulum-seed.js"
+  # `seed.js` membaca gambar (logo, hero, poster berita) dari `assets/`
+  # SEJAJAR dirinya sendiri (`path.join(__dirname, 'assets')`) -- begitu
+  # skripnya disalin ke $WORKDIR supaya node_modules API ikut terpakai,
+  # `assets/` WAJIB ikut disalin ke tempat yang sama, atau seluruh gambar
+  # senyap dilewati ("berkas belum ada") tanpa menggagalkan deploy sama
+  # sekali. Persis cacat yang terjadi pada percobaan pertama fitur ini.
+  local ASSETS_DEST="$WORKDIR/assets"
 
-  cp "$SKRIP_SRC" "$SKRIP_DEST"
+  cp "$SKRIP_DIR/seed.js" "$SKRIP_DEST"
+  rm -rf "$ASSETS_DEST"
+  cp -r "$SKRIP_DIR/assets" "$ASSETS_DEST"
   if sudo -u "$APP_USER" bash -lc "cd '$WORKDIR' && DATABASE_ADMIN_URL='$ADMIN_URL' SEED_SCHEMA='$SCHEMA' node '$SKRIP_DEST'"; then
     rm -f "$SKRIP_DEST"
+    rm -rf "$ASSETS_DEST"
     return 0
   else
     rm -f "$SKRIP_DEST"
+    rm -rf "$ASSETS_DEST"
     return 1
   fi
 }
