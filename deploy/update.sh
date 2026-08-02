@@ -7,8 +7,8 @@
 #   sudo bash /opt/ebisnis/app/deploy/update.sh --force      # bangun ulang meski commit sama
 #
 # Urutan: backup database -> ambil source -> build -> migration -> restart ->
-# health check. Bila health check gagal, aplikasi otomatis dikembalikan ke
-# commit sebelumnya.
+# health check -> sandbox demo ePesantren -> Apache. Bila health check gagal,
+# aplikasi otomatis dikembalikan ke commit sebelumnya.
 #
 # CATATAN PENTING TENTANG ROLLBACK
 #   Pengembalian otomatis hanya mengembalikan APLIKASI, bukan database.
@@ -56,7 +56,7 @@ as_app() { sudo -u "$APP_USER" bash -lc "$*"; }
 PREVIOUS=$(as_app "git -C '$APP_DIR' rev-parse HEAD")
 
 # ---------------------------------------------------------------------------
-log "1/7  Backup database"
+log "1/8  Backup database"
 # ---------------------------------------------------------------------------
 # shellcheck disable=SC1090
 ADMIN_URL=$(grep -E '^DATABASE_ADMIN_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
@@ -129,7 +129,7 @@ fi
 ls -1t "$BACKUP_DIR"/ebisnis-*.dump 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm -f
 
 # ---------------------------------------------------------------------------
-log "2/7  Ambil source"
+log "2/8  Ambil source"
 # ---------------------------------------------------------------------------
 as_app "git -C '$APP_DIR' fetch --all --tags --prune"
 
@@ -212,13 +212,13 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-log "3/7  Install dependency dan build"
+log "3/8  Install dependency dan build"
 # ---------------------------------------------------------------------------
 as_app "cd '$APP_DIR' && pnpm install --frozen-lockfile" || rollback
 as_app "cd '$APP_DIR' && pnpm db:generate && pnpm build"  || rollback
 
 # ---------------------------------------------------------------------------
-log "4/7  Migration"
+log "4/8  Migration"
 # ---------------------------------------------------------------------------
 # Schema platform.
 as_app "cd '$APP_DIR/apps/api' && pnpm exec prisma migrate status" || true
@@ -237,14 +237,14 @@ as_app "cd '$APP_DIR/apps/api' && pnpm exec prisma migrate deploy" || rollback
 as_app "cd '$APP_DIR' && pnpm --filter @ebisnis/api migrate:tenants" || rollback
 
 # ---------------------------------------------------------------------------
-log "5/7  Restart layanan"
+log "5/8  Restart layanan"
 # ---------------------------------------------------------------------------
 install -m 644 "$APP_DIR/deploy/systemd/ebisnis-api.service" /etc/systemd/system/ebisnis-api.service
 systemctl daemon-reload
 systemctl restart ebisnis-api
 
 # ---------------------------------------------------------------------------
-log "6/7  Health check"
+log "6/8  Health check"
 # ---------------------------------------------------------------------------
 HEALTHY=0
 for i in $(seq 1 30); do
@@ -267,7 +267,21 @@ printf '%s
 ' "$NEW" > "$DEPLOY_STAMP"
 
 # ---------------------------------------------------------------------------
-log "7/7  Apache"
+log "7/8  Sandbox demo ePesantren"
+# ---------------------------------------------------------------------------
+# Mendaftarkan ponpes_demo (bila belum ada) lewat alur publik yang sama
+# dengan pendaftar asli, lalu menyemai data contoh besar TEPAT SEKALI --
+# lihat deploy/ensure-demo-pesantren.sh untuk jaminan idempotensinya.
+# Kegagalan di sini tidak pernah menggagalkan deploy.
+#
+# `${PSQL:-psql}` sebab `$PSQL` hanya diisi di dalam langkah backup, dan
+# tidak ada sama sekali bila dipanggil dengan SKIP_DB_BACKUP=1.
+APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:-psql}" \
+  bash "$APP_DIR/deploy/ensure-demo-pesantren.sh" \
+  || warn "Penyiapan sandbox demo ePesantren gagal — periksa manual bila perlu."
+
+# ---------------------------------------------------------------------------
+log "8/8  Apache"
 # ---------------------------------------------------------------------------
 install -m 644 "$APP_DIR/deploy/apache/ebisnis-app.inc" /etc/apache2/conf-available/ebisnis-app.inc
 install -m 644 "$APP_DIR/deploy/apache/ebisnis.conf"    /etc/apache2/sites-available/ebisnis.conf

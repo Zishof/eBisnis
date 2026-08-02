@@ -13,6 +13,19 @@ Setiap baris ditandai `is_sample = true` dan (mayoritas tabel) menyimpan
 `sample_batch_id` per tahap — dapat dihapus lewat baris itu bila suatu saat
 diperlukan.
 
+## Dijalankan otomatis oleh deploy -- tepat sekali
+
+`deploy/update.sh` (langkah "Sandbox demo ePesantren") memanggil
+`deploy/ensure-demo-pesantren.sh` di setiap deploy, yang mendaftarkan
+`ponpes_demo` lewat alur publik bila belum ada, lalu menjalankan kelima
+skrip di bawah ini -- tetapi HANYA pada deploy yang pertama kali
+mendaftarkan tenant tersebut. Deploy berikutnya melihat tenant sudah
+`READY` dan tidak menjalankan skrip data contoh lagi, sehingga
+non-idempotensi yang dijelaskan di bawah tidak pernah tersentuh oleh
+proses deploy rutin. Menjalankan manual (langkah "Cara menjalankan" di
+bawah) tetap didukung untuk mengisi ulang tenant demo yang sudah ada
+sebelumnya, atau untuk tenant lain di luar `ponpes_demo`.
+
 ## Prasyarat
 
 - Tenant `ponpes_demo` sudah ter-provisioning (schema ada, migrasi tenant
@@ -76,9 +89,12 @@ guru, rombongan, mata pelajaran, asrama):
   bahan dapur, kitab, gelombang PSB) yang memakai `ON CONFLICT DO NOTHING`.
   Jangan jalankan dua kali tanpa membersihkan hasil sebelumnya bila ingin
   jumlah yang presisi.
-- **Bukan bagian dari deploy rutin.** Ini bukan migrasi -- jangan
-  dimasukkan ke `deploy/update.sh`. Jalankan manual, sekali, saat tenant
-  demo memang perlu diisi ulang.
+- **Bukan migrasi**, dan tidak ada mekanisme "sudah pernah jalan" bawaan
+  di dalam skripnya sendiri -- keamanannya terhadap jalan dua kali
+  sepenuhnya bergantung pada pemanggil (`ensure-demo-pesantren.sh`
+  memeriksa status registry sebelum memanggil, bukan skrip ini).
+  Menjalankan salah satu skrip secara manual di luar jalur itu tetap
+  menuntut kehati-hatian yang sama seperti sebelumnya.
 - **Jumlah rombongan belajar bisa kurang dari target** bila kombinasi
   tingkat+huruf kelas pada dua unit pendidikan (MTs, MA) habis sebelum
   mencapai 50 -- ini keterbatasan pool nama kelas pada skrip contoh, bukan
