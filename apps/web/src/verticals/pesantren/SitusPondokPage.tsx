@@ -25,6 +25,7 @@ import { Link } from 'react-router-dom';
 import { GraduationCap, Mail, MapPin, Newspaper, Phone } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
 import { usePondokFavicon } from './use-pondok-favicon';
+import { usePondokSeo } from './use-pondok-seo';
 
 interface Profil {
   is_published: boolean;
@@ -47,6 +48,7 @@ interface Profil {
   kontak_email: string | null;
   map_embed_url: string | null;
   instagram_url: string | null;
+  meta_description: string | null;
 }
 
 interface Berita {
@@ -137,6 +139,22 @@ export function SitusPondokPage() {
   }, [data?.profil.nama_tampilan]);
 
   usePondokFavicon(data?.profil.logo_url);
+
+  usePondokSeo(
+    data
+      ? {
+          nama: data.profil.nama_tampilan,
+          // Diutamakan deskripsi yang ditulis pengurus khusus untuk mesin
+          // pencari; tagline sebagai cadangan bila belum diisi -- lebih baik
+          // daripada tidak ada deskripsi sama sekali.
+          deskripsi: data.profil.meta_description || data.profil.tagline,
+          logoUrl: data.profil.logo_url,
+          heroImageUrl: data.profil.hero_image_url,
+          alamat: data.profil.alamat_publik,
+          telepon: data.profil.kontak_telepon,
+        }
+      : undefined,
+  );
 
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center text-slate-500">Memuat situs…</div>;
