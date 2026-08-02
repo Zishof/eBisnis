@@ -21,6 +21,7 @@ import { EmbeddingService } from './ai/embedding.service';
 import { VerticalCatalogRegistry } from './provisioning/vertical-catalog.registry';
 import { VERTICAL_CATALOGS } from './provisioning/vertical-catalogs';
 import { PublicTenantResolver } from './tenant/public-tenant-resolver.service';
+import { TenantFileBlobService } from './files/tenant-file-blob.service';
 
 /**
  * Modul infrastruktur global: akses database platform, akses schema tenant,
@@ -31,6 +32,7 @@ import { PublicTenantResolver } from './tenant/public-tenant-resolver.service';
   providers: [
     VerticalCatalogRegistry,
     PublicTenantResolver,
+    TenantFileBlobService,
     OllamaAdapter,
     ModelCatalogService,
     EmbeddingService,
@@ -54,6 +56,7 @@ import { PublicTenantResolver } from './tenant/public-tenant-resolver.service';
   exports: [
     VerticalCatalogRegistry,
     PublicTenantResolver,
+    TenantFileBlobService,
     OllamaAdapter,
     ModelCatalogService,
     EmbeddingService,

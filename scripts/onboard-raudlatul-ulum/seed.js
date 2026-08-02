@@ -18,6 +18,8 @@
 const { Client } = require('pg');
 const crypto = require('crypto');
 const argon2 = require('argon2');
+const fs = require('fs');
+const path = require('path');
 
 const CONN = process.env.DATABASE_ADMIN_URL || process.env.DATABASE_URL;
 if (!CONN) {
@@ -54,6 +56,41 @@ const MAPEL_MI = [
   ['SKI', 'Sejarah Kebudayaan Islam', 'AGAMA'],
   ['BHS_ARAB', 'Bahasa Arab', 'AGAMA'],
 ];
+
+/**
+ * Menyimpan satu berkas gambar SEBAGAI DATA (PostgreSQL Large Object) pada
+ * `file_object`, mengganti isi lama pada `code` yang sama bila ada -- pola
+ * sama persis dengan `TenantFileBlobService.simpanTunggal` di sisi API,
+ * ditulis ulang di sini karena skrip ini standalone (Node + pg langsung,
+ * bukan lewat Nest DI).
+ */
+async function simpanGambarBlob(tenantClient, { code, name, filename, mimeType, buffer }, actorUserId) {
+  await tenantClient.query('BEGIN');
+  try {
+    const lama = await tenantClient.query(
+      `SELECT oid::text AS oid FROM file_object WHERE code = $1 AND deleted_at IS NULL`,
+      [code],
+    );
+    if (lama.rows[0]?.oid) {
+      await tenantClient.query(`SELECT lo_unlink($1::oid)`, [lama.rows[0].oid]);
+    }
+    const lo = await tenantClient.query(`SELECT lo_from_bytea(0, $1::bytea) AS oid`, [buffer]);
+    const oid = lo.rows[0].oid;
+    await tenantClient.query(
+      `INSERT INTO file_object (code, name, storage_key, filename, mime_type, size_bytes, oid, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::oid, $8, $8)
+       ON CONFLICT (code) WHERE deleted_at IS NULL DO UPDATE SET
+         name = EXCLUDED.name, filename = EXCLUDED.filename, mime_type = EXCLUDED.mime_type,
+         size_bytes = EXCLUDED.size_bytes, oid = EXCLUDED.oid, updated_at = now(),
+         updated_by = $8, version = file_object.version + 1`,
+      [code, name, `blob:${code}`, filename, mimeType, buffer.length, oid, actorUserId],
+    );
+    await tenantClient.query('COMMIT');
+  } catch (err) {
+    await tenantClient.query('ROLLBACK');
+    throw err;
+  }
+}
 
 async function peranId(client, kode) {
   const r = await client.query(`SELECT id::text AS id FROM "${SCHEMA}".role WHERE code = $1 LIMIT 1`, [kode]);
@@ -178,17 +215,18 @@ async function main() {
   } else {
     await tenant.query(
       `INSERT INTO pesantren_website_setting
-         (singleton, is_published, theme_code, nama_tampilan, tagline, sejarah_html, visi, misi,
+         (singleton, is_published, theme_code, nama_tampilan, tagline, muqodimah_html, sejarah_html, visi, misi,
           pengasuh, tahun_berdiri, afiliasi, alamat_publik, kontak_telepon, kontak_whatsapp,
           kontak_email, meta_description, updated_by)
        VALUES (TRUE, TRUE, 'HIJAU_ISLAMI', 'Raudlatul Ulum',
          'Menyemai Ilmu, Menanam Akhlak, Menebar Manfaat di Bumi Bojonegoro',
-         $1, $2, $3, 'KH. Masyhuri Dahlan', 2006, 'Nahdlatul Ulama',
+         $1, $2, $3, $4, 'KH. Masyhuri Dahlan', 2006, 'Nahdlatul Ulama',
          'Desa Campurejo, Kecamatan Bojonegoro Kota, Kabupaten Bojonegoro, Jawa Timur',
          '081234500000', '081234500000', 'admin@raudlatululum.santri.info',
          'Pondok Pesantren Raudlatul Ulum Bojonegoro -- pendidikan diniyah, Madrasah Ibtidaiyah, dan pelatihan keterampilan (BLK) di bawah naungan Nahdlatul Ulama.',
-         $4)`,
+         $5)`,
       [
+        "<p>Alhamdulillahi rabbil 'alamin, segala puji bagi Allah subhanahu wa ta'ala yang telah melimpahkan rahmat dan hidayah-Nya, sehingga Pondok Pesantren Raudlatul Ulum dapat terus istiqomah mengemban amanah mendidik generasi Qur'ani. Shalawat serta salam senantiasa tercurah kepada junjungan kita Nabi Muhammad shallallahu 'alaihi wasallam, keluarga, para sahabat, dan seluruh pengikutnya hingga akhir zaman.</p><p>Sebagai bagian dari keluarga besar Nahdlatul Ulama, Pondok Pesantren Raudlatul Ulum berkomitmen menjaga dan mengamalkan nilai-nilai Ahlussunnah wal Jama'ah An-Nahdliyah -- <em>tawassuth</em> (moderat), <em>tasamuh</em> (toleran), <em>tawazun</em> (seimbang), dan <em>i'tidal</em> (adil) -- dalam setiap laku pendidikan dan dakwah yang kami selenggarakan. Semoga Allah subhanahu wa ta'ala senantiasa memberkahi setiap langkah pengabdian ini, menjadikannya bermanfaat bagi santri, keluarga, dan masyarakat luas. Aamiin.</p>",
         "<p>Pondok Pesantren Raudlatul Ulum berdiri di Desa Campurejo, Kecamatan Bojonegoro Kota, Kabupaten Bojonegoro, Jawa Timur, dirintis oleh <strong>KH. Masyhuri Dahlan</strong> sejak tahun 2006. Bermula dari niat sederhana untuk menghadirkan ruang belajar agama yang membumi bagi masyarakat Campurejo, pondok ini tumbuh menjadi kawasan pendidikan yang menaungi Madrasah Ibtidaiyah (MI), Madrasah Diniyah Takmiliyah, hingga Balai Latihan Kerja Komunitas (BLK) sebagai wujud nyata bahwa ilmu agama dan kemandirian ekonomi umat berjalan beriringan.</p><p>Di bawah naungan Nahdlatul Ulama, Raudlatul Ulum turut aktif dalam Ikatan Pondok Pesantren Bojonegoro (IPPB), termasuk menjadi tuan rumah forum Bahtsul Masail dan rapat kerja para pengasuh pesantren se-Bojonegoro.</p>",
         "Mewujudkan generasi Qur'ani yang berilmu, beramal, dan berakhlak karimah, serta mandiri secara ekonomi demi kemaslahatan umat.",
         "1. Menyelenggarakan pendidikan diniyah dan formal yang berkualitas.\n2. Menanamkan akhlak karimah berlandaskan Ahlussunnah wal Jama'ah An-Nahdliyah.\n3. Membina kemandirian santri melalui unit pelatihan keterampilan (BLK Komunitas).\n4. Mengabdi kepada masyarakat sekitar melalui dakwah dan pemberdayaan ekonomi umat.",
@@ -220,6 +258,97 @@ async function main() {
       'https://kelembagaan.kemnaker.go.id',
       '2026-02-10',
     ],
+    [
+      'Sosialisasi Pencegahan DBD bagi Santri Raudlatul Ulum',
+      'Tim pengabdian masyarakat menggelar sosialisasi pencegahan demam berdarah dengue (DBD) di lingkungan pondok memakai metode Participatory Learning and Action.',
+      "<p>Sebuah tim pengabdian masyarakat menyelenggarakan sosialisasi pencegahan DBD di Pondok Pesantren Raudlatul Ulum Campurejo, memakai metode partisipatif agar santri tidak sekadar menerima materi tetapi turut mempraktikkan langkah pencegahan jentik nyamuk di lingkungan pondok. Kegiatan ini dilaporkan dalam jurnal pengabdian masyarakat SOLMA (UHAMKA).</p>",
+      'https://journal.uhamka.ac.id/index.php/solma/article/view/18091',
+      '2024-11-11',
+    ],
+    [
+      'Pendampingan Digitalisasi Administrasi Pondok Raudlatul Ulum',
+      'Program pengabdian masyarakat melatih pengurus pondok mengelola administrasi lewat Excel, Google Forms/Sheets, dan pengelolaan blog -- menggantikan pencatatan manual.',
+      "<p>Sebelumnya administrasi Pondok Pesantren Raudlatul Ulum dikerjakan serba manual. Lewat program pengabdian masyarakat, pengurus pondok dilatih memakai Microsoft Excel (termasuk Analysis ToolPak untuk evaluasi), basis data Google Forms/Sheets, serta pengelolaan blog/situs -- langkah awal modernisasi tata kelola pondok. Kegiatan ini dilaporkan dalam jurnal pengabdian masyarakat SOLMA (UHAMKA).</p>",
+      'https://journal.uhamka.ac.id/index.php/solma/article/view/20984',
+      '2026-03-01',
+    ],
+    [
+      'Penanaman Karakter Spiritual Sejak Dini di PAUD, TK, dan SD Lingkungan Pondok',
+      'Kajian akademik meneliti penanaman karakter spiritual pada anak usia dini di satuan PAUD, TK, dan SD yang bernaung di lingkungan Pondok Pesantren Raudlatul Ulum Campurejo.',
+      "<p>Sebuah artikel pada Jurnal ABIDUMASY (Vol. 5 No. 2, 2024) meneliti bagaimana nilai-nilai spiritual ditanamkan sejak dini kepada anak-anak di satuan PAUD, TK, dan SD yang berada di lingkungan Pondok Pesantren Raudlatul Ulum Campurejo, Bojonegoro -- ditulis oleh Moh. Miftahul Choiri, Denny Nurdiansyah, dan Auliyaur Rokhim.</p>",
+      'https://doi.org/10.33752/abidumasy.v5i02.7299',
+      '2024-06-01',
+    ],
+    [
+      "Mujahadah dan Istighosah: Pembinaan Spiritual Santri dan Masyarakat",
+      "Program pembinaan spiritual rutin berupa mujahadah dan istighosah diselenggarakan bagi santri dan masyarakat sekitar Pondok Pesantren Raudlatul Ulum Campurejo.",
+      "<p>Pondok Pesantren Raudlatul Ulum Campurejo menyelenggarakan program pembinaan spiritual berupa mujahadah dan istighosah bagi santri sekaligus masyarakat sekitar -- salah satu wujud dakwah rutin pondok yang didokumentasikan dalam Jurnal ABIDUMASY oleh tim penulis yang sama dengan kajian karakter spiritual PAUD/TK/SD.</p>",
+      'https://ejournal.unhasy.ac.id/index.php/ABIDUMASY/article/view/5121',
+      '2024-03-26',
+    ],
+    [
+      "Jam'iyyah Ta'lim Mujahadah Ahad Pahing: Dakwah Rutin Raudlatul Ulum untuk Masyarakat Campurejo",
+      "Kajian skripsi UIN Sunan Kalijaga meneliti strategi dakwah program rutin JTMAP (Jam'iyyah Ta'lim Mujahadah Ahad Pahing) yang diselenggarakan Pondok Pesantren Raudlatul Ulum bagi masyarakat Desa Campurejo.",
+      "<p>Pondok Pesantren Raudlatul Ulum menyelenggarakan Jam'iyyah Ta'lim Mujahadah Ahad Pahing (JTMAP), sebuah program dakwah rutin yang digelar setiap Ahad Pahing bagi masyarakat Desa Campurejo, Kabupaten Bojonegoro. Program ini menjadi objek kajian skripsi dakwah di UIN Sunan Kalijaga Yogyakarta yang meneliti strategi dakwahnya dalam menjawab kejenuhan beragama di masyarakat setempat.</p>",
+      'https://digilib.uin-suka.ac.id/id/eprint/11650/',
+      '2014-01-01',
+    ],
+    [
+      'Peran Wali Santri dalam Memotivasi Anak Belajar di Madrasah Diniyah Raudlatul Ulum',
+      'Skripsi UNUGIRI meneliti peran orang tua/wali santri dalam memotivasi anak mengikuti pendidikan di Madrasah Diniyah Raudlatul Ulum Campurejo.',
+      '<p>Sebuah skripsi Pendidikan Agama Islam Universitas Nahdlatul Ulama Sunan Giri (UNUGIRI) Bojonegoro, ditulis oleh Masrofatul Fitriyah, meneliti bagaimana wali santri berperan memotivasi anak-anaknya untuk mengikuti pendidikan di Madrasah Diniyah Takmiliyah Raudlatul Ulum Campurejo.</p>',
+      'https://repository.unugiri.ac.id',
+      '2021-01-01',
+    ],
+    [
+      'Kecerdasan Emosional dan Prestasi Belajar Siswa MI Raudlatul Ulum',
+      'Kajian akademik meneliti kecerdasan emosional sebagai media peningkatan prestasi belajar siswa di Madrasah Ibtidaiyah Raudlatul Ulum Bojonegoro.',
+      '<p>Sebuah kajian akademik meneliti hubungan kecerdasan emosional dengan prestasi belajar siswa di Madrasah Ibtidaiyah (MI) Raudlatul Ulum Bojonegoro -- menunjukkan perhatian dunia akademik terhadap praktik pendidikan di madrasah ini.</p>',
+      'https://www.researchgate.net/publication/399066081',
+      '2025-01-01',
+    ],
+    [
+      'BLK Komunitas Raudlatul Ulum Resmi Terdaftar di Sistem Kelembagaan Kemnaker',
+      'Balai Latihan Kerja Komunitas Raudlatul Ulum tercatat resmi sebagai Lembaga Pelatihan Kerja Swasta (LPKS) dalam sistem kelembagaan Kementerian Ketenagakerjaan RI.',
+      '<p>BLK Komunitas Raudlatul Ulum tercatat sebagai Lembaga Pelatihan Kerja Swasta (LPKS) dalam sistem kelembagaan SIAPkerja Kementerian Ketenagakerjaan RI -- pengakuan formal atas peran pondok dalam pelatihan vokasi bagi santri dan masyarakat sekitar.</p>',
+      'https://kelembagaan.kemnaker.go.id/home/companies/deecd9f6-641b-4ab6-871d-0c66b3aacce1/profiles',
+      '2023-01-01',
+    ],
+    [
+      'Yayasan Raudlatul Ulum Tervalidasi dalam Sistem Kemendikbudristek',
+      'Data yayasan penyelenggara Pondok Pesantren Raudlatul Ulum tercatat dan tervalidasi dalam sistem Vervalyayasan Kementerian Pendidikan, Kebudayaan, Riset, dan Teknologi.',
+      '<p>Yayasan yang menaungi satuan pendidikan Raudlatul Ulum di Jl. Lisman Gg. Buntu 1, Desa Campurejo, tercatat dan tervalidasi dalam sistem Vervalyayasan Kemendikbudristek -- salah satu syarat tata kelola formal satuan pendidikan di bawahnya, termasuk TK dan MI Raudlatul Ulum.</p>',
+      'https://vervalyayasan.data.kemdikbud.go.id',
+      '2022-01-01',
+    ],
+    [
+      'Pembukaan DIKTAMA PASTI dan Pelantikan Pengurus Pagar Nusa Dihadiri Dandim Bojonegoro',
+      'Komandan Kodim 0813 Bojonegoro menghadiri pelantikan pengurus cabang PSNU Pagar Nusa dan pembukaan DIKTAMA PASTI yang berlangsung di lingkungan Pondok Pesantren Raudlatul Ulum.',
+      '<p>Komandan Kodim 0813 Bojonegoro menghadiri acara pelantikan pengurus cabang Pagar Nusa (badan otonom NU) serta pembukaan DIKTAMA PASTI yang diselenggarakan di lingkungan Pondok Pesantren Raudlatul Ulum -- menunjukkan hubungan baik pondok dengan unsur TNI dan organisasi banom NU setempat.</p>',
+      'https://www.kodim0813bojonegoro.mil.id/dandim-bojonegoro-hadiri-pelantikan-pimpinan-cabang-psnu-pagar-nusa-dan-pembukaan-diktama-pasti/',
+      '2022-08-01',
+    ],
+    [
+      'Pengasuh Raudlatul Ulum Dipercaya Menjadi Wakil Katib PCNU Bojonegoro 2025-2030',
+      'Auliyaur Rokhim, tokoh Pondok Pesantren Raudlatul Ulum, dipercaya menjabat Wakil Katib Pengurus Cabang Nahdlatul Ulama (PCNU) Bojonegoro masa khidmat 2025-2030.',
+      '<p>Susunan pengurus PCNU Bojonegoro masa khidmat 2025-2030 mencantumkan Auliyaur Rokhim -- tokoh yang juga memimpin satuan pendidikan di lingkungan Pondok Pesantren Raudlatul Ulum -- sebagai Wakil Katib, menegaskan keterikatan erat pondok dengan struktur organisasi Nahdlatul Ulama di tingkat kabupaten.</p>',
+      'https://jatim.nu.or.id/pantura/inilah-susunan-pengurus-pcnu-bojonegoro-masa-khidmat-2025-2030-zvEnH',
+      '2025-01-01',
+    ],
+    [
+      'Raudlatul Ulum Tercatat dalam Data Pondok Pesantren Resmi Kabupaten Bojonegoro',
+      'Pondok Pesantren Raudlatul Ulum terdaftar dalam data terbuka (open data) pondok pesantren yang dikelola Pemerintah Kabupaten Bojonegoro.',
+      '<p>Pondok Pesantren Raudlatul Ulum tercatat dalam data pondok pesantren resmi yang dipublikasikan Pemerintah Kabupaten Bojonegoro lewat portal data terbukanya -- bagian dari pendataan pesantren se-kabupaten untuk keperluan pembinaan dan penyaluran program pemerintah daerah.</p>',
+      'https://data.bojonegorokab.go.id/public/reff_pendidikan/export_pondok',
+      '2023-01-01',
+    ],
+    [
+      'Kehadiran Digital: MI dan BLK Komunitas Raudlatul Ulum Aktif di Media Sosial',
+      'Unit pendidikan dan pelatihan di lingkungan pondok aktif membagikan kegiatan lewat akun Instagram resmi masing-masing, memudahkan wali santri dan masyarakat mengikuti perkembangan pondok.',
+      '<p>Madrasah Ibtidaiyah Raudlatul Ulum (@miru.bojonegoro) dan BLK Komunitas Raudlatul Ulum (@blkk_raudlatul_ulum_bojonegoro) aktif membagikan dokumentasi kegiatan belajar-mengajar dan pelatihan lewat akun Instagram resmi masing-masing -- salah satu cara pondok menjaga keterbukaan informasi kepada wali santri dan masyarakat luas.</p>',
+      'https://instagram.com/miru.bojonegoro',
+      '2026-01-01',
+    ],
   ];
   for (const [judul, ringkasan, isiHtml, sumberUrl, tanggalTerbit] of BERITA) {
     const ada = await tenant.query(`SELECT 1 FROM pesantren_berita WHERE judul = $1`, [judul]);
@@ -230,7 +359,50 @@ async function main() {
       [judul, ringkasan, isiHtml, sumberUrl, tanggalTerbit, ACTOR],
     );
   }
-  console.log('Berita pondok siap (3 kabar terverifikasi dari riset).');
+  console.log(`Berita pondok siap (${BERITA.length} kabar, seluruhnya bersumber dari riset -- lihat sumber_url masing-masing).`);
+
+  // -- 1c. Logo dan gambar latar (BLOB, lihat ATTRIBUTION.md untuk sumber) --
+  //
+  // Disimpan SEBAGAI DATA (PostgreSQL Large Object pada file_object),
+  // bukan folder server -- diminta langsung pengguna. Mengunggah ulang
+  // (mis. pengurus mengganti sendiri lewat menu Profil) MENGGANTI baris
+  // ini, bukan menambah baris baru -- lihat simpanGambarBlob().
+  const ASSETS_DIR = path.join(__dirname, 'assets');
+  const GAMBAR = [
+    { code: 'PESANTREN_LOGO', name: 'Logo pondok', kolom: 'logo_url', file: 'logo-mi-ru.png', mimeType: 'image/png' },
+    {
+      code: 'PESANTREN_HERO_BACKGROUND',
+      name: 'Gambar latar situs',
+      kolom: 'hero_image_url',
+      file: 'hero-taklim-pesantren.jpg',
+      mimeType: 'image/jpeg',
+      // Lisensi CC BY-SA 4.0 mewajibkan atribusi -- lihat assets/ATTRIBUTION.md.
+      atribusi: 'Foto: Muhamad Izzul Fiqih, CC BY-SA 4.0, via Wikimedia Commons',
+    },
+  ];
+  for (const g of GAMBAR) {
+    const lintasan = path.join(ASSETS_DIR, g.file);
+    if (!fs.existsSync(lintasan)) {
+      console.log(`Lewati ${g.name}: berkas ${g.file} belum ada di ${ASSETS_DIR}.`);
+      continue;
+    }
+    const sudahAda = await tenant.query(`SELECT 1 FROM file_object WHERE code = $1 AND deleted_at IS NULL`, [g.code]);
+    if (sudahAda.rows[0]) {
+      console.log(`${g.name} sudah tersimpan -- tidak ditimpa (pengurus mungkin sudah mengganti sendiri).`);
+      continue;
+    }
+    const buffer = fs.readFileSync(lintasan);
+    await simpanGambarBlob(tenant, { code: g.code, name: g.name, filename: g.file, mimeType: g.mimeType, buffer }, ACTOR);
+    const atribusiSql = g.atribusi ? `, hero_image_attribution = $3` : '';
+    const params = g.atribusi
+      ? [`/api/v1/pesantren/public/gambar/${g.code === 'PESANTREN_LOGO' ? 'logo' : 'hero'}`, ACTOR, g.atribusi]
+      : [`/api/v1/pesantren/public/gambar/${g.code === 'PESANTREN_LOGO' ? 'logo' : 'hero'}`, ACTOR];
+    await tenant.query(
+      `UPDATE pesantren_website_setting SET ${g.kolom} = $1, updated_at = now(), updated_by = $2${atribusiSql} WHERE singleton = TRUE`,
+      params,
+    );
+    console.log(`${g.name} tersimpan (${(buffer.length / 1024).toFixed(0)} KB).`);
+  }
 
   // -- 2. Unit pendidikan (real, terverifikasi lewat riset) -----------------
   const UNIT = [

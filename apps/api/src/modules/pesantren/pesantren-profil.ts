@@ -12,6 +12,30 @@ export const TEMA_SITUS = [
 ] as const;
 export type TemaSitus = (typeof TEMA_SITUS)[number];
 
+export const KATEGORI_GAMBAR_PROFIL = ['LOGO', 'HERO'] as const;
+export type KategoriGambarProfil = (typeof KATEGORI_GAMBAR_PROFIL)[number];
+
+/**
+ * `code` `file_object` per kategori -- lihat `TenantFileBlobService.simpanTunggal`
+ * (satu baris per code, mengunggah ulang mengganti isinya). Dipakai baik oleh
+ * `PesantrenProfilService` (menulis) maupun `PesantrenPublicService` (membaca)
+ * -- ditaruh di sini, bukan di salah satu service, supaya keduanya tidak
+ * saling bergantung satu sama lain hanya demi satu konstanta.
+ */
+export const KODE_BERKAS_GAMBAR_PROFIL: Record<KategoriGambarProfil, string> = {
+  LOGO: 'PESANTREN_LOGO',
+  HERO: 'PESANTREN_HERO_BACKGROUND',
+};
+
+/**
+ * Lintasan publik yang menyajikan gambar ini -- lihat
+ * `PesantrenPublicController.gambar()`. Relatif (bukan URL penuh) supaya
+ * benar pada domain mana pun `<pondok>.santri.info` dilayani.
+ */
+export function lintasanGambarProfil(kategori: KategoriGambarProfil): string {
+  return `/api/v1/pesantren/public/gambar/${kategori.toLowerCase()}`;
+}
+
 export interface Galat {
   field: string;
   code: string;
@@ -23,6 +47,7 @@ export interface MasukanProfil {
   themeCode?: string;
   namaTampilan?: string | null;
   tagline?: string | null;
+  muqodimahHtml?: string | null;
   sejarahHtml?: string | null;
   visi?: string | null;
   misi?: string | null;
@@ -31,6 +56,7 @@ export interface MasukanProfil {
   afiliasi?: string | null;
   logoUrl?: string | null;
   heroImageUrl?: string | null;
+  heroImageAttribution?: string | null;
   alamatPublik?: string | null;
   kontakTelepon?: string | null;
   kontakWhatsapp?: string | null;

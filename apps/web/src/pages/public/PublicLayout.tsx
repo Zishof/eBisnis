@@ -8,6 +8,8 @@ import { api } from '../../lib/api';
 import { SUPPORTED_LOCALES } from '../../i18n';
 import { useTheme } from '../../app/theme-context';
 import { useAuth } from '../../app/auth-context';
+import { slugPondokDariHost } from '../../verticals/pesantren/santri-host';
+import { PondokChrome } from '../../verticals/pesantren/PondokChrome';
 
 export interface SiteConfig {
   code: string;
@@ -63,6 +65,35 @@ export function PublicLayout() {
   const { theme, toggle } = useTheme();
   const { user } = useAuth();
   const { data: site } = useSiteConfig();
+
+  /*
+   * Subdomain pondok (`<slug>.santri.info`) TIDAK PERNAH memakai bingkai
+   * eBisnis.id ini -- pengunjungnya sedang mencari pondoknya sendiri, bukan
+   * platformnya. Diperiksa di titik masuk paling atas, sebelum satu pun
+   * elemen bermerek eBisnis dirender, supaya tidak ada kedipan merek yang
+   * salah sebelum beralih ke `PondokChrome`.
+   */
+  if (slugPondokDariHost()) {
+    return <PondokChrome />;
+  }
+  return <PublicLayoutEBisnis site={site} t={t} i18n={i18n} theme={theme} toggle={toggle} user={user} />;
+}
+
+function PublicLayoutEBisnis({
+  site,
+  t,
+  i18n,
+  theme,
+  toggle,
+  user,
+}: {
+  site: ReturnType<typeof useSiteConfig>['data'];
+  t: ReturnType<typeof useTranslation>['t'];
+  i18n: ReturnType<typeof useTranslation>['i18n'];
+  theme: ReturnType<typeof useTheme>['theme'];
+  toggle: ReturnType<typeof useTheme>['toggle'];
+  user: ReturnType<typeof useAuth>['user'];
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const location = useLocation();

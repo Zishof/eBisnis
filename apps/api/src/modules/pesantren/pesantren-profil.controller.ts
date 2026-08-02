@@ -2,14 +2,19 @@
  * Titik masuk HTTP pengaturan situs publik pondok (profil, tema tampilan).
  */
 
-import { Body, Controller, Get, Put } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Post, Put, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiParam, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { IsBoolean, IsIn, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PesantrenProfilService } from './pesantren-profil.service';
-import { TEMA_SITUS } from './pesantren-profil';
+import { KATEGORI_GAMBAR_PROFIL, KategoriGambarProfil, TEMA_SITUS } from './pesantren-profil';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
+
+/** Ditolak di luar daftar ini -- lihat komentar pada `PesantrenProfilService.unggahGambar`. */
+const MIME_GAMBAR_SAH = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const UKURAN_MAKSIMUM_BYTES = 5 * 1024 * 1024;
 
 function schemaWajib(user: AuthenticatedUser): string {
   if (!user.schemaName) {
@@ -30,6 +35,9 @@ class PerbaruiProfilDto {
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255)
   tagline?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  muqodimahHtml?: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString()
   sejarahHtml?: string;
@@ -54,6 +62,10 @@ class PerbaruiProfilDto {
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500)
   heroImageUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Kredit sumber gambar latar, mis. lisensi CC. Kosong berarti tidak perlu atribusi.' })
+  @IsOptional() @IsString() @MaxLength(255)
+  heroImageAttribution?: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString()
   alamatPublik?: string;
@@ -95,5 +107,47 @@ export class PesantrenProfilController {
   @ApiOperation({ summary: 'Memperbarui pengaturan situs publik pondok (profil, tema, kontak)' })
   perbarui(@Body() dto: PerbaruiProfilDto, @CurrentUser() user: AuthenticatedUser) {
     return this.profil.perbarui(schemaWajib(user), dto, user.userId);
+  }
+
+  /**
+   * Mengunggah logo atau gambar latar (hero) situs pondok. Disimpan SEBAGAI
+   * DATA di skema penyewa (PostgreSQL Large Object, lihat
+   * `TenantFileBlobService`), bukan folder server -- diminta langsung
+   * pengguna. `logo_url`/`hero_image_url` diperbarui otomatis menunjuk
+   * endpoint publik yang menyajikannya (`PesantrenPublicController.gambar`).
+   */
+  @Permissions('EPESANTREN_PROFIL.UPDATE')
+  @Post('gambar/:kategori')
+  @ApiParam({ name: 'kategori', enum: KATEGORI_GAMBAR_PROFIL })
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Mengunggah logo atau gambar latar (hero) situs pondok' })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: UKURAN_MAKSIMUM_BYTES } }))
+  async unggahGambar(
+    @Param('kategori') kategori: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const kategoriUpper = kategori.toUpperCase();
+    if (!KATEGORI_GAMBAR_PROFIL.includes(kategoriUpper as KategoriGambarProfil)) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        `Kategori gambar tidak dikenali. Pilih salah satu: ${KATEGORI_GAMBAR_PROFIL.join(', ')}.`,
+      );
+    }
+    if (!file) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Berkas gambar wajib disertakan.');
+    }
+    if (!MIME_GAMBAR_SAH.has(file.mimetype)) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Jenis berkas tidak didukung. Gunakan JPEG, PNG, atau WEBP.',
+      );
+    }
+    return this.profil.unggahGambar(
+      schemaWajib(user),
+      kategoriUpper as KategoriGambarProfil,
+      { filename: file.originalname, mimeType: file.mimetype, buffer: file.buffer },
+      user.userId,
+    );
   }
 }
