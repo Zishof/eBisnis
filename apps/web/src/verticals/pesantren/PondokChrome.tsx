@@ -31,6 +31,7 @@ import { Link, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { apiRequest } from '../../lib/api';
+import { usePondokFavicon } from './use-pondok-favicon';
 
 interface ProfilRingkas {
   profil: {
@@ -58,6 +59,8 @@ export function PondokChrome() {
       document.title = sebelumnya;
     };
   }, [nama]);
+
+  usePondokFavicon(data?.profil.logo_url);
 
   return (
     <div className="flex min-h-screen flex-col bg-white dark:bg-slate-950">
