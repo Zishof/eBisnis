@@ -167,4 +167,36 @@ export class PesantrenPortalWaliService {
       [santriId],
     );
   }
+
+  /**
+   * Saldo dan riwayat dompet satu anak (EP-L) — baca saja. Top-up dan
+   * belanja tetap hanya lewat layar pengurus (`PesantrenDompetController`);
+   * portal ini sengaja tidak punya satu pun endpoint tulis, sebab wali
+   * membayarkan sesuatu lewat portal berarti payment gateway sungguhan --
+   * belum ada, dan §6 melarang mengklaim yang belum ada.
+   */
+  async dompetAnak(schemaName: string, waliId: string, santriId: string) {
+    await this.verifikasiKepemilikan(schemaName, waliId, santriId);
+    const S = `"${schemaName}"`;
+    const dompet = await this.tenantDb.queryOne<{ id: string; saldo: string; batas_harian: string | null }>(
+      schemaName,
+      `SELECT id::text, saldo::text, batas_harian::text
+         FROM ${S}.pesantren_dompet
+        WHERE santri_id = $1 AND deleted_at IS NULL`,
+      [santriId],
+    );
+    if (!dompet) {
+      return { adaDompet: false, saldo: null, batasHarian: null, riwayat: [] };
+    }
+    const riwayat = await this.tenantDb.query(
+      schemaName,
+      `SELECT jenis, jumlah::text, saldo_sesudah::text, keterangan, created_at::text
+         FROM ${S}.pesantren_dompet_transaksi
+        WHERE dompet_id = $1
+        ORDER BY created_at DESC
+        LIMIT 25`,
+      [dompet.id],
+    );
+    return { adaDompet: true, saldo: dompet.saldo, batasHarian: dompet.batas_harian, riwayat };
+  }
 }

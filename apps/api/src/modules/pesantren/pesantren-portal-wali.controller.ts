@@ -90,4 +90,12 @@ export class PesantrenPortalWaliController {
     const { schema, wali } = await this.konteks(user);
     return this.portal.izinAnak(schema, wali.wali_id, santriId);
   }
+
+  @Permissions('EPESANTREN_PORTAL_WALI.READ')
+  @Get('anak/:santriId/dompet')
+  @ApiOperation({ summary: 'Saldo dan riwayat dompet satu anak (baca saja)' })
+  async dompetAnak(@Param('santriId') santriId: string, @CurrentUser() user: AuthenticatedUser) {
+    const { schema, wali } = await this.konteks(user);
+    return this.portal.dompetAnak(schema, wali.wali_id, santriId);
+  }
 }

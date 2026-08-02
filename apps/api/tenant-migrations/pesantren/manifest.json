@@ -47,6 +47,12 @@
       "file": "20260802T200000__pesantren__perizinan.sql",
       "name": "EP-J: Perizinan dan gerbang",
       "description": "pesantren_izin, pesantren_gerbang_log. Menegakkan docs/santri-info/13 R10 secara struktural -- pesantren_gerbang_log tidak pernah menulis status izin, dan hanya menunjuk izin yang sudah DISETUJUI."
+    },
+    {
+      "id": "20260802T210000__pesantren__dompet",
+      "file": "20260802T210000__pesantren__dompet.sql",
+      "name": "EP-L: Dompet santri dan batas belanja",
+      "description": "pesantren_dompet, pesantren_dompet_transaksi -- ledger ketiga yang berdiri sendiri, terpisah dari platform.billing_invoice (langganan platform) dan pesantren_tagihan (SPP, EP-F), sesuai larangan keras §6 mencampur ketiganya. Saldo dihitung dari log transaksi, bukan dipercaya sebagai angka tunggal."
     }
   ]
 }

@@ -392,10 +392,53 @@ tanpa data, sebab akun wali tanpa anak tidak berguna untuk menguji
 membuktikan kasus wali beranak lebih dari satu. Kata sandi sama dengan
 akun uji EPESANTREN_ADMIN/EPESANTREN_PETUGAS_GERBANG di atas.
 
+## Status EP-L — SEBAGIAN, dompet manual tanpa top-up mandiri wali
+
+**Yang dikerjakan:** tabel `pesantren_dompet` dan `pesantren_dompet_transaksi`
+(migrasi modul `20260802T210000__pesantren__dompet`) — ledger KETIGA yang
+berdiri sendiri, terpisah baik dari `platform.billing_invoice` (langganan
+platform) maupun `pesantren_tagihan` (SPP, EP-F), sesuai larangan keras §6
+mencampur ketiganya. Saldo pada `pesantren_dompet.saldo` adalah salinan
+yang selalu ditulis ulang dalam transaksi yang sama dengan baris
+`pesantren_dompet_transaksi` barunya — kebenarannya berasal dari log,
+sama seperti capaian tahfiz EP-I.
+
+Berbeda dari kapasitas kamar EP-G (yang mendokumentasikan keterbatasan
+tanpa penguncian baris sebagai risiko rendah yang diterima), transaksi
+dompet menyangkut uang — pemeriksaan saldo dan batas harian, serta
+penulisan baris baru, berada dalam SATU transaksi dengan
+`SELECT ... FOR UPDATE` pada baris dompetnya, sehingga dua permintaan
+belanja bersamaan tidak dapat keduanya lolos pemeriksaan sebelum salah
+satu menuliskan hasilnya.
+
+API `PesantrenDompetController` (`/pesantren/dompet`) dibuktikan live
+dengan data sampel nyata terhadap `ponpes_demo`: dompet dibuka dengan batas
+harian Rp20.000, dompet ganda untuk santri yang sama ditolak konflik,
+top-up Rp50.000 lalu belanja Rp15.000 berhasil dengan saldo akhir yang
+benar (Rp35.000), belanja kedua yang membuat total harian melebihi batas
+ditolak dengan pesan yang menyebutkan angka yang sudah dan akan
+dibelanjakan, belanja yang melebihi SALDO (bukan batas harian) ditolak
+lebih dulu dengan pesan berbeda, riwayat transaksi terbaca kembali sesuai
+urutan, jumlah negatif ditolak validasi, dompet tak dikenal 404, dan tanpa
+token 401.
+
+Portal wali (EP-K) diperluas dengan satu endpoint BACA-SAJA
+`/pesantren/portal/wali/anak/:santriId/dompet` — dibuktikan live: wali1
+melihat saldo dan riwayat anak sendiri dengan benar, ditolak NOT_FOUND
+saat mencoba melihat dompet anak wali lain, dan anak yang belum dibukakan
+dompet mengembalikan `adaDompet: false` alih-alih error.
+
+**Yang secara eksplisit BELUM dikerjakan (menjawab permintaan "wali bisa
+membayarkan sekaligus" dari sesi ini):** wali TIDAK dapat top-up dari
+portal sendiri — top-up hanya lewat layar pengurus (`PesantrenDompetController`,
+manual). Menyediakan top-up mandiri wali berarti payment gateway
+sungguhan (kartu/VA/e-wallet) tersambung ke `PaymentPort`, yang belum ada
+sama sekali untuk ePesantren — dicatat sebagai pekerjaan terpisah, sama
+seperti pembayaran SPP gabungan multi-anak pada catatan EP-K.
+
 ## Sesudah EP-A
 
 ```text
-EP-L   Dompet santri dan batas belanja
 EP-M   Anjungan dan kartu RFID
 EP-N   Adapter POS, koperasi, klinik
 EP-O   Nilai dan rapor
