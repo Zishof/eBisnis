@@ -13,6 +13,7 @@ import {
 } from './portal.catalog';
 import { LABEL_TERPESAN, bolehMencariPortal } from './portal-host';
 import { normalkanHost } from '../tenant/public-host';
+import { PESANTREN_ROLES } from '../../modules/pesantren/rbac/pesantren-vertical.catalog';
 
 describe('katalog portal', () => {
   it('memuat tepat portal yang diminta', () => {
@@ -138,6 +139,26 @@ describe('katalog portal', () => {
     for (const p of KATALOG_PORTAL) {
       expect(p.crossLinkDescription.length).toBeGreaterThan(3);
       expect(p.tagline.length).toBeGreaterThan(10);
+    }
+  });
+
+  it('demoDefaultRole (bila ada) benar-benar peran yang terdaftar', () => {
+    /*
+     * `demoDefaultRole` mempersempit sesi demo portal ke satu peran (lihat
+     * dokumentasi `PortalKatalog`) -- literal string, bukan impor
+     * `ROLE_ADMIN_EPESANTREN` dkk, sebab `portal.catalog.ts` adalah
+     * infrastruktur dan tidak boleh bergantung pada modul fitur. Kode yang
+     * salah ketik di sana TIDAK menghasilkan galat saat dipakai
+     * (`createDemoSession` hanya mencatat peringatan dan jatuh ke gabungan
+     * seluruh peran) -- artinya salah ketik akan diam-diam membuat demo
+     * TIDAK PERNAH dipersempit, dan baru ketahuan lewat laporan pengguna.
+     * Uji ini mengikat literalnya ke katalog peran sungguhan supaya galat
+     * ketik semacam itu gagal di sini, bukan di produksi.
+     */
+    const kodePeranPesantren = new Set(PESANTREN_ROLES.map((r) => r.code));
+    for (const p of KATALOG_PORTAL) {
+      if (!p.demoDefaultRole) continue;
+      expect(kodePeranPesantren.has(p.demoDefaultRole)).toBe(true);
     }
   });
 

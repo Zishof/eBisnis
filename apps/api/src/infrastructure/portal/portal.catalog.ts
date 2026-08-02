@@ -60,6 +60,21 @@ export interface PortalKatalog {
    * kebetulan dipakai bersama untuk uji coba, disegarkan manual bila perlu.
    */
   demoSchema?: string;
+  /**
+   * Kode peran yang membatasi sesi demo portal ini, bila ada.
+   *
+   * Tanpa ini, sesi demo menggabungkan SELURUH peran yang dipegang subjek
+   * demo pada `demoSchema` -- termasuk OWNER (`allModules: true`), yang
+   * membuat demo ePesantren ikut menampilkan menu Kasir/POS, Marketplace,
+   * dan Koperasi yang tersemai bersama pada schema yang sama. Peran itu
+   * WAJIB benar-benar dipegang subjek demo pada `demoSchema` --
+   * `createDemoSession` mencatat peringatan dan jatuh ke gabungan seluruh
+   * peran (bukan gagal) bila tidak ditemukan, sebab demo yang terlalu luas
+   * lebih baik daripada demo yang tidak dapat dibuka sama sekali.
+   *
+   * Kosong berarti tidak dipersempit -- perilaku lama.
+   */
+  demoDefaultRole?: string;
 }
 
 /** Satu penerbit identitas untuk seluruh ekosistem (§521). */
@@ -131,6 +146,13 @@ export const KATALOG_PORTAL: PortalKatalog[] = [
     // schema `demo` bersama bila baris ini belum ter-provision (`TENANT_NOT_READY`
     // diterjemahkan dengan jelas, bukan diam-diam salah sasaran).
     demoSchema: 'ponpes_demo',
+    /*
+     * String literal, bukan impor `ROLE_ADMIN_EPESANTREN` dari
+     * `modules/pesantren/rbac/pesantren-vertical.catalog.ts` -- infrastruktur
+     * tidak bergantung pada modul fitur (arah ketergantungan sebaliknya),
+     * persis seperti `demoSchema: 'ponpes_demo'` di atas juga literal.
+     */
+    demoDefaultRole: 'EPESANTREN_ADMIN',
   },
   {
     code: 'EMEDIK',
