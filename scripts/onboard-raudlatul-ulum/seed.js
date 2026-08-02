@@ -18,6 +18,8 @@
 const { Client } = require('pg');
 const crypto = require('crypto');
 const argon2 = require('argon2');
+const fs = require('fs');
+const path = require('path');
 
 const CONN = process.env.DATABASE_ADMIN_URL || process.env.DATABASE_URL;
 if (!CONN) {
@@ -54,6 +56,41 @@ const MAPEL_MI = [
   ['SKI', 'Sejarah Kebudayaan Islam', 'AGAMA'],
   ['BHS_ARAB', 'Bahasa Arab', 'AGAMA'],
 ];
+
+/**
+ * Menyimpan satu berkas gambar SEBAGAI DATA (PostgreSQL Large Object) pada
+ * `file_object`, mengganti isi lama pada `code` yang sama bila ada -- pola
+ * sama persis dengan `TenantFileBlobService.simpanTunggal` di sisi API,
+ * ditulis ulang di sini karena skrip ini standalone (Node + pg langsung,
+ * bukan lewat Nest DI).
+ */
+async function simpanGambarBlob(tenantClient, { code, name, filename, mimeType, buffer }, actorUserId) {
+  await tenantClient.query('BEGIN');
+  try {
+    const lama = await tenantClient.query(
+      `SELECT oid::text AS oid FROM file_object WHERE code = $1 AND deleted_at IS NULL`,
+      [code],
+    );
+    if (lama.rows[0]?.oid) {
+      await tenantClient.query(`SELECT lo_unlink($1::oid)`, [lama.rows[0].oid]);
+    }
+    const lo = await tenantClient.query(`SELECT lo_from_bytea(0, $1::bytea) AS oid`, [buffer]);
+    const oid = lo.rows[0].oid;
+    await tenantClient.query(
+      `INSERT INTO file_object (code, name, storage_key, filename, mime_type, size_bytes, oid, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::oid, $8, $8)
+       ON CONFLICT (code) WHERE deleted_at IS NULL DO UPDATE SET
+         name = EXCLUDED.name, filename = EXCLUDED.filename, mime_type = EXCLUDED.mime_type,
+         size_bytes = EXCLUDED.size_bytes, oid = EXCLUDED.oid, updated_at = now(),
+         updated_by = $8, version = file_object.version + 1`,
+      [code, name, `blob:${code}`, filename, mimeType, buffer.length, oid, actorUserId],
+    );
+    await tenantClient.query('COMMIT');
+  } catch (err) {
+    await tenantClient.query('ROLLBACK');
+    throw err;
+  }
+}
 
 async function peranId(client, kode) {
   const r = await client.query(`SELECT id::text AS id FROM "${SCHEMA}".role WHERE code = $1 LIMIT 1`, [kode]);
@@ -323,6 +360,49 @@ async function main() {
     );
   }
   console.log(`Berita pondok siap (${BERITA.length} kabar, seluruhnya bersumber dari riset -- lihat sumber_url masing-masing).`);
+
+  // -- 1c. Logo dan gambar latar (BLOB, lihat ATTRIBUTION.md untuk sumber) --
+  //
+  // Disimpan SEBAGAI DATA (PostgreSQL Large Object pada file_object),
+  // bukan folder server -- diminta langsung pengguna. Mengunggah ulang
+  // (mis. pengurus mengganti sendiri lewat menu Profil) MENGGANTI baris
+  // ini, bukan menambah baris baru -- lihat simpanGambarBlob().
+  const ASSETS_DIR = path.join(__dirname, 'assets');
+  const GAMBAR = [
+    { code: 'PESANTREN_LOGO', name: 'Logo pondok', kolom: 'logo_url', file: 'logo-mi-ru.png', mimeType: 'image/png' },
+    {
+      code: 'PESANTREN_HERO_BACKGROUND',
+      name: 'Gambar latar situs',
+      kolom: 'hero_image_url',
+      file: 'hero-taklim-pesantren.jpg',
+      mimeType: 'image/jpeg',
+      // Lisensi CC BY-SA 4.0 mewajibkan atribusi -- lihat assets/ATTRIBUTION.md.
+      atribusi: 'Foto: Muhamad Izzul Fiqih, CC BY-SA 4.0, via Wikimedia Commons',
+    },
+  ];
+  for (const g of GAMBAR) {
+    const lintasan = path.join(ASSETS_DIR, g.file);
+    if (!fs.existsSync(lintasan)) {
+      console.log(`Lewati ${g.name}: berkas ${g.file} belum ada di ${ASSETS_DIR}.`);
+      continue;
+    }
+    const sudahAda = await tenant.query(`SELECT 1 FROM file_object WHERE code = $1 AND deleted_at IS NULL`, [g.code]);
+    if (sudahAda.rows[0]) {
+      console.log(`${g.name} sudah tersimpan -- tidak ditimpa (pengurus mungkin sudah mengganti sendiri).`);
+      continue;
+    }
+    const buffer = fs.readFileSync(lintasan);
+    await simpanGambarBlob(tenant, { code: g.code, name: g.name, filename: g.file, mimeType: g.mimeType, buffer }, ACTOR);
+    const atribusiSql = g.atribusi ? `, hero_image_attribution = $3` : '';
+    const params = g.atribusi
+      ? [`/api/v1/pesantren/public/gambar/${g.code === 'PESANTREN_LOGO' ? 'logo' : 'hero'}`, ACTOR, g.atribusi]
+      : [`/api/v1/pesantren/public/gambar/${g.code === 'PESANTREN_LOGO' ? 'logo' : 'hero'}`, ACTOR];
+    await tenant.query(
+      `UPDATE pesantren_website_setting SET ${g.kolom} = $1, updated_at = now(), updated_by = $2${atribusiSql} WHERE singleton = TRUE`,
+      params,
+    );
+    console.log(`${g.name} tersimpan (${(buffer.length / 1024).toFixed(0)} KB).`);
+  }
 
   // -- 2. Unit pendidikan (real, terverifikasi lewat riset) -----------------
   const UNIT = [

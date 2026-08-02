@@ -260,6 +260,13 @@
       "file": "V037__pos_offline_sale.sql",
       "name": "Penjualan luring: jatah nomor struk dan karantina",
       "description": "pos_receipt_block memesan potongan rentang dari number_sequence yang sudah ada, supaya register yang luring menerbitkan nomor struk yang tidak mungkin bertabrakan dengan register lain maupun dengan penjualan daring — tanpa membuat sumber penomoran kedua. pos_offline_quarantine menahan transaksi luring yang tidak dapat dibukukan apa adanya (harga berbeda dari hitungan peladen, stok kurang, shift sudah tertutup, nomor di luar jatah) beserta KEDUA angkanya, karena menolaknya berarti transaksi yang uangnya sudah berpindah tangan tidak muncul di pembukuan, sedangkan menerimanya diam-diam dengan angka peladen berarti struk di tangan pembeli menyebut angka lain. Saklar POS_OFFLINE_SALE_ENABLED bawaannya mati. Bernomor V037, bukan V035: sesi paralel eKoperasi sudah memakai V035 dan V036 pada basis data bersama sebelum berkasnya masuk Git. Migrasi yang sudah diterapkan tidak boleh diubah nomornya."
+    },
+    {
+      "version": "V038",
+      "sequence": 38,
+      "file": "V038__file_object_blob.sql",
+      "name": "Penyimpanan BLOB pada file_object",
+      "description": "Menambah kolom oid (NULLABLE) pada file_object -- Metode 2 penyimpanan berkas (Large Object PostgreSQL di dalam basis data skema penyewa), berdampingan dengan storage_key (Metode 1, rujukan eksternal) yang sudah ada sejak V001. Diminta langsung pengguna (pola LampiranLain sistem lama). Baris berbasis BLOB mengisi storage_key dengan rujukan tampilan (blob:<id>), bukan alamat fisik, supaya kode lama yang membaca storage_key tanpa pemeriksaan NULL tetap aman."
     }
   ]
 }

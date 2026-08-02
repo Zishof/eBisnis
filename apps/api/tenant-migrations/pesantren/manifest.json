@@ -155,6 +155,12 @@
       "file": "20260803T040000__pesantren__muqodimah.sql",
       "name": "Muqodimah situs publik",
       "description": "Menambah muqodimah_html (NULLABLE) pada pesantren_website_setting -- sambutan pembuka bernuansa keagamaan (basmalah/hamdalah/shalawat/nilai Aswaja An-Nahdliyah), terpisah dari sejarah_html sebab keduanya berbeda maksud."
+    },
+    {
+      "id": "20260803T050000__pesantren__hero_attribution",
+      "file": "20260803T050000__pesantren__hero_attribution.sql",
+      "name": "Atribusi gambar latar",
+      "description": "Menambah hero_image_attribution (NULLABLE) pada pesantren_website_setting -- keterangan sumber/lisensi gambar latar, WAJIB dikosongkan begitu pengurus mengganti dengan gambar miliknya sendiri (lihat PesantrenProfilService.unggahGambar)."
     }
   ]
 }

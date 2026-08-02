@@ -39,6 +39,7 @@ interface Profil {
   afiliasi: string | null;
   logo_url: string | null;
   hero_image_url: string | null;
+  hero_image_attribution: string | null;
   alamat_publik: string | null;
   kontak_telepon: string | null;
   kontak_whatsapp: string | null;
@@ -156,6 +157,13 @@ export function SitusPondokPage() {
             alt=""
             className="absolute inset-0 h-full w-full object-cover opacity-25"
           />
+        )}
+        {profil.hero_image_attribution && (
+          // Lisensi gambar bawaan (CC BY-SA dsb.) mewajibkan atribusi ini --
+          // lihat scripts/onboard-raudlatul-ulum/assets/ATTRIBUTION.md.
+          <p className="absolute bottom-1.5 end-2 text-[10px] text-white/50">
+            {profil.hero_image_attribution}
+          </p>
         )}
         <div className="container-page relative py-16 sm:py-24">
           <p className="text-sm font-medium uppercase tracking-widest text-white/70">
