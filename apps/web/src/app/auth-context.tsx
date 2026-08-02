@@ -64,7 +64,7 @@ interface AuthContextValue {
   user: SessionUser | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<SessionUser>;
-  loginDemo: () => Promise<void>;
+  loginDemo: () => Promise<SessionUser>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   stepUp: (password: string, purpose: string, reason?: string) => Promise<string>;
@@ -91,21 +91,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * benar-benar mati akan membuat layar menggantung tanpa keterangan apa pun —
    * yang juga bukan jawaban.
    */
-  const loadSession = useCallback(async () => {
+  const loadSession = useCallback(async (): Promise<SessionUser | null> => {
     for (let percobaan = 1; percobaan <= 2; percobaan += 1) {
       try {
-        setUser(await api.get<SessionUser>('/auth/me'));
-        return;
+        const sesi = await api.get<SessionUser>('/auth/me');
+        setUser(sesi);
+        return sesi;
       } catch (e) {
         const status = e instanceof ApiError ? e.status : 0;
         if (status === 401 || status === 403) {
           setUser(null);
-          return;
+          return null;
         }
-        if (percobaan === 2) return;
+        if (percobaan === 2) return null;
         await new Promise((r) => setTimeout(r, 800));
       }
     }
+    return null;
   }, []);
 
   useEffect(() => {
@@ -189,7 +191,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     setAccessToken(result.accessToken);
     setRefreshToken(null);
-    await loadSession();
+    const sesi = await loadSession();
+    if (!sesi) {
+      // `/public/demo/session` baru saja berhasil, jadi `/auth/me` yang gagal
+      // sesudahnya bukan "belum masuk" — itu keadaan yang seharusnya mustahil.
+      throw new Error('Sesi demo gagal dimuat setelah token diterbitkan.');
+    }
+    return sesi;
   }, [loadSession]);
 
   const logout = useCallback(async () => {
@@ -232,7 +240,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       changePassword,
       stepUp,
-      refreshSession: loadSession,
+      refreshSession: async () => {
+        await loadSession();
+      },
       hasPermission: (permission) => user?.tenantPermissions.includes(permission) ?? false,
       hasPlatformPermission: (permission) =>
         user?.platformPermissions.includes(permission) ?? false,

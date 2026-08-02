@@ -98,6 +98,8 @@ export interface RequestMeta {
   userAgent?: string;
   idempotencyKey?: string;
   localeCode: string;
+  /** Host pada permintaan (tanpa porta), dipakai memilih portal/merek yang berlaku. */
+  hostname?: string;
 }
 
 export const RequestContext = createParamDecorator(
@@ -110,9 +112,20 @@ export const RequestContext = createParamDecorator(
       userAgent: request.headers?.['user-agent'],
       idempotencyKey: request.headers?.['idempotency-key'],
       localeCode: resolveLocale(request),
+      hostname: resolveHostname(request),
     };
   },
 );
+
+function resolveHostname(request: { hostname?: string; headers?: Record<string, string | string[] | undefined> }): string | undefined {
+  // `request.hostname` (Express) sudah membuang porta; `headers.host` dipakai
+  // hanya sebagai cadangan bila middleware Express tidak mengisinya (mis. pada
+  // pengujian unit yang membuat request palsu tanpa lapisan Express penuh).
+  if (request.hostname) return request.hostname;
+  const raw = request.headers?.host;
+  const host = Array.isArray(raw) ? raw[0] : raw;
+  return host?.split(':')[0];
+}
 
 function resolveLocale(request: {
   user?: { localeCode?: string };

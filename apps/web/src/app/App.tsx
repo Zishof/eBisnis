@@ -202,6 +202,13 @@ export function App() {
         {/* Portal ePesantren (santri.info) */}
         <Route path="/santri" element={<SantriLayout />}>
           <Route index element={<SantriInfoHomePage />} />
+          {/*
+            Masuk BERBEDA dari `/masuk` global: `LoginPage` yang sama, dibungkus
+            `SantriLayout` alih-alih `PublicLayout` supaya pengunjung santri.info
+            tidak berpindah merek saat menekan "Masuk" (§ tidak mencampur eBisnis
+            dan ePesantren pada satu alur masuk).
+          */}
+          <Route path="masuk" element={<LoginPage />} />
         </Route>
         {/* Di luar kerangka portal: subdomain pondok bukan halaman platform. */}
         <Route path="/santri/pondok" element={<SitusPondokPage />} />

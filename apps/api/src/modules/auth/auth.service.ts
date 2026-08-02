@@ -8,6 +8,7 @@ import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { AuthenticatedUser } from '../../common/decorators';
 import { DEMO_PLATFORM_USER_ID } from '../../infrastructure/provisioning/tenant-bootstrap.service';
+import { KATALOG_PORTAL } from '../../infrastructure/portal/portal.catalog';
 import { fingerprintDevice } from './device-fingerprint';
 
 const MAX_FAILED_LOGINS = 8;
@@ -240,12 +241,26 @@ export class AuthService {
     };
   }
 
-  /** Sesi demo tanpa pendaftaran: hanya mengarah ke schema demo. */
+  /**
+   * Sesi demo tanpa pendaftaran.
+   *
+   * Mengarah ke schema demo milik PORTAL yang diminta (`meta.hostname`) bila
+   * portal itu punya `demoSchema` sendiri dan schema-nya sudah ter-provision
+   * dan READY -- supaya pengunjung santri.info mencoba sandbox ePesantren,
+   * bukan sandbox ERP/POS generik yang sama sekali tidak menyebut santri.
+   *
+   * Jatuh ke schema `demo` bersama bila: hostname tidak dikenali, portalnya
+   * tidak mendefinisikan `demoSchema`, atau schema itu belum ter-provision.
+   * Kegagalan provisioning TIDAK boleh membuat tombol "Coba Demo" berhenti
+   * bekerja sama sekali -- itu regresi terhadap sandbox bersama yang sudah
+   * berjalan, bukan perbaikan.
+   */
   async createDemoSession(meta: {
     ipAddress?: string;
     userAgent?: string;
     localeCode?: string;
     requestId?: string;
+    hostname?: string;
   }): Promise<{
     accessToken: string;
     expiresIn: number;
@@ -255,7 +270,8 @@ export class AuthService {
     expiresAt: string;
     banner: string;
   }> {
-    const demoSchema = this.config.get<string>('schema.demo', 'demo');
+    const schemaBawaan = this.config.get<string>('schema.demo', 'demo');
+    const demoSchema = await this.resolveDemoSchema(meta.hostname, schemaBawaan);
     const registry = await this.prisma.tenantSchemaRegistry.findUnique({
       where: { schemaName: demoSchema },
       include: { tenant: true },
@@ -333,6 +349,34 @@ export class AuthService {
         'Anda berada pada sandbox demo yang dipakai bersama. Jangan memasukkan data pribadi ' +
         'atau rahasia. Data demo di-reset secara berkala.',
     };
+  }
+
+  /**
+   * Schema demo untuk host yang meminta, atau `schemaBawaan` bila portal itu
+   * tidak punya sandbox sendiri atau sandboxnya belum ter-provision.
+   *
+   * Pencarian portal memakai KATALOG_PORTAL langsung (bukan lewat tabel
+   * `platform_portal`) sebab data brandingnya memang sumbernya di situ (lihat
+   * dokumentasi `portal.catalog.ts`) -- konsisten dengan resolusi portal
+   * lain di kodebasis ini.
+   */
+  private async resolveDemoSchema(hostname: string | undefined, schemaBawaan: string): Promise<string> {
+    if (!hostname) return schemaBawaan;
+    const host = hostname.toLowerCase();
+    const portal = KATALOG_PORTAL.find((p) => p.domains.some((d) => d.host.toLowerCase() === host));
+    if (!portal?.demoSchema) return schemaBawaan;
+
+    const registry = await this.prisma.tenantSchemaRegistry.findUnique({
+      where: { schemaName: portal.demoSchema },
+      select: { status: true },
+    });
+    if (registry?.status !== 'READY') {
+      this.logger.warn(
+        `Sandbox demo portal ${portal.code} (${portal.demoSchema}) belum siap -- jatuh ke sandbox bersama.`,
+      );
+      return schemaBawaan;
+    }
+    return portal.demoSchema;
   }
 
   async refresh(

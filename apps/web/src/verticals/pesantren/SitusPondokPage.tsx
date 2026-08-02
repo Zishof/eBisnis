@@ -52,7 +52,7 @@ export function SitusPondokPage() {
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link
-            to="/masuk"
+            to="/santri/masuk"
             className="rounded-lg bg-emerald-700 px-5 py-2.5 font-semibold text-white hover:bg-emerald-800"
           >
             Masuk
