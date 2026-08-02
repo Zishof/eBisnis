@@ -24,6 +24,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { GraduationCap, Mail, MapPin, Newspaper, Phone } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
+import { usePondokFavicon } from './use-pondok-favicon';
 
 interface Profil {
   is_published: boolean;
@@ -134,6 +135,8 @@ export function SitusPondokPage() {
       document.title = sebelumnya;
     };
   }, [data?.profil.nama_tampilan]);
+
+  usePondokFavicon(data?.profil.logo_url);
 
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center text-slate-500">Memuat situs…</div>;
