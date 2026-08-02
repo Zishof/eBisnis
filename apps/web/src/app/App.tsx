@@ -18,6 +18,7 @@ import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage';
 import { DemoEntryPage } from '../pages/auth/DemoEntryPage';
 import { AppLayout } from '../pages/app/AppLayout';
 import { AppHomePage } from '../pages/app/AppHomePage';
+import { PesantrenSantriPage } from '../pages/app/pesantren/PesantrenSantriPage';
 import { MasterListPage } from '../pages/app/MasterListPage';
 import { StockTreePage } from '../pages/app/StockTreePage';
 import { RequestOrderPage } from '../pages/app/RequestOrderPage';
@@ -304,6 +305,7 @@ export function App() {
           <Route path="subscription/checkout" element={<SubscriptionPage tab="checkout" />} />
           <Route path="subscription/invoices" element={<SubscriptionPage tab="invoices" />} />
           <Route path="marketplace/aktivasi" element={<MarketplaceActivationPage />} />
+          <Route path="pesantren/santri" element={<PesantrenSantriPage />} />
           <Route path="*" element={<ComingSoonPage />} />
         </Route>
 

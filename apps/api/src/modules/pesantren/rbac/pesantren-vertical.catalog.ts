@@ -86,6 +86,9 @@ const ABSENSI_GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const EKSTRAKURIKULER_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const PRESTASI_AKSI = ['READ', 'CREATE', 'PRINT', 'EXPORT'];
 const KATERING_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
+const PROFIL_AKSI = ['READ', 'UPDATE'];
+const BERITA_AKSI = ['READ', 'CREATE', 'UPDATE', 'APPROVE', 'CANCEL'];
+const TAGIHAN_AKSI = ['READ', 'CREATE', 'UPDATE', 'APPROVE', 'PRINT', 'EXPORT'];
 
 /*
  * Pengelompokan menu (grup/subgrup di bawah) SENGAJA HANYA mencakup menu yang
@@ -184,6 +187,28 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     moduleCode: PESANTREN_PREFIX,
     sortOrder: 5,
     actions: KATERING_AKSI,
+  },
+  {
+    code: 'EPESANTREN_PROFIL',
+    parentCode: 'EPESANTREN_GRP_SETUP',
+    label: 'Profil dan Tema Situs',
+    translationKey: 'menu.epesantren.profil',
+    route: '/app/pesantren/profil',
+    icon: 'Palette',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 6,
+    actions: PROFIL_AKSI,
+  },
+  {
+    code: 'EPESANTREN_BERITA',
+    parentCode: 'EPESANTREN_GRP_SETUP',
+    label: 'Berita Pondok',
+    translationKey: 'menu.epesantren.berita',
+    route: '/app/pesantren/berita',
+    icon: 'Newspaper',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 7,
+    actions: BERITA_AKSI,
   },
 
   // -- Data Master -----------------------------------------------------------
@@ -364,7 +389,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     icon: 'Receipt',
     moduleCode: PESANTREN_PREFIX,
     sortOrder: 1,
-    actions: CATAT,
+    actions: TAGIHAN_AKSI,
   },
   {
     code: 'EPESANTREN_DOMPET',

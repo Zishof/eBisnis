@@ -6,6 +6,14 @@
  * lewat SQL mentah.
  */
 
+import {
+  DataOrangTua,
+  KEBUTUHAN_KHUSUS_SAH,
+  POLA_NIK,
+  POLA_NISN,
+  validasiOrangTua,
+} from './pesantren-santri';
+
 export const STATUS_GELOMBANG = ['DRAFT', 'DIBUKA', 'DITUTUP', 'SELESAI'] as const;
 export type StatusGelombang = (typeof STATUS_GELOMBANG)[number];
 
@@ -113,6 +121,31 @@ export interface MasukanPendaftar {
   alamat?: string | null;
   asalSekolah?: string | null;
   unitPendidikanTujuanId?: string | null;
+
+  // -- Kelengkapan setara Dapodik, sama persis dengan `MasukanSantri` -------
+  // (lihat migrasi `20260802T340000__pesantren__dapodik_santri.sql`, yang
+  // menambahkan kolom yang sama pada `pesantren_psb_pendaftar`).
+  nik?: string | null;
+  nisn?: string | null;
+  nipd?: string | null;
+  agama?: string | null;
+  kewarganegaraan?: string | null;
+  kebutuhanKhusus?: string | null;
+  anakKe?: number | null;
+  jumlahSaudara?: number | null;
+  alatTransportasi?: string | null;
+  jarakTempatTinggalKm?: number | null;
+  telepon?: string | null;
+  hp?: string | null;
+  email?: string | null;
+  penerimaKip?: boolean;
+  nomorKip?: string | null;
+  penerimaKks?: boolean;
+  nomorKks?: string | null;
+  nomorKk?: string | null;
+  ayah?: DataOrangTua;
+  ibu?: DataOrangTua;
+  wali?: DataOrangTua;
 }
 
 export function validasiPendaftar(masukan: MasukanPendaftar): Galat[] {
@@ -145,6 +178,39 @@ export function validasiPendaftar(masukan: MasukanPendaftar): Galat[] {
       galat.push({ field: 'tanggalLahir', code: 'DI_MASA_DEPAN', message: 'Tanggal lahir tidak boleh di masa depan.' });
     }
   }
+
+  // -- Kelengkapan setara Dapodik ------------------------------------------
+  const nik = (masukan.nik ?? '').trim();
+  if (nik && !POLA_NIK.test(nik)) {
+    galat.push({ field: 'nik', code: 'TIDAK_SAH', message: 'NIK harus 16 digit angka.' });
+  }
+
+  const nisn = (masukan.nisn ?? '').trim();
+  if (nisn && !POLA_NISN.test(nisn)) {
+    galat.push({ field: 'nisn', code: 'TIDAK_SAH', message: 'NISN harus 10 digit angka.' });
+  }
+
+  const nomorKk = (masukan.nomorKk ?? '').trim();
+  if (nomorKk && !POLA_NIK.test(nomorKk)) {
+    galat.push({ field: 'nomorKk', code: 'TIDAK_SAH', message: 'Nomor Kartu Keluarga harus 16 digit angka.' });
+  }
+
+  const kebutuhanKhusus = (masukan.kebutuhanKhusus ?? '').trim();
+  if (kebutuhanKhusus && !KEBUTUHAN_KHUSUS_SAH.has(kebutuhanKhusus.toUpperCase())) {
+    galat.push({
+      field: 'kebutuhanKhusus',
+      code: 'TIDAK_DIKENALI',
+      message: 'Jenis kebutuhan khusus tidak dikenali.',
+    });
+  }
+
+  if (masukan.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(masukan.email)) {
+    galat.push({ field: 'email', code: 'TIDAK_SAH', message: 'Alamat surel tidak sah.' });
+  }
+
+  validasiOrangTua('ayah', 'ayah', masukan.ayah, galat);
+  validasiOrangTua('ibu', 'ibu', masukan.ibu, galat);
+  validasiOrangTua('wali', 'wali', masukan.wali, galat);
 
   return galat;
 }

@@ -77,6 +77,48 @@ describe('validasi pendaftar', () => {
     });
     expect(galat.some((g) => g.code === 'DI_MASA_DEPAN')).toBe(true);
   });
+
+  // -- Kelengkapan setara Dapodik (sama persis dengan pesantren-santri.ts) --
+
+  const SAH_PENDAFTAR = { gelombangId: 'a', namaLengkap: 'Fulan', jenisKelamin: 'L' };
+
+  it('NIK harus 16 digit angka bila diisi, dan boleh kosong', () => {
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, nik: '3201234567890123' })).toEqual([]);
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, nik: '123' })[0].code).toBe('TIDAK_SAH');
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, nik: '' })).toEqual([]);
+  });
+
+  it('NISN harus 10 digit angka bila diisi', () => {
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, nisn: '0012345678' })).toEqual([]);
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, nisn: '12345' })[0].code).toBe('TIDAK_SAH');
+  });
+
+  it('nomor Kartu Keluarga harus 16 digit angka bila diisi', () => {
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, nomorKk: '3201234567890000' })).toEqual([]);
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, nomorKk: 'KK-001' })[0].code).toBe('TIDAK_SAH');
+  });
+
+  it('kebutuhan khusus hanya dari daftar yang dikenali', () => {
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, kebutuhanKhusus: 'NETRA' })).toEqual([]);
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, kebutuhanKhusus: 'ENTAH' })[0].code).toBe('TIDAK_DIKENALI');
+  });
+
+  it('email diperiksa bila diisi', () => {
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, email: 'wali@contoh.sch.id' })).toEqual([]);
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, email: 'bukan-email' })[0].code).toBe('TIDAK_SAH');
+  });
+
+  it('NIK dan tahun lahir ayah/ibu/wali diperiksa masing-masing', () => {
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, ayah: { nik: '3201234567890000', tahunLahir: 1985 } })).toEqual([]);
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, ayah: { nik: '123' } })[0]).toMatchObject({
+      field: 'ayah.nik',
+      code: 'TIDAK_SAH',
+    });
+    expect(validasiPendaftar({ ...SAH_PENDAFTAR, ibu: { tahunLahir: 1800 } })[0]).toMatchObject({
+      field: 'ibu.tahunLahir',
+      code: 'TIDAK_SAH',
+    });
+  });
 });
 
 describe('validasi jadwal', () => {

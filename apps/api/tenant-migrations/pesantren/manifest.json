@@ -125,6 +125,30 @@
       "file": "20260802T330000__pesantren__katering.sql",
       "name": "EP-S6: Dapur dan katering",
       "description": "pesantren_menu_makan, pesantren_konsumsi (porsi per menu, dikelompokkan per asrama -- bukan per santri), pesantren_stok_dapur + pesantren_stok_dapur_transaksi (stok bahan, pola cache+log yang sama dengan saldo dompet EP-L). Diminta langsung oleh pengguna, bukan dari audit sistem lama."
+    },
+    {
+      "id": "20260802T340000__pesantren__dapodik_santri",
+      "file": "20260802T340000__pesantren__dapodik_santri.sql",
+      "name": "Kelengkapan data santri dan calon santri setara Dapodik",
+      "description": "Menambah ~30 kolom NULLABLE pada pesantren_santri DAN pesantren_psb_pendaftar (kolom yang sama persis) -- NIK, NISN, NIPD, kewarganegaraan, kebutuhan khusus, transportasi, kontak, status KIP/KKS, serta data rinci ayah/ibu/wali (NIK, tahun lahir, pendidikan, pekerjaan, penghasilan) -- mengikuti kebutuhan Dapodik. Murni EXPAND, tidak mengubah kolom yang sudah ada."
+    },
+    {
+      "id": "20260803T010000__pesantren__situs_publik",
+      "file": "20260803T010000__pesantren__situs_publik.sql",
+      "name": "Situs publik pondok dan tema tampilan",
+      "description": "pesantren_website_setting (satu baris tunggal per penyewa, ditegakkan indeks unik pada kolom singleton -- profil/sejarah/visi-misi/kontak/tema_kode), pesantren_berita (kabar pondok, boleh menaut sumber_url bila diadaptasi dari liputan luar). Dibaca lewat PublicTenantResolver (IR-005) oleh pengunjung yang belum masuk, pola sama dengan situs koperasi (K-9)."
+    },
+    {
+      "id": "20260803T020000__pesantren__tagihan_pembayaran",
+      "file": "20260803T020000__pesantren__tagihan_pembayaran.sql",
+      "name": "Pencatatan pembayaran tagihan",
+      "description": "pesantren_tagihan_pembayaran -- baris pembayaran yang sebelumnya tidak ada sama sekali walau pesantren_tagihan sudah membawa status PARTIALLY_PAID/PAID sejak EP-F. Status tagihan dihitung ulang dari jumlah baris ini, bukan ditulis manual terpisah."
+    },
+    {
+      "id": "20260803T030000__pesantren__mapel_dapodik",
+      "file": "20260803T030000__pesantren__mapel_dapodik.sql",
+      "name": "Kelengkapan Dapodik pada mata pelajaran",
+      "description": "Menambah kode_mapel_dapodik dan jenjang (NULLABLE) pada pesantren_mata_pelajaran -- kode referensi Dapodik/EMIS Kemenag berbeda per jenjang, termasuk mapel keagamaan (Fikih/Akidah Akhlak/SKI/Al-Qur'an Hadis) yang tidak punya padanan Dikdasmen."
     }
   ]
 }

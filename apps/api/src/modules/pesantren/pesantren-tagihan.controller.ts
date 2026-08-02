@@ -8,7 +8,7 @@ import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags 
 import { IsArray, IsIn, IsISO8601, IsNumber, IsOptional, IsPositive, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PesantrenTagihanService } from './pesantren-tagihan.service';
-import { STATUS_TAGIHAN } from './pesantren-tagihan';
+import { METODE_PEMBAYARAN, STATUS_TAGIHAN } from './pesantren-tagihan';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 
@@ -79,6 +79,23 @@ class CatatTagihanDto {
   items!: ItemTagihanDto[];
 }
 
+class BayarTagihanDto {
+  @ApiProperty({ example: 150000 })
+  @IsNumber() @IsPositive()
+  jumlahBayar!: number;
+
+  @ApiProperty({ enum: METODE_PEMBAYARAN })
+  @IsIn(METODE_PEMBAYARAN as unknown as string[])
+  metode!: string;
+
+  @ApiPropertyOptional({ example: '2026-08-05' })
+  @IsOptional() @IsISO8601()
+  tanggalBayar?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500)
+  catatan?: string;
+}
+
 @ApiTags('pesantren')
 @ApiBearerAuth('access-token')
 @Controller('pesantren/tagihan')
@@ -126,5 +143,13 @@ export class PesantrenTagihanController {
   @ApiOperation({ summary: 'Menerbitkan tagihan DRAFT' })
   async terbitkan(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.tagihan.terbitkan(schemaWajib(user), id, user.userId);
+  }
+
+  @Permissions('EPESANTREN_TAGIHAN.APPROVE')
+  @Post(':id/bayar')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mencatat setoran pembayaran (kasir manual: tunai/transfer/eSmartlink)' })
+  async bayar(@Param('id') id: string, @Body() dto: BayarTagihanDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.tagihan.bayar(schemaWajib(user), id, dto, user.userId);
   }
 }

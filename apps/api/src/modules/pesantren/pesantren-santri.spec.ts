@@ -55,4 +55,49 @@ describe('validasi santri', () => {
       'TERLALU_PANJANG',
     );
   });
+
+  // -- Kelengkapan setara Dapodik (migrasi 20260802T340000) ------------------
+
+  it('NIK harus 16 digit angka bila diisi, dan boleh kosong', () => {
+    expect(validasiSantri({ ...SAH, nik: '3201234567890123' })).toEqual([]);
+    expect(validasiSantri({ ...SAH, nik: '123' })[0].code).toBe('TIDAK_SAH');
+    expect(validasiSantri({ ...SAH, nik: 'abcd123456789012' })[0].code).toBe('TIDAK_SAH');
+    expect(validasiSantri({ ...SAH, nik: '' })).toEqual([]);
+  });
+
+  it('NISN harus 10 digit angka bila diisi', () => {
+    expect(validasiSantri({ ...SAH, nisn: '0012345678' })).toEqual([]);
+    expect(validasiSantri({ ...SAH, nisn: '12345' })[0].code).toBe('TIDAK_SAH');
+  });
+
+  it('nomor Kartu Keluarga harus 16 digit angka bila diisi', () => {
+    expect(validasiSantri({ ...SAH, nomorKk: '3201234567890000' })).toEqual([]);
+    expect(validasiSantri({ ...SAH, nomorKk: 'KK-001' })[0].code).toBe('TIDAK_SAH');
+  });
+
+  it('kebutuhan khusus hanya dari daftar yang dikenali', () => {
+    expect(validasiSantri({ ...SAH, kebutuhanKhusus: 'NETRA' })).toEqual([]);
+    expect(validasiSantri({ ...SAH, kebutuhanKhusus: 'ENTAH' })[0].code).toBe('TIDAK_DIKENALI');
+  });
+
+  it('email diperiksa bila diisi', () => {
+    expect(validasiSantri({ ...SAH, email: 'wali@contoh.sch.id' })).toEqual([]);
+    expect(validasiSantri({ ...SAH, email: 'bukan-email' })[0].code).toBe('TIDAK_SAH');
+  });
+
+  it('NIK dan tahun lahir ayah/ibu/wali diperiksa masing-masing', () => {
+    expect(validasiSantri({ ...SAH, ayah: { nik: '3201234567890000', tahunLahir: 1985 } })).toEqual([]);
+    expect(validasiSantri({ ...SAH, ayah: { nik: '123' } })[0]).toMatchObject({
+      field: 'ayah.nik',
+      code: 'TIDAK_SAH',
+    });
+    expect(validasiSantri({ ...SAH, ibu: { tahunLahir: 1800 } })[0]).toMatchObject({
+      field: 'ibu.tahunLahir',
+      code: 'TIDAK_SAH',
+    });
+    expect(validasiSantri({ ...SAH, wali: { tahunLahir: new Date().getFullYear() + 1 } })[0]).toMatchObject({
+      field: 'wali.tahunLahir',
+      code: 'TIDAK_SAH',
+    });
+  });
 });

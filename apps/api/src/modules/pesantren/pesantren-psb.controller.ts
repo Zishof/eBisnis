@@ -6,10 +6,11 @@
 
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PesantrenPsbService } from './pesantren-psb.service';
 import { JENIS_JADWAL, STATUS_JADWAL } from './pesantren-psb';
+import { DataOrangTuaDto } from './pesantren-santri.controller';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 
@@ -104,6 +105,78 @@ class DaftarkanPendaftarDto {
 
   @ApiPropertyOptional() @IsOptional() @IsString()
   unitPendidikanTujuanId?: string;
+
+  // -- Kelengkapan setara Dapodik (lihat migrasi 20260802T340000) ----------
+  // Sama persis dengan `CatatSantriDto` -- calon santri minimal harus
+  // sama dengan data santri, plus atribut PSB di atas.
+  @ApiPropertyOptional({ example: '3201234567890123', description: '16 digit' })
+  @IsOptional() @IsString() @MaxLength(16)
+  nik?: string;
+
+  @ApiPropertyOptional({ example: '0012345678', description: '10 digit' })
+  @IsOptional() @IsString() @MaxLength(10)
+  nisn?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20)
+  nipd?: string;
+
+  @ApiPropertyOptional({ example: 'Islam' }) @IsOptional() @IsString() @MaxLength(20)
+  agama?: string;
+
+  @ApiPropertyOptional({ default: 'WNI' }) @IsOptional() @IsString() @MaxLength(3)
+  kewarganegaraan?: string;
+
+  @ApiPropertyOptional({ default: 'TIDAK_ADA' }) @IsOptional() @IsString() @MaxLength(30)
+  kebutuhanKhusus?: string;
+
+  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt()
+  anakKe?: number;
+
+  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt()
+  jumlahSaudara?: number;
+
+  @ApiPropertyOptional({ example: 'JALAN_KAKI' }) @IsOptional() @IsString() @MaxLength(30)
+  alatTransportasi?: string;
+
+  @ApiPropertyOptional() @IsOptional() @Type(() => Number)
+  jarakTempatTinggalKm?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20)
+  telepon?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20)
+  hp?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsEmail() @MaxLength(255)
+  email?: string;
+
+  @ApiPropertyOptional({ default: false }) @IsOptional() @IsBoolean()
+  penerimaKip?: boolean;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30)
+  nomorKip?: string;
+
+  @ApiPropertyOptional({ default: false }) @IsOptional() @IsBoolean()
+  penerimaKks?: boolean;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30)
+  nomorKks?: string;
+
+  @ApiPropertyOptional({ example: '3201234567890000', description: '16 digit' })
+  @IsOptional() @IsString() @MaxLength(16)
+  nomorKk?: string;
+
+  @ApiPropertyOptional({ type: DataOrangTuaDto })
+  @IsOptional() @ValidateNested() @Type(() => DataOrangTuaDto)
+  ayah?: DataOrangTuaDto;
+
+  @ApiPropertyOptional({ type: DataOrangTuaDto })
+  @IsOptional() @ValidateNested() @Type(() => DataOrangTuaDto)
+  ibu?: DataOrangTuaDto;
+
+  @ApiPropertyOptional({ type: DataOrangTuaDto, description: 'Diisi hanya bila bukan ayah/ibu kandung.' })
+  @IsOptional() @ValidateNested() @Type(() => DataOrangTuaDto)
+  wali?: DataOrangTuaDto;
 }
 
 class CatatanDto {

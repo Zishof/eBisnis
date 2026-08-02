@@ -93,3 +93,45 @@ export function validasiTagihan(masukan: MasukanTagihan): Galat[] {
 export function totalTagihan(items: MasukanItemTagihan[]): number {
   return items.reduce((total, item) => total + (item.jumlah ?? 0), 0);
 }
+
+// -- Pembayaran ---------------------------------------------------------
+
+export const METODE_PEMBAYARAN = ['TUNAI', 'TRANSFER', 'ESMARTLINK'] as const;
+export type MetodePembayaran = (typeof METODE_PEMBAYARAN)[number];
+
+export interface MasukanPembayaran {
+  jumlahBayar?: number;
+  metode?: string;
+  tanggalBayar?: string;
+  catatan?: string;
+}
+
+export function validasiPembayaran(masukan: MasukanPembayaran): Galat[] {
+  const galat: Galat[] = [];
+
+  if (typeof masukan.jumlahBayar !== 'number' || Number.isNaN(masukan.jumlahBayar) || masukan.jumlahBayar <= 0) {
+    galat.push({
+      field: 'jumlahBayar',
+      code: 'TIDAK_SAH',
+      message: 'Jumlah bayar harus berupa angka lebih besar dari nol.',
+    });
+  }
+
+  if (!METODE_PEMBAYARAN.includes(masukan.metode as MetodePembayaran)) {
+    galat.push({
+      field: 'metode',
+      code: 'TIDAK_DIKENALI',
+      message: `Metode pembayaran wajib salah satu dari: ${METODE_PEMBAYARAN.join(', ')}.`,
+    });
+  }
+
+  if (masukan.tanggalBayar && !tanggalSah(masukan.tanggalBayar)) {
+    galat.push({
+      field: 'tanggalBayar',
+      code: 'TIDAK_SAH',
+      message: 'Format tanggal bayar tidak dikenali. Pakai YYYY-MM-DD.',
+    });
+  }
+
+  return galat;
+}

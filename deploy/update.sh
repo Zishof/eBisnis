@@ -85,7 +85,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-log "1/8  Backup database"
+log "1/9  Backup database"
 # ---------------------------------------------------------------------------
 # shellcheck disable=SC1090
 ADMIN_URL=$(grep -E '^DATABASE_ADMIN_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
@@ -166,7 +166,7 @@ fi
 ls -1t "$BACKUP_DIR"/ebisnis-*.dump 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm -f
 
 # ---------------------------------------------------------------------------
-log "2/8  Ambil source"
+log "2/9  Ambil source"
 # ---------------------------------------------------------------------------
 as_app "git -C '$APP_DIR' fetch --all --tags --prune"
 
@@ -258,13 +258,13 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-log "3/8  Install dependency dan build"
+log "3/9  Install dependency dan build"
 # ---------------------------------------------------------------------------
 as_app "cd '$APP_DIR' && pnpm install --frozen-lockfile" || rollback
 as_app "cd '$APP_DIR' && pnpm db:generate && pnpm build"  || rollback
 
 # ---------------------------------------------------------------------------
-log "4/8  Migration"
+log "4/9  Migration"
 # ---------------------------------------------------------------------------
 # Schema platform.
 as_app "cd '$APP_DIR/apps/api' && pnpm exec prisma migrate status" || true
@@ -283,14 +283,14 @@ as_app "cd '$APP_DIR/apps/api' && pnpm exec prisma migrate deploy" || rollback
 as_app "cd '$APP_DIR' && pnpm --filter @ebisnis/api migrate:tenants" || rollback
 
 # ---------------------------------------------------------------------------
-log "5/8  Restart layanan"
+log "5/9  Restart layanan"
 # ---------------------------------------------------------------------------
 install -m 644 "$APP_DIR/deploy/systemd/ebisnis-api.service" /etc/systemd/system/ebisnis-api.service
 systemctl daemon-reload
 systemctl restart ebisnis-api
 
 # ---------------------------------------------------------------------------
-log "6/8  Health check"
+log "6/9  Health check"
 # ---------------------------------------------------------------------------
 HEALTHY=0
 for i in $(seq 1 30); do
@@ -313,7 +313,7 @@ printf '%s
 ' "$NEW" > "$DEPLOY_STAMP"
 
 # ---------------------------------------------------------------------------
-log "7/8  Sandbox demo ePesantren"
+log "7/9  Sandbox demo ePesantren"
 # ---------------------------------------------------------------------------
 # Mendaftarkan ponpes_demo (bila belum ada) lewat alur publik yang sama
 # dengan pendaftar asli, lalu menyemai data contoh besar TEPAT SEKALI --
@@ -327,7 +327,20 @@ APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:
   || warn "Penyiapan sandbox demo ePesantren gagal — periksa manual bila perlu."
 
 # ---------------------------------------------------------------------------
-log "8/8  Apache"
+log "8/9  Pelanggan pertama: Raudlatul Ulum"
+# ---------------------------------------------------------------------------
+# Mendaftarkan raudlatul-ulum.santri.info (bila belum ada) lewat alur publik
+# yang sama dengan pendaftar asli, lalu menyiapkan profil situs, unit
+# pendidikan, mata pelajaran, tagihan percobaan, dan akun staf -- lihat
+# deploy/onboard-raudlatul-ulum.sh untuk jaminan idempotensinya. BERBEDA dari
+# sandbox demo di atas: ini pelanggan sungguhan, bukan tenant bersama.
+# Kegagalan di sini tidak pernah menggagalkan deploy.
+APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:-psql}" \
+  bash "$APP_DIR/deploy/onboard-raudlatul-ulum.sh" \
+  || warn "Penyiapan tenant Raudlatul Ulum gagal — periksa manual bila perlu."
+
+# ---------------------------------------------------------------------------
+log "9/9  Apache"
 # ---------------------------------------------------------------------------
 install -m 644 "$APP_DIR/deploy/apache/ebisnis-app.inc" /etc/apache2/conf-available/ebisnis-app.inc
 install -m 644 "$APP_DIR/deploy/apache/ebisnis.conf"    /etc/apache2/sites-available/ebisnis.conf

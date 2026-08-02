@@ -6,13 +6,23 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
-import { MasukanTagihan, totalTagihan, validasiTagihan } from './pesantren-tagihan';
+import { MasukanPembayaran, MasukanTagihan, totalTagihan, validasiPembayaran, validasiTagihan } from './pesantren-tagihan';
 
 export interface BarisItemTagihan {
   id: string;
   kode: string;
   deskripsi: string;
   jumlah: string;
+}
+
+export interface BarisPembayaran {
+  id: string;
+  tagihan_id: string;
+  jumlah_bayar: string;
+  metode: string;
+  tanggal_bayar: string;
+  catatan: string | null;
+  created_at: string;
 }
 
 export interface BarisTagihan {
@@ -26,9 +36,11 @@ export interface BarisTagihan {
   diterbitkan_pada: string | null;
   created_at: string;
   items?: BarisItemTagihan[];
+  pembayaran?: BarisPembayaran[];
 }
 
 const STATUS_SANTRI_BOLEH_DITAGIH = ['AKTIF'];
+const STATUS_BOLEH_DIBAYAR = ['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'];
 
 @Injectable()
 export class PesantrenTagihanService {
@@ -98,7 +110,15 @@ export class PesantrenTagihanService {
         ORDER BY sort_order ASC`,
       [id],
     );
-    return { ...tagihan, items };
+    const pembayaran = await this.tenantDb.query<BarisPembayaran>(
+      schemaName,
+      `SELECT id::text, tagihan_id::text, jumlah_bayar::text, metode, tanggal_bayar::text, catatan, created_at::text
+         FROM ${S}.pesantren_tagihan_pembayaran
+        WHERE tagihan_id = $1
+        ORDER BY tanggal_bayar ASC, created_at ASC`,
+      [id],
+    );
+    return { ...tagihan, items, pembayaran };
   }
 
   /**
@@ -210,6 +230,66 @@ export class PesantrenTagihanService {
         WHERE id = $1`,
       [id, actorUserId],
     );
+
+    return (await this.satu(schemaName, id))!;
+  }
+
+  /**
+   * Mencatat satu setoran pembayaran atas tagihan yang sudah diterbitkan.
+   *
+   * Status tagihan DIHITUNG ULANG dari jumlah seluruh baris pembayaran yang
+   * tercatat (termasuk yang baru ini) dibandingkan `total_tagihan` -- bukan
+   * ditulis manual terpisah, supaya status tidak pernah menyimpang dari
+   * jumlah yang benar-benar tercatat. Pembayaran boleh dicatat bertahap
+   * (cicilan): setoran pertama yang belum mencapai total membuat status
+   * PARTIALLY_PAID, dan hanya berubah PAID ketika akumulasinya mencukupi.
+   */
+  async bayar(schemaName: string, id: string, masukan: MasukanPembayaran, actorUserId: string): Promise<BarisTagihan> {
+    const galat = validasiPembayaran(masukan);
+    if (galat.length) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Ada isian yang belum benar.', { errors: galat });
+    }
+
+    const S = `"${schemaName}"`;
+    const tagihan = await this.tenantDb.queryOne<{ status: string; total_tagihan: string }>(
+      schemaName,
+      `SELECT status, total_tagihan::text FROM ${S}.pesantren_tagihan WHERE id = $1 AND deleted_at IS NULL`,
+      [id],
+    );
+    if (!tagihan) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Tagihan tidak ditemukan.');
+    }
+    if (!STATUS_BOLEH_DIBAYAR.includes(tagihan.status)) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        `Tagihan berstatus "${tagihan.status}" tidak dapat menerima pembayaran. ` +
+          `Status saat ini harus salah satu dari: ${STATUS_BOLEH_DIBAYAR.join(', ')}.`,
+      );
+    }
+
+    await this.tenantDb.transaction(schemaName, async (client) => {
+      await client.query(
+        `INSERT INTO ${S}.pesantren_tagihan_pembayaran
+           (tagihan_id, jumlah_bayar, metode, tanggal_bayar, catatan, dicatat_oleh)
+         VALUES ($1, $2, $3, COALESCE($4, CURRENT_DATE), $5, $6)`,
+        [id, masukan.jumlahBayar, masukan.metode, masukan.tanggalBayar ?? null, bersihkan(masukan.catatan), actorUserId],
+      );
+
+      const total = await client.query<{ terbayar: string }>(
+        `SELECT COALESCE(SUM(jumlah_bayar), 0)::text AS terbayar
+           FROM ${S}.pesantren_tagihan_pembayaran WHERE tagihan_id = $1`,
+        [id],
+      );
+      const terbayar = Number(total.rows[0].terbayar);
+      const statusBaru = terbayar >= Number(tagihan.total_tagihan) ? 'PAID' : 'PARTIALLY_PAID';
+
+      await client.query(
+        `UPDATE ${S}.pesantren_tagihan
+            SET status = $2, updated_at = now(), updated_by = $3, version = version + 1
+          WHERE id = $1`,
+        [id, statusBaru, actorUserId],
+      );
+    });
 
     return (await this.satu(schemaName, id))!;
   }

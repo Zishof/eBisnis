@@ -9,10 +9,16 @@ export interface Galat {
   message: string;
 }
 
+/** Jenjang referensi Dapodik/EMIS Kemenag. Lihat migrasi 20260803T030000. */
+export const JENJANG_MAPEL = ['RA', 'MI', 'MTS', 'MA', 'SMK'] as const;
+export type JenjangMapel = (typeof JENJANG_MAPEL)[number];
+
 export interface MasukanMataPelajaran {
   code?: string;
   nama?: string;
   kelompok?: string;
+  kodeMapelDapodik?: string | null;
+  jenjang?: string | null;
 }
 
 export function validasiMataPelajaran(masukan: MasukanMataPelajaran): Galat[] {
@@ -22,6 +28,13 @@ export function validasiMataPelajaran(masukan: MasukanMataPelajaran): Galat[] {
   }
   if (!masukan.nama?.trim()) {
     galat.push({ field: 'nama', code: 'WAJIB', message: 'Nama mata pelajaran wajib diisi.' });
+  }
+  if (masukan.jenjang && !JENJANG_MAPEL.includes(masukan.jenjang as JenjangMapel)) {
+    galat.push({
+      field: 'jenjang',
+      code: 'TIDAK_DIKENALI',
+      message: `Jenjang tidak dikenali. Pilih salah satu: ${JENJANG_MAPEL.join(', ')}.`,
+    });
   }
   return galat;
 }
