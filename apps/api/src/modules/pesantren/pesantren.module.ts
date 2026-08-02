@@ -15,6 +15,8 @@ import { PesantrenPerizinanController } from './pesantren-perizinan.controller';
 import { PesantrenPerizinanService } from './pesantren-perizinan.service';
 import { PesantrenGerbangController } from './pesantren-gerbang.controller';
 import { PesantrenGerbangService } from './pesantren-gerbang.service';
+import { PesantrenPortalWaliController } from './pesantren-portal-wali.controller';
+import { PesantrenPortalWaliService } from './pesantren-portal-wali.service';
 
 @Module({
   controllers: [
@@ -28,6 +30,7 @@ import { PesantrenGerbangService } from './pesantren-gerbang.service';
     PesantrenTahfizController,
     PesantrenPerizinanController,
     PesantrenGerbangController,
+    PesantrenPortalWaliController,
   ],
   providers: [
     PesantrenSantriService,
@@ -38,6 +41,7 @@ import { PesantrenGerbangService } from './pesantren-gerbang.service';
     PesantrenTahfizService,
     PesantrenPerizinanService,
     PesantrenGerbangService,
+    PesantrenPortalWaliService,
   ],
 })
 export class PesantrenModule {}

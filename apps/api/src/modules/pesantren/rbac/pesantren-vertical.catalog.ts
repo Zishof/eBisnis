@@ -46,9 +46,22 @@ export const ROLE_ADMIN_EPESANTREN = 'EPESANTREN_ADMIN';
  */
 export const ROLE_PETUGAS_GERBANG = 'EPESANTREN_PETUGAS_GERBANG';
 
+/**
+ * Kode peran wali santri (EP-K).
+ *
+ * Peran self-service, hanya memegang `EPESANTREN_PORTAL_WALI` — menu yang
+ * hanya READ dan disaring bespoke per baris di service (lihat
+ * `pesantren-portal-wali.service.ts`), bukan `EPESANTREN_SANTRI` yang
+ * memberi akses lintas seluruh santri pondok. Peran ini, sama dengan
+ * `EPESANTREN_PETUGAS_GERBANG`, ditambahkan bersama modulnya sendiri
+ * (bukan mendahului) sebab portal wali memang selesai pada EP-K ini.
+ */
+export const ROLE_WALI = 'EPESANTREN_WALI';
+
 const CATAT = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const PERIZINAN_AKSI = ['READ', 'CREATE', 'APPROVE', 'REJECT', 'CANCEL', 'PRINT', 'EXPORT'];
 const GERBANG_AKSI = ['READ', 'CREATE', 'PRINT'];
+const PORTAL_WALI_AKSI = ['READ'];
 
 export const PESANTREN_MENUS: MenuNodeSeed[] = [
   {
@@ -131,6 +144,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 570,
     actions: GERBANG_AKSI,
   },
+  {
+    code: 'EPESANTREN_PORTAL_WALI',
+    label: 'Portal Wali',
+    translationKey: 'menu.epesantren.portalWali',
+    route: '/app/pesantren/portal-wali',
+    icon: 'HeartHandshake',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 580,
+    actions: PORTAL_WALI_AKSI,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -174,6 +197,25 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       'Mencatat lintasan keluar-masuk santri pada izin yang SUDAH disetujui. ' +
       'Sengaja TIDAK memegang EPESANTREN_PERIZINAN — tidak dapat menyetujui, ' +
       'menolak, atau mengubah izin apa pun (docs/santri-info/13 R10).',
+  },
+  {
+    code: ROLE_WALI,
+    name: 'Wali Santri',
+    family: 'ePesantren',
+    profile: 'P10',
+    modules: { ...DASAR, EPESANTREN_PORTAL_WALI: 'P10' },
+    // `DataScopeCode` platform belum punya nilai DEPENDENT_CHILD (lihat
+    // §14.7 perintah master) -- `DataScopeResolver` hanya mengenal SELF dan
+    // cakupan hierarkis satu kolom, tidak relasi wali-ke-anak lewat tabel
+    // penghubung. `SELF` dipakai sebagai label terdekat; penyaringan
+    // sesungguhnya bespoke di service, bukan lewat resolver generik.
+    dataScope: 'SELF',
+    core: false,
+    description:
+      'Hanya dapat melihat data anaknya sendiri (profil, presensi, tahfiz, ' +
+      'izin) lewat portal wali — tidak pernah data santri lain. Penyaringan ' +
+      'ditegakkan di service lewat pesantren_santri_wali, bukan oleh profil ' +
+      'hak akses ini semata.',
   },
 ];
 

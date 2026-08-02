@@ -311,13 +311,90 @@ Pimpinan, Wali Kelas, dan peran-peran lain pada §14.6 perintah master TIDAK
 memiliki satu pun modul atau menu yang benar-benar berfungsi pada sesi ini —
 membuat akun untuk peran yang tidak berdaya apa-apa hanya akan
 menyesatkan, seolah kapasitasnya sudah ada. Akun untuk peran-peran itu akan
-dibuat bersamaan dengan modul yang menjadi dasarnya (EP-K portal wali, dan
-seterusnya), mengikuti disiplin §6 yang sama dengan seluruh EP sesi ini.
+dibuat bersamaan dengan modul yang menjadi dasarnya, mengikuti disiplin §6
+yang sama dengan seluruh EP sesi ini.
+
+## Status EP-K — SEBAGIAN, portal wali baca-saja, multi-anak terbukti
+
+**Yang dikerjakan:** `PesantrenPortalWaliController`/`PesantrenPortalWaliService`
+di `/pesantren/portal/wali` — TIDAK ada migrasi baru, sebab `pesantren_wali.
+user_subject_id` dan `pesantren_santri_wali` sudah ada sejak EP-A. Pola
+meniru `CooperativePortalController` persis (diriset lebih dulu supaya
+tidak membangun mekanisme kedua): permission TERPISAH
+(`EPESANTREN_PORTAL_WALI`, bukan `EPESANTREN_SANTRI`), route prefix
+terpisah, dan `santriId` dari path TIDAK PERNAH dipercaya — setiap metode
+memverifikasi kepemilikan lewat `pesantren_santri_wali` lebih dulu, dan
+santri yang bukan miliknya dijawab NOT_FOUND (bukan FORBIDDEN), supaya wali
+lain tidak tahu santri itu ada sama sekali.
+
+Peran baru `EPESANTREN_WALI` (profil P10) hanya memegang menu
+`EPESANTREN_PORTAL_WALI` yang hanya menawarkan aksi READ — tidak pernah
+`EPESANTREN_SANTRI`, ditegakkan uji RBAC eksplisit.
+
+**Bug ditangkap sebelum live test, bukan sesudah:** rancangan awal
+menyamakan `AuthenticatedUser.userId` (platform_user_id) dengan
+`pesantren_wali.user_subject_id` (id `user_subject` TENANT, FK sungguhan
+sejak EP-A) — cacat yang SAMA persis dengan bug `disetujui_oleh` EP-J,
+hanya kali ini disadari saat menulis kode, sebelum sempat diuji. Diperbaiki
+dengan menerjemahkan `platform_user_id -> user_subject.id` lebih dulu,
+persis pola `TenantBootstrapService.assignAdditionalRole()`.
+
+Dibuktikan live terhadap `ponpes_demo` dengan akun sungguhan
+(`wali1_ponpesdemo`): melihat anak sendiri berhasil (profil, presensi,
+tahfiz, izin — seluruhnya kembali data yang benar), mencoba mengakses anak
+WALI LAIN lewat `santriId` yang benar-benar ada di basis data ditolak
+NOT_FOUND pada endpoint detail MAUPUN presensi (bukan hanya endpoint
+utama), dan — menjawab permintaan eksplisit soal wali beranak lebih dari
+satu — seorang wali ditautkan ke ANAK KEDUA (Aisyah Putri, sebagai wali
+kedua/ibu) dan `GET /anak` benar mengembalikan KEDUA anak, dan detail anak
+kedua dapat diakses tanpa gesekan.
+
+**Yang secara eksplisit DIMINTA dan BELUM dikerjakan (jangan dianggap
+selesai):**
+
+```text
+1. Nilai/rapor semua anak    — modul EP-O (Nilai dan rapor) belum ada sama
+                                sekali; portal tidak dapat menampilkan
+                                sesuatu yang belum dicatat di mana pun.
+2. Bayar SPP >1 anak sekaligus,
+   1 virtual account          — memerlukan integrasi PaymentPort/VA
+                                sungguhan dan penggabungan tagihan lintas
+                                santri; EP-F (tagihan) sengaja per-santri
+                                dan belum tersambung payment gateway apa
+                                pun. Ini pekerjaan besar tersendiri, BUKAN
+                                perluasan kecil dari EP-K.
+3. Notifikasi (hadir, bolos,
+   pelanggaran, ngaji, dst.)  — memerlukan EPESANTREN_PARENT_COMMUNICATION/
+                                EPESANTREN_NOTIFICATION (§8.3) tersambung ke
+                                NotificationPort platform yang sudah ada;
+                                belum satu event pesantren pun diterbitkan
+                                ke event bus.
+```
+
+Ketiganya dicatat di sini secara eksplisit, bukan didiamkan, sebab §6
+melarang "berhenti pada proposal ... tanpa vertical slice berjalan" —
+portal baca-saja untuk profil/presensi/tahfiz/izin ADALAH satu vertical
+slice yang berjalan dan teruji; ketiga hal di atas adalah slice BERIKUTNYA
+yang belum dimulai.
+
+## Akun uji coba EPESANTREN_WALI (tenant `ponpes_demo`)
+
+```text
+EPESANTREN_WALI   wali1_ponpesdemo .. wali10_ponpesdemo
+```
+
+Setiap akun ditautkan sebagai wali sungguhan (lewat `pesantren_wali` dan
+`pesantren_santri_wali`) ke salah satu dari 4 santri sampel yang ada
+(Ahmad Fulan, Ridwan Hakim, Aisyah Putri, Yusuf Anwar) — bukan akun kosong
+tanpa data, sebab akun wali tanpa anak tidak berguna untuk menguji
+`DEPENDENT_CHILD`. `wali1_ponpesdemo` sengaja ditautkan ke DUA anak
+(Ahmad Fulan sebagai wali utama, Aisyah Putri sebagai wali kedua) untuk
+membuktikan kasus wali beranak lebih dari satu. Kata sandi sama dengan
+akun uji EPESANTREN_ADMIN/EPESANTREN_PETUGAS_GERBANG di atas.
 
 ## Sesudah EP-A
 
 ```text
-EP-K   Portal wali beserta cakupan DEPENDENT_CHILD
 EP-L   Dompet santri dan batas belanja
 EP-M   Anjungan dan kartu RFID
 EP-N   Adapter POS, koperasi, klinik

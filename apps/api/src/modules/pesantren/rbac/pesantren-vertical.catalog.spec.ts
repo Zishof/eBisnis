@@ -12,6 +12,7 @@ import {
   PESANTREN_VERTICAL_CATALOG,
   ROLE_ADMIN_EPESANTREN,
   ROLE_PETUGAS_GERBANG,
+  ROLE_WALI,
 } from './pesantren-vertical.catalog';
 import { VERTICAL_CATALOGS } from '../../../infrastructure/provisioning/vertical-catalogs';
 import { PROFILE_ACTIONS } from '../../../infrastructure/provisioning/role-profile';
@@ -103,6 +104,26 @@ describe('katalog vertikal ePesantren', () => {
     expect(gerbang).toBeDefined();
     expect(gerbang!.actions).not.toContain('APPROVE');
     expect(gerbang!.actions).not.toContain('REJECT');
+  });
+
+  it('EPESANTREN_WALI hanya memegang EPESANTREN_PORTAL_WALI, tidak pernah EPESANTREN_SANTRI', () => {
+    // Wali yang kebetulan memegang EPESANTREN_SANTRI berarti ia dapat
+    // membaca (dan mengubah) data SELURUH santri pondok, bukan hanya
+    // anaknya sendiri -- persis kebocoran yang portal wali dirancang untuk
+    // dicegah.
+    const wali = PESANTREN_ROLES.find((r) => r.code === ROLE_WALI);
+    expect(wali).toBeDefined();
+    expect(wali!.modules.EPESANTREN_PORTAL_WALI).toBeDefined();
+    expect(wali!.modules.EPESANTREN_SANTRI).toBeUndefined();
+    expect(wali!.allModules).not.toBe(true);
+  });
+
+  it('menu EPESANTREN_PORTAL_WALI hanya menawarkan READ', () => {
+    // Portal wali tidak pernah menulis apa pun -- mengajukan izin, mencatat
+    // presensi, dan seluruh aksi tulis lain tetap milik layar pengurus.
+    const portal = PESANTREN_MENUS.find((m) => m.code === 'EPESANTREN_PORTAL_WALI');
+    expect(portal).toBeDefined();
+    expect(portal!.actions).toEqual(['READ']);
   });
 
   it('terdaftar pada VERTICAL_CATALOGS', () => {
