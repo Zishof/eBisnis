@@ -780,6 +780,66 @@ penyaringan cakupan untuk wali (laporan ini murni untuk pengurus/admin,
 BUKAN ekstensi portal wali -- portal wali sudah punya laporan per-anaknya
 sendiri sejak EP-K/EP-O).
 
+## Audit KEDUA sistem lama (menyeluruh, seluruh direktori master/sekolah)
+
+Permintaan eksplisit pengguna setelah EP-P selesai: audit ulang seluruh
+`C:\opt\AIS\ais\...\master\sekolah\` (240 berkas, bukan hanya penilaian
+seperti audit pertama pada EP-O) untuk memastikan TIDAK ADA kemampuan
+tertinggal. Temuan lengkap dan peringkatnya ada di riwayat kerja; lima
+kesenjangan bernilai tinggi berikut dikerjakan sebagai EP-S1 s.d. EP-S5:
+
+```text
+EP-S1  Pelanggaran dan hukuman santri (tata tertib) -- SELESAI
+EP-S2  Guru: data induk dan penugasan mengajar
+EP-S3  Absensi guru dan piket (BUKAN presensi santri)
+EP-S4  Ekstrakurikuler dan organisasi siswa (setara OSIS)
+EP-S5  Prestasi dan penghargaan santri
+```
+
+Kesenjangan lain yang ditemukan tetapi TIDAK dikerjakan (nilai lebih
+rendah atau kemungkinan besar sudah tercakup modul ERP lain di luar
+pesantren): buku penghubung/catatan guru-orang tua, log aktivitas harian
+generik, konseling (BK), manajemen alumni terstruktur, diskon/deposit/
+denda pada tagihan (perlu konfirmasi apakah modul keuangan ERP yang lebih
+umum sudah menanganinya), data sosial-ekonomi orang tua, kebutuhan
+khusus/transportasi, kelas les/PKL, evaluasi guru oleh siswa, log
+kunjungan/tamu, surat keterangan, dan penjurusan sebagai konsep formal.
+
+### Status EP-S1 — SELESAI, pelanggaran dan hukuman santri
+
+`pesantren_jenis_pelanggaran` (katalog berbobot poin per kategori
+RINGAN/SEDANG/BERAT), `pesantren_pelanggaran` (catatan per santri --
+poin DISALIN dari jenis saat pencatatan, bukan dibaca ulang lewat JOIN,
+supaya kebijakan poin yang berubah di kemudian hari tidak diam-diam
+mengubah catatan lama), `pesantren_hukuman` (sanksi atas satu
+pelanggaran). Total poin aktif seorang santri DIHITUNG dari log yang
+belum dibatalkan, pola yang sama dengan saldo dompet (EP-L).
+
+Ditegaskan SENGAJA terpisah dari `pesantren_izin` (EP-J): izin adalah
+pengajuan proaktif santri untuk keluar pondok, pelanggaran adalah
+pencatatan reaktif pengurus atas pelanggaran tata tertib -- pemilik
+proses dan siklus hidupnya berbeda sama sekali, menggabungkannya akan
+mencampur dua konsep yang pengguna butuh bedakan dengan jelas.
+
+Portal wali diperluas dengan `GET .../anak/:santriId/pelanggaran`
+(baca saja) -- menjawab permintaan eksplisit pengguna agar wali
+mendapat kabar bila anaknya "melanggar sesuatu" (notifikasi push belum
+ada, tapi datanya kini dapat dilihat wali kapan saja).
+
+Live-test terhadap `ponpes_demo`: membuat jenis pelanggaran, menolak
+kode duplikat, mencatat dua pelanggaran (total poin 5+5=10), membatalkan
+satu (total turun ke 5, pembatalan kedua ditolak), menjatuhkan hukuman
+teguran lisan, menyelesaikannya (penyelesaian kedua ditolak), menolak
+menjatuhkan hukuman atas pelanggaran yang sudah dibatalkan, 404 pada
+pelanggaran tak dikenal, wali1 berhasil melihat riwayat pelanggaran
+anaknya lengkap dengan status, dan wali2 ditolak 404 saat mencoba
+melihat pelanggaran anak wali1 (isolasi kepemilikan tetap tegak).
+
+**Yang tidak dikerjakan:** eskalasi otomatis (mis. "3 pelanggaran RINGAN
+dalam sebulan otomatis jadi SEDANG") -- keputusan eskalasi tetap manual
+oleh pengurus; notifikasi push ke wali saat pelanggaran dicatat (perlu
+NotificationPort, belum dikaitkan ke peristiwa pesantren mana pun).
+
 ## Sesudah EP-A
 
 ```text

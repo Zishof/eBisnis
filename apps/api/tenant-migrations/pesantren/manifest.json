@@ -89,6 +89,12 @@
       "file": "20260802T270000__pesantren__kurikulum.sql",
       "name": "EP-O4: Kurikulum dan jadwal pelajaran",
       "description": "pesantren_kurikulum (mata pelajaran + jam per minggu per unit/tingkat/tahun ajaran), pesantren_jadwal_pelajaran (jadwal jam nyata per rombongan). Dua EXCLUDE USING gist (butuh btree_gist) mencegah tumpang tindih jam pada satu rombongan dan pada satu pengajar sekaligus -- celah yang sistem lama tidak menegakkan sama sekali menurut audit EP-O."
+    },
+    {
+      "id": "20260802T280000__pesantren__pelanggaran",
+      "file": "20260802T280000__pesantren__pelanggaran.sql",
+      "name": "EP-S1: Pelanggaran dan hukuman santri",
+      "description": "pesantren_jenis_pelanggaran (katalog berbobot poin), pesantren_pelanggaran (catatan per santri, poin disalin saat pencatatan), pesantren_hukuman (sanksi atas satu pelanggaran). Ditemukan lewat audit KEDUA (menyeluruh) atas direktori master/sekolah sistem lama -- BUKAN pesantren_izin (EP-J): izin proaktif oleh santri, pelanggaran reaktif oleh pengurus."
     }
   ]
 }

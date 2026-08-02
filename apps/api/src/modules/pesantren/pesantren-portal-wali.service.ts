@@ -217,4 +217,26 @@ export class PesantrenPortalWaliService {
     await this.verifikasiKepemilikan(schemaName, waliId, santriId);
     return this.nilaiService.rapor(schemaName, santriId, tahunAjaranId);
   }
+
+  /**
+   * Riwayat pelanggaran satu anak (EP-S1) -- baca saja, menjawab
+   * permintaan eksplisit wali mendapat kabar bila anaknya "melanggar
+   * sesuatu". Hukuman disertakan per baris lewat sub-kueri, bukan
+   * endpoint terpisah, sebab wali membacanya sebagai satu riwayat --
+   * ia tidak mengelola hukuman seperti pengurus.
+   */
+  async pelanggaranAnak(schemaName: string, waliId: string, santriId: string) {
+    await this.verifikasiKepemilikan(schemaName, waliId, santriId);
+    const S = `"${schemaName}"`;
+    return this.tenantDb.query(
+      schemaName,
+      `SELECT p.id::text, p.tanggal::text, p.keterangan, p.poin, p.status,
+              jp.nama AS jenis_pelanggaran, jp.kategori
+         FROM ${S}.pesantren_pelanggaran p
+         JOIN ${S}.pesantren_jenis_pelanggaran jp ON jp.id = p.jenis_pelanggaran_id
+        WHERE p.santri_id = $1 AND p.deleted_at IS NULL
+        ORDER BY p.tanggal DESC`,
+      [santriId],
+    );
+  }
 }
