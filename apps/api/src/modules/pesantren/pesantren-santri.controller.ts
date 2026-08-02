@@ -20,7 +20,7 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
  * `CatatSantriDto` (ayah, ibu, wali). Lihat `DataOrangTua` pada
  * `pesantren-santri.ts` untuk kembarannya di sisi aturan/validasi murni.
  */
-class DataOrangTuaDto {
+export class DataOrangTuaDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(160)
   nama?: string;
 

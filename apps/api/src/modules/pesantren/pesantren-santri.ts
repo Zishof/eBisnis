@@ -76,10 +76,11 @@ export interface MasukanSantri {
 }
 
 const POLA_NIS = /^[A-Za-z0-9.\-/]{3,32}$/;
-const POLA_NIK = /^[0-9]{16}$/;
-const POLA_NISN = /^[0-9]{10}$/;
+/** Diekspor -- dipakai ulang `pesantren-psb.ts` (calon santri, kolom Dapodik sama persis). */
+export const POLA_NIK = /^[0-9]{16}$/;
+export const POLA_NISN = /^[0-9]{10}$/;
 const GOLONGAN_DARAH_SAH = new Set(['A', 'B', 'AB', 'O', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']);
-const KEBUTUHAN_KHUSUS_SAH = new Set([
+export const KEBUTUHAN_KHUSUS_SAH = new Set([
   'TIDAK_ADA', 'NETRA', 'RUNGU', 'WICARA', 'GRAHITA', 'DAKSA', 'LARAS', 'GANDA', 'AUTIS', 'LAINNYA',
 ]);
 
@@ -89,7 +90,7 @@ const KEBUTUHAN_KHUSUS_SAH = new Set([
  * fungsi tersendiri supaya pesan galatnya konsisten untuk ketiganya, bukan
  * ditulis ulang tiga kali dengan risiko berbeda pesan tanpa alasan.
  */
-function validasiOrangTua(field: string, label: string, data: DataOrangTua | undefined, galat: Galat[]): void {
+export function validasiOrangTua(field: string, label: string, data: DataOrangTua | undefined, galat: Galat[]): void {
   if (!data) return;
   const nik = (data.nik ?? '').trim();
   if (nik && !POLA_NIK.test(nik)) {

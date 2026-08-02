@@ -13,7 +13,7 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
-import { PesantrenSantriService, BarisSantri } from './pesantren-santri.service';
+import { PesantrenSantriService, BarisSantri, kolomOrangTua } from './pesantren-santri.service';
 import {
   MasukanGelombang,
   MasukanJadwal,
@@ -60,12 +60,57 @@ export interface BarisPendaftar {
   catatan_keputusan: string | null;
   santri_id: string | null;
   created_at: string;
+
+  // -- Kelengkapan setara Dapodik (lihat migrasi 20260802T340000) ----------
+  nik: string | null;
+  nisn: string | null;
+  nipd: string | null;
+  agama: string | null;
+  kewarganegaraan: string;
+  kebutuhan_khusus: string;
+  anak_ke: number | null;
+  jumlah_saudara: number | null;
+  alat_transportasi: string | null;
+  jarak_tempat_tinggal_km: string | null;
+  telepon: string | null;
+  hp: string | null;
+  email: string | null;
+  penerima_kip: boolean;
+  nomor_kip: string | null;
+  penerima_kks: boolean;
+  nomor_kks: string | null;
+  nomor_kk: string | null;
+  nama_ayah: string | null;
+  nik_ayah: string | null;
+  tahun_lahir_ayah: number | null;
+  pendidikan_ayah: string | null;
+  pekerjaan_ayah: string | null;
+  penghasilan_ayah: string | null;
+  nama_ibu: string | null;
+  nik_ibu: string | null;
+  tahun_lahir_ibu: number | null;
+  pendidikan_ibu: string | null;
+  pekerjaan_ibu: string | null;
+  penghasilan_ibu: string | null;
+  nama_wali: string | null;
+  nik_wali: string | null;
+  tahun_lahir_wali: number | null;
+  pendidikan_wali: string | null;
+  pekerjaan_wali: string | null;
+  penghasilan_wali: string | null;
 }
 
 const KOLOM_PENDAFTAR = `id::text, gelombang_id::text, nomor_pendaftaran, nama_lengkap, jenis_kelamin,
   tempat_lahir, tanggal_lahir::text, nama_orang_tua, no_hp_orang_tua, alamat, asal_sekolah,
   unit_pendidikan_tujuan_id::text, status, catatan_verifikasi, catatan_keputusan, santri_id::text,
-  created_at::text`;
+  created_at::text,
+  nik, nisn, nipd, agama, kewarganegaraan, kebutuhan_khusus, anak_ke,
+  jumlah_saudara, alat_transportasi, jarak_tempat_tinggal_km::text,
+  telepon, hp, email, penerima_kip, nomor_kip, penerima_kks, nomor_kks,
+  nomor_kk, nama_ayah, nik_ayah, tahun_lahir_ayah, pendidikan_ayah,
+  pekerjaan_ayah, penghasilan_ayah, nama_ibu, nik_ibu, tahun_lahir_ibu,
+  pendidikan_ibu, pekerjaan_ibu, penghasilan_ibu, nama_wali, nik_wali,
+  tahun_lahir_wali, pendidikan_wali, pekerjaan_wali, penghasilan_wali`;
 
 export interface BarisJadwal {
   id: string;
@@ -335,12 +380,30 @@ export class PesantrenPsbService {
       const urutan = urutRows.rows[0].nomor_urut_terakhir;
       const nomorPendaftaran = bentukNomorPendaftaran(gelombang.tahun_ajaran_code, gelombang.kode, urutan);
 
+      const ayah = masukan.ayah ?? {};
+      const ibu = masukan.ibu ?? {};
+      const wali = masukan.wali ?? {};
       const rows = await client.query<BarisPendaftar>(
         `INSERT INTO ${S}.pesantren_psb_pendaftar
            (gelombang_id, nomor_pendaftaran, nama_lengkap, jenis_kelamin, tempat_lahir, tanggal_lahir,
             nama_orang_tua, no_hp_orang_tua, alamat, asal_sekolah, unit_pendidikan_tujuan_id,
+            nik, nisn, nipd, agama, kewarganegaraan, kebutuhan_khusus,
+            anak_ke, jumlah_saudara, alat_transportasi, jarak_tempat_tinggal_km,
+            telepon, hp, email, penerima_kip, nomor_kip, penerima_kks, nomor_kks,
+            nomor_kk,
+            nama_ayah, nik_ayah, tahun_lahir_ayah, pendidikan_ayah, pekerjaan_ayah, penghasilan_ayah,
+            nama_ibu, nik_ibu, tahun_lahir_ibu, pendidikan_ibu, pekerjaan_ibu, penghasilan_ibu,
+            nama_wali, nik_wali, tahun_lahir_wali, pendidikan_wali, pekerjaan_wali, penghasilan_wali,
             created_by, updated_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $12)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+                 $12, $13, $14, $15, COALESCE($16, 'WNI'), COALESCE($17, 'TIDAK_ADA'),
+                 $18, $19, $20, $21,
+                 $22, $23, $24, COALESCE($25, FALSE), $26, COALESCE($27, FALSE), $28,
+                 $29,
+                 $30, $31, $32, $33, $34, $35,
+                 $36, $37, $38, $39, $40, $41,
+                 $42, $43, $44, $45, $46, $47,
+                 $48, $48)
          RETURNING ${KOLOM_PENDAFTAR}`,
         [
           gelombang.id,
@@ -354,6 +417,27 @@ export class PesantrenPsbService {
           bersihkan(masukan.alamat),
           bersihkan(masukan.asalSekolah),
           masukan.unitPendidikanTujuanId || null,
+          bersihkan(masukan.nik),
+          bersihkan(masukan.nisn),
+          bersihkan(masukan.nipd),
+          bersihkan(masukan.agama),
+          bersihkan(masukan.kewarganegaraan),
+          bersihkan(masukan.kebutuhanKhusus)?.toUpperCase() ?? null,
+          masukan.anakKe ?? null,
+          masukan.jumlahSaudara ?? null,
+          bersihkan(masukan.alatTransportasi),
+          masukan.jarakTempatTinggalKm ?? null,
+          bersihkan(masukan.telepon),
+          bersihkan(masukan.hp),
+          bersihkan(masukan.email),
+          masukan.penerimaKip ?? false,
+          bersihkan(masukan.nomorKip),
+          masukan.penerimaKks ?? false,
+          bersihkan(masukan.nomorKks),
+          bersihkan(masukan.nomorKk),
+          ...kolomOrangTua(ayah),
+          ...kolomOrangTua(ibu),
+          ...kolomOrangTua(wali),
           createdBy,
         ],
       );
@@ -505,6 +589,51 @@ export class PesantrenPsbService {
         statusTinggal: masukan.statusTinggal,
         tanggalMasuk: masukan.tanggalMasuk,
         alamatAsal: pendaftar.alamat,
+
+        // -- Kelengkapan setara Dapodik, dibawa dari pendaftar apa adanya --
+        // (sudah tervalidasi saat pendaftaran; `catat()` memvalidasi ulang).
+        nik: pendaftar.nik,
+        nisn: pendaftar.nisn,
+        nipd: pendaftar.nipd,
+        agama: pendaftar.agama,
+        kewarganegaraan: pendaftar.kewarganegaraan,
+        kebutuhanKhusus: pendaftar.kebutuhan_khusus,
+        anakKe: pendaftar.anak_ke,
+        jumlahSaudara: pendaftar.jumlah_saudara,
+        alatTransportasi: pendaftar.alat_transportasi,
+        jarakTempatTinggalKm: pendaftar.jarak_tempat_tinggal_km != null ? Number(pendaftar.jarak_tempat_tinggal_km) : null,
+        telepon: pendaftar.telepon,
+        hp: pendaftar.hp,
+        email: pendaftar.email,
+        penerimaKip: pendaftar.penerima_kip,
+        nomorKip: pendaftar.nomor_kip,
+        penerimaKks: pendaftar.penerima_kks,
+        nomorKks: pendaftar.nomor_kks,
+        nomorKk: pendaftar.nomor_kk,
+        ayah: {
+          nama: pendaftar.nama_ayah,
+          nik: pendaftar.nik_ayah,
+          tahunLahir: pendaftar.tahun_lahir_ayah,
+          pendidikan: pendaftar.pendidikan_ayah,
+          pekerjaan: pendaftar.pekerjaan_ayah,
+          penghasilan: pendaftar.penghasilan_ayah,
+        },
+        ibu: {
+          nama: pendaftar.nama_ibu,
+          nik: pendaftar.nik_ibu,
+          tahunLahir: pendaftar.tahun_lahir_ibu,
+          pendidikan: pendaftar.pendidikan_ibu,
+          pekerjaan: pendaftar.pekerjaan_ibu,
+          penghasilan: pendaftar.penghasilan_ibu,
+        },
+        wali: {
+          nama: pendaftar.nama_wali,
+          nik: pendaftar.nik_wali,
+          tahunLahir: pendaftar.tahun_lahir_wali,
+          pendidikan: pendaftar.pendidikan_wali,
+          pekerjaan: pendaftar.pekerjaan_wali,
+          penghasilan: pendaftar.penghasilan_wali,
+        },
       },
       createdBy,
     );

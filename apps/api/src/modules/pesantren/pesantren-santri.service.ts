@@ -252,7 +252,8 @@ function bersihkan(nilai?: string | null): string | null {
   return bersih ? bersih : null;
 }
 
-function kolomOrangTua(data: DataOrangTua): [string | null, string | null, number | null, string | null, string | null, string | null] {
+/** Diekspor -- dipakai ulang `pesantren-psb.service.ts` (calon santri, kolom Dapodik sama persis). */
+export function kolomOrangTua(data: DataOrangTua): [string | null, string | null, number | null, string | null, string | null, string | null] {
   return [
     bersihkan(data.nama),
     bersihkan(data.nik),
