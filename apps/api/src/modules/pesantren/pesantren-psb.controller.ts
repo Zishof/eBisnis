@@ -172,8 +172,12 @@ export class PesantrenPsbGelombangController {
   @Permissions('EPESANTREN_PSB.READ')
   @Get(':id')
   @ApiOperation({ summary: 'Detail satu gelombang' })
-  satu(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.psb.satuGelombang(schemaWajib(user), id);
+  async satu(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const gelombang = await this.psb.satuGelombang(schemaWajib(user), id);
+    if (!gelombang) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gelombang tidak ditemukan.');
+    }
+    return gelombang;
   }
 
   @Permissions('EPESANTREN_PSB.CREATE')
@@ -227,8 +231,12 @@ export class PesantrenPsbPendaftarController {
   @Permissions('EPESANTREN_PSB.READ')
   @Get(':id')
   @ApiOperation({ summary: 'Detail satu pendaftar' })
-  satu(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.psb.satuPendaftar(schemaWajib(user), id);
+  async satu(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const pendaftar = await this.psb.satuPendaftar(schemaWajib(user), id);
+    if (!pendaftar) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Pendaftar tidak ditemukan.');
+    }
+    return pendaftar;
   }
 
   @Permissions('EPESANTREN_PSB.CREATE')

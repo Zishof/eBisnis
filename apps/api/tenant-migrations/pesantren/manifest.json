@@ -77,6 +77,12 @@
       "file": "20260802T250000__pesantren__psb.sql",
       "name": "EP-O2: PSB/PPDB bergelombang",
       "description": "pesantren_psb_gelombang, pesantren_psb_pendaftar, pesantren_psb_jadwal. Alur penerimaan calon santri baru per gelombang -- terverifikasi, berjadwal ujian/wawancara, bernomor pendaftaran otomatis (penghitung atomik per gelombang), berujung daftar ulang yang membuat baris pesantren_santri lewat PesantrenSantriService.catat -- BUKAN pendaftaran pondok (tenant baru) di modules/public, yang mendaftarkan institusi, bukan calon santri."
+    },
+    {
+      "id": "20260802T260000__pesantren__rombongan",
+      "file": "20260802T260000__pesantren__rombongan.sql",
+      "name": "EP-O3: Rombongan belajar/kelas",
+      "description": "pesantren_rombongan_belajar, pesantren_rombongan_anggota. Mengelompokkan santri ke kelas per unit pendidikan dan tahun ajaran -- satu keanggotaan AKTIF per santri per tahun ajaran, ditegakkan indeks unik parsial. Wali kelas menunjuk user_subject yang sudah ada, BUKAN peran Guru baru -- peran itu belum punya modul sendiri (§6)."
     }
   ]
 }

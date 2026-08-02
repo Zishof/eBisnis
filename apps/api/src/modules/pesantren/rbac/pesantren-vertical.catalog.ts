@@ -220,6 +220,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 630,
     actions: PSB_AKSI,
   },
+  {
+    code: 'EPESANTREN_ROMBONGAN',
+    label: 'Rombongan Belajar',
+    translationKey: 'menu.epesantren.rombongan',
+    route: '/app/pesantren/rombongan',
+    icon: 'Users2',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 640,
+    actions: CATAT,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -247,6 +257,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_KARTU: 'P7',
       EPESANTREN_NILAI: 'P7',
       EPESANTREN_PSB: 'P7',
+      EPESANTREN_ROMBONGAN: 'P7',
     },
     dataScope: 'TENANT',
     core: false,

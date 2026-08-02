@@ -30,6 +30,8 @@ import { PesantrenNilaiController } from './pesantren-nilai.controller';
 import { PesantrenNilaiService } from './pesantren-nilai.service';
 import { PesantrenPsbGelombangController, PesantrenPsbPendaftarController } from './pesantren-psb.controller';
 import { PesantrenPsbService } from './pesantren-psb.service';
+import { PesantrenRombonganController } from './pesantren-rombongan.controller';
+import { PesantrenRombonganService } from './pesantren-rombongan.service';
 
 @Module({
   /*
@@ -57,6 +59,7 @@ import { PesantrenPsbService } from './pesantren-psb.service';
     PesantrenNilaiController,
     PesantrenPsbGelombangController,
     PesantrenPsbPendaftarController,
+    PesantrenRombonganController,
   ],
   providers: [
     PesantrenSantriService,
@@ -74,6 +77,7 @@ import { PesantrenPsbService } from './pesantren-psb.service';
     PesantrenDompetPaymentHandler,
     PesantrenNilaiService,
     PesantrenPsbService,
+    PesantrenRombonganService,
   ],
 })
 export class PesantrenModule implements OnModuleInit {

@@ -648,18 +648,55 @@ sehingga pesan galat pada percobaan meluluskan pendaftar yang masih
 berstatus TERDAFTAR keliru menyebut jadwal, bukan status -- diperbaiki
 dengan menambah pemeriksaan status DIJADWALKAN terlebih dahulu.
 
-**Yang tidak dikerjakan:** rombongan belajar/kelas (EP-O3, belum ada tabel
-untuk ditempati); pembayaran biaya pendaftaran (kolom
+**Yang tidak dikerjakan:** rombongan belajar/kelas (dikerjakan berikutnya
+sebagai EP-O3, lihat status di bawah); pembayaran biaya pendaftaran (kolom
 `biaya_pendaftaran` tercatat sebagai referensi, belum terhubung ke
 `pesantren_tagihan`/gateway pembayaran); notifikasi WhatsApp/SMS nomor
 pendaftaran ke orang tua (perlu NotificationPort, belum dikaitkan);
 pencetakan kartu ujian/bukti pendaftaran.
 
+## Status EP-O3 — SELESAI, rombongan belajar/kelas
+
+Mengisi kekosongan yang tercatat pada EP-O2 di atas. Dua tabel
+(`pesantren_rombongan_belajar`, `pesantren_rombongan_anggota`)
+mengelompokkan santri ke kelas per unit pendidikan dan tahun ajaran --
+satu keanggotaan AKTIF per santri per tahun ajaran, ditegakkan indeks
+unik parsial `ux_pesantren_rombongan_anggota_aktif`, sama persis dengan
+pola `ux_pesantren_penempatan_aktif` pada EP-G (asrama). Kapasitas kelas
+bersifat opsional dan ditegakkan di service (bukan CHECK basis data,
+sebab hitungannya lintas baris) sebelum menempatkan santri baru.
+Pemindahan santri antar kelas (`pindahkan`) menutup keanggotaan lama dan
+membuka yang baru DALAM SATU TRANSAKSI, supaya tidak ada jeda santri
+tanpa kelas atau tercatat di dua kelas sekaligus.
+
+Wali kelas menunjuk `user_subject` yang sudah ada (nullable), BUKAN peran
+"Guru" baru -- peran itu belum punya modulnya sendiri, dan §6 melarang
+menyemai peran mendahului fitur yang menjadi dasarnya.
+
+Live-test terhadap `ponpes_demo`: membuat dua kelas VII-A (kapasitas 1)
+dan VII-B, menolak nama kelas duplikat pada unit+tahun ajaran yang sama,
+menempatkan satu santri ke VII-A (penuh), menolak santri kedua ke VII-A
+(kapasitas penuh) DAN menolak penempatan kedua santri pertama ke VII-B
+selagi masih aktif di VII-A (keanggotaan ganda), memindahkan santri
+pertama ke VII-B (membebaskan slot VII-A), lalu berhasil menempatkan
+santri kedua ke VII-A, mengeluarkan satu keanggotaan dan menolak
+pengeluaran kedua kalinya, dan mengonfirmasi 404 pada rombongan yang
+tidak ada. Live-test ini juga menemukan dan memperbaiki bug nyata pada
+kontroler EP-O2 DAN EP-O3 sekaligus: endpoint `GET :id` tunggal
+(`satuGelombang`, `satuPendaftar`, `satu` rombongan) mengembalikan
+`{success:true, data:null}` alih-alih 404 ketika baris tidak ditemukan --
+pola yang benar (dicontoh dari `pesantren-santri.controller.ts`) melempar
+`AppError.notFound` di controller, bukan meneruskan null polos.
+
+**Yang tidak dikerjakan:** menghubungkan presensi (EP-E) dan nilai (EP-O)
+agar bisa dicatat SEKALIGUS per rosters kelas (saat ini keduanya tetap
+per-santri satu per satu) -- data keanggotaan sudah tersedia untuk
+mendukung itu lewat join, tapi service presensi/nilai belum diubah untuk
+memanfaatkannya; kurikulum dan jadwal pelajaran (EP-O4, belum dikerjakan).
+
 ## Sesudah EP-A
 
 ```text
-EP-O3  Rombongan belajar/kelas (ditemukan lewat audit sistem lama --
-       prasyarat presensi dan nilai per-kelas, bukan hanya per-santri)
 EP-O4  Kurikulum dan jadwal pelajaran (ditemukan lewat audit sistem lama)
 EP-P   Pelaporan
 EP-Q   UAT bersama pondok pertama
