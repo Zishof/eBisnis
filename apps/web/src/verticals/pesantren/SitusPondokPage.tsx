@@ -211,6 +211,12 @@ export function SitusPondokPage() {
             >
               Masuk Sistem Informasi Santri
             </Link>
+            <Link
+              to="/santri/pondok/psb"
+              className="rounded-lg border border-white/50 px-5 py-2.5 font-semibold text-white hover:bg-white/10"
+            >
+              Penerimaan Santri Baru
+            </Link>
             {profil.instagram_url && (
               <a
                 href={profil.instagram_url}

@@ -14,6 +14,8 @@ import { PublicTenantResolver } from '../../infrastructure/tenant/public-tenant-
 import { TenantFileBlobService, BerkasBlob } from '../../infrastructure/files/tenant-file-blob.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { KategoriGambarProfil, KODE_BERKAS_GAMBAR_PROFIL } from './pesantren-profil';
+import { PesantrenPsbService, BarisPendaftar } from './pesantren-psb.service';
+import { MasukanPendaftar } from './pesantren-psb';
 
 const VERTIKAL = 'pesantren';
 
@@ -23,6 +25,7 @@ export class PesantrenPublicService {
     private readonly tenantDb: TenantConnectionService,
     private readonly resolver: PublicTenantResolver,
     private readonly fileBlob: TenantFileBlobService,
+    private readonly psb: PesantrenPsbService,
   ) {}
 
   async situs(host: string | undefined) {
@@ -134,5 +137,70 @@ export class PesantrenPublicService {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
     }
     return berkas;
+  }
+
+  /**
+   * Gelombang yang sedang DIBUKA -- satu-satunya yang boleh dipilih pada
+   * formulir pendaftaran publik. Sama aturan penerbitannya dengan
+   * `situs()` -- pondok yang belum menerbitkan situsnya tidak menawarkan
+   * pendaftaran lewat jalur publik, walau gelombangnya sudah dibuka
+   * pengurus untuk dipakai lewat panel admin.
+   */
+  async psbGelombangDibuka(host: string | undefined) {
+    const konteks = await this.resolver.resolve(host, VERTIKAL);
+    const S = konteks.schemaName;
+
+    const diterbitkan = await this.tenantDb.queryOne<{ is_published: boolean }>(
+      S,
+      `SELECT is_published FROM "${S}".pesantren_website_setting WHERE singleton = TRUE`,
+    );
+    if (!diterbitkan || diterbitkan.is_published !== true) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Situs tidak ditemukan.');
+    }
+
+    return this.tenantDb.query(
+      S,
+      `SELECT id::text, kode, nama, tanggal_buka::text, tanggal_tutup::text, biaya_pendaftaran::text
+         FROM "${S}".pesantren_psb_gelombang
+        WHERE status = 'DIBUKA' AND deleted_at IS NULL
+        ORDER BY tanggal_buka ASC`,
+    );
+  }
+
+  /**
+   * Pendaftaran calon santri lewat situs publik -- TANPA aktor staf sama
+   * sekali (`createdBy: null`, lihat `PesantrenPsbService.daftarkan`).
+   * Aturan gelombang harus DIBUKA sudah ditegakkan `daftarkan()` sendiri;
+   * di sini HANYA ditambahkan syarat situsnya sudah diterbitkan, supaya
+   * pondok yang belum menerbitkan situsnya tidak diam-diam menerima
+   * pendaftaran dari alamat yang belum ia umumkan ke siapa pun.
+   */
+  async psbDaftar(host: string | undefined, masukan: MasukanPendaftar): Promise<BarisPendaftar> {
+    const konteks = await this.resolver.resolve(host, VERTIKAL);
+    const S = konteks.schemaName;
+
+    const diterbitkan = await this.tenantDb.queryOne<{ is_published: boolean }>(
+      S,
+      `SELECT is_published FROM "${S}".pesantren_website_setting WHERE singleton = TRUE`,
+    );
+    if (!diterbitkan || diterbitkan.is_published !== true) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Situs tidak ditemukan.');
+    }
+
+    return this.psb.daftarkan(S, masukan, null);
+  }
+
+  /**
+   * Daftar agama -- combobox formulir PSB publik. Lihat migrasi
+   * `20260803T060000__pesantren__agama.sql`: tabel referensi, BUKAN diikat
+   * FK ke kolom `agama` bertipe teks bebas yang sudah ada.
+   */
+  async daftarAgama(host: string | undefined) {
+    const konteks = await this.resolver.resolve(host, VERTIKAL);
+    const S = konteks.schemaName;
+    return this.tenantDb.query(
+      S,
+      `SELECT code, nama FROM "${S}".pesantren_agama WHERE is_active = TRUE ORDER BY sort_order ASC`,
+    );
   }
 }
