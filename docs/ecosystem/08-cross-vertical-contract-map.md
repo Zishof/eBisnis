@@ -25,12 +25,22 @@ ExternalPaymentHandler
 ExternalPaymentRegistry
 ```
 
-dengan penangan terdaftar **`COOPERATIVE_MEMBER_BALANCE`** dan
-**`HEALTH_CLAIM_BALANCE`**.
+dengan penangan nyata terdaftar **`COOPERATIVE_MEMBER_BALANCE`**
+(`cooperative/payment/member-balance-payment.handler.ts`) dan penangan dompet
+santri ePesantren (`pesantren/pesantren-dompet-payment.handler.ts`, EP-N).
+**`HEALTH_CLAIM_BALANCE`** BUKAN penangan nyata — itu hanya string fixture di
+`pos/external-payment.spec.ts`; tidak ada modul klinik/eMedik di repo ini yang
+mengimplementasikan `ExternalPaymentHandler`, dan worktree terpisah
+`eBisnisGithub-emedik` (`modules/emedik/`, branch `feature/v12-emedik`) juga
+belum memiliki penangan ini. Diverifikasi ulang saat riset EP-N2
+(2026-08-02) — klaim sebelumnya bahwa penangan ini "sudah berjalan" keliru.
 
-Artinya POS sudah dapat menerima pembayaran dari saldo anggota koperasi dan dari
-klaim kesehatan **tanpa membaca tabel vertical itu** — persis yang §27 minta,
-dan sudah berjalan.
+Artinya POS sudah dapat menerima pembayaran dari saldo anggota koperasi dan
+dari dompet santri **tanpa membaca tabel vertical itu** — persis yang §27
+minta, dan sudah berjalan untuk dua dari tiga vertical yang direncanakan.
+Klaim kesehatan (eMedik) masih perlu penangan nyata begitu modul itu
+digabung — lihat catatan EP-N2 di
+`docs/santri-info/16-implementation-plan.md`.
 
 §186 karena itu berlaku tegas di sini: ECO-9 **memperluas** pola ini, tidak
 membangun kerangka kedua di sampingnya.

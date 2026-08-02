@@ -103,8 +103,17 @@ cookie lintas registrable domain"*).
 `apps/api/src/modules/cooperative/ports/index.ts` sudah mendefinisikan
 `IdentityPort`, `AccountingEventPort`, `NumberingPort`, `NotificationPort`,
 `FileStoragePort`, `SubscriptionPort`. `ExternalPaymentRegistry` pada POS sudah
-melayani `COOPERATIVE_MEMBER_BALANCE` dan `HEALTH_CLAIM_BALANCE` sebagai
-penangan terdaftar.
+melayani dua penangan nyata: `COOPERATIVE_MEMBER_BALANCE`
+(`cooperative/payment/member-balance-payment.handler.ts`) dan penangan dompet
+santri ePesantren (`pesantren/pesantren-dompet-payment.handler.ts`, EP-N).
+`HEALTH_CLAIM_BALANCE` **belum** punya penangan nyata — string itu hanya
+muncul sebagai fixture di `pos/external-payment.spec.ts` untuk menguji bahwa
+registry menerima banyak penangan berbeda; tidak ada modul klinik/eMedik di
+repo ini (lihat `apps/api/src/modules/`) maupun di worktree
+`eBisnisGithub-emedik` yang benar-benar mengimplementasikan
+`ExternalPaymentHandler` untuk klaim kesehatan. Diverifikasi ulang saat riset
+EP-N2 (2026-08-02) — koreksi klaim sebelumnya yang menyatakan penangan ini
+"sudah melayani".
 
 Artinya §27 tidak dimulai dari nol — ia **diperluas**, bukan dibangun ulang. Ini
 temuan yang menghemat pekerjaan, dan sekaligus memperingatkan agar tidak

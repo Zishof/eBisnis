@@ -603,7 +603,6 @@ membedakan semester dalam tahun yang sama).
 ## Sesudah EP-A
 
 ```text
-EP-N2  Adapter koperasi dan klinik untuk ePesantren (POS sudah selesai)
 EP-O2  PSB/PPDB -- pendaftaran calon santri bergelombang (ditemukan lewat
        audit sistem lama, lebih canggih daripada pendaftaran pondok yang
        sudah ada: jadwal ujian/wawancara, verifikasi calon, penomoran
@@ -615,6 +614,37 @@ EP-P   Pelaporan
 EP-Q   UAT bersama pondok pertama
 EP-R   Rilis
 ```
+
+### Status EP-N2 (riset, tidak menghasilkan kode baru)
+
+Diriset 2026-08-02 sebagai kelanjutan permintaan eksplisit untuk menjaga
+kepaduan ERP saat membangun adapter POS. Hasil:
+
+- **Koperasi: SUDAH SELESAI, bukan pekerjaan baru.** `CooperativeModule`
+  sudah mendaftarkan `MemberBalancePaymentHandler`
+  (`cooperative/payment/member-balance-payment.handler.ts`, handlerCode
+  `COOPERATIVE_MEMBER_BALANCE`) ke `ExternalPaymentRegistry` lewat pola
+  `onModuleInit()` yang identik dengan yang dipakai EP-N untuk dompet santri
+  -- pola EP-N memang SENGAJA disalin dari sini, bukan kebetulan mirip.
+- **Klinik/eMedik: TIDAK ADA modul untuk diadaptasi.** Tidak ada
+  `apps/api/src/modules/klinik` atau `.../clinic` di repo ini. String
+  `HEALTH_CLAIM_BALANCE` hanya muncul sebagai fixture pengujian di
+  `pos/external-payment.spec.ts`, BUKAN penangan nyata -- dua dokumen
+  ekosistem (`docs/ecosystem/00-current-state.md` dan
+  `08-cross-vertical-contract-map.md`) secara keliru menyatakan penangan ini
+  "sudah berjalan"; sudah dikoreksi hari ini. Worktree terpisah
+  `eBisnisGithub-emedik` (branch `feature/v12-emedik`, belum digabung) punya
+  modul `emedik/` (billing/claim/fee/settlement/BPJS) tapi JUGA belum
+  mengimplementasikan `ExternalPaymentHandler`.
+- **Keputusan:** EP-N2 ditutup sebagai riset murni, bukan diberi kode
+  kosong/palsu. Membangun modul klinik/eMedik penuh adalah inisiatif
+  terpisah yang jauh melampaui lingkup santri.info/ePesantren pada branch
+  ini, dan modul sumbernya belum tergabung ke branch ini -- persis kasus
+  yang dilarang §6 (jangan mengklaim selesai atau membuat penangan untuk
+  fitur yang tidak/belum ada). Bila/ketika `emedik/` digabung ke branch
+  `feature/collaborative-multi-portal-platform`, adapter pembayarannya
+  cukup meniru `MemberBalancePaymentHandler`/`PesantrenDompetPaymentHandler`
+  satu-lawan-satu -- polanya sudah terbukti dua kali.
 
 ## Aturan untuk setiap EP
 
