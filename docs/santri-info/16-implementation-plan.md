@@ -738,10 +738,51 @@ Dengan ini seluruh EP-O (nilai, PSB, rombongan, kurikulum) yang ditemukan
 lewat audit sistem lama sudah tercakup fungsional/logika sesuai
 permintaan eksplisit -- lanjut ke EP-P.
 
+## Status EP-P — SELESAI, laporan lintas modul
+
+Riset dulu sebelum menulis kode: satu-satunya modul laporan yang sudah ada
+di seluruh monorepo adalah `pos/pos-report.ts` + `pos-report.service.ts`
+(kasir) -- polanya disalin persis: berkas aturan murni tanpa basis data
+(`periksaRentang` membatasi rentang maksimal 92 hari dan memberi bawaan
+30 hari terakhir bila tidak diisi, katalog laporan sebagai daftar
+bertipe yang sekaligus whitelist runtime), lalu service yang hanya
+menjalankan kueri agregasi terhadap tabel yang sudah ada.
+
+**Tidak ada migrasi baru sama sekali** -- delapan laporan
+(`SANTRI_RINGKASAN`, `PRESENSI_REKAP`, `TAGIHAN_REKAP`, `DOMPET_ARUS`,
+`NILAI_RATA`, `PSB_FUNNEL`, `ASRAMA_HUNIAN`, `ROMBONGAN_HUNIAN`) seluruhnya
+kueri baca-saja terhadap tabel EP-A s.d. EP-O4 yang sudah ada -- tidak ada
+data yang disimpan berduplikasi, dan tidak ada satu pun tabel laporan
+tersimpan/materialized dibuat. Riset juga memastikan tidak ada
+xlsx/pdfkit/puppeteer di manapun pada monorepo ini -- ekspor Excel/PDF
+sengaja TIDAK dibangun sebab itu berarti dependensi dan pola baru yang
+belum pernah dipakai di mana pun, bukan sekadar mengisi kekosongan;
+`EXPORT` tetap ada sebagai aksi RBAC untuk menu ini (konsisten dengan menu
+lain) tetapi belum ada mekanisme file-nya.
+
+Satu endpoint `GET /pesantren/laporan/dasbor` menjalankan lima laporan
+sekaligus lewat `Promise.all` dan menggabungkannya jadi satu respons --
+pola yang sama dengan `PosReportService.dasbor()`.
+
+Live-test terhadap `ponpes_demo`: kedelapan laporan dijalankan satu per
+satu dan hasilnya diperiksa cocok dengan data nyata yang tersisa dari
+EP-EP sebelumnya (nilai Fikih Ahmad Fulan tepat 80/85/100 sesuai yang
+ditinggalkan EP-O; tagihan, dompet menunjukkan angka yang sesuai; PSB,
+asrama, dan rombongan kosong karena seluruh data ujinya sudah dibersihkan
+pada EP-O2/O3), dasbor gabungan berhasil, kode laporan tak dikenal ditolak
+dengan daftar kode yang tersedia, rentang tanggal terbalik dan rentang
+lebih dari 92 hari keduanya ditolak dengan pesan yang jelas, dan
+permintaan tanpa token ditolak 401.
+
+**Yang tidak dikerjakan:** ekspor Excel/CSV/PDF (lihat alasan di atas);
+laporan tersimpan/terjadwal (mis. "kirim rekap tagihan tiap tanggal 1");
+penyaringan cakupan untuk wali (laporan ini murni untuk pengurus/admin,
+BUKAN ekstensi portal wali -- portal wali sudah punya laporan per-anaknya
+sendiri sejak EP-K/EP-O).
+
 ## Sesudah EP-A
 
 ```text
-EP-P   Pelaporan
 EP-Q   UAT bersama pondok pertama
 EP-R   Rilis
 ```
