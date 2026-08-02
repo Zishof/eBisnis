@@ -118,4 +118,12 @@ export class PesantrenPortalWaliController {
     const { schema, wali } = await this.konteks(user);
     return this.portal.pelanggaranAnak(schema, wali.wali_id, santriId);
   }
+
+  @Permissions('EPESANTREN_PORTAL_WALI.READ')
+  @Get('anak/:santriId/prestasi')
+  @ApiOperation({ summary: 'Rekap prestasi dan penghargaan satu anak' })
+  async prestasiAnak(@Param('santriId') santriId: string, @CurrentUser() user: AuthenticatedUser) {
+    const { schema, wali } = await this.konteks(user);
+    return this.portal.prestasiAnak(schema, wali.wali_id, santriId);
+  }
 }

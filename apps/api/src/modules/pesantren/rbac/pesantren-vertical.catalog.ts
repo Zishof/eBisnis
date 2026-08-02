@@ -84,6 +84,7 @@ const PELANGGARAN_AKSI = ['READ', 'CREATE', 'UPDATE', 'CANCEL', 'PRINT', 'EXPORT
 const GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const ABSENSI_GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const EKSTRAKURIKULER_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
+const PRESTASI_AKSI = ['READ', 'CREATE', 'PRINT', 'EXPORT'];
 
 export const PESANTREN_MENUS: MenuNodeSeed[] = [
   {
@@ -296,6 +297,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 700,
     actions: EKSTRAKURIKULER_AKSI,
   },
+  {
+    code: 'EPESANTREN_PRESTASI',
+    label: 'Prestasi dan Penghargaan',
+    translationKey: 'menu.epesantren.prestasi',
+    route: '/app/pesantren/prestasi',
+    icon: 'Award',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 710,
+    actions: PRESTASI_AKSI,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -330,6 +341,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_GURU: 'P7',
       EPESANTREN_ABSENSI_GURU: 'P7',
       EPESANTREN_EKSTRAKURIKULER: 'P7',
+      EPESANTREN_PRESTASI: 'P7',
     },
     dataScope: 'TENANT',
     core: false,

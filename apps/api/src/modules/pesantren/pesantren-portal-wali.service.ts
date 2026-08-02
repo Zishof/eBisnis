@@ -14,6 +14,7 @@ import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { PesantrenNilaiService } from './pesantren-nilai.service';
+import { PesantrenPrestasiService } from './pesantren-prestasi.service';
 
 export interface ProfilWali {
   wali_id: string;
@@ -34,6 +35,7 @@ export class PesantrenPortalWaliService {
   constructor(
     private readonly tenantDb: TenantConnectionService,
     private readonly nilaiService: PesantrenNilaiService,
+    private readonly prestasiService: PesantrenPrestasiService,
   ) {}
 
   /**
@@ -238,5 +240,15 @@ export class PesantrenPortalWaliService {
         ORDER BY p.tanggal DESC`,
       [santriId],
     );
+  }
+
+  /**
+   * Rekap prestasi dan penghargaan satu anak (EP-S5) -- baca saja,
+   * memanggil `PesantrenPrestasiService.rekapSantri()` langsung, bukan
+   * menuliskan ulang kuerinya di sini.
+   */
+  async prestasiAnak(schemaName: string, waliId: string, santriId: string) {
+    await this.verifikasiKepemilikan(schemaName, waliId, santriId);
+    return this.prestasiService.rekapSantri(schemaName, santriId);
   }
 }

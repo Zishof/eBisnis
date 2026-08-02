@@ -936,6 +936,46 @@ akademik (data dasarnya sudah ada, tata letak cetak rapor gabungan belum
 ada); pemilihan ketua OSIS lewat mekanisme voting (jabatan dicatat manual
 oleh pengurus, bukan hasil pemilu tercatat sistem).
 
+### Status EP-S5 — SELESAI, prestasi dan penghargaan santri
+
+Kesenjangan terakhir dari daftar Tier 1 audit kedua.
+`pesantren_prestasi` (hasil kompetisi eksternal -- cabang, tingkat
+SEKOLAH s.d. INTERNASIONAL, peringkat JUARA_1 s.d. PARTISIPASI) dan
+`pesantren_penghargaan` (pengakuan/apresiasi internal pondok, mis.
+"Santri Teladan Bulan Ini", tidak selalu berasal dari kompetisi) --
+dua konsep berbeda yang sistem lama juga memisahkan
+(`PrestasiSiswaAction` vs `ApresiasiAction`/`PenghargaanAction`), BUKAN
+`pesantren_nilai` (EP-O): pencapaian di luar kurikulum reguler, tujuan
+pemakaian berbeda (rapor non-akademik, materi promosi pondok).
+
+Portal wali diperluas dengan `GET .../anak/:santriId/prestasi` (rekap
+gabungan prestasi + penghargaan, baca saja) -- memanggil
+`PesantrenPrestasiService.rekapSantri()` langsung, bukan menuliskan
+ulang kuerinya, pola yang sama dengan `raporAnak()` (EP-O) dan
+`pelanggaranAnak()` (EP-S1).
+
+Live-test terhadap `ponpes_demo`: mencatat prestasi (Juara 1 MTQ tingkat
+kabupaten), menolak tingkat yang tidak dikenali, mencatat penghargaan
+internal, rekap gabungan menampilkan keduanya, daftar prestasi per
+santri berfungsi, wali1 berhasil melihat rekap prestasi anaknya, wali2
+ditolak 404 saat mencoba melihat punya anak wali1 (isolasi kepemilikan
+tetap tegak, pola yang identik dengan EP-S1), santri tak dikenal
+ditolak 404 saat mencatat prestasi, dan 401 tanpa token.
+
+**Yang tidak dikerjakan:** unggah berkas sertifikat/piagam sungguhan
+(kolom `dokumen_url` hanya menampung tautan referensi, belum ada alur
+unggah file); integrasi ke materi promosi/website pondok (data sudah
+tersedia lewat API, presentasi publiknya belum dibangun).
+
+Dengan ini SELURUH kesenjangan Tier 1 dari audit kedua sistem lama
+(pelanggaran/hukuman, guru, absensi guru/piket, ekstrakurikuler/
+organisasi, prestasi/penghargaan) sudah selesai dibangun, diuji, dan
+diverifikasi hidup terhadap `ponpes_demo`. Seluruh suite API (106
+kelompok uji, 2386 pengujian) lulus setelah EP-S5. Kesenjangan Tier 2
+dan Tier 3 (lihat daftar lengkap di bagian "Audit KEDUA sistem lama" di
+atas) belum dikerjakan -- ditunda menunggu kebutuhan nyata atau
+konfirmasi bahwa modul ERP lain di luar pesantren belum menanganinya.
+
 ## Sesudah EP-A
 
 ```text

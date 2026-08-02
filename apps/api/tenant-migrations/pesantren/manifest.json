@@ -113,6 +113,12 @@
       "file": "20260802T310000__pesantren__ekstrakurikuler.sql",
       "name": "EP-S4: Ekstrakurikuler dan organisasi siswa",
       "description": "pesantren_ekstrakurikuler (klub ATAU organisasi setara OSIS, dibedakan kolom jenis), pesantren_ekstrakurikuler_anggota (keanggotaan, jabatan/kepemimpinan, skor partisipasi). Menyatukan gugusan kegiatan-kesiswaan dan organisasi-siswa sistem lama menjadi satu model -- penyederhanaan tabel yang sah, kemampuannya tetap lengkap."
+    },
+    {
+      "id": "20260802T320000__pesantren__prestasi",
+      "file": "20260802T320000__pesantren__prestasi.sql",
+      "name": "EP-S5: Prestasi dan penghargaan santri",
+      "description": "pesantren_prestasi (hasil kompetisi eksternal, tingkat+peringkat), pesantren_penghargaan (pengakuan/apresiasi internal pondok). Kesenjangan terakhir Tier 1 audit kedua -- BUKAN pesantren_nilai (EP-O): pencapaian di luar kurikulum reguler, tujuan pemakaian berbeda (rapor non-akademik, promosi pondok)."
     }
   ]
 }

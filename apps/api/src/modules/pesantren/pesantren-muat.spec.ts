@@ -49,6 +49,8 @@ import { PesantrenAbsensiGuruController } from './pesantren-absensi-guru.control
 import { PesantrenAbsensiGuruService } from './pesantren-absensi-guru.service';
 import { PesantrenEkstrakurikulerController } from './pesantren-ekstrakurikuler.controller';
 import { PesantrenEkstrakurikulerService } from './pesantren-ekstrakurikuler.service';
+import { PesantrenPrestasiController } from './pesantren-prestasi.controller';
+import { PesantrenPrestasiService } from './pesantren-prestasi.service';
 
 function paramtypes(target: unknown): unknown[] {
   return (Reflect.getMetadata('design:paramtypes', target as object) as unknown[]) ?? [];
@@ -345,6 +347,18 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(tipe.filter((t) => t === undefined)).toEqual([]);
   });
 
+  it('setiap dependensi controller prestasi punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenPrestasiController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi service prestasi punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenPrestasiService);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
   it('controller dan service terdaftar pada pesantren.module.ts', () => {
     const sumber = readFileSync(join(__dirname, 'pesantren.module.ts'), 'utf8');
     expect(sumber).toContain('PesantrenNilaiController');
@@ -393,6 +407,8 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(sumber).toContain('PesantrenAbsensiGuruService');
     expect(sumber).toContain('PesantrenEkstrakurikulerController');
     expect(sumber).toContain('PesantrenEkstrakurikulerService');
+    expect(sumber).toContain('PesantrenPrestasiController');
+    expect(sumber).toContain('PesantrenPrestasiService');
   });
 
   it('modul terdaftar pada app.module.ts', () => {
