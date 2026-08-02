@@ -30,6 +30,8 @@ import { PesantrenNilaiController } from './pesantren-nilai.controller';
 import { PesantrenNilaiService } from './pesantren-nilai.service';
 import { PesantrenPsbGelombangController, PesantrenPsbPendaftarController } from './pesantren-psb.controller';
 import { PesantrenPsbService } from './pesantren-psb.service';
+import { PesantrenPsbPortalController } from './pesantren-psb-portal.controller';
+import { PsbApplicantAuthGuard } from './psb-applicant-auth.guard';
 import { PesantrenRombonganController } from './pesantren-rombongan.controller';
 import { PesantrenRombonganService } from './pesantren-rombongan.service';
 import { PesantrenKurikulumController } from './pesantren-kurikulum.controller';
@@ -81,6 +83,7 @@ import { PesantrenPublicService } from './pesantren-public.service';
     PesantrenNilaiController,
     PesantrenPsbGelombangController,
     PesantrenPsbPendaftarController,
+    PesantrenPsbPortalController,
     PesantrenRombonganController,
     PesantrenKurikulumController,
     PesantrenLaporanController,
@@ -110,6 +113,7 @@ import { PesantrenPublicService } from './pesantren-public.service';
     PesantrenDompetPaymentHandler,
     PesantrenNilaiService,
     PesantrenPsbService,
+    PsbApplicantAuthGuard,
     PesantrenRombonganService,
     PesantrenKurikulumService,
     PesantrenLaporanService,

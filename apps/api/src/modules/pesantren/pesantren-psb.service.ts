@@ -15,11 +15,13 @@ import { TenantConnectionService } from '../../infrastructure/database/tenant-co
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { PesantrenSantriService, BarisSantri, kolomOrangTua } from './pesantren-santri.service';
 import {
+  MasukanBiodataSendiri,
   MasukanGelombang,
   MasukanJadwal,
   MasukanPendaftar,
   HasilJadwal,
   bentukNomorPendaftaran,
+  validasiBiodataSendiri,
   validasiGelombang,
   validasiHasilJadwal,
   validasiJadwal,
@@ -319,6 +321,79 @@ export class PesantrenPsbService {
       `SELECT ${KOLOM_PENDAFTAR} FROM ${S}.pesantren_psb_pendaftar WHERE id = $1 AND deleted_at IS NULL`,
       [id],
     );
+  }
+
+  /**
+   * Lookup untuk portal pendaftar (`nomor_pendaftaran` sebagai "nama
+   * pengguna") -- lihat `PesantrenPublicService.psbMasuk`. Berbeda dari
+   * `satuPendaftar()` yang dicari lewat id internal.
+   */
+  async satuPendaftarByNomor(schemaName: string, nomorPendaftaran: string): Promise<BarisPendaftar | null> {
+    const S = `"${schemaName}"`;
+    return this.tenantDb.queryOne<BarisPendaftar>(
+      schemaName,
+      `SELECT ${KOLOM_PENDAFTAR} FROM ${S}.pesantren_psb_pendaftar WHERE nomor_pendaftaran = $1 AND deleted_at IS NULL`,
+      [nomorPendaftaran],
+    );
+  }
+
+  /**
+   * Pendaftar mengubah biodatanya SENDIRI lewat portal PSB -- lihat
+   * `MasukanBiodataSendiri` untuk kolom mana saja yang boleh disentuh jalur
+   * ini. Tidak menerima `actorUserId` sama sekali (pendaftar bukan
+   * `platform_user`, lihat `PsbApplicantAuthGuard`) -- `updated_by` sengaja
+   * dibiarkan apa adanya, bukan diisi id pendaftar yang bukan UUID staf.
+   */
+  async perbaruiBiodataSendiri(
+    schemaName: string,
+    pendaftarId: string,
+    masukan: MasukanBiodataSendiri,
+  ): Promise<BarisPendaftar> {
+    const galat = validasiBiodataSendiri(masukan);
+    if (galat.length) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Ada isian yang belum benar.', { errors: galat });
+    }
+
+    const pendaftar = await this.satuPendaftar(schemaName, pendaftarId);
+    if (!pendaftar) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Pendaftar tidak ditemukan.');
+    }
+    if (pendaftar.status === 'DIBATALKAN') {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Pendaftaran ini sudah dibatalkan. Biodata tidak dapat diubah lagi -- hubungi pengurus pondok.',
+      );
+    }
+
+    const S = `"${schemaName}"`;
+    const ayah = masukan.ayah ?? {};
+    const ibu = masukan.ibu ?? {};
+    const wali = masukan.wali ?? {};
+    const rows = await this.tenantDb.query<BarisPendaftar>(
+      schemaName,
+      `UPDATE ${S}.pesantren_psb_pendaftar
+          SET alamat = $2, telepon = $3, hp = $4, email = $5,
+              nama_orang_tua = $6, no_hp_orang_tua = $7,
+              nama_ayah = $8, nik_ayah = $9, tahun_lahir_ayah = $10, pendidikan_ayah = $11, pekerjaan_ayah = $12, penghasilan_ayah = $13,
+              nama_ibu = $14, nik_ibu = $15, tahun_lahir_ibu = $16, pendidikan_ibu = $17, pekerjaan_ibu = $18, penghasilan_ibu = $19,
+              nama_wali = $20, nik_wali = $21, tahun_lahir_wali = $22, pendidikan_wali = $23, pekerjaan_wali = $24, penghasilan_wali = $25,
+              updated_at = now(), version = version + 1
+        WHERE id = $1
+        RETURNING ${KOLOM_PENDAFTAR}`,
+      [
+        pendaftarId,
+        bersihkan(masukan.alamat),
+        bersihkan(masukan.telepon),
+        bersihkan(masukan.hp),
+        bersihkan(masukan.email),
+        bersihkan(masukan.namaOrangTua),
+        bersihkan(masukan.noHpOrangTua),
+        ...kolomOrangTua(ayah),
+        ...kolomOrangTua(ibu),
+        ...kolomOrangTua(wali),
+      ],
+    );
+    return rows[0];
   }
 
   /**

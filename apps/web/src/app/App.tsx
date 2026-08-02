@@ -112,6 +112,12 @@ const SitusPondokPage = lazy(() =>
 const PsbPendaftaranPage = lazy(() =>
   import('../verticals/pesantren/PsbPendaftaranPage').then((m) => ({ default: m.PsbPendaftaranPage })),
 );
+const PsbLoginPage = lazy(() =>
+  import('../verticals/pesantren/PsbLoginPage').then((m) => ({ default: m.PsbLoginPage })),
+);
+const PsbDashboardPage = lazy(() =>
+  import('../verticals/pesantren/PsbDashboardPage').then((m) => ({ default: m.PsbDashboardPage })),
+);
 const DaftarPesantrenPage = lazy(() =>
   import('../verticals/pesantren/DaftarPesantrenPage').then((m) => ({
     default: m.DaftarPesantrenPage,
@@ -225,6 +231,8 @@ export function App() {
         */}
         <Route element={<PondokChrome />}>
           <Route path="/santri/pondok/psb" element={<PsbPendaftaranPage />} />
+          <Route path="/santri/pondok/psb/masuk" element={<PsbLoginPage />} />
+          <Route path="/santri/pondok/psb/status" element={<PsbDashboardPage />} />
         </Route>
 
         {/*

@@ -3,13 +3,13 @@
  *
  * Referensi UX: modul PSB pada sistem lama (`psb.zul`/`CalonSiswaAction.java`,
  * `C:\opt\AIS\ais\...\action\master\sekolah\psb\`) -- portal publik tanpa
- * gerbang masuk, formulir pendaftaran sebagai pintu utamanya. Kemampuan
- * yang TIDAK dibawa dari referensi (verifikasi berkas berjenjang, jadwal
- * ujian/wawancara dari portal ini sendiri, pembayaran via payment gateway,
- * login calon siswa untuk cek status) sengaja BELUM dibangun -- tahap
- * pertama ini fokus pada pendaftaran itu sendiri; tahap-tahap pengurus
- * (verifikasi, jadwal, kelulusan, daftar ulang) sudah ada di panel admin
- * (`PesantrenPsbPendaftarController`), yang dipakai lewat login pengurus.
+ * gerbang masuk, formulir pendaftaran sebagai pintu utamanya. Sesudah
+ * mendaftar, pendaftar melanjutkan lewat `PsbLoginPage`/`PsbDashboardPage`
+ * (nomor pendaftaran + tanggal lahir) untuk melengkapi biodata, mengunggah
+ * bukti bayar, dan melihat jadwal wawancara -- lihat berkas itu. Kemampuan
+ * dari referensi yang TIDAK dibawa (ujian online/CBT, pembayaran via payment
+ * gateway) sengaja belum dibangun -- keduanya subsistem tersendiri yang
+ * disepakati menyusul, bukan bagian tahap ini.
  *
  * Memanggil tiga endpoint publik (tanpa sesi, tanpa hak akses):
  *   GET  /pesantren/public/psb/gelombang -- gelombang yang sedang DIBUKA
@@ -191,7 +191,13 @@ export function PsbPendaftaranPage() {
           <p className="mt-4 rounded-lg bg-white px-4 py-3 font-mono text-lg font-bold text-emerald-700 dark:bg-slate-900 dark:text-emerald-400">
             {nomorPendaftaran}
           </p>
-          <Link to="/santri/pondok" className="mt-6 inline-block text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-400">
+          <Link
+            to="/santri/pondok/psb/masuk"
+            className="mt-6 block rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"
+          >
+            Masuk ke Portal Pendaftar
+          </Link>
+          <Link to="/santri/pondok" className="mt-3 inline-block text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-400">
             Kembali ke beranda pondok
           </Link>
         </div>
@@ -207,6 +213,12 @@ export function PsbPendaftaranPage() {
       <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
         Bismillah, lengkapi formulir berikut untuk mendaftarkan calon santri. Data lengkap lainnya dapat dilengkapi
         pengurus saat verifikasi berkas.
+      </p>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+        Sudah pernah mendaftar?{' '}
+        <Link to="/santri/pondok/psb/masuk" className="font-semibold text-emerald-700 hover:underline dark:text-emerald-400">
+          Masuk ke portal pendaftar
+        </Link>
       </p>
 
       {error && (

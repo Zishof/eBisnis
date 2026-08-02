@@ -215,6 +215,40 @@ export function validasiPendaftar(masukan: MasukanPendaftar): Galat[] {
   return galat;
 }
 
+/**
+ * Subset kolom yang boleh diubah PENDAFTAR SENDIRI lewat portal PSB
+ * (`PesantrenPsbPortalController`) -- BUKAN pengurus. Sengaja tidak
+ * mengikutkan `namaLengkap`, `jenisKelamin`, `tanggalLahir` (dipakai
+ * sebagai kata sandi masuk, lihat `PsbApplicantAuthGuard`), `nik`/`nisn`,
+ * `gelombangId`, atau `status` -- itu semua kewenangan pengurus lewat
+ * `MasukanPendaftar`/`ubahStatusPendaftar`, bukan calon santri.
+ */
+export interface MasukanBiodataSendiri {
+  alamat?: string | null;
+  telepon?: string | null;
+  hp?: string | null;
+  email?: string | null;
+  namaOrangTua?: string | null;
+  noHpOrangTua?: string | null;
+  ayah?: DataOrangTua;
+  ibu?: DataOrangTua;
+  wali?: DataOrangTua;
+}
+
+export function validasiBiodataSendiri(masukan: MasukanBiodataSendiri): Galat[] {
+  const galat: Galat[] = [];
+
+  if (masukan.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(masukan.email)) {
+    galat.push({ field: 'email', code: 'TIDAK_SAH', message: 'Alamat surel tidak sah.' });
+  }
+
+  validasiOrangTua('ayah', 'ayah', masukan.ayah, galat);
+  validasiOrangTua('ibu', 'ibu', masukan.ibu, galat);
+  validasiOrangTua('wali', 'wali', masukan.wali, galat);
+
+  return galat;
+}
+
 export interface MasukanJadwal {
   pendaftarId?: string;
   jenis?: string;
