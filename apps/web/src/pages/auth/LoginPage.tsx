@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth, useErrorMessage } from '../../app/auth-context';
 import { berandaSesudahMasuk } from '../../app/beranda-sesudah-masuk';
+import { isSantriHost } from '../../verticals/pesantren/santri-host';
 
 interface LoginForm {
   username: string;
@@ -22,6 +23,7 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   const { register, handleSubmit, formState } = useForm<LoginForm>();
+  const santri = isSantriHost();
 
   const onSubmit = handleSubmit(async (values) => {
     setError(null);
@@ -45,8 +47,13 @@ export function LoginPage() {
     setError(null);
     setBusy(true);
     try {
-      await loginDemo();
-      navigate('/app', { replace: true });
+      const session = await loginDemo();
+      // Sama seperti masuk biasa: tujuan ditentukan dari vertical penyewa demo
+      // yang sesungguhnya diberikan peladen (lihat resolusi host pada
+      // `createDemoSession`), bukan selalu `/app`. Pengunjung yang menekan
+      // "Coba Demo" dari santri.info harus mendarat di beranda ePesantren bila
+      // peladen memang memberinya penyewa demo pesantren.
+      navigate(berandaSesudahMasuk(session), { replace: true });
     } catch (err) {
       setError(toMessage(err, (key, fallback) => t(key, fallback ?? key)));
     } finally {
@@ -58,8 +65,14 @@ export function LoginPage() {
     <div className="flex min-h-[70vh] items-center justify-center px-4 py-14">
       <div className="w-full max-w-md">
         <div className="card p-8">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('auth.loginTitle')}</h1>
-          <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">{t('auth.loginSubtitle')}</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            {santri ? 'Masuk ke santri.info' : t('auth.loginTitle')}
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
+            {santri
+              ? 'Gunakan akun pengurus, ustadz/ustadzah, atau wali santri yang terdaftar.'
+              : t('auth.loginSubtitle')}
+          </p>
 
           {error && (
             <div
@@ -120,7 +133,7 @@ export function LoginPage() {
           </div>
 
           <button type="button" className="btn-outline mt-4 w-full" onClick={() => void startDemo()} disabled={busy}>
-            {t('nav.demo')}
+            {santri ? 'Coba Demo Pesantren' : t('nav.demo')}
           </button>
 
           <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
