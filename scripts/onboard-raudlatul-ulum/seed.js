@@ -237,9 +237,35 @@ async function main() {
   // manual), dan kata sandi pemilik yang dibuat sekali saat registrasi tidak
   // lagi tersedia pada pemanggilan berikutnya. Kolom yang ditulis sama
   // persis dengan yang divalidasi `PesantrenProfilService`/`validasiProfil`.
+  const MUQODIMAH_HTML =
+    "<p>Alhamdulillahi rabbil 'alamin, segala puji bagi Allah subhanahu wa ta'ala yang telah melimpahkan rahmat dan hidayah-Nya, sehingga Pondok Pesantren Raudlatul Ulum dapat terus istiqomah mengemban amanah mendidik generasi Qur'ani. Shalawat serta salam senantiasa tercurah kepada junjungan kita Nabi Muhammad shallallahu 'alaihi wasallam, keluarga, para sahabat, dan seluruh pengikutnya hingga akhir zaman.</p><p>Sebagai bagian dari keluarga besar Nahdlatul Ulama, Pondok Pesantren Raudlatul Ulum berkomitmen menjaga dan mengamalkan nilai-nilai Ahlussunnah wal Jama'ah An-Nahdliyah -- <em>tawassuth</em> (moderat), <em>tasamuh</em> (toleran), <em>tawazun</em> (seimbang), dan <em>i'tidal</em> (adil) -- dalam setiap laku pendidikan dan dakwah yang kami selenggarakan. Semoga Allah subhanahu wa ta'ala senantiasa memberkahi setiap langkah pengabdian ini, menjadikannya bermanfaat bagi santri, keluarga, dan masyarakat luas. Aamiin.</p>";
+
   const profilAda = await tenant.query(`SELECT singleton FROM pesantren_website_setting WHERE singleton = TRUE`);
   if (profilAda.rows[0]) {
     console.log('Profil situs sudah ada -- tidak ditimpa (pengurus mungkin sudah menyuntingnya).');
+
+    // -- 1b-bis. Backfill muqodimah_html pada profil yang sudah ada ----------
+    //
+    // Kolom `muqodimah_html` ditambahkan SETELAH baris profil ini pertama
+    // dibuat (migrasi 20260803T040000), jadi baris lama tetap NULL selamanya
+    // walau skrip ini dijalankan ulang -- cabang "sudah ada, tidak ditimpa"
+    // di atas berhenti sebelum sempat mengisinya. Backfill ini SEMPIT
+    // (`WHERE muqodimah_html IS NULL`) supaya tetap menghormati aturan
+    // "jangan timpa suntingan pengurus": bila pengurus sudah pernah mengisi
+    // atau sengaja mengosongkannya lewat menu Profil, baris ini tidak
+    // pernah tersentuh -- NULL di sini hanya berarti "belum pernah diisi
+    // sama sekali", bukan "sengaja dikosongkan".
+    const hasil = await tenant.query(
+      `UPDATE pesantren_website_setting
+          SET muqodimah_html = $1, updated_by = $2, updated_at = now()
+        WHERE singleton = TRUE AND muqodimah_html IS NULL`,
+      [MUQODIMAH_HTML, ACTOR],
+    );
+    console.log(
+      hasil.rowCount > 0
+        ? 'Muqodimah dibackfill pada profil situs yang sudah ada.'
+        : 'Muqodimah sudah terisi -- tidak disentuh.',
+    );
   } else {
     await tenant.query(
       `INSERT INTO pesantren_website_setting
@@ -254,7 +280,7 @@ async function main() {
          'Pondok Pesantren Raudlatul Ulum Bojonegoro -- pendidikan diniyah, Madrasah Ibtidaiyah, dan pelatihan keterampilan (BLK) di bawah naungan Nahdlatul Ulama.',
          $5)`,
       [
-        "<p>Alhamdulillahi rabbil 'alamin, segala puji bagi Allah subhanahu wa ta'ala yang telah melimpahkan rahmat dan hidayah-Nya, sehingga Pondok Pesantren Raudlatul Ulum dapat terus istiqomah mengemban amanah mendidik generasi Qur'ani. Shalawat serta salam senantiasa tercurah kepada junjungan kita Nabi Muhammad shallallahu 'alaihi wasallam, keluarga, para sahabat, dan seluruh pengikutnya hingga akhir zaman.</p><p>Sebagai bagian dari keluarga besar Nahdlatul Ulama, Pondok Pesantren Raudlatul Ulum berkomitmen menjaga dan mengamalkan nilai-nilai Ahlussunnah wal Jama'ah An-Nahdliyah -- <em>tawassuth</em> (moderat), <em>tasamuh</em> (toleran), <em>tawazun</em> (seimbang), dan <em>i'tidal</em> (adil) -- dalam setiap laku pendidikan dan dakwah yang kami selenggarakan. Semoga Allah subhanahu wa ta'ala senantiasa memberkahi setiap langkah pengabdian ini, menjadikannya bermanfaat bagi santri, keluarga, dan masyarakat luas. Aamiin.</p>",
+        MUQODIMAH_HTML,
         "<p>Pondok Pesantren Raudlatul Ulum berdiri di Desa Campurejo, Kecamatan Bojonegoro Kota, Kabupaten Bojonegoro, Jawa Timur, dirintis oleh <strong>KH. Masyhuri Dahlan</strong> sejak tahun 2006. Bermula dari niat sederhana untuk menghadirkan ruang belajar agama yang membumi bagi masyarakat Campurejo, pondok ini tumbuh menjadi kawasan pendidikan yang menaungi Madrasah Ibtidaiyah (MI), Madrasah Diniyah Takmiliyah, hingga Balai Latihan Kerja Komunitas (BLK) sebagai wujud nyata bahwa ilmu agama dan kemandirian ekonomi umat berjalan beriringan.</p><p>Di bawah naungan Nahdlatul Ulama, Raudlatul Ulum turut aktif dalam Ikatan Pondok Pesantren Bojonegoro (IPPB), termasuk menjadi tuan rumah forum Bahtsul Masail dan rapat kerja para pengasuh pesantren se-Bojonegoro.</p>",
         "Mewujudkan generasi Qur'ani yang berilmu, beramal, dan berakhlak karimah, serta mandiri secara ekonomi demi kemaslahatan umat.",
         "1. Menyelenggarakan pendidikan diniyah dan formal yang berkualitas.\n2. Menanamkan akhlak karimah berlandaskan Ahlussunnah wal Jama'ah An-Nahdliyah.\n3. Membina kemandirian santri melalui unit pelatihan keterampilan (BLK Komunitas).\n4. Mengabdi kepada masyarakat sekitar melalui dakwah dan pemberdayaan ekonomi umat.",
