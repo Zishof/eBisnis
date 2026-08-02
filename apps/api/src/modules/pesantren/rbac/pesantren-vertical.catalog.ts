@@ -78,6 +78,7 @@ const GERBANG_AKSI = ['READ', 'CREATE', 'PRINT'];
 const PORTAL_WALI_AKSI = ['READ'];
 const KIOSK_AKSI = ['READ'];
 const PSB_AKSI = ['READ', 'CREATE', 'UPDATE', 'REVIEW', 'APPROVE', 'REJECT', 'CANCEL', 'PRINT', 'EXPORT'];
+const KURIKULUM_AKSI = ['READ', 'CREATE', 'CANCEL', 'PRINT', 'EXPORT'];
 
 export const PESANTREN_MENUS: MenuNodeSeed[] = [
   {
@@ -230,6 +231,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 640,
     actions: CATAT,
   },
+  {
+    code: 'EPESANTREN_KURIKULUM',
+    label: 'Kurikulum dan Jadwal',
+    translationKey: 'menu.epesantren.kurikulum',
+    route: '/app/pesantren/kurikulum',
+    icon: 'CalendarClock',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 650,
+    actions: KURIKULUM_AKSI,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -258,6 +269,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_NILAI: 'P7',
       EPESANTREN_PSB: 'P7',
       EPESANTREN_ROMBONGAN: 'P7',
+      EPESANTREN_KURIKULUM: 'P7',
     },
     dataScope: 'TENANT',
     core: false,

@@ -694,10 +694,53 @@ per-santri satu per satu) -- data keanggotaan sudah tersedia untuk
 mendukung itu lewat join, tapi service presensi/nilai belum diubah untuk
 memanfaatkannya; kurikulum dan jadwal pelajaran (EP-O4, belum dikerjakan).
 
+## Status EP-O4 — SELESAI, kurikulum dan jadwal pelajaran
+
+Celah terakhir dari tiga yang tercatat pada audit sistem lama EP-O.
+`pesantren_kurikulum` adalah referensi rencana (mata pelajaran + jam per
+minggu per unit/tingkat/tahun ajaran) -- bukan jadwal jam nyata.
+`pesantren_jadwal_pelajaran` adalah jadwalnya, per rombongan belajar
+(EP-O3), dengan dua `EXCLUDE USING gist` yang audit temukan TIDAK
+ditegakkan sama sekali pada sistem lama: satu rombongan tidak bisa punya
+dua pelajaran tumpang tindih di hari yang sama, dan satu pengajar (bila
+diisi) tidak bisa mengajar dua rombongan berbeda pada jam yang tumpang
+tindih. Karena GiST tidak mengenal tipe range bawaan untuk `TIME`, jam
+disimpan juga sebagai kolom turunan (`GENERATED ALWAYS AS`) menit-sejak-
+tengah-malam lalu dibungkus `int4range` -- dan karena predikat kesetaraan
+UUID/VARCHAR di dalam `EXCLUDE` menuntut operator class tambahan,
+migrasi ini butuh `CREATE EXTENSION IF NOT EXISTS btree_gist` (pola yang
+sama, persis, dengan `cooperative_appointment`).
+
+Live-test terhadap `ponpes_demo`: mendaftarkan satu mata pelajaran ke
+kurikulum, menolak duplikatnya pada kombinasi unit+tingkat+tahun ajaran
+yang sama, menjadwalkan pelajaran Senin 07:00-08:30 dengan pengajar,
+menolak jadwal tumpang tindih pada rombongan yang sama (08:00-09:00),
+menerima jadwal yang PERSIS bersambung di batas jam (08:30-09:30 --
+membuktikan interval setengah terbuka `[)` bekerja benar, bukan `[]` yang
+akan menolak batas persis), menolak pengajar yang sama mengajar
+rombongan LAIN pada jam tumpang tindih, membatalkan satu jadwal
+(soft-delete), dan mengonfirmasi jam yang baru dibatalkan bisa dipakai
+lagi (pengecualian ikut menghormati `WHERE deleted_at IS NULL`). Sempat
+salah memakai `platform_user_id` alih-alih `user_subject.id` untuk
+`pengajarUserId` pada percobaan pertama (FK ke `user_subject`, gagal
+sesuai desain) -- kesalahan pemakaian saat menguji, bukan bug kode,
+namun mengonfirmasi sekali lagi disiplin dua ruang ID yang sama yang
+menyebabkan bug nyata pada EP-J.
+
+**Yang tidak dikerjakan:** validasi bahwa total `jam_per_minggu` pada
+kurikulum tidak melebihi jam sekolah efektif per minggu; UI kalender
+mingguan (data sudah lengkap untuk itu, hanya presentasinya yang belum
+ada); rekap otomatis "guru X mengajar berapa jam per minggu" (dapat
+dihitung dari `pesantren_jadwal_pelajaran` yang sudah ada, belum dibuat
+endpoint laporannya).
+
+Dengan ini seluruh EP-O (nilai, PSB, rombongan, kurikulum) yang ditemukan
+lewat audit sistem lama sudah tercakup fungsional/logika sesuai
+permintaan eksplisit -- lanjut ke EP-P.
+
 ## Sesudah EP-A
 
 ```text
-EP-O4  Kurikulum dan jadwal pelajaran (ditemukan lewat audit sistem lama)
 EP-P   Pelaporan
 EP-Q   UAT bersama pondok pertama
 EP-R   Rilis

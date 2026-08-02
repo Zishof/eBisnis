@@ -83,6 +83,12 @@
       "file": "20260802T260000__pesantren__rombongan.sql",
       "name": "EP-O3: Rombongan belajar/kelas",
       "description": "pesantren_rombongan_belajar, pesantren_rombongan_anggota. Mengelompokkan santri ke kelas per unit pendidikan dan tahun ajaran -- satu keanggotaan AKTIF per santri per tahun ajaran, ditegakkan indeks unik parsial. Wali kelas menunjuk user_subject yang sudah ada, BUKAN peran Guru baru -- peran itu belum punya modul sendiri (§6)."
+    },
+    {
+      "id": "20260802T270000__pesantren__kurikulum",
+      "file": "20260802T270000__pesantren__kurikulum.sql",
+      "name": "EP-O4: Kurikulum dan jadwal pelajaran",
+      "description": "pesantren_kurikulum (mata pelajaran + jam per minggu per unit/tingkat/tahun ajaran), pesantren_jadwal_pelajaran (jadwal jam nyata per rombongan). Dua EXCLUDE USING gist (butuh btree_gist) mencegah tumpang tindih jam pada satu rombongan dan pada satu pengajar sekaligus -- celah yang sistem lama tidak menegakkan sama sekali menurut audit EP-O."
     }
   ]
 }
