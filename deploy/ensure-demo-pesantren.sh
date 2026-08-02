@@ -1,18 +1,28 @@
 #!/usr/bin/env bash
 #
-# Memastikan sandbox demo ePesantren (ponpes_demo) ada dan terisi data
-# contoh, dipanggil dari update.sh SETELAH health check lulus (API harus
-# hidup untuk menerima pendaftaran publik).
+# Memastikan sandbox demo ePesantren (ponpes_demo) ada, diakses subjek demo
+# tetap, dan terisi data contoh, dipanggil dari update.sh SETELAH health
+# check lulus (API harus hidup untuk menerima pendaftaran publik).
 #
-# Idempotent dengan sengaja pada DUA lapis:
-#   1. Bila ponpes_demo sudah berstatus READY, skrip ini tidak melakukan
-#      apa pun -- aman dipanggil di SETIAP deploy.
-#   2. Skrip data contoh besar (scripts/seed-ponpes-demo/*.js) TIDAK aman
+# Idempotent dengan sengaja pada TIGA lapis, masing-masing dengan alasan
+# berbeda mengapa ia TIDAK BOLEH hanya berjalan sekali di deploy pertama:
+#   1. Pendaftaran tenant (POST /public/pesantren/registrations) -- hanya
+#      terjadi bila registry belum punya baris untuk ponpes_demo sama sekali.
+#   2. Subjek demo tetap + peran EPESANTREN_ADMIN -- dijalankan di SETIAP
+#      pemanggilan, READY lama maupun baru. Ini BUKAN bagian dari alur
+#      pendaftaran publik (yang membuat pemilik SUNGGUHAN dengan
+#      platform_user_id barunya sendiri) -- subjek demo tetap adalah
+#      identitas TERPISAH yang selalu dipakai `createDemoSession()` apa pun
+#      tenantnya. Bila langkah ini hanya berjalan sekali (mis. digabung ke
+#      dalam blok "baru saja didaftarkan" di bawah), tenant yang SUDAH
+#      READY dari deploy sebelumnya -- termasuk yang sempat didaftarkan
+#      sebelum baris ini ada -- tidak akan pernah mendapatkannya, dan sesi
+#      "Coba Demo Pesantren" akan terus melihat sisi navigasi kosong total
+#      serta setiap panggilan API balik PERMISSION_DENIED.
+#   3. Skrip data contoh besar (scripts/seed-ponpes-demo/*.js) TIDAK aman
 #      dijalankan dua kali (lihat README-nya: menjalankan ulang menambah
 #      baris, bukan menimpa) -- karena itu hanya dijalankan TEPAT SEKALI,
-#      persis pada deploy yang pertama kali mendaftarkan tenant ini. Deploy
-#      berikutnya melihat status sudah READY di langkah 1 dan berhenti di
-#      situ, tidak pernah menjalankan skrip data contoh lagi.
+#      persis pada pemanggilan yang PERTAMA KALI mendaftarkan tenant ini.
 #
 # Kegagalan di skrip ini TIDAK menggagalkan deploy -- sandbox demo yang
 # gagal terisi jauh lebih baik daripada seluruh pembaruan aplikasi
@@ -46,10 +56,55 @@ status_registry() {
     2>/dev/null | tr -d '[:space:]' || true
 }
 
+# ---------------------------------------------------------------------------
+# Subjek demo tetap (DEMO_PLATFORM_USER_ID) + peran EPESANTREN_ADMIN.
+#
+# Pola sama persis dengan `TenantBootstrapService.createDemoSubject()`
+# (dipakai schema `demo` bersama), hanya perannya EPESANTREN_ADMIN -- BUKAN
+# DEMO_USER, yang `allModules: true`-nya akan membatalkan seluruh
+# penyempitan menu demo santri.info.
+#
+# Dipanggil TANPA syarat oleh KEDUA cabang di bawah (READY lama maupun
+# baru) -- lihat lapis idempotensi ke-2 pada dokumentasi di atas.
+# ---------------------------------------------------------------------------
+pastikan_subjek_demo() {
+  "$PSQL_BIN" "$ADMIN_URL" -v ON_ERROR_STOP=1 -c "
+DO \$\$
+DECLARE
+  v_subject_id uuid;
+  v_role_id uuid;
+BEGIN
+  SELECT id INTO v_subject_id FROM \"$SCHEMA\".user_subject
+    WHERE platform_user_id = '00000000-0000-4000-8000-00000000de00'::uuid LIMIT 1;
+
+  IF v_subject_id IS NULL THEN
+    INSERT INTO \"$SCHEMA\".user_subject
+      (platform_user_id, code, name, username_snapshot, is_owner, status, is_system)
+    VALUES
+      ('00000000-0000-4000-8000-00000000de00'::uuid, 'DEMO', 'Pengguna Demo', 'demo', FALSE, 'ACTIVE', TRUE)
+    RETURNING id INTO v_subject_id;
+  END IF;
+
+  SELECT id INTO v_role_id FROM \"$SCHEMA\".role WHERE code = 'EPESANTREN_ADMIN' LIMIT 1;
+
+  IF v_role_id IS NOT NULL THEN
+    INSERT INTO \"$SCHEMA\".user_role_assignment (user_subject_id, role_id)
+    VALUES (v_subject_id, v_role_id)
+    ON CONFLICT (user_subject_id, role_id) DO NOTHING;
+  END IF;
+END \$\$;
+" >/dev/null
+}
+
 STATUS=$(status_registry)
 
 if [[ "$STATUS" == "READY" ]]; then
-  log "Sandbox demo ePesantren ($SCHEMA) sudah ada dan siap. Tidak ada yang dikerjakan."
+  log "Sandbox demo ePesantren ($SCHEMA) sudah ada dan siap."
+  if pastikan_subjek_demo; then
+    log "Subjek demo tetap sudah/kini memegang EPESANTREN_ADMIN. Tidak ada data contoh yang disemai ulang."
+  else
+    warn "Gagal memeriksa/memberi peran subjek demo tetap -- sesi 'Coba Demo Pesantren' mungkin tidak melihat menu apa pun."
+  fi
   exit 0
 fi
 
@@ -89,9 +144,12 @@ for _ in $(seq 1 15); do
 done
 
 if [[ "$STATUS" != "READY" ]]; then
-  warn "Belum READY setelah menunggu -- lewati penyemaian data contoh, tangani manual."
+  warn "Belum READY setelah menunggu -- lewati penyiapan subjek demo dan data contoh, tangani manual."
   exit 0
 fi
+
+log "Menyiapkan subjek demo tetap dengan peran EPESANTREN_ADMIN..."
+pastikan_subjek_demo || warn "Gagal menyiapkan subjek demo -- sesi 'Coba Demo Pesantren' mungkin tidak melihat menu apa pun."
 
 # ---------------------------------------------------------------------------
 # Tahun ajaran ACTIVE -- prasyarat skrip data contoh (lihat
