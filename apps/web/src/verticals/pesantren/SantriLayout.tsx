@@ -26,6 +26,8 @@ import { useEffect } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { slugPondokDariHost } from './santri-host';
+import { PondokChrome } from './PondokChrome';
 
 interface TautanEkosistem {
   code: string;
@@ -76,6 +78,20 @@ function useJudulSantri() {
 }
 
 export function SantriLayout() {
+  /*
+   * Subdomain pondok (`<slug>.santri.info`) TIDAK PERNAH memakai bingkai
+   * portal santri.info ini -- "Daftarkan pondok", tautan ekosistem, dan
+   * materi pemasaran di footer semuanya ajakan bagi CALON pelanggan baru,
+   * bukan sesuatu yang relevan bagi pondok yang sudah terdaftar. Pola sama
+   * dengan `PublicLayout` -- lihat catatan lengkap di `PondokChrome`.
+   */
+  if (slugPondokDariHost()) {
+    return <PondokChrome />;
+  }
+  return <SantriLayoutPortal />;
+}
+
+function SantriLayoutPortal() {
   useJudulSantri();
   const { data } = useTautanEkosistem();
   const ekosistem =

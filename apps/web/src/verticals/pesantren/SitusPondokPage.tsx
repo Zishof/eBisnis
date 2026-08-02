@@ -150,13 +150,24 @@ export function SitusPondokPage() {
     <div className="min-h-screen bg-white dark:bg-slate-950">
       {/* --- Hero -------------------------------------------------------- */}
       <header className={`relative overflow-hidden bg-gradient-to-br ${tema.grad} text-white`}>
-        <IlustrasiHeroSantri />
-        {profil.hero_image_url && (
-          <img
-            src={profil.hero_image_url}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover opacity-25"
-          />
+        {profil.hero_image_url ? (
+          <>
+            {/*
+              Foto sungguhan MENJADI latarnya (bukan lapisan tipis di atas
+              gradien) -- gradien berpindah menjadi SCRIM tipis di atasnya,
+              cukup gelap untuk membuat judul dan tombol tetap terbaca, tidak
+              cukup gelap untuk menenggelamkan fotonya sendiri.
+            */}
+            <img
+              src={profil.hero_image_url}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className={`absolute inset-0 bg-gradient-to-br ${tema.grad} opacity-70`} aria-hidden />
+          </>
+        ) : (
+          // Belum ada foto sungguhan diunggah -- ilustrasi asli sebagai bawaan.
+          <IlustrasiHeroSantri />
         )}
         {profil.hero_image_attribution && (
           // Lisensi gambar bawaan (CC BY-SA dsb.) mewajibkan atribusi ini --

@@ -361,15 +361,66 @@ async function main() {
   }
   console.log(`Berita pondok siap (${BERITA.length} kabar, seluruhnya bersumber dari riset -- lihat sumber_url masing-masing).`);
 
+  const ASSETS_DIR = path.join(__dirname, 'assets');
+
+  // -- 1c-bis. Berita SPMB, dengan poster resmi dari pondok sendiri --------
+  //
+  // BERBEDA dari 16 berita di atas (hasil riset internet): ini materi RESMI
+  // yang diberikan langsung oleh pengurus pondok, bukan diadaptasi dari
+  // sumber luar -- karena itu tanpa sumber_url. Poster disimpan lewat
+  // mekanisme BLOB yang sama dengan logo/hero (lihat 1c di bawah).
+  {
+    const judulSpmb = 'SPMB Gelombang I Tahun Ajaran 2026/2027 Resmi Dibuka';
+    const adaSpmb = await tenant.query(`SELECT id::text AS id FROM pesantren_berita WHERE judul = $1`, [judulSpmb]);
+    let spmbId = adaSpmb.rows[0]?.id;
+    if (!spmbId) {
+      const ins = await tenant.query(
+        `INSERT INTO pesantren_berita (judul, ringkasan, isi_html, status, tanggal_terbit, created_by, updated_by)
+         VALUES ($1, $2, $3, 'TERBIT', CURRENT_DATE, $4, $4)
+         RETURNING id::text AS id`,
+        [
+          judulSpmb,
+          'Madrasah Ibtidaiyah Raudlatul Ulum Campurejo membuka Sistem Penerimaan Murid Baru (SPMB) Gelombang I untuk tahun ajaran 2026/2027.',
+          '<p>Madrasah Ibtidaiyah Raudlatul Ulum Campurejo, Bojonegoro resmi membuka pendaftaran murid baru lewat Sistem Penerimaan Murid Baru (SPMB) Gelombang I untuk tahun ajaran 2026/2027. Calon wali santri dapat menghubungi pengurus madrasah untuk informasi pendaftaran lebih lanjut.</p>',
+          ACTOR,
+        ],
+      );
+      spmbId = ins.rows[0].id;
+      console.log('Berita SPMB Gelombang I dibuat.');
+    } else {
+      console.log('Berita SPMB Gelombang I sudah ada.');
+    }
+
+    const posterPath = path.join(ASSETS_DIR, 'spmb-2026-poster.jpg');
+    if (fs.existsSync(posterPath)) {
+      const kodePoster = 'BERITA_SPMB_2026';
+      const posterAda = await tenant.query(`SELECT 1 FROM file_object WHERE code = $1 AND deleted_at IS NULL`, [kodePoster]);
+      if (!posterAda.rows[0]) {
+        const buffer = fs.readFileSync(posterPath);
+        await simpanGambarBlob(
+          tenant,
+          { code: kodePoster, name: 'Poster SPMB 2026', filename: 'spmb-2026-poster.jpg', mimeType: 'image/jpeg', buffer },
+          ACTOR,
+        );
+        await tenant.query(`UPDATE pesantren_berita SET gambar_url = $1 WHERE id = $2`, [
+          `/api/v1/pesantren/public/berita-gambar/${kodePoster}`,
+          spmbId,
+        ]);
+        console.log(`Poster SPMB tersimpan (${(buffer.length / 1024).toFixed(0)} KB).`);
+      } else {
+        console.log('Poster SPMB sudah tersimpan -- tidak ditimpa.');
+      }
+    }
+  }
+
   // -- 1c. Logo dan gambar latar (BLOB, lihat ATTRIBUTION.md untuk sumber) --
   //
   // Disimpan SEBAGAI DATA (PostgreSQL Large Object pada file_object),
   // bukan folder server -- diminta langsung pengguna. Mengunggah ulang
   // (mis. pengurus mengganti sendiri lewat menu Profil) MENGGANTI baris
   // ini, bukan menambah baris baru -- lihat simpanGambarBlob().
-  const ASSETS_DIR = path.join(__dirname, 'assets');
   const GAMBAR = [
-    { code: 'PESANTREN_LOGO', name: 'Logo pondok', kolom: 'logo_url', file: 'logo-mi-ru.png', mimeType: 'image/png' },
+    { code: 'PESANTREN_LOGO', name: 'Logo pondok', kolom: 'logo_url', file: 'logo-mi-ru.jpg', mimeType: 'image/jpeg' },
     {
       code: 'PESANTREN_HERO_BACKGROUND',
       name: 'Gambar latar situs',
