@@ -32,14 +32,18 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { apiRequest } from '../../lib/api';
 import { usePondokFavicon } from './use-pondok-favicon';
+import { usePondokSeo } from './use-pondok-seo';
 
 interface ProfilRingkas {
   profil: {
     nama_tampilan: string | null;
     tagline: string | null;
     logo_url: string | null;
+    hero_image_url: string | null;
+    alamat_publik: string | null;
     kontak_email: string | null;
     kontak_telepon: string | null;
+    meta_description: string | null;
   };
 }
 
@@ -61,6 +65,19 @@ export function PondokChrome() {
   }, [nama]);
 
   usePondokFavicon(data?.profil.logo_url);
+
+  usePondokSeo(
+    data
+      ? {
+          nama: data.profil.nama_tampilan,
+          deskripsi: data.profil.meta_description || data.profil.tagline,
+          logoUrl: data.profil.logo_url,
+          heroImageUrl: data.profil.hero_image_url,
+          alamat: data.profil.alamat_publik,
+          telepon: data.profil.kontak_telepon,
+        }
+      : undefined,
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-white dark:bg-slate-950">
