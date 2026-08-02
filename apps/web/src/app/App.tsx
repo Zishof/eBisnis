@@ -11,6 +11,7 @@ import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
 import { isSantriPortalHost, slugPondokDariHost } from '../verticals/pesantren/santri-host';
+import { PondokChrome } from '../verticals/pesantren/PondokChrome';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
@@ -107,6 +108,9 @@ const SantriInfoHomePage = lazy(() =>
 );
 const SitusPondokPage = lazy(() =>
   import('../verticals/pesantren/SitusPondokPage').then((m) => ({ default: m.SitusPondokPage })),
+);
+const PsbPendaftaranPage = lazy(() =>
+  import('../verticals/pesantren/PsbPendaftaranPage').then((m) => ({ default: m.PsbPendaftaranPage })),
 );
 const DaftarPesantrenPage = lazy(() =>
   import('../verticals/pesantren/DaftarPesantrenPage').then((m) => ({
@@ -213,6 +217,15 @@ export function App() {
         </Route>
         {/* Di luar kerangka portal: subdomain pondok bukan halaman platform. */}
         <Route path="/santri/pondok" element={<SitusPondokPage />} />
+        {/*
+          Formulir PSB dibungkus PondokChrome (nama/logo pondok di header,
+          bukan bingkai kosong) -- rute ini hanya pernah dicapai lewat
+          subdomain pondok (lihat AkarMenurutHost), jadi tidak perlu
+          pemeriksaan host lagi seperti pada PublicLayout/SantriLayout.
+        */}
+        <Route element={<PondokChrome />}>
+          <Route path="/santri/pondok/psb" element={<PsbPendaftaranPage />} />
+        </Route>
 
         {/*
           Pendaftaran pesantren TERPISAH dari `/daftar`.

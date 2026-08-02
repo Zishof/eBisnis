@@ -328,7 +328,13 @@ export class PesantrenPsbService {
    * sebelum baris pendaftar ditulis, supaya dua pendaftaran bersamaan tidak
    * pernah menerima nomor yang sama.
    */
-  async daftarkan(schemaName: string, masukan: MasukanPendaftar, createdBy: string): Promise<BarisPendaftar> {
+  /**
+   * `createdBy` boleh `null` -- pendaftaran lewat situs publik (calon
+   * santri mendaftar sendiri, lihat `PesantrenPublicController.psbDaftar`)
+   * tidak punya aktor staf sama sekali, berbeda dari pendaftaran yang
+   * dicatat pengurus lewat panel admin.
+   */
+  async daftarkan(schemaName: string, masukan: MasukanPendaftar, createdBy: string | null): Promise<BarisPendaftar> {
     const galat = validasiPendaftar(masukan);
     if (galat.length) {
       throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Ada isian yang belum benar.', { errors: galat });

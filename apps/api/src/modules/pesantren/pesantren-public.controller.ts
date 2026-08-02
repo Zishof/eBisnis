@@ -3,11 +3,13 @@
  * lihat catatan lengkap pada `PesantrenPublicService`.
  */
 
-import { Controller, Get, Headers, Param, Res, StreamableFile } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Param, Post, Res, StreamableFile } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { PesantrenPublicService } from './pesantren-public.service';
 import { KATEGORI_GAMBAR_PROFIL, KategoriGambarProfil } from './pesantren-profil';
+import { DaftarkanPendaftarDto } from './pesantren-psb.controller';
 import { Public } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { rawResponse } from '../../common/interceptors/response-envelope.interceptor';
@@ -84,5 +86,41 @@ export class PesantrenPublicController {
       'Cache-Control': 'public, max-age=300',
     });
     return rawResponse(new StreamableFile(berkas.buffer));
+  }
+
+  /** Daftar agama untuk combobox formulir -- lihat `PesantrenPublicService.daftarAgama`. */
+  @Public()
+  @Get('agama')
+  @ApiOperation({ summary: 'Daftar agama (combobox formulir)' })
+  agama(@Headers('host') host: string) {
+    return this.situs.daftarAgama(host);
+  }
+
+  /** Gelombang PSB yang sedang DIBUKA -- lihat `PesantrenPublicService.psbGelombangDibuka`. */
+  @Public()
+  @Get('psb/gelombang')
+  @ApiOperation({ summary: 'Gelombang PSB yang sedang dibuka' })
+  psbGelombang(@Headers('host') host: string) {
+    return this.situs.psbGelombangDibuka(host);
+  }
+
+  /**
+   * Pendaftaran calon santri baru lewat situs publik -- lihat
+   * `PesantrenPublicService.psbDaftar`.
+   *
+   * Pembatas laju MEWAJIBKAN, bukan sekadar berjaga-jaga: tanpa sesi dan
+   * tanpa hak akses, jalur ini adalah satu-satunya permukaan tulis publik
+   * pada modul pesantren yang benar-benar membuat baris baru di basis
+   * data. Angkanya (10/jam) sengaja longgar bagi pendaftar sungguhan
+   * (yang mengirim sekali) tetapi memangkas kiriman bertubi-tubi dari satu
+   * sumber -- pola sama dengan `CooperativePublicController`.
+   */
+  @Public()
+  @Throttle({ default: { ttl: 3_600_000, limit: 10 } })
+  @Post('psb/daftar')
+  @HttpCode(201)
+  @ApiOperation({ summary: 'Mendaftarkan calon santri baru lewat situs publik' })
+  psbDaftar(@Headers('host') host: string, @Body() dto: DaftarkanPendaftarDto) {
+    return this.situs.psbDaftar(host, dto);
   }
 }

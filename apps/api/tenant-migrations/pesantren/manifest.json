@@ -161,6 +161,12 @@
       "file": "20260803T050000__pesantren__hero_attribution.sql",
       "name": "Atribusi gambar latar",
       "description": "Menambah hero_image_attribution (NULLABLE) pada pesantren_website_setting -- keterangan sumber/lisensi gambar latar, WAJIB dikosongkan begitu pengurus mengganti dengan gambar miliknya sendiri (lihat PesantrenProfilService.unggahGambar)."
+    },
+    {
+      "id": "20260803T060000__pesantren__agama",
+      "file": "20260803T060000__pesantren__agama.sql",
+      "name": "Referensi agama",
+      "description": "pesantren_agama -- tabel referensi (bukan FK ke kolom agama yang sudah ada, sengaja tetap teks bebas untuk baris lama) berisi enam agama diakui pemerintah plus Kepercayaan Terhadap Tuhan YME, dibaca formulir PSB publik sebagai combobox alih-alih kotak isian bebas."
     }
   ]
 }

@@ -75,7 +75,7 @@ class CatatGelombangDto {
   biayaPendaftaran?: number;
 }
 
-class DaftarkanPendaftarDto {
+export class DaftarkanPendaftarDto {
   @ApiProperty() @IsString()
   gelombangId!: string;
 
