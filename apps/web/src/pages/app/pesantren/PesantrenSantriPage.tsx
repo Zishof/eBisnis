@@ -15,6 +15,7 @@ import { useErrorMessage } from '../../../app/auth-context';
 interface SantriRow extends Record<string, unknown> {
   id: string;
   nis: string;
+  nisn: string | null;
   nama_lengkap: string;
   jenis_kelamin: string;
   status: string;
@@ -22,9 +23,31 @@ interface SantriRow extends Record<string, unknown> {
   tanggal_masuk: string;
 }
 
+interface OrangTuaForm {
+  nama: string;
+  nik: string;
+  tahunLahir: string;
+  pendidikan: string;
+  pekerjaan: string;
+  penghasilan: string;
+}
+
 const JENIS_KELAMIN = ['L', 'P'];
 const STATUS_TINGGAL = ['MUKIM', 'NONMUKIM'];
+const AGAMA = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Khonghucu', 'Lainnya'];
+const KEBUTUHAN_KHUSUS = [
+  'TIDAK_ADA', 'NETRA', 'RUNGU', 'WICARA', 'GRAHITA', 'DAKSA', 'LARAS', 'GANDA', 'AUTIS', 'LAINNYA',
+];
+const ALAT_TRANSPORTASI = ['JALAN_KAKI', 'SEPEDA', 'SEPEDA_MOTOR', 'ANGKUTAN_UMUM', 'MOBIL_ANTAR_JEMPUT', 'PERAHU', 'LAINNYA'];
+const PENDIDIKAN_TERAKHIR = ['TIDAK_SEKOLAH', 'SD', 'SMP', 'SMA', 'D1_D3', 'S1', 'S2', 'S3'];
+const RENTANG_PENGHASILAN = [
+  'TIDAK_BERPENGHASILAN', 'KURANG_500RB', '500RB_1JT', '1JT_2JT', '2JT_5JT', '5JT_20JT', 'LEBIH_20JT',
+];
 const PAGE_SIZE = 25;
+
+const ORANG_TUA_KOSONG: OrangTuaForm = {
+  nama: '', nik: '', tahunLahir: '', pendidikan: '', pekerjaan: '', penghasilan: '',
+};
 
 const FORM_KOSONG = {
   nis: '',
@@ -34,7 +57,81 @@ const FORM_KOSONG = {
   tempatLahir: '',
   tanggalLahir: '',
   alamatAsal: '',
+  // -- Identitas setara Dapodik --
+  nik: '',
+  nisn: '',
+  nipd: '',
+  agama: '',
+  kewarganegaraan: 'WNI',
+  kebutuhanKhusus: 'TIDAK_ADA',
+  anakKe: '',
+  jumlahSaudara: '',
+  nomorKk: '',
+  // -- Kontak dan transportasi --
+  alatTransportasi: '',
+  jarakTempatTinggalKm: '',
+  telepon: '',
+  hp: '',
+  email: '',
+  // -- Program bantuan --
+  penerimaKip: false,
+  nomorKip: '',
+  penerimaKks: false,
+  nomorKks: '',
+  // -- Orang tua/wali --
+  ayah: { ...ORANG_TUA_KOSONG },
+  ibu: { ...ORANG_TUA_KOSONG },
+  wali: { ...ORANG_TUA_KOSONG },
 };
+
+type FormState = typeof FORM_KOSONG;
+
+/** Payload orang tua/wali -- hanya disertakan bila minimal satu field terisi. */
+function payloadOrangTua(data: OrangTuaForm): Record<string, unknown> | undefined {
+  const isi = Object.values(data).some((v) => v.trim() !== '');
+  if (!isi) return undefined;
+  return {
+    nama: data.nama || undefined,
+    nik: data.nik || undefined,
+    tahunLahir: data.tahunLahir ? Number(data.tahunLahir) : undefined,
+    pendidikan: data.pendidikan || undefined,
+    pekerjaan: data.pekerjaan || undefined,
+    penghasilan: data.penghasilan || undefined,
+  };
+}
+
+function bangunPayload(form: FormState): Record<string, unknown> {
+  return {
+    nis: form.nis,
+    namaLengkap: form.namaLengkap,
+    jenisKelamin: form.jenisKelamin,
+    statusTinggal: form.statusTinggal,
+    tempatLahir: form.tempatLahir || undefined,
+    tanggalLahir: form.tanggalLahir || undefined,
+    alamatAsal: form.alamatAsal || undefined,
+    nik: form.nik || undefined,
+    nisn: form.nisn || undefined,
+    nipd: form.nipd || undefined,
+    agama: form.agama || undefined,
+    kewarganegaraan: form.kewarganegaraan || undefined,
+    kebutuhanKhusus: form.kebutuhanKhusus || undefined,
+    anakKe: form.anakKe ? Number(form.anakKe) : undefined,
+    jumlahSaudara: form.jumlahSaudara ? Number(form.jumlahSaudara) : undefined,
+    nomorKk: form.nomorKk || undefined,
+    alatTransportasi: form.alatTransportasi || undefined,
+    jarakTempatTinggalKm: form.jarakTempatTinggalKm ? Number(form.jarakTempatTinggalKm) : undefined,
+    telepon: form.telepon || undefined,
+    hp: form.hp || undefined,
+    email: form.email || undefined,
+    penerimaKip: form.penerimaKip,
+    nomorKip: form.nomorKip || undefined,
+    penerimaKks: form.penerimaKks,
+    nomorKks: form.nomorKks || undefined,
+    ayah: payloadOrangTua(form.ayah),
+    ibu: payloadOrangTua(form.ibu),
+    wali: payloadOrangTua(form.wali),
+  };
+}
 
 /**
  * Data Santri (EP-A) -- List + pendaftaran santri baru lewat
@@ -42,6 +139,11 @@ const FORM_KOSONG = {
  * modul ini (hanya List/Detail/Create) -- layar ini karena itu tidak
  * menawarkan sunting, sesuai kemampuan API sesungguhnya, bukan janji fitur
  * yang belum ada.
+ *
+ * Formulir mencakup seluruh atribut setara Dapodik ("Data Rinci Peserta
+ * Didik") -- identitas kependudukan, kontak, program bantuan, dan data
+ * rinci ayah/ibu/wali -- mengikuti migrasi
+ * `20260802T340000__pesantren__dapodik_santri.sql`.
  */
 export function PesantrenSantriPage() {
   const toast = useToast();
@@ -52,7 +154,10 @@ export function PesantrenSantriPage() {
   const [cari, setCari] = useState('');
   const [status, setStatus] = useState('');
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState(FORM_KOSONG);
+  const [form, setForm] = useState<FormState>(FORM_KOSONG);
+
+  const setOrangTua = (jenis: 'ayah' | 'ibu' | 'wali', field: keyof OrangTuaForm, value: string) =>
+    setForm((f) => ({ ...f, [jenis]: { ...f[jenis], [field]: value } }));
 
   const queryKey = ['pesantren-santri', page, cari, status];
   const list = useQuery({
@@ -78,6 +183,7 @@ export function PesantrenSantriPage() {
 
   const columns: Array<GridColumn<SantriRow>> = [
     { key: 'nis', header: 'NIS' },
+    { key: 'nisn', header: 'NISN', render: (row) => row.nisn ?? '—' },
     { key: 'nama_lengkap', header: 'Nama Lengkap' },
     {
       key: 'jenis_kelamin',
@@ -114,7 +220,7 @@ export function PesantrenSantriPage() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[220px] flex-1">
             <label className="field-label" htmlFor="santri-cari">
-              Cari (nama atau NIS)
+              Cari (nama, NIS, atau NISN)
             </label>
             <input
               id="santri-cari"
@@ -162,86 +268,133 @@ export function PesantrenSantriPage() {
 
       {creating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="card max-h-[85vh] w-full max-w-lg overflow-y-auto p-6">
+          <div className="card max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Catat Santri Baru</h2>
-            <div className="mt-4 space-y-3">
-              <div>
-                <label className="field-label" htmlFor="f-nis">NIS *</label>
-                <input
-                  id="f-nis"
-                  className="field-input"
-                  value={form.nis}
-                  onChange={(event) => setForm({ ...form, nis: event.target.value })}
-                />
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Formulir mencakup atribut setara Dapodik. Hanya NIS, nama, jenis kelamin, dan status
+              tinggal yang wajib -- sisanya boleh dilengkapi belakangan.
+            </p>
+
+            <SeksiForm judul="Identitas Pokok">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="NIS *">
+                  <input className="field-input" value={form.nis} onChange={(e) => setForm({ ...form, nis: e.target.value })} />
+                </Field>
+                <Field label="NISN (10 digit)">
+                  <input className="field-input" value={form.nisn} onChange={(e) => setForm({ ...form, nisn: e.target.value })} />
+                </Field>
               </div>
-              <div>
-                <label className="field-label" htmlFor="f-nama">Nama Lengkap *</label>
-                <input
-                  id="f-nama"
-                  className="field-input"
-                  value={form.namaLengkap}
-                  onChange={(event) => setForm({ ...form, namaLengkap: event.target.value })}
-                />
+              <Field label="Nama Lengkap *">
+                <input className="field-input" value={form.namaLengkap} onChange={(e) => setForm({ ...form, namaLengkap: e.target.value })} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Jenis Kelamin *">
+                  <select className="field-input" value={form.jenisKelamin} onChange={(e) => setForm({ ...form, jenisKelamin: e.target.value })}>
+                    {JENIS_KELAMIN.map((j) => <option key={j} value={j}>{j === 'L' ? 'Laki-laki' : 'Perempuan'}</option>)}
+                  </select>
+                </Field>
+                <Field label="Status Tinggal *">
+                  <select className="field-input" value={form.statusTinggal} onChange={(e) => setForm({ ...form, statusTinggal: e.target.value })}>
+                    {STATUS_TINGGAL.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="field-label" htmlFor="f-jk">Jenis Kelamin *</label>
-                  <select
-                    id="f-jk"
-                    className="field-input"
-                    value={form.jenisKelamin}
-                    onChange={(event) => setForm({ ...form, jenisKelamin: event.target.value })}
-                  >
-                    {JENIS_KELAMIN.map((j) => (
-                      <option key={j} value={j}>{j === 'L' ? 'Laki-laki' : 'Perempuan'}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="f-tinggal">Status Tinggal *</label>
-                  <select
-                    id="f-tinggal"
-                    className="field-input"
-                    value={form.statusTinggal}
-                    onChange={(event) => setForm({ ...form, statusTinggal: event.target.value })}
-                  >
-                    {STATUS_TINGGAL.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
+                <Field label="Tempat Lahir">
+                  <input className="field-input" value={form.tempatLahir} onChange={(e) => setForm({ ...form, tempatLahir: e.target.value })} />
+                </Field>
+                <Field label="Tanggal Lahir">
+                  <input type="date" className="field-input" value={form.tanggalLahir} onChange={(e) => setForm({ ...form, tanggalLahir: e.target.value })} />
+                </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="field-label" htmlFor="f-tempat">Tempat Lahir</label>
-                  <input
-                    id="f-tempat"
-                    className="field-input"
-                    value={form.tempatLahir}
-                    onChange={(event) => setForm({ ...form, tempatLahir: event.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="f-tgl-lahir">Tanggal Lahir</label>
-                  <input
-                    id="f-tgl-lahir"
-                    type="date"
-                    className="field-input"
-                    value={form.tanggalLahir}
-                    onChange={(event) => setForm({ ...form, tanggalLahir: event.target.value })}
-                  />
-                </div>
+                <Field label="NIK (16 digit)">
+                  <input className="field-input" value={form.nik} onChange={(e) => setForm({ ...form, nik: e.target.value })} />
+                </Field>
+                <Field label="Nomor Kartu Keluarga">
+                  <input className="field-input" value={form.nomorKk} onChange={(e) => setForm({ ...form, nomorKk: e.target.value })} />
+                </Field>
               </div>
-              <div>
-                <label className="field-label" htmlFor="f-alamat">Alamat Asal</label>
-                <input
-                  id="f-alamat"
-                  className="field-input"
-                  value={form.alamatAsal}
-                  onChange={(event) => setForm({ ...form, alamatAsal: event.target.value })}
-                />
+              <Field label="NIPD (nomor induk lokal pondok)">
+                <input className="field-input" value={form.nipd} onChange={(e) => setForm({ ...form, nipd: e.target.value })} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Agama">
+                  <select className="field-input" value={form.agama} onChange={(e) => setForm({ ...form, agama: e.target.value })}>
+                    <option value="">— Pilih —</option>
+                    {AGAMA.map((a) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </Field>
+                <Field label="Kewarganegaraan">
+                  <input className="field-input" value={form.kewarganegaraan} onChange={(e) => setForm({ ...form, kewarganegaraan: e.target.value })} />
+                </Field>
               </div>
-            </div>
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="Kebutuhan Khusus">
+                  <select className="field-input" value={form.kebutuhanKhusus} onChange={(e) => setForm({ ...form, kebutuhanKhusus: e.target.value })}>
+                    {KEBUTUHAN_KHUSUS.map((k) => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
+                  </select>
+                </Field>
+                <Field label="Anak ke-">
+                  <input type="number" min="1" className="field-input" value={form.anakKe} onChange={(e) => setForm({ ...form, anakKe: e.target.value })} />
+                </Field>
+                <Field label="Jumlah Saudara">
+                  <input type="number" min="0" className="field-input" value={form.jumlahSaudara} onChange={(e) => setForm({ ...form, jumlahSaudara: e.target.value })} />
+                </Field>
+              </div>
+              <Field label="Alamat Asal">
+                <input className="field-input" value={form.alamatAsal} onChange={(e) => setForm({ ...form, alamatAsal: e.target.value })} />
+              </Field>
+            </SeksiForm>
+
+            <SeksiForm judul="Kontak dan Transportasi">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Alat Transportasi">
+                  <select className="field-input" value={form.alatTransportasi} onChange={(e) => setForm({ ...form, alatTransportasi: e.target.value })}>
+                    <option value="">— Pilih —</option>
+                    {ALAT_TRANSPORTASI.map((a) => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
+                  </select>
+                </Field>
+                <Field label="Jarak Tempat Tinggal (km)">
+                  <input type="number" step="0.1" min="0" className="field-input" value={form.jarakTempatTinggalKm} onChange={(e) => setForm({ ...form, jarakTempatTinggalKm: e.target.value })} />
+                </Field>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="Telepon">
+                  <input className="field-input" value={form.telepon} onChange={(e) => setForm({ ...form, telepon: e.target.value })} />
+                </Field>
+                <Field label="HP">
+                  <input className="field-input" value={form.hp} onChange={(e) => setForm({ ...form, hp: e.target.value })} />
+                </Field>
+                <Field label="Email">
+                  <input type="email" className="field-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                </Field>
+              </div>
+            </SeksiForm>
+
+            <SeksiForm judul="Program Bantuan">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={form.penerimaKip} onChange={(e) => setForm({ ...form, penerimaKip: e.target.checked })} />
+                  Penerima KIP
+                </label>
+                <Field label="Nomor KIP">
+                  <input className="field-input" value={form.nomorKip} onChange={(e) => setForm({ ...form, nomorKip: e.target.value })} disabled={!form.penerimaKip} />
+                </Field>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={form.penerimaKks} onChange={(e) => setForm({ ...form, penerimaKks: e.target.checked })} />
+                  Penerima KKS
+                </label>
+                <Field label="Nomor KKS">
+                  <input className="field-input" value={form.nomorKks} onChange={(e) => setForm({ ...form, nomorKks: e.target.value })} disabled={!form.penerimaKks} />
+                </Field>
+              </div>
+            </SeksiForm>
+
+            <SeksiOrangTua judul="Data Ayah Kandung" data={form.ayah} onChange={(field, value) => setOrangTua('ayah', field, value)} />
+            <SeksiOrangTua judul="Data Ibu Kandung" data={form.ibu} onChange={(field, value) => setOrangTua('ibu', field, value)} />
+            <SeksiOrangTua judul="Data Wali (bila bukan ayah/ibu kandung)" data={form.wali} onChange={(field, value) => setOrangTua('wali', field, value)} />
+
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
@@ -257,12 +410,7 @@ export function PesantrenSantriPage() {
                 type="button"
                 className="btn-primary"
                 disabled={!form.nis || !form.namaLengkap || create.isPending}
-                onClick={() => {
-                  const payload = Object.fromEntries(
-                    Object.entries(form).filter(([, value]) => value !== ''),
-                  );
-                  create.mutate(payload);
-                }}
+                onClick={() => create.mutate(bangunPayload(form))}
               >
                 Simpan
               </button>
@@ -271,5 +419,66 @@ export function PesantrenSantriPage() {
         </div>
       )}
     </>
+  );
+}
+
+function SeksiForm({ judul, children }: { judul: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-5 border-t border-slate-200 pt-4 first:mt-4 first:border-t-0 first:pt-0 dark:border-slate-800">
+      <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{judul}</h3>
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="field-label">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function SeksiOrangTua({
+  judul,
+  data,
+  onChange,
+}: {
+  judul: string;
+  data: OrangTuaForm;
+  onChange: (field: keyof OrangTuaForm, value: string) => void;
+}) {
+  return (
+    <SeksiForm judul={judul}>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Nama">
+          <input className="field-input" value={data.nama} onChange={(e) => onChange('nama', e.target.value)} />
+        </Field>
+        <Field label="NIK (16 digit)">
+          <input className="field-input" value={data.nik} onChange={(e) => onChange('nik', e.target.value)} />
+        </Field>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Tahun Lahir">
+          <input type="number" className="field-input" value={data.tahunLahir} onChange={(e) => onChange('tahunLahir', e.target.value)} />
+        </Field>
+        <Field label="Pendidikan">
+          <select className="field-input" value={data.pendidikan} onChange={(e) => onChange('pendidikan', e.target.value)}>
+            <option value="">— Pilih —</option>
+            {PENDIDIKAN_TERAKHIR.map((p) => <option key={p} value={p}>{p.replace(/_/g, ' ')}</option>)}
+          </select>
+        </Field>
+        <Field label="Pekerjaan">
+          <input className="field-input" value={data.pekerjaan} onChange={(e) => onChange('pekerjaan', e.target.value)} />
+        </Field>
+      </div>
+      <Field label="Penghasilan">
+        <select className="field-input" value={data.penghasilan} onChange={(e) => onChange('penghasilan', e.target.value)}>
+          <option value="">— Pilih —</option>
+          {RENTANG_PENGHASILAN.map((p) => <option key={p} value={p}>{p.replace(/_/g, ' ')}</option>)}
+        </select>
+      </Field>
+    </SeksiForm>
   );
 }
