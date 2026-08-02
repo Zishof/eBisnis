@@ -11,6 +11,7 @@ import {
   PESANTREN_ROLES,
   PESANTREN_VERTICAL_CATALOG,
   ROLE_ADMIN_EPESANTREN,
+  ROLE_KIOSK,
   ROLE_PETUGAS_GERBANG,
   ROLE_WALI,
 } from './pesantren-vertical.catalog';
@@ -124,6 +125,24 @@ describe('katalog vertikal ePesantren', () => {
     const portal = PESANTREN_MENUS.find((m) => m.code === 'EPESANTREN_PORTAL_WALI');
     expect(portal).toBeDefined();
     expect(portal!.actions).toEqual(['READ']);
+  });
+
+  it('EPESANTREN_SERVICE_ACCOUNT_KIOSK hanya memegang EPESANTREN_KIOSK, tidak pernah EPESANTREN_SANTRI atau EPESANTREN_KARTU', () => {
+    // Akun perangkat kiosk yang kebetulan memegang EPESANTREN_KARTU dapat
+    // menerbitkan kartu baru bila disusupi -- persis kebocoran yang EP-M
+    // dirancang untuk dicegah.
+    const kiosk = PESANTREN_ROLES.find((r) => r.code === ROLE_KIOSK);
+    expect(kiosk).toBeDefined();
+    expect(kiosk!.modules.EPESANTREN_KIOSK).toBeDefined();
+    expect(kiosk!.modules.EPESANTREN_SANTRI).toBeUndefined();
+    expect(kiosk!.modules.EPESANTREN_KARTU).toBeUndefined();
+    expect(kiosk!.allModules).not.toBe(true);
+  });
+
+  it('menu EPESANTREN_KIOSK hanya menawarkan READ', () => {
+    const kiosk = PESANTREN_MENUS.find((m) => m.code === 'EPESANTREN_KIOSK');
+    expect(kiosk).toBeDefined();
+    expect(kiosk!.actions).toEqual(['READ']);
   });
 
   it('terdaftar pada VERTICAL_CATALOGS', () => {

@@ -58,10 +58,25 @@ export const ROLE_PETUGAS_GERBANG = 'EPESANTREN_PETUGAS_GERBANG';
  */
 export const ROLE_WALI = 'EPESANTREN_WALI';
 
+/**
+ * Kode peran akun perangkat anjungan/kiosk (EP-M).
+ *
+ * Profil P12 (service account/perangkat) — BUKAN akun pribadi santri.
+ * Santri tidak masuk dengan usernamenya sendiri di anjungan; perangkat
+ * kiosk sendiri yang memegang kredensial ini, memindai nomor kartu, lalu
+ * kiosk (bukan santri) yang memanggil API. Hanya memegang
+ * `EPESANTREN_KIOSK` (READ murni) — TIDAK PERNAH `EPESANTREN_SANTRI` atau
+ * `EPESANTREN_KARTU`, sebab kiosk yang dicuri/disusupi tidak boleh dapat
+ * mengubah data ATAU menerbitkan kartu baru, hanya membaca cuplikan lewat
+ * nomor kartu yang dipindai.
+ */
+export const ROLE_KIOSK = 'EPESANTREN_SERVICE_ACCOUNT_KIOSK';
+
 const CATAT = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const PERIZINAN_AKSI = ['READ', 'CREATE', 'APPROVE', 'REJECT', 'CANCEL', 'PRINT', 'EXPORT'];
 const GERBANG_AKSI = ['READ', 'CREATE', 'PRINT'];
 const PORTAL_WALI_AKSI = ['READ'];
+const KIOSK_AKSI = ['READ'];
 
 export const PESANTREN_MENUS: MenuNodeSeed[] = [
   {
@@ -164,6 +179,26 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 580,
     actions: PORTAL_WALI_AKSI,
   },
+  {
+    code: 'EPESANTREN_KARTU',
+    label: 'Kartu Santri',
+    translationKey: 'menu.epesantren.kartu',
+    route: '/app/pesantren/kartu',
+    icon: 'CreditCard',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 600,
+    actions: CATAT,
+  },
+  {
+    code: 'EPESANTREN_KIOSK',
+    label: 'Anjungan Mandiri',
+    translationKey: 'menu.epesantren.kiosk',
+    route: '/app/pesantren/kiosk',
+    icon: 'MonitorSmartphone',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 610,
+    actions: KIOSK_AKSI,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -188,6 +223,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_PERIZINAN: 'P7',
       EPESANTREN_GERBANG: 'P7',
       EPESANTREN_DOMPET: 'P7',
+      EPESANTREN_KARTU: 'P7',
     },
     dataScope: 'TENANT',
     core: false,
@@ -227,6 +263,21 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       'izin) lewat portal wali — tidak pernah data santri lain. Penyaringan ' +
       'ditegakkan di service lewat pesantren_santri_wali, bukan oleh profil ' +
       'hak akses ini semata.',
+  },
+  {
+    code: ROLE_KIOSK,
+    name: 'Akun Perangkat Anjungan',
+    family: 'ePesantren',
+    profile: 'P12',
+    modules: { ...DASAR, EPESANTREN_KIOSK: 'P12' },
+    dataScope: 'SELF',
+    core: false,
+    description:
+      'Akun perangkat (bukan akun pribadi santri) yang dipegang mesin ' +
+      'anjungan/kiosk untuk memindai kartu dan menampilkan cuplikan data ' +
+      'diri pemegang kartu. Sengaja TIDAK memegang EPESANTREN_SANTRI atau ' +
+      'EPESANTREN_KARTU — kiosk yang disusupi tidak boleh dapat mengubah ' +
+      'data ataupun menerbitkan kartu baru.',
   },
 ];
 

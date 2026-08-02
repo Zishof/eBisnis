@@ -392,6 +392,16 @@ tanpa data, sebab akun wali tanpa anak tidak berguna untuk menguji
 membuktikan kasus wali beranak lebih dari satu. Kata sandi sama dengan
 akun uji EPESANTREN_ADMIN/EPESANTREN_PETUGAS_GERBANG di atas.
 
+## Akun uji coba EPESANTREN_SERVICE_ACCOUNT_KIOSK (tenant `ponpes_demo`)
+
+```text
+EPESANTREN_SERVICE_ACCOUNT_KIOSK   kiosk1_ponpesdemo .. kiosk10_ponpesdemo
+```
+
+Akun PERANGKAT, bukan akun pribadi — masing-masing merepresentasikan satu
+mesin anjungan (mis. satu di gerbang, satu di kantin). Kata sandi sama
+dengan akun uji lain di atas.
+
 ## Status EP-L — SEBAGIAN, dompet manual tanpa top-up mandiri wali
 
 **Yang dikerjakan:** tabel `pesantren_dompet` dan `pesantren_dompet_transaksi`
@@ -436,10 +446,46 @@ sungguhan (kartu/VA/e-wallet) tersambung ke `PaymentPort`, yang belum ada
 sama sekali untuk ePesantren — dicatat sebagai pekerjaan terpisah, sama
 seperti pembayaran SPP gabungan multi-anak pada catatan EP-K.
 
+## Status EP-M — SEBAGIAN, kiosk baca-saja lewat akun perangkat
+
+**Yang dikerjakan:** tabel `pesantren_kartu` (migrasi modul
+`20260802T220000__pesantren__kartu`) — registry kartu RFID/QR. Satu kartu
+aktif per santri dan satu nomor kartu aktif secara global ditegakkan
+indeks unik parsial (hanya atas baris berstatus AKTIF, supaya nomor kartu
+yang dilaporkan hilang dapat dipakai ulang pada kartu pengganti tanpa
+mengubah data historis kartu lama — dibuktikan live).
+
+Anjungan (kiosk) TIDAK memakai login pribadi santri — santri tidak pernah
+punya akun platform sendiri pada sesi ini. Sebagai gantinya, peran BARU
+`EPESANTREN_SERVICE_ACCOUNT_KIOSK` (profil P12, akun perangkat) dipegang
+mesin kiosk itu sendiri. Pemisahan ditegakkan tiga lapis, pola yang sama
+dengan EP-J: (1) `PesantrenKioskService` secara harfiah hanya punya SATU
+metode (`pindaiKartu`), diperiksa lewat uji yang membaca daftar metode
+kelasnya — tidak ada satu pun jalur tulis; (2) menu `EPESANTREN_KIOSK`
+hanya menawarkan aksi READ; (3) peran kiosk TIDAK PERNAH memegang
+`EPESANTREN_SANTRI` maupun `EPESANTREN_KARTU` — kiosk yang disusupi tidak
+dapat membaca data santri lain di luar yang dipindai, apalagi menerbitkan
+kartu baru.
+
+Dibuktikan live terhadap `ponpes_demo` dengan akun perangkat sungguhan
+(`kiosk1_ponpesdemo`): memindai kartu Ahmad Fulan mengembalikan cuplikan
+yang benar (nama, NIS, status, presensi hari ini, DAN saldo dompet —
+membuktikan EP-M terhubung dengan benar ke ledger EP-L), mencoba
+mengakses layar santri penuh ditolak 403, mencoba menerbitkan kartu baru
+lewat token kiosk ditolak 403, nomor kartu duplikat ditolak konflik,
+menerbitkan kartu kedua untuk santri yang sudah punya kartu aktif ditolak
+konflik, kartu tak dikenal 404, kartu yang sudah dinonaktifkan tidak
+dapat dinonaktifkan lagi, dan nomor kartu yang sama BERHASIL diterbitkan
+ulang sebagai kartu pengganti setelah kartu lama berstatus HILANG.
+
+**Yang tidak dikerjakan:** anjungan sungguhan (perangkat/hardware,
+integrasi pembaca RFID fisik) — API ini adalah backend yang akan dipanggil
+anjungan semacam itu, bukan anjungannya sendiri; layar tampilan kiosk
+(frontend) juga belum dibangun.
+
 ## Sesudah EP-A
 
 ```text
-EP-M   Anjungan dan kartu RFID
 EP-N   Adapter POS, koperasi, klinik
 EP-O   Nilai dan rapor
 EP-P   Pelaporan

@@ -53,6 +53,12 @@
       "file": "20260802T210000__pesantren__dompet.sql",
       "name": "EP-L: Dompet santri dan batas belanja",
       "description": "pesantren_dompet, pesantren_dompet_transaksi -- ledger ketiga yang berdiri sendiri, terpisah dari platform.billing_invoice (langganan platform) dan pesantren_tagihan (SPP, EP-F), sesuai larangan keras §6 mencampur ketiganya. Saldo dihitung dari log transaksi, bukan dipercaya sebagai angka tunggal."
+    },
+    {
+      "id": "20260802T220000__pesantren__kartu",
+      "file": "20260802T220000__pesantren__kartu.sql",
+      "name": "EP-M: Anjungan dan kartu RFID",
+      "description": "pesantren_kartu -- registry kartu RFID/QR. Satu kartu aktif per santri dan satu nomor kartu aktif secara global, ditegakkan indeks unik parsial. Anjungan memakai akun peran perangkat (SERVICE_ACCOUNT_KIOSK_PONDOK, P12), bukan login pribadi santri."
     }
   ]
 }

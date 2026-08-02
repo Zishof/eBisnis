@@ -26,6 +26,10 @@ import { PesantrenPortalWaliController } from './pesantren-portal-wali.controlle
 import { PesantrenPortalWaliService } from './pesantren-portal-wali.service';
 import { PesantrenDompetController } from './pesantren-dompet.controller';
 import { PesantrenDompetService } from './pesantren-dompet.service';
+import { PesantrenKartuController } from './pesantren-kartu.controller';
+import { PesantrenKartuService } from './pesantren-kartu.service';
+import { PesantrenKioskController } from './pesantren-kiosk.controller';
+import { PesantrenKioskService } from './pesantren-kiosk.service';
 
 function paramtypes(target: unknown): unknown[] {
   return (Reflect.getMetadata('design:paramtypes', target as object) as unknown[]) ?? [];
@@ -173,6 +177,35 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(tipe.filter((t) => t === undefined)).toEqual([]);
   });
 
+  it('setiap dependensi controller kartu punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenKartuController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi service kartu punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenKartuService);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi controller kiosk punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenKioskController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi service kiosk punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenKioskService);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('layanan kiosk hanya punya metode baca (EP-M SoD perangkat)', () => {
+    const metode = Object.getOwnPropertyNames(PesantrenKioskService.prototype).filter((m) => m !== 'constructor');
+    expect(metode).toEqual(['pindaiKartu']);
+  });
+
   it('controller dan service terdaftar pada pesantren.module.ts', () => {
     const sumber = readFileSync(join(__dirname, 'pesantren.module.ts'), 'utf8');
     expect(sumber).toContain('PesantrenSantriController');
@@ -197,6 +230,10 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(sumber).toContain('PesantrenPortalWaliService');
     expect(sumber).toContain('PesantrenDompetController');
     expect(sumber).toContain('PesantrenDompetService');
+    expect(sumber).toContain('PesantrenKartuController');
+    expect(sumber).toContain('PesantrenKartuService');
+    expect(sumber).toContain('PesantrenKioskController');
+    expect(sumber).toContain('PesantrenKioskService');
   });
 
   it('modul terdaftar pada app.module.ts', () => {

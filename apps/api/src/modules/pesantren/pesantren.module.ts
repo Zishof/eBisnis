@@ -19,6 +19,10 @@ import { PesantrenPortalWaliController } from './pesantren-portal-wali.controlle
 import { PesantrenPortalWaliService } from './pesantren-portal-wali.service';
 import { PesantrenDompetController } from './pesantren-dompet.controller';
 import { PesantrenDompetService } from './pesantren-dompet.service';
+import { PesantrenKartuController } from './pesantren-kartu.controller';
+import { PesantrenKartuService } from './pesantren-kartu.service';
+import { PesantrenKioskController } from './pesantren-kiosk.controller';
+import { PesantrenKioskService } from './pesantren-kiosk.service';
 
 @Module({
   controllers: [
@@ -34,6 +38,8 @@ import { PesantrenDompetService } from './pesantren-dompet.service';
     PesantrenGerbangController,
     PesantrenPortalWaliController,
     PesantrenDompetController,
+    PesantrenKartuController,
+    PesantrenKioskController,
   ],
   providers: [
     PesantrenSantriService,
@@ -46,6 +52,8 @@ import { PesantrenDompetService } from './pesantren-dompet.service';
     PesantrenGerbangService,
     PesantrenPortalWaliService,
     PesantrenDompetService,
+    PesantrenKartuService,
+    PesantrenKioskService,
   ],
 })
 export class PesantrenModule {}
