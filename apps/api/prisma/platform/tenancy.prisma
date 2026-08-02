@@ -407,6 +407,17 @@ model DemoSession {
   userAgent    String?           @map("user_agent") @db.Text
   localeCode   String            @default("id") @map("locale_code") @db.VarChar(16)
   resetGeneration Int            @default(0) @map("reset_generation")
+  /*
+   * Peran yang membatasi sesi demo ini, bila portal yang diaksesnya
+   * menyatakan `demoDefaultRole` (lihat `PortalKatalog`) -- mis. portal
+   * santri.info mempersempit sesinya ke EPESANTREN_ADMIN saja, supaya
+   * pengunjung yang mencoba demo ePesantren tidak melihat menu Kasir/POS,
+   * Marketplace, atau Koperasi yang ikut tersemai pada schema demo bersama.
+   * `null` berarti tidak dipersempit -- perilaku lama, gabungan seluruh
+   * peran yang dipegang subjek demo, dipakai bagi demo umum eBisnis.id.
+   */
+  activeRoleId   String? @map("active_role_id") @db.Uuid
+  activeRoleCode String? @map("active_role_code") @db.VarChar(64)
   startedAt    DateTime          @default(now()) @map("started_at") @db.Timestamptz(6)
   expiresAt    DateTime          @map("expires_at") @db.Timestamptz(6)
   endedAt      DateTime?         @map("ended_at") @db.Timestamptz(6)

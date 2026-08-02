@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { AuthenticatedUser } from '../../common/decorators';
@@ -67,6 +68,7 @@ export class AuthService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly tenantDb: TenantConnectionService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly audit: AuditService,
@@ -271,7 +273,10 @@ export class AuthService {
     banner: string;
   }> {
     const schemaBawaan = this.config.get<string>('schema.demo', 'demo');
-    const demoSchema = await this.resolveDemoSchema(meta.hostname, schemaBawaan);
+    const { schemaName: demoSchema, defaultRoleCode } = await this.resolveDemoSchema(
+      meta.hostname,
+      schemaBawaan,
+    );
     const registry = await this.prisma.tenantSchemaRegistry.findUnique({
       where: { schemaName: demoSchema },
       include: { tenant: true },
@@ -281,6 +286,26 @@ export class AuthService {
         ErrorCodes.TENANT_NOT_READY,
         'Sandbox demo belum siap. Jalankan `pnpm db:seed` terlebih dahulu.',
       );
+    }
+
+    /*
+     * Bila portal ini menyatakan `demoDefaultRole`, sesi demo dipersempit ke
+     * satu peran itu saja (lihat dokumentasi `DemoSession.activeRoleId`) --
+     * tanpa ini demo ePesantren ikut menampilkan seluruh menu Kasir/POS,
+     * Marketplace, dan Koperasi yang tersemai bersama pada schema yang sama,
+     * sebab subjek demo memegang OWNER (`allModules: true`) sekaligus.
+     * Peran yang tidak ditemukan hanya dicatat sebagai peringatan -- demo
+     * yang terlalu luas jauh lebih baik daripada demo yang gagal terbuka.
+     */
+    let activeRoleId: string | undefined;
+    if (defaultRoleCode) {
+      activeRoleId = await this.findRoleId(demoSchema, defaultRoleCode);
+      if (!activeRoleId) {
+        this.logger.warn(
+          `Peran demo ${defaultRoleCode} tidak ditemukan pada ${demoSchema} -- sesi demo ` +
+            'jatuh ke gabungan seluruh peran yang dipegang subjek demo.',
+        );
+      }
     }
 
     const ttlMinutes = this.config.get<number>('demo.sessionTtlMinutes', 120);
@@ -301,6 +326,8 @@ export class AuthService {
         userAgent: meta.userAgent ?? null,
         resetGeneration: lastReset?.generation ?? 0,
         expiresAt,
+        activeRoleId: activeRoleId ?? null,
+        activeRoleCode: activeRoleId ? defaultRoleCode : null,
       },
     });
 
@@ -352,7 +379,8 @@ export class AuthService {
   }
 
   /**
-   * Schema demo untuk host yang meminta, atau `schemaBawaan` bila portal itu
+   * Schema demo untuk host yang meminta, ditambah kode peran (bila ada) yang
+   * mempersempit sesinya -- atau `schemaBawaan`/tanpa peran bila portal itu
    * tidak punya sandbox sendiri atau sandboxnya belum ter-provision.
    *
    * Pencarian portal memakai KATALOG_PORTAL langsung (bukan lewat tabel
@@ -360,11 +388,14 @@ export class AuthService {
    * dokumentasi `portal.catalog.ts`) -- konsisten dengan resolusi portal
    * lain di kodebasis ini.
    */
-  private async resolveDemoSchema(hostname: string | undefined, schemaBawaan: string): Promise<string> {
-    if (!hostname) return schemaBawaan;
+  private async resolveDemoSchema(
+    hostname: string | undefined,
+    schemaBawaan: string,
+  ): Promise<{ schemaName: string; defaultRoleCode?: string }> {
+    if (!hostname) return { schemaName: schemaBawaan };
     const host = hostname.toLowerCase();
     const portal = KATALOG_PORTAL.find((p) => p.domains.some((d) => d.host.toLowerCase() === host));
-    if (!portal?.demoSchema) return schemaBawaan;
+    if (!portal?.demoSchema) return { schemaName: schemaBawaan };
 
     const registry = await this.prisma.tenantSchemaRegistry.findUnique({
       where: { schemaName: portal.demoSchema },
@@ -374,9 +405,27 @@ export class AuthService {
       this.logger.warn(
         `Sandbox demo portal ${portal.code} (${portal.demoSchema}) belum siap -- jatuh ke sandbox bersama.`,
       );
-      return schemaBawaan;
+      return { schemaName: schemaBawaan };
     }
-    return portal.demoSchema;
+    return { schemaName: portal.demoSchema, defaultRoleCode: portal.demoDefaultRole };
+  }
+
+  /**
+   * Id peran `roleCode` pada `schemaName`, atau `undefined` bila tidak ada.
+   *
+   * Dipakai untuk mempersempit sesi demo ke satu peran (lihat
+   * `demoDefaultRole` pada `PortalKatalog`). Ketiadaannya BUKAN galat --
+   * dicatat sebagai peringatan di pemanggil, lalu sesi demo jatuh ke
+   * gabungan seluruh peran (perilaku lama), sebab demo yang terlalu luas
+   * jauh lebih baik daripada demo yang gagal dibuka sama sekali.
+   */
+  private async findRoleId(schemaName: string, roleCode: string): Promise<string | undefined> {
+    const rows = await this.tenantDb.query<{ id: string }>(
+      schemaName,
+      `SELECT id::text AS id FROM "${schemaName}".role WHERE code = $1 LIMIT 1`,
+      [roleCode],
+    );
+    return rows[0]?.id;
   }
 
   async refresh(
@@ -606,6 +655,8 @@ export class AuthService {
         auditSchemaName: registry?.auditSchemaName,
         isDemo: true,
         localeCode: payload.loc ?? 'id',
+        activeRoleId: demoSession.activeRoleId ?? undefined,
+        activeRoleCode: demoSession.activeRoleCode ?? undefined,
       };
     }
 
