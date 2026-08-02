@@ -2,7 +2,7 @@
  * Pengujian aturan tagihan pendidikan/SPP.
  */
 
-import { totalTagihan, validasiTagihan } from './pesantren-tagihan';
+import { totalTagihan, validasiPembayaran, validasiTagihan } from './pesantren-tagihan';
 
 const SAH = {
   santriId: 'a0000000-0000-0000-0000-000000000001',
@@ -51,5 +51,27 @@ describe('validasi tagihan', () => {
         { kode: 'ASRAMA', deskripsi: 'Asrama', jumlah: 50000 },
       ]),
     ).toBe(200000);
+  });
+});
+
+describe('validasi pembayaran', () => {
+  it('masukan lengkap tidak menghasilkan galat', () => {
+    expect(validasiPembayaran({ jumlahBayar: 150000, metode: 'TUNAI' })).toEqual([]);
+  });
+
+  it('jumlah bayar harus angka positif', () => {
+    expect(validasiPembayaran({ jumlahBayar: 0, metode: 'TUNAI' })[0].field).toBe('jumlahBayar');
+    expect(validasiPembayaran({ jumlahBayar: -1000, metode: 'TUNAI' })[0].field).toBe('jumlahBayar');
+  });
+
+  it('metode wajib dari daftar yang dikenali', () => {
+    expect(validasiPembayaran({ jumlahBayar: 150000, metode: 'DOMPET_DIGITAL' })[0].code).toBe('TIDAK_DIKENALI');
+  });
+
+  it('tanggal bayar diperiksa bila diisi', () => {
+    expect(validasiPembayaran({ jumlahBayar: 150000, metode: 'TRANSFER', tanggalBayar: '2026-08-05' })).toEqual([]);
+    expect(
+      validasiPembayaran({ jumlahBayar: 150000, metode: 'TRANSFER', tanggalBayar: 'bukan-tanggal' })[0].code,
+    ).toBe('TIDAK_SAH');
   });
 });

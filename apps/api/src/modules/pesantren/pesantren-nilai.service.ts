@@ -23,6 +23,8 @@ export interface BarisMataPelajaran {
   code: string;
   nama: string;
   kelompok: string | null;
+  kode_mapel_dapodik: string | null;
+  jenjang: string | null;
 }
 
 export interface BarisKomponenNilai {
@@ -65,7 +67,7 @@ export class PesantrenNilaiService {
     const S = `"${schemaName}"`;
     return this.tenantDb.query<BarisMataPelajaran>(
       schemaName,
-      `SELECT id::text, code, nama, kelompok FROM ${S}.pesantren_mata_pelajaran
+      `SELECT id::text, code, nama, kelompok, kode_mapel_dapodik, jenjang FROM ${S}.pesantren_mata_pelajaran
         WHERE deleted_at IS NULL ORDER BY sort_order ASC, nama ASC`,
     );
   }
@@ -79,10 +81,17 @@ export class PesantrenNilaiService {
     try {
       const rows = await this.tenantDb.query<BarisMataPelajaran>(
         schemaName,
-        `INSERT INTO ${S}.pesantren_mata_pelajaran (code, nama, kelompok, created_by, updated_by)
-         VALUES ($1, $2, $3, $4, $4)
-         RETURNING id::text, code, nama, kelompok`,
-        [masukan.code!.trim(), masukan.nama!.trim(), bersihkan(masukan.kelompok), createdBy],
+        `INSERT INTO ${S}.pesantren_mata_pelajaran (code, nama, kelompok, kode_mapel_dapodik, jenjang, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $6)
+         RETURNING id::text, code, nama, kelompok, kode_mapel_dapodik, jenjang`,
+        [
+          masukan.code!.trim(),
+          masukan.nama!.trim(),
+          bersihkan(masukan.kelompok),
+          bersihkan(masukan.kodeMapelDapodik),
+          bersihkan(masukan.jenjang),
+          createdBy,
+        ],
       );
       return rows[0];
     } catch (error) {

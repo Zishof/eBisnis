@@ -5,8 +5,9 @@
 
 import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { PesantrenNilaiService } from './pesantren-nilai.service';
+import { JENJANG_MAPEL } from './pesantren-nilai';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 
@@ -28,6 +29,14 @@ class CatatMataPelajaranDto {
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(32)
   kelompok?: string;
+
+  @ApiPropertyOptional({ example: '070', description: 'Kode referensi Dapodik/EMIS Kemenag' })
+  @IsOptional() @IsString() @MaxLength(10)
+  kodeMapelDapodik?: string;
+
+  @ApiPropertyOptional({ enum: JENJANG_MAPEL })
+  @IsOptional() @IsIn(JENJANG_MAPEL as unknown as string[])
+  jenjang?: string;
 }
 
 class CatatKomponenDto {
