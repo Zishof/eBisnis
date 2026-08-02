@@ -82,6 +82,7 @@ const KURIKULUM_AKSI = ['READ', 'CREATE', 'CANCEL', 'PRINT', 'EXPORT'];
 const LAPORAN_AKSI = ['READ', 'PRINT', 'EXPORT'];
 const PELANGGARAN_AKSI = ['READ', 'CREATE', 'UPDATE', 'CANCEL', 'PRINT', 'EXPORT'];
 const GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
+const ABSENSI_GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 
 export const PESANTREN_MENUS: MenuNodeSeed[] = [
   {
@@ -274,6 +275,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 680,
     actions: GURU_AKSI,
   },
+  {
+    code: 'EPESANTREN_ABSENSI_GURU',
+    label: 'Absensi Guru dan Piket',
+    translationKey: 'menu.epesantren.absensiGuru',
+    route: '/app/pesantren/absensi-guru',
+    icon: 'ClipboardCheck',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 690,
+    actions: ABSENSI_GURU_AKSI,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -306,6 +317,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_LAPORAN: 'P7',
       EPESANTREN_PELANGGARAN: 'P7',
       EPESANTREN_GURU: 'P7',
+      EPESANTREN_ABSENSI_GURU: 'P7',
     },
     dataScope: 'TENANT',
     core: false,

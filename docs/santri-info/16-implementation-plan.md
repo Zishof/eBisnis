@@ -873,6 +873,36 @@ penugasan mengajar ke `pengajar_user_id` pada `pesantren_jadwal_pelajaran`
 -- keduanya tetap diisi terpisah, sebab tidak semua guru punya
 `user_subject_id` untuk diisikan ke kolom itu.
 
+### Status EP-S3 — SELESAI, absensi guru dan piket
+
+`pesantren_absensi_guru` (satu baris per guru per tanggal -- ditegakkan
+indeks unik parsial) dan `pesantren_piket` (jadwal giliran jaga, unik
+per guru+tanggal+jenis piket, tapi guru LAIN boleh piket jenis sama di
+tanggal sama, dan guru YANG SAMA boleh piket jenis BERBEDA di tanggal
+sama). SENGAJA terpisah dari `pesantren_presensi` (EP-E): presensi
+mencatat kehadiran SANTRI, ini kehadiran STAF PENGAJAR -- pemilik
+proses dan tujuan pemakaiannya (dasar honor/evaluasi kinerja) berbeda
+sama sekali.
+
+Rekap kehadiran per status dalam rentang tanggal DIHITUNG dari log,
+bukan disimpan -- pola yang konsisten dengan EP-S1/EP-S2/EP-L.
+
+Live-test terhadap `ponpes_demo`: mencatat absensi harian (HADIR, jam
+masuk/pulang), menolak absensi kedua pada tanggal yang sama, menolak jam
+pulang sebelum jam masuk, rekap kehadiran menghitung benar, menjadwalkan
+piket harian, menolak piket jenis sama pada tanggal sama, menerima piket
+jenis BEDA pada tanggal sama, mencatat kehadiran piket (dan menolak
+pencatatan kedua), 404 pada guru tak dikenal, dan 401 tanpa token.
+
+**Yang tidak dikerjakan:** notifikasi keterlambatan/ketidakhadiran guru
+otomatis (perlu NotificationPort); integrasi absensi guru ke laporan
+EP-P (dapat ditambahkan sebagai laporan kesembilan bila diperlukan,
+data dasarnya sudah lengkap).
+
+Dengan ini seluruh Tier 1 dari audit kedua (pelanggaran/hukuman, guru,
+absensi guru/piket) selesai. Lanjut ke EP-S4 (ekstrakurikuler/organisasi
+siswa) dan EP-S5 (prestasi/penghargaan).
+
 ## Sesudah EP-A
 
 ```text
