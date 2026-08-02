@@ -85,6 +85,7 @@ const GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const ABSENSI_GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const EKSTRAKURIKULER_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const PRESTASI_AKSI = ['READ', 'CREATE', 'PRINT', 'EXPORT'];
+const KATERING_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 
 export const PESANTREN_MENUS: MenuNodeSeed[] = [
   {
@@ -307,6 +308,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 710,
     actions: PRESTASI_AKSI,
   },
+  {
+    code: 'EPESANTREN_KATERING',
+    label: 'Dapur dan Katering',
+    translationKey: 'menu.epesantren.katering',
+    route: '/app/pesantren/katering',
+    icon: 'CookingPot',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 720,
+    actions: KATERING_AKSI,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -342,6 +353,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_ABSENSI_GURU: 'P7',
       EPESANTREN_EKSTRAKURIKULER: 'P7',
       EPESANTREN_PRESTASI: 'P7',
+      EPESANTREN_KATERING: 'P7',
     },
     dataScope: 'TENANT',
     core: false,

@@ -967,6 +967,39 @@ ditolak 404 saat mencatat prestasi, dan 401 tanpa token.
 unggah file); integrasi ke materi promosi/website pondok (data sudah
 tersedia lewat API, presentasi publiknya belum dibangun).
 
+### Status EP-S6 — SELESAI, dapur dan katering
+
+Diminta LANGSUNG oleh pengguna ("masalah dapur/katering"), BUKAN temuan
+audit sistem lama -- `master/sekolah` pada AIS tidak punya gugusan dapur
+sebab dapur pondok bukan konsep sekolah formal.
+
+Tiga kemampuan: `pesantren_menu_makan` (satu menu per tanggal+waktu makan
+-- SARAPAN/MAKAN_SIANG/MAKAN_MALAM/SNACK, ditegakkan indeks unik parsial),
+`pesantren_konsumsi` (porsi yang benar-benar didistribusikan, dikelompokkan
+per ASRAMA -- SENGAJA bukan per santri, sebab dapur pondok menghitung
+porsi bukan mencatat siapa makan apa satu per satu -- beda filosofi dari
+`pesantren_presensi`), dan `pesantren_stok_dapur` + `pesantren_stok_dapur_transaksi`
+(stok bahan, mengikuti pola cache+log yang PERSIS sama dengan saldo dompet
+santri EP-L: `stok_saat_ini` hanya berubah bersamaan dengan baris log pada
+transaksi terkunci `SELECT ... FOR UPDATE` yang sama).
+
+Live-test terhadap `ponpes_demo`: mencatat menu sarapan, menolak menu
+duplikat pada slot tanggal+waktu yang sama, mengubah status menu,
+mencatat konsumsi 480 dari 500 porsi yang disiapkan, mencatat bahan
+(Beras, stok minimum 50kg), menolak nama bahan duplikat, stok masuk
+100kg, stok keluar 70kg (sisa tepat 30kg), menolak stok keluar 50kg lagi
+karena sisa cuma 30kg, daftar "stok menipis" benar menampilkan Beras
+(30 &lt; minimum 50), penyesuaian stok opname ke 45kg berhasil, 404 pada
+bahan tak dikenal, dan 401 tanpa token.
+
+**Yang tidak dikerjakan:** perencanaan menu mingguan/bulanan otomatis
+berdasarkan jumlah santri aktif (menu tetap dicatat manual satu per
+satu); perhitungan kebutuhan bahan otomatis dari resep (tidak ada konsep
+resep/BOM -- stok dicatat langsung, bukan diturunkan dari menu);
+notifikasi stok menipis ke bendahara/bagian pengadaan (perlu
+NotificationPort, endpoint baca `stok-menipis` sudah ada tapi belum
+dikaitkan ke peristiwa apa pun).
+
 Dengan ini SELURUH kesenjangan Tier 1 dari audit kedua sistem lama
 (pelanggaran/hukuman, guru, absensi guru/piket, ekstrakurikuler/
 organisasi, prestasi/penghargaan) sudah selesai dibangun, diuji, dan
