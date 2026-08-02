@@ -107,6 +107,12 @@
       "file": "20260802T300000__pesantren__absensi_guru.sql",
       "name": "EP-S3: Absensi guru dan piket",
       "description": "pesantren_absensi_guru (satu baris per guru per tanggal), pesantren_piket (jadwal giliran jaga). BUKAN pesantren_presensi (EP-E) -- itu mencatat kehadiran santri, ini kehadiran staf pengajar, pemilik proses dan tujuan pemakaian berbeda sama sekali."
+    },
+    {
+      "id": "20260802T310000__pesantren__ekstrakurikuler",
+      "file": "20260802T310000__pesantren__ekstrakurikuler.sql",
+      "name": "EP-S4: Ekstrakurikuler dan organisasi siswa",
+      "description": "pesantren_ekstrakurikuler (klub ATAU organisasi setara OSIS, dibedakan kolom jenis), pesantren_ekstrakurikuler_anggota (keanggotaan, jabatan/kepemimpinan, skor partisipasi). Menyatukan gugusan kegiatan-kesiswaan dan organisasi-siswa sistem lama menjadi satu model -- penyederhanaan tabel yang sah, kemampuannya tetap lengkap."
     }
   ]
 }

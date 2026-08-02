@@ -903,6 +903,39 @@ Dengan ini seluruh Tier 1 dari audit kedua (pelanggaran/hukuman, guru,
 absensi guru/piket) selesai. Lanjut ke EP-S4 (ekstrakurikuler/organisasi
 siswa) dan EP-S5 (prestasi/penghargaan).
 
+### Status EP-S4 — SELESAI, ekstrakurikuler dan organisasi siswa
+
+Audit kedua menemukan gugusan besar sistem lama yang memisahkan
+"kegiatan kesiswaan" (klub/ekskul) dari "organisasi siswa" (setara OSIS)
+lewat DUA gugusan tabel jabatan terpisah. Modul ini SENGAJA menyatukan
+keduanya jadi satu model -- `pesantren_ekstrakurikuler` (klub ATAU
+organisasi, dibedakan kolom `jenis`) dan
+`pesantren_ekstrakurikuler_anggota` (keanggotaan + jabatan kepemimpinan +
+skor partisipasi dalam satu tabel). Ini penyederhanaan tabel yang SAH
+sesuai instruksi eksplisit pengguna -- kemampuannya tetap lengkap, hanya
+tidak dipecah per gugusan seperti sistem lama.
+
+Berbeda dari rombongan belajar (EP-O3) yang membatasi satu keanggotaan
+aktif per santri per tahun ajaran, di sini santri BOLEH aktif di banyak
+ekstrakurikuler sekaligus -- yang dicegah hanya keanggotaan aktif GANDA
+pada ekstrakurikuler yang SAMA di tahun ajaran yang sama.
+
+Live-test terhadap `ponpes_demo`: membuat satu klub (Pramuka) dan satu
+organisasi (OSIS), menolak kode duplikat, satu santri bergabung ke
+Pramuka SEKALIGUS menjadi Ketua OSIS pada saat bersamaan (membuktikan
+keanggotaan ganda lintas ekstrakurikuler berhasil), menolak bergabung
+Pramuka kedua kalinya (duplikat aktif), mencatat nilai partisipasi 88,
+menolak nilai di luar 0-100, daftar ekstrakurikuler santri menampilkan
+kedua keanggotaan lengkap dengan nama ekstrakurikuler dan jabatan, daftar
+anggota Pramuka menampilkan nama dan NIS santri lewat join, mengeluarkan
+anggota dari Pramuka (pengeluaran kedua ditolak), 404 pada ekstrakurikuler
+tak dikenal, dan 401 tanpa token.
+
+**Yang tidak dikerjakan:** integrasi skor partisipasi ke rapor non-
+akademik (data dasarnya sudah ada, tata letak cetak rapor gabungan belum
+ada); pemilihan ketua OSIS lewat mekanisme voting (jabatan dicatat manual
+oleh pengurus, bukan hasil pemilu tercatat sistem).
+
 ## Sesudah EP-A
 
 ```text
