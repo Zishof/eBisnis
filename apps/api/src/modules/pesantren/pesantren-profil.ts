@@ -23,6 +23,7 @@ export interface MasukanProfil {
   themeCode?: string;
   namaTampilan?: string | null;
   tagline?: string | null;
+  muqodimahHtml?: string | null;
   sejarahHtml?: string | null;
   visi?: string | null;
   misi?: string | null;

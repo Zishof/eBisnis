@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth, useErrorMessage } from '../../app/auth-context';
 import { berandaSesudahMasuk } from '../../app/beranda-sesudah-masuk';
-import { isSantriHost } from '../../verticals/pesantren/santri-host';
+import { isSantriHost, isSantriPortalHost, slugPondokDariHost } from '../../verticals/pesantren/santri-host';
 
 interface LoginForm {
   username: string;
@@ -24,6 +24,17 @@ export function LoginPage() {
 
   const { register, handleSubmit, formState } = useForm<LoginForm>();
   const santri = isSantriHost();
+  /*
+   * Portal umum santri.info (apex/www) menawarkan demo dan pendaftaran pondok
+   * BARU -- ajakan yang wajar bagi pengunjung yang belum jadi pelanggan.
+   *
+   * Subdomain pondok (`<slug>.santri.info`) adalah pelanggan yang SUDAH
+   * terdaftar. Menawarkan "Coba Demo Pesantren" atau "daftar akun" kepadanya
+   * di halaman masuknya sendiri tidak relevan -- bahkan menyesatkan, sebab
+   * demo mendarat di penyewa demo bersama, bukan penyewa pondok ini.
+   */
+  const portalUmum = isSantriPortalHost();
+  const slugPondok = slugPondokDariHost();
 
   const onSubmit = handleSubmit(async (values) => {
     setError(null);
@@ -66,7 +77,7 @@ export function LoginPage() {
       <div className="w-full max-w-md">
         <div className="card p-8">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            {santri ? 'Masuk ke santri.info' : t('auth.loginTitle')}
+            {slugPondok ? 'Masuk' : santri ? 'Masuk ke santri.info' : t('auth.loginTitle')}
           </h1>
           <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
             {santri
@@ -126,22 +137,46 @@ export function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 flex items-center gap-3">
-            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-            <span className="text-xs uppercase text-slate-400">atau</span>
-            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-          </div>
+          {!slugPondok && (
+            <>
+              <div className="mt-6 flex items-center gap-3">
+                <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                <span className="text-xs uppercase text-slate-400">atau</span>
+                <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+              </div>
 
-          <button type="button" className="btn-outline mt-4 w-full" onClick={() => void startDemo()} disabled={busy}>
-            {santri ? 'Coba Demo Pesantren' : t('nav.demo')}
-          </button>
+              <button
+                type="button"
+                className="btn-outline mt-4 w-full"
+                onClick={() => void startDemo()}
+                disabled={busy}
+              >
+                {santri ? 'Coba Demo Pesantren' : t('nav.demo')}
+              </button>
+            </>
+          )}
 
-          <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
-            {t('auth.noAccount')}{' '}
-            <Link to="/daftar" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">
-              {t('auth.registerNow')}
-            </Link>
-          </p>
+          {portalUmum && (
+            <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
+              {t('auth.noAccount')}{' '}
+              <Link to="/daftar-pesantren" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">
+                Daftarkan pondok Anda
+              </Link>
+            </p>
+          )}
+          {!santri && (
+            <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
+              {t('auth.noAccount')}{' '}
+              <Link to="/daftar" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">
+                {t('auth.registerNow')}
+              </Link>
+            </p>
+          )}
+          {slugPondok && (
+            <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
+              Lupa kata sandi atau belum punya akun? Hubungi pengurus pondok Anda.
+            </p>
+          )}
         </div>
       </div>
     </div>

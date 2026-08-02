@@ -30,6 +30,7 @@ interface Profil {
   theme_code: string;
   nama_tampilan: string | null;
   tagline: string | null;
+  muqodimah_html: string | null;
   sejarah_html: string | null;
   visi: string | null;
   misi: string | null;
@@ -148,14 +149,7 @@ export function SitusPondokPage() {
     <div className="min-h-screen bg-white dark:bg-slate-950">
       {/* --- Hero -------------------------------------------------------- */}
       <header className={`relative overflow-hidden bg-gradient-to-br ${tema.grad} text-white`}>
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M30 0L36 24L60 30L36 36L30 60L24 36L0 30L24 24Z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
-          }}
-          aria-hidden
-        />
+        <IlustrasiHeroSantri />
         {profil.hero_image_url && (
           <img
             src={profil.hero_image_url}
@@ -213,6 +207,22 @@ export function SitusPondokPage() {
       </header>
 
       <main className="container-page space-y-16 py-14">
+        {/* --- Muqodimah ----------------------------------------------------- */}
+        {profil.muqodimah_html && (
+          <section
+            className={`rounded-2xl border-s-4 bg-slate-50 p-8 dark:bg-slate-900/60 ${tema.aksen} border-current`}
+          >
+            <p className="text-center font-arabic text-lg text-slate-800 dark:text-slate-100" dir="rtl" lang="ar">
+              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+            </p>
+            <div
+              className="prose prose-slate mt-4 max-w-none text-center dark:prose-invert sm:text-start"
+              // Ditulis pengurus lewat menu Profil, bukan diterima dari pengunjung.
+              dangerouslySetInnerHTML={{ __html: profil.muqodimah_html }}
+            />
+          </section>
+        )}
+
         {/* --- Sejarah, Visi, Misi ---------------------------------------- */}
         {(profil.sejarah_html || profil.visi || profil.misi) && (
           <section className="grid gap-10 lg:grid-cols-3">
@@ -367,6 +377,87 @@ export function SitusPondokPage() {
         </footer>
       </main>
     </div>
+  );
+}
+
+/**
+ * Ilustrasi hero: halaqah santri-santriwati mengaji kitab kuning bersama
+ * ustaz, dengan masjid di latar belakang.
+ *
+ * Sengaja SVG garis sederhana (siluet), BUKAN foto -- foto orang sungguhan
+ * di beranda pelanggan (santri, ustaz) menuntut izin/consent dari orang yang
+ * difoto, dan kita tidak punya itu untuk siapa pun. Ilustrasi asli menghindari
+ * persoalan itu sama sekali sekaligus tetap terasa islami dan hangat.
+ *
+ * Opasitasnya rendah (~14%) supaya judul dan tombol di atasnya tetap terbaca
+ * jelas -- ilustrasi ini tekstur latar, bukan gambar utama.
+ */
+function IlustrasiHeroSantri() {
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.14]"
+      viewBox="0 0 1200 420"
+      preserveAspectRatio="xMidYMax slice"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      {/* Masjid di latar belakang kanan */}
+      <g>
+        <rect x="860" y="230" width="220" height="140" rx="4" />
+        <path d="M860 230 Q970 120 1080 230 Z" />
+        <circle cx="970" cy="150" r="8" />
+        <rect x="1000" y="140" width="14" height="90" rx="3" />
+        <path d="M1000 140 Q1007 110 1014 140 Z" />
+        <path d="M1007 92 a10 10 0 1 0 0.1 0 a7 7 0 1 1 -0.1 0" />
+        <rect x="900" y="140" width="12" height="90" rx="3" />
+        <path d="M900 140 Q906 112 912 140 Z" />
+        <rect x="915" y="280" width="40" height="90" rx="18" />
+        <rect x="985" y="280" width="40" height="90" rx="18" />
+      </g>
+
+      {/* Tanah/lantai halaqah */}
+      <path d="M0 400 Q600 360 1200 400 L1200 420 L0 420 Z" />
+
+      {/* Halaqah: santri dan santriwati duduk melingkar mengaji kitab kuning */}
+      {[
+        { x: 90, y: 330, jilbab: true },
+        { x: 210, y: 360, jilbab: false },
+        { x: 330, y: 320, jilbab: true },
+        { x: 620, y: 350, jilbab: true },
+        { x: 730, y: 320, jilbab: false },
+        { x: 800, y: 365, jilbab: true },
+      ].map((s, i) => (
+        <g key={i} transform={`translate(${s.x} ${s.y})`}>
+          {/* badan duduk bersila */}
+          <path d="M-32 40 Q-34 4 0 -4 Q34 4 32 40 Q0 54 -32 40 Z" />
+          {/* kepala */}
+          <circle cx="0" cy="-22" r="15" />
+          {s.jilbab ? (
+            // jilbab santriwati
+            <path d="M-17 -22 Q-20 4 -14 20 L14 20 Q20 4 17 -22 Q0 -38 -17 -22 Z" />
+          ) : (
+            // peci santri
+            <rect x="-13" y="-38" width="26" height="12" rx="3" />
+          )}
+          {/* kitab kuning terbuka di pangkuan */}
+          <rect x="-16" y="20" width="32" height="10" rx="1.5" />
+          <line x1="0" y1="20" x2="0" y2="30" stroke="currentColor" strokeWidth="1.5" />
+        </g>
+      ))}
+
+      {/* Ustaz di depan halaqah, memegang kitab besar */}
+      <g transform="translate(475 300)">
+        <path d="M-42 56 Q-46 0 0 -8 Q46 0 42 56 Q0 74 -42 56 Z" />
+        <circle cx="0" cy="-32" r="19" />
+        {/* sorban sederhana */}
+        <path d="M-19 -32 Q-22 -50 0 -54 Q22 -50 19 -32 Q0 -44 -19 -32 Z" />
+        {/* jenggot */}
+        <path d="M-9 -20 Q0 -6 9 -20 Q0 -14 -9 -20 Z" />
+        {/* kitab besar terbuka */}
+        <rect x="-24" y="24" width="48" height="14" rx="2" />
+        <line x1="0" y1="24" x2="0" y2="38" stroke="currentColor" strokeWidth="1.8" />
+      </g>
+    </svg>
   );
 }
 

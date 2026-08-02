@@ -28,7 +28,7 @@ export class PesantrenPublicService {
 
     const profil = await this.tenantDb.queryOne<Record<string, unknown>>(
       S,
-      `SELECT is_published, theme_code, nama_tampilan, tagline, sejarah_html, visi, misi,
+      `SELECT is_published, theme_code, nama_tampilan, tagline, muqodimah_html, sejarah_html, visi, misi,
               pengasuh, tahun_berdiri, afiliasi, logo_url, hero_image_url, alamat_publik,
               kontak_telepon, kontak_whatsapp, kontak_email, map_embed_url, instagram_url,
               meta_description
@@ -46,7 +46,7 @@ export class PesantrenPublicService {
          FROM "${S}".pesantren_berita
         WHERE status = 'TERBIT' AND deleted_at IS NULL
         ORDER BY tanggal_terbit DESC
-        LIMIT 10`,
+        LIMIT 30`,
     );
 
     const unitPendidikan = await this.tenantDb.query(

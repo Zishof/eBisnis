@@ -14,6 +14,7 @@ export interface BarisProfil {
   theme_code: string;
   nama_tampilan: string | null;
   tagline: string | null;
+  muqodimah_html: string | null;
   sejarah_html: string | null;
   visi: string | null;
   misi: string | null;
@@ -31,7 +32,7 @@ export interface BarisProfil {
   meta_description: string | null;
 }
 
-const KOLOM_PROFIL = `is_published, theme_code, nama_tampilan, tagline, sejarah_html, visi, misi,
+const KOLOM_PROFIL = `is_published, theme_code, nama_tampilan, tagline, muqodimah_html, sejarah_html, visi, misi,
   pengasuh, tahun_berdiri, afiliasi, logo_url, hero_image_url, alamat_publik,
   kontak_telepon, kontak_whatsapp, kontak_email, map_embed_url, instagram_url, meta_description`;
 
@@ -76,22 +77,23 @@ export class PesantrenProfilService {
               theme_code = COALESCE($2, theme_code),
               nama_tampilan = COALESCE($3, nama_tampilan),
               tagline = COALESCE($4, tagline),
-              sejarah_html = COALESCE($5, sejarah_html),
-              visi = COALESCE($6, visi),
-              misi = COALESCE($7, misi),
-              pengasuh = COALESCE($8, pengasuh),
-              tahun_berdiri = COALESCE($9, tahun_berdiri),
-              afiliasi = COALESCE($10, afiliasi),
-              logo_url = COALESCE($11, logo_url),
-              hero_image_url = COALESCE($12, hero_image_url),
-              alamat_publik = COALESCE($13, alamat_publik),
-              kontak_telepon = COALESCE($14, kontak_telepon),
-              kontak_whatsapp = COALESCE($15, kontak_whatsapp),
-              kontak_email = COALESCE($16, kontak_email),
-              map_embed_url = COALESCE($17, map_embed_url),
-              instagram_url = COALESCE($18, instagram_url),
-              meta_description = COALESCE($19, meta_description),
-              updated_at = now(), updated_by = $20, version = version + 1
+              muqodimah_html = COALESCE($5, muqodimah_html),
+              sejarah_html = COALESCE($6, sejarah_html),
+              visi = COALESCE($7, visi),
+              misi = COALESCE($8, misi),
+              pengasuh = COALESCE($9, pengasuh),
+              tahun_berdiri = COALESCE($10, tahun_berdiri),
+              afiliasi = COALESCE($11, afiliasi),
+              logo_url = COALESCE($12, logo_url),
+              hero_image_url = COALESCE($13, hero_image_url),
+              alamat_publik = COALESCE($14, alamat_publik),
+              kontak_telepon = COALESCE($15, kontak_telepon),
+              kontak_whatsapp = COALESCE($16, kontak_whatsapp),
+              kontak_email = COALESCE($17, kontak_email),
+              map_embed_url = COALESCE($18, map_embed_url),
+              instagram_url = COALESCE($19, instagram_url),
+              meta_description = COALESCE($20, meta_description),
+              updated_at = now(), updated_by = $21, version = version + 1
         WHERE singleton = TRUE
         RETURNING ${KOLOM_PROFIL}`,
       [
@@ -99,6 +101,7 @@ export class PesantrenProfilService {
         bersihkan(masukan.themeCode),
         bersihkan(masukan.namaTampilan),
         bersihkan(masukan.tagline),
+        bersihkan(masukan.muqodimahHtml),
         bersihkan(masukan.sejarahHtml),
         bersihkan(masukan.visi),
         bersihkan(masukan.misi),

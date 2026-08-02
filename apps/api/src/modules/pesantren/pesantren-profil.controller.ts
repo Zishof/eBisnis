@@ -32,6 +32,9 @@ class PerbaruiProfilDto {
   tagline?: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString()
+  muqodimahHtml?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString()
   sejarahHtml?: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString()

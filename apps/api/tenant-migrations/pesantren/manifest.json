@@ -149,6 +149,12 @@
       "file": "20260803T030000__pesantren__mapel_dapodik.sql",
       "name": "Kelengkapan Dapodik pada mata pelajaran",
       "description": "Menambah kode_mapel_dapodik dan jenjang (NULLABLE) pada pesantren_mata_pelajaran -- kode referensi Dapodik/EMIS Kemenag berbeda per jenjang, termasuk mapel keagamaan (Fikih/Akidah Akhlak/SKI/Al-Qur'an Hadis) yang tidak punya padanan Dikdasmen."
+    },
+    {
+      "id": "20260803T040000__pesantren__muqodimah",
+      "file": "20260803T040000__pesantren__muqodimah.sql",
+      "name": "Muqodimah situs publik",
+      "description": "Menambah muqodimah_html (NULLABLE) pada pesantren_website_setting -- sambutan pembuka bernuansa keagamaan (basmalah/hamdalah/shalawat/nilai Aswaja An-Nahdliyah), terpisah dari sejarah_html sebab keduanya berbeda maksud."
     }
   ]
 }
