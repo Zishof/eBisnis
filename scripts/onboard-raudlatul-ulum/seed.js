@@ -185,6 +185,34 @@ async function main() {
   const ACTOR = adminRow.rows[0]?.id;
   if (!ACTOR) throw new Error('Tidak ada pemegang peran EPESANTREN_ADMIN. Registrasikan tenant terlebih dahulu.');
 
+  // -- 0b. Kata sandi pemilik dapat diketahui (hanya bila belum diganti) ----
+  //
+  // Registrasi publik membuat kata sandi ACAK sekali, dikembalikan HANYA
+  // pada respons HTTP saat itu juga -- deploy/onboard-raudlatul-ulum.sh
+  // tidak pernah mencatatnya, sehingga tidak ada seorang pun yang tahu
+  // kata sandi pemilik setelah registrasi selesai. Di sini direset ke nilai
+  // yang diketahui, TETAPI HANYA bila `must_change_password` masih TRUE --
+  // itu tanda pasti belum ada seorang pun yang berhasil masuk dan mengganti
+  // kata sandinya sendiri. Begitu pemilik sungguhan mengganti kata sandinya
+  // (menonaktifkan must_change_password), langkah ini TIDAK PERNAH lagi
+  // menimpanya -- mengubah kata sandi orang yang sudah memilikinya sendiri
+  // bukan sesuatu yang boleh dilakukan skrip ini diam-diam.
+  const KATA_SANDI_AWAL = 'RaudlatulUlum2026!';
+  const pemilik = await platform.query(
+    `SELECT id::text AS id, username, must_change_password FROM platform.platform_user WHERE id = $1`,
+    [ACTOR],
+  );
+  if (pemilik.rows[0]?.must_change_password === true) {
+    const hash = await argon2.hash(KATA_SANDI_AWAL, { type: argon2.argon2id });
+    await platform.query(`UPDATE platform.platform_user SET password_hash = $1, updated_at = now() WHERE id = $2`, [
+      hash,
+      ACTOR,
+    ]);
+    console.log(`Kata sandi awal pemilik (${pemilik.rows[0].username}) diset ke nilai yang diketahui -- wajib diganti saat masuk pertama.`);
+  } else {
+    console.log('Pemilik sudah pernah mengganti kata sandinya sendiri -- tidak disentuh.');
+  }
+
   // -- 1. Tahun ajaran ACTIVE -----------------------------------------------
   let tahun = await tenant.query(`SELECT id::text AS id, code FROM pesantren_tahun_ajaran WHERE status = 'ACTIVE' LIMIT 1`);
   let TAHUN_ID;
