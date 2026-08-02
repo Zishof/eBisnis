@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { AlertTriangle, PlayCircle } from 'lucide-react';
 import { api, formatDateTime } from '../../lib/api';
 import { useAuth, useErrorMessage } from '../../app/auth-context';
+import { berandaSesudahMasuk } from '../../app/beranda-sesudah-masuk';
 
 interface DemoStatus {
   available: boolean;
@@ -33,8 +34,8 @@ export function DemoEntryPage() {
     setBusy(true);
     setError(null);
     try {
-      await loginDemo();
-      navigate('/app', { replace: true });
+      const session = await loginDemo();
+      navigate(berandaSesudahMasuk(session), { replace: true });
     } catch (err) {
       setError(toMessage(err, (key, fallback) => t(key, fallback ?? key)));
     } finally {

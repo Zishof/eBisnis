@@ -479,6 +479,7 @@ export class PublicController {
       userAgent: meta.userAgent,
       localeCode: meta.localeCode,
       requestId: meta.requestId,
+      hostname: meta.hostname,
     });
   }
 

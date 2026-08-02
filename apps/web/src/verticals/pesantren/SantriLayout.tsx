@@ -103,7 +103,7 @@ export function SantriLayout() {
           </Link>
 
           <div className="flex items-center gap-2">
-            <Link to="/masuk" className="hidden px-3 py-2 text-sm font-medium sm:inline-block">
+            <Link to="/santri/masuk" className="hidden px-3 py-2 text-sm font-medium sm:inline-block">
               Masuk
             </Link>
             <Link

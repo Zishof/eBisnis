@@ -46,6 +46,20 @@ export interface PortalKatalog {
   domains: DomainKatalog[];
   /** Keterangan singkat yang dipakai portal LAIN saat menautkannya (§487). */
   crossLinkDescription: string;
+  /**
+   * Schema tenant demo milik portal ini, bila ada.
+   *
+   * "Coba Demo" yang ditekan dari host portal ini akan diarahkan ke schema
+   * ini alih-alih schema `demo` bersama (`schema.demo` pada konfigurasi) --
+   * supaya pengunjung santri.info melihat sandbox ePesantren, bukan sandbox
+   * ERP/POS generik yang tidak menyebutkan santri, asrama, atau tahfiz sama
+   * sekali. Kosong berarti portal ini memakai sandbox bersama seperti sediakala.
+   *
+   * BUKAN bagian dari siklus reset otomatis `demo/reset` (yang masih hanya
+   * menyasar schema `demo`) -- schema di sini dianggap tenant biasa yang
+   * kebetulan dipakai bersama untuk uji coba, disegarkan manual bila perlu.
+   */
+  demoSchema?: string;
 }
 
 /** Satu penerbit identitas untuk seluruh ekosistem (§521). */
@@ -113,6 +127,10 @@ export const KATALOG_PORTAL: PortalKatalog[] = [
       { host: 'www.santri.info', kind: 'PUBLIC', isCanonical: false },
       { host: 'app.santri.info', kind: 'APP', isCanonical: true },
     ],
+    // Belum tentu terpasang di setiap peladen -- `createDemoSession` jatuh ke
+    // schema `demo` bersama bila baris ini belum ter-provision (`TENANT_NOT_READY`
+    // diterjemahkan dengan jelas, bukan diam-diam salah sasaran).
+    demoSchema: 'ponpes_demo',
   },
   {
     code: 'EMEDIK',
