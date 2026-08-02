@@ -17,7 +17,7 @@ import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
 import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage';
 import { DemoEntryPage } from '../pages/auth/DemoEntryPage';
 import { AppLayout } from '../pages/app/AppLayout';
-import { DashboardPage } from '../pages/app/DashboardPage';
+import { AppHomePage } from '../pages/app/AppHomePage';
 import { MasterListPage } from '../pages/app/MasterListPage';
 import { StockTreePage } from '../pages/app/StockTreePage';
 import { RequestOrderPage } from '../pages/app/RequestOrderPage';
@@ -266,7 +266,7 @@ export function App() {
             </RequireAuth>
           }
         >
-          <Route index element={<DashboardPage />} />
+          <Route index element={<AppHomePage />} />
           <Route path="products" element={<MasterListPage resource="products" />} />
           <Route path="product-categories" element={<MasterListPage resource="product-categories" />} />
           <Route path="uoms" element={<MasterListPage resource="uoms" />} />
