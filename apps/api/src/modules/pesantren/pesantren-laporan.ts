@@ -82,6 +82,8 @@ export function persen(bagian: number, keseluruhan: number): number {
 /** Daftar laporan yang tersedia, dipakai antarmuka untuk menyusun menunya. */
 export const LAPORAN_PESANTREN = [
   { code: 'SANTRI_RINGKASAN', name: 'Ringkasan Santri' },
+  { code: 'SANTRI_PER_TAHUN_MASUK', name: 'Santri per Tahun Masuk' },
+  { code: 'SANTRI_PER_TAHUN_LULUS', name: 'Santri per Tahun Lulus' },
   { code: 'PRESENSI_REKAP', name: 'Rekap Presensi' },
   { code: 'TAGIHAN_REKAP', name: 'Rekap Tagihan SPP' },
   { code: 'DOMPET_ARUS', name: 'Arus Dompet Santri' },

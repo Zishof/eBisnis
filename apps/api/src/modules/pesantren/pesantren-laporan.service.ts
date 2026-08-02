@@ -56,6 +56,34 @@ export class PesantrenLaporanService {
             ORDER BY status, jenis_kelamin, status_tinggal`,
         );
 
+      case 'SANTRI_PER_TAHUN_MASUK':
+        // Seluruh santri (AKTIF maupun sudah keluar) dihitung menurut tahun
+        // pendaftarannya -- `tanggal_masuk` selalu terisi (default
+        // CURRENT_DATE sejak fondasi EP-A), berbeda dari `tanggal_keluar`
+        // yang hanya terisi bagi yang sudah tidak AKTIF.
+        return this.tenantDb.query(
+          schemaName,
+          `SELECT EXTRACT(YEAR FROM tanggal_masuk)::int AS tahun, COUNT(*)::int AS jumlah
+             FROM ${S}.pesantren_santri
+            WHERE deleted_at IS NULL
+            GROUP BY EXTRACT(YEAR FROM tanggal_masuk)
+            ORDER BY tahun DESC`,
+        );
+
+      case 'SANTRI_PER_TAHUN_LULUS':
+        // Hanya status LULUS -- KELUAR dan PINDAH juga mengisi tanggal_keluar
+        // (§ CHECK ck_pesantren_santri_tanggal_keluar_konsisten) tetapi bukan
+        // kelulusan, dan menghitungnya di sini akan mengklaim santri yang
+        // sebenarnya berhenti/pindah sebagai lulusan.
+        return this.tenantDb.query(
+          schemaName,
+          `SELECT EXTRACT(YEAR FROM tanggal_keluar)::int AS tahun, COUNT(*)::int AS jumlah
+             FROM ${S}.pesantren_santri
+            WHERE deleted_at IS NULL AND status = 'LULUS'
+            GROUP BY EXTRACT(YEAR FROM tanggal_keluar)
+            ORDER BY tahun DESC`,
+        );
+
       case 'PRESENSI_REKAP': {
         const rentang = this.rentangWajib(req);
         return this.tenantDb.query(
@@ -172,14 +200,17 @@ export class PesantrenLaporanService {
    * `PosReportService.dasbor()`.
    */
   async dasbor(schemaName: string): Promise<Record<string, unknown>> {
-    const [santri, tagihan, asrama, rombongan, psb] = await Promise.all([
-      this.jalankan(schemaName, 'SANTRI_RINGKASAN', {}),
-      this.jalankan(schemaName, 'TAGIHAN_REKAP', {}),
-      this.jalankan(schemaName, 'ASRAMA_HUNIAN', {}),
-      this.jalankan(schemaName, 'ROMBONGAN_HUNIAN', {}),
-      this.jalankan(schemaName, 'PSB_FUNNEL', {}),
-    ]);
-    return { santri, tagihan, asrama, rombongan, psb };
+    const [santri, santriPerTahunMasuk, santriPerTahunLulus, tagihan, asrama, rombongan, psb] =
+      await Promise.all([
+        this.jalankan(schemaName, 'SANTRI_RINGKASAN', {}),
+        this.jalankan(schemaName, 'SANTRI_PER_TAHUN_MASUK', {}),
+        this.jalankan(schemaName, 'SANTRI_PER_TAHUN_LULUS', {}),
+        this.jalankan(schemaName, 'TAGIHAN_REKAP', {}),
+        this.jalankan(schemaName, 'ASRAMA_HUNIAN', {}),
+        this.jalankan(schemaName, 'ROMBONGAN_HUNIAN', {}),
+        this.jalankan(schemaName, 'PSB_FUNNEL', {}),
+      ]);
+    return { santri, santriPerTahunMasuk, santriPerTahunLulus, tagihan, asrama, rombongan, psb };
   }
 
   private rentangWajib(req: PermintaanLaporan) {
