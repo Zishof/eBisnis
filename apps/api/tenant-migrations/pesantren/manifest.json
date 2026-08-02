@@ -1,0 +1,124 @@
+{
+  "$comment": "Manifest migrasi modul ePesantren (EP-A). Ditemukan otomatis oleh TenantMigrationService.discoverModuleManifests() -- setiap tenant baru maupun yang sudah ada menerima tabel ini lewat 'pnpm migrate:tenants', terlepas dari vertikal yang dipakainya. Entitlement per-modul belum ada (lihat docs/santri-info/07); ini keterbatasan yang sudah ada sebelum modul ini ditambahkan, bukan yang diperkenalkannya.",
+  "module": "pesantren",
+  "schemaVersion": 1,
+  "dependsOn": [
+    "core"
+  ],
+  "migrations": [
+    {
+      "id": "20260802T140000__pesantren__foundation",
+      "file": "20260802T140000__pesantren__foundation.sql",
+      "name": "Fondasi ePesantren: tahun ajaran, unit pendidikan, wali, dan santri",
+      "description": "pesantren_tahun_ajaran, pesantren_unit_pendidikan, pesantren_wali, pesantren_santri, pesantren_santri_wali. Prasyarat mutlak seluruh modul ePesantren lain (EP-0.17). Satu tahun ajaran ACTIVE ditegakkan indeks unik parsial. Santri AKTIF wajib tidak punya tanggal keluar dan sebaliknya, ditegakkan CHECK -- tanpa ini 'santri aktif' (dasar penagihan Rp 2.000/santri/bulan, §13.4) dapat dihitung dari status ATAU dari tanggal keluar, dan keduanya dapat berselisih tanpa satu pun galat. Maksimal satu wali utama per santri ditegakkan indeks unik parsial, sebab portal wali (EP-K) menuntut satu jawaban pasti atas siapa yang menerima pemberitahuan utama."
+    },
+    {
+      "id": "20260802T150000__pesantren__presensi",
+      "file": "20260802T150000__pesantren__presensi.sql",
+      "name": "EP-E: Presensi harian santri (ibadah/kegiatan)",
+      "description": "pesantren_presensi -- satu baris per santri per tanggal per jenis kegiatan (SEKOLAH, DINIYAH, IBADAH, KEGIATAN), ditegakkan indeks unik parsial. Presensi kelas formal (yang menuntut rombongan belajar) belum ada -- lihat docs/santri-info/05, MISSING."
+    },
+    {
+      "id": "20260802T160000__pesantren__tagihan",
+      "file": "20260802T160000__pesantren__tagihan.sql",
+      "name": "EP-F: Tagihan pendidikan (SPP)",
+      "description": "pesantren_tagihan, pesantren_tagihan_item -- piutang internal penyewa, TERPISAH dari platform.billing_invoice (mesin faktur langganan platform, membebankan Tenant, bukan wali santri). Satu tagihan per santri per periode ditegakkan indeks unik parsial. Status memakai kosakata platform.InvoiceStatus demi konsistensi istilah, bukan tabel yang sama."
+    },
+    {
+      "id": "20260802T170000__pesantren__asrama",
+      "file": "20260802T170000__pesantren__asrama.sql",
+      "name": "EP-G: Asrama, kamar, dan penempatan santri",
+      "description": "pesantren_asrama, pesantren_kamar, pesantren_penempatan. Satu santri hanya boleh punya satu penempatan aktif ditegakkan indeks unik parsial. Batas kapasitas kamar ditegakkan di service (COUNT lintas baris), bukan CHECK per baris."
+    },
+    {
+      "id": "20260802T180000__pesantren__diniyah",
+      "file": "20260802T180000__pesantren__diniyah.sql",
+      "name": "EP-H: Diniyah, halaqah, dan kitab",
+      "description": "pesantren_kitab, pesantren_halaqah, pesantren_halaqah_santri. Santri boleh mengikuti lebih dari satu halaqah sekaligus -- berbeda dari penempatan kamar EP-G -- yang dicegah hanya keanggotaan ganda pada halaqah yang sama, ditegakkan indeks unik parsial."
+    },
+    {
+      "id": "20260802T190000__pesantren__tahfiz",
+      "file": "20260802T190000__pesantren__tahfiz.sql",
+      "name": "EP-I: Tahfiz (setoran hafalan)",
+      "description": "pesantren_tahfiz_setoran -- log transaksional setiap setoran/murajaah. Capaian tertinggi per santri dihitung dari log ini di service, bukan disimpan berduplikasi pada tabel ringkasan terpisah."
+    },
+    {
+      "id": "20260802T200000__pesantren__perizinan",
+      "file": "20260802T200000__pesantren__perizinan.sql",
+      "name": "EP-J: Perizinan dan gerbang",
+      "description": "pesantren_izin, pesantren_gerbang_log. Menegakkan docs/santri-info/13 R10 secara struktural -- pesantren_gerbang_log tidak pernah menulis status izin, dan hanya menunjuk izin yang sudah DISETUJUI."
+    },
+    {
+      "id": "20260802T210000__pesantren__dompet",
+      "file": "20260802T210000__pesantren__dompet.sql",
+      "name": "EP-L: Dompet santri dan batas belanja",
+      "description": "pesantren_dompet, pesantren_dompet_transaksi -- ledger ketiga yang berdiri sendiri, terpisah dari platform.billing_invoice (langganan platform) dan pesantren_tagihan (SPP, EP-F), sesuai larangan keras §6 mencampur ketiganya. Saldo dihitung dari log transaksi, bukan dipercaya sebagai angka tunggal."
+    },
+    {
+      "id": "20260802T220000__pesantren__kartu",
+      "file": "20260802T220000__pesantren__kartu.sql",
+      "name": "EP-M: Anjungan dan kartu RFID",
+      "description": "pesantren_kartu -- registry kartu RFID/QR. Satu kartu aktif per santri dan satu nomor kartu aktif secara global, ditegakkan indeks unik parsial. Anjungan memakai akun peran perangkat (SERVICE_ACCOUNT_KIOSK_PONDOK, P12), bukan login pribadi santri."
+    },
+    {
+      "id": "20260802T230000__pesantren__pos_adapter",
+      "file": "20260802T230000__pesantren__pos_adapter.sql",
+      "name": "EP-N: Dompet santri sebagai metode bayar kasir",
+      "description": "pesantren_dompet_hold, dan baris katalog payment_method EPESANTREN_DOMPET_SANTRI. Adapter ke ExternalPaymentRegistry milik POS (IR-002) yang sudah ada -- BUKAN kasir kedua. Kolom external_handler/external_reference/external_state pada pos_payment sudah ada sejak V036 (koperasi), dipakai bersama."
+    },
+    {
+      "id": "20260802T240000__pesantren__nilai",
+      "file": "20260802T240000__pesantren__nilai.sql",
+      "name": "EP-O: Nilai dan rapor",
+      "description": "pesantren_mata_pelajaran, pesantren_komponen_nilai, pesantren_skala_huruf, pesantren_nilai. Menggantikan hierarki lima lapis pada sistem lama (Jenis/Grup Penilaian) dengan komponen bernilai bobot -- nilai akhir dan huruf mutu dihitung di service dari komponen, bukan disimpan berduplikasi. Rentang huruf mutu ditegakkan EXCLUDE USING gist supaya tidak tumpang tindih."
+    },
+    {
+      "id": "20260802T250000__pesantren__psb",
+      "file": "20260802T250000__pesantren__psb.sql",
+      "name": "EP-O2: PSB/PPDB bergelombang",
+      "description": "pesantren_psb_gelombang, pesantren_psb_pendaftar, pesantren_psb_jadwal. Alur penerimaan calon santri baru per gelombang -- terverifikasi, berjadwal ujian/wawancara, bernomor pendaftaran otomatis (penghitung atomik per gelombang), berujung daftar ulang yang membuat baris pesantren_santri lewat PesantrenSantriService.catat -- BUKAN pendaftaran pondok (tenant baru) di modules/public, yang mendaftarkan institusi, bukan calon santri."
+    },
+    {
+      "id": "20260802T260000__pesantren__rombongan",
+      "file": "20260802T260000__pesantren__rombongan.sql",
+      "name": "EP-O3: Rombongan belajar/kelas",
+      "description": "pesantren_rombongan_belajar, pesantren_rombongan_anggota. Mengelompokkan santri ke kelas per unit pendidikan dan tahun ajaran -- satu keanggotaan AKTIF per santri per tahun ajaran, ditegakkan indeks unik parsial. Wali kelas menunjuk user_subject yang sudah ada, BUKAN peran Guru baru -- peran itu belum punya modul sendiri (§6)."
+    },
+    {
+      "id": "20260802T270000__pesantren__kurikulum",
+      "file": "20260802T270000__pesantren__kurikulum.sql",
+      "name": "EP-O4: Kurikulum dan jadwal pelajaran",
+      "description": "pesantren_kurikulum (mata pelajaran + jam per minggu per unit/tingkat/tahun ajaran), pesantren_jadwal_pelajaran (jadwal jam nyata per rombongan). Dua EXCLUDE USING gist (butuh btree_gist) mencegah tumpang tindih jam pada satu rombongan dan pada satu pengajar sekaligus -- celah yang sistem lama tidak menegakkan sama sekali menurut audit EP-O."
+    },
+    {
+      "id": "20260802T280000__pesantren__pelanggaran",
+      "file": "20260802T280000__pesantren__pelanggaran.sql",
+      "name": "EP-S1: Pelanggaran dan hukuman santri",
+      "description": "pesantren_jenis_pelanggaran (katalog berbobot poin), pesantren_pelanggaran (catatan per santri, poin disalin saat pencatatan), pesantren_hukuman (sanksi atas satu pelanggaran). Ditemukan lewat audit KEDUA (menyeluruh) atas direktori master/sekolah sistem lama -- BUKAN pesantren_izin (EP-J): izin proaktif oleh santri, pelanggaran reaktif oleh pengurus."
+    },
+    {
+      "id": "20260802T290000__pesantren__guru",
+      "file": "20260802T290000__pesantren__guru.sql",
+      "name": "EP-S2: Guru dan penugasan mengajar",
+      "description": "pesantren_guru (data induk, user_subject_id opsional seperti pesantren_wali), pesantren_penugasan_mengajar (rencana resmi guru-mapel-rombongan-tahun ajaran, TERPISAH dari pesantren_jadwal_pelajaran/EP-O4 yang mencatat jam nyata di kalender). Ditemukan lewat audit KEDUA sistem lama."
+    },
+    {
+      "id": "20260802T300000__pesantren__absensi_guru",
+      "file": "20260802T300000__pesantren__absensi_guru.sql",
+      "name": "EP-S3: Absensi guru dan piket",
+      "description": "pesantren_absensi_guru (satu baris per guru per tanggal), pesantren_piket (jadwal giliran jaga). BUKAN pesantren_presensi (EP-E) -- itu mencatat kehadiran santri, ini kehadiran staf pengajar, pemilik proses dan tujuan pemakaian berbeda sama sekali."
+    },
+    {
+      "id": "20260802T310000__pesantren__ekstrakurikuler",
+      "file": "20260802T310000__pesantren__ekstrakurikuler.sql",
+      "name": "EP-S4: Ekstrakurikuler dan organisasi siswa",
+      "description": "pesantren_ekstrakurikuler (klub ATAU organisasi setara OSIS, dibedakan kolom jenis), pesantren_ekstrakurikuler_anggota (keanggotaan, jabatan/kepemimpinan, skor partisipasi). Menyatukan gugusan kegiatan-kesiswaan dan organisasi-siswa sistem lama menjadi satu model -- penyederhanaan tabel yang sah, kemampuannya tetap lengkap."
+    },
+    {
+      "id": "20260802T320000__pesantren__prestasi",
+      "file": "20260802T320000__pesantren__prestasi.sql",
+      "name": "EP-S5: Prestasi dan penghargaan santri",
+      "description": "pesantren_prestasi (hasil kompetisi eksternal, tingkat+peringkat), pesantren_penghargaan (pengakuan/apresiasi internal pondok). Kesenjangan terakhir Tier 1 audit kedua -- BUKAN pesantren_nilai (EP-O): pencapaian di luar kurikulum reguler, tujuan pemakaian berbeda (rapor non-akademik, promosi pondok)."
+    }
+  ]
+}

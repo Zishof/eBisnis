@@ -211,6 +211,9 @@ enum BillingMetric {
   FLAT_TENANT
   ONE_TIME
   USAGE_BASED
+  /// Metrik ePesantren (§13.4): dihitung dari santri berstatus aktif pada
+  /// bulan berjalan — bukan dari perangkat, gerai, atau pengguna.
+  PER_ACTIVE_SANTRI
 
   @@schema("platform")
 }

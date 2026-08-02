@@ -1,0 +1,101 @@
+/// Registry portal brand ekosistem.
+///
+/// Lima merek publik dilayani SATU aplikasi. Yang membedakan jawaban untuk
+/// masing-masing adalah baris di sini, bukan lima penyebaran terpisah (§54).
+///
+/// Berbeda dari `VerticalSiteDomain` yang memetakan host ke PENYEWA, model ini
+/// memetakan host ke MEREK. `emedik.id` adalah portal; `mitrasehat.emedik.id`
+/// adalah situs penyewa. Menyatukannya berarti satu baris harus berarti dua hal
+/// sekaligus, dan pembacanya harus menebak yang mana.
+model PlatformPortal {
+  id      String  @id @default(uuid()) @db.Uuid
+  /// `EBISNIS`, `ENTERPRISE_EDUCATION`, `EMEDIK`, `EKOPERASI`, `INFO_DESA`.
+  code    String  @unique @db.VarChar(32)
+  name    String  @db.VarChar(120)
+  tagline String? @db.VarChar(240)
+
+  /// Vertikal utama portal ini. Portal TIDAK membatasi modul yang dapat dibeli
+  /// penyewa (§1272); ia hanya menentukan merek, konten, dan onboarding bawaan.
+  verticalCode String @map("vertical_code") @db.VarChar(32)
+
+  brandPrimary  String  @default("#0F172A") @map("brand_primary") @db.VarChar(9)
+  brandAccent   String  @default("#2563EB") @map("brand_accent") @db.VarChar(9)
+  logoPath      String? @map("logo_path") @db.VarChar(240)
+  defaultLocale String  @default("id") @map("default_locale") @db.VarChar(12)
+
+  status    String @default("DRAFT") @db.VarChar(24)
+  sortOrder Int    @default(0) @map("sort_order")
+  metadata  Json?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version   Int      @default(1)
+
+  domains    PlatformPortalDomain[]
+  linksFrom  PlatformPortalCrossLink[] @relation("PortalCrossLinkSource")
+  linksTo    PlatformPortalCrossLink[] @relation("PortalCrossLinkTarget")
+
+  @@map("platform_portal")
+  @@schema("platform")
+}
+
+/// Host yang dilayani sebuah portal.
+///
+/// Satu portal punya beberapa host dengan peran berbeda: apex publik, pintu
+/// aplikasi, dan penerbit identitas. Peran itu menentukan APA yang dijawab,
+/// sehingga ia data — bukan tebakan dari bentuk namanya.
+model PlatformPortalDomain {
+  id       String @id @default(uuid()) @db.Uuid
+  portalId String @map("portal_id") @db.Uuid
+
+  /// Host dalam bentuk yang sudah dinormalkan, memakai penormal yang SAMA
+  /// dengan `VerticalSiteDomain`. Dua tabel host dengan aturan berbeda
+  /// menghasilkan host yang cocok di satu tempat dan tidak di tempat lain.
+  host String @unique @db.VarChar(253)
+
+  /// `PUBLIC`, `APP`, atau `AUTH`.
+  kind String @default("PUBLIC") @db.VarChar(16)
+
+  /// Dipakai membangun tautan lintas portal dan `<link rel="canonical">`.
+  /// Tanpa penanda ini, lima portal yang saling menaut menghasilkan konten
+  /// ganda di mata mesin pencari (§1683).
+  isCanonical Boolean @default(false) @map("is_canonical")
+
+  status     String    @default("PENDING") @db.VarChar(24)
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version   Int      @default(1)
+
+  portal PlatformPortal @relation(fields: [portalId], references: [id], onDelete: Cascade)
+
+  @@index([portalId, status])
+  @@map("platform_portal_domain")
+  @@schema("platform")
+}
+
+/// Tautan silang antar portal.
+///
+/// §118 menuntut setiap portal menautkan portal lainnya dua arah. Disimpan
+/// sebagai data, bukan daftar tetap di kode: portal yang ditambahkan kelak
+/// harus muncul pada footer portal lama tanpa menyentuh kode mereka.
+model PlatformPortalCrossLink {
+  id          String  @id @default(uuid()) @db.Uuid
+  portalId    String  @map("portal_id") @db.Uuid
+  targetId    String  @map("target_id") @db.Uuid
+  label       String  @db.VarChar(120)
+  description String? @db.VarChar(240)
+  sortOrder   Int     @default(0) @map("sort_order")
+  isActive    Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  portal PlatformPortal @relation("PortalCrossLinkSource", fields: [portalId], references: [id], onDelete: Cascade)
+  target PlatformPortal @relation("PortalCrossLinkTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([portalId, targetId])
+  @@map("platform_portal_cross_link")
+  @@schema("platform")
+}

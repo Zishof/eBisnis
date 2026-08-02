@@ -4,6 +4,14 @@
 
 model Website {
   id                String  @id @default(uuid()) @db.Uuid
+  /// Pemilik situs. NULL berarti milik platform sendiri — sebagaimana seluruh
+  /// baris yang ada sebelum kolom ini ditambahkan (EP-C).
+  ///
+  /// Mesin CMS ini semula melayani banyak SITUS, bukan banyak PENYEWA. Tanpa
+  /// kolom ini, endpoint publik CMS tidak dapat membedakan situs platform dari
+  /// situs pondok — penghalang tepat bagi janji "berita disunting pondok
+  /// sendiri" pada halaman pemasaran santri.info.
+  tenantId          String? @map("tenant_id") @db.Uuid
   code              String  @db.VarChar(48)
   name              String  @db.VarChar(160)
   primaryDomain     String  @map("primary_domain") @db.VarChar(255)
@@ -29,6 +37,7 @@ model Website {
   deleteReason  String?   @map("delete_reason") @db.Text
   version       Int       @default(1)
 
+  tenant         Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   domains        WebsiteDomain[]
   pages          CmsPage[]
   navigations    CmsNavigation[]
@@ -36,10 +45,13 @@ model Website {
   heroSlides     HeroSlide[]
   redirects      RedirectRule[]
   pricingSections PricingDisplaySection[]
+  newsCategories NewsCategory[]
+  newsArticles   NewsArticle[]
 
   @@unique([code])
   @@index([isActive, deletedAt])
   @@index([isSample, sampleBatchId])
+  @@index([tenantId])
   @@map("website")
   @@schema("platform")
 }
@@ -322,6 +334,14 @@ model CmsFooterItem {
 
 model NewsCategory {
   id           String  @id @default(uuid()) @db.Uuid
+  /// Situs pemilik kategori ini (EP-C2). Sebelum kolom ini, `slug` unik secara
+  /// GLOBAL lintas seluruh situs — begitu situs pondok kedua memilih slug yang
+  /// sama dengan pondok pertama atau dengan platform eBisnis.id sendiri,
+  /// pembuatannya gagal tanpa alasan yang masuk akal bagi penggunanya. Kolom
+  /// ini wajib diisi (bukan nullable seperti `Website.tenantId`) sebab setiap
+  /// kategori SELALU milik satu situs tertentu — tidak ada kategori "tanpa
+  /// situs" sebagaimana ada `Website` "tanpa penyewa" (milik platform).
+  websiteId    String  @map("website_id") @db.Uuid
   parentId     String? @map("parent_id") @db.Uuid
   code         String  @db.VarChar(48)
   nameKey      String  @map("name_key") @db.VarChar(160)
@@ -346,20 +366,26 @@ model NewsCategory {
   deleteReason  String?   @map("delete_reason") @db.Text
   version       Int       @default(1)
 
+  website  Website        @relation(fields: [websiteId], references: [id], onDelete: Cascade)
   parent   NewsCategory?  @relation("NewsCatTree", fields: [parentId], references: [id], onDelete: Restrict)
   children NewsCategory[] @relation("NewsCatTree")
   articles NewsArticle[]
 
   @@unique([code])
-  @@unique([slug])
+  @@unique([websiteId, slug])
   @@index([isActive, deletedAt])
   @@index([isSample, sampleBatchId])
+  @@index([websiteId])
   @@map("news_category")
   @@schema("platform")
 }
 
 model NewsArticle {
   id              String    @id @default(uuid()) @db.Uuid
+  /// Situs pemilik artikel ini (EP-C2). Lihat catatan pada `NewsCategory.websiteId`
+  /// — sengaja NOT NULL, sebab artikel tanpa situs tidak dapat ditampilkan
+  /// (dan tidak pernah dimaksudkan) di mana pun.
+  websiteId       String    @map("website_id") @db.Uuid
   categoryId      String    @map("category_id") @db.Uuid
   authorUserId    String?   @map("author_user_id") @db.Uuid
   slug            String    @db.VarChar(160)
@@ -390,18 +416,20 @@ model NewsArticle {
   deleteReason  String?   @map("delete_reason") @db.Text
   version       Int       @default(1)
 
+  website       Website              @relation(fields: [websiteId], references: [id], onDelete: Cascade)
   category      NewsCategory         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   author        PlatformUser?        @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
   featuredImage MediaAsset?          @relation(fields: [featuredImageId], references: [id], onDelete: SetNull)
   versions      NewsArticleVersion[]
   tags          NewsArticleTag[]
 
-  @@unique([slug])
+  @@unique([websiteId, slug])
   @@unique([code])
   @@index([status, publishedAt])
   @@index([categoryId, status])
   @@index([isActive, deletedAt])
   @@index([isSample, sampleBatchId])
+  @@index([websiteId])
   @@map("news_article")
   @@schema("platform")
 }

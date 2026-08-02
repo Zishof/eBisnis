@@ -28,9 +28,11 @@
 
 import { CORE_VERTICAL_CATALOG } from './core-vertical.catalog';
 import { COOPERATIVE_VERTICAL_CATALOG } from '../../modules/cooperative/rbac/cooperative-vertical.catalog';
+import { PESANTREN_VERTICAL_CATALOG } from '../../modules/pesantren/rbac/pesantren-vertical.catalog';
 import type { VerticalCatalog } from './vertical-catalog.registry';
 
 export const VERTICAL_CATALOGS: VerticalCatalog[] = [
   CORE_VERTICAL_CATALOG,
   COOPERATIVE_VERTICAL_CATALOG,
+  PESANTREN_VERTICAL_CATALOG,
 ];

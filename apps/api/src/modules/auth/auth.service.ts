@@ -27,7 +27,23 @@ export interface LoginResult {
     localeCode: string;
     platformPermissions: string[];
   };
-  tenant: { tenantId: string; schemaName: string; tenantName: string } | null;
+  tenant: {
+    tenantId: string;
+    schemaName: string;
+    tenantName: string;
+    /**
+     * Vertikal penyewa — menentukan beranda mana yang dituju sesudah masuk.
+     *
+     * Null untuk penyewa yang lahir sebelum kolomnya ada; mereka memakai
+     * beranda bawaan, dan itu memang perilaku yang benar bagi mereka.
+     *
+     * Dibawa pada sesi, bukan pada alamat. Kata sandi yang dibuat peladen
+     * WAJIB diganti saat masuk pertama, sehingga masuk pertama selalu singgah
+     * di halaman ganti kata sandi — dan tujuan yang dititipkan pada alamat
+     * hilang di sana.
+     */
+    verticalCode: string | null;
+  } | null;
 }
 
 export interface AccessTokenPayload {
@@ -218,6 +234,7 @@ export class AuthService {
             tenantId: membership.tenantId,
             schemaName: membership.schemaName,
             tenantName: membership.tenantName,
+            verticalCode: membership.verticalCode,
           }
         : null,
     };
@@ -676,10 +693,31 @@ export class AuthService {
     });
   }
 
+  /**
+   * Vertikal penyewa, untuk sesi yang dipulihkan dari token.
+   *
+   * Dibaca dari basis data, bukan dari klaim token. Token berumur panjang, dan
+   * vertikal yang tertanam di dalamnya akan tetap menunjuk beranda lama sampai
+   * tokennya kedaluwarsa — termasuk sesudah penyewa dipindahkan.
+   */
+  async verticalPenyewa(tenantId?: string | null): Promise<string | null> {
+    if (!tenantId) return null;
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { verticalCode: true },
+    });
+    return tenant?.verticalCode ?? null;
+  }
+
   private async resolveMembership(
     userId: string,
     tenantCode?: string,
-  ): Promise<{ tenantId: string; schemaName: string; tenantName: string } | null> {
+  ): Promise<{
+    tenantId: string;
+    schemaName: string;
+    tenantName: string;
+    verticalCode: string | null;
+  } | null> {
     const memberships = await this.prisma.tenantMembership.findMany({
       where: { platformUserId: userId, deletedAt: null, status: 'ACTIVE' },
       include: { tenant: { include: { schemaRegistry: true } } },
@@ -704,6 +742,7 @@ export class AuthService {
       tenantId: selected.tenantId,
       schemaName: selected.tenant.schemaRegistry!.schemaName,
       tenantName: selected.tenant.name,
+      verticalCode: selected.tenant.verticalCode ?? null,
     };
   }
 

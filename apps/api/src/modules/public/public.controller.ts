@@ -17,6 +17,7 @@ import { PublicSiteService } from './public-site.service';
 import { RegistrationService } from './registration.service';
 import { ContactService } from './contact.service';
 import { AuthService } from '../auth/auth.service';
+import { tautanKanonik } from '../../infrastructure/portal/portal-host';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { Public, RequestContext, RequestMeta } from '../../common/decorators';
 
@@ -229,6 +230,61 @@ export class PublicController {
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
   ) {}
+
+  // --- Portal ekosistem ----------------------------------------------------
+  //
+  // §39.1. Dipakai footer lintas portal, halaman "Ekosistem Kami", dan
+  // `deploy/ekosistem.sh` untuk memastikan registry benar-benar terisi sesudah
+  // pembaruan.
+
+  @Public()
+  @Get('portals')
+  @ApiOperation({
+    summary: 'Daftar portal ekosistem beserta host kanonik dan tautan silangnya',
+    description:
+      'Hanya portal berstatus ACTIVE dengan host yang sudah terverifikasi. ' +
+      'Portal tanpa host yang melayani tidak ikut, sebab menautkannya berarti ' +
+      'mengirim pengunjung ke alamat yang tidak dijawab siapa pun.',
+  })
+  async getPortals() {
+    const portals = await this.prisma.platformPortal.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: { sortOrder: 'asc' },
+      include: {
+        domains: { where: { status: 'ACTIVE' } },
+        linksTo: {
+          where: { isActive: true },
+          orderBy: { sortOrder: 'asc' },
+          include: { target: { include: { domains: { where: { status: 'ACTIVE' } } } } },
+        },
+      },
+    });
+
+    return portals
+      .map((p) => ({
+        code: p.code,
+        name: p.name,
+        tagline: p.tagline,
+        verticalCode: p.verticalCode,
+        brandPrimary: p.brandPrimary,
+        brandAccent: p.brandAccent,
+        defaultLocale: p.defaultLocale,
+        url: tautanKanonik(p.domains, 'PUBLIC'),
+        appUrl: tautanKanonik(p.domains, 'APP'),
+        ecosystem: p.linksTo
+          .map((l) => ({
+            code: l.target.code,
+            label: l.label,
+            description: l.description,
+            url: tautanKanonik(l.target.domains, 'PUBLIC'),
+          }))
+          // Tautan ke portal yang tidak punya host yang melayani dibuang, bukan
+          // ditampilkan tanpa alamat: tautan mati pada footer lima situs adalah
+          // hal yang dilihat setiap pengunjung.
+          .filter((l) => l.url !== null),
+      }))
+      .filter((p) => p.url !== null);
+  }
 
   // --- Website -------------------------------------------------------------
 

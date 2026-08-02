@@ -10,6 +10,7 @@ import { ContactPage } from '../pages/public/ContactPage';
 import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
+import { isSantriPortalHost, slugPondokDariHost } from '../verticals/pesantren/santri-host';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
@@ -93,6 +94,57 @@ const CooperativeRoutes = lazy(() =>
   import('../verticals/cooperative/routes').then((m) => ({ default: m.CooperativeRoutes })),
 );
 
+// Portal ePesantren (santri.info) — kerangkanya sendiri, sebab `PublicLayout`
+// memakai merek eBisnis dan keterangan footer tentang retail dan F&B.
+const SantriLayout = lazy(() =>
+  import('../verticals/pesantren/SantriLayout').then((m) => ({ default: m.SantriLayout })),
+);
+const SantriInfoHomePage = lazy(() =>
+  import('../verticals/pesantren/SantriInfoHomePage').then((m) => ({
+    default: m.SantriInfoHomePage,
+  })),
+);
+const SitusPondokPage = lazy(() =>
+  import('../verticals/pesantren/SitusPondokPage').then((m) => ({ default: m.SitusPondokPage })),
+);
+const DaftarPesantrenPage = lazy(() =>
+  import('../verticals/pesantren/DaftarPesantrenPage').then((m) => ({
+    default: m.DaftarPesantrenPage,
+  })),
+);
+const DaftarPesantrenBerhasilPage = lazy(() =>
+  import('../verticals/pesantren/DaftarPesantrenBerhasilPage').then((m) => ({
+    default: m.DaftarPesantrenBerhasilPage,
+  })),
+);
+const BerandaPondokPage = lazy(() =>
+  import('../verticals/pesantren/BerandaPondokPage').then((m) => ({
+    default: m.BerandaPondokPage,
+  })),
+);
+// Dokumen komersial khusus pesantren. Terpisah dari milik eBisnis karena isinya
+// berbeda — delapan pilar pesantren, harga per santri, dan kemitraan BMT.
+const PresentasiPesantrenPage = lazy(() =>
+  import('../verticals/pesantren/PresentasiPesantrenPage').then((m) => ({
+    default: m.PresentasiPesantrenPage,
+  })),
+);
+const ProposalPesantrenPage = lazy(() =>
+  import('../verticals/pesantren/ProposalPesantrenPage').then((m) => ({
+    default: m.ProposalPesantrenPage,
+  })),
+);
+const PksPesantrenPage = lazy(() =>
+  import('../verticals/pesantren/PksPesantrenPage').then((m) => ({
+    default: m.PksPesantrenPage,
+  })),
+);
+const PenawaranPesantrenPage = lazy(() =>
+  import('../verticals/pesantren/PenawaranPesantrenPage').then((m) => ({
+    default: m.PenawaranPesantrenPage,
+  })),
+);
+
 /**
  * Apa yang dilihat pengunjung di akar situs, menurut alamat yang ia ketik.
  *
@@ -107,6 +159,13 @@ const CooperativeRoutes = lazy(() =>
 function AkarMenurutHost() {
   if (isMarketplaceHost()) return <Navigate to="/belanja" replace />;
   if (isCooperativeHost()) return <Navigate to="/ekoperasi/situs" replace />;
+  /*
+   * Dua cabang untuk santri.info, dan urutannya penting: apex adalah PORTAL,
+   * subdomain adalah PONDOK. Menyamakannya membuat setiap pondok yang mendaftar
+   * kehilangan situsnya dan hanya melihat halaman jualan platform.
+   */
+  if (isSantriPortalHost()) return <Navigate to="/santri" replace />;
+  if (slugPondokDariHost()) return <Navigate to="/santri/pondok" replace />;
   return <HomePage />;
 }
 
@@ -139,6 +198,50 @@ export function App() {
         </Route>
 
         <Route path="/ekoperasi/*" element={<CooperativeRoutes />} />
+
+        {/* Portal ePesantren (santri.info) */}
+        <Route path="/santri" element={<SantriLayout />}>
+          <Route index element={<SantriInfoHomePage />} />
+        </Route>
+        {/* Di luar kerangka portal: subdomain pondok bukan halaman platform. */}
+        <Route path="/santri/pondok" element={<SitusPondokPage />} />
+
+        {/*
+          Pendaftaran pesantren TERPISAH dari `/daftar`.
+
+          Yang ditanyakan berbeda dan yang dihasilkan berbeda: pendaftaran ini
+          membuat situs pondok, bukan hanya ruang kerja. Formulir gabungan yang
+          menukar setengah pertanyaannya menurut satu pilihan di awal akan
+          menampilkan pertanyaan retail kepada pengurus pondok setiap kali
+          pilihan itu tergeser.
+        */}
+        <Route path="/daftar-pesantren" element={<SantriLayout />}>
+          <Route index element={<DaftarPesantrenPage />} />
+          <Route path="berhasil" element={<DaftarPesantrenBerhasilPage />} />
+        </Route>
+
+        {/*
+          Dokumen komersial pesantren.
+
+          Di luar `SantriLayout`: presentasi memakai layar penuh sendiri, dan
+          ketiga dokumen lain memakai kerangka cetak yang menghilangkan navigasi
+          saat dicetak. Menaruhnya di dalam kerangka portal membuat kop dan
+          footer portal ikut tercetak di atas kertas.
+        */}
+        <Route path="/santri/presentasi" element={<PresentasiPesantrenPage />} />
+        <Route path="/santri/proposal" element={<ProposalPesantrenPage />} />
+        <Route path="/santri/pks" element={<PksPesantrenPage />} />
+        <Route path="/santri/penawaran" element={<PenawaranPesantrenPage />} />
+
+        {/* Beranda penyewa pondok — terpisah dari ruang kerja eBisnis di `/app`. */}
+        <Route
+          path="/pesantren"
+          element={
+            <RequireAuth>
+              <BerandaPondokPage />
+            </RequireAuth>
+          }
+        />
 
         {/* Marketplace publik (belanja.ebisnis.id) */}
         <Route path="/belanja" element={<BelanjaLayout />}>

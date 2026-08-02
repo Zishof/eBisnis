@@ -30,7 +30,14 @@ export interface SessionUser {
   localeCode: string;
   platformPermissions: string[];
   tenantPermissions: string[];
-  tenant: { tenantId: string; schemaName: string } | null;
+  /**
+   * Penyewa pemilik sesi.
+   *
+   * `verticalCode` menentukan beranda mana yang dituju sesudah masuk —
+   * `PESANTREN` menuju `/pesantren`, sisanya menuju `/app`. Null untuk penyewa
+   * yang lahir sebelum kolomnya ada; mereka memakai beranda bawaan.
+   */
+  tenant: { tenantId: string; schemaName: string; verticalCode: string | null } | null;
 }
 
 interface LoginResponse {
@@ -45,7 +52,12 @@ interface LoginResponse {
     localeCode: string;
     platformPermissions: string[];
   };
-  tenant: { tenantId: string; schemaName: string; tenantName: string } | null;
+  tenant: {
+    tenantId: string;
+    schemaName: string;
+    tenantName: string;
+    verticalCode: string | null;
+  } | null;
 }
 
 interface AuthContextValue {
@@ -154,7 +166,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         platformPermissions: result.user.platformPermissions,
         tenantPermissions: [],
         tenant: result.tenant
-          ? { tenantId: result.tenant.tenantId, schemaName: result.tenant.schemaName }
+          ? {
+              tenantId: result.tenant.tenantId,
+              schemaName: result.tenant.schemaName,
+              verticalCode: result.tenant.verticalCode ?? null,
+            }
           : null,
       };
       setUser(session);

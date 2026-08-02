@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth, useErrorMessage } from '../../app/auth-context';
+import { berandaSesudahMasuk } from '../../app/beranda-sesudah-masuk';
 
 interface LoginForm {
   username: string;
@@ -32,7 +33,7 @@ export function LoginPage() {
         return;
       }
       const from = (location.state as { from?: string } | null)?.from;
-      navigate(from ?? (session.isPlatformStaff ? '/platform' : '/app'), { replace: true });
+      navigate(berandaSesudahMasuk(session, from), { replace: true });
     } catch (err) {
       setError(toMessage(err, (key, fallback) => t(key, fallback ?? key)));
     } finally {

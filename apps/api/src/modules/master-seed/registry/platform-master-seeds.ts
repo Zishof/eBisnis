@@ -168,6 +168,75 @@ export const SUBSCRIPTION_PLAN_SEED = [
   },
 ];
 
+/**
+ * Katalog produk dan paket ePesantren (§8.2, §13.1).
+ *
+ * ## Mengapa terpisah dari `SUBSCRIPTION_PLAN_SEED`
+ *
+ * `seedPlans()` mengasumsikan satu produk (`POS_DEVICE_LICENSE`) dan satu
+ * metrik harga (`PER_POS_DEVICE`) untuk seluruh paketnya. ePesantren memakai
+ * produk dan metrik yang berbeda (`PER_ACTIVE_SANTRI`), sehingga digabungkan
+ * ke fungsi yang sama akan memaksa fungsi itu menebak metrik dari nama paket —
+ * dan tebakan seperti itu tidak pernah benar untuk selamanya.
+ *
+ * ## Mengapa hanya DUA modul yang disertakan
+ *
+ * Audit EP-0 (`docs/santri-info/04-epesantren-domain-gap-matrix.md`) mencatat
+ * 39 modul ePesantren diminta; hanya `EPESANTREN_FOUNDATION` dan
+ * `EPESANTREN_ONBOARDING` yang benar-benar `DONE`. Menyertakan modul yang
+ * belum dibangun ke dalam paket yang berstatus PUBLISHED berarti pondok
+ * mengira sudah membeli sesuatu yang belum ada — persis pelanggaran §6 yang
+ * melarang "mengklaim fitur selesai hanya karena menu sudah tampil".
+ *
+ * Modul lain ditambahkan ke paket ini SATU PER SATU, setiap kali fiturnya
+ * benar-benar selesai — bukan sekaligus di depan.
+ */
+export const EPESANTREN_MODULE_CATALOG_SEED = [
+  {
+    code: 'EPESANTREN_FOUNDATION',
+    name: 'Fondasi ePesantren',
+    category: 'CORE' as const,
+    icon: 'building-2',
+    sortOrder: 100,
+  },
+  {
+    code: 'EPESANTREN_ONBOARDING',
+    name: 'Pendaftaran dan Aktivasi Pondok',
+    category: 'CORE' as const,
+    icon: 'clipboard-check',
+    dependsOn: ['EPESANTREN_FOUNDATION'],
+    sortOrder: 101,
+  },
+];
+
+/** Kode produk. Dipakai `seedEpesantrenCatalog()` dan diuji agar tidak bergeser diam-diam. */
+export const EPESANTREN_PRODUCT_CODE = 'EPESANTREN';
+export const ESCHOOL_PRODUCT_CODE = 'ESCHOOL';
+export const ECAMPUS_PRODUCT_CODE = 'ECAMPUS';
+
+/**
+ * Paket awal santri.info.
+ *
+ * Harga di sini adalah **sumber kebenaran penagihan** — berbeda dari
+ * `HARGA_PER_SANTRI` pada `apps/web/.../konten-pesantren.ts`, yang hanya
+ * teks pemasaran. Bila keduanya berbeda, yang berlaku adalah katalog ini.
+ */
+export const EPESANTREN_PLAN_SEED = {
+  code: 'EPESANTREN_SCHOOL_FIRST',
+  name: 'ePesantren School First',
+  description:
+    'Paket awal ePesantren: pendaftaran, situs pondok, dan fondasi penyewa. ' +
+    'Modul akademik menyusul bertahap tanpa mengubah harga paket ini.',
+  unitPrice: 2000,
+  isRecommended: true,
+  sortOrder: 1,
+  modules: [
+    { code: 'EPESANTREN_FOUNDATION', scope: 'TENANT_WIDE' as const },
+    { code: 'EPESANTREN_ONBOARDING', scope: 'TENANT_WIDE' as const },
+  ],
+  constraints: [] as Array<{ type: 'MIN_DEVICES'; value: number }>,
+};
+
 export const SUBSCRIPTION_ADDON_SEED = [
   {
     code: 'ADDON_PAYROLL',

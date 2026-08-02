@@ -15,6 +15,7 @@ import {
 import { AuthService } from '../auth.service';
 import { TenantPermissionService } from '../tenant-permission.service';
 import { MASTER_RESOURCES } from '../../tenant/master-resource.registry';
+import { bolehSaatWajibGantiKataSandi } from './password-change-allowlist';
 
 /** Peta kode sumber daya master ke kode menunya, untuk `@ResourcePermission`. */
 const RESOURCE_MENU_CODES = new Map(
@@ -85,8 +86,16 @@ export class PermissionGuard implements CanActivate {
       throw AppError.unauthorized(ErrorCodes.UNAUTHORIZED, 'Autentikasi diperlukan.');
     }
 
-    // Wajib ganti kata sandi sebelum mengakses endpoint terlindungi lainnya.
-    if (user.mustChangePassword) {
+    /*
+     * Wajib ganti kata sandi sebelum mengakses endpoint terlindungi lainnya.
+     *
+     * Daftar pengecualiannya dipakai bersama `JwtAuthGuard`, bukan disalin.
+     * Sebelumnya penjaga ini menolak TANPA pengecualian apa pun, sehingga
+     * `/auth/change-password` — satu-satunya jalan keluar dari keadaan ini —
+     * ikut terblokir. Setiap penyewa yang baru mendaftar terjebak di layar ganti
+     * kata sandi dan menerima 403 yang tidak berarti apa pun baginya.
+     */
+    if (user.mustChangePassword && !bolehSaatWajibGantiKataSandi(request.path)) {
       throw AppError.forbidden(
         ErrorCodes.PASSWORD_CHANGE_REQUIRED,
         'Anda wajib mengganti kata sandi sebelum melanjutkan.',
