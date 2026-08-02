@@ -840,6 +840,39 @@ dalam sebulan otomatis jadi SEDANG") -- keputusan eskalasi tetap manual
 oleh pengurus; notifikasi push ke wali saat pelanggaran dicatat (perlu
 NotificationPort, belum dikaitkan ke peristiwa pesantren mana pun).
 
+### Status EP-S2 — SELESAI, guru dan penugasan mengajar
+
+`pesantren_guru` (data induk -- SENGAJA tidak mewajibkan
+`user_subject_id`, pola yang sama dengan `pesantren_wali`/EP-A dan
+`wali_kelas_user_id`/EP-O3: tidak setiap guru diberi akun masuk sejak
+awal) dan `pesantren_penugasan_mengajar` (rencana resmi guru-mapel-
+rombongan-tahun ajaran, TERPISAH dari `pesantren_jadwal_pelajaran`/EP-O4
+yang mencatat jam nyata di kalender -- pemisahan yang sama persis dengan
+`PenugasanGuruMengajarAction` vs `JadwalPelajaranAction` pada sistem
+lama). Total jam mengajar seorang guru DIHITUNG dari penugasan aktifnya,
+bukan disimpan sebagai kolom akumulator.
+
+Kombinasi guru+mapel+rombongan+tahun ajaran ditegakkan unik supaya jam
+yang sama tidak terhitung dua kali pada rekap beban mengajar, tetapi
+team-teaching (dua guru berbeda untuk mapel+rombongan yang sama) tetap
+diperbolehkan sebab kombinasi `guru_id`-nya berbeda.
+
+Live-test terhadap `ponpes_demo`: mencatat guru, menolak NIP duplikat
+dan format email yang salah, menugaskan mengajar (total jam 4), menolak
+penugasan identik kedua kalinya, menambah penugasan kedua di rombongan
+lain (total jam naik jadi 4+3=7), menyelesaikan penugasan pertama (total
+turun kembali ke 3), menonaktifkan guru, menolak penugasan baru atas
+guru yang sudah NONAKTIF, dan 404 pada guru tak dikenal.
+
+**Yang tidak dikerjakan:** perhitungan honor/gaji dari jam mengajar
+(data dasarnya sudah tersedia lewat `totalJamMengajar`, perhitungan
+nominal honor per jam belum ada -- itu ranah modul payroll/HR yang lebih
+umum di ERP, bukan domain pesantren); evaluasi guru oleh siswa (Tier 3
+pada audit, ditunda menunggu keperluan nyata); tautan otomatis dari
+penugasan mengajar ke `pengajar_user_id` pada `pesantren_jadwal_pelajaran`
+-- keduanya tetap diisi terpisah, sebab tidak semua guru punya
+`user_subject_id` untuk diisikan ke kolom itu.
+
 ## Sesudah EP-A
 
 ```text

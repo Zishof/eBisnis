@@ -81,6 +81,7 @@ const PSB_AKSI = ['READ', 'CREATE', 'UPDATE', 'REVIEW', 'APPROVE', 'REJECT', 'CA
 const KURIKULUM_AKSI = ['READ', 'CREATE', 'CANCEL', 'PRINT', 'EXPORT'];
 const LAPORAN_AKSI = ['READ', 'PRINT', 'EXPORT'];
 const PELANGGARAN_AKSI = ['READ', 'CREATE', 'UPDATE', 'CANCEL', 'PRINT', 'EXPORT'];
+const GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 
 export const PESANTREN_MENUS: MenuNodeSeed[] = [
   {
@@ -263,6 +264,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 670,
     actions: PELANGGARAN_AKSI,
   },
+  {
+    code: 'EPESANTREN_GURU',
+    label: 'Guru dan Penugasan Mengajar',
+    translationKey: 'menu.epesantren.guru',
+    route: '/app/pesantren/guru',
+    icon: 'UserCog',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 680,
+    actions: GURU_AKSI,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -294,6 +305,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_KURIKULUM: 'P7',
       EPESANTREN_LAPORAN: 'P7',
       EPESANTREN_PELANGGARAN: 'P7',
+      EPESANTREN_GURU: 'P7',
     },
     dataScope: 'TENANT',
     core: false,
