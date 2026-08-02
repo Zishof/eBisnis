@@ -119,6 +119,12 @@
       "file": "20260802T320000__pesantren__prestasi.sql",
       "name": "EP-S5: Prestasi dan penghargaan santri",
       "description": "pesantren_prestasi (hasil kompetisi eksternal, tingkat+peringkat), pesantren_penghargaan (pengakuan/apresiasi internal pondok). Kesenjangan terakhir Tier 1 audit kedua -- BUKAN pesantren_nilai (EP-O): pencapaian di luar kurikulum reguler, tujuan pemakaian berbeda (rapor non-akademik, promosi pondok)."
+    },
+    {
+      "id": "20260802T330000__pesantren__katering",
+      "file": "20260802T330000__pesantren__katering.sql",
+      "name": "EP-S6: Dapur dan katering",
+      "description": "pesantren_menu_makan, pesantren_konsumsi (porsi per menu, dikelompokkan per asrama -- bukan per santri), pesantren_stok_dapur + pesantren_stok_dapur_transaksi (stok bahan, pola cache+log yang sama dengan saldo dompet EP-L). Diminta langsung oleh pengguna, bukan dari audit sistem lama."
     }
   ]
 }

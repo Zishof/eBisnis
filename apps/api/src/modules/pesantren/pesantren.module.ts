@@ -46,6 +46,8 @@ import { PesantrenEkstrakurikulerController } from './pesantren-ekstrakurikuler.
 import { PesantrenEkstrakurikulerService } from './pesantren-ekstrakurikuler.service';
 import { PesantrenPrestasiController } from './pesantren-prestasi.controller';
 import { PesantrenPrestasiService } from './pesantren-prestasi.service';
+import { PesantrenKateringController } from './pesantren-katering.controller';
+import { PesantrenKateringService } from './pesantren-katering.service';
 
 @Module({
   /*
@@ -81,6 +83,7 @@ import { PesantrenPrestasiService } from './pesantren-prestasi.service';
     PesantrenAbsensiGuruController,
     PesantrenEkstrakurikulerController,
     PesantrenPrestasiController,
+    PesantrenKateringController,
   ],
   providers: [
     PesantrenSantriService,
@@ -106,6 +109,7 @@ import { PesantrenPrestasiService } from './pesantren-prestasi.service';
     PesantrenAbsensiGuruService,
     PesantrenEkstrakurikulerService,
     PesantrenPrestasiService,
+    PesantrenKateringService,
   ],
 })
 export class PesantrenModule implements OnModuleInit {
