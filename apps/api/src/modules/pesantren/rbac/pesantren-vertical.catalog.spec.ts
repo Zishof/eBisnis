@@ -17,6 +17,7 @@ import {
 } from './pesantren-vertical.catalog';
 import { VERTICAL_CATALOGS } from '../../../infrastructure/provisioning/vertical-catalogs';
 import { PROFILE_ACTIONS } from '../../../infrastructure/provisioning/role-profile';
+import { buildMenuModuleMap, resolveMenuActions } from '../../../infrastructure/provisioning/role-expansion';
 
 describe('katalog vertikal ePesantren', () => {
   it('setiap menu berawalan EPESANTREN_', () => {
@@ -47,11 +48,23 @@ describe('katalog vertikal ePesantren', () => {
     expect(new Set(kode).size).toBe(kode.length);
   });
 
-  it('EPESANTREN_ADMIN memegang modul EPESANTREN_SANTRI', () => {
+  it('EPESANTREN_ADMIN dapat membuka dan mencatat EPESANTREN_SANTRI (lewat grup EPESANTREN_GROUP)', () => {
+    /*
+     * EPESANTREN_ADMIN tidak lagi menunjuk EPESANTREN_SANTRI secara langsung --
+     * sejak menu ini dikelompokkan di bawah EPESANTREN_GROUP, satu profil pada
+     * grup itu berlaku ke seluruh isinya (lihat catatan besar di atas
+     * `PESANTREN_MENUS`). Yang diuji di sini adalah HASIL penurunannya
+     * (`resolveMenuActions`), bukan kunci mentah pada `modules`.
+     */
     const admin = PESANTREN_ROLES.find((r) => r.code === ROLE_ADMIN_EPESANTREN);
     expect(admin).toBeDefined();
-    expect(admin!.modules.EPESANTREN_SANTRI).toBeDefined();
     expect(admin!.allModules).not.toBe(true);
+
+    const moduleMap = buildMenuModuleMap(PESANTREN_MENUS);
+    const santri = PESANTREN_MENUS.find((m) => m.code === 'EPESANTREN_SANTRI')!;
+    const aksi = resolveMenuActions(admin!, santri, moduleMap.get('EPESANTREN_SANTRI')!);
+    expect(aksi).toContain('READ');
+    expect(aksi).toContain('CREATE');
   });
 
   it('setiap modul yang disebut peran benar-benar ada pada daftar menu', () => {
@@ -89,11 +102,11 @@ describe('katalog vertikal ePesantren', () => {
     expect(aksiGerbang).not.toContain('REJECT');
   });
 
-  it('EPESANTREN_ADMIN memegang EPESANTREN_PERIZINAN dengan APPROVE dan REJECT', () => {
-    const admin = PESANTREN_ROLES.find((r) => r.code === ROLE_ADMIN_EPESANTREN);
-    const profilAdmin = admin!.modules.EPESANTREN_PERIZINAN;
-    expect(profilAdmin).toBeDefined();
-    const aksiAdmin = PROFILE_ACTIONS[profilAdmin as keyof typeof PROFILE_ACTIONS];
+  it('EPESANTREN_ADMIN dapat APPROVE dan REJECT pada EPESANTREN_PERIZINAN (lewat grup EPESANTREN_GROUP)', () => {
+    const admin = PESANTREN_ROLES.find((r) => r.code === ROLE_ADMIN_EPESANTREN)!;
+    const moduleMap = buildMenuModuleMap(PESANTREN_MENUS);
+    const perizinan = PESANTREN_MENUS.find((m) => m.code === 'EPESANTREN_PERIZINAN')!;
+    const aksiAdmin = resolveMenuActions(admin, perizinan, moduleMap.get('EPESANTREN_PERIZINAN')!);
     expect(aksiAdmin).toContain('APPROVE');
     expect(aksiAdmin).toContain('REJECT');
   });
@@ -143,6 +156,23 @@ describe('katalog vertikal ePesantren', () => {
     const kiosk = PESANTREN_MENUS.find((m) => m.code === 'EPESANTREN_KIOSK');
     expect(kiosk).toBeDefined();
     expect(kiosk!.actions).toEqual(['READ']);
+  });
+
+  it('EPESANTREN_GERBANG, EPESANTREN_PORTAL_WALI, dan EPESANTREN_KIOSK tetap tidak berinduk', () => {
+    /*
+     * Penjaga regresi untuk pengelompokan menu "Pesantren" (lihat catatan
+     * besar di atas `PESANTREN_MENUS`). Ketiga menu ini dipegang peran sempit
+     * (petugas gerbang, wali, kiosk) yang tidak boleh kebagian akses ke menu
+     * lain -- menaruh salah satunya di bawah EPESANTREN_GROUP akan membuat
+     * profil sempit peran itu berlaku untuk seluruh isi grup, sebab
+     * `buildMenuModuleMap` memetakan menu ke LELUHUR TERATASNYA, bukan induk
+     * langsungnya.
+     */
+    for (const kode of ['EPESANTREN_GERBANG', 'EPESANTREN_PORTAL_WALI', 'EPESANTREN_KIOSK']) {
+      const menu = PESANTREN_MENUS.find((m) => m.code === kode);
+      expect(menu).toBeDefined();
+      expect(menu!.parentCode).toBeUndefined();
+    }
   });
 
   it('terdaftar pada VERTICAL_CATALOGS', () => {
