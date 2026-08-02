@@ -547,11 +547,70 @@ tidak sinkron); retur/refund dompet santri (pembayaran yang sudah
 `CAPTURED` tidak dapat di-`reverse()`, sama seperti koperasi — memerlukan
 alur retur tersendiri yang belum ada).
 
+## Status EP-O — SEBAGIAN, mesin nilai berbobot, tanpa PSB/kelas/kurikulum
+
+**Diaudit lebih dulu terhadap sistem lama** (`C:\opt\AIS\ais\...\master\sekolah\`),
+atas permintaan eksplisit untuk memastikan cakupan FUNGSIONAL eSchool
+tercakup, bukan hanya struktur tabelnya. Ditemukan sistem lama memakai
+hierarki lima kelas Java terpisah untuk satu konsep "nilai berbobot dengan
+konversi huruf": Jenis Penilaian → Grup Penilaian → Grup Kategori →
+Kategori Item → Jenis Item, plus tabel konversi huruf terpisah. Audit yang
+sama menemukan TIGA kesenjangan struktural lain yang lebih besar daripada
+nilai: PSB/PPDB (alur pendaftaran calon santri bergelombang dengan jadwal
+ujian/wawancara dan penomoran otomatis — jauh lebih canggih daripada
+pendaftaran pondok level EP-registrasi yang sudah ada), rombongan
+belajar/kelas, dan kurikulum/jadwal pelajaran — ketiganya BELUM dikerjakan
+sesi ini, dicatat sebagai EP terpisah di bawah, bukan didiamkan.
+
+**Yang dikerjakan:** `pesantren_mata_pelajaran`, `pesantren_komponen_nilai`,
+`pesantren_skala_huruf`, `pesantren_nilai` (migrasi modul
+`20260802T240000__pesantren__nilai`) — EMPAT tabel datar menggantikan
+hierarki lima lapis sistem lama. Nilai akhir DIHITUNG di service dari
+komponen berbobot (pola sama dengan capaian tahfiz EP-I, saldo dompet
+EP-L) — bukan disimpan berduplikasi. Huruf mutu dicari dari tabel skala
+lewat rentang, dan rentang antar baris skala TIDAK BOLEH tumpang tindih,
+ditegakkan `EXCLUDE USING gist (numrange(...) WITH &&)` — bukan sekadar
+indeks unik, sebab yang dicegah adalah IRISAN rentang, bukan kesamaan
+persis. Ini lebih ketat daripada sistem lama, yang tidak terlihat
+menegakkan larangan tumpang tindih ini sama sekali.
+
+Portal wali (EP-K) diperluas dengan `GET .../rapor/:tahunAjaranId`, yang
+memanggil `PesantrenNilaiService.rapor()` langsung alih-alih menuliskan
+ulang perhitungan berbobot — menjawab permintaan eksplisit agar wali
+beranak lebih dari satu dapat melihat rapor SETIAP anaknya (dipanggil satu
+per satu per anak, kepemilikan diverifikasi setiap kali, bukan diasumsikan
+dari satu daftar).
+
+Dibuktikan live dengan data sampel nyata terhadap `ponpes_demo`: mata
+pelajaran Fikih dengan tiga komponen (Tugas 20%, UTS 30%, UAS 50%,
+`total-bobot` mengonfirmasi 100/lengkap), empat skala huruf A-D, skala
+kelima yang tumpang tindih (85-95 vs rentang A yang sudah ada) ditolak
+konflik; nilai Tugas=80/UTS=85/UAS=90 dicatat lalu rapor menghitung nilai
+akhir **86,5 dan huruf B** — tepat sesuai rumus (80×0,2+85×0,3+90×0,5);
+memperbaiki UAS menjadi 100 melalui UPSERT (baris yang SAMA, bukan baris
+baru) mengubah rapor menjadi **91,5 dan huruf A**; wali1 melihat rapor
+kedua anaknya secara terpisah (satu berisi nilai, satu kosong karena belum
+dinilai) dan ditolak NOT_FOUND saat mencoba rapor anak wali lain; kode
+mata pelajaran duplikat, santri tak dikenal, nilai di luar rentang 0-100,
+dan permintaan tanpa token seluruhnya ditolak dengan benar.
+
+**Yang tidak dikerjakan:** PSB/PPDB (pendaftaran calon santri bergelombang);
+rombongan belajar/kelas; kurikulum dan jadwal pelajaran; cetak rapor PDF
+(datanya sudah benar, tata letak cetak belum ada); nilai per semester
+ganjil/genap (saat ini satu nilai per komponen per TAHUN ajaran, belum
+membedakan semester dalam tahun yang sama).
+
 ## Sesudah EP-A
 
 ```text
 EP-N2  Adapter koperasi dan klinik untuk ePesantren (POS sudah selesai)
-EP-O   Nilai dan rapor
+EP-O2  PSB/PPDB -- pendaftaran calon santri bergelombang (ditemukan lewat
+       audit sistem lama, lebih canggih daripada pendaftaran pondok yang
+       sudah ada: jadwal ujian/wawancara, verifikasi calon, penomoran
+       otomatis, penempatan kelas pasca-diterima)
+EP-O3  Rombongan belajar/kelas (ditemukan lewat audit sistem lama --
+       prasyarat presensi dan nilai per-kelas, bukan hanya per-santri)
+EP-O4  Kurikulum dan jadwal pelajaran (ditemukan lewat audit sistem lama)
 EP-P   Pelaporan
 EP-Q   UAT bersama pondok pertama
 EP-R   Rilis

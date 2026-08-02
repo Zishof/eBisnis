@@ -13,6 +13,7 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { PesantrenNilaiService } from './pesantren-nilai.service';
 
 export interface ProfilWali {
   wali_id: string;
@@ -30,7 +31,10 @@ export interface AnakSaya {
 
 @Injectable()
 export class PesantrenPortalWaliService {
-  constructor(private readonly tenantDb: TenantConnectionService) {}
+  constructor(
+    private readonly tenantDb: TenantConnectionService,
+    private readonly nilaiService: PesantrenNilaiService,
+  ) {}
 
   /**
    * Menemukan baris wali milik pengguna yang sedang masuk.
@@ -198,5 +202,19 @@ export class PesantrenPortalWaliService {
       [dompet.id],
     );
     return { adaDompet: true, saldo: dompet.saldo, batasHarian: dompet.batas_harian, riwayat };
+  }
+
+  /**
+   * Rapor satu anak (EP-O) — memanggil `PesantrenNilaiService.rapor()`
+   * langsung, bukan menuliskan ulang perhitungan nilai berbobot di sini.
+   * Menjawab permintaan eksplisit: wali yang beranak lebih dari satu dapat
+   * memanggil ini untuk SETIAP anaknya satu per satu (lewat `anakSaya()`
+   * lebih dulu untuk tahu daftar anaknya) — bukan satu panggilan yang
+   * mengembalikan rapor seluruh anak sekaligus, supaya kepemilikan tetap
+   * diverifikasi per anak, bukan diasumsikan dari daftar.
+   */
+  async raporAnak(schemaName: string, waliId: string, santriId: string, tahunAjaranId: string) {
+    await this.verifikasiKepemilikan(schemaName, waliId, santriId);
+    return this.nilaiService.rapor(schemaName, santriId, tahunAjaranId);
   }
 }

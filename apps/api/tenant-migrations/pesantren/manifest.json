@@ -65,6 +65,12 @@
       "file": "20260802T230000__pesantren__pos_adapter.sql",
       "name": "EP-N: Dompet santri sebagai metode bayar kasir",
       "description": "pesantren_dompet_hold, dan baris katalog payment_method EPESANTREN_DOMPET_SANTRI. Adapter ke ExternalPaymentRegistry milik POS (IR-002) yang sudah ada -- BUKAN kasir kedua. Kolom external_handler/external_reference/external_state pada pos_payment sudah ada sejak V036 (koperasi), dipakai bersama."
+    },
+    {
+      "id": "20260802T240000__pesantren__nilai",
+      "file": "20260802T240000__pesantren__nilai.sql",
+      "name": "EP-O: Nilai dan rapor",
+      "description": "pesantren_mata_pelajaran, pesantren_komponen_nilai, pesantren_skala_huruf, pesantren_nilai. Menggantikan hierarki lima lapis pada sistem lama (Jenis/Grup Penilaian) dengan komponen bernilai bobot -- nilai akhir dan huruf mutu dihitung di service dari komponen, bukan disimpan berduplikasi. Rentang huruf mutu ditegakkan EXCLUDE USING gist supaya tidak tumpang tindih."
     }
   ]
 }

@@ -199,6 +199,16 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 610,
     actions: KIOSK_AKSI,
   },
+  {
+    code: 'EPESANTREN_NILAI',
+    label: 'Nilai dan Rapor',
+    translationKey: 'menu.epesantren.nilai',
+    route: '/app/pesantren/nilai',
+    icon: 'GraduationCap',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 620,
+    actions: CATAT,
+  },
 ];
 
 /** Menu yang tidak berinduk — satu-satunya modul ePesantren yang ada saat ini. */
@@ -224,6 +234,7 @@ export const PESANTREN_ROLES: RoleCatalogEntry[] = [
       EPESANTREN_GERBANG: 'P7',
       EPESANTREN_DOMPET: 'P7',
       EPESANTREN_KARTU: 'P7',
+      EPESANTREN_NILAI: 'P7',
     },
     dataScope: 'TENANT',
     core: false,
