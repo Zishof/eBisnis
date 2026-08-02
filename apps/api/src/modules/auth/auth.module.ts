@@ -36,6 +36,14 @@ import { PermissionGuard } from './guards/permission.guard';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionGuard },
   ],
-  exports: [AuthService, TenantPermissionService, SessionService],
+  /*
+   * `JwtModule` diekspor ulang -- `AuthModule` sendiri `@Global()`, jadi ini
+   * membuat `JwtService` (dengan secret/TTL yang SAMA) siap dipakai modul
+   * mana pun tanpa registrasi ulang. Dipakai pertama kali oleh portal
+   * pendaftar PSB (`PsbApplicantAuthGuard`, lihat modul pesantren) untuk
+   * menandatangani token bertipe BERBEDA dari token staf -- bukan lewat
+   * `AuthService.login()`, sebab pendaftar bukan `platform_user`.
+   */
+  exports: [AuthService, TenantPermissionService, SessionService, JwtModule],
 })
 export class AuthModule {}

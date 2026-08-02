@@ -4,7 +4,8 @@
  */
 
 import { Body, Controller, Get, Headers, HttpCode, Param, Post, Res, StreamableFile } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiProperty, ApiTags } from '@nestjs/swagger';
+import { IsString, MaxLength } from 'class-validator';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { PesantrenPublicService } from './pesantren-public.service';
@@ -13,6 +14,17 @@ import { DaftarkanPendaftarDto } from './pesantren-psb.controller';
 import { Public } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { rawResponse } from '../../common/interceptors/response-envelope.interceptor';
+
+class MasukPsbDto {
+  @ApiProperty({ description: 'Nomor pendaftaran, diberikan sesaat setelah mendaftar' })
+  @IsString()
+  @MaxLength(40)
+  nomorPendaftaran!: string;
+
+  @ApiProperty({ description: 'Tanggal lahir sebagai kata sandi, format YYYY-MM-DD' })
+  @IsString()
+  tanggalLahir!: string;
+}
 
 @ApiTags('pesantren-public')
 @Controller('pesantren/public')
@@ -122,5 +134,23 @@ export class PesantrenPublicController {
   @ApiOperation({ summary: 'Mendaftarkan calon santri baru lewat situs publik' })
   psbDaftar(@Headers('host') host: string, @Body() dto: DaftarkanPendaftarDto) {
     return this.situs.psbDaftar(host, dto);
+  }
+
+  /**
+   * Masuk ke portal pendaftar PSB -- lihat `PesantrenPublicService.psbMasuk`.
+   *
+   * Pembatas laju MEWAJIBKAN di sini juga: "kata sandi"-nya hanya tanggal
+   * lahir (~29.200 kemungkinan dalam rentang wajar), jauh lebih mudah
+   * ditebak daripada kata sandi sungguhan. Lebih ketat dari `psb/daftar`
+   * (5/15 menit, bukan 10/jam) sebab ini percobaan masuk berulang per
+   * sumber, bukan pengiriman formulir sekali.
+   */
+  @Public()
+  @Throttle({ default: { ttl: 900_000, limit: 5 } })
+  @Post('psb/masuk')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Masuk ke portal pendaftar PSB (nomor pendaftaran + tanggal lahir)' })
+  psbMasuk(@Headers('host') host: string, @Body() dto: MasukPsbDto) {
+    return this.situs.psbMasuk(host, dto);
   }
 }

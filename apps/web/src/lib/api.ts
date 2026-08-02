@@ -8,7 +8,7 @@
  *   - reuse refresh token mencabut seluruh family di sisi server.
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 const REFRESH_STORAGE_KEY = 'ebisnis.refresh';
 
 export interface ApiEnvelope<T> {

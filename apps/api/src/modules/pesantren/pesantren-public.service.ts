@@ -9,6 +9,8 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { PublicTenantResolver } from '../../infrastructure/tenant/public-tenant-resolver.service';
 import { TenantFileBlobService, BerkasBlob } from '../../infrastructure/files/tenant-file-blob.service';
@@ -16,8 +18,13 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { KategoriGambarProfil, KODE_BERKAS_GAMBAR_PROFIL } from './pesantren-profil';
 import { PesantrenPsbService, BarisPendaftar } from './pesantren-psb.service';
 import { MasukanPendaftar } from './pesantren-psb';
+import { PSB_APPLICANT_TOKEN_TYPE, PsbApplicantTokenPayload } from './psb-applicant-auth.guard';
 
 const VERTIKAL = 'pesantren';
+
+/** TTL sesi portal pendaftar -- lihat `PsbApplicantAuthGuard` untuk alasannya. */
+const PSB_PORTAL_TTL = '45m';
+const PSB_PORTAL_TTL_DETIK = 45 * 60;
 
 @Injectable()
 export class PesantrenPublicService {
@@ -26,6 +33,8 @@ export class PesantrenPublicService {
     private readonly resolver: PublicTenantResolver,
     private readonly fileBlob: TenantFileBlobService,
     private readonly psb: PesantrenPsbService,
+    private readonly jwt: JwtService,
+    private readonly config: ConfigService,
   ) {}
 
   async situs(host: string | undefined) {
@@ -188,6 +197,64 @@ export class PesantrenPublicService {
     }
 
     return this.psb.daftarkan(S, masukan, null);
+  }
+
+  /**
+   * Masuk ke portal pendaftar PSB -- "nama pengguna" nomor pendaftaran
+   * (ditunjukkan ke pendaftar sesaat setelah mendaftar, lihat
+   * `PsbPendaftaranPage.tsx`), "kata sandi" tanggal lahir yang sudah ia isi
+   * sendiri saat mendaftar. TIDAK mensyaratkan situs sudah diterbitkan --
+   * pendaftar yang sudah punya nomor registrasi tetap berhak melanjutkan
+   * proses seleksinya walau pengurus sedang mengubah/menutup situs publik.
+   *
+   * Kegagalan apa pun (nomor tidak ditemukan, tanggal lahir tidak cocok,
+   * ATAU tanggal lahir belum pernah diisi saat mendaftar) menjawab pesan
+   * yang SAMA -- pembeda kegagalan di sini adalah kebocoran informasi bagi
+   * penebak nomor pendaftaran (yang formatnya bisa ditebak, lihat
+   * `bentukNomorPendaftaran`).
+   */
+  async psbMasuk(
+    host: string | undefined,
+    dto: { nomorPendaftaran: string; tanggalLahir: string },
+  ): Promise<{
+    accessToken: string;
+    expiresIn: number;
+    tokenType: 'Bearer';
+    pendaftar: { id: string; nomorPendaftaran: string; namaLengkap: string; status: string };
+  }> {
+    const konteks = await this.resolver.resolve(host, VERTIKAL);
+    const S = konteks.schemaName;
+
+    const pendaftar = await this.psb.satuPendaftarByNomor(S, dto.nomorPendaftaran.trim());
+    if (!pendaftar || !pendaftar.tanggal_lahir || pendaftar.tanggal_lahir !== dto.tanggalLahir) {
+      throw AppError.unauthorized(
+        ErrorCodes.UNAUTHORIZED,
+        'Nomor pendaftaran dan tanggal lahir tidak cocok. Periksa kembali, atau hubungi pengurus pondok bila tanggal lahir Anda belum tercatat saat mendaftar.',
+      );
+    }
+
+    const payload: PsbApplicantTokenPayload = {
+      type: PSB_APPLICANT_TOKEN_TYPE,
+      pendaftarId: pendaftar.id,
+      schemaName: S,
+      tenantId: konteks.tenantId,
+    };
+    const accessToken = await this.jwt.signAsync(payload, {
+      secret: this.config.get<string>('jwt.accessSecret'),
+      expiresIn: PSB_PORTAL_TTL,
+    });
+
+    return {
+      accessToken,
+      expiresIn: PSB_PORTAL_TTL_DETIK,
+      tokenType: 'Bearer',
+      pendaftar: {
+        id: pendaftar.id,
+        nomorPendaftaran: pendaftar.nomor_pendaftaran,
+        namaLengkap: pendaftar.nama_lengkap,
+        status: pendaftar.status,
+      },
+    };
   }
 
   /**
