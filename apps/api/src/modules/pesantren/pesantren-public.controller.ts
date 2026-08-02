@@ -67,4 +67,22 @@ export class PesantrenPublicController {
     // ter-serialisasi) alih-alih dikirim sebagai berkas biner mentah.
     return rawResponse(new StreamableFile(berkas.buffer));
   }
+
+  /** Gambar sampul satu berita -- lihat `PesantrenPublicService.beritaGambar`. */
+  @Public()
+  @Get('berita-gambar/:code')
+  @ApiOperation({ summary: 'Gambar sampul satu berita pondok' })
+  async beritaGambar(
+    @Headers('host') host: string,
+    @Param('code') code: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const berkas = await this.situs.beritaGambar(host, code);
+    res.set({
+      'Content-Type': berkas.mimeType,
+      'Content-Disposition': `inline; filename="${berkas.namaFile}"`,
+      'Cache-Control': 'public, max-age=300',
+    });
+    return rawResponse(new StreamableFile(berkas.buffer));
+  }
 }

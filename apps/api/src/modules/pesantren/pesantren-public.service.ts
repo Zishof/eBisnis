@@ -105,4 +105,34 @@ export class PesantrenPublicService {
     }
     return berkas;
   }
+
+  /**
+   * Gambar sampul satu berita, disimpan lewat mekanisme BLOB yang sama
+   * dengan logo/hero (lihat `TenantFileBlobService`) -- bedanya kodenya
+   * bukan dari daftar tetap seperti profil, melainkan bebas per berita
+   * (mis. `BERITA_SPMB_2026`). Awalan `BERITA_` diwajibkan supaya jalur
+   * publik ini tidak dapat dipakai menebak/membaca kode `file_object`
+   * kategori lain (logo/hero) lewat parameter yang sama.
+   */
+  async beritaGambar(host: string | undefined, code: string): Promise<BerkasBlob> {
+    if (!code.startsWith('BERITA_')) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
+    }
+    const konteks = await this.resolver.resolve(host, VERTIKAL);
+    const S = konteks.schemaName;
+
+    const diterbitkan = await this.tenantDb.queryOne<{ is_published: boolean }>(
+      S,
+      `SELECT is_published FROM "${S}".pesantren_website_setting WHERE singleton = TRUE`,
+    );
+    if (!diterbitkan || diterbitkan.is_published !== true) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Situs tidak ditemukan.');
+    }
+
+    const berkas = await this.fileBlob.ambilByCode(S, code);
+    if (!berkas) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
+    }
+    return berkas;
+  }
 }
