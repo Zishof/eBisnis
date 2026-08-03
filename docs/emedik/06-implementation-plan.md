@@ -1975,6 +1975,13 @@ nomor H055 dan H056 dihanguskan.
 
 ## Fase layar (W)
 
+> **Melanjutkan pekerjaan ini?** Mulai dari
+> [HANDOVER-CODEX.md](HANDOVER-CODEX.md) — ia memuat keadaan terakhir, aturan
+> tetap, metode kerja, dan rencana sisa. Daftar "yang belum berlayar" di bawah
+> **diperbarui manual**; yang berlaku adalah
+> [24 — rencana layar sisa](24-rencana-layar-sisa.md), yang dibaca dari basis
+> data.
+
 Dua belas fase H membangun API. Fase W membangun layarnya, dengan urutan yang
 berbeda dari urutan H: yang menentukan bukan urutan pembangunan API-nya,
 melainkan **berapa banyak orang yang tidak dapat bekerja tanpa layarnya**.
