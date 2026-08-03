@@ -39,8 +39,17 @@ class _GateHomePageState extends State<GateHomePage> {
   String direction = 'KELUAR';
   String? selectedPermitId;
   bool busy = false;
+  bool listBusy = false;
   String? message;
+  String? listMessage;
   final history = <GateLog>[];
+  final activePermits = <GatePermit>[];
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.microtask(loadActivePermits);
+  }
 
   @override
   void dispose() {
@@ -75,6 +84,38 @@ class _GateHomePageState extends State<GateHomePage> {
     }
   }
 
+  Future<void> loadActivePermits() async {
+    setState(() {
+      listBusy = true;
+      listMessage = null;
+    });
+    try {
+      final permits = await settings.getList<GatePermit>('/pesantren/gerbang/izin-aktif', GatePermit.fromJson);
+      setState(() {
+        activePermits
+          ..clear()
+          ..addAll(permits);
+      });
+    } catch (error) {
+      setState(() => listMessage = '$error');
+    } finally {
+      setState(() => listBusy = false);
+    }
+  }
+
+  Future<void> pickPermitFromList(GatePermit permit) async {
+    setState(() {
+      selectedPermitId = permit.id;
+      direction = permit.lastDirection == 'KELUAR' ? 'MASUK' : 'KELUAR';
+      if (permit.cardNumber != null && permit.cardNumber!.isNotEmpty) {
+        cardController.text = permit.cardNumber!;
+      }
+    });
+    if (permit.cardNumber != null && permit.cardNumber!.isNotEmpty) {
+      await scanCard();
+    }
+  }
+
   Future<void> recordGate() async {
     final permitId = selectedPermitId;
     if (permitId == null) return;
@@ -100,6 +141,7 @@ class _GateHomePageState extends State<GateHomePage> {
         message = 'Lintasan ${direction.toLowerCase()} tersimpan.';
         noteController.clear();
       });
+      await loadActivePermits();
       await scanCard();
     } catch (error) {
       setState(() => message = '$error');
@@ -111,12 +153,14 @@ class _GateHomePageState extends State<GateHomePage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Gerbang Santri'),
           bottom: const TabBar(
+            isScrollable: true,
             tabs: [
+              Tab(icon: Icon(Icons.list_alt), text: 'Daftar'),
               Tab(icon: Icon(Icons.qr_code_scanner), text: 'Scan'),
               Tab(icon: Icon(Icons.history), text: 'Riwayat'),
               Tab(icon: Icon(Icons.settings), text: 'Pengaturan'),
@@ -125,6 +169,13 @@ class _GateHomePageState extends State<GateHomePage> {
         ),
         body: TabBarView(
           children: [
+            ActivePermitsTab(
+              permits: activePermits,
+              busy: listBusy,
+              message: listMessage,
+              onRefresh: loadActivePermits,
+              onPick: pickPermitFromList,
+            ),
             ScanTab(
               cardController: cardController,
               noteController: noteController,
@@ -277,6 +328,70 @@ class HistoryTab extends StatelessWidget {
   }
 }
 
+class ActivePermitsTab extends StatelessWidget {
+  const ActivePermitsTab({
+    super.key,
+    required this.permits,
+    required this.busy,
+    required this.message,
+    required this.onRefresh,
+    required this.onPick,
+  });
+
+  final List<GatePermit> permits;
+  final bool busy;
+  final String? message;
+  final Future<void> Function() onRefresh;
+  final Future<void> Function(GatePermit permit) onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          FilledButton.icon(
+            onPressed: busy ? null : onRefresh,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Muat Izin Aktif Hari Ini'),
+          ),
+          if (message != null) ...[
+            const SizedBox(height: 12),
+            Text(message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ],
+          const SizedBox(height: 12),
+          if (permits.isEmpty)
+            const Card(
+              child: ListTile(
+                title: Text('Belum ada izin aktif'),
+                subtitle: Text('Tarik ke bawah atau tekan tombol muat untuk memperbarui daftar.'),
+              ),
+            )
+          else
+            ...permits.map(
+              (permit) => Card(
+                child: ListTile(
+                  title: Text(permit.studentName ?? permit.reason),
+                  subtitle: Text([
+                    if (permit.nis != null) 'NIS ${permit.nis}',
+                    permit.kind,
+                    if (permit.cardNumber != null) permit.cardNumber!,
+                    if (permit.lastDirection != null) 'terakhir ${permit.lastDirection}',
+                  ].join(' - ')),
+                  trailing: FilledButton(
+                    onPressed: busy ? null : () => onPick(permit),
+                    child: const Text('Pilih'),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class SettingsTab extends StatelessWidget {
   const SettingsTab({super.key, required this.settings, required this.onChanged});
 
@@ -330,6 +445,14 @@ class GateSettings {
     return _decode(response, mapper);
   }
 
+  Future<List<T>> getList<T>(String path, T Function(Map<String, dynamic>) mapper) async {
+    final response = await http.get(_uri(path), headers: _headers);
+    final payload = _decodeRaw(response);
+    final data = payload['data'];
+    if (data is! List) throw Exception('Jawaban server bukan daftar.');
+    return data.cast<Map<String, dynamic>>().map(mapper).toList();
+  }
+
   Future<T> post<T>(String path, Map<String, dynamic> body, T Function(Map<String, dynamic>) mapper) async {
     final response = await http.post(_uri(path), headers: _headers, body: jsonEncode(body));
     return _decode(response, mapper);
@@ -344,12 +467,17 @@ class GateSettings {
       };
 
   T _decode<T>(http.Response response, T Function(Map<String, dynamic>) mapper) {
+    final payload = _decodeRaw(response);
+    return mapper(payload['data'] as Map<String, dynamic>);
+  }
+
+  Map<String, dynamic> _decodeRaw(http.Response response) {
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || payload['success'] == false) {
       final error = payload['error'] as Map<String, dynamic>?;
       throw Exception(error?['message'] ?? 'Gagal menghubungi server.');
     }
-    return mapper(payload['data'] as Map<String, dynamic>);
+    return payload;
   }
 }
 
@@ -386,18 +514,32 @@ class GateScanResult {
 }
 
 class GatePermit {
-  GatePermit({required this.id, required this.kind, required this.reason, this.lastDirection});
+  GatePermit({
+    required this.id,
+    required this.kind,
+    required this.reason,
+    this.lastDirection,
+    this.studentName,
+    this.nis,
+    this.cardNumber,
+  });
 
   final String id;
   final String kind;
   final String reason;
   final String? lastDirection;
+  final String? studentName;
+  final String? nis;
+  final String? cardNumber;
 
   factory GatePermit.fromJson(Map<String, dynamic> json) => GatePermit(
         id: json['id'] as String,
         kind: json['jenis'] as String,
         reason: json['alasan'] as String,
         lastDirection: json['lintasan_terakhir'] as String?,
+        studentName: json['nama_lengkap'] as String?,
+        nis: json['nis'] as String?,
+        cardNumber: json['nomor_kartu'] as String?,
       );
 }
 
