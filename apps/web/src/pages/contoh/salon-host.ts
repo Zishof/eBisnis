@@ -12,7 +12,14 @@ function hostBersih(hostname: string): string {
 
 export function isSalonDemoHost(hostname: string = window.location.hostname): boolean {
   const host = hostBersih(hostname);
-  return host === 'salon.ebisnis.id' || host === 'salon.ebisinis.id';
+  return (
+    host === 'salon.ebisnis.id' ||
+    host === 'salon.ebinis.id' ||
+    host === 'salon.ebisinis.id' ||
+    host.endsWith('-salon.ebisnis.id') ||
+    host.endsWith('-salon.ebinis.id') ||
+    host.endsWith('-salon.ebisinis.id')
+  );
 }
 
 export function salonRootRedirectFor(

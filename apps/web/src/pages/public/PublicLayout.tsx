@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, Menu, Moon, Sun, X } from 'lucide-react';
+import { Globe, Menu, Moon, Scissors, Sun, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { api } from '../../lib/api';
 import { SUPPORTED_LOCALES } from '../../i18n';
@@ -10,6 +10,7 @@ import { useTheme } from '../../app/theme-context';
 import { useAuth } from '../../app/auth-context';
 import { slugPondokDariHost } from '../../verticals/pesantren/santri-host';
 import { PondokChrome } from '../../verticals/pesantren/PondokChrome';
+import { isSalonDemoHost } from '../contoh/salon-host';
 
 export interface SiteConfig {
   code: string;
@@ -97,9 +98,51 @@ function PublicLayoutEBisnis({
   const [menuOpen, setMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const location = useLocation();
+  const salonHost = isSalonDemoHost();
+  const brand = salonHost
+    ? {
+        name: 'Salon Cantik Demo',
+        homeUrl: 'https://salon.ebisnis.id',
+        description:
+          'Demo website salon, booking layanan, katalog produk, invoice, dan dashboard transaksi untuk calon tenant eBisnis.',
+      }
+    : {
+        name: site?.name ?? 'eBisnis.id',
+        homeUrl: '/',
+        description:
+          'Platform SaaS POS dan ERP terintegrasi untuk retail, F&B, distribusi, dan manufaktur.',
+      };
+  const footerSections = salonHost
+    ? [
+        {
+          code: 'SALON',
+          title: 'Salon',
+          items: [
+            { label: 'Website salon', url: 'https://salon.ebisnis.id' },
+            { label: 'Booking', url: 'https://salon.ebisnis.id/contoh/salon' },
+            { label: 'Dashboard contoh', url: 'https://salon.ebisnis.id/contoh/salon' },
+          ],
+        },
+        {
+          code: 'DEMO',
+          title: 'Uji Coba',
+          items: [
+            { label: 'Masuk demo salon', url: 'https://salon.ebisnis.id/masuk' },
+            { label: 'Aplikasi Android', url: 'https://salon.ebisnis.id/update/ebisnis-pelanggan-salon.apk' },
+          ],
+        },
+      ]
+    : site?.footer ?? [];
 
   const headerItems =
-    site?.navigation.find((nav) => nav.location === 'HEADER')?.items ?? [
+    salonHost
+      ? [
+          { labelKey: 'salon.website', label: 'Website', url: 'https://salon.ebisnis.id', sortOrder: 1 },
+          { labelKey: 'salon.booking', label: 'Booking', url: 'https://salon.ebisnis.id/contoh/salon', sortOrder: 2 },
+          { labelKey: 'salon.dashboard', label: 'Dashboard', url: 'https://salon.ebisnis.id/contoh/salon', sortOrder: 3 },
+          { labelKey: 'salon.products', label: '100+ Produk', url: 'https://salon.ebisnis.id/contoh/salon', sortOrder: 4 },
+        ]
+      : site?.navigation.find((nav) => nav.location === 'HEADER')?.items ?? [
       { labelKey: 'nav.home', label: t('nav.home'), url: '/', sortOrder: 1 },
       { labelKey: 'nav.pricing', label: t('nav.pricing'), url: '/harga', sortOrder: 2 },
       { labelKey: 'nav.presentation', label: t('nav.presentation'), url: '/presentasi', sortOrder: 3 },
@@ -122,11 +165,11 @@ function PublicLayoutEBisnis({
 
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
         <div className="container-page flex h-16 items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+          <Link to={brand.homeUrl} className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-700 text-sm font-black text-white">
-              eB
+              {salonHost ? <Scissors className="h-4 w-4" aria-hidden /> : 'eB'}
             </span>
-            <span className="hidden sm:inline">{site?.name ?? 'eBisnis.id'}</span>
+            <span className="hidden sm:inline">{brand.name}</span>
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Navigasi utama">
@@ -205,10 +248,10 @@ function PublicLayoutEBisnis({
             ) : (
               <>
                 <Link to="/masuk" className="btn-ghost hidden sm:inline-flex">
-                  {t('nav.login')}
+                  {salonHost ? 'Masuk' : t('nav.login')}
                 </Link>
-                <Link to="/daftar" className="btn-primary hidden sm:inline-flex">
-                  {t('nav.register')}
+                <Link to={salonHost ? 'https://salon.ebisnis.id' : '/daftar'} className="btn-primary hidden sm:inline-flex">
+                  {salonHost ? 'Website Salon' : t('nav.register')}
                 </Link>
               </>
             )}
@@ -240,10 +283,10 @@ function PublicLayoutEBisnis({
               ))}
               <div className="mt-3 flex gap-2">
                 <Link to="/masuk" className="btn-outline flex-1" onClick={() => setMenuOpen(false)}>
-                  {t('nav.login')}
+                  {salonHost ? 'Masuk' : t('nav.login')}
                 </Link>
-                <Link to="/daftar" className="btn-primary flex-1" onClick={() => setMenuOpen(false)}>
-                  {t('nav.register')}
+                <Link to={salonHost ? 'https://salon.ebisnis.id' : '/daftar'} className="btn-primary flex-1" onClick={() => setMenuOpen(false)}>
+                  {salonHost ? 'Website Salon' : t('nav.register')}
                 </Link>
               </div>
             </div>
@@ -261,15 +304,15 @@ function PublicLayoutEBisnis({
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
                 <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-700 text-sm font-black text-white">
-                  eB
+                  {salonHost ? <Scissors className="h-4 w-4" aria-hidden /> : 'eB'}
                 </span>
-                {site?.name ?? 'eBisnis.id'}
+                {brand.name}
               </div>
               <p className="mt-3 max-w-sm text-sm text-slate-600 dark:text-slate-400">
-                Platform SaaS POS dan ERP terintegrasi untuk retail, F&amp;B, distribusi, dan manufaktur.
+                {brand.description}
               </p>
             </div>
-            {(site?.footer ?? []).map((section) => (
+            {footerSections.map((section) => (
               <div key={section.code}>
                 <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{section.title}</h3>
                 <ul className="mt-3 space-y-2">
@@ -288,7 +331,7 @@ function PublicLayoutEBisnis({
             ))}
           </div>
           <div className="mt-10 border-t border-slate-200 pt-6 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
-            © {new Date().getFullYear()} {site?.name ?? 'eBisnis.id'}. Seluruh hak cipta dilindungi.
+            © {new Date().getFullYear()} {brand.name}. Seluruh hak cipta dilindungi.
           </div>
         </div>
       </footer>
