@@ -10,4 +10,4 @@
 /// menyimpulkan "sudah versi terbaru" pada mesin kasir yang tertinggal.
 library;
 
-const String versiAplikasi = String.fromEnvironment('VERSI', defaultValue: '0.1.0');
+const String versiAplikasi = String.fromEnvironment('VERSI', defaultValue: '0.1.2');

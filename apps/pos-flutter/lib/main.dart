@@ -100,7 +100,10 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
   /// Alamat penuh disediakan supaya rilis dapat diperantarai peladen eBisnis
   /// kelak — bentuk jawabannya sama, dan penguraiannya tidak perlu berubah.
   SumberPembaruan _pilihSumberPembaruan() {
-    const alamatPenuh = String.fromEnvironment('PEMBARUAN_URL');
+    const alamatPenuh = String.fromEnvironment(
+      'PEMBARUAN_URL',
+      defaultValue: 'https://ebisnis.id/update/pos/latest',
+    );
     final akhiran = akhiranPemasang();
 
     if (alamatPenuh.isNotEmpty) {

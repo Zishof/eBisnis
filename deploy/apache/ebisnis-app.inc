@@ -36,6 +36,9 @@ ProxyRequests Off
 # statis, agar permintaan API tidak ikut tertangkap FallbackResource dan
 # dibalas index.html.
 # ---------------------------------------------------------------------------
+ProxyPass        /update/  ${EBISNIS_API}/api/v1/update/  retry=0 timeout=120
+ProxyPassReverse /update/  ${EBISNIS_API}/api/v1/update/
+
 ProxyPass        /api/      ${EBISNIS_API}/api/      retry=0 timeout=120
 ProxyPassReverse /api/      ${EBISNIS_API}/api/
 

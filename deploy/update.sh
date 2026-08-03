@@ -342,6 +342,65 @@ APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:
 # ---------------------------------------------------------------------------
 log "9/9  Apache"
 # ---------------------------------------------------------------------------
+POS_UPDATE_DIR=/opt/ebisnis/updates/pos
+install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$POS_UPDATE_DIR"
+
+# Asset POS Flutter boleh hidup publik di server, sementara repository tetap
+# private. Bila token server tersedia, tarik asset dari GitHub Release private
+# ke folder publik ini. Token TIDAK pernah dikirim ke klien POS; klien hanya
+# membaca https://ebisnis.id/update/pos/latest.
+POS_RELEASE_TOKEN=$(
+  { grep -E '^(POS_RELEASE_GITHUB_TOKEN|GITHUB_TOKEN)=' "$ENV_FILE" || true; } \
+    | head -1 \
+    | cut -d= -f2- \
+    | sed -e 's/^"//' -e 's/"$//'
+)
+if [[ -n "$POS_RELEASE_TOKEN" ]]; then
+  if command -v curl >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then
+    RELEASES_JSON=$(mktemp)
+    ASSETS_LIST=$(mktemp)
+    if curl -fsSL \
+      -H "Authorization: Bearer $POS_RELEASE_TOKEN" \
+      -H "Accept: application/vnd.github+json" \
+      https://api.github.com/repos/Zishof/eBisnis/releases \
+      -o "$RELEASES_JSON"; then
+      node - "$RELEASES_JSON" "$ASSETS_LIST" <<'NODE'
+const fs = require('fs');
+const releases = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const release = releases.find((r) => !r.draft && !r.prerelease && String(r.tag_name || '').startsWith('pos-v'));
+const lines = [];
+for (const asset of release?.assets || []) {
+  if (/\.(exe|apk)$/i.test(asset.name)) lines.push(`${asset.name}\t${asset.url}`);
+}
+fs.writeFileSync(process.argv[3], lines.join('\n'));
+NODE
+      while IFS=$'\t' read -r nama url; do
+        [[ -n "$nama" && -n "$url" ]] || continue
+        tmp="$POS_UPDATE_DIR/$nama.tmp"
+        if curl -fL \
+          -H "Authorization: Bearer $POS_RELEASE_TOKEN" \
+          -H "Accept: application/octet-stream" \
+          "$url" \
+          -o "$tmp"; then
+          mv "$tmp" "$POS_UPDATE_DIR/$nama"
+          chown "$APP_USER:$APP_USER" "$POS_UPDATE_DIR/$nama"
+          chmod 644 "$POS_UPDATE_DIR/$nama"
+        else
+          rm -f "$tmp"
+          warn "Gagal mengunduh asset POS $nama dari GitHub Release."
+        fi
+      done < "$ASSETS_LIST"
+    else
+      warn "Gagal membaca GitHub Release POS. Asset lama di $POS_UPDATE_DIR tetap dipakai."
+    fi
+    rm -f "$RELEASES_JSON" "$ASSETS_LIST"
+  else
+    warn "curl atau node tidak tersedia; asset POS tidak ditarik otomatis."
+  fi
+else
+  warn "POS_RELEASE_GITHUB_TOKEN belum ada; salin .exe/.apk manual ke $POS_UPDATE_DIR."
+fi
+
 install -m 644 "$APP_DIR/deploy/apache/ebisnis-app.inc" /etc/apache2/conf-available/ebisnis-app.inc
 install -m 644 "$APP_DIR/deploy/apache/ebisnis.conf"    /etc/apache2/sites-available/ebisnis.conf
 apache2ctl configtest && systemctl reload apache2
