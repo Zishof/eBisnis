@@ -21,7 +21,7 @@
 
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, Mail, MapPin, Newspaper, Phone } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
 import { usePondokFavicon } from './use-pondok-favicon';
@@ -75,6 +75,7 @@ interface IsiSitus {
   profil: Profil;
   berita: Berita[];
   unitPendidikan: UnitPendidikan[];
+  currentUnit?: { public_slug: string | null } | null;
 }
 
 const TEMA: Record<string, { grad: string; ring: string; badge: string; tombol: string; aksen: string }> = {
@@ -127,6 +128,7 @@ const LABEL_JENIS_UNIT: Record<string, string> = {
 };
 
 export function SitusPondokPage() {
+  const navigate = useNavigate();
   const { data, isLoading, isError } = useQuery({
     queryKey: ['pesantren', 'situs-publik'],
     queryFn: () => apiRequest<IsiSitus>('/pesantren/public/site'),
@@ -142,6 +144,12 @@ export function SitusPondokPage() {
       document.title = sebelumnya;
     };
   }, [data?.profil.nama_tampilan]);
+
+  useEffect(() => {
+    if (data?.currentUnit?.public_slug) {
+      navigate(`/santri/pondok/unit/${data.currentUnit.public_slug}`, { replace: true });
+    }
+  }, [data?.currentUnit?.public_slug, navigate]);
 
   usePondokFavicon(data?.profil.logo_url);
 

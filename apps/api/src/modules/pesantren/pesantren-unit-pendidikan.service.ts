@@ -3,6 +3,29 @@ import { TenantConnectionService } from '../../infrastructure/database/tenant-co
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { MasukanUnitPendidikan, validasiUnitPendidikan } from './pesantren-unit-pendidikan';
 
+const DOMAIN_SANTRI = 'santri.info';
+const VERTIKAL_SITUS_PESANTREN = 'pesantren';
+const LABEL_SUBDOMAIN_TERLARANG = new Set([
+  'www',
+  'app',
+  'auth',
+  'api',
+  'admin',
+  'console',
+  'support',
+  'status',
+  'docs',
+  'assets',
+  'cdn',
+  'mail',
+  'static',
+  'media',
+  'login',
+  'register',
+  'demo',
+  'sandbox',
+]);
+
 export interface BarisUnitPendidikan {
   id: string;
   code: string;
@@ -62,12 +85,18 @@ export class PesantrenUnitPendidikanService {
     );
   }
 
-  async catat(schemaName: string, masukan: MasukanUnitPendidikan, actorUserId: string): Promise<BarisUnitPendidikan> {
+  async catat(
+    schemaName: string,
+    tenantId: string,
+    masukan: MasukanUnitPendidikan,
+    actorUserId: string,
+  ): Promise<BarisUnitPendidikan> {
     const payload = normalisasi(masukan);
     const galat = validasiUnitPendidikan(payload);
     if (galat.length) {
       throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Ada isian yang belum benar.', { errors: galat });
     }
+    validasiSubdomainDipesan(payload);
 
     const S = `"${schemaName}"`;
     try {
@@ -95,7 +124,8 @@ export class PesantrenUnitPendidikanService {
           actorUserId,
         ],
       );
-      return rows[0];
+      await this.sinkronkanDomainUnit(schemaName, tenantId, null, rows[0], actorUserId);
+      return (await this.satu(schemaName, rows[0].id)) ?? rows[0];
     } catch (error) {
       if (isUniqueViolation(error, 'ux_pesantren_unit_pendidikan_code')) {
         throw AppError.conflict(ErrorCodes.CONFLICT, `Kode unit "${payload.code}" sudah dipakai.`);
@@ -106,6 +136,7 @@ export class PesantrenUnitPendidikanService {
 
   async ubah(
     schemaName: string,
+    tenantId: string,
     id: string,
     masukan: MasukanUnitPendidikan,
     actorUserId: string,
@@ -120,6 +151,7 @@ export class PesantrenUnitPendidikanService {
     if (galat.length) {
       throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Ada isian yang belum benar.', { errors: galat });
     }
+    validasiSubdomainDipesan(payload);
 
     const S = `"${schemaName}"`;
     try {
@@ -167,7 +199,8 @@ export class PesantrenUnitPendidikanService {
           actorUserId,
         ],
       );
-      return rows[0];
+      await this.sinkronkanDomainUnit(schemaName, tenantId, sebelum, rows[0], actorUserId);
+      return (await this.satu(schemaName, rows[0].id)) ?? rows[0];
     } catch (error) {
       if (isUniqueViolation(error, 'ux_pesantren_unit_pendidikan_code')) {
         throw AppError.conflict(ErrorCodes.CONFLICT, `Kode unit "${payload.code}" sudah dipakai.`);
@@ -207,7 +240,77 @@ export class PesantrenUnitPendidikanService {
         WHERE id = $1 AND deleted_at IS NULL`,
       [id, actorUserId],
     );
+    await this.nonaktifkanDomainTenant(unit, actorUserId);
     return { id };
+  }
+
+  private async sinkronkanDomainUnit(
+    schemaName: string,
+    tenantId: string,
+    sebelum: BarisUnitPendidikan | null,
+    sesudah: BarisUnitPendidikan,
+    actorUserId: string,
+  ): Promise<void> {
+    const hostLama = hostsDariUnit(sebelum);
+    const hostBaru = hostsDariUnit(sesudah);
+
+    for (const host of hostLama.filter((h) => !hostBaru.some((baru) => baru.host === h.host))) {
+      await this.tenantDb.queryAdmin(
+        `UPDATE platform.vertical_site_domain
+            SET status = 'REVOKED', updated_at = now(), version = version + 1
+          WHERE tenant_id = $1 AND vertical = $2 AND host = $3`,
+        [tenantId, VERTIKAL_SITUS_PESANTREN, host.host],
+      );
+    }
+
+    for (const host of hostBaru) {
+      const rows = await this.tenantDb.queryAdmin<{ id: string }>(
+        `INSERT INTO platform.vertical_site_domain
+           (tenant_id, host, vertical, status, verified_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, now())
+         ON CONFLICT (host) DO UPDATE
+           SET tenant_id = EXCLUDED.tenant_id,
+               vertical = EXCLUDED.vertical,
+               status = EXCLUDED.status,
+               verified_at = EXCLUDED.verified_at,
+               updated_at = now(),
+               version = platform.vertical_site_domain.version + 1
+         WHERE platform.vertical_site_domain.tenant_id = EXCLUDED.tenant_id
+         RETURNING id::text`,
+        [
+          tenantId,
+          host.host,
+          VERTIKAL_SITUS_PESANTREN,
+          host.aktifLangsung ? 'ACTIVE' : 'PENDING',
+          host.aktifLangsung ? new Date() : null,
+        ],
+      );
+      if (rows.length === 0) {
+        throw AppError.conflict(ErrorCodes.CONFLICT, `Domain "${host.host}" sudah dipakai tenant lain.`);
+      }
+    }
+
+    const status = sesudah.santri_subdomain ? 'ACTIVE' : sesudah.custom_domain ? 'PENDING' : 'NONE';
+    await this.tenantDb.query(
+      schemaName,
+      `UPDATE "${schemaName}".pesantren_unit_pendidikan
+          SET domain_status = $2, updated_at = now(), updated_by = $3, version = version + 1
+        WHERE id = $1 AND deleted_at IS NULL`,
+      [sesudah.id, status, actorUserId],
+    );
+  }
+
+  private async nonaktifkanDomainTenant(unit: BarisUnitPendidikan, actorUserId: string): Promise<void> {
+    const hosts = hostsDariUnit(unit);
+    for (const host of hosts) {
+      await this.tenantDb.queryAdmin(
+        `UPDATE platform.vertical_site_domain
+            SET status = 'REVOKED', updated_at = now(), version = version + 1
+          WHERE vertical = $1 AND host = $2`,
+        [VERTIKAL_SITUS_PESANTREN, host.host],
+      );
+    }
+    void actorUserId;
   }
 }
 
@@ -236,6 +339,23 @@ function normalisasiDomain(value: string | null | undefined): string | null {
   const trimmed = kosongJadiNull(value);
   if (!trimmed) return null;
   return trimmed.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/\.$/, '').toLowerCase();
+}
+
+function validasiSubdomainDipesan(masukan: MasukanUnitPendidikan): void {
+  if (masukan.santriSubdomain && LABEL_SUBDOMAIN_TERLARANG.has(masukan.santriSubdomain)) {
+    throw AppError.badRequest(
+      ErrorCodes.VALIDATION_FAILED,
+      `Subdomain "${masukan.santriSubdomain}.santri.info" dicadangkan untuk platform.`,
+    );
+  }
+}
+
+function hostsDariUnit(unit: BarisUnitPendidikan | null): Array<{ host: string; aktifLangsung: boolean }> {
+  if (!unit) return [];
+  const hosts: Array<{ host: string; aktifLangsung: boolean }> = [];
+  if (unit.santri_subdomain) hosts.push({ host: `${unit.santri_subdomain}.${DOMAIN_SANTRI}`, aktifLangsung: true });
+  if (unit.custom_domain) hosts.push({ host: unit.custom_domain, aktifLangsung: false });
+  return hosts;
 }
 
 function isUniqueViolation(error: unknown, constraintName: string): boolean {

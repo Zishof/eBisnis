@@ -14,6 +14,13 @@ function schemaWajib(user: AuthenticatedUser): string {
   return user.schemaName;
 }
 
+function tenantWajib(user: AuthenticatedUser): string {
+  if (!user.tenantId) {
+    throw AppError.forbidden(ErrorCodes.FORBIDDEN, 'Konteks penyewa tidak ditemukan pada sesi Anda.');
+  }
+  return user.tenantId;
+}
+
 class DaftarUnitPendidikanQuery {
   @ApiPropertyOptional() @IsOptional() @IsString()
   cari?: string;
@@ -89,14 +96,14 @@ export class PesantrenUnitPendidikanController {
   @HttpCode(201)
   @ApiOperation({ summary: 'Membuat unit pendidikan baru' })
   catat(@Body() dto: SimpanUnitPendidikanDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.unitPendidikan.catat(schemaWajib(user), dto, user.userId);
+    return this.unitPendidikan.catat(schemaWajib(user), tenantWajib(user), dto, user.userId);
   }
 
   @Permissions('EPESANTREN_UNIT_PENDIDIKAN.UPDATE')
   @Patch(':id')
   @ApiOperation({ summary: 'Mengubah unit pendidikan' })
   ubah(@Param('id') id: string, @Body() dto: SimpanUnitPendidikanDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.unitPendidikan.ubah(schemaWajib(user), id, dto, user.userId);
+    return this.unitPendidikan.ubah(schemaWajib(user), tenantWajib(user), id, dto, user.userId);
   }
 
   @Permissions('EPESANTREN_UNIT_PENDIDIKAN.UPDATE')

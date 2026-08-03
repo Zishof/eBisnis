@@ -73,7 +73,9 @@ export class PesantrenPublicService {
         ORDER BY sort_order ASC, name ASC`,
     );
 
-    return { profil, berita, unitPendidikan };
+    const currentUnit = await this.unitDariHost(S, konteks.host);
+
+    return { profil, berita, unitPendidikan, currentUnit };
   }
 
   async unit(host: string | undefined, slug: string) {
@@ -142,6 +144,23 @@ export class PesantrenPublicService {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berita tidak ditemukan.');
     }
     return row;
+  }
+
+  private async unitDariHost(schemaName: string, host: string) {
+    const labelSantri = host.endsWith('.santri.info') ? host.slice(0, -'.santri.info'.length) : null;
+    return this.tenantDb.queryOne(
+      schemaName,
+      `SELECT id::text, code, name, jenis, public_slug, santri_subdomain, custom_domain
+         FROM "${schemaName}".pesantren_unit_pendidikan
+        WHERE website_enabled = TRUE
+          AND is_active = TRUE
+          AND deleted_at IS NULL
+          AND (
+            ($1::text IS NOT NULL AND santri_subdomain = $1)
+            OR ($2::text IS NOT NULL AND custom_domain = $2)
+          )`,
+      [labelSantri, host],
+    );
   }
 
   /**
