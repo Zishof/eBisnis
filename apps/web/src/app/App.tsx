@@ -12,6 +12,7 @@ import { NewsDetailPage } from '../pages/public/NewsDetailPage';
 import { ContactPage } from '../pages/public/ContactPage';
 import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
+import { isSalonDemoHost } from '../pages/contoh/salon-host';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
@@ -170,11 +171,17 @@ const BelanjaSearchPage = lazy(() =>
 const BelanjaProductPage = lazy(() =>
   import('../pages/belanja/BelanjaProductPage').then((m) => ({ default: m.BelanjaProductPage })),
 );
+const SalonDemoPage = lazy(() =>
+  import('../pages/contoh/SalonDemoPage').then((m) => ({ default: m.SalonDemoPage })),
+);
 
 export function App() {
   const rootExperience = rootExperienceFor(window.location.hostname, window.location.pathname);
+  const salonDemoHost = isSalonDemoHost(window.location.hostname);
   const rootElement =
-    rootExperience === 'emedik' ? (
+    salonDemoHost ? (
+      <SalonDemoPage />
+    ) : rootExperience === 'emedik' ? (
       <EmedikLandingPage />
     ) : rootExperience === 'apotik' ? (
       <ApotikLandingPage />
@@ -209,8 +216,11 @@ export function App() {
           <Route path="/daftar" element={<RegisterPage />} />
           <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
+          <Route path="/a/*" element={salonDemoHost ? <Navigate to="/contoh/salon" replace /> : rootElement} />
           <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />
         </Route>
+
+        <Route path="/contoh/salon" element={<SalonDemoPage />} />
 
         {/* Marketplace publik (belanja.ebisnis.id) */}
         <Route path="/belanja" element={<BelanjaLayout />}>
