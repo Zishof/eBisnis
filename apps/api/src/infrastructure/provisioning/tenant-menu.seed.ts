@@ -213,7 +213,7 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
   // 11 Keuangan dan Akuntansi
   { code: 'FINANCE', label: 'Keuangan dan Akuntansi', translationKey: 'menu.finance', icon: 'wallet', moduleCode: 'ACCOUNTING', sortOrder: 11, actions: ['READ'], comingSoon: true },
   { code: 'FINANCE_COA', parentCode: 'FINANCE', label: 'Bagan Akun', translationKey: 'menu.finance.coa', route: '/app/chart-of-accounts', moduleCode: 'ACCOUNTING', sortOrder: 1, actions: CRUD },
-  { code: 'FINANCE_JOURNAL', parentCode: 'FINANCE', label: 'Jurnal', translationKey: 'menu.finance.journal', route: '/app/journal-entries', moduleCode: 'ACCOUNTING', sortOrder: 2, actions: [...DOC, 'POST', 'CLOSE_PERIOD', 'REOPEN'], comingSoon: true },
+  { code: 'FINANCE_JOURNAL', parentCode: 'FINANCE', label: 'Jurnal', translationKey: 'menu.finance.journal', route: '/app/journal-entries', moduleCode: 'ACCOUNTING', sortOrder: 2, actions: [...DOC, 'POST', 'CLOSE_PERIOD', 'REOPEN'] },
 
   // 12 Investor dan Bagi Hasil
   { code: 'INVESTOR', label: 'Investor dan Bagi Hasil', translationKey: 'menu.investor', icon: 'handshake', moduleCode: 'INVESTOR_REVENUE_SHARE', sortOrder: 12, actions: ['READ', 'VIEW_AMOUNT'], comingSoon: true },

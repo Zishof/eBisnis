@@ -664,6 +664,74 @@ export class TenantAdminController {
 }
 
 // ---------------------------------------------------------------------------
+// Controller: akuntansi baca-saja
+// ---------------------------------------------------------------------------
+
+@ApiTags('accounting')
+@ApiBearerAuth('access-token')
+@Controller()
+export class AccountingDocumentController {
+  constructor(private readonly tenantDb: TenantConnectionService) {}
+
+  @Get('journal-entries')
+  @Permissions('FINANCE_JOURNAL.READ')
+  @ApiOperation({ summary: 'Daftar jurnal akuntansi' })
+  async listJournalEntries(@Query() query: BaseQueryDto, @CurrentUser() user: AuthenticatedUser) {
+    const schema = schemaOf(user);
+    const pageSize = Math.min(Math.max(Number(query.pageSize ?? 50), 1), 100);
+    const page = Math.max(Number(query.page ?? 1), 1);
+    const offset = (page - 1) * pageSize;
+    return this.tenantDb.query<Record<string, unknown>>(
+      schema,
+      `SELECT je.id::text, je.journal_number, je.journal_date::text, je.source_type,
+              je.description, je.currency_code, je.total_debit::text, je.total_credit::text,
+              je.status, je.posted_at::text, je.created_at::text,
+              fp.code AS fiscal_period_code
+         FROM "${schema}".journal_entry je
+         LEFT JOIN "${schema}".fiscal_period fp ON fp.id = je.fiscal_period_id
+        ORDER BY je.journal_date DESC, je.created_at DESC
+        LIMIT $1 OFFSET $2`,
+      [pageSize, offset],
+    );
+  }
+
+  @Get('journal-entries/:id')
+  @Permissions('FINANCE_JOURNAL.READ')
+  @ApiOperation({ summary: 'Detail jurnal akuntansi beserta baris debit/kredit' })
+  async journalEntryDetail(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const schema = schemaOf(user);
+    const header = await this.tenantDb.queryOne<Record<string, unknown>>(
+      schema,
+      `SELECT je.id::text, je.journal_number, je.journal_date::text, je.source_type,
+              je.source_id::text, je.posting_key, je.description, je.currency_code,
+              je.exchange_rate::text, je.total_debit::text, je.total_credit::text,
+              je.status, je.posted_at::text, je.posted_by::text, je.reversal_of_id::text,
+              je.created_at::text, je.updated_at::text, fp.code AS fiscal_period_code
+         FROM "${schema}".journal_entry je
+         LEFT JOIN "${schema}".fiscal_period fp ON fp.id = je.fiscal_period_id
+        WHERE je.id = $1`,
+      [id],
+    );
+    if (!header) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Jurnal tidak ditemukan.');
+    }
+
+    const lines = await this.tenantDb.query<Record<string, unknown>>(
+      schema,
+      `SELECT jel.id::text, jel.line_no, coa.code AS account_code, coa.name AS account_name,
+              jel.debit::text, jel.credit::text, jel.description, jel.dimensions
+         FROM "${schema}".journal_entry_line jel
+         JOIN "${schema}".chart_of_account coa ON coa.id = jel.account_id
+        WHERE jel.journal_entry_id = $1
+        ORDER BY jel.line_no ASC`,
+      [id],
+    );
+
+    return { ...header, lines };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Controller: ERP vertical slice
 // ---------------------------------------------------------------------------
 
@@ -1376,9 +1444,9 @@ function schemaOf(user: AuthenticatedUser): string {
 }
 
 @Module({
-  // ErpController lebih dahulu: route spesifik harus menang atas
+  // Controller route spesifik lebih dahulu: ia harus menang atas
   // wildcard `:resource` pada MasterController.
-  controllers: [ErpController, MasterController, TenantAdminController],
+  controllers: [ErpController, AccountingDocumentController, MasterController, TenantAdminController],
   providers: [MasterLifecycleService, ErpPurchasingService, ErpInventoryService],
   exports: [MasterLifecycleService, ErpPurchasingService, ErpInventoryService],
 })
