@@ -32,16 +32,16 @@ Audit dilakukan terhadap 240 file Java di folder sekolah AIS. Satu file bisa mas
 | Master sekolah/yayasan/unit | `SekolahAction.java`, `YayasanAction.java`, `JenisSekolahAction.java` | Ada | `pesantren_unit_pendidikan`, profil pondok, subdomain unit, Cloudflare-ready setting. Gap: validasi domain eksternal `*.sch.id` masih perlu DNS ownership check saat go-live. |
 | Master santri/siswa | `SiswaAction.java`, `BiodataSiswaAction.java`, `SiswaWaliAction.java` | Ada | CRUD santri dan portal wali tersedia. Gap: biodata sangat detail dari AIS belum semua menjadi field typed; sebagian masuk metadata. |
 | Asrama dan kamar | `AsramaSiswaAction.java`, `DetailAsramaSiswaHelper.java` | Ada | Halaman asrama/kamar/penempatan sudah ada. Gap: laporan asrama legacy belum semua direplikasi. |
-| Absensi santri | `AbsensiAction.java`, `AbsensiSiswaHelper.java`, `AbsenPiketAction.java` | Dilengkapi dasar | Presensi santri tersedia sebagai daftar/API dan endpoint massal `POST /pesantren/presensi/massal` untuk input piket/kelas. Gap lanjutan: UI grid massal dan relasi langsung ke sesi jadwal. |
+| Absensi santri | `AbsensiAction.java`, `AbsensiSiswaHelper.java`, `AbsenPiketAction.java` | Dilengkapi | Presensi santri tersedia sebagai daftar/API dan endpoint massal `POST /pesantren/presensi/massal`. UI `/app/pesantren/presensi` sudah mendukung input massal per tanggal/jenis, status, dan keterangan. Gap lanjutan: relasi langsung ke sesi jadwal/detail piket. |
 | Absensi guru | `AbsenGuruPiketAction.java`, `GuruAction.java` | Ada sebagian | Guru dan absensi guru tersedia. Gap: penugasan piket dan detail jadwal mengajar AIS belum penuh. |
 | Diniyah/tahfiz | AIS tersebar di jadwal, nilai, kegiatan | Ada | Halaqah, kitab, dan tahfiz tersedia. Gap: rapor diniyah lengkap belum final. |
-| Jadwal pelajaran | `JadwalPelajaranAction.java`, `JamPelajaranAction.java`, `TimetableJadwalPelajaranWindow.java` | Dilengkapi dasar | Kurikulum dan jadwal jam nyata tersedia, termasuk pencegahan bentrok rombongan/pengajar dan route UI `/app/pesantren/jadwal`. Gap lanjutan: tampilan timetable drag-drop. |
-| Nilai/rapor | `PenilaianSiswaAction.java`, `JenisNilaiSiswaAction.java`, `NilaiHurufSekolahAction.java`, `JenisRaporSiswaAction.java` | Dilengkapi dasar | Mata pelajaran, komponen nilai berbobot, skala huruf, entry nilai upsert, dan endpoint rapor berbobot tersedia; skala huruf dibuka di `/app/pesantren/nilai/skala-huruf`. Gap lanjutan: UI entry nilai per kelas dan cetak rapor PDF. |
-| PSB/PPDB | `CalonSiswaAction.java`, `GelombangPendaftaranPsbAction.java`, `PPDB*.java`, `VerifikasiPSBHelper.java` | Dilengkapi dasar | Portal PSB, gelombang, pendaftar, jadwal seleksi, serta `form_schema` per gelombang dan `jawaban_tambahan` pendaftar tersedia. Gap lanjutan: UI builder drag-drop field PSB. |
+| Jadwal pelajaran | `JadwalPelajaranAction.java`, `JamPelajaranAction.java`, `TimetableJadwalPelajaranWindow.java` | Dilengkapi | Kurikulum dan jadwal jam nyata tersedia, termasuk pencegahan bentrok rombongan/pengajar. UI `/app/pesantren/jadwal` sudah bisa tambah/filter/batalkan jadwal. Gap lanjutan: tampilan timetable drag-drop. |
+| Nilai/rapor | `PenilaianSiswaAction.java`, `JenisNilaiSiswaAction.java`, `NilaiHurufSekolahAction.java`, `JenisRaporSiswaAction.java` | Dilengkapi | Mata pelajaran, komponen nilai berbobot, skala huruf, entry nilai upsert, endpoint rapor berbobot, dan UI `/app/pesantren/nilai` sudah tersedia. Gap lanjutan: entry nilai berbasis kelas dan cetak rapor PDF. |
+| PSB/PPDB | `CalonSiswaAction.java`, `GelombangPendaftaranPsbAction.java`, `PPDB*.java`, `VerifikasiPSBHelper.java` | Dilengkapi | Portal PSB, gelombang, pendaftar, jadwal seleksi, `form_schema` per gelombang, `jawaban_tambahan` pendaftar, dan field JSON schema di UI gelombang tersedia. Gap lanjutan: builder drag-drop field PSB. |
 | Tagihan/pembayaran/deposit | `TagihanAction.java`, `PembayaranSiswaAction.java`, `DepositSiswaAction.java`, `PostingPiutangSiswaAction.java` | Ada sebagian | Tagihan, dompet santri, POS/dompet handler tersedia. Gap: semua skenario posting akuntansi legacy belum seluruhnya dipetakan. |
 | Pelanggaran/hukuman | `PelanggaranSiswaAction.java`, `PelanggaranDanHukumanAction.java`, `HukumanAction.java` | Ada sebagian | Pencatatan pelanggaran tersedia. Gap: katalog hukuman dan workflow tindak lanjut bertingkat masih perlu halaman operasional. |
 | Prestasi/penghargaan | `PrestasiSiswaAction.java`, `PenghargaanSiswaAction.java`, `ApresiasiSiswaAction.java` | Ada sebagian | Prestasi tersedia. Gap: penghargaan/apresiasi terpisah belum seluruhnya menjadi modul. |
-| Pengajuan/izin siswa | `PengajuanSiswaAction.java` | Dilengkapi dasar | Perizinan santri kini membawa lampiran, kontak penjemput, metadata, disposisi, riwayat keputusan, pembatalan, dan penyelesaian. Gap lanjutan: UI wizard SOP disposisi per pondok. |
+| Pengajuan/izin siswa | `PengajuanSiswaAction.java` | Dilengkapi | Perizinan santri kini membawa lampiran, kontak penjemput, metadata, disposisi, riwayat keputusan, pembatalan, penyelesaian, dan UI `/app/pesantren/perizinan` untuk ajukan/setujui/tolak/disposisi/batal/selesai. Gap lanjutan: wizard SOP disposisi per pondok. |
 | Kunjungan/gerbang | `KunjunganSiswaAction.java`, `PengajuanSiswaAction.java` | Dilengkapi | Endpoint daftar izin aktif, scan kartu, dan halaman Gerbang Keluar-Masuk ditambahkan. Petugas hanya mencatat lintasan terhadap izin DISETUJUI. |
 | Catatan guru/orang tua | `CatatanGuruAction.java`, `CatatanSiswaAction.java`, `BukuPenghubungSiswa.java` | Dilengkapi dasar | Modul `pesantren_buku_penghubung` ditambahkan untuk catatan guru/pengurus/wali per santri, visibilitas INTERNAL/WALI, dan status tindak lanjut. Gap lanjutan: notifikasi otomatis ke wali dan komentar balasan bertingkat. |
 | Kegiatan kesiswaan/organisasi | `KegiatanKesiswaanAction.java`, `OrganisasiSiswaAction.java` | Ada sebagian | Ekstrakurikuler tersedia. Gap: organisasi, jabatan, penilaian kegiatan, dan detail anggota belum lengkap. |
@@ -77,12 +77,18 @@ Audit dilakukan terhadap 240 file Java di folder sekolah AIS. Satu file bisa mas
   - menyimpan catatan naratif per santri;
   - membedakan catatan internal pondok dan catatan yang boleh dibuka ke wali;
   - menyediakan status TERBUKA/SELESAI untuk tindak lanjut pengurus.
-- Skeleton Flutter `apps/pesantren-security-gate-flutter`
+- Flutter `apps/pesantren-security-gate-flutter`
   - tab Daftar, Scan, Riwayat, Pengaturan;
   - daftar izin aktif hari ini untuk petugas security;
   - scan nomor kartu dengan scanner keyboard-wedge/RFID;
   - catat keluar/masuk ke API;
-  - field `fingerprintId` disiapkan sebagai adapter vendor fingerprint.
+  - fingerprint sengaja ditunda sampai SDK/perangkat vendor dipastikan.
+- UI operasional pesantren:
+  - `/app/pesantren/presensi` untuk input massal presensi santri;
+  - `/app/pesantren/perizinan` untuk workflow izin keluar-masuk;
+  - `/app/pesantren/jadwal` untuk tambah/filter/batalkan jadwal pelajaran;
+  - `/app/pesantren/nilai` untuk mapel, komponen, dan input nilai;
+  - form schema tambahan PSB dapat disimpan dari modal gelombang.
 
 ## Status Implementasi Singkat
 
@@ -91,12 +97,13 @@ Sudah operasional dasar:
 - master santri, unit pendidikan, asrama/kamar, kartu, tagihan, dompet, PSB, profil/berita pondok, perizinan, gerbang, guru, absensi guru, presensi, diniyah/tahfiz, nilai dasar, pelanggaran, prestasi, ekstrakurikuler, katering, laporan, dan portal wali.
 - website pondok/unit pendidikan dengan subdomain dinamis di sisi aplikasi; DNS wildcard Cloudflare cukup untuk subdomain `*.santri.info`, sedangkan custom domain `*.sch.id` tetap perlu proses ownership/DNS.
 - gerbang keluar-masuk berbasis izin disetujui, kartu aktif, dan log audit terpisah dari approval.
+- UI kerja presensi massal, perizinan, jadwal, nilai, dan PSB schema sudah menggantikan layar generic/Coming Soon utama.
 
 Belum penuh dibanding AIS:
 
 - UI builder drag-drop untuk `form_schema` PSB;
 - UI wizard SOP disposisi per pondok pada perizinan;
-- UI grid massal presensi piket dan detail relasi ke jadwal;
+- detail relasi presensi ke jadwal/piket;
 - timetable visual drag-drop;
 - UI entry nilai per kelas dan cetak rapor PDF;
 - workflow akuntansi legacy untuk seluruh variasi posting piutang/diskon/deposit;
@@ -105,8 +112,8 @@ Belum penuh dibanding AIS:
 
 ## Gap Berikutnya yang Disarankan
 
-1. Modul input massal presensi/piket seperti AIS `AbsenPiketAction.java`.
-2. Perizinan lengkap dengan lampiran dan SOP disposisi seperti `PengajuanSiswaAction.java`.
-3. Buku penghubung/catatan orang tua.
-4. Jadwal visual dan rapor lengkap.
+1. Relasi presensi ke jadwal/piket seperti AIS `AbsenPiketAction.java`.
+2. SOP disposisi per pondok di atas workflow perizinan seperti `PengajuanSiswaAction.java`.
+3. Balasan/notifikasi buku penghubung ke wali.
+4. Jadwal visual drag-drop dan rapor PDF.
 5. Integrasi fingerprint nyata setelah merek/perangkat SDK dipastikan.

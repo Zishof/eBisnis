@@ -15,6 +15,7 @@ interface GelombangRow extends Record<string, unknown> {
   tanggal_tutup: string;
   kuota: number | null;
   biaya_pendaftaran: string;
+  form_schema: unknown[];
   status: string;
   created_at: string;
 }
@@ -42,6 +43,7 @@ const FORM_GELOMBANG_KOSONG = {
   tanggalTutup: '',
   kuota: '',
   biayaPendaftaran: '',
+  formSchema: '',
 };
 
 export function PesantrenPsbPage() {
@@ -77,8 +79,13 @@ export function PesantrenPsbPage() {
   });
 
   const buatGelombang = useMutation({
-    mutationFn: () =>
-      api.post<GelombangRow>('/pesantren/psb/gelombang', {
+    mutationFn: () => {
+      let formSchema: unknown[] = [];
+      if (formGelombang.formSchema.trim()) {
+        const parsed = JSON.parse(formGelombang.formSchema) as unknown;
+        formSchema = Array.isArray(parsed) ? parsed : [];
+      }
+      return api.post<GelombangRow>('/pesantren/psb/gelombang', {
         tahunAjaranId: formGelombang.tahunAjaranId,
         unitPendidikanId: formGelombang.unitPendidikanId || undefined,
         kode: formGelombang.kode,
@@ -87,7 +94,9 @@ export function PesantrenPsbPage() {
         tanggalTutup: formGelombang.tanggalTutup,
         kuota: formGelombang.kuota ? Number(formGelombang.kuota) : undefined,
         biayaPendaftaran: formGelombang.biayaPendaftaran ? Number(formGelombang.biayaPendaftaran) : undefined,
-      }),
+        formSchema,
+      });
+    },
     onSuccess: () => {
       toast.push('Gelombang PSB berhasil dibuat.', 'success');
       setMembuatGelombang(false);
@@ -124,6 +133,7 @@ export function PesantrenPsbPage() {
     { key: 'tanggal_tutup', header: 'Tutup', render: (row) => formatDate(row.tanggal_tutup) },
     { key: 'kuota', header: 'Kuota', render: (row) => row.kuota ?? '-' },
     { key: 'biaya_pendaftaran', header: 'Biaya', render: (row) => formatMoney(row.biaya_pendaftaran) },
+    { key: 'form_schema', header: 'Field Tambahan', render: (row) => `${Array.isArray(row.form_schema) ? row.form_schema.length : 0} field` },
     { key: 'status', header: 'Status', render: (row) => <StatusBadge status={row.status} /> },
     {
       key: 'id',
@@ -321,6 +331,14 @@ export function PesantrenPsbPage() {
                   <input type="number" min="0" className="field-input" value={formGelombang.biayaPendaftaran} onChange={(e) => setFormGelombang({ ...formGelombang, biayaPendaftaran: e.target.value })} />
                 </Field>
               </div>
+              <Field label="Field formulir tambahan (JSON array)">
+                <textarea
+                  className="field-input min-h-28 font-mono text-xs"
+                  value={formGelombang.formSchema}
+                  onChange={(e) => setFormGelombang({ ...formGelombang, formSchema: e.target.value })}
+                  placeholder='[{"name":"asalSekolah","label":"Asal Sekolah","type":"text","required":true}]'
+                />
+              </Field>
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button type="button" className="btn-outline" onClick={() => setMembuatGelombang(false)}>

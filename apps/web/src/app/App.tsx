@@ -29,6 +29,10 @@ import { PesantrenPsbPage } from '../pages/app/pesantren/PesantrenPsbPage';
 import { PesantrenDaftarModulPage } from '../pages/app/pesantren/PesantrenDaftarModulPage';
 import { PesantrenKioskPage } from '../pages/app/pesantren/PesantrenKioskPage';
 import { PesantrenGerbangPage } from '../pages/app/pesantren/PesantrenGerbangPage';
+import { PesantrenPresensiPage } from '../pages/app/pesantren/PesantrenPresensiPage';
+import { PesantrenPerizinanPage } from '../pages/app/pesantren/PesantrenPerizinanPage';
+import { PesantrenJadwalPage } from '../pages/app/pesantren/PesantrenJadwalPage';
+import { PesantrenNilaiPage } from '../pages/app/pesantren/PesantrenNilaiPage';
 import { MasterListPage } from '../pages/app/MasterListPage';
 import { StockTreePage } from '../pages/app/StockTreePage';
 import { RequestOrderPage } from '../pages/app/RequestOrderPage';
@@ -384,19 +388,19 @@ export function App() {
           <Route path="pesantren/psb" element={<PesantrenPsbPage />} />
           <Route path="pesantren/rombongan" element={<PesantrenDaftarModulPage module="rombongan" />} />
           <Route path="pesantren/kurikulum" element={<PesantrenDaftarModulPage module="kurikulum" />} />
-          <Route path="pesantren/jadwal" element={<PesantrenDaftarModulPage module="jadwal" />} />
+          <Route path="pesantren/jadwal" element={<PesantrenJadwalPage />} />
           <Route path="pesantren/diniyah" element={<PesantrenDaftarModulPage module="diniyah" />} />
           <Route path="pesantren/guru" element={<PesantrenDaftarModulPage module="guru" />} />
           <Route path="pesantren/kartu" element={<PesantrenDaftarModulPage module="kartu" />} />
-          <Route path="pesantren/presensi" element={<PesantrenDaftarModulPage module="presensi" />} />
+          <Route path="pesantren/presensi" element={<PesantrenPresensiPage />} />
           <Route path="pesantren/tahfiz" element={<PesantrenDaftarModulPage module="tahfiz" />} />
-          <Route path="pesantren/nilai" element={<PesantrenDaftarModulPage module="nilai" />} />
+          <Route path="pesantren/nilai" element={<PesantrenNilaiPage />} />
           <Route path="pesantren/nilai/skala-huruf" element={<PesantrenDaftarModulPage module="skala-huruf" />} />
           <Route path="pesantren/absensi-guru" element={<PesantrenDaftarModulPage module="absensi-guru" />} />
           <Route path="pesantren/ekstrakurikuler" element={<PesantrenDaftarModulPage module="ekstrakurikuler" />} />
           <Route path="pesantren/prestasi" element={<PesantrenDaftarModulPage module="prestasi" />} />
           <Route path="pesantren/buku-penghubung" element={<PesantrenDaftarModulPage module="buku-penghubung" />} />
-          <Route path="pesantren/perizinan" element={<PesantrenDaftarModulPage module="perizinan" />} />
+          <Route path="pesantren/perizinan" element={<PesantrenPerizinanPage />} />
           <Route path="pesantren/pelanggaran" element={<PesantrenDaftarModulPage module="pelanggaran" />} />
           <Route path="pesantren/dompet" element={<PesantrenDaftarModulPage module="dompet" />} />
           <Route path="pesantren/katering" element={<PesantrenDaftarModulPage module="katering" />} />

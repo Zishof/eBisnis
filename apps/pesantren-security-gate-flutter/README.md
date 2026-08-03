@@ -6,7 +6,7 @@ Aplikasi pendamping untuk tablet Android atau PC security pondok. Source ini dis
 - `GET /api/v1/pesantren/gerbang/izin-aktif`
 - `POST /api/v1/pesantren/gerbang`
 
-Mode scan utama memakai RFID/QR scanner yang bertindak sebagai keyboard input. Untuk fingerprint, tiap alat biasanya punya SDK vendor sendiri; aplikasi ini menyiapkan field `fingerprintId` dan titik integrasi agar adapter SDK bisa ditambahkan tanpa mengubah workflow gerbang.
+Mode scan utama memakai RFID/QR scanner yang bertindak sebagai keyboard input. Fingerprint disiapkan sebagai tahap lanjutan karena tiap alat biasanya punya SDK vendor sendiri; workflow gerbang tetap sama dan adapter SDK dapat ditambahkan kemudian di atas endpoint yang sudah ada.
 
 ## Jalankan
 
