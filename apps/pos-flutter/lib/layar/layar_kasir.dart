@@ -29,6 +29,7 @@ import '../pembaruan/versi.dart';
 import '../perangkat/escpos.dart';
 import 'bilah_atas.dart';
 import 'bilah_samping.dart';
+import 'halaman_menu.dart';
 import 'kisi_produk.dart';
 import 'panel_keranjang.dart';
 import 'pintasan.dart';
@@ -89,9 +90,21 @@ class _LayarKasirState extends State<LayarKasir> {
   String _kategori = kategoriSemua;
   String _kunciCari = '';
   JenisPesanan _jenis = JenisPesanan.dineIn;
+  String _menu = 'kasir';
+  List<ProdukLokal>? _produkUnggahan;
+
+  SumberKatalog get _katalogAktif {
+    final produk = _produkUnggahan;
+    if (produk == null) return widget.katalog;
+    return KatalogMemori(
+      produk: produk,
+      mataUang: widget.katalog.mataUang,
+      tarif: widget.katalog.tarif,
+    );
+  }
 
   HasilKeranjang get _total => hitungKeranjangLuring(
-      _baris, widget.katalog.tarif, widget.katalog.mataUang);
+      _baris, _katalogAktif.tarif, _katalogAktif.mataUang);
 
   @override
   void initState() {
@@ -168,7 +181,7 @@ class _LayarKasirState extends State<LayarKasir> {
   // --- Katalog --------------------------------------------------------------
 
   List<ProdukLokal> get _produkTampil {
-    var daftar = widget.katalog.semua();
+    var daftar = _katalogAktif.semua();
 
     if (_kategori == kategoriFavorit) {
       daftar = daftar.where((p) => p.favorit).toList();
@@ -246,7 +259,7 @@ class _LayarKasirState extends State<LayarKasir> {
     final bersih = kode.trim();
     if (bersih.isEmpty) return;
 
-    final p = widget.katalog.dariBarcode(bersih);
+    final p = _katalogAktif.dariBarcode(bersih);
     if (p != null) {
       _tambah(p);
       return;
@@ -271,7 +284,7 @@ class _LayarKasirState extends State<LayarKasir> {
     // Tidak langsung dimasukkan meski hanya satu yang cocok — memasukkan barang
     // yang tidak sempat dilihat kasir adalah cara termudah menjual barang yang
     // salah kepada orang yang sedang menunggu.
-    final cocok = widget.katalog.cari(bersih);
+    final cocok = _katalogAktif.cari(bersih);
     setState(() {
       _kunciCari = bersih;
       _kategori = kategoriSemua;
@@ -545,11 +558,11 @@ class _LayarKasirState extends State<LayarKasir> {
       builder: (c) => _DialogBayar(
         total: t.grandTotal,
         metode: metode,
-        mataUang: widget.katalog.mataUang,
+        mataUang: _katalogAktif.mataUang,
         uang: _uang,
         onUbah: (nilai) {
           final k =
-              hitungKembalian(t.grandTotal, nilai, widget.katalog.mataUang);
+              hitungKembalian(t.grandTotal, nilai, _katalogAktif.mataUang);
           widget.pelanggan?.value = PelangganMembayar(
             total: t.grandTotal,
             diserahkan: nilai.isEmpty ? null : nilai,
@@ -567,7 +580,7 @@ class _LayarKasirState extends State<LayarKasir> {
     }
 
     final kembalian =
-        hitungKembalian(t.grandTotal, diserahkan, widget.katalog.mataUang);
+        hitungKembalian(t.grandTotal, diserahkan, _katalogAktif.mataUang);
     await _selesaikan(t, metode, diserahkan, kembalian.change);
   }
 
@@ -681,13 +694,13 @@ class _LayarKasirState extends State<LayarKasir> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             BilahSamping(
-              terpilih: 'kasir',
+              terpilih: _menu,
               onPilih: (m) {
-                if (m.diKlienIni) return;
-                // Menu yang layarnya ada di aplikasi web menjawab di mana
-                // layarnya berada. Diam akan membuat kasir menekannya lagi.
-                _kabar(
-                    '${m.label} ada pada aplikasi web eBisnis, belum pada klien kasir ini.');
+                setState(() {
+                  _menu = m.kunci;
+                  _pesan = null;
+                });
+                if (m.kunci == 'kasir') _kembalikanFokus(bersihkanCari: false);
               },
             ),
             Expanded(
@@ -703,32 +716,7 @@ class _LayarKasirState extends State<LayarKasir> {
                     pembaruan: widget.pembaruan,
                     onCekPembaruan: _cekPembaruan,
                   ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(child: _tengah(t)),
-                          const SizedBox(width: 12),
-                          PanelKeranjang(
-                            hasil: t,
-                            metode: widget.metode,
-                            uang: _uang,
-                            jenis: _jenis,
-                            onJenis: (j) {
-                              setState(() => _jenis = j);
-                              _kembalikanFokus(bersihkanCari: false);
-                            },
-                            onUbahJumlah: _ubahJumlah,
-                            onHapus: _hapusBaris,
-                            onBayar: _bayar,
-                            kendaliCatatan: _catatan,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  Expanded(child: _isiMenu(t)),
                 ],
               ),
             ),
@@ -736,6 +724,119 @@ class _LayarKasirState extends State<LayarKasir> {
         ),
       ),
     );
+  }
+
+  Widget _isiMenu(HasilKeranjang t) {
+    if (_menu != 'kasir') return _halamanMenu();
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _tengah(t)),
+          const SizedBox(width: 12),
+          PanelKeranjang(
+            hasil: t,
+            metode: widget.metode,
+            uang: _uang,
+            jenis: _jenis,
+            onJenis: (j) {
+              setState(() => _jenis = j);
+              _kembalikanFokus(bersihkanCari: false);
+            },
+            onUbahJumlah: _ubahJumlah,
+            onHapus: _hapusBaris,
+            onBayar: _bayar,
+            kendaliCatatan: _catatan,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _halamanMenu() {
+    final produk = _katalogAktif.semua();
+    return switch (_menu) {
+      'dashboard' => HalamanDashboard(produk: produk, uang: _uang),
+      'produk' => HalamanProduk(
+          produk: produk,
+          uang: _uang,
+          onProdukDiunggah: (baru) {
+            setState(() {
+              _produkUnggahan = baru;
+              _kategori = kategoriSemua;
+              _kunciCari = '';
+              _baris.clear();
+              _terakhir = null;
+            });
+            _perbaruiPelanggan();
+          },
+        ),
+      'pelanggan' => const HalamanRingkas(
+          judul: 'Pelanggan',
+          ikon: Icons.person_outline,
+          keterangan: 'Daftar pelanggan aktif untuk transaksi kasir.',
+          angka: [
+            (label: 'Pelanggan umum', nilai: '1'),
+            (label: 'Member hari ini', nilai: '0'),
+          ],
+        ),
+      'stok' => HalamanRingkas(
+          judul: 'Stok',
+          ikon: Icons.warehouse_outlined,
+          keterangan: 'Pantau ketersediaan barang pada salinan katalog.',
+          angka: [
+            (
+              label: 'Stok diketahui',
+              nilai: '${produk.where((p) => p.stok != null).length}'
+            ),
+            (
+              label: 'Habis',
+              nilai: '${produk.where((p) => p.stok == 0).length}'
+            ),
+          ],
+        ),
+      'pembelian' => const HalamanRingkas(
+          judul: 'Pembelian',
+          ikon: Icons.shopping_bag_outlined,
+          keterangan: 'Ruang kerja pembelian dan penerimaan barang.',
+          angka: [
+            (label: 'Draft pembelian', nilai: '0'),
+            (label: 'Menunggu terima', nilai: '0'),
+          ],
+        ),
+      'promo' => const HalamanRingkas(
+          judul: 'Promo',
+          ikon: Icons.local_offer_outlined,
+          keterangan: 'Aturan promo yang berlaku untuk kasir.',
+          angka: [
+            (label: 'Promo aktif', nilai: '0'),
+            (label: 'Kupon', nilai: '0'),
+          ],
+        ),
+      'laporan' => const HalamanRingkas(
+          judul: 'Laporan',
+          ikon: Icons.description_outlined,
+          keterangan: 'Ringkasan transaksi dan laporan shift.',
+          angka: [
+            (label: 'Transaksi shift ini', nilai: '0'),
+            (label: 'Retur', nilai: '0'),
+          ],
+        ),
+      'pengaturan' => HalamanRingkas(
+          judul: 'Pengaturan',
+          ikon: Icons.settings_outlined,
+          keterangan: 'Konfigurasi mesin kasir dan sumber data.',
+          angka: [
+            (
+              label: 'Produk lokal',
+              nilai: _produkUnggahan == null ? 'Tidak' : 'Ya'
+            ),
+            (label: 'Printer', nilai: widget.pencetak.siap ? 'Siap' : 'Tidak'),
+          ],
+        ),
+      _ => HalamanDashboard(produk: produk, uang: _uang),
+    };
   }
 
   Widget _tengah(HasilKeranjang t) {
@@ -781,7 +882,7 @@ class _LayarKasirState extends State<LayarKasir> {
         Expanded(
           child: KisiProduk(
             produk: _produkTampil,
-            kategori: widget.katalog.kategori(),
+            kategori: _katalogAktif.kategori(),
             terpilih: _kategori,
             kunciCari: _kunciCari,
             /*

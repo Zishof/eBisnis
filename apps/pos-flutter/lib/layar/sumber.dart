@@ -98,6 +98,49 @@ abstract class SumberKatalog {
   String get mataUang;
 }
 
+/// Katalog sederhana yang hidup di memori aplikasi.
+///
+/// Dipakai untuk data contoh dan untuk hasil upload Excel pada mesin kasir.
+/// Peladen tetap menjadi sumber utama bila POS tersambung, tetapi kasir perlu
+/// dapat mencoba daftar produk dari file tanpa menunggu sinkronisasi penuh.
+class KatalogMemori extends SumberKatalog {
+  KatalogMemori({
+    required List<ProdukLokal> produk,
+    required this.mataUang,
+    List<TarifLuring> tarif = const [],
+  })  : _produk = List.of(produk),
+        _tarif = List.of(tarif);
+
+  final List<ProdukLokal> _produk;
+  final List<TarifLuring> _tarif;
+
+  @override
+  final String mataUang;
+
+  @override
+  ProdukLokal? dariBarcode(String kode) {
+    final bersih = kode.trim();
+    for (final p in _produk) {
+      if (p.barcodes.contains(bersih)) return p;
+    }
+    return null;
+  }
+
+  @override
+  List<ProdukLokal> cari(String kunci) {
+    final kecil = kunci.trim().toLowerCase();
+    if (kecil.isEmpty) return List.unmodifiable(_produk);
+    return _produk.where((p) {
+      return p.nama.toLowerCase().contains(kecil) ||
+          p.productId.toLowerCase().contains(kecil) ||
+          p.barcodes.any((b) => b.contains(kunci.trim()));
+    }).toList();
+  }
+
+  @override
+  List<TarifLuring> get tarif => List.unmodifiable(_tarif);
+}
+
 /// Metode pembayaran sebagaimana tersalin dari peladen.
 class MetodeBayar {
   const MetodeBayar({

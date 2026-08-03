@@ -523,13 +523,12 @@ void main() {
   });
 
   group('bilah samping', () {
-    testWidgets('menu yang layarnya di aplikasi web mengatakan di mana layarnya', (tester) async {
-      // Diam akan membuat kasir menekannya lagi lebih keras.
+    testWidgets('menu non-kasir membuka halaman aktif', (tester) async {
       await pasang(tester);
       await tester.tap(find.byKey(const Key('menu-laporan')));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('aplikasi web eBisnis'), findsOneWidget);
+      expect(find.textContaining('Ringkasan transaksi'), findsOneWidget);
     });
   });
 
