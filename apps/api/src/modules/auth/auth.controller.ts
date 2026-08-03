@@ -223,7 +223,10 @@ export class AuthController {
 @ApiTags('auth')
 @Controller('me')
 export class MeController {
-  constructor(private readonly tenantPermissions: TenantPermissionService) {}
+  constructor(
+    private readonly tenantPermissions: TenantPermissionService,
+    private readonly authService: AuthService,
+  ) {}
 
   @ApiBearerAuth('access-token')
   @Get('context')
@@ -249,11 +252,18 @@ export class MeController {
   @ApiOperation({ summary: 'Menu tree sesuai hak akses. Menu tanpa READ tidak tampil.' })
   async menus(@CurrentUser() user: AuthenticatedUser) {
     if (!user.schemaName) return [];
+    // Vertikal menentukan menu INTI mana yang tampil bawaan (lihat
+    // `TenantPermissionService.menuTree` -- pengurus pondok tidak perlu
+    // menu Kasir/Penjualan/Produksi dsb. Dicari ulang di sini alih-alih
+    // dibawa dari `AuthenticatedUser` supaya selalu mengikuti tenant AKTIF
+    // saat ini, sama seperti pola `AuthController.me()`.
+    const verticalCode = await this.authService.verticalPenyewa(user.tenantId);
     return this.tenantPermissions.menuTree(
       user.schemaName,
       user.userId,
       user.localeCode,
       user.activeRoleId,
+      verticalCode,
     );
   }
 

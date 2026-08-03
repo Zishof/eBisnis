@@ -16,6 +16,78 @@ const DEMO_FORBIDDEN_ACTIONS = new Set([
   'REOPEN',
 ]);
 
+/**
+ * Menu akar (tanpa `parent_id`) INTI/generik yang tampil BAWAAN per vertikal
+ * tenant -- lihat `menuTree()`. Sebelumnya setiap tenant, apa pun
+ * vertikalnya, melihat SELURUH menu ERP generik (Kasir/POS, Penjualan,
+ * Produksi, dst.) sekaligus menu vertikalnya sendiri, sebab peran OWNER
+ * (`allModules: true`, lihat `tenant-role.seed.ts`) menggenapi hak akses ke
+ * mana pun tanpa mempedulikan vertikal.
+ *
+ * Filter ini SENGAJA hanya menyaring TAMPILAN sidebar (dilakukan di sini,
+ * bukan dengan menyempitkan hak akses OWNER/`allModules` itu sendiri) --
+ * `allModules` dipakai bersama SEMUA vertikal (koperasi, klinik, dst.), jadi
+ * menyempitkannya akan diam-diam mencabut akses menu penyewa lain yang
+ * sudah berjalan. Hak akses sesungguhnya TIDAK berubah sama sekali:
+ * pengurus tetap `OWNER` penuh, hanya saja sidebar-nya tidak menawarkan
+ * menu yang hampir pasti tidak relevan untuk pondok pesantren. Menu yang
+ * disembunyikan tetap dapat dibuka langsung lewat alamatnya, dan tetap
+ * dapat ditampilkan lagi kelak lewat pengaturan hak akses begitu itu ada.
+ *
+ * `undefined` (vertikal tidak terdaftar di sini) berarti TIDAK disaring
+ * sama sekali -- perilaku lama, aman bagi vertikal yang belum pernah
+ * dipertimbangkan secara eksplisit.
+ */
+const MENU_AKAR_BAWAAN_PER_VERTIKAL: Record<string, ReadonlySet<string>> = {
+  // "PESANTREN" (huruf besar) -- nilai `Tenant.verticalCode` sesungguhnya
+  // (lihat `VERTIKAL_PESANTREN` di `apps/web/src/app/beranda-sesudah-masuk.ts`
+  // dan `AuthService.verticalPenyewa()`), BUKAN kode registrasi katalog RBAC
+  // ('pesantren', huruf kecil, dipakai `PESANTREN_VERTICAL_CATALOG` di
+  // `pesantren-vertical.catalog.ts`) -- keduanya identifier yang berbeda
+  // meski berasal dari kata yang sama. Tertukar sekali saat pertama ditulis
+  // dan ditangkap lewat pengujian nyata (login sungguhan mengembalikan
+  // `verticalCode: "PESANTREN"`), bukan lewat pembacaan kode.
+  PESANTREN: new Set([
+    // Menu vertikal pesantren sendiri (lihat pesantren-vertical.catalog.ts) --
+    // tiga akar mandiri (Gerbang/Portal Wali/Kiosk) sengaja terpisah dari
+    // EPESANTREN_GROUP di sana justru supaya peran sempitnya tidak
+    // merembes ke seluruh grup; di sini keempatnya tetap harus tampil.
+    'EPESANTREN_GROUP',
+    'EPESANTREN_GERBANG',
+    'EPESANTREN_PORTAL_WALI',
+    'EPESANTREN_KIOSK',
+    // Menu INTI yang tetap relevan bagi pondok: beranda, pembukuan
+    // operasional pondok sendiri (di luar tagihan santri yang sudah
+    // punya menunya sendiri), langganan eBisnis, data master bersama,
+    // administrasi pengguna/peran, dan bantuan.
+    'HOME',
+    'FINANCE',
+    'SUBSCRIPTION',
+    'MASTER_DATA',
+    'ADMIN',
+    'SUPPORT',
+  ]),
+};
+
+/**
+ * Apakah satu menu AKAR (parent_id NULL) tampil bawaan bagi vertikal ini.
+ * Menu turunan (punya parent_id) tidak pernah diperiksa di sini -- nasibnya
+ * mengikuti induknya secara alami lewat penautan `byId` pada `menuTree()`:
+ * akar yang disembunyikan otomatis membuat seluruh turunannya tidak
+ * tertaut ke mana pun, tanpa perlu pemeriksaan rekursif terpisah.
+ */
+export function akarMenuTampilBawaan(
+  kodeMenu: string,
+  parentId: string | null,
+  verticalCode: string | null | undefined,
+): boolean {
+  if (parentId) return true;
+  if (!verticalCode) return true;
+  const akarBawaan = MENU_AKAR_BAWAAN_PER_VERTIKAL[verticalCode];
+  if (!akarBawaan) return true;
+  return akarBawaan.has(kodeMenu);
+}
+
 /** Satu baris izin sebagaimana dibaca dari basis data. */
 export interface PermissionRow {
   permission: string;
@@ -216,6 +288,7 @@ export class TenantPermissionService {
     platformUserId: string,
     localeCode = 'id',
     activeRoleId?: string | null,
+    verticalCode?: string | null,
   ): Promise<Array<Record<string, unknown>>> {
     // Menu mengikuti peran aktif. Menampilkan menu yang tidak dapat dibuka
     // hanya memindahkan penolakan dari daftar menu ke halaman kosong.
@@ -249,7 +322,11 @@ export class TenantPermissionService {
       actionsByMenu.set(menuCode, list);
     }
 
-    const visible = menus.filter((menu) => actionsByMenu.get(menu.code)?.includes('READ'));
+    const visible = menus.filter(
+      (menu) =>
+        actionsByMenu.get(menu.code)?.includes('READ') &&
+        akarMenuTampilBawaan(menu.code, menu.parent_id, verticalCode),
+    );
     const byId = new Map(
       visible.map((menu) => [
         menu.id,
