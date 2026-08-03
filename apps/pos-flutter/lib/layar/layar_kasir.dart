@@ -808,7 +808,11 @@ class _LayarKasirState extends State<LayarKasir> {
   Widget _halamanMenu() {
     final produk = _katalogAktif.semua();
     return switch (_menu) {
-      'dashboard' => HalamanDashboard(produk: produk, uang: _uang),
+      'dashboard' => HalamanDashboard(
+          produk: produk,
+          riwayat: _riwayatPembayaran,
+          uang: _uang,
+        ),
       'produk' => HalamanProduk(
           produk: produk,
           uang: _uang,
@@ -892,7 +896,11 @@ class _LayarKasirState extends State<LayarKasir> {
             (label: 'Printer', nilai: widget.pencetak.siap ? 'Siap' : 'Tidak'),
           ],
         ),
-      _ => HalamanDashboard(produk: produk, uang: _uang),
+      _ => HalamanDashboard(
+          produk: produk,
+          riwayat: _riwayatPembayaran,
+          uang: _uang,
+        ),
     };
   }
 

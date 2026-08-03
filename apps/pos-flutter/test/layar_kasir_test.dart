@@ -601,6 +601,40 @@ void main() {
 
       expect(find.textContaining('Ringkasan transaksi'), findsOneWidget);
     });
+
+    testWidgets('dashboard bisnis memuat tab analitik lengkap', (tester) async {
+      await pasang(tester);
+      await tester.tap(find.byKey(const Key('menu-dashboard')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Dashboard Bisnis'), findsOneWidget);
+      expect(find.text('Ringkasan Umum'), findsOneWidget);
+      expect(find.text('Keuangan & Kinerja'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('dashboard-tab-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Pendapatan Kotor'), findsOneWidget);
+
+      final daftarTab = find.descendant(
+        of: find.byKey(const Key('dashboard-tab-list')),
+        matching: find.byType(Scrollable),
+      );
+      for (var i = 0; i < 16; i += 1) {
+        await tester.drag(daftarTab, const Offset(-180, 0));
+        await tester.pumpAndSettle();
+        final tabAkhir = find.byKey(const Key('dashboard-tab-8'));
+        if (tabAkhir.evaluate().isEmpty) continue;
+        final pusat = tester.getCenter(tabAkhir);
+        if (pusat.dx < tester.view.physicalSize.width - 40) {
+          break;
+        }
+      }
+      await tester.tap(find.byKey(const Key('dashboard-tab-8')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kepatuhan Operasional'), findsWidgets);
+      expect(find.text('Struk Tersimpan'), findsOneWidget);
+    });
   });
 
   group('layar pelanggan mengikuti', () {
