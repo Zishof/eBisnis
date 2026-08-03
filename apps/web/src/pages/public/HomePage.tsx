@@ -273,6 +273,13 @@ const CONTOH_USAHA = [
   },
 ];
 
+const FILTER_CONTOH_USAHA = [
+  { key: 'semua', label: 'Semua' },
+  { key: 'siap', label: 'Siap dicoba' },
+  { key: 'berikutnya', label: 'Berikutnya' },
+  { key: 'umum', label: 'Umum' },
+] as const;
+
 export function HomePage() {
   const { t, i18n } = useTranslation();
   const cmsText = useCmsText();
@@ -683,9 +690,24 @@ export function HomePage() {
 }
 
 function ContohUsahaGrid() {
+  const [filter, setFilter] = useState<(typeof FILTER_CONTOH_USAHA)[number]['key']>('semua');
+  const usahaTerlihat = useMemo(
+    () =>
+      CONTOH_USAHA.filter((item) => {
+        if (filter === 'semua') return true;
+        if (filter === 'siap') return item.status === 'Siap dicoba';
+        if (filter === 'berikutnya') return item.status === 'Berikutnya';
+        return item.status === 'Umum';
+      }),
+    [filter],
+  );
+  const jumlahSiap = CONTOH_USAHA.filter((item) => item.status === 'Siap dicoba').length;
+  const usahaUtama = usahaTerlihat.find((item) => item.status === 'Siap dicoba') ?? usahaTerlihat[0] ?? CONTOH_USAHA[0];
+  const IconUtama = usahaUtama.icon;
+
   return (
-    <div className="mx-auto mt-12 max-w-6xl rounded-2xl border border-slate-200 bg-white/90 p-4 text-start shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
-      <div className="flex flex-col gap-2 px-1 pb-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto mt-12 max-w-6xl rounded-2xl border border-slate-200 bg-white/90 p-4 text-start shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 sm:p-5">
+      <div className="grid gap-4 px-1 pb-5 lg:grid-cols-[1fr_0.9fr] lg:items-end">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
             Coba sesuai jenis usaha
@@ -693,14 +715,54 @@ function ContohUsahaGrid() {
           <h2 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
             Pilih contoh yang paling mirip dengan bisnis Anda
           </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+            {jumlahSiap} contoh sudah siap dibuka langsung. Yang lain disediakan sebagai peta kebutuhan
+            agar calon tenant paham modul apa yang akan aktif ketika jenis usahanya dipilih.
+          </p>
         </div>
-        <p className="max-w-xl text-sm text-slate-600 dark:text-slate-300">
-          Jenis usaha disusun dari kebutuhan yang Anda sebut dan kategori UMKM umum:
-          perdagangan, kuliner, jasa, kecantikan, fashion, agribisnis, dan layanan harian.
-        </p>
+        <div className="rounded-xl border border-brand-100 bg-brand-50 p-4 dark:border-brand-900 dark:bg-brand-950/30">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-700 text-white">
+              <IconUtama className="h-5 w-5" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+                Rekomendasi dibuka dulu
+              </p>
+              <p className="mt-1 font-bold text-slate-950 dark:text-white">{usahaUtama.label}</p>
+              <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">{usahaUtama.detail}</p>
+              <TautanContohUsaha
+                href={usahaUtama.href}
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-800"
+              >
+                Buka contoh
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </TautanContohUsaha>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="mb-4 flex flex-wrap gap-2 px-1" role="tablist" aria-label="Filter contoh usaha">
+        {FILTER_CONTOH_USAHA.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            role="tab"
+            aria-selected={filter === item.key}
+            className={clsx(
+              'rounded-full border px-3 py-1.5 text-sm font-semibold transition',
+              filter === item.key
+                ? 'border-brand-700 bg-brand-700 text-white'
+                : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300 hover:text-brand-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+            )}
+            onClick={() => setFilter(item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {CONTOH_USAHA.map((item) => {
+        {usahaTerlihat.map((item) => {
           const Icon = item.icon;
           const siap = item.status === 'Siap dicoba';
           return (
@@ -749,7 +811,7 @@ function ContohUsahaGrid() {
                   return (
                     <Link
                       key={`${item.label}-${dokumen.label}`}
-                      to={dokumen.href}
+                      to={`${dokumen.href}?jenis=${encodeURIComponent(item.label)}`}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:border-brand-300 hover:bg-brand-50 dark:border-slate-800 dark:text-slate-200 dark:hover:border-brand-700 dark:hover:bg-brand-950/30"
                     >
                       <DokumenIcon className="h-3.5 w-3.5" aria-hidden />
