@@ -83,6 +83,12 @@ class DisposisiIzinDto {
   catatan?: string;
 }
 
+class SopDisposisiDto {
+  @ApiProperty({ example: { PULANG: ['WALI_KELAS', 'PEMBINA_ASRAMA', 'PENGASUH'] } })
+  @IsObject()
+  value!: Record<string, unknown>;
+}
+
 @ApiTags('pesantren')
 @ApiBearerAuth('access-token')
 @Controller('pesantren/perizinan')
@@ -100,6 +106,21 @@ export class PesantrenPerizinanController {
       ukuranHalaman:
         query.ukuranHalaman && query.ukuranHalaman > 0 && query.ukuranHalaman <= 100 ? query.ukuranHalaman : 25,
     });
+  }
+
+  @Permissions('EPESANTREN_PERIZINAN.READ')
+  @Get('sop-disposisi')
+  @ApiOperation({ summary: 'Template SOP disposisi per jenis izin' })
+  sopDisposisi(@CurrentUser() user: AuthenticatedUser) {
+    return this.perizinan.sopDisposisi(schemaWajib(user));
+  }
+
+  @Permissions('EPESANTREN_PERIZINAN.UPDATE')
+  @Post('sop-disposisi')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Menyimpan template SOP disposisi per jenis izin' })
+  simpanSopDisposisi(@Body() dto: SopDisposisiDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.perizinan.simpanSopDisposisi(schemaWajib(user), dto.value, user.userId);
   }
 
   @Permissions('EPESANTREN_PERIZINAN.READ')

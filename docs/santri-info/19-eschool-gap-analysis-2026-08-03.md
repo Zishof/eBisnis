@@ -41,7 +41,7 @@ Audit dilakukan terhadap 240 file Java di folder sekolah AIS. Satu file bisa mas
 | Tagihan/pembayaran/deposit | `TagihanAction.java`, `PembayaranSiswaAction.java`, `DepositSiswaAction.java`, `PostingPiutangSiswaAction.java` | Dilengkapi dasar | Tagihan, dompet santri, POS/dompet handler, pembuatan dompet, top-up, belanja, saldo, batas harian, dan riwayat transaksi tersedia di UI `/app/pesantren/dompet`. Gap lanjutan: semua skenario posting akuntansi legacy belum seluruhnya dipetakan. |
 | Pelanggaran/hukuman | `PelanggaranSiswaAction.java`, `PelanggaranDanHukumanAction.java`, `HukumanAction.java` | Ada sebagian | Pencatatan pelanggaran tersedia. Gap: katalog hukuman dan workflow tindak lanjut bertingkat masih perlu halaman operasional. |
 | Prestasi/penghargaan | `PrestasiSiswaAction.java`, `PenghargaanSiswaAction.java`, `ApresiasiSiswaAction.java` | Ada sebagian | Prestasi tersedia. Gap: penghargaan/apresiasi terpisah belum seluruhnya menjadi modul. |
-| Pengajuan/izin siswa | `PengajuanSiswaAction.java` | Dilengkapi | Perizinan santri kini membawa lampiran, kontak penjemput, metadata, disposisi, riwayat keputusan, pembatalan, penyelesaian, dan UI `/app/pesantren/perizinan` untuk ajukan/setujui/tolak/disposisi/batal/selesai. UI juga punya SOP Disposisi per jenis izin agar tujuan disposisi tidak lagi hard-coded ke pengasuh. Gap lanjutan: menyimpan template SOP permanen di backend setting tenant bila pondok ingin dipakai lintas perangkat. |
+| Pengajuan/izin siswa | `PengajuanSiswaAction.java` | Dilengkapi | Perizinan santri kini membawa lampiran, kontak penjemput, metadata, disposisi, riwayat keputusan, pembatalan, penyelesaian, dan UI `/app/pesantren/perizinan` untuk ajukan/setujui/tolak/disposisi/batal/selesai. UI juga punya SOP Disposisi per jenis izin dan template-nya tersimpan di `app_setting` tenant, sehingga tujuan disposisi tidak hard-coded dan berlaku lintas perangkat. |
 | Kunjungan/gerbang | `KunjunganSiswaAction.java`, `PengajuanSiswaAction.java` | Dilengkapi | Endpoint daftar izin aktif, scan kartu, dan halaman Gerbang Keluar-Masuk ditambahkan. Petugas hanya mencatat lintasan terhadap izin DISETUJUI. |
 | Catatan guru/orang tua | `CatatanGuruAction.java`, `CatatanSiswaAction.java`, `BukuPenghubungSiswa.java` | Dilengkapi | Modul `pesantren_buku_penghubung` dan UI `/app/pesantren/buku-penghubung` tersedia untuk catatan guru/pengurus/wali per santri, visibilitas INTERNAL/WALI, status, penutupan tindak lanjut, split-view detail, composer tindak lanjut, dan notifikasi in-app ke role WALI untuk catatan yang terlihat wali. Gap lanjutan: komentar balasan bertingkat berbasis tabel thread bila diperlukan percakapan dua arah penuh. |
 | Kegiatan kesiswaan/organisasi | `KegiatanKesiswaanAction.java`, `OrganisasiSiswaAction.java` | Dilengkapi dasar | UI `/app/pesantren/ekstrakurikuler` kini dapat membuat ekstrakurikuler/organisasi/kepanitiaan. Gap: anggota ekskul, jabatan, dan penilaian partisipasi detail belum dibuat sebagai layar penuh. |
@@ -115,7 +115,7 @@ Sudah operasional dasar:
 Belum penuh dibanding AIS:
 
 - UI builder drag-drop untuk `form_schema` PSB;
-- UI SOP disposisi per jenis izin sudah tersedia di halaman perizinan; persistensi tenant/backend masih backlog bila perlu lintas perangkat;
+- UI SOP disposisi per jenis izin sudah tersedia di halaman perizinan dan tersimpan di backend tenant;
 - detail relasi presensi ke jadwal/piket;
 - timetable visual drag-drop;
 - UI entry nilai per kelas dan cetak rapor PDF;
@@ -125,8 +125,7 @@ Belum penuh dibanding AIS:
 
 ## Gap Berikutnya yang Disarankan
 
-1. Persistensi backend untuk template SOP disposisi bila harus lintas perangkat.
-2. Komentar dua arah bertingkat pada buku penghubung bila wali perlu membalas langsung.
-3. Jadwal visual drag-drop dan rapor PDF.
-4. Relasi fisik `jadwal_id`/`piket_id` di tabel presensi bila diperlukan audit granular.
-5. Integrasi fingerprint nyata setelah merek/perangkat SDK dipastikan.
+1. Komentar dua arah bertingkat pada buku penghubung bila wali perlu membalas langsung.
+2. Jadwal visual drag-drop dan rapor PDF.
+3. Relasi fisik `jadwal_id`/`piket_id` di tabel presensi bila diperlukan audit granular.
+4. Integrasi fingerprint nyata setelah merek/perangkat SDK dipastikan.
