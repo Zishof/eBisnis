@@ -72,7 +72,7 @@ export function SalonDemoPage() {
               <span className="block text-xs text-slate-500">salon.ebisnis.id</span>
             </span>
           </a>
-          <nav className="flex flex-wrap items-center gap-2 text-sm">
+          <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold">
             {[
               ['website', 'Website'],
               ['booking', 'Booking'],
@@ -83,7 +83,11 @@ export function SalonDemoPage() {
               <button
                 key={key}
                 type="button"
-                className={tab === key ? 'btn-primary py-2' : 'btn-ghost py-2'}
+                className={
+                  tab === key
+                    ? 'rounded-lg bg-teal-700 px-4 py-2 text-white shadow-sm transition hover:bg-teal-800'
+                    : 'rounded-lg px-4 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950'
+                }
                 onClick={() => setTab(key as Tab)}
               >
                 {label}
@@ -161,15 +165,18 @@ function WebsiteSalon({ produk }: { produk: ProdukSalon[] }) {
         />
       </section>
 
-      <section className="card p-5">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold">Produk dan layanan unggulan</h2>
+            <h2 className="text-xl font-bold text-slate-950">Produk dan layanan unggulan</h2>
             <p className="mt-1 text-sm text-slate-600">
               Admin dapat mengganti isi website toko, promosi, dan layanan yang ditampilkan.
             </p>
           </div>
-          <a className="btn-outline" href="/update/ebisnis-pelanggan-salon.apk">
+          <a
+            className="inline-flex items-center gap-2 rounded-lg border border-teal-700 px-4 py-2 text-sm font-semibold text-teal-800 transition hover:bg-teal-50"
+            href="/update/ebisnis-pelanggan-salon.apk"
+          >
             <Download className="h-4 w-4" aria-hidden />
             APK pelanggan Android
           </a>
@@ -182,8 +189,8 @@ function WebsiteSalon({ produk }: { produk: ProdukSalon[] }) {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="card p-5">
-          <h2 className="text-xl font-bold">Jam kerja</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-950">Jam kerja</h2>
           <div className="mt-4 overflow-x-auto">
             <table className="table-grid">
               <thead>
@@ -207,12 +214,12 @@ function WebsiteSalon({ produk }: { produk: ProdukSalon[] }) {
             </table>
           </div>
         </div>
-        <div className="card p-5">
-          <h2 className="text-xl font-bold">Kursi cukur aktif</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-950">Kursi cukur aktif</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {kursiSalon.map((kursi) => (
-              <div key={kursi.nama} className="rounded-lg border border-slate-200 p-4">
-                <p className="font-semibold">{kursi.nama}</p>
+              <div key={kursi.nama} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <p className="font-semibold text-slate-950">{kursi.nama}</p>
                 <p className="text-sm text-slate-600">{kursi.petugas}</p>
                 <p className="mt-1 text-xs text-slate-500">{kursi.spesialis}</p>
               </div>
@@ -503,9 +510,9 @@ function InfoGelap({ icon, label }: { icon: ReactNode; label: string }) {
 
 function PanelInfo({ ikon, judul, isi }: { ikon: ReactNode; judul: string; isi: string }) {
   return (
-    <article className="card p-5">
-      <span className="grid h-11 w-11 place-items-center rounded-lg bg-brand-50 text-brand-700">{ikon}</span>
-      <h2 className="mt-4 text-lg font-bold">{judul}</h2>
+    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <span className="grid h-11 w-11 place-items-center rounded-lg bg-teal-50 text-teal-700">{ikon}</span>
+      <h2 className="mt-4 text-lg font-bold text-slate-950">{judul}</h2>
       <p className="mt-2 text-sm leading-6 text-slate-600">{isi}</p>
     </article>
   );
@@ -513,16 +520,16 @@ function PanelInfo({ ikon, judul, isi }: { ikon: ReactNode; judul: string; isi: 
 
 function ProdukCard({ produk }: { produk: ProdukSalon }) {
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4">
+    <article className="rounded-lg border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-start justify-between gap-2">
         <span className="badge bg-slate-100 text-slate-700">{produk.kategori}</span>
         {produk.unggulan && <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden />}
       </div>
-      <h3 className="mt-3 font-bold">{produk.nama}</h3>
+      <h3 className="mt-3 font-bold text-slate-950">{produk.nama}</h3>
       <p className="mt-1 text-sm text-slate-500">
         {produk.durasiMenit ? `${produk.durasiMenit} menit` : `Stok ${produk.stok}`}
       </p>
-      <p className="mt-3 text-lg font-bold text-brand-700">{uang.format(produk.harga)}</p>
+      <p className="mt-3 text-lg font-bold text-teal-800">{uang.format(produk.harga)}</p>
     </article>
   );
 }
