@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useMemo } from 'react';
 import {
   ArrowRight,
   Banknote,
@@ -28,6 +29,19 @@ interface ModuleConfig {
   tasks: Array<{ title: string; owner: string; status: string; tone?: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }>;
   actions: Array<{ label: string; href: string }>;
 }
+
+interface DemoRow {
+  id: string;
+  tanggal: string;
+  referensi: string;
+  pekerjaan: string;
+  owner: string;
+  nominal: string;
+  status: string;
+  tone?: 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+}
+
+const DEMO_ROW_COUNT = 50;
 
 const MODULES: Array<{ match: RegExp; config: ModuleConfig }> = [
   {
@@ -375,10 +389,63 @@ const DEFAULT_CONFIG: ModuleConfig = {
   ],
 };
 
+const STATUS_POOL: Array<{ status: string; tone: DemoRow['tone'] }> = [
+  { status: 'READY', tone: 'success' },
+  { status: 'PENDING', tone: 'warning' },
+  { status: 'REVIEW', tone: 'info' },
+  { status: 'APPROVED', tone: 'success' },
+  { status: 'WAITING_APPROVAL', tone: 'warning' },
+  { status: 'POSTED', tone: 'success' },
+];
+
+const OWNER_POOL = [
+  'Kasir demo',
+  'Manajemen Salon',
+  'Pemilik',
+  'Gudang',
+  'Keuangan',
+  'Admin',
+  'Supervisor',
+  'Marketing',
+  'CS',
+  'Sistem',
+];
+
+function buildDemoRows(config: ModuleConfig, path: string): DemoRow[] {
+  const base = Date.now();
+  const prefix = config.title
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 12) || 'MODUL';
+
+  return Array.from({ length: DEMO_ROW_COUNT }, (_, index) => {
+    const template = config.tasks[index % config.tasks.length];
+    const status = STATUS_POOL[(index + path.length) % STATUS_POOL.length];
+    const tanggal = new Date(base - index * 86_400_000).toISOString().slice(0, 10);
+    const nominal = (125_000 + ((index * 73_000 + path.length * 11_000) % 8_750_000)).toLocaleString(
+      'id-ID',
+      { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 },
+    );
+
+    return {
+      id: `${prefix}-${String(index + 1).padStart(3, '0')}`,
+      tanggal,
+      referensi: `${prefix}-${new Date().getFullYear()}-${String(index + 1).padStart(4, '0')}`,
+      pekerjaan: `${template.title} #${String(index + 1).padStart(2, '0')}`,
+      owner: OWNER_POOL[(index + config.group.length) % OWNER_POOL.length] ?? template.owner,
+      nominal,
+      status: status.status,
+      tone: status.tone,
+    };
+  });
+}
+
 export function OperationalModulePage() {
   const location = useLocation();
   const config = MODULES.find((module) => module.match.test(location.pathname))?.config ?? DEFAULT_CONFIG;
   const Icon = config.icon;
+  const demoRows = useMemo(() => buildDemoRows(config, location.pathname), [config, location.pathname]);
 
   return (
     <>
@@ -407,7 +474,7 @@ export function OperationalModulePage() {
             <div>
               <h2 className="font-semibold text-slate-900 dark:text-white">Ringkasan kerja</h2>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                Semua angka di halaman ini memakai data demo agar menu dapat diuji end-to-end tanpa menunggu input produksi.
+                Halaman ini menampilkan {DEMO_ROW_COUNT} baris data demo, cukup padat untuk uji operasional tanpa melewati batas 1000 record per modul.
               </p>
             </div>
           </div>
@@ -438,27 +505,36 @@ export function OperationalModulePage() {
 
       <section className="card mt-5 overflow-hidden">
         <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-          <h2 className="font-semibold text-slate-900 dark:text-white">Daftar pekerjaan</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-semibold text-slate-900 dark:text-white">Daftar pekerjaan demo</h2>
+            <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+              {demoRows.length} data contoh
+            </span>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr>
+                <th className="px-5 py-3 text-start font-semibold">Tanggal</th>
+                <th className="px-5 py-3 text-start font-semibold">Referensi</th>
                 <th className="px-5 py-3 text-start font-semibold">Pekerjaan</th>
                 <th className="px-5 py-3 text-start font-semibold">Penanggung jawab</th>
+                <th className="px-5 py-3 text-end font-semibold">Nominal</th>
                 <th className="px-5 py-3 text-start font-semibold">Status</th>
-                <th className="px-5 py-3 text-start font-semibold">Rute</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
-              {config.tasks.map((task) => (
-                <tr key={task.title}>
-                  <td className="px-5 py-4 font-medium text-slate-900 dark:text-white">{task.title}</td>
-                  <td className="px-5 py-4 text-slate-600 dark:text-slate-300">{task.owner}</td>
+              {demoRows.map((row) => (
+                <tr key={row.id}>
+                  <td className="whitespace-nowrap px-5 py-4 text-slate-600 dark:text-slate-300">{row.tanggal}</td>
+                  <td className="whitespace-nowrap px-5 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">{row.referensi}</td>
+                  <td className="px-5 py-4 font-medium text-slate-900 dark:text-white">{row.pekerjaan}</td>
+                  <td className="px-5 py-4 text-slate-600 dark:text-slate-300">{row.owner}</td>
+                  <td className="whitespace-nowrap px-5 py-4 text-end font-semibold tabular-nums text-slate-900 dark:text-white">{row.nominal}</td>
                   <td className="px-5 py-4">
-                    <StatusBadge status={task.status} tone={task.tone} />
+                    <StatusBadge status={row.status} tone={row.tone} />
                   </td>
-                  <td className="px-5 py-4 text-slate-500 dark:text-slate-400">{location.pathname}</td>
                 </tr>
               ))}
             </tbody>

@@ -1,7 +1,7 @@
 /**
  * Produk contoh untuk katalog marketplace.
  *
- * Dua puluh lima produk yang tersebar pada sepuluh kategori, dengan harga,
+ * Lima puluh produk yang tersebar pada sepuluh kategori, dengan harga,
  * berat, dan stok yang masuk akal. Tujuannya membuat katalog dapat dicoba
  * sungguhan — mencari, menyaring harga, mengurutkan, membuka halaman produk —
  * yang tidak dapat dilakukan dengan tiga produk contoh.
@@ -344,5 +344,70 @@ export const SAMPLE_PRODUCTS: SampleProduct[] = [
   },
 ];
 
-/** Sepuluh kategori yang dipakai; berguna untuk memeriksa sebaran. */
+const EXTRA_CATEGORIES = [
+  'FASHION_PRIA',
+  'FASHION_WANITA',
+  'FASHION_MUSLIM',
+  'FASHION_SEPATU',
+  'FASHION_TAS',
+  'MAKANAN_KOPI',
+  'MAKANAN_RINGAN',
+  'MAKANAN_BAHAN',
+  'GADGET_AKSESORIS',
+  'ELEKTRONIK_AUDIO',
+  'ELEKTRONIK_LAMPU',
+  'GADGET_LAPTOP',
+  'RUMAH_DAPUR',
+  'RUMAH_FURNITUR',
+];
+
+const EXTRA_TITLES = [
+  'Polo Katun Pique Reguler',
+  'Cardigan Rajut Ringan',
+  'Hijab Voal Motif Harian',
+  'Sandal Kulit Casual',
+  'Dompet Lipat Kulit Sintetis',
+  'Kopi Robusta Temanggung 250 Gram',
+  'Granola Cokelat Kacang 300 Gram',
+  'Bumbu Rendang Instan Premium',
+  'Charger USB-C 65W GaN',
+  'Speaker Bluetooth Portabel',
+  'Lampu Meja LED Lipat',
+  'Mouse Wireless Silent',
+  'Wajan Anti Lengket 28 cm',
+  'Kursi Kerja Ergonomis',
+  'Kemeja Oxford Lengan Pendek',
+  'Dress Rayon Motif Bunga',
+  'Mukena Travel Parasut',
+  'Sepatu Sekolah Hitam',
+  'Tote Bag Kanvas Tebal',
+  'Kopi Susu Botol Siap Minum',
+  'Biskuit Gandum Rendah Gula',
+  'Saus Sambal Botol 500 ml',
+  'Holder Ponsel Mobil',
+  'Headset Kabel Mikrofon',
+  'Meja Lipat Serbaguna',
+];
+
+SAMPLE_PRODUCTS.push(
+  ...EXTRA_TITLES.map((title, i): SampleProduct => {
+    const categoryCode = EXTRA_CATEGORIES[i % EXTRA_CATEGORIES.length];
+    const price = 42_000 + i * 37_000;
+    return {
+      code: `DEMO-MKT-${String(i + 26).padStart(3, '0')}`,
+      title,
+      description:
+        `${title} untuk melengkapi katalog demo eBisnis dengan variasi harga, ` +
+        'kategori, berat, dan stok yang terasa seperti toko aktif. Data ini sengaja dibuat stabil agar calon tenant dapat mencoba pencarian, filter, dan pengurutan berulang kali.',
+      categoryCode,
+      price,
+      stock: 18 + ((i * 17) % 210),
+      weightGram: 120 + ((i * 230) % 6200),
+      condition: i === 22 ? 'USED' : 'NEW',
+      priceHigh: i % 6 === 0 ? price + 25_000 : undefined,
+    };
+  }),
+);
+
+/** Kategori yang dipakai; berguna untuk memeriksa sebaran. */
 export const SAMPLE_CATEGORY_CODES = [...new Set(SAMPLE_PRODUCTS.map((p) => p.categoryCode))];
