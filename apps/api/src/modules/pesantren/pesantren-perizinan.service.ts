@@ -52,9 +52,51 @@ export interface BarisRiwayatIzin {
   created_at: string;
 }
 
+export const SOP_DISPOSISI_DEFAULT: Record<string, string[]> = {
+  PULANG: ['WALI_KELAS', 'PEMBINA_ASRAMA', 'PENGASUH'],
+  KELUAR_SEMENTARA: ['PEMBINA_ASRAMA', 'KEAMANAN'],
+  SAKIT: ['UKS_KLINIK', 'PEMBINA_ASRAMA', 'PENGASUH'],
+  KEPERLUAN_KELUARGA: ['WALI_KELAS', 'PEMBINA_ASRAMA', 'PENGASUH'],
+  LAINNYA: ['PEMBINA_ASRAMA', 'PENGASUH'],
+};
+
 @Injectable()
 export class PesantrenPerizinanService {
   constructor(private readonly tenantDb: TenantConnectionService) {}
+
+  async sopDisposisi(schemaName: string): Promise<Record<string, string[]>> {
+    const S = `"${schemaName}"`;
+    const row = await this.tenantDb.queryOne<{ value_json: unknown }>(
+      schemaName,
+      `SELECT value_json FROM ${S}.app_setting
+        WHERE code = 'PESANTREN_PERIZINAN_SOP_DISPOSISI'
+          AND scope_type = 'TENANT'
+          AND deleted_at IS NULL
+          AND is_active = TRUE`,
+    );
+    const value = (row?.value_json as { value?: unknown } | null)?.value;
+    return normalisasiSopDisposisi(value);
+  }
+
+  async simpanSopDisposisi(schemaName: string, masukan: unknown, updatedBy: string): Promise<Record<string, string[]>> {
+    const value = normalisasiSopDisposisi(masukan);
+    const S = `"${schemaName}"`;
+    await this.tenantDb.query(
+      schemaName,
+      `INSERT INTO ${S}.app_setting
+         (scope_type, code, name, description, value_type, value_json, is_system, updated_by, created_by)
+       VALUES ('TENANT', 'PESANTREN_PERIZINAN_SOP_DISPOSISI', 'SOP Disposisi Perizinan Santri',
+               'Urutan tujuan disposisi per jenis izin santri.', 'JSON', $1::jsonb, TRUE, $2, $2)
+       ON CONFLICT (scope_type, COALESCE(scope_id, '00000000-0000-0000-0000-000000000000'::uuid), code)
+         WHERE deleted_at IS NULL
+       DO UPDATE SET value_json = EXCLUDED.value_json,
+                     updated_at = now(),
+                     updated_by = EXCLUDED.updated_by,
+                     version = app_setting.version + 1`,
+      [JSON.stringify({ value }), updatedBy],
+    );
+    return value;
+  }
 
   async daftar(
     schemaName: string,
@@ -295,4 +337,22 @@ export class PesantrenPerizinanService {
 function bersihkan(nilai?: string | null): string | null {
   const bersih = (nilai ?? '').trim();
   return bersih ? bersih : null;
+}
+
+function normalisasiSopDisposisi(value: unknown): Record<string, string[]> {
+  const input = isObject(value) ? value : {};
+  const hasil: Record<string, string[]> = {};
+  for (const [jenis, bawaan] of Object.entries(SOP_DISPOSISI_DEFAULT)) {
+    const daftar = Array.isArray(input[jenis]) ? input[jenis] : bawaan;
+    const bersih = daftar
+      .map((item) => String(item).trim().toUpperCase().replace(/\s+/g, '_'))
+      .filter(Boolean)
+      .slice(0, 8);
+    hasil[jenis] = bersih.length ? [...new Set(bersih)] : bawaan;
+  }
+  return hasil;
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

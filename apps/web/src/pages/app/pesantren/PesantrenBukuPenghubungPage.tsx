@@ -26,7 +26,7 @@ interface SantriRow {
 }
 
 const PAGE_SIZE = 25;
-const JENIS = ['AKADEMIK', 'AKHLAK', 'KESEHATAN', 'TAHFIZ', 'PERIZINAN', 'LAINNYA'];
+const JENIS = ['AKADEMIK', 'KESEHATAN', 'KEDISIPLINAN', 'IBADAH', 'ASRAMA', 'WALI', 'LAINNYA'];
 const VISIBILITAS = ['INTERNAL', 'WALI'];
 
 function today() {
@@ -44,7 +44,7 @@ export function PesantrenBukuPenghubungPage() {
   const [form, setForm] = useState({
     santriId: '',
     tanggal: today(),
-    jenis: 'AKHLAK',
+    jenis: 'KEDISIPLINAN',
     visibilitas: 'WALI',
     judul: '',
     isi: '',
@@ -77,7 +77,7 @@ export function PesantrenBukuPenghubungPage() {
       }),
     onSuccess: () => {
       toast.push('Catatan buku penghubung tersimpan.', 'success');
-      setForm({ santriId: '', tanggal: form.tanggal, jenis: 'AKHLAK', visibilitas: 'WALI', judul: '', isi: '', tindakLanjut: '' });
+      setForm({ santriId: '', tanggal: form.tanggal, jenis: 'KEDISIPLINAN', visibilitas: 'WALI', judul: '', isi: '', tindakLanjut: '' });
       void queryClient.invalidateQueries({ queryKey: ['pesantren-buku-penghubung'] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan catatan.'), 'error'),

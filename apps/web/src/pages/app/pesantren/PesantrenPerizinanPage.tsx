@@ -47,7 +47,6 @@ export function PesantrenPerizinanPage() {
   const [status, setStatus] = useState('');
   const [membuat, setMembuat] = useState(false);
   const [mengaturSop, setMengaturSop] = useState(false);
-  const [sop, setSop] = useState<Record<string, string[]>>(SOP_DEFAULT);
   const [catatan, setCatatan] = useState<Record<string, string>>({});
   const [tujuanDisposisi, setTujuanDisposisi] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
@@ -72,6 +71,10 @@ export function PesantrenPerizinanPage() {
   const santri = useQuery({
     queryKey: ['pesantren-perizinan-santri'],
     queryFn: () => api.get<{ items: SantriRow[]; total: number }>('/pesantren/santri?status=AKTIF&halaman=1&ukuranHalaman=100'),
+  });
+  const sopQuery = useQuery({
+    queryKey: ['pesantren-perizinan-sop-disposisi'],
+    queryFn: () => api.get<Record<string, string[]>>('/pesantren/perizinan/sop-disposisi'),
   });
 
   const ajukan = useMutation({
@@ -110,12 +113,18 @@ export function PesantrenPerizinanPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal disposisi izin.'), 'error'),
   });
 
-  const simpanSop = (berikutnya: Record<string, string[]>) => {
-    setSop(berikutnya);
-    toast.push('SOP disposisi aktif untuk halaman ini.', 'success');
-  };
+  const simpanSop = useMutation({
+    mutationFn: (value: Record<string, string[]>) => api.post<Record<string, string[]>>('/pesantren/perizinan/sop-disposisi', { value }),
+    onSuccess: async () => {
+      toast.push('SOP disposisi tersimpan.', 'success');
+      await queryClient.invalidateQueries({ queryKey: ['pesantren-perizinan-sop-disposisi'] });
+      setMengaturSop(false);
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan SOP disposisi.'), 'error'),
+  });
 
   const namaSantri = new Map((santri.data?.items ?? []).map((item) => [item.id, `${item.nis} - ${item.nama_lengkap}`]));
+  const sop = sopQuery.data ?? SOP_DEFAULT;
 
   const columns: Array<GridColumn<IzinRow>> = [
     { key: 'santri_id', header: 'Santri', render: (row) => namaSantri.get(row.santri_id) ?? row.santri_id },
@@ -278,10 +287,8 @@ export function PesantrenPerizinanPage() {
         <SopModal
           value={sop}
           onClose={() => setMengaturSop(false)}
-          onSave={(next) => {
-            simpanSop(next);
-            setMengaturSop(false);
-          }}
+          saving={simpanSop.isPending}
+          onSave={(next) => simpanSop.mutate(next)}
         />
       )}
     </>
@@ -297,7 +304,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function SopModal({ value, onClose, onSave }: { value: Record<string, string[]>; onClose: () => void; onSave: (value: Record<string, string[]>) => void }) {
+function SopModal({
+  value,
+  saving,
+  onClose,
+  onSave,
+}: {
+  value: Record<string, string[]>;
+  saving?: boolean;
+  onClose: () => void;
+  onSave: (value: Record<string, string[]>) => void;
+}) {
   const [draft, setDraft] = useState<Record<string, string>>(() =>
     Object.fromEntries(JENIS_OPTIONS.map((jenis) => [jenis, (value[jenis] ?? SOP_DEFAULT[jenis] ?? []).join(', ')])),
   );
@@ -330,7 +347,7 @@ function SopModal({ value, onClose, onSave }: { value: Record<string, string[]>;
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" className="btn-outline" onClick={onClose}>Batal</button>
-          <button type="button" className="btn-primary" onClick={simpan}>Simpan SOP</button>
+          <button type="button" className="btn-primary" onClick={simpan} disabled={saving}>Simpan SOP</button>
         </div>
       </div>
     </div>
