@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Plus, RefreshCw, XCircle } from 'lucide-react';
+import { CheckCircle2, Plus, RefreshCw, Settings2, XCircle } from 'lucide-react';
 import { api, formatDate } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -27,6 +27,13 @@ interface SantriRow {
 const PAGE_SIZE = 25;
 const STATUS_OPTIONS = ['MENUNGGU', 'DISETUJUI', 'DITOLAK', 'SELESAI', 'DIBATALKAN'];
 const JENIS_OPTIONS = ['PULANG', 'KELUAR_SEMENTARA', 'SAKIT', 'KEPERLUAN_KELUARGA', 'LAINNYA'];
+const SOP_DEFAULT: Record<string, string[]> = {
+  PULANG: ['WALI_KELAS', 'PEMBINA_ASRAMA', 'PENGASUH'],
+  KELUAR_SEMENTARA: ['PEMBINA_ASRAMA', 'KEAMANAN'],
+  SAKIT: ['UKS_KLINIK', 'PEMBINA_ASRAMA', 'PENGASUH'],
+  KEPERLUAN_KELUARGA: ['WALI_KELAS', 'PEMBINA_ASRAMA', 'PENGASUH'],
+  LAINNYA: ['PEMBINA_ASRAMA', 'PENGASUH'],
+};
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -39,7 +46,10 @@ export function PesantrenPerizinanPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('');
   const [membuat, setMembuat] = useState(false);
+  const [mengaturSop, setMengaturSop] = useState(false);
+  const [sop, setSop] = useState<Record<string, string[]>>(SOP_DEFAULT);
   const [catatan, setCatatan] = useState<Record<string, string>>({});
+  const [tujuanDisposisi, setTujuanDisposisi] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     santriId: '',
     jenis: 'PULANG',
@@ -100,6 +110,11 @@ export function PesantrenPerizinanPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal disposisi izin.'), 'error'),
   });
 
+  const simpanSop = (berikutnya: Record<string, string[]>) => {
+    setSop(berikutnya);
+    toast.push('SOP disposisi aktif untuk halaman ini.', 'success');
+  };
+
   const namaSantri = new Map((santri.data?.items ?? []).map((item) => [item.id, `${item.nis} - ${item.nama_lengkap}`]));
 
   const columns: Array<GridColumn<IzinRow>> = [
@@ -108,6 +123,28 @@ export function PesantrenPerizinanPage() {
     { key: 'tanggal_mulai', header: 'Mulai', render: (row) => formatDate(row.tanggal_mulai) },
     { key: 'tanggal_selesai_rencana', header: 'Rencana Kembali', render: (row) => formatDate(row.tanggal_selesai_rencana) },
     { key: 'kontak_penjemput', header: 'Penjemput', render: (row) => row.kontak_penjemput ?? '-' },
+    {
+      key: 'disposisi_ke',
+      header: 'Disposisi',
+      render: (row) => {
+        const tahapan = sop[row.jenis] ?? SOP_DEFAULT[row.jenis] ?? SOP_DEFAULT.LAINNYA;
+        const tujuanAktif = tujuanDisposisi[row.id] ?? row.disposisi_ke ?? tahapan[0] ?? 'PENGASUH';
+        return (
+          <select
+            className="field-input min-w-[160px]"
+            value={tujuanAktif}
+            onChange={(event) => setTujuanDisposisi((current) => ({ ...current, [row.id]: event.target.value }))}
+            disabled={row.status !== 'MENUNGGU'}
+          >
+            {tahapan.map((item) => (
+              <option key={item} value={item}>
+                {labelTujuan(item)}
+              </option>
+            ))}
+          </select>
+        );
+      },
+    },
     { key: 'status', header: 'Status', render: (row) => <StatusBadge status={row.status} /> },
     {
       key: 'catatan',
@@ -134,7 +171,11 @@ export function PesantrenPerizinanPage() {
               <button type="button" className="btn-outline px-2 py-1.5" onClick={() => aksi.mutate({ id: row.id, path: 'tolak' })}>
                 <XCircle className="h-4 w-4" aria-hidden />
               </button>
-              <button type="button" className="btn-outline px-2 py-1.5 text-xs" onClick={() => disposisi.mutate({ id: row.id, tujuan: 'PENGASUH' })}>
+              <button
+                type="button"
+                className="btn-outline px-2 py-1.5 text-xs"
+                onClick={() => disposisi.mutate({ id: row.id, tujuan: tujuanDisposisi[row.id] ?? row.disposisi_ke ?? sop[row.jenis]?.[0] ?? 'PENGASUH' })}
+              >
                 Disposisi
               </button>
             </>
@@ -159,6 +200,10 @@ export function PesantrenPerizinanPage() {
             <button type="button" className="btn-outline" onClick={() => void izin.refetch()}>
               <RefreshCw className="h-4 w-4" aria-hidden />
               Muat Ulang
+            </button>
+            <button type="button" className="btn-outline" onClick={() => setMengaturSop(true)}>
+              <Settings2 className="h-4 w-4" aria-hidden />
+              SOP Disposisi
             </button>
             <button type="button" className="btn-primary" onClick={() => setMembuat(true)}>
               <Plus className="h-4 w-4" aria-hidden />
@@ -228,6 +273,17 @@ export function PesantrenPerizinanPage() {
           </div>
         </div>
       )}
+
+      {mengaturSop && (
+        <SopModal
+          value={sop}
+          onClose={() => setMengaturSop(false)}
+          onSave={(next) => {
+            simpanSop(next);
+            setMengaturSop(false);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -239,4 +295,52 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+function SopModal({ value, onClose, onSave }: { value: Record<string, string[]>; onClose: () => void; onSave: (value: Record<string, string[]>) => void }) {
+  const [draft, setDraft] = useState<Record<string, string>>(() =>
+    Object.fromEntries(JENIS_OPTIONS.map((jenis) => [jenis, (value[jenis] ?? SOP_DEFAULT[jenis] ?? []).join(', ')])),
+  );
+
+  const simpan = () => {
+    const parsed = Object.fromEntries(
+      JENIS_OPTIONS.map((jenis) => [
+        jenis,
+        draft[jenis]
+          .split(',')
+          .map((item) => item.trim().toUpperCase().replace(/\s+/g, '_'))
+          .filter(Boolean),
+      ]),
+    );
+    onSave(parsed);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+      <div className="card w-full max-w-3xl p-6">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">SOP Disposisi Perizinan</h2>
+        <p className="mt-1 text-sm text-slate-500">Isi urutan tujuan dengan koma. Tombol disposisi pada daftar izin akan mengikuti jenis izin masing-masing.</p>
+        <div className="mt-4 grid gap-3">
+          {JENIS_OPTIONS.map((jenis) => (
+            <label key={jenis} className="block">
+              <span className="field-label">{labelTujuan(jenis)}</span>
+              <input className="field-input" value={draft[jenis] ?? ''} onChange={(event) => setDraft((current) => ({ ...current, [jenis]: event.target.value }))} />
+            </label>
+          ))}
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <button type="button" className="btn-outline" onClick={onClose}>Batal</button>
+          <button type="button" className="btn-primary" onClick={simpan}>Simpan SOP</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function labelTujuan(value: string) {
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
