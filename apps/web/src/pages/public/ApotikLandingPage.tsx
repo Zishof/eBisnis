@@ -12,7 +12,7 @@ import {
   ShieldAlert,
   Truck,
 } from 'lucide-react';
-import { LandingHeader, LandingCta } from './EmedikLandingPage';
+import { LandingHeader, LandingCta, OfferDocumentSection } from './EmedikLandingPage';
 
 const pharmacyFlows = [
   { icon: ClipboardCheck, title: 'Telaah resep', body: 'Apoteker melihat resep, alergi, interaksi, obat terkendali, LASA, dan catatan dokter.' },
@@ -34,7 +34,7 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
 
   return (
     <div className="min-h-screen bg-emerald-50 text-slate-950">
-      <LandingHeader brand={title} links={['Farmasi', 'Operasional', 'Keamanan', 'Demo']} />
+      <LandingHeader brand={title} links={['Farmasi', 'Operasional', 'Keamanan', 'Dokumen', 'Demo']} />
 
       <main>
         <section className="overflow-hidden bg-[#f8fffb]">
@@ -176,6 +176,8 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
             </div>
           </div>
         </section>
+
+        <OfferDocumentSection tone="emerald" />
 
         <LandingCta
           title={demo ? 'Buka demo apotik sekarang' : 'Bangun kanal apotik di eMedik.id'}

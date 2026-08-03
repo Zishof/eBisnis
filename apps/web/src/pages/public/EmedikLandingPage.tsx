@@ -33,10 +33,17 @@ const workflow = [
   { icon: ShieldCheck, title: 'Rekam medis aman', body: 'Koding, pelepasan informasi, legal hold, mutu, keselamatan pasien, dan audit akses.' },
 ];
 
+export const offerDocuments = [
+  { title: 'Proposal Penawaran', href: '/proposal', body: 'Ringkasan kebutuhan, ruang lingkup, manfaat, dan tahapan implementasi.' },
+  { title: 'Surat Penawaran', href: '/penawaran', body: 'Dokumen penawaran resmi untuk pembahasan harga dan paket layanan.' },
+  { title: 'Presentasi', href: '/presentasi', body: 'Bahan presentasi untuk pimpinan fasilitas, tim operasional, dan calon mitra.' },
+  { title: 'Draft PKS', href: '/pks', body: 'Draft perjanjian kerja sama sebagai bahan review legal dan manajemen.' },
+];
+
 export function EmedikLandingPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
-      <LandingHeader brand="eMedik.id" links={['Solusi', 'Alur', 'Keamanan', 'Demo']} />
+      <LandingHeader brand="eMedik.id" links={['Solusi', 'Alur', 'Keamanan', 'Dokumen', 'Demo']} />
 
       <main>
         <section className="relative overflow-hidden bg-white">
@@ -159,6 +166,8 @@ export function EmedikLandingPage() {
           </div>
         </section>
 
+        <OfferDocumentSection tone="teal" />
+
         <LandingCta title="Siapkan fasilitas kesehatan Anda di eMedik.id" primary="Mulai daftar" secondary="Buka demo" />
       </main>
     </div>
@@ -200,6 +209,43 @@ export function LandingCta({ title, primary, secondary }: { title: string; prima
         <div className="flex flex-wrap gap-3">
           <Link to="/daftar" className="btn bg-white px-5 py-3 text-teal-800 hover:bg-teal-50">{primary}</Link>
           <Link to="/demo" className="btn border border-white/40 px-5 py-3 text-white hover:bg-white/10">{secondary}</Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function OfferDocumentSection({ tone }: { tone: 'teal' | 'emerald' }) {
+  const accent = tone === 'emerald' ? 'text-emerald-800 bg-emerald-50' : 'text-teal-800 bg-teal-50';
+  const button = tone === 'emerald' ? 'text-emerald-800 hover:bg-emerald-50' : 'text-teal-800 hover:bg-teal-50';
+
+  return (
+    <section id="Dokumen" className="bg-white py-16">
+      <div className="container-page">
+        <div className="max-w-3xl">
+          <p className={`section-eyebrow ${accent}`}>Dokumen kerja sama</p>
+          <h2 className="section-heading text-slate-950">Bahan resmi untuk evaluasi dan approval.</h2>
+          <p className="section-lead">
+            Empat dokumen ini tersedia langsung dari landing page supaya calon
+            fasilitas dapat membaca proposal, penawaran, presentasi, dan draft
+            PKS tanpa masuk ke dashboard.
+          </p>
+        </div>
+        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {offerDocuments.map((doc) => (
+            <Link
+              key={doc.href}
+              to={doc.href}
+              className="group rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
+            >
+              <h3 className="font-bold text-slate-950">{doc.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{doc.body}</p>
+              <span className={`mt-4 inline-flex items-center gap-2 text-sm font-bold ${button}`}>
+                Buka dokumen
+                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
+              </span>
+            </Link>
+          ))}
         </div>
       </div>
     </section>

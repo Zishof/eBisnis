@@ -19,6 +19,8 @@ Landing page publik untuk domain kesehatan dipisahkan dari beranda eBisnis.
 - **`ApotikLandingPage`** menekankan alur farmasi: telaah resep, dispensing,
   high-alert medication, obat terkendali, barcode/batch, dan batas adapter
   inventory.
+- Landing `emedik.id` dan `apotik.emedik.id` memuat tautan ke **Proposal
+  Penawaran**, **Surat Penawaran**, **Presentasi**, dan **Draft PKS**.
 - **`emedik-host.test.ts`** menjaga pemilihan pengalaman akar supaya host apotik
   tidak tertukar dengan portal umum eMedik atau marketplace eBisnis.
 
