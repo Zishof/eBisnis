@@ -32,6 +32,9 @@ class HalamanQuery {
 class DaftarGelombangQuery extends HalamanQuery {
   @ApiPropertyOptional() @IsOptional() @IsString()
   status?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  unitPendidikanId?: string;
 }
 
 class DaftarPendaftarQuery extends HalamanQuery {
@@ -55,6 +58,10 @@ function halamanOpsi(q: HalamanQuery) {
 class CatatGelombangDto {
   @ApiProperty() @IsString()
   tahunAjaranId!: string;
+
+  @ApiPropertyOptional({ description: 'Kosong berarti gelombang berlaku lintas seluruh unit.' })
+  @IsOptional() @IsString()
+  unitPendidikanId?: string;
 
   @ApiProperty({ example: 'G1' }) @IsString() @MaxLength(16)
   kode!: string;
@@ -239,7 +246,11 @@ export class PesantrenPsbGelombangController {
   @Get()
   @ApiOperation({ summary: 'Daftar gelombang PSB/PPDB' })
   daftar(@Query() query: DaftarGelombangQuery, @CurrentUser() user: AuthenticatedUser) {
-    return this.psb.daftarGelombang(schemaWajib(user), { status: query.status, ...halamanOpsi(query) });
+    return this.psb.daftarGelombang(schemaWajib(user), {
+      status: query.status,
+      unitPendidikanId: query.unitPendidikanId,
+      ...halamanOpsi(query),
+    });
   }
 
   @Permissions('EPESANTREN_PSB.READ')

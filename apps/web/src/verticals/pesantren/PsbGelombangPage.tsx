@@ -32,6 +32,36 @@ interface Gelombang {
   tanggal_tutup: string;
   biaya_pendaftaran: string;
   status: string;
+  unit_pendidikan_id: string | null;
+  unit_pendidikan_nama: string | null;
+}
+
+/** Gelombang tanpa unit -- berlaku lintas seluruh unit pendidikan. */
+const KUNCI_UMUM = '__umum__';
+const LABEL_UMUM = 'Umum (Seluruh Unit)';
+
+/**
+ * Dikelompokkan per unit -- gelombang MI bisa berbeda jadwal/kuota/biaya
+ * dari gelombang Madrasah Diniyah atau BLK, jadi tidak digabung jadi satu
+ * daftar rata (lihat migrasi `20260803T070000`). Kelompok "Umum" (gelombang
+ * lintas-unit) selalu ditaruh PALING AKHIR -- bukan sesuatu yang dicari
+ * pengunjung yang sudah tahu unit mana yang dituju anaknya.
+ */
+function kelompokkanPerUnit(daftar: Gelombang[]): Array<{ kunci: string; label: string; item: Gelombang[] }> {
+  const kelompok = new Map<string, { label: string; item: Gelombang[] }>();
+  for (const g of daftar) {
+    const kunci = g.unit_pendidikan_id ?? KUNCI_UMUM;
+    const label = g.unit_pendidikan_nama ?? LABEL_UMUM;
+    if (!kelompok.has(kunci)) kelompok.set(kunci, { label, item: [] });
+    kelompok.get(kunci)!.item.push(g);
+  }
+  const hasil = Array.from(kelompok.entries()).map(([kunci, v]) => ({ kunci, ...v }));
+  hasil.sort((a, b) => {
+    if (a.kunci === KUNCI_UMUM) return 1;
+    if (b.kunci === KUNCI_UMUM) return -1;
+    return a.label.localeCompare(b.label, 'id');
+  });
+  return hasil;
 }
 
 interface Berita {
@@ -94,49 +124,60 @@ export function PsbGelombangPage() {
               </p>
             </div>
           ) : (
-            gelombang.map((g) => {
-              const lencana = LENCANA_STATUS[g.status] ?? LENCANA_STATUS.DITUTUP;
-              const bukaKembali = g.status === 'DIBUKA';
-              return (
-                <div
-                  key={g.id}
-                  className={`rounded-2xl border p-5 sm:flex sm:items-center sm:justify-between sm:gap-4 ${
-                    bukaKembali
-                      ? 'border-emerald-200 bg-white dark:border-emerald-900 dark:bg-slate-900'
-                      : 'border-slate-200 bg-slate-50 opacity-80 dark:border-slate-800 dark:bg-slate-900/40'
-                  }`}
-                >
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${lencana.kelas}`}>{lencana.label}</span>
-                      <span className="text-xs text-slate-400">{g.kode}</span>
-                    </div>
-                    <h2 className="mt-2 font-bold text-slate-900 dark:text-white">{g.nama}</h2>
-                    <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
-                      <CalendarDays className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
-                      {formatDate(g.tanggal_buka)} – {formatDate(g.tanggal_tutup)}
-                    </p>
-                    {Number(g.biaya_pendaftaran) > 0 && (
-                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Biaya pendaftaran: {formatMoney(g.biaya_pendaftaran)}
-                      </p>
-                    )}
-                  </div>
-                  <div className="mt-4 sm:mt-0">
-                    <Link
-                      to={`/santri/pondok/psb/daftar/${g.id}`}
-                      className={`block rounded-lg px-5 py-2.5 text-center text-sm font-semibold ${
-                        bukaKembali
-                          ? 'bg-emerald-700 text-white hover:bg-emerald-800'
-                          : 'border border-slate-300 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      {bukaKembali ? 'Daftar Sekarang' : 'Lihat Detail'}
-                    </Link>
-                  </div>
+            kelompokkanPerUnit(gelombang).map((kelompok) => (
+              <section key={kelompok.kunci}>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  {kelompok.label}
+                </h2>
+                <div className="mt-3 space-y-4">
+                  {kelompok.item.map((g) => {
+                    const lencana = LENCANA_STATUS[g.status] ?? LENCANA_STATUS.DITUTUP;
+                    const bukaKembali = g.status === 'DIBUKA';
+                    return (
+                      <div
+                        key={g.id}
+                        className={`rounded-2xl border p-5 sm:flex sm:items-center sm:justify-between sm:gap-4 ${
+                          bukaKembali
+                            ? 'border-emerald-200 bg-white dark:border-emerald-900 dark:bg-slate-900'
+                            : 'border-slate-200 bg-slate-50 opacity-80 dark:border-slate-800 dark:bg-slate-900/40'
+                        }`}
+                      >
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${lencana.kelas}`}>
+                              {lencana.label}
+                            </span>
+                            <span className="text-xs text-slate-400">{g.kode}</span>
+                          </div>
+                          <h3 className="mt-2 font-bold text-slate-900 dark:text-white">{g.nama}</h3>
+                          <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+                            <CalendarDays className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                            {formatDate(g.tanggal_buka)} – {formatDate(g.tanggal_tutup)}
+                          </p>
+                          {Number(g.biaya_pendaftaran) > 0 && (
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                              Biaya pendaftaran: {formatMoney(g.biaya_pendaftaran)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="mt-4 sm:mt-0">
+                          <Link
+                            to={`/santri/pondok/psb/daftar/${g.id}`}
+                            className={`block rounded-lg px-5 py-2.5 text-center text-sm font-semibold ${
+                              bukaKembali
+                                ? 'bg-emerald-700 text-white hover:bg-emerald-800'
+                                : 'border border-slate-300 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            {bukaKembali ? 'Daftar Sekarang' : 'Lihat Detail'}
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })
+              </section>
+            ))
           )}
         </div>
 

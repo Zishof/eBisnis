@@ -531,6 +531,54 @@ async function main() {
   }
   console.log('Unit pendidikan siap:', Object.keys(unitId).join(', '));
 
+  // -- 2b. Gelombang PSB contoh, 3 per unit (BUKAN institusional) ------------
+  //
+  // Diminta eksplisit: gelombang bisa berbeda antar unit sekolah (jadwal,
+  // kuota, biaya MI tidak harus sama dengan Madrasah Diniyah atau BLK) --
+  // lihat migrasi `20260803T070000__pesantren__psb_gelombang_unit.sql`.
+  // BERBEDA dari unit pendidikan/mata pelajaran di atas, gelombang ini
+  // DITANDAI `is_sample = TRUE`: ini contoh ilustratif jadwal penerimaan,
+  // bukan konfigurasi baku pondok -- pengurus diharapkan menggantinya
+  // dengan jadwal PSB sungguhan lewat menu PSB begitu siap menerima
+  // pendaftar nyata.
+  const SAMPLE_BATCH_PSB = uuid();
+  const GELOMBANG_PSB = [
+    // -- MI Raudlatul Ulum: PPDB gaya sekolah formal, kalender Kemenag -----
+    ['MI-RU', 'G1', 'Gelombang 1 - Reguler', '2026-01-05', '2026-02-28', 60, 150000, 'DITUTUP'],
+    ['MI-RU', 'G2', 'Gelombang 2 - Reguler', '2026-03-01', '2026-04-30', 20, 175000, 'SELESAI'],
+    ['MI-RU', 'G3', 'Gelombang 3 - Susulan', '2026-06-01', '2026-09-30', 10, 200000, 'DIBUKA'],
+    // -- Madrasah Diniyah Takmiliyah: informal, per semester, tanpa kuota ketat --
+    ['MADIN-RU', 'G1', 'Gelombang Semester Ganjil', '2026-01-10', '2026-02-10', 100, 25000, 'DITUTUP'],
+    ['MADIN-RU', 'G2', 'Gelombang Semester Genap', '2026-06-01', '2026-06-30', 100, 25000, 'SELESAI'],
+    ['MADIN-RU', 'G3', 'Gelombang Susulan', '2026-07-15', '2026-12-31', null, 0, 'DIBUKA'],
+    // -- BLK Komunitas: batch pelatihan (angkatan), kuota tetap kecil ------
+    ['BLKK-RU', 'G1', 'Angkatan I 2026', '2026-01-15', '2026-02-15', 25, 50000, 'DITUTUP'],
+    ['BLKK-RU', 'G2', 'Angkatan II 2026', '2026-04-01', '2026-04-30', 25, 50000, 'SELESAI'],
+    ['BLKK-RU', 'G3', 'Angkatan III 2026', '2026-07-01', '2026-09-30', 25, 75000, 'DIBUKA'],
+  ];
+  let gelombangDibuat = 0;
+  for (const [unitCode, kode, nama, tanggalBuka, tanggalTutup, kuota, biaya, status] of GELOMBANG_PSB) {
+    const unitPendidikanId = unitId[unitCode];
+    const existing = await tenant.query(
+      `SELECT id FROM pesantren_psb_gelombang WHERE tahun_ajaran_id = $1 AND unit_pendidikan_id = $2 AND kode = $3`,
+      [TAHUN_ID, unitPendidikanId, kode],
+    );
+    if (existing.rows[0]) continue;
+    await tenant.query(
+      `INSERT INTO pesantren_psb_gelombang
+         (tahun_ajaran_id, unit_pendidikan_id, kode, nama, tanggal_buka, tanggal_tutup, kuota, biaya_pendaftaran,
+          status, is_sample, sample_batch_id, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE, $10, $11, $11)`,
+      [TAHUN_ID, unitPendidikanId, kode, nama, tanggalBuka, tanggalTutup, kuota, biaya, status, SAMPLE_BATCH_PSB, ACTOR],
+    );
+    gelombangDibuat += 1;
+  }
+  console.log(
+    gelombangDibuat > 0
+      ? `Gelombang PSB contoh dibuat: ${gelombangDibuat} baris (3 per unit).`
+      : 'Gelombang PSB contoh sudah ada -- tidak ditimpa.',
+  );
+
   // -- 3. Mata pelajaran Dapodik-aligned untuk MI ----------------------------
   let sortOrder = 1;
   for (const [code, nama, kelompok] of MAPEL_MI) {
