@@ -393,6 +393,7 @@ export function App() {
           <Route path="pesantren/absensi-guru" element={<PesantrenDaftarModulPage module="absensi-guru" />} />
           <Route path="pesantren/ekstrakurikuler" element={<PesantrenDaftarModulPage module="ekstrakurikuler" />} />
           <Route path="pesantren/prestasi" element={<PesantrenDaftarModulPage module="prestasi" />} />
+          <Route path="pesantren/buku-penghubung" element={<PesantrenDaftarModulPage module="buku-penghubung" />} />
           <Route path="pesantren/perizinan" element={<PesantrenDaftarModulPage module="perizinan" />} />
           <Route path="pesantren/pelanggaran" element={<PesantrenDaftarModulPage module="pelanggaran" />} />
           <Route path="pesantren/dompet" element={<PesantrenDaftarModulPage module="dompet" />} />

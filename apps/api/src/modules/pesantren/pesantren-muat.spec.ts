@@ -53,6 +53,8 @@ import { PesantrenPrestasiController } from './pesantren-prestasi.controller';
 import { PesantrenPrestasiService } from './pesantren-prestasi.service';
 import { PesantrenKateringController } from './pesantren-katering.controller';
 import { PesantrenKateringService } from './pesantren-katering.service';
+import { PesantrenBukuPenghubungController } from './pesantren-buku-penghubung.controller';
+import { PesantrenBukuPenghubungService } from './pesantren-buku-penghubung.service';
 
 function paramtypes(target: unknown): unknown[] {
   return (Reflect.getMetadata('design:paramtypes', target as object) as unknown[]) ?? [];
@@ -168,12 +170,14 @@ describe('pemuatan modul pesantren-santri', () => {
   });
 
   it('layanan gerbang tidak memiliki metode yang menyentuh status izin (docs/santri-info/13 R10)', () => {
-    // Pemeriksaan langsung terhadap bentuk kelas: metode yang dimilikinya
-    // hanya `daftar` dan `catat` -- tidak ada `setujui`/`tolak`/`ubah` apa pun.
+    // Pemeriksaan langsung terhadap bentuk kelas: service boleh membaca daftar
+    // izin aktif dan kartu untuk scan, tetapi tidak boleh punya `setujui`,
+    // `tolak`, atau `ubahStatus` apa pun.
     const metode = Object.getOwnPropertyNames(PesantrenGerbangService.prototype).filter(
       (m) => m !== 'constructor',
     );
-    expect(metode.sort()).toEqual(['catat', 'daftar'].sort());
+    expect(metode.sort()).toEqual(['catat', 'daftar', 'daftarIzinAktif', 'pindaiKartu'].sort());
+    expect(metode.join(' ')).not.toMatch(/setujui|tolak|ubahStatus|putuskan/i);
   });
 
   it('setiap dependensi controller portal wali punya tipe yang terdefinisi', () => {
@@ -373,6 +377,18 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(tipe.filter((t) => t === undefined)).toEqual([]);
   });
 
+  it('setiap dependensi controller buku penghubung punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenBukuPenghubungController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi service buku penghubung punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenBukuPenghubungService);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
   it('controller dan service terdaftar pada pesantren.module.ts', () => {
     const sumber = readFileSync(join(__dirname, 'pesantren.module.ts'), 'utf8');
     expect(sumber).toContain('PesantrenNilaiController');
@@ -425,6 +441,8 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(sumber).toContain('PesantrenPrestasiService');
     expect(sumber).toContain('PesantrenKateringController');
     expect(sumber).toContain('PesantrenKateringService');
+    expect(sumber).toContain('PesantrenBukuPenghubungController');
+    expect(sumber).toContain('PesantrenBukuPenghubungService');
   });
 
   it('modul terdaftar pada app.module.ts', () => {

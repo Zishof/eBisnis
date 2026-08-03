@@ -194,6 +194,23 @@ export const PESANTREN_MODUL: Record<string, ModulConfig> = {
       { key: 'peringkat', header: 'Peringkat', kind: 'status' },
     ],
   },
+  'buku-penghubung': {
+    title: 'Buku Penghubung',
+    description: 'Catatan guru, pengurus, dan wali untuk tindak lanjut perkembangan santri.',
+    endpoint: '/pesantren/buku-penghubung',
+    breadcrumbsLabel: 'Buku Penghubung',
+    paged: true,
+    statusOptions: ['TERBUKA', 'SELESAI'],
+    columns: [
+      { key: 'tanggal', header: 'Tanggal', kind: 'date' },
+      { key: 'nis', header: 'NIS' },
+      { key: 'nama_lengkap', header: 'Santri' },
+      { key: 'jenis', header: 'Jenis', kind: 'status' },
+      { key: 'judul', header: 'Judul' },
+      { key: 'visibilitas', header: 'Visibilitas', kind: 'status' },
+      { key: 'status', header: 'Status', kind: 'status' },
+    ],
+  },
   perizinan: {
     title: 'Perizinan Santri',
     description: 'Pengajuan izin keluar dan keputusan pengurus.',

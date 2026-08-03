@@ -185,6 +185,12 @@
       "file": "20260803T090000__pesantren__unit_domain_backfill.sql",
       "name": "Backfill alamat website unit pendidikan",
       "description": "Mengisi public_slug dan santri_subdomain untuk unit pendidikan lama yang belum disimpan ulang setelah fitur domain per unit, mengaktifkan halaman unit, dan mendaftarkan host unit santri.info ke platform.vertical_site_domain."
+    },
+    {
+      "id": "20260803T100000__pesantren__buku_penghubung",
+      "file": "20260803T100000__pesantren__buku_penghubung.sql",
+      "name": "Buku penghubung dan catatan guru/wali",
+      "description": "pesantren_buku_penghubung -- menutup gap AIS BukuPenghubungSiswa, CatatanGuru, CatatanSiswa, dan catatan orang tua. Berisi catatan naratif per santri dengan visibilitas INTERNAL/WALI dan status tindak lanjut."
     }
   ]
 }
