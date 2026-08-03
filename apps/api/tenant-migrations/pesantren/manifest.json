@@ -173,6 +173,18 @@
       "file": "20260803T070000__pesantren__psb_gelombang_unit.sql",
       "name": "Gelombang PSB per unit pendidikan",
       "description": "Menambah unit_pendidikan_id (NULLABLE) pada pesantren_psb_gelombang -- gelombang bisa berbeda jadwal/kuota/biaya antar unit (MI, Madrasah Diniyah, BLK, dst.), bukan satu daftar berlaku seluruh pesantren. Indeks unik kode gelombang diganti supaya kode boleh dipakai ulang antar unit pada tahun ajaran yang sama."
+    },
+    {
+      "id": "20260803T080000__pesantren__unit_website_domain",
+      "file": "20260803T080000__pesantren__unit_website_domain.sql",
+      "name": "Pengaturan website dan domain per unit pendidikan",
+      "description": "Menambah pengaturan halaman publik unit pendidikan: website_enabled, public_slug, santri_subdomain, custom_domain, domain_status, welcome_title, dan welcome_body. Ini menyiapkan landing unit dan konfigurasi domain dinamis tanpa mengubah resolver control-plane multi-domain."
+    },
+    {
+      "id": "20260803T090000__pesantren__unit_domain_backfill",
+      "file": "20260803T090000__pesantren__unit_domain_backfill.sql",
+      "name": "Backfill alamat website unit pendidikan",
+      "description": "Mengisi public_slug dan santri_subdomain untuk unit pendidikan lama yang belum disimpan ulang setelah fitur domain per unit, mengaktifkan halaman unit, dan mendaftarkan host unit santri.info ke platform.vertical_site_domain."
     }
   ]
 }

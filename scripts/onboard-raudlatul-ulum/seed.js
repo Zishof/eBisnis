@@ -511,21 +511,70 @@ async function main() {
 
   // -- 2. Unit pendidikan (real, terverifikasi lewat riset) -----------------
   const UNIT = [
-    ['MI-RU', 'Madrasah Ibtidaiyah Raudlatul Ulum', 'SEKOLAH_FORMAL', 1],
-    ['MADIN-RU', 'Madrasah Diniyah Takmiliyah Raudlatul Ulum', 'DINIYAH', 2],
-    ['BLKK-RU', 'BLK Komunitas Raudlatul Ulum', 'LAINNYA', 3],
+    [
+      'MI-RU',
+      'Madrasah Ibtidaiyah Raudlatul Ulum',
+      'SEKOLAH_FORMAL',
+      1,
+      'mi-ru',
+      'mi-raudlatul-ulum',
+      'Selamat datang di Madrasah Ibtidaiyah Raudlatul Ulum',
+      'Madrasah Ibtidaiyah Raudlatul Ulum adalah unit pendidikan formal tingkat dasar di lingkungan Pondok Pesantren Raudlatul Ulum, memadukan pembelajaran madrasah dengan pembinaan akhlak dan lingkungan pesantren.',
+    ],
+    [
+      'MADIN-RU',
+      'Madrasah Diniyah Takmiliyah Raudlatul Ulum',
+      'DINIYAH',
+      2,
+      'madin-ru',
+      'md-raudlatul-ulum',
+      'Selamat datang di Madrasah Diniyah Takmiliyah Raudlatul Ulum',
+      'Madrasah Diniyah Takmiliyah Raudlatul Ulum menjadi ruang pendalaman ilmu agama, akhlak, dan tradisi keilmuan pesantren bagi santri dan masyarakat sekitar.',
+    ],
+    [
+      'BLKK-RU',
+      'BLK Komunitas Raudlatul Ulum',
+      'LAINNYA',
+      3,
+      'blk-ru',
+      'blk-raudlatul-ulum',
+      'Selamat datang di BLK Komunitas Raudlatul Ulum',
+      'BLK Komunitas Raudlatul Ulum menyiapkan pelatihan keterampilan kerja bagi santri dan warga sekitar sebagai bagian dari ikhtiar kemandirian ekonomi umat.',
+    ],
   ];
   const unitId = {};
-  for (const [code, name, jenis, urut] of UNIT) {
-    const existing = await tenant.query(`SELECT id::text AS id FROM pesantren_unit_pendidikan WHERE code = $1`, [code]);
+  for (const [code, name, jenis, urut, publicSlug, santriSubdomain, welcomeTitle, welcomeBody] of UNIT) {
+    const existing = await tenant.query(
+      `SELECT id::text AS id, public_slug FROM pesantren_unit_pendidikan WHERE code = $1`,
+      [code],
+    );
     if (existing.rows[0]) {
       unitId[code] = existing.rows[0].id;
+      if (!existing.rows[0].public_slug) {
+        await tenant.query(
+          `UPDATE pesantren_unit_pendidikan
+              SET website_enabled = TRUE,
+                  public_slug = $2,
+                  santri_subdomain = $3,
+                  domain_status = 'PENDING',
+                  welcome_title = $4,
+                  welcome_body = $5,
+                  updated_at = now(),
+                  updated_by = $6,
+                  version = version + 1
+            WHERE id = $1`,
+          [existing.rows[0].id, publicSlug, santriSubdomain, welcomeTitle, welcomeBody, ACTOR],
+        );
+      }
       continue;
     }
     const ins = await tenant.query(
-      `INSERT INTO pesantren_unit_pendidikan (code, name, jenis, sort_order, created_by, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $5) RETURNING id::text AS id`,
-      [code, name, jenis, urut, ACTOR],
+      `INSERT INTO pesantren_unit_pendidikan
+         (code, name, jenis, sort_order, website_enabled, public_slug, santri_subdomain,
+          domain_status, welcome_title, welcome_body, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, TRUE, $5, $6, 'PENDING', $7, $8, $9, $9)
+       RETURNING id::text AS id`,
+      [code, name, jenis, urut, publicSlug, santriSubdomain, welcomeTitle, welcomeBody, ACTOR],
     );
     unitId[code] = ins.rows[0].id;
   }

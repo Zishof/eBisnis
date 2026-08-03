@@ -21,8 +21,8 @@
 
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { GraduationCap, Mail, MapPin, Newspaper, Phone } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ExternalLink, GraduationCap, Mail, MapPin, Newspaper, Phone } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
 import { usePondokFavicon } from './use-pondok-favicon';
 import { usePondokSeo } from './use-pondok-seo';
@@ -64,12 +64,18 @@ interface UnitPendidikan {
   code: string;
   name: string;
   jenis: string;
+  website_enabled: boolean;
+  public_slug: string | null;
+  santri_subdomain: string | null;
+  custom_domain: string | null;
+  welcome_title: string | null;
 }
 
 interface IsiSitus {
   profil: Profil;
   berita: Berita[];
   unitPendidikan: UnitPendidikan[];
+  currentUnit?: { public_slug: string | null } | null;
 }
 
 const TEMA: Record<string, { grad: string; ring: string; badge: string; tombol: string; aksen: string }> = {
@@ -114,6 +120,20 @@ function temaDari(kode: string) {
   return TEMA[kode] ?? TEMA.HIJAU_ISLAMI;
 }
 
+function urlUnitPendidikan(unit: UnitPendidikan): { href: string; eksternal: boolean; label: string } | null {
+  if (unit.custom_domain) {
+    return { href: `https://${unit.custom_domain}`, eksternal: true, label: unit.custom_domain };
+  }
+  if (unit.santri_subdomain) {
+    const host = `${unit.santri_subdomain}.santri.info`;
+    return { href: `https://${host}`, eksternal: true, label: host };
+  }
+  if (unit.public_slug) {
+    return { href: `/santri/pondok/unit/${unit.public_slug}`, eksternal: false, label: `/unit/${unit.public_slug}` };
+  }
+  return null;
+}
+
 const LABEL_JENIS_UNIT: Record<string, string> = {
   SEKOLAH_FORMAL: 'Pendidikan Formal',
   DINIYAH: 'Madrasah Diniyah',
@@ -122,6 +142,7 @@ const LABEL_JENIS_UNIT: Record<string, string> = {
 };
 
 export function SitusPondokPage() {
+  const navigate = useNavigate();
   const { data, isLoading, isError } = useQuery({
     queryKey: ['pesantren', 'situs-publik'],
     queryFn: () => apiRequest<IsiSitus>('/pesantren/public/site'),
@@ -137,6 +158,12 @@ export function SitusPondokPage() {
       document.title = sebelumnya;
     };
   }, [data?.profil.nama_tampilan]);
+
+  useEffect(() => {
+    if (data?.currentUnit?.public_slug) {
+      navigate(`/santri/pondok/unit/${data.currentUnit.public_slug}`, { replace: true });
+    }
+  }, [data?.currentUnit?.public_slug, navigate]);
 
   usePondokFavicon(data?.profil.logo_url);
 
@@ -311,22 +338,45 @@ export function SitusPondokPage() {
               Jenjang dan satuan pendidikan yang diselenggarakan pondok.
             </p>
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {unitPendidikan.map((u) => (
-                <div
-                  key={u.code}
-                  className="flex items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800"
-                >
-                  <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${tema.badge}`}>
-                    <GraduationCap className="h-5 w-5" aria-hidden />
-                  </span>
-                  <div>
-                    <p className="font-semibold text-slate-900 dark:text-white">{u.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {LABEL_JENIS_UNIT[u.jenis] ?? u.jenis}
-                    </p>
-                  </div>
-                </div>
-              ))}
+              {unitPendidikan.map((u) => {
+                const target = urlUnitPendidikan(u);
+                const isi = (
+                  <>
+                    <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${tema.badge}`}>
+                      <GraduationCap className="h-5 w-5" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-900 dark:text-white">{u.name}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {LABEL_JENIS_UNIT[u.jenis] ?? u.jenis}
+                      </p>
+                      {target && <p className="mt-1 break-all text-xs text-slate-400">{target.label}</p>}
+                    </div>
+                    {target && <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-slate-300" aria-hidden />}
+                  </>
+                );
+                const kelas =
+                  'flex items-start gap-3 rounded-xl border border-slate-200 p-4 transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-sm dark:border-slate-800 dark:hover:border-emerald-500';
+                if (!target) {
+                  return (
+                    <div key={u.code} className={`${kelas} opacity-70`}>
+                      {isi}
+                    </div>
+                  );
+                }
+                if (target.eksternal) {
+                  return (
+                    <a key={u.code} href={target.href} className={kelas}>
+                      {isi}
+                    </a>
+                  );
+                }
+                return (
+                  <Link key={u.code} to={target.href} className={kelas}>
+                    {isi}
+                  </Link>
+                );
+              })}
             </div>
           </section>
         )}

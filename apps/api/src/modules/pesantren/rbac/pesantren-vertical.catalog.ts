@@ -134,6 +134,17 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     actions: ['READ'],
   },
   {
+    code: 'EPESANTREN_UNIT_PENDIDIKAN',
+    parentCode: 'EPESANTREN_GRP_SETUP',
+    label: 'Unit Pendidikan',
+    translationKey: 'menu.epesantren.unitPendidikan',
+    route: '/app/pesantren/unit-pendidikan',
+    icon: 'School',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 1,
+    actions: CATAT,
+  },
+  {
     code: 'EPESANTREN_ROMBONGAN',
     parentCode: 'EPESANTREN_GRP_SETUP',
     label: 'Rombongan Belajar',
@@ -141,7 +152,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/rombongan',
     icon: 'Users2',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 1,
+    sortOrder: 2,
     actions: CATAT,
   },
   {
@@ -152,7 +163,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/kurikulum',
     icon: 'CalendarClock',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 2,
+    sortOrder: 3,
     actions: KURIKULUM_AKSI,
   },
   {
@@ -163,7 +174,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/asrama',
     icon: 'Building2',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 3,
+    sortOrder: 4,
     actions: CATAT,
   },
   {
@@ -174,7 +185,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/diniyah',
     icon: 'BookOpen',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 4,
+    sortOrder: 5,
     actions: CATAT,
   },
   {
@@ -185,7 +196,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/katering',
     icon: 'CookingPot',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 5,
+    sortOrder: 6,
     actions: KATERING_AKSI,
   },
   {
@@ -196,7 +207,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/profil',
     icon: 'Palette',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 6,
+    sortOrder: 7,
     actions: PROFIL_AKSI,
   },
   {
@@ -207,7 +218,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/berita',
     icon: 'Newspaper',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 7,
+    sortOrder: 8,
     actions: BERITA_AKSI,
   },
 

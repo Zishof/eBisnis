@@ -569,7 +569,9 @@ model VerticalSiteDomain {
   /// Host dalam bentuk yang sudah dinormalkan: huruf kecil, tanpa porta,
   /// tanpa titik akar. Penyimpanan dan pembacaan memakai penormal yang sama.
   host       String    @unique @db.VarChar(253)
-  /// Kode vertikal yang dilayani host ini: cooperative, health, village.
+  /// Kode vertikal yang dilayani host ini: cooperative, health, village,
+  /// pesantren. Satu tenant boleh memiliki lebih dari satu host pada vertikal
+  /// yang sama, misalnya host pondok dan host unit pendidikan.
   /// Satu host melayani satu vertikal — keduanya punya pembaca, isi, dan
   /// aturan cakupan data yang berbeda.
   vertical   String    @db.VarChar(32)
@@ -585,7 +587,7 @@ model VerticalSiteDomain {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@unique([tenantId, vertical])
+  @@index([tenantId, vertical])
   @@index([status])
   @@map("vertical_site_domain")
   @@schema("platform")

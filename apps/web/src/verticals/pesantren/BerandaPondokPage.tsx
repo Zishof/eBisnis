@@ -32,6 +32,21 @@ interface Kartu {
 /** Yang sudah dapat dibuka hari ini. */
 const SIAP: Kartu[] = [
   {
+    judul: 'Unit pendidikan',
+    isi: 'MI, madrasah diniyah, tahfiz, BLK, dan urutan tampilnya.',
+    ke: '/app/pesantren/unit-pendidikan',
+  },
+  {
+    judul: 'Santri dan asrama',
+    isi: 'Biodata santri, asrama, kamar, dan penempatan santri.',
+    ke: '/app/pesantren/asrama',
+  },
+  {
+    judul: 'Tagihan dan pembayaran',
+    isi: 'Tagihan SPP, item tagihan, penerbitan, dan pencatatan pembayaran.',
+    ke: '/app/pesantren/tagihan',
+  },
+  {
     judul: 'Pengaturan pondok',
     isi: 'Identitas, pengguna, peran, dan hak akses.',
     ke: '/app/pengaturan',
@@ -45,10 +60,8 @@ const SIAP: Kartu[] = [
 
 /** Yang dijanjikan halaman pemasaran dan belum dibangun. */
 const BELUM: Kartu[] = [
-  { judul: 'Santri dan asrama', isi: 'Biodata, penempatan kamar, dan catatan perkembangan.' },
   { judul: 'Diniyah dan tahfiz', isi: 'Halaqah, setoran hafalan, dan rapor diniyah.' },
   { judul: 'Perizinan keluar–masuk', isi: 'Pengajuan, persetujuan berjenjang, dan pemberitahuan wali.' },
-  { judul: 'Tagihan dan pembayaran', isi: 'Tagihan massal, cicilan, dan pemantauan tunggakan.' },
   { judul: 'Uang saku nontunai', isi: 'Dompet santri untuk kantin dan koperasi.' },
   { judul: 'Situs dan berita pondok', isi: 'Halaman profil dan berita yang disunting pengurus sendiri.' },
 ];
