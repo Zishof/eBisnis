@@ -6,24 +6,11 @@ import { PageHeader, StatusBadge } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
 
 interface KioskResult {
-  santri?: {
-    id: string;
-    nis: string;
-    nama_lengkap: string;
-    status: string;
-  };
-  kartu?: {
-    id: string;
-    nomor_kartu: string;
-    jenis: string;
-    status: string;
-  };
-  dompet?: {
-    id: string;
-    saldo: string;
-    batas_harian: string | null;
-    status: string;
-  } | null;
+  namaLengkap: string;
+  nis: string;
+  status: string;
+  presensiHariIni: Array<{ jenis: string; status: string }>;
+  saldoDompet: string | null;
 }
 
 export function PesantrenKioskPage() {
@@ -81,25 +68,26 @@ export function PesantrenKioskPage() {
       {hasil.data && (
         <div className="grid gap-4 lg:grid-cols-3">
           <InfoCard title="Santri">
-            <Info label="NIS" value={hasil.data.santri?.nis} />
-            <Info label="Nama" value={hasil.data.santri?.nama_lengkap} />
+            <Info label="NIS" value={hasil.data.nis} />
+            <Info label="Nama" value={hasil.data.namaLengkap} />
             <div className="mt-2">
-              <StatusBadge status={hasil.data.santri?.status ?? '-'} />
+              <StatusBadge status={hasil.data.status} />
             </div>
           </InfoCard>
-          <InfoCard title="Kartu">
-            <Info label="Nomor" value={hasil.data.kartu?.nomor_kartu} />
-            <Info label="Jenis" value={hasil.data.kartu?.jenis} />
-            <div className="mt-2">
-              <StatusBadge status={hasil.data.kartu?.status ?? '-'} />
-            </div>
+          <InfoCard title="Presensi Hari Ini">
+            {hasil.data.presensiHariIni.length ? (
+              hasil.data.presensiHariIni.map((item) => (
+                <div key={`${item.jenis}-${item.status}`} className="flex items-center justify-between gap-3">
+                  <span className="text-slate-500">{item.jenis}</span>
+                  <StatusBadge status={item.status} />
+                </div>
+              ))
+            ) : (
+              <span className="text-slate-500">Belum ada presensi hari ini.</span>
+            )}
           </InfoCard>
           <InfoCard title="Dompet">
-            <Info label="Saldo" value={formatMoney(hasil.data.dompet?.saldo ?? 0)} />
-            <Info label="Batas harian" value={hasil.data.dompet?.batas_harian ? formatMoney(hasil.data.dompet.batas_harian) : '-'} />
-            <div className="mt-2">
-              <StatusBadge status={hasil.data.dompet?.status ?? '-'} />
-            </div>
+            <Info label="Saldo" value={hasil.data.saldoDompet ? formatMoney(hasil.data.saldoDompet) : '-'} />
           </InfoCard>
         </div>
       )}
