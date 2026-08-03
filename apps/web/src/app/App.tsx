@@ -9,6 +9,7 @@ import { NewsDetailPage } from '../pages/public/NewsDetailPage';
 import { ContactPage } from '../pages/public/ContactPage';
 import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
+import { pelangganRootRedirectFor } from '../pages/pelanggan/pelanggan-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
 import { isSantriPortalHost, slugPondokDariHost } from '../verticals/pesantren/santri-host';
 import { PondokChrome } from '../verticals/pesantren/PondokChrome';
@@ -82,6 +83,14 @@ const PosReportPage = lazy(() =>
 );
 const PosPromotionPage = lazy(() =>
   import('../pages/pos/PosPromotionPage').then((m) => ({ default: m.PosPromotionPage })),
+);
+const PelangganDemoPage = lazy(() =>
+  import('../pages/pelanggan/PelangganDemoPage').then((m) => ({ default: m.PelangganDemoPage })),
+);
+const PortalPelangganAdminPage = lazy(() =>
+  import('../pages/pelanggan/PortalPelangganAdminPage').then((m) => ({
+    default: m.PortalPelangganAdminPage,
+  })),
 );
 
 const BelanjaHomePage = lazy(() =>
@@ -179,6 +188,8 @@ const PenawaranPesantrenPage = lazy(() =>
  * API dari host permintaan, bukan dari peramban.
  */
 function AkarMenurutHost() {
+  const pelangganRedirect = pelangganRootRedirectFor();
+  if (pelangganRedirect) return <Navigate to={pelangganRedirect} replace />;
   if (isMarketplaceHost()) return <Navigate to="/belanja" replace />;
   if (isCooperativeHost()) return <Navigate to="/ekoperasi/situs" replace />;
   /*
@@ -292,6 +303,9 @@ export function App() {
           <Route path=":storeSlug/:productSlug" element={<BelanjaProductPage />} />
         </Route>
 
+        {/* Halaman pelanggan toko (pelanggan-demo.ebisnis.id) */}
+        <Route path="/pelanggan/:slug" element={<PelangganDemoPage />} />
+
         {/* Aplikasi tenant */}
         <Route
           path="/app"
@@ -335,6 +349,7 @@ export function App() {
           <Route path="pos" element={<PosPage />} />
           <Route path="pos/laporan" element={<PosReportPage />} />
           <Route path="pos/aturan-diskon" element={<PosPromotionPage />} />
+          <Route path="portal-pelanggan" element={<PortalPelangganAdminPage />} />
           <Route path="sample-data" element={<SampleDataPage />} />
           <Route path="devices" element={<SubscriptionPage tab="devices" />} />
           <Route path="subscription/checkout" element={<SubscriptionPage tab="checkout" />} />
