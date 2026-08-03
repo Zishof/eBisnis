@@ -130,6 +130,15 @@ export class PesantrenUnitPendidikanService {
       if (isUniqueViolation(error, 'ux_pesantren_unit_pendidikan_code')) {
         throw AppError.conflict(ErrorCodes.CONFLICT, `Kode unit "${payload.code}" sudah dipakai.`);
       }
+      if (isUniqueViolation(error, 'ux_pesantren_unit_pendidikan_public_slug')) {
+        throw AppError.conflict(ErrorCodes.CONFLICT, `Slug halaman "${payload.publicSlug}" sudah dipakai.`);
+      }
+      if (isUniqueViolation(error, 'ux_pesantren_unit_pendidikan_santri_subdomain')) {
+        throw AppError.conflict(ErrorCodes.CONFLICT, `Subdomain "${payload.santriSubdomain}.santri.info" sudah dipakai.`);
+      }
+      if (isUniqueViolation(error, 'ux_pesantren_unit_pendidikan_custom_domain')) {
+        throw AppError.conflict(ErrorCodes.CONFLICT, `Domain "${payload.customDomain}" sudah dipakai.`);
+      }
       throw error;
     }
   }
@@ -204,6 +213,15 @@ export class PesantrenUnitPendidikanService {
     } catch (error) {
       if (isUniqueViolation(error, 'ux_pesantren_unit_pendidikan_code')) {
         throw AppError.conflict(ErrorCodes.CONFLICT, `Kode unit "${payload.code}" sudah dipakai.`);
+      }
+      if (isUniqueViolation(error, 'ux_pesantren_unit_pendidikan_public_slug')) {
+        throw AppError.conflict(ErrorCodes.CONFLICT, `Slug halaman "${payload.publicSlug}" sudah dipakai.`);
+      }
+      if (isUniqueViolation(error, 'ux_pesantren_unit_pendidikan_santri_subdomain')) {
+        throw AppError.conflict(ErrorCodes.CONFLICT, `Subdomain "${payload.santriSubdomain}.santri.info" sudah dipakai.`);
+      }
+      if (isUniqueViolation(error, 'ux_pesantren_unit_pendidikan_custom_domain')) {
+        throw AppError.conflict(ErrorCodes.CONFLICT, `Domain "${payload.customDomain}" sudah dipakai.`);
       }
       throw error;
     }
@@ -315,19 +333,39 @@ export class PesantrenUnitPendidikanService {
 }
 
 function normalisasi(masukan: MasukanUnitPendidikan): MasukanUnitPendidikan {
+  const name = masukan.name?.trim();
+  const code = masukan.code?.trim().toUpperCase();
+  const slugDefault = slugUnitPendidikan(name || code || '');
   return {
-    code: masukan.code?.trim().toUpperCase(),
-    name: masukan.name?.trim(),
+    code,
+    name,
     jenis: masukan.jenis,
     sortOrder: masukan.sortOrder ?? 0,
     isActive: masukan.isActive ?? true,
-    websiteEnabled: masukan.websiteEnabled ?? false,
-    publicSlug: kosongJadiNull(masukan.publicSlug)?.toLowerCase(),
-    santriSubdomain: kosongJadiNull(masukan.santriSubdomain)?.toLowerCase(),
+    websiteEnabled: masukan.websiteEnabled ?? true,
+    publicSlug: kosongJadiNull(masukan.publicSlug)?.toLowerCase() ?? slugDefault,
+    santriSubdomain: kosongJadiNull(masukan.santriSubdomain)?.toLowerCase() ?? slugDefault,
     customDomain: normalisasiDomain(masukan.customDomain),
     welcomeTitle: kosongJadiNull(masukan.welcomeTitle),
     welcomeBody: kosongJadiNull(masukan.welcomeBody),
   };
+}
+
+function slugUnitPendidikan(value: string): string | null {
+  const slug = value
+    .toLowerCase()
+    .replace(/\bmadrasah\b/g, '')
+    .replace(/\bibtidaiyah\b/g, 'mi')
+    .replace(/\bdiniyah\b/g, 'md')
+    .replace(/\btakmiliyah\b/g, '')
+    .replace(/\bbalai\s+latihan\s+kerja\b/g, 'blk')
+    .replace(/\bkomunitas\b/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+    .slice(0, 63)
+    .replace(/-+$/g, '');
+  return slug || null;
 }
 
 function kosongJadiNull(value: string | null | undefined): string | null {

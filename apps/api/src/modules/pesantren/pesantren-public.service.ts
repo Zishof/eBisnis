@@ -95,8 +95,7 @@ export class PesantrenPublicService {
       `SELECT id::text, code, name, jenis, website_enabled, public_slug,
               santri_subdomain, custom_domain, domain_status, welcome_title, welcome_body
          FROM "${S}".pesantren_unit_pendidikan
-        WHERE website_enabled = TRUE
-          AND is_active = TRUE
+        WHERE is_active = TRUE
           AND deleted_at IS NULL
           AND public_slug = $1`,
       [slug.toLowerCase()],
@@ -152,8 +151,7 @@ export class PesantrenPublicService {
       schemaName,
       `SELECT id::text, code, name, jenis, public_slug, santri_subdomain, custom_domain
          FROM "${schemaName}".pesantren_unit_pendidikan
-        WHERE website_enabled = TRUE
-          AND is_active = TRUE
+        WHERE is_active = TRUE
           AND deleted_at IS NULL
           AND (
             ($1::text IS NOT NULL AND santri_subdomain = $1)

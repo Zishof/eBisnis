@@ -34,7 +34,7 @@ const FORM_KOSONG = {
   jenis: 'SEKOLAH_FORMAL',
   sortOrder: '0',
   isActive: true,
-  websiteEnabled: false,
+  websiteEnabled: true,
   publicSlug: '',
   santriSubdomain: '',
   customDomain: '',
