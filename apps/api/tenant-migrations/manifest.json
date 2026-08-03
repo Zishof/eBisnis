@@ -1,4 +1,4 @@
-﻿{
+{
   "$comment": "Canonical tenant migration catalog. Checksum (sha256) dihitung saat runtime dari isi file dan dicatat pada platform.schema_migration_catalog serta platform.tenant_schema_migration_history. Jangan mengubah file yang sudah diterapkan pada environment bersama — buat versi baru.",
   "schemaVersion": 1,
   "migrations": [

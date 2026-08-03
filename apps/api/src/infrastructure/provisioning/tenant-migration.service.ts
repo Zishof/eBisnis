@@ -50,6 +50,10 @@ export function normalizeLineEndings(text: string): string {
   return text.replace(/\r\n/g, '\n');
 }
 
+function readJsonFile<T>(path: string): T {
+  return JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/, '')) as T;
+}
+
 @Injectable()
 export class TenantMigrationService {
   private readonly logger = new Logger(TenantMigrationService.name);
@@ -87,7 +91,7 @@ export class TenantMigrationService {
       const manifestPath = join(dir, 'manifest.json');
       if (!existsSync(manifestPath)) continue;
 
-      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as ModuleManifest;
+      const manifest = readJsonFile<ModuleManifest>(manifestPath);
       if (manifest.module !== nama) {
         throw AppError.internal(
           ErrorCodes.PROVISIONING_FAILED,
@@ -103,7 +107,7 @@ export class TenantMigrationService {
   getManifest(): Manifest {
     if (!this.manifest) {
       const manifestPath = join(this.migrationsDir, 'manifest.json');
-      const core = JSON.parse(readFileSync(manifestPath, 'utf8')) as CoreManifest;
+      const core = readJsonFile<CoreManifest>(manifestPath);
       this.manifest = gabungkanKatalog(core, this.discoverModuleManifests());
     }
     return this.manifest;
