@@ -1,0 +1,93 @@
+==============================================================================
+BUKTI H-9H — REGISTRI ALAT KESEHATAN, GATEWAY, DAN HASIL ALAT
+Waktu   : 2026-08-01T01:53:01.431Z
+Schema  : demo
+==============================================================================
+
+Tiga pengguna. Teknisi mengelola alat tetapi TIDAK menyalakan kendali jarak
+jauh; administrator sebaliknya. Yang ketiga menelaah hasil — dan ia sengaja
+diberi hak MENGAITKAN pula, supaya penolakan "yang mengaitkan tidak
+menelaah" datang dari pemeriksaan baris, bukan dari ketiadaan hak akses.
+
+1. ALAT TIDAK PERNAH PUNYA KREDENSIAL BASIS DATA
+  LULUS  tabel alat tidak punya satu pun kolom kredensial
+  LULUS  gateway dengan rujukan brankas diterima
+  LULUS  dan diberi tahu bahwa ia tidak dapat membacanya kembali
+  LULUS  kredensial sebagai NILAI DITOLAK
+  LULUS  penolakannya menyebut siapa yang harus dicurigai ketika ada kebocoran
+  LULUS  menembusnya lewat basis data ditolak constraint
+  LULUS  rujukan brankas TIDAK ikut dikembalikan pada daftar
+
+2. Protokol yang terhalang menyebutkan penghalangnya
+  LULUS  katalog protokol terbaca
+  LULUS  yang terhalang seluruhnya menyebut penghalangnya
+  LULUS  alat berprotokol DICOM ditolak
+  LULUS  penolakannya menyebut PACS
+  LULUS  dan menegaskan ia bukan tidak didukung
+  LULUS  alat non-manual TANPA gateway ditolak
+  LULUS  penolakannya menyebut tidak ada jalan langsung ke basis data
+
+3. KENDALI JARAK JAUH MATI SECARA BAWAAN
+  LULUS  alat terdaftar
+  LULUS  dengan kendali jarak jauh MATI
+  LULUS  dan dikatakan bawaannya memang mati
+  LULUS  TEKNISI tidak berwenang menyalakan kendali jarak jauh
+  LULUS  kurang satu syarat pun DITOLAK
+  LULUS  penolakannya menyebut akibat kegagalannya tidak dapat diperbaiki
+  LULUS  menyalakannya lewat basis data ditolak constraint
+  LULUS  dengan keenam syaratnya, administrator menyalakannya
+  LULUS  di SELURUH tenant, tidak satu pun kendali menyala tanpa keenam syaratnya
+
+4. Perintah di luar daftar putih ditolak, dan setiap penolakan DICATAT
+  LULUS  perintah di luar daftar putih ditolak
+  LULUS  penolakannya menyebut pembaruan yang datang tanpa memberi tahu
+  LULUS  nilai yang melampaui batas ditolak
+  LULUS  penolakannya menyebut perintah yang mencelakakan
+  LULUS  perintah yang sah diterima
+  LULUS  ketiganya tercatat — termasuk yang DITOLAK
+  LULUS  yang ditolak menyimpan alasannya
+  LULUS  jejak perintah tidak dapat dihapus
+
+5. Hasil tanpa identitas pasien TIDAK DITEBAK
+  LULUS  hasil diterima
+  LULUS  tetapi TIDAK dikaitkan kepada siapa pun
+  LULUS  dan masuk antrean PENDING_LINK
+  LULUS  pesannya menyebut salah sekali
+  LULUS  antrean pengaitan terbaca
+  LULUS  dan memuat hasil yang belum terkait
+  LULUS  pasien yang muncul TANPA cara pengaitan ditolak constraint
+
+6. Duplikat dikenali lewat SIDIK JARI, bukan lewat waktu
+  LULUS  pesan yang sama dikirim ulang DITOLAK
+  LULUS  dan hanya satu barisnya yang tersimpan
+
+7. Dua waktu disimpan terpisah; kalibrasi kedaluwarsa MENANDAI
+  LULUS  hasil yang tertunda tetap DITERIMA
+  LULUS  selisih waktunya dihitung
+  LULUS  dan ditandai, bukan ditolak
+  LULUS  sebabnya disebutkan: hasilnya sah
+  LULUS  kedua waktu tersimpan berbeda
+  LULUS  hasil dari alat berkalibrasi kedaluwarsa TETAP DITERIMA
+  LULUS  tetapi ditandai
+  LULUS  dan sebabnya menyebut alat yang mungkin masih benar
+
+8. Alat DOWNTIME tidak menerima hasil baru
+  LULUS  hasil dari alat DOWNTIME ditolak
+
+9. Yang mengaitkan hasil tidak menelaahnya sendiri
+  LULUS  hasil dikaitkan manusia
+  LULUS  dan namanya tercatat
+  LULUS  yang MENGAITKAN tidak menelaahnya sendiri
+  LULUS  penolakannya menyebut membaca ulang keyakinannya sendiri
+  LULUS  pengaitan yang sudah ada TIDAK ditimpa
+  LULUS  penolakannya menyebut peristiwa tersendiri
+  LULUS  hasil alat tidak dapat dihapus
+
+10. Perubahan versi perangkat lunak alat ditandai sendiri
+  LULUS  perubahan versi ditandai trigger
+  LULUS  daftar alat memuat penanda kalibrasi kedaluwarsa
+  LULUS  dan memuat keadaan kendali jarak jauhnya
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

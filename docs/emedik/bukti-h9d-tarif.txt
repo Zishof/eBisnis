@@ -1,0 +1,75 @@
+==============================================================================
+BUKTI H-9D — TARIF JKN BERVERSI DAN CAKUPAN PENJAMIN
+Waktu   : 2026-07-31T23:36:20.728Z
+Schema  : demo
+==============================================================================
+
+Dua pengguna. Petugas tarif TIDAK diberi APPROVE, penyetuju TIDAK diberi
+IMPORT — justru pemisahan itulah yang hendak dibuktikan naskah ini.
+
+1. Tarif yang belum tersedia TIDAK ditaksir
+  LULUS  pencarian berjalan
+  LULUS  tetapi tarifnya TIDAK ditemukan
+  LULUS  dan tidak ada angka yang dikembalikan
+  LULUS  pesannya berkata belum tersedia
+  LULUS  dan menyebut sebabnya: menaksirnya akan dipakai menagih orang
+  LULUS  pencarian tanpa tanggal layanan ditolak
+  LULUS  penolakannya menegaskan bukan tanggal hari ini
+
+2. Impor membuat versi baru; tumpang tindih tanggal ditolak
+  LULUS  versi 2025 dibuat
+  LULUS  dan belum aktif
+  LULUS  impor dengan tumpang tindih di dalam kirimannya DITOLAK
+  LULUS  penolakannya menyebut baris keberapa
+  LULUS  dan TIDAK mengimpor sebagiannya
+  LULUS  impor yang sah berhasil
+
+3. Yang mengimpor tidak menyetujuinya sendiri
+  LULUS  petugas tarif tidak berwenang menyetujui
+  LULUS  versi KOSONG tidak dapat diaktifkan
+  LULUS  penolakannya menyebut akibatnya
+  LULUS  versi tanpa berkas sumber tidak dapat diaktifkan
+  LULUS  penolakannya menyebut tarif yang diketik dari ingatan
+  LULUS  penyetuju mengaktifkan versi 2025
+  LULUS  menembus persetujuan sendiri lewat basis data ditolak constraint
+
+4. Baris tarif pada versi yang sudah aktif tidak dapat diubah
+  LULUS  mengubahnya ditolak trigger
+  LULUS  penolakannya menyuruh membuat versi baru
+  LULUS  menghapusnya pun ditolak
+  LULUS  menambah baris ke versi aktif ditolak
+
+5. Klaim tahun lalu memakai tarif tahun lalu
+  LULUS  layanan Maret 2025 memakai tarif 2025
+  LULUS  layanan Juni 2026 memakai tarif 2026
+  LULUS  hari TERAKHIR masa berlaku masih memakai tarif itu
+  LULUS  yang lebih KHUSUS menang atas yang umum
+
+6. Tumpang tindih ditolak basis data, termasuk pada tarif umum
+  LULUS  tumpang tindih pada kunci yang sama ditolak constraint pengecualian
+  LULUS  dua tarif UMUM yang bagiannya kosong pun ditolak
+  LULUS  rentang yang tidak bersinggungan tetap diterima
+
+7. Dua tarif yang sama-sama berlaku menghentikan perhitungan
+  LULUS  basis data menolak baris kedua yang bertumpang tindih lintas versi
+
+  Catatan: constraint pengecualian bekerja pada SELURUH tabel, bukan hanya
+  pada versi yang aktif. Akibatnya tarif ambigu tidak dapat dibuat sama
+  sekali lewat jalur mana pun — penjaga di layanan menjadi lapis kedua,
+  bukan satu-satunya.
+
+8. Penjamin, tanggungan, dan pembulatan yang memihak pasien
+  LULUS  penjamin tanpa kontrak DITOLAK
+  LULUS  penolakannya menyebut tidak dapat ditagihkan kepada siapa pun
+  LULUS  menembusnya lewat basis data ditolak constraint
+  LULUS  penjamin dengan kontrak diterima
+  LULUS  tanpa rujukan, tanggungan ditahan
+  LULUS  dan seluruhnya sementara menjadi tanggungan pasien
+  LULUS  pesannya menyatakan itu SEMENTARA dan menyuruh hitung ulang
+  LULUS  dengan rujukan, penjamin menanggung penuh
+  LULUS  pembulatannya MEMIHAK PASIEN
+  LULUS  persentase di luar 0-100 ditolak
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

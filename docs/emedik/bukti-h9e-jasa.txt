@@ -1,0 +1,78 @@
+==============================================================================
+BUKTI H-9E — KEBIJAKAN PEMBAGIAN JASA DAN KONTRIBUTOR
+Waktu   : 2026-07-31T23:56:15.682Z
+Schema  : demo
+==============================================================================
+
+Tiga pengguna. Yang ketiga penyetuju yang JUGA dokter — dan justru dialah
+yang membuktikan pemisahan yang paling sulit dilihat: penerima jasa tidak
+menyetujui aturan yang membayar dirinya.
+
+1. TIDAK ADA SATU PUN PERSENTASE BAWAAN
+  LULUS  migrasi tidak menyemai satu pun kebijakan
+  LULUS  dan tidak satu pun baris persentase bawaan
+  LULUS  sehingga tidak ada persentase apa pun yang berlaku tanpa pernah disepakati
+
+2. Bentuk kebijakan diperiksa; besarnya tidak
+  LULUS  jumlah persentase melebihi 100 DITOLAK
+  LULUS  penolakannya menyebut uang yang tidak dimilikinya
+  LULUS  jumlah persentase KURANG dari 100 tetap diterima
+  LULUS  kebijakan yang sah dibuat
+  LULUS  dan dibuat dalam keadaan TIDAK aktif
+  LULUS  catatannya menyatakan ini kesepakatan dua pihak
+  LULUS  menembus batas 100 persen lewat basis data ditolak trigger
+
+3. Penyusun tidak menyetujui, dan penerima tidak menyetujui yang membayarnya
+  LULUS  penyusun tidak berwenang menyetujui
+  LULUS  penyetuju yang JUGA penerima pada kebijakan ini DITOLAK
+  LULUS  penolakannya menyebut dua bulan berturut-turut
+  LULUS  penyetuju yang bukan penerima mengaktifkannya
+  LULUS  menembus persetujuan sendiri lewat basis data ditolak constraint
+
+4. Baris kebijakan yang sudah aktif tidak dapat diubah
+  LULUS  mengubahnya ditolak trigger
+  LULUS  penolakannya menyuruh membuat versi baru
+  LULUS  menghapusnya pun ditolak
+
+5. Fee sistem dan fee investor bawaannya NONE
+  LULUS  kebijakan berfee sistem boleh DISUSUN
+  LULUS  tetapi TIDAK dapat diaktifkan tanpa kontrak
+  LULUS  penolakannya menyebut keenam syaratnya satu per satu
+  LULUS  dan menyebut bahwa fee itu mengambil dari kumpulan jasa tenaga medis
+  LULUS  bagian investor pun tidak dapat diaktifkan tanpa kontrak
+  LULUS  tidak satu pun fee sistem atau investor yang aktif di seluruh tenant
+
+6. Templat contoh bukan standar nasional dan bukan saran hukum
+  LULUS  templat contoh tidak dapat diaktifkan sebelum disetujui produksi
+  LULUS  penolakannya menyatakan ia bukan saran hukum
+  LULUS  dan menyatakan persentase produksi ditentukan fasilitas bersama tenaga medisnya
+  LULUS  menembusnya lewat basis data ditolak constraint
+
+7. Jasa BPJS dihitung dari klaim yang DIBAYAR
+  LULUS  perhitungan final dari tagihan kotor pada penjamin klaim DITOLAK
+  LULUS  penolakannya menyebut uang yang tidak pernah diterimanya
+  LULUS  tetapi SIMULASI dengan dasar yang sama diizinkan
+  LULUS  perhitungan dengan dasar PAID_CLAIM berjalan
+  LULUS  dan membagi habis tanpa sisa
+  LULUS  versi kebijakan DISALIN ke hasilnya
+  LULUS  kebijakan yang belum aktif tidak dipakai untuk perhitungan final
+
+8. Jasa dibayarkan kepada yang benar-benar hadir
+  LULUS  kontributor dengan bukti kehadiran dicatat
+  LULUS  dan ditandai memiliki bukti
+  LULUS  kontributor TANPA bukti tetap dicatat
+  LULUS  tetapi ditandai belum memiliki bukti
+  LULUS  dan diberi tahu bahwa ia tidak akan ikut dibayar
+  LULUS  yang layak dan yang tersaring dipisahkan
+  LULUS  yang tersaring disebut namanya, bukan dihilangkan
+  LULUS  dan alasannya menyebut daftar keinginan
+  LULUS  kumpulan dibagi menurut bobot
+  LULUS  yang tidak hadir TIDAK menerima apa pun
+  LULUS  seluruh kumpulan terbagi habis
+  LULUS  bedah dengan bobot 5 menerima lebih besar daripada anestesi dengan bobot 3
+  LULUS  jumlah yang dikecualikan disebutkan
+  LULUS  satu pemberi layanan tidak dapat tercatat dua kali dengan peran yang sama
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

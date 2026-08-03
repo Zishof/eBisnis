@@ -1,0 +1,90 @@
+==============================================================================
+BUKTI H-9I — ADAPTER PROTOKOL ALAT HL7 v2 DAN ASTM
+Waktu   : 2026-08-01T03:06:21.383Z
+Schema  : demo
+==============================================================================
+
+Dua pengguna. Teknisi menerima pesan tetapi TIDAK memetakan kode; analis
+sebaliknya. Kode yang dipetakan keliru menghasilkan hasil laboratorium yang
+tampak sempurna dan salah seluruhnya.
+
+1. Protokol yang terhalang menyebutkan penghalangnya
+  LULUS  katalog adapter terbaca
+  LULUS  DICOM belum siap
+  LULUS  dan penghalangnya menyebut PACS
+  LULUS  setiap yang belum siap menyebutkan penghalangnya
+  LULUS  HL7 dan ASTM punya pengurai sungguhan
+  LULUS  pesan DICOM DITOLAK
+  LULUS  penolakannya menyebut cadangan yang tidak dapat dipulihkan
+
+2. Pesan HL7 yang sah terurai benar
+  LULUS  pesan diterima
+  LULUS  dan terurai
+  LULUS  control ID terbaca
+  LULUS  jenis pesan terbaca
+  LULUS  order ID terbaca dari OBR-2
+  LULUS  pengenal pasien terbaca
+  LULUS  dua hasil terbaca
+  LULUS  dibalas ACK AA
+  LULUS  PESAN ASLI TERSIMPAN APA ADANYA
+  LULUS  beserta sidik jarinya
+
+3. Kode yang belum terpeta TIDAK ditebak — ia masuk antrean
+  LULUS  kedua kodenya dilaporkan belum terpeta
+  LULUS  antrean pemetaan terbaca
+  LULUS  memuat kedua kodenya
+  LULUS  terurut menurut yang paling sering muncul
+  LULUS  penghitungnya bertambah ketika kodenya muncul lagi
+
+4. Duplikat dikenali lewat sidik jari isinya
+  LULUS  pesan yang sama dikirim ulang DITOLAK
+  LULUS  penolakannya menyebut simpanan yang dikirim ulang begitu tersambung
+
+5. PESAN YANG GAGAL DIURAI TETAP TERSIMPAN
+  LULUS  permintaannya TETAP BERHASIL
+  LULUS  statusnya FAILED
+  LULUS  dan pesannya tersimpan
+  LULUS  sebabnya disebutkan
+  LULUS  dibalas AE, BUKAN AR
+  LULUS  jumlah pesan bertambah satu
+  LULUS  pesan gagal TANPA sebab ditolak constraint
+  LULUS  papan pesan gagal memuatnya
+
+6. Pesan asli tidak dapat diubah maupun dihapus
+  LULUS  mengubah isinya ditolak trigger
+  LULUS  mengubah sidik jarinya pun ditolak
+  LULUS  menghapusnya ditolak
+  LULUS  alasannya menyebut apakah yang tersimpan sama dengan yang dikirim alat
+  LULUS  UJI KENDALI: penanda pemrosesannya MASIH boleh berubah
+  LULUS  pesan asli dapat dibuka kembali apa adanya
+
+7. Yang menerima pesan TIDAK memetakan kodenya
+  LULUS  teknisi tidak berwenang memetakan
+  LULUS  analis laboratorium memetakannya
+  LULUS  dan antreannya ikut terselesaikan
+  LULUS  pemetaan yang sudah ada TIDAK ditimpa
+  LULUS  penolakannya menyebut hasil lama yang dipersengketakan
+  LULUS  pemetaan ganda lewat basis data ditolak indeks unik
+  LULUS  pemetaan dapat dinonaktifkan
+  LULUS  dan barisnya TETAP TERSIMPAN sebagai riwayat
+  LULUS  UJI KENDALI: sesudah dinonaktifkan, kodenya boleh dipetakan ulang
+
+8. Pesan ASTM terurai benar
+  LULUS  pesan ASTM diterima dan terurai
+  LULUS  order ID terbaca
+  LULUS  pengenal pasien terbaca
+  LULUS  hasilnya terbaca
+
+9. Penguraian percobaan tidak menyimpan apa pun
+  LULUS  penguraian percobaan berhasil
+  LULUS  dan ditandai sebagai percobaan
+  LULUS  tidak ada pesan baru tersimpan
+
+10. Jenis pesan adalah daftar TERTUTUP
+  LULUS  pesan ADT tersimpan tetapi berstatus FAILED
+  LULUS  sebabnya menyebut jenis pesan yang tidak diterima
+  LULUS  dan menjelaskan mengapa ADT bukan urusan alat
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

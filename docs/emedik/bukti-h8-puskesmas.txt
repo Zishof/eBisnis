@@ -1,0 +1,76 @@
+==============================================================================
+BUKTI H-8 — PERTUMBUHAN ANAK, IMUNISASI, DAN CAKUPAN
+Waktu   : 2026-07-31T20:37:46.207Z
+Schema  : demo
+==============================================================================
+
+Dua pengguna: kader dan petugas Puskesmas. Kader TIDAK diberi
+HEALTH_PATIENT.READ dan TIDAK diberi HEALTH_IMMUNIZATION.CREATE —
+keduanya justru pemisahan yang hendak dibuktikan naskah ini.
+
+1. Tanpa baris rujukan yang berlaku, hasilnya BELUM DAPAT DINILAI
+  LULUS  pengukuran tercatat
+  LULUS  tinggi menurut umur BELUM DAPAT DINILAI
+  LULUS  dan pesannya berkata menyebutnya normal akan berbohong
+  LULUS  penilaian yang tidak dapat dilakukan TIDAK menuntut tindakan
+
+2. Dengan baris rujukan WHO yang berlaku bagi umurnya
+  LULUS  kini dapat dinilai
+  LULUS  anak 80 cm pada umur 24 bulan dinyatakan STUNTING
+  LULUS  z-scorenya sekitar −2,2 sesuai rumus LMS
+  LULUS  pesannya menyebut keadaan MENAHUN, bukan akut
+  LULUS  z-score tersimpan, bukan dihitung ulang saat dibaca
+  LULUS  sumber rujukannya ikut tersimpan
+
+3. Cara pengukuran tinggi wajib disebutkan, dan dibetulkan bila keliru
+  LULUS  tinggi tanpa cara pengukuran ditolak
+  LULUS  penolakannya menyebut selisih 0,7 cm
+  LULUS  anak ≥ 24 bulan yang diukur berbaring dibetulkan
+  LULUS  pembetulannya dilaporkan, bukan diam-diam
+  LULUS  nilai asli dan nilai yang dibetulkan disimpan keduanya
+
+4. Berat badan tidak naik dua kali berturut-turut
+  LULUS  berat yang tidak naik dua kali ditandai
+  LULUS  penandanya menyebut ia tidak menuntut tabel rujukan
+  LULUS  catatan pertumbuhan tidak dapat diubah, ditegakkan basis data
+
+5. Imunisasi — yang terlalu cepat DITOLAK, bukan diperingatkan
+  LULUS  vaksin sebelum umur minimum DITOLAK
+  LULUS  penolakannya menyebut bahwa ia akan tercatat sebagai diberikan
+  LULUS  dan menyebut tanggal paling awalnya
+  LULUS  BCG pada umur 40 hari diizinkan
+  LULUS  dosis yang sama tidak dapat dicatat dua kali
+  LULUS  dosis yang melompat urutan ditolak
+  LULUS  status imunisasi terbaca
+  LULUS  yang sudah diberikan tercatat
+  LULUS  yang tertunggak dilaporkan
+  LULUS  yang boleh hari ini dipisahkan tersendiri
+  LULUS  catatan imunisasi tidak dapat dihapus, ditegakkan basis data
+
+6. Kader bukan petugas Puskesmas
+  LULUS  kader TIDAK berwenang memberikan imunisasi
+  LULUS  kader TIDAK berwenang mencari pasien seluruh fasilitas
+  LULUS  kader TETAP dapat menimbang dan mencatat
+
+7. Folder keluarga
+  LULUS  folder keluarga dibuat
+  LULUS  dua anggota terdaftar
+  LULUS  anak yang sudah terdaftar dilaporkan, TANPA menggagalkan folder barunya
+  LULUS  kader dapat melihat isi folder keluarganya
+  LULUS  keadaan gizi terakhir ikut ditampilkan
+
+8. Cakupan program dan daftar kunjungan rumah
+  LULUS  cakupan terbaca
+  LULUS  cakupan dihitung terhadap sasaran, bukan yang datang
+  LULUS  kekurangannya disebutkan
+  LULUS  daftar kunjungan terbaca
+  LULUS  anak yang stunting masuk daftar
+  LULUS  kunjungan rumah tercatat
+
+9. Jejak dan tujuan penggunaan
+  LULUS  mencatat pertumbuhan tanpa tujuan penggunaan ditolak
+  LULUS  jejak pembacaan tercatat
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

@@ -1,0 +1,65 @@
+==============================================================================
+BUKTI KONTRAK — BENTUK JAWABAN PELADEN vs TIPE KLIEN WEB
+Waktu   : 2026-08-01T15:32:07.924Z
+Schema  : demo
+==============================================================================
+
+--- Menyiapkan baris uji ------------------------------------------------
+  periksa berkas  : 201
+  insiden         : 201
+  pengukuran      : 201
+
+--- Medan wajib klien harus ada pada jawaban peladen -------------------
+  LULUS  facilities → Fasilitas (11 medan wajib)
+  LULUS  searchPatients → HasilCari (4 medan wajib)
+  LULUS  searchPatients.results[] → RingkasPasien (10 medan wajib)
+  LULUS  coverage → BarisCakupan (11 medan wajib)
+  LULUS  homeVisitWorklist → BarisKunjunganRumah (17 medan wajib)
+  LULUS  codingWorklist → BarisKoding (9 medan wajib)
+  LEWAT  deficiencies — tidak ada baris untuk diperiksa (BarisKekurangan)
+  LULUS  incidents → BarisInsiden (10 medan wajib)
+  LULUS  qualityDashboard → PapanMutu (2 medan wajib)
+  LULUS  breakGlassQueue → AntreanTelaah (3 medan wajib)
+  LULUS  breakGlassReviews → RiwayatTelaah (2 medan wajib)
+  LULUS  breakGlassSummary → RingkasTelaah (5 medan wajib)
+  LULUS  bpjsCatalog → KatalogBpjs (4 medan wajib)
+  LULUS  bpjsAdapters → KemampuanBpjs (2 medan wajib)
+  LULUS  claims → BarisKlaim (12 medan wajib)
+  LULUS  claimRejectionReport → BarisSebabTolak (3 medan wajib)
+  LULUS  bpjsSep → BarisSep (8 medan wajib)
+  LULUS  claim → RincianKlaim (26 medan wajib)
+  LULUS  tariffRegulations → BarisPeraturanTarif (10 medan wajib)
+  LULUS  tariffVersions → BarisVersiTarif (11 medan wajib)
+  LULUS  feePolicies → BarisKebijakanJasa (12 medan wajib)
+  LULUS  feePolicy → RincianKebijakanJasa (11 medan wajib)
+  LULUS  settlements → BarisSettlement (14 medan wajib)
+  LULUS  settlement → RincianSettlement (12 medan wajib)
+  LULUS  feeContracts → BarisKontrakFee (12 medan wajib)
+  LULUS  investorSummary → RingkasInvestor (7 medan wajib)
+  LULUS  deviceProtocols → ProtokolAlat (3 medan wajib)
+  LULUS  adapterProtocols → ProtokolAdapter (2 medan wajib)
+  LULUS  devices → BarisAlat (14 medan wajib)
+  LULUS  deviceGateways → BarisGateway (9 medan wajib)
+  LULUS  deviceSchedule → JadwalAlat (3 medan wajib)
+  LULUS  deviceWorkOrders → BarisPerintahKerja (14 medan wajib)
+  LULUS  deviceRisk → RisikoAlat (2 medan wajib)
+  LULUS  codeMapPending → AntreanPemetaan (2 medan wajib)
+  LEWAT  adapterMessages — tidak ada baris untuk diperiksa (BarisPesanAlat)
+  LULUS  legalHolds → StatusPenahanan (3 medan wajib)
+  LULUS  immunizationStatus → StatusImunisasi (4 medan wajib)
+  LULUS  growthHistory → BarisPertumbuhan (15 medan wajib)
+  LULUS  accessLog → JejakAkses (8 medan wajib)
+
+--- Katalog menu pada kode SAMA dengan menu pada basis data ------------
+  LULUS  setiap utas pada health-catalog.ts ada sebagai menu (71 diperiksa)
+
+--- Penolakan yang dapat dibaca, bukan 500 -----------------------------
+  LULUS  menimbang pasien dewasa ditolak 422, BUKAN 500
+  LULUS  dan penolakannya menyebutkan umurnya serta jalan keluarnya
+
+  2 jalan tidak dapat dibuktikan karena tidak ada barisnya.
+  Angka itu BUKAN kelulusan. Ia daftar yang masih harus dilihat orang.
+
+==============================================================================
+SELURUH KONTRAK YANG DAPAT DIPERIKSA COCOK (40)
+==============================================================================

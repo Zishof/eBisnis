@@ -1,0 +1,55 @@
+==============================================================================
+BUKTI H-3 — DOKUMENTASI KLINIS YANG TIDAK DAPAT DISUNTING DIAM-DIAM
+Waktu   : 2026-07-31T17:18:16.046Z
+Schema  : demo
+==============================================================================
+
+Disiapkan: satu klinik, satu pasien, satu kunjungan.
+
+1. Catatan yang belum ditandatangani
+  LULUS  draf masih dapat disunting
+
+2. Sesudah ditandatangani
+  LULUS  catatan dapat ditandatangani
+  LULUS  mengubah bagian subjektif DITOLAK
+  LULUS  mengubah penilaian DITOLAK
+  LULUS  memindahkan catatan ke pasien lain DITOLAK
+  LULUS  memundurkan waktu tanda tangan DITOLAK
+  LULUS  menghapus catatan bertanda tangan DITOLAK
+
+3. Amandemen
+  LULUS  amandemen tanpa alasan DITOLAK
+  LULUS  amandemen dapat dibuat
+  LULUS  catatan asli TETAP terbaca dan tidak berubah
+  LULUS  catatan asli tetap bertanda tangan
+  LULUS  amandemen menunjuk catatan yang digantikannya
+
+4. Batas kewajaran tanda vital
+  LULUS  angka yang TIDAK NORMAL tetapi mungkin tetap diterima
+  LULUS  suhu 450 derajat DITOLAK
+  LULUS  tekanan darah terbalik DITOLAK
+  LULUS  saturasi 150 persen DITOLAK
+  LULUS  berat 900 kilogram DITOLAK
+  LULUS  berat bayi 3,2 kg diterima
+
+5. Satu kunjungan, satu diagnosis utama
+  LULUS  diagnosis utama pertama diterima
+  LULUS  diagnosis utama KEDUA ditolak
+  LULUS  diagnosis sekunder boleh lebih dari satu
+
+6. Jejak pembacaan rekam medis
+  LULUS  break-glass tanpa alasan DITOLAK
+  LULUS  break-glass beralasan tercatat
+  LULUS  mengubah jejak pembacaan DITOLAK
+  LULUS  menghapus jejak pembacaan DITOLAK
+
+7. Alergi melekat pada pasien, bukan pada kunjungan
+  LULUS  alergi yang dicatat pada kunjungan pertama terlihat pada kunjungan kedua
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
+
+Data sementara dibersihkan sebagian.
+Catatan bertanda tangan dan jejak pembacaan sengaja ditinggalkan:
+penjaganya menolak penghapusan, dan itulah yang baru saja dibuktikan.

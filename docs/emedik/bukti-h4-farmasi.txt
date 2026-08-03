@@ -1,0 +1,73 @@
+==============================================================================
+BUKTI H-4 — OBAT, DARI RESEP SAMPAI MASUK KE TUBUH PASIEN
+Waktu   : 2026-07-31T19:04:44.609Z
+Schema  : demo
+==============================================================================
+
+Tiga pengguna dibuat: dokter, apoteker, perawat — masing-masing dengan
+hak akses yang berbeda, supaya pemisahan wewenang benar-benar teruji.
+
+Stok Parasetamol: 100 unit pada lot yang baik, 500 unit pada lot yang
+SUDAH KEDALUWARSA. Lot kedaluwarsa sengaja dibuat jauh lebih besar dan
+kedaluwarsanya lebih dekat — FEFO polos akan memilihnya lebih dahulu.
+
+1. Peringatan muncul SEBELUM resepnya disimpan
+  LULUS  pemeriksaan calon resep berhasil
+  LULUS  alergi berat terdeteksi
+  LULUS  dan ia MEMBLOKIR
+  LULUS  obat yang tidak berbahaya TIDAK memicu peringatan
+  LULUS  dan tidak diblokir
+
+2. Alergi berat menahan peresepan sampai ada alasan tertulis
+  LULUS  meresepkan obat yang pasiennya alergi berat DITOLAK
+  LULUS  penolakannya menyebut nomor barisnya
+  LULUS  dengan alasan tertulis, resepnya diterima
+  LULUS  alasannya tersimpan bersama peringatannya
+  LULUS  dan peringatan yang dilewati ikut tersimpan
+
+3. Pemisahan wewenang: peresep tidak menelaah resepnya sendiri
+  LULUS  resep parasetamol dibuat
+  LULUS  dokter tidak berwenang menelaah sama sekali
+  LULUS  apoteker menelaah dan menyetujui
+  LULUS  penolakan telaah tanpa alasan ditolak
+
+4. Penyerahan obat
+  LULUS  menyerahkan dari lot KEDALUWARSA ditolak
+  LULUS  penolakannya menyebut kedaluwarsa
+  LULUS  menyerahkan lebih banyak daripada yang diresepkan ditolak
+  LULUS  penyerahan yang sah berhasil
+  LULUS  lot yang dipakai BUKAN yang kedaluwarsa
+
+5. Penyerahan yang terkirim dua kali tidak mengurangi stok dua kali
+  LULUS  permintaan yang terulang dikembalikan apa adanya
+  LULUS  stok berkurang tepat 10, bukan 20
+  LULUS  jumlah yang tercatat diserahkan tetap 10
+
+6. Obat terkendali menuntut telaah dan pemeriksaan ganda
+  LULUS  obat terkendali yang BELUM ditelaah tidak dapat diserahkan
+  LULUS  penolakannya menyebut telaah
+  LULUS  obat terkendali tanpa pemeriksa kedua ditolak
+  LULUS  pemeriksaan ganda oleh penyerahnya sendiri ditolak
+  LULUS  dengan pemeriksa kedua yang berbeda, penyerahannya berhasil
+
+7. Enam benar pada pemberian obat
+  LULUS  memberikan kepada pasien yang SALAH ditolak
+  LULUS  kegagalannya tercatat sebagai kejadian nyaris cedera
+  LULUS  jenisnya WRONG_PATIENT
+  LULUS  dan tercatat TIDAK sampai ke pasien
+  LULUS  TANPA memindai pasien juga ditolak, bukan dilewati
+  LULUS  dosis yang berbeda dari resep ditolak
+  LULUS  enam benar terpenuhi, pemberiannya tercatat
+  LULUS  pemberian yang sama tidak dapat dicatat dua kali
+
+8. Obat yang dilewati wajib menyebut sebabnya
+  LULUS  melewatkan tanpa alasan ditolak
+  LULUS  dengan alasan, pelewatannya tercatat
+
+9. Setiap sentuhan rekam medis meninggalkan jejak
+  LULUS  jejak pembacaan rekam medis tercatat
+  LULUS  menyentuh rekam medis tanpa tujuan penggunaan ditolak
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

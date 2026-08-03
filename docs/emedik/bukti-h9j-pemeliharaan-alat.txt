@@ -1,0 +1,117 @@
+==============================================================================
+BUKTI H-9J — PEMELIHARAAN BIOMEDIS, KALIBRASI, DAN KEAMANAN SIBER ALAT
+Waktu   : 2026-08-01T02:21:35.438Z
+Schema  : demo
+==============================================================================
+
+Tiga pengguna. Teknisi memelihara alat; analis menilai risiko siber tetapi
+TIDAK memutuskan dan TIDAK dapat menyentuh alatnya; manajemen memutuskan
+tetapi tidak menilai.
+
+1. KETERLAMBATAN PEMELIHARAAN MENANDAI, TIDAK MENGHENTIKAN
+  LULUS  papan pemeliharaan terbaca
+  LULUS  ventilator tercatat terlambat
+  LULUS  keterlambatannya lebih dari 700 hari
+  LULUS  tetapi TIDAK menghentikan layanan
+  LULUS  dan alatnya masih ACTIVE
+  LULUS  papannya menyatakannya tegas, bukan hanya di dokumentasi
+
+2. Pekerjaan korektif yang mengenai pasien WAJIB menunjuk insidennya
+  LULUS  pekerjaan korektif tanpa tautan insiden DITOLAK
+  LULUS  penolakannya menyebut alat merek itu sudah tiga kali
+  LULUS  yang tertaut diterima
+  LULUS  dan status alat TIDAK berubah karenanya
+  LULUS  pesannya menyebut membuka pekerjaan tidak menghentikan alat
+  LULUS  menembusnya lewat basis data ditolak constraint
+
+3. Alat tidak kembali melayani selama pekerjaannya masih terbuka
+  LULUS  dikembalikan dengan pekerjaan terbuka DITOLAK
+  LULUS  penolakannya menyebut alat yang dilupakan seseorang
+  LULUS  dan menyebut nomor pekerjaannya
+  LULUS  sesudah pekerjaannya ditutup, alat kembali melayani
+
+4. Kalibrasi wajib menyebut standar acuannya
+  LULUS  kalibrasi LULUS tanpa standar acuan DITOLAK
+  LULUS  penolakannya menyebut menekan tombol
+  LULUS  kalibrasi berstandar diterima
+  LULUS  riwayat kalibrasinya tercatat tersendiri
+  LULUS  pertanyaan "terkalibrasi pada tanggal itu?" dapat dijawab
+  LULUS  dan tanggal yang tidak tertutupi dijawab jujur
+  LULUS  jawabannya tidak berlebihan: bukan berarti hasilnya salah
+  LULUS  menembusnya lewat basis data ditolak constraint
+
+5. UJI KESELAMATAN LISTRIK YANG GAGAL — satu-satunya penahan keras
+  LULUS  pekerjaannya ditutup dengan hasil GAGAL
+  LULUS  peringatannya menyebut menyetrum
+  LULUS  alat yang uji listriknya GAGAL tidak boleh kembali melayani
+  LULUS  dan sebabnya dibedakan tegas dari kalibrasi
+  LULUS  menembusnya lewat basis data ditolak trigger
+  LULUS  alat yang SEDANG MELAYANI tetap dapat ditandai gagal uji listrik
+  LULUS  penandanya tersimpan
+  LULUS  dan alatnya TIDAK dihentikan basis data
+
+6. Penahan pengganti wajib BERBUKTI, dan tidak menghilangkan risiko
+  LULUS  katalog risiko terbaca
+  LULUS  setiap faktor menyebut alasannya
+  LULUS  setiap penahan pun
+  LULUS  penahan TANPA rujukan bukti tidak dihitung
+  LULUS  dan penolakannya menyebut kotak yang dicentang
+  LULUS  dengan penahan lengkap, pengurangnya melampaui skor bawaannya
+  LULUS  TETAPI RISIKO SISANYA TIDAK NOL
+  LULUS  lantainya sepertiga skor bawaan
+  LULUS  dan itu diberitahukan, bukan disembunyikan
+  LULUS  menembus lantai lewat basis data ditolak constraint
+
+7. RISIKO CRITICAL TIDAK MEMATIKAN ALAT
+  LULUS  penilaian menghasilkan CRITICAL
+  LULUS  menuntut keputusan dalam 7 hari
+  LULUS  TETAPI TIDAK MEMATIKAN ALAT
+  LULUS  dan jawabannya menyatakannya tegas
+  LULUS  gabungan internet + kata sandi bawaan diberi catatan tersendiri
+  LULUS  ventilator MASIH ACTIVE sesudah dinilai CRITICAL
+
+8. Yang menilai tidak memutuskan penerimaannya sendiri
+  LULUS  manajemen boleh menilai risiko
+  LULUS  tetapi TIDAK memutuskan penilaiannya sendiri
+  LULUS  penolakannya menyebut ditanggung rumah sakit
+  LULUS  PENERIMAAN TANPA TANGGAL TINJAU DITOLAK
+  LULUS  penolakannya menyebut orang yang sudah pensiun
+  LULUS  manajemen menerimanya dengan tanggal tinjau
+  LULUS  penerimaan pun TIDAK mematikan alat
+  LULUS  dan kedaluwarsanya kembali ke daftar menunggu, bukan daftar yang dimatikan
+  LULUS  keputusan yang sudah ada tidak ditimpa
+  LULUS  penolakannya menyebut pendiriannya memang berubah
+  LULUS  menembus pemisahannya lewat basis data ditolak constraint
+  LULUS  penerimaan tanpa tanggal tinjau ditolak constraint pula
+
+9. Yang lewat tenggat didahulukan atas yang skornya lebih tinggi
+  LULUS  papan risiko terbaca
+  LULUS  yang lewat tenggat berada di puncak, sekalipun skornya lebih rendah
+
+10. Insiden siber yang mengenai perawatan WAJIB tertaut keselamatan pasien
+  LULUS  tanpa tautan keselamatan pasien DITOLAK
+  LULUS  penolakannya menyebut tidak pernah dihitung
+  LULUS  yang tertaut diterima
+  LULUS  langkah penahanannya dimulai dari isolasi jaringan, bukan daya
+  LULUS  dan menyebut alat yang tersusupi lebih baik daripada alat yang mati
+  LULUS  PENCATATANNYA TIDAK MENGISOLASI ALAT
+  LULUS  dan ventilator MASIH ACTIVE sesudah insiden penyanderaan data dicatat
+  LULUS  menembusnya lewat basis data ditolak constraint
+  LULUS  isolasi jaringan yang sudah dilakukan orang dapat dicatat
+  LULUS  dan dinyatakan bukan perintah kepada alat
+
+11. Analis keamanan TIDAK dapat mengendalikan alat
+  LULUS  analis tidak dapat mengubah status alat
+  LULUS  dan tidak dapat mengirim perintah
+  LULUS  dan tidak dapat menyalakan kendali jarak jauh
+
+12. SESUDAH SELURUHNYA — STATUS ALAT TIDAK BERUBAH SENDIRI
+  LULUS  ventilator dan analyzer tetap pada statusnya semula
+  LULUS  TIDAK SATU PUN ALAT BERSTATUS DOWNTIME di fasilitas ini
+  LULUS  penilaian risiko tidak dapat dihapus
+  LULUS  pekerjaan yang sudah selesai tidak dapat dihapus
+  LULUS  insiden siber tidak dapat dihapus
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

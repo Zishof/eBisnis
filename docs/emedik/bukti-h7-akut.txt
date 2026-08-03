@@ -1,0 +1,80 @@
+==============================================================================
+BUKTI H-7 — TRIASE, JEDA SEBELUM SAYATAN, DAN HITUNGAN KASA
+Waktu   : 2026-07-31T20:17:03.486Z
+Schema  : demo
+==============================================================================
+
+Lima pengguna. Perawat triase TIDAK diberi DISCHARGE; dokter bedah TIDAK
+diberi CHECKLIST; perawat instrumen TIDAK diberi INCISE. Ketiganya justru
+pemisahan yang hendak dibuktikan naskah ini.
+
+1. Triase — tanda bahaya menaikkan tingkat, tidak pernah menurunkannya
+  LULUS  kunjungan gawat darurat dibuat
+  LULUS  petugas menilai tingkat 5, sistem menaikkannya ke tingkat 1
+  LULUS  sebab kenaikannya dilaporkan satu per satu
+  LULUS  batas tunggunya mengikuti tingkat AKHIR, bukan yang diusulkan
+  LULUS  kedua tingkat DISIMPAN — selisihnya adalah data mutu IGD
+  LULUS  tanda vital normal tidak menaikkan tingkat
+  LULUS  dan tidak melaporkan tanda bahaya palsu
+
+2. Menurunkan tingkat triase menuntut alasan
+  LULUS  menurunkan tingkat tanpa alasan ditolak
+  LULUS  MENAIKKAN tingkat tanpa alasan selalu boleh
+  LULUS  dengan alasan, penurunan diizinkan
+  LULUS  setiap perubahan meninggalkan barisnya sendiri
+  LULUS  alasan penurunannya tersimpan
+  LULUS  riwayat triase tidak dapat diubah, ditegakkan basis data
+
+3. Disposisi
+  LULUS  perawat triase TIDAK berwenang menetapkan disposisi
+  LULUS  pasien yang belum dilihat dokter tidak dapat dipulangkan
+  LULUS  "pergi tanpa dilihat" pada pasien yang SUDAH dilihat ditolak
+  LULUS  pasien tingkat 4 dipulangkan tanpa keterangan tambahan
+  LULUS  pasien triase tingkat 1 yang dipulangkan menuntut keterangan
+  LULUS  dengan keterangan, pemulangannya diizinkan
+
+4. Kamar operasi tidak dapat dijadwalkan dua kali
+  LULUS  operasi pertama dijadwalkan
+  LULUS  jadwal yang bertumpang tindih ditolak
+  LULUS  bersentuhan ujung ke ujung BUKAN tumpang tindih
+  LULUS  menembus lewat jalur basis data pun ditolak constraint pengecualian
+  LULUS  prosedur bersisi tanpa sisi pada persetujuan ditolak sejak dijadwalkan
+
+5. Jeda sebelum sayatan — penahan terakhir untuk operasi salah sisi
+  LULUS  menyayat sebelum tahap pembiusan diselesaikan ditolak
+  LULUS  dokter bedah TIDAK berwenang mengisi daftar periksa
+  LULUS  butir wajib tiap tahap terbaca
+  LULUS  tahap yang belum lengkap ditolak
+  LULUS  butir yang kurang disebutkan NAMANYA
+  LULUS  menyayat sebelum sisi ditandai ditolak
+  LULUS  penandaan tercatat meski berbeda dari persetujuan
+  LULUS  dan ketidakcocokannya dilaporkan
+  LULUS  SISI YANG BERBEDA dari persetujuan MENGHENTIKAN sayatan
+  LULUS  penolakannya berkata HENTIKAN
+  LULUS  dengan seluruh penahan terpenuhi, sayatan dimulai
+  LULUS  mencatat jeda SESUDAH sayatan dimulai ditolak
+  LULUS  menembus lewat basis data pun ditolak constraint
+
+6. Hitungan kasa yang tidak cocok menahan pasien di kamar operasi
+  LULUS  hitungan yang tidak cocok MENAHAN pasien di kamar operasi
+  LULUS  selisihnya disebutkan per jenis benda
+  LULUS  penghitung kedua yang sama dengan penghitung pertama ditolak
+  LULUS  dengan keterangan pencarian, pasien boleh keluar
+
+7. Perawatan intensif — dukungan organ ganda selalu kritis
+  LULUS  tanda vital baik tanpa dukungan berisiko rendah
+  LULUS  tanda vital yang SAMA dengan dukungan organ ganda dinyatakan KRITIS
+  LULUS  dukungan organnya dihitung
+  LULUS  asesmen intensif tidak dapat diubah, ditegakkan basis data
+
+8. Papan dan jejak
+  LULUS  papan gawat darurat terbaca
+  LULUS  jadwal operasi terbaca
+  LULUS  papan intensif terbaca
+  LULUS  keadaan terakhirnya yang ditampilkan, bukan yang pertama
+  LULUS  menriase tanpa tujuan penggunaan ditolak
+  LULUS  jejak pembacaan tercatat
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
