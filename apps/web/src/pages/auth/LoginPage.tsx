@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff } from 'lucide-react';
+import { Crown, Eye, EyeOff, UserRound, Users } from 'lucide-react';
 import { useAuth, useErrorMessage } from '../../app/auth-context';
 import { berandaSesudahMasuk } from '../../app/beranda-sesudah-masuk';
 import { isSantriHost, isSantriPortalHost, slugPondokDariHost } from '../../verticals/pesantren/santri-host';
@@ -14,17 +14,45 @@ interface LoginForm {
   password: string;
 }
 
+const AKUN_SALON_DEMO = [
+  {
+    label: 'Pelanggan',
+    roleCode: 'PELAPOR_TIKET',
+    username: 'pelanggan.salon',
+    password: 'SalonDemo#2026',
+    description: 'Melihat promo, booking, invoice, struk, dan riwayat kunjungan.',
+    icon: UserRound,
+  },
+  {
+    label: 'Manajemen Salon',
+    roleCode: 'MANAJER_OPERASIONAL',
+    username: 'manajemen.salon',
+    password: 'SalonDemo#2026',
+    description: 'Mengelola booking, layanan, kursi, petugas, stok, dan operasional harian.',
+    icon: Users,
+  },
+  {
+    label: 'Pemilik Salon',
+    roleCode: 'PEMILIK_USAHA',
+    username: 'pemilik.salon',
+    password: 'SalonDemo#2026',
+    description: 'Membaca omzet, laba, tren layanan, dan performa bisnis salon.',
+    icon: Crown,
+  },
+];
+
 export function LoginPage() {
   const { t } = useTranslation();
   const { login, loginDemo } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const toMessage = useErrorMessage();
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const { register, handleSubmit, formState } = useForm<LoginForm>();
+  const { register, handleSubmit, formState, setValue } = useForm<LoginForm>();
   const santri = isSantriHost();
   const salon = isSalonDemoHost();
   const emedikBrand = emedikPublicBrandFor();
@@ -39,6 +67,18 @@ export function LoginPage() {
    */
   const portalUmum = isSantriPortalHost();
   const slugPondok = slugPondokDariHost();
+
+  const pilihAkunSalon = (roleCode: string) => {
+    const akun = AKUN_SALON_DEMO.find((item) => item.roleCode === roleCode) ?? AKUN_SALON_DEMO[0];
+    setValue('username', akun.username, { shouldDirty: true, shouldValidate: true });
+    setValue('password', akun.password, { shouldDirty: true, shouldValidate: true });
+  };
+
+  useEffect(() => {
+    if (!salon) return;
+    const role = searchParams.get('role');
+    if (role) pilihAkunSalon(role);
+  }, [salon, searchParams]);
 
   const onSubmit = handleSubmit(async (values) => {
     setError(null);
@@ -59,6 +99,11 @@ export function LoginPage() {
   });
 
   const startDemo = async () => {
+    if (salon) {
+      pilihAkunSalon('PELAPOR_TIKET');
+      setError(null);
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
@@ -167,9 +212,47 @@ export function LoginPage() {
                 onClick={() => void startDemo()}
                 disabled={busy}
               >
-                {santri ? 'Coba Demo Pesantren' : salon ? 'Coba Demo Salon' : emedikBrand ? emedikBrand.demoLabel : t('nav.demo')}
+                {santri
+                  ? 'Coba Demo Pesantren'
+                  : salon
+                    ? 'Isi akun pelanggan salon'
+                    : emedikBrand
+                      ? emedikBrand.demoLabel
+                      : t('nav.demo')}
               </button>
             </>
+          )}
+
+          {salon && (
+            <div className="mt-6 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Pilih persona demo
+              </p>
+              {AKUN_SALON_DEMO.map((akun) => {
+                const Icon = akun.icon;
+                return (
+                  <button
+                    key={akun.roleCode}
+                    type="button"
+                    className="group flex w-full items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-brand-300 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-700 dark:hover:bg-brand-950/30"
+                    onClick={() => pilihAkunSalon(akun.roleCode)}
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-100 text-brand-800 group-hover:bg-brand-700 group-hover:text-white dark:bg-brand-950 dark:text-brand-200">
+                      <Icon className="h-5 w-5" aria-hidden />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-semibold text-slate-900 dark:text-white">{akun.label}</span>
+                      <span className="mt-0.5 block text-xs leading-5 text-slate-600 dark:text-slate-300">
+                        {akun.description}
+                      </span>
+                      <span className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        {akun.username} / {akun.password}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           )}
 
           {portalUmum && (
