@@ -3,7 +3,28 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import { ArrowRight, Check, ChevronDown, Star } from 'lucide-react';
+import {
+  ArrowRight,
+  Bike,
+  BriefcaseBusiness,
+  Car,
+  Check,
+  ChevronDown,
+  Coffee,
+  Dumbbell,
+  Hammer,
+  Pill,
+  Scissors,
+  Shirt,
+  ShoppingBag,
+  Sparkles,
+  Sprout,
+  Star,
+  Truck,
+  Utensils,
+  WashingMachine,
+  Wrench,
+} from 'lucide-react';
 import { api, formatDate, formatMoney } from '../../lib/api';
 import { useSiteConfig } from './PublicLayout';
 import { LoadingState, ErrorState } from '../../components/ui';
@@ -70,6 +91,135 @@ interface FaqCategory {
   items: Array<{ code: string; question: string; answer: string }>;
 }
 
+const CONTOH_USAHA = [
+  {
+    label: 'Demo',
+    detail: 'Pedagang UMKM',
+    href: '/demo',
+    icon: ShoppingBag,
+    status: 'Siap dicoba',
+  },
+  {
+    label: 'Barbershop',
+    detail: 'Potong rambut pria',
+    href: '/contoh/salon',
+    icon: Scissors,
+    status: 'Siap dicoba',
+  },
+  {
+    label: 'Salon',
+    detail: 'Perawatan wanita',
+    href: '/contoh/salon',
+    icon: Sparkles,
+    status: 'Siap dicoba',
+  },
+  {
+    label: 'Cuci Mobil',
+    detail: 'Booking, paket cuci, membership',
+    href: '/contoh/salon',
+    icon: Car,
+    status: 'Berikutnya',
+  },
+  {
+    label: 'Laundry',
+    detail: 'Kiloan, satuan, antar jemput',
+    href: '/contoh/salon',
+    icon: WashingMachine,
+    status: 'Berikutnya',
+  },
+  {
+    label: 'Rental Kendaraan',
+    detail: 'Sewa mobil dan motor',
+    href: '/contoh/salon',
+    icon: Truck,
+    status: 'Berikutnya',
+  },
+  {
+    label: 'Rental Sepeda',
+    detail: 'Sewa harian dan wisata',
+    href: '/contoh/salon',
+    icon: Bike,
+    status: 'Berikutnya',
+  },
+  {
+    label: 'Bengkel Motor',
+    detail: 'Servis, sparepart, antrian',
+    href: '/contoh/salon',
+    icon: Wrench,
+    status: 'Berikutnya',
+  },
+  {
+    label: 'Bengkel Mobil',
+    detail: 'Work order, estimasi, invoice',
+    href: '/contoh/salon',
+    icon: Hammer,
+    status: 'Berikutnya',
+  },
+  {
+    label: 'Bengkel Sepeda',
+    detail: 'Servis ringan, part, booking',
+    href: '/contoh/salon',
+    icon: Bike,
+    status: 'Berikutnya',
+  },
+  {
+    label: 'Apotek',
+    detail: 'Terhubung eMedik.id',
+    href: 'https://emedik.id',
+    icon: Pill,
+    status: 'Berikutnya',
+  },
+  {
+    label: 'Kuliner',
+    detail: 'Restoran, warung, katering',
+    href: '/demo',
+    icon: Utensils,
+    status: 'Umum',
+  },
+  {
+    label: 'Kafe',
+    detail: 'Menu, meja, kasir, member',
+    href: '/demo',
+    icon: Coffee,
+    status: 'Umum',
+  },
+  {
+    label: 'Fashion',
+    detail: 'Butik, konveksi, stok ukuran',
+    href: '/demo',
+    icon: Shirt,
+    status: 'Umum',
+  },
+  {
+    label: 'Toko Kelontong',
+    detail: 'Retail harian dan grosir kecil',
+    href: '/demo',
+    icon: ShoppingBag,
+    status: 'Umum',
+  },
+  {
+    label: 'Fitness & Spa',
+    detail: 'Member, jadwal, paket layanan',
+    href: '/contoh/salon',
+    icon: Dumbbell,
+    status: 'Umum',
+  },
+  {
+    label: 'Pertanian Olahan',
+    detail: 'Produk pangan dan stok batch',
+    href: '/demo',
+    icon: Sprout,
+    status: 'Umum',
+  },
+  {
+    label: 'Jasa Umum',
+    detail: 'Servis rumahan dan pekerjaan lapangan',
+    href: '/demo',
+    icon: BriefcaseBusiness,
+    status: 'Umum',
+  },
+];
+
 export function HomePage() {
   const { t, i18n } = useTranslation();
   const cmsText = useCmsText();
@@ -126,42 +276,45 @@ export function HomePage() {
           case 'HERO':
             return (
               <section key={block.key} className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-b from-brand-50 via-white to-white py-16 sm:py-24 dark:border-slate-800 dark:from-brand-950/40 dark:via-slate-950 dark:to-slate-950">
-                <div className="container-page text-center">
-                  {(() => {
-                    // Terjemahan dipakai bila kuncinya ada; jika tidak, teks CMS.
-                    const eyebrow = cmsText(hero?.eyebrowKey, hero?.eyebrow ?? block.eyebrow);
-                    return eyebrow ? (
-                      <p className="section-eyebrow animate-fade-up">
-                        <Star className="h-3.5 w-3.5" aria-hidden />
-                        {eyebrow}
-                      </p>
-                    ) : null;
-                  })()}
-                  <h1 className="mx-auto max-w-4xl animate-fade-up text-3xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-5xl dark:text-white">
-                    {cmsText(hero?.titleKey, hero?.title ?? block.heading)}
-                  </h1>
-                  {(() => {
-                    const subtitle = cmsText(hero?.subtitleKey, hero?.subtitle ?? block.subheading);
-                    return subtitle ? (
-                      <p className="mx-auto mt-5 max-w-2xl animate-fade-up text-base leading-relaxed text-slate-600 sm:text-lg dark:text-slate-300">
-                        {subtitle}
-                      </p>
-                    ) : null;
-                  })()}
-                  <div className="mt-8 flex animate-fade-up flex-wrap items-center justify-center gap-3">
-                    <Link to={hero?.primaryCta?.url ?? '/daftar'} className="btn-primary px-6 py-3 text-base">
-                      {cmsText(hero?.primaryCta?.labelKey, hero?.primaryCta?.label) ||
-                        t('web.ctaRegister')}
-                      <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden />
-                    </Link>
-                    <Link to={hero?.secondaryCta?.url ?? '/demo'} className="btn-outline px-6 py-3 text-base">
-                      {cmsText(hero?.secondaryCta?.labelKey, hero?.secondaryCta?.label) ||
-                        t('web.ctaDemo')}
-                    </Link>
-                    <Link to="/harga" className="btn-ghost px-6 py-3 text-base">
-                      {t('web.ctaPricing')}
-                    </Link>
+                <div className="container-page">
+                  <div className="text-center">
+                    {(() => {
+                      // Terjemahan dipakai bila kuncinya ada; jika tidak, teks CMS.
+                      const eyebrow = cmsText(hero?.eyebrowKey, hero?.eyebrow ?? block.eyebrow);
+                      return eyebrow ? (
+                        <p className="section-eyebrow animate-fade-up">
+                          <Star className="h-3.5 w-3.5" aria-hidden />
+                          {eyebrow}
+                        </p>
+                      ) : null;
+                    })()}
+                    <h1 className="mx-auto max-w-4xl animate-fade-up text-3xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-5xl dark:text-white">
+                      {cmsText(hero?.titleKey, hero?.title ?? block.heading)}
+                    </h1>
+                    {(() => {
+                      const subtitle = cmsText(hero?.subtitleKey, hero?.subtitle ?? block.subheading);
+                      return subtitle ? (
+                        <p className="mx-auto mt-5 max-w-2xl animate-fade-up text-base leading-relaxed text-slate-600 sm:text-lg dark:text-slate-300">
+                          {subtitle}
+                        </p>
+                      ) : null;
+                    })()}
+                    <div className="mt-8 flex animate-fade-up flex-wrap items-center justify-center gap-3">
+                      <Link to={hero?.primaryCta?.url ?? '/daftar'} className="btn-primary px-6 py-3 text-base">
+                        {cmsText(hero?.primaryCta?.labelKey, hero?.primaryCta?.label) ||
+                          t('web.ctaRegister')}
+                        <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden />
+                      </Link>
+                      <Link to={hero?.secondaryCta?.url ?? '/demo'} className="btn-outline px-6 py-3 text-base">
+                        {cmsText(hero?.secondaryCta?.labelKey, hero?.secondaryCta?.label) ||
+                          t('web.ctaDemo')}
+                      </Link>
+                      <Link to="/harga" className="btn-ghost px-6 py-3 text-base">
+                        {t('web.ctaPricing')}
+                      </Link>
+                    </div>
                   </div>
+                  <ContohUsahaGrid />
                 </div>
               </section>
             );
@@ -473,6 +626,98 @@ export function HomePage() {
       */}
       <BerandaRinci />
     </>
+  );
+}
+
+function ContohUsahaGrid() {
+  return (
+    <div className="mx-auto mt-12 max-w-6xl rounded-2xl border border-slate-200 bg-white/90 p-4 text-start shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="flex flex-col gap-2 px-1 pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+            Coba sesuai jenis usaha
+          </p>
+          <h2 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+            Pilih contoh yang paling mirip dengan bisnis Anda
+          </h2>
+        </div>
+        <p className="max-w-xl text-sm text-slate-600 dark:text-slate-300">
+          Tombol siap dicoba membuka demo aktif. Contoh lainnya masuk daftar prioritas template
+          usaha umum berikutnya.
+        </p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {CONTOH_USAHA.map((item) => {
+          const Icon = item.icon;
+          const siap = item.status === 'Siap dicoba';
+          return (
+            <TautanContohUsaha
+              key={`${item.label}-${item.detail}`}
+              href={item.href}
+              className={clsx(
+                'group flex min-h-24 items-start gap-3 rounded-xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md',
+                siap
+                  ? 'border-brand-200 bg-brand-50/70 hover:border-brand-400 dark:border-brand-900 dark:bg-brand-950/30'
+                  : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900',
+              )}
+            >
+              <span
+                className={clsx(
+                  'grid h-10 w-10 shrink-0 place-items-center rounded-lg',
+                  siap
+                    ? 'bg-brand-700 text-white'
+                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+                )}
+              >
+                <Icon className="h-5 w-5" aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-2">
+                  <span className="truncate font-semibold text-slate-900 dark:text-white">{item.label}</span>
+                  <span
+                    className={clsx(
+                      'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                      siap
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300',
+                    )}
+                  >
+                    {item.status}
+                  </span>
+                </span>
+                <span className="mt-1 block text-sm leading-5 text-slate-600 dark:text-slate-300">
+                  {item.detail}
+                </span>
+              </span>
+            </TautanContohUsaha>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TautanContohUsaha({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className: string;
+  children: React.ReactNode;
+}) {
+  if (href.startsWith('http')) {
+    return (
+      <a href={href} className={className}>
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link to={href} className={className}>
+      {children}
+    </Link>
   );
 }
 
