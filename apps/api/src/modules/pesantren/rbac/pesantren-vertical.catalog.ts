@@ -85,6 +85,7 @@ const GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const ABSENSI_GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const EKSTRAKURIKULER_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const PRESTASI_AKSI = ['READ', 'CREATE', 'PRINT', 'EXPORT'];
+const BUKU_PENGHUBUNG_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const KATERING_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const PROFIL_AKSI = ['READ', 'UPDATE'];
 const BERITA_AKSI = ['READ', 'CREATE', 'UPDATE', 'APPROVE', 'CANCEL'];
@@ -343,6 +344,17 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     moduleCode: PESANTREN_PREFIX,
     sortOrder: 6,
     actions: PRESTASI_AKSI,
+  },
+  {
+    code: 'EPESANTREN_BUKU_PENGHUBUNG',
+    parentCode: 'EPESANTREN_GRP_AKADEMIK',
+    label: 'Buku Penghubung',
+    translationKey: 'menu.epesantren.bukuPenghubung',
+    route: '/app/pesantren/buku-penghubung',
+    icon: 'MessagesSquare',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 7,
+    actions: BUKU_PENGHUBUNG_AKSI,
   },
 
   // -- Kedisiplinan dan Perizinan ----------------------------------------------

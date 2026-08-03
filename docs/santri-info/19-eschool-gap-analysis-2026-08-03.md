@@ -43,7 +43,7 @@ Audit dilakukan terhadap 240 file Java di folder sekolah AIS. Satu file bisa mas
 | Prestasi/penghargaan | `PrestasiSiswaAction.java`, `PenghargaanSiswaAction.java`, `ApresiasiSiswaAction.java` | Ada sebagian | Prestasi tersedia. Gap: penghargaan/apresiasi terpisah belum seluruhnya menjadi modul. |
 | Pengajuan/izin siswa | `PengajuanSiswaAction.java` | Ada | Perizinan santri dengan status MENUNGGU/DISETUJUI/DITOLAK/SELESAI/DIBATALKAN sudah ada. Gap: lampiran, parameter tambahan, SOP disposisi legacy belum semua ada. |
 | Kunjungan/gerbang | `KunjunganSiswaAction.java`, `PengajuanSiswaAction.java` | Dilengkapi | Endpoint daftar izin aktif, scan kartu, dan halaman Gerbang Keluar-Masuk ditambahkan. Petugas hanya mencatat lintasan terhadap izin DISETUJUI. |
-| Catatan guru/orang tua | `CatatanGuruAction.java`, `CatatanSiswaAction.java`, `BukuPenghubungSiswa.java` | Belum penuh | Belum menjadi modul workflow tersendiri. Kandidat berikutnya: buku penghubung wali. |
+| Catatan guru/orang tua | `CatatanGuruAction.java`, `CatatanSiswaAction.java`, `BukuPenghubungSiswa.java` | Dilengkapi dasar | Modul `pesantren_buku_penghubung` ditambahkan untuk catatan guru/pengurus/wali per santri, visibilitas INTERNAL/WALI, dan status tindak lanjut. Gap lanjutan: notifikasi otomatis ke wali dan komentar balasan bertingkat. |
 | Kegiatan kesiswaan/organisasi | `KegiatanKesiswaanAction.java`, `OrganisasiSiswaAction.java` | Ada sebagian | Ekstrakurikuler tersedia. Gap: organisasi, jabatan, penilaian kegiatan, dan detail anggota belum lengkap. |
 | Dashboard/laporan | `Dashboard*.java`, `LaporanRekapitulasi*.java` | Ada sebagian | Dashboard pondok dan katalog laporan tersedia. Gap: laporan legacy detail masih perlu prioritas per kebutuhan operasional. |
 
@@ -72,6 +72,11 @@ Audit dilakukan terhadap 240 file Java di folder sekolah AIS. Satu file bisa mas
   - pilih arah KELUAR/MASUK;
   - catat lintasan;
   - tampilkan riwayat gerbang.
+- API dan UI `/app/pesantren/buku-penghubung`
+  - menutup rujukan AIS `BukuPenghubungSiswa.java`, `CatatanGuruAction.java`, dan `CatatanSiswaAction.java`;
+  - menyimpan catatan naratif per santri;
+  - membedakan catatan internal pondok dan catatan yang boleh dibuka ke wali;
+  - menyediakan status TERBUKA/SELESAI untuk tindak lanjut pengurus.
 - Skeleton Flutter `apps/pesantren-security-gate-flutter`
   - tab Daftar, Scan, Riwayat, Pengaturan;
   - daftar izin aktif hari ini untuk petugas security;
@@ -95,7 +100,7 @@ Belum penuh dibanding AIS:
 - timetable visual serta kalender pertemuan pelajaran;
 - formula rapor, cetak rapor, nilai huruf lengkap;
 - workflow akuntansi legacy untuk seluruh variasi posting piutang/diskon/deposit;
-- buku penghubung dan catatan guru/orang tua;
+- notifikasi dan balasan bertingkat pada buku penghubung;
 - integrasi fingerprint nyata sebelum SDK perangkat dipastikan.
 
 ## Gap Berikutnya yang Disarankan

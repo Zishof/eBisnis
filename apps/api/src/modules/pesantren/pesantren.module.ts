@@ -50,6 +50,8 @@ import { PesantrenPrestasiController } from './pesantren-prestasi.controller';
 import { PesantrenPrestasiService } from './pesantren-prestasi.service';
 import { PesantrenKateringController } from './pesantren-katering.controller';
 import { PesantrenKateringService } from './pesantren-katering.service';
+import { PesantrenBukuPenghubungController } from './pesantren-buku-penghubung.controller';
+import { PesantrenBukuPenghubungService } from './pesantren-buku-penghubung.service';
 import { PesantrenProfilController } from './pesantren-profil.controller';
 import { PesantrenProfilService } from './pesantren-profil.service';
 import { PesantrenBeritaController } from './pesantren-berita.controller';
@@ -95,6 +97,7 @@ import { PesantrenUnitPendidikanService } from './pesantren-unit-pendidikan.serv
     PesantrenEkstrakurikulerController,
     PesantrenPrestasiController,
     PesantrenKateringController,
+    PesantrenBukuPenghubungController,
     PesantrenProfilController,
     PesantrenBeritaController,
     PesantrenPublicController,
@@ -126,6 +129,7 @@ import { PesantrenUnitPendidikanService } from './pesantren-unit-pendidikan.serv
     PesantrenEkstrakurikulerService,
     PesantrenPrestasiService,
     PesantrenKateringService,
+    PesantrenBukuPenghubungService,
     PesantrenProfilService,
     PesantrenBeritaService,
     PesantrenPublicService,
