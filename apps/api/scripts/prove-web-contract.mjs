@@ -143,6 +143,8 @@ try {
     HEALTH_CLAIM_REVIEW: ['READ'],
     HEALTH_BPJS: ['READ'],
     HEALTH_BPJS_SEP: ['READ'],
+    HEALTH_PRESCRIPTION: ['READ', 'CREATE'],
+    HEALTH_ADMINISTRATION: ['READ', 'CREATE'],
     HEALTH_TARIFF: ['READ'],
     HEALTH_FEE_POLICY: ['READ'],
     HEALTH_FEE_SETTLEMENT: ['READ'],
@@ -278,14 +280,52 @@ try {
         weightKg: 5.4,
         heightCm: 82,
         heightMeasuredAs: 'STANDING',
-      })
+    })
     : { status: 0 };
+
+  const obatAda = (
+    await q(
+      `SELECT id::text AS id FROM "${SCHEMA}".rx_drug_master
+        WHERE deleted_at IS NULL ORDER BY created_at LIMIT 1`,
+    )
+  )[0];
+  let administrasiKontrak = null;
+  if (obatAda) {
+    const resepId = (
+      await q(
+        `INSERT INTO "${SCHEMA}".rx_prescription
+           (encounter_id, patient_id, facility_id, prescription_number, prescribed_by, prescribed_at, status, note)
+         VALUES ($1,$2,$3,$4,$5,now(),'REVIEWED','Resep contoh untuk bukti kontrak web') RETURNING id`,
+        [kunjungan.id, kunjungan.patient_id, facilityId, `WEB-RX-${tag}`, subjectId],
+      )
+    )[0].id;
+    const lineId = (
+      await q(
+        `INSERT INTO "${SCHEMA}".rx_prescription_line
+           (prescription_id, drug_id, line_no, dose_value, dose_unit, route,
+            frequency_code, frequency_per_day, duration_days, quantity, quantity_unit)
+         VALUES ($1,$2,1,500,'mg','ORAL','BID',2,3,6,'tablet') RETURNING id`,
+        [resepId, obatAda.id],
+      )
+    )[0].id;
+    administrasiKontrak = (
+      await q(
+        `INSERT INTO "${SCHEMA}".rx_administration
+           (prescription_line_id, patient_id, drug_id, encounter_id,
+            scheduled_at, dose_value, dose_unit, route, status)
+         VALUES ($1,$2,$3,$4,now() - interval '45 minutes',500,'mg','ORAL','SCHEDULED')
+         RETURNING id`,
+        [lineId, kunjungan.patient_id, obatAda.id, kunjungan.id],
+      )
+    )[0];
+  }
 
   log('');
   log('--- Menyiapkan baris uji ------------------------------------------------');
   log(`  periksa berkas  : ${periksa.status}`);
   log(`  insiden         : ${insiden.status}`);
   log(`  pengukuran      : ${tumbuh.status}${balita ? '' : '  (tidak ada balita)'}`);
+  log(`  pemberian obat  : ${administrasiKontrak ? 'siap' : 'tidak ada formularium'}`);
 
   /**
    * Jalan yang dipakai klien web, beserta antarmuka yang mewakili SATU
@@ -338,6 +378,12 @@ try {
       nama: 'incidents',
       jalan: `/health/him/incidents?facilityId=${facilityId}`,
       antarmuka: 'BarisInsiden',
+      ambil: (d) => d?.[0],
+    },
+    {
+      nama: 'administrationQueue',
+      jalan: `/health/pharmacy/administrations?facilityId=${facilityId}`,
+      antarmuka: 'BarisPemberianObat',
       ambil: (d) => d?.[0],
     },
     {

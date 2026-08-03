@@ -1,7 +1,9 @@
 # 24 · Rencana Layar Sisa
 
-**28 menu** belum berlayar. Daftar di bawah **dibaca dari basis data**, bukan
-dari rencana lama — dan pembacaan itu memperlihatkan bahwa rencana lama keliru
+**28 menu** belum berlayar pada H065. H066 membuka `/app/emedik/pemberian`;
+sesudah migrasi H066 diterapkan, angka yang diharapkan menjadi **27 menu**
+masih "segera hadir". Daftar di bawah **dibaca dari basis data**, bukan dari
+rencana lama — dan pembacaan itu memperlihatkan bahwa rencana lama keliru
 urutannya.
 
 Diperiksa ulang kapan saja dengan:
@@ -19,9 +21,10 @@ SELECT route, code FROM demo.menu
 Rencana pada [06](06-implementation-plan.md) menaruh **master data** sebagai
 W-6. Itu keliru.
 
-Pemeriksaan terakhir memperlihatkan **lima layar klinis masih hilang**, dan
-seluruh API-nya sudah ada sejak H-2 sampai H-7. Itu kerja harian dokter dan
-perawat — jauh lebih mendesak daripada master data yang dibuka sebulan sekali.
+Pemeriksaan H065 memperlihatkan **lima layar klinis masih hilang**, dan seluruh
+API-nya sudah ada sejak H-2 sampai H-7. W-6A sudah membuka eMAR
+`/app/emedik/pemberian`; yang tersisa tetap kerja harian dokter dan perawat —
+jauh lebih mendesak daripada master data yang dibuka sebulan sekali.
 
 Yang paling mencolok: **`EncounterPage` sudah ada tetapi tidak terjangkau dari
 menu mana pun.** Ia hanya dapat dibuka lewat `kunjungan/:id`, yang berarti
@@ -32,12 +35,19 @@ pendaftaran setiap kali.
 
 ## W-6 · Klinis yang terlewat — **lakukan ini dulu**
 
+### W-6A selesai
+
+| Utas | Kode menu | API sejak | Catatan |
+|---|---|---|---|
+| `/app/emedik/pemberian` | `HEALTH_ADMINISTRATION` | H-4 | eMAR — daftar kerja pemberian obat, enam benar, alasan obat dilewati |
+
+### Sisa W-6
+
 | Utas | Kode menu | API sejak | Catatan |
 |---|---|---|---|
 | `/app/emedik/rawat-jalan` | `HEALTH_ENCOUNTER` | H-3 | `EncounterPage` **sudah ada**; yang belum ada daftar kunjungannya |
 | `/app/emedik/operasi` | `HEALTH_SURGERY` | H-7 | jadwal operasi, daftar periksa bedah, penghitungan kasa |
 | `/app/emedik/intensif` | `HEALTH_ICU` | H-7 | papan ICU, skor perawatan intensif |
-| `/app/emedik/pemberian` | `HEALTH_ADMINISTRATION` | H-4 | eMAR — enam benar pemberian obat |
 | `/app/emedik/pasien/ganda` | `HEALTH_PATIENT_DUPLICATE` | H-2 | telaah pasien ganda, penggabungan |
 
 **Jalan yang sudah ada dan sudah dipakai klien web:**

@@ -5,6 +5,34 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## W-6A - eMAR pemberian obat
+
+Layar pertama dari prioritas W-6 membuka menu klinis yang paling dekat dengan
+apotik dan keselamatan obat.
+
+### Ditambahkan
+
+- **`AdministrationPage`** (`/app/emedik/pemberian`) untuk daftar kerja eMAR.
+  Daftar diurutkan oleh peladen menurut obat yang terlambat, high-alert, dan
+  obat terkendali supaya sinyal keselamatan tidak tenggelam di daftar nama.
+- Endpoint **`GET /health/pharmacy/administrations`** untuk membaca jadwal
+  pemberian obat yang masih menuntut keputusan.
+- Form enam benar: scan pasien, scan obat, dosis, rute, waktu, dan dokumentasi.
+  Layar membantu mengisi dari jadwal, tetapi validasi tetap dilakukan peladen.
+- Aksi **tidak diberikan** (`OMITTED`, `REFUSED`, `HELD`) wajib alasan. Obat
+  yang dilewati tanpa alasan tidak dapat dibedakan dari obat yang terlupa.
+- **`H066__health__menu_truth_w6a.sql`** menandai `/app/emedik/pemberian`
+  sebagai menu yang sudah berlayar.
+
+### Rujukan UI/UX klinis
+
+- Prinsip eMAR menonjolkan hak pemberian obat dan human factors: informasi
+  kritis tampil di daftar, bukan hanya di rincian.
+- Dashboard klinis dipisahkan dari dashboard operasional: ringkasan menampilkan
+  risiko tindakan, bukan sekadar jumlah baris.
+
+---
+
 ## W-6A - Portal publik eMedik dan apotik
 
 Landing page publik untuk domain kesehatan dipisahkan dari beranda eBisnis.

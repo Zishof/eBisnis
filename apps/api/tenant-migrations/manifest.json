@@ -1,4 +1,4 @@
-{
+﻿{
   "$comment": "Canonical tenant migration catalog. Checksum (sha256) dihitung saat runtime dari isi file dan dicatat pada platform.schema_migration_catalog serta platform.tenant_schema_migration_history. Jangan mengubah file yang sudah diterapkan pada environment bersama — buat versi baru.",
   "schemaVersion": 1,
   "migrations": [
@@ -729,6 +729,13 @@
       "file": "H065__health__menu_truth_w5.sql",
       "name": "eMedik: menu berlayar W-5",
       "description": "Tujuh utas W-5 untuk tiga layar alat medis. Sesudahnya 44 menu berlayar dan 29 masih segera hadir. H064 HANGUS: ia berkas ini dengan satu utas keliru, /app/emedik/gateway-alat, padahal H034 menyemainya sebagai /app/emedik/gateway. Yang menemukannya penjaga migrasi itu sendiri — bukan uji mana pun dan bukan manusia — dan itu justru maksudnya, sebab utas yang salah ketik akan menandai menu yang layarnya ADA sebagai segera hadir sehingga penggunanya berhenti mengkliknya. Sumber kekeliruannya health-catalog.ts, cerminan dari migrasi yang berbeda dari aslinya; katalognya dibetulkan dan kini dijaga naskah bukti kontrak. Nomor H064 hangus sesuai cacat Core pada integration request 005."
+    },
+    {
+      "version": "H066",
+      "sequence": 1066,
+      "file": "H066__health__menu_truth_w6a.sql",
+      "name": "eMedik: menu berlayar W-6A eMAR",
+      "description": "Membuka /app/emedik/pemberian sebagai layar eMAR. Pemberian obat memakai daftar kerja yang diurutkan menurut keterlambatan, high-alert, dan obat terkendali; aksi tetap divalidasi peladen dengan enam benar."
     }
   ]
 }

@@ -231,6 +231,12 @@ describe('tujuan penggunaan pada pembacaan rekam medis', () => {
     await healthApi.patient('P1', ctx);
     expect(tercatat[0].headers?.['X-Facility-Id']).toBe('F1');
   });
+
+  it('daftar kerja eMAR SENGAJA tidak membawa tujuan penggunaan', async () => {
+    await healthApi.administrationQueue('F1');
+    expect(tercatat[0].path).toBe('/health/pharmacy/administrations?facilityId=F1');
+    expect(tercatat[0].headers?.['X-Purpose-Of-Use']).toBeUndefined();
+  });
 });
 
 describe('bantuan tampilan', () => {

@@ -135,6 +135,9 @@ const HealthEncounterPage = lazy(() =>
 const HealthPharmacyPage = lazy(() =>
   import('../verticals/health/PharmacyPage').then((m) => ({ default: m.PharmacyPage })),
 );
+const HealthAdministrationPage = lazy(() =>
+  import('../verticals/health/AdministrationPage').then((m) => ({ default: m.AdministrationPage })),
+);
 const HealthLabPage = lazy(() =>
   import('../verticals/health/LabPage').then((m) => ({ default: m.LabPage })),
 );
@@ -543,6 +546,7 @@ export function App() {
             <Route path="kunjungan/:id" element={<HealthEncounterPage />} />
             <Route path="resep" element={<HealthPharmacyPage />} />
             <Route path="penyerahan" element={<HealthPharmacyPage />} />
+            <Route path="pemberian" element={<HealthAdministrationPage />} />
             <Route path="lab/pesanan" element={<HealthLabPage />} />
             <Route path="lab/spesimen" element={<HealthLabPage />} />
             <Route path="lab/hasil" element={<HealthLabPage />} />

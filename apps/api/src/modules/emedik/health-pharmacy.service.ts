@@ -682,6 +682,55 @@ export class HealthPharmacyService {
 
   // --- Daftar kerja ----------------------------------------------------------
 
+  /** Jadwal pemberian obat yang masih menuntut keputusan perawat/farmasi klinis. */
+  async daftarPemberian(schema: string, facilityId: string, status?: string) {
+    return this.tenantDb.query(
+      schema,
+      /*
+       * Daftar eMAR diurutkan menurut bahaya operasional: yang terlambat dan
+       * obat risiko tinggi terlihat dulu. Layar tidak boleh mengurutkan ulang
+       * menurut nama pasien karena itu menyembunyikan obat yang sudah lewat.
+       */
+      `SELECT a.id::text AS id, a.status, a.scheduled_at::text AS scheduled_at,
+              a.administered_at::text AS administered_at,
+              a.dose_value::float8 AS dose_value, a.dose_unit, a.route,
+              a.omission_reason, a.omission_note,
+              p.id::text AS prescription_id, p.prescription_number,
+              l.id::text AS prescription_line_id, l.line_no, l.frequency_code,
+              pt.id::text AS patient_id, pt.full_name AS patient_name,
+              pt.birth_date::text AS birth_date,
+              mrn.identifier_value AS medical_record_number,
+              d.id::text AS drug_id, d.generic_name, d.brand_name, d.active_ingredient,
+              d.drug_class, d.is_controlled, d.is_high_alert, d.is_lasa,
+              CASE
+                WHEN a.status = 'SCHEDULED' AND a.scheduled_at < now() THEN TRUE
+                ELSE FALSE
+              END AS overdue,
+              CASE
+                WHEN a.scheduled_at IS NULL THEN NULL
+                ELSE floor(extract(epoch FROM (now() - a.scheduled_at)) / 60)::int
+              END AS minutes_from_schedule
+         FROM "${schema}".rx_administration a
+         JOIN "${schema}".rx_prescription_line l ON l.id = a.prescription_line_id
+         JOIN "${schema}".rx_prescription p ON p.id = l.prescription_id
+         JOIN "${schema}".patient pt ON pt.id = a.patient_id
+         JOIN "${schema}".rx_drug_master d ON d.id = a.drug_id
+         LEFT JOIN "${schema}".patient_identifier mrn
+           ON mrn.patient_id = a.patient_id AND mrn.facility_id = p.facility_id
+          AND mrn.identifier_type = 'MRN' AND mrn.deleted_at IS NULL
+        WHERE p.facility_id = $1
+          AND ($2::text IS NULL OR a.status = $2)
+          AND a.status IN ('SCHEDULED','HELD','REFUSED','OMITTED')
+        ORDER BY
+          (a.status = 'SCHEDULED' AND a.scheduled_at < now()) DESC,
+          d.is_high_alert DESC,
+          d.is_controlled DESC,
+          a.scheduled_at NULLS LAST
+        LIMIT 200`,
+      [facilityId, status ?? null],
+    );
+  }
+
   /** Resep yang menunggu telaah atau penyerahan. */
   async antrianFarmasi(schema: string, facilityId: string, status?: string) {
     return this.tenantDb.query(

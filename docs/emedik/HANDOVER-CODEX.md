@@ -2,8 +2,8 @@
 
 **Untuk:** sesi lanjutan (Codex)
 **Dari:** sesi Claude, 1 Agustus 2026
-**Cabang:** `feature/v12-emedik` · **Worktree:** `C:\opt\eBisnisGithub-emedik`
-**Commit terakhir:** `09d8c8b` — *feat(emedik): W-5 layar alat medis*
+**Cabang:** `main` · **Worktree:** `C:\opt\eBisnisGithub-ekoperasi`
+**Commit terakhir sebelum W-6A:** `f7411c1` — *merge: integrate eMedik V12 into main*
 
 Worktree **bersih** dan seluruhnya sudah terdorong ke `origin`.
 
@@ -15,7 +15,7 @@ Worktree **bersih** dan seluruhnya sudah terdorong ke `origin`.
 |---|---|
 | **[22 — aturan tetap](22-aturan-tetap.md)** | Larangan yang tidak boleh dilanggar. **Baca ini sebelum menulis apa pun.** |
 | **[23 — metode kerja layar](23-metode-kerja-layar.md)** | Urutan kerja tiap fase, dan cacat yang berulang. Tanpa ini, kekeliruan yang sama akan terulang. |
-| **[24 — rencana layar sisa](24-rencana-layar-sisa.md)** | 28 menu yang belum berlayar, dikelompokkan menurut kemendesakan. |
+| **[24 — rencana layar sisa](24-rencana-layar-sisa.md)** | 28 menu yang belum berlayar pada H065; H066 membuka eMAR sehingga sisa menjadi 27 sesudah migrasi diterapkan. |
 | [06 — rencana implementasi](06-implementation-plan.md) | Riwayat lengkap H-1…H-12 dan W-1…W-5. |
 | [07 — garis dasar pengujian](07-test-baseline.md) | Angka pengujian dan **pelajaran dari tiap cacat yang ditemukan**. |
 | [08 — integration request](08-integration-requests.md) | Enam permintaan yang menunggu sesi Core. |
@@ -36,17 +36,17 @@ tarif/jasa, W-5 alat medis. 151 uji web pada 10 berkas.
 ### Angka yang berlaku hari ini
 
 ```
-menu kesehatan berlayar     45
-menu masih "segera hadir"   28
+menu kesehatan berlayar     45 pada H065; 46 sesudah H066 diterapkan
+menu masih "segera hadir"   28 pada H065; 27 sesudah H066 diterapkan
 uji API                     2.506  (72 berkas)
 uji web                     151    (10 berkas, 116 di antaranya kesehatan)
 bukti kontrak klien-peladen 40 pemeriksaan
-migrasi tenant terakhir     H065
+migrasi tenant terakhir     H066
 ```
 
-> **Catatan angka.** 45 menu berlayar tetapi daftar utas pada H065 berisi 44
-> baris — dua menu berbagi utas `/app/emedik/tarif`. Bila angkanya tampak
-> ganjil, itu sebabnya.
+> **Catatan angka.** Pada H065, 45 menu berlayar tetapi daftar utas berisi 44
+> baris — dua menu berbagi utas `/app/emedik/tarif`. H066 menambah satu utas
+> berlayar, `/app/emedik/pemberian`.
 
 ### Perintah untuk memastikan keadaan itu masih benar
 
@@ -74,12 +74,12 @@ cd C:/opt/eBisnisGithub-emedik/apps/api && npm run dev
 
 | Hal | Nilai |
 |---|---|
-| API pengembangan | `http://localhost:3200/api/v1` |
+| API pengembangan | `http://localhost:3000/api/v1` pada worktree gabungan ini; set `API_BASE` bila memakai port lain |
 | Web pengembangan | `http://localhost:5173` (`npx vite` pada `apps/web`) |
 | Basis data | PostgreSQL `localhost:5433`, skema tenant `demo` |
-| **Port 3000** | **Milik proyek lain.** Jangan dipakai, jangan diarahkan ke sana. |
+| Port lama 3200 | Dipakai pada worktree eMedik terpisah; jangan menganggapnya hidup pada `main` gabungan |
 | CORS API | hanya `http://localhost:5173` — web harus di port itu |
-| `apps/web/.env.local` | sudah menyetel `VITE_API_BASE_URL=http://localhost:3200/api/v1` |
+| `apps/web/.env.local` | periksa nilai `VITE_API_BASE_URL`; worktree gabungan lokal memakai `http://localhost:3000/api/v1` saat verifikasi W-6A |
 
 Menerapkan migrasi tenant:
 
@@ -158,13 +158,13 @@ Buka [24 — rencana layar sisa](24-rencana-layar-sisa.md). Ringkasnya:
 
 **W-6 sebaiknya BUKAN master data.** Rencana lama menaruh master data di W-6,
 dan itu keliru — pemeriksaan terakhir memperlihatkan **lima layar klinis** masih
-hilang, dan seluruh API-nya sudah ada sejak H-3 dan H-7:
+hilang. W-6A sudah membuka `/app/emedik/pemberian`; sisa klinis yang belum
+berlayar adalah:
 
 ```
 /app/emedik/rawat-jalan   HEALTH_ENCOUNTER        API sejak H-3
 /app/emedik/operasi       HEALTH_SURGERY          API sejak H-7
 /app/emedik/intensif      HEALTH_ICU              API sejak H-7
-/app/emedik/pemberian     HEALTH_ADMINISTRATION   API sejak H-4
 /app/emedik/pasien/ganda  HEALTH_PATIENT_DUPLICATE API sejak H-2
 ```
 

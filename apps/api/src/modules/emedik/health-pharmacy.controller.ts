@@ -498,6 +498,21 @@ export class HealthPharmacyController {
   // --- Pemberian obat --------------------------------------------------------
 
   @ApiBearerAuth('access-token')
+  @Permissions('HEALTH_ADMINISTRATION.READ')
+  @Get('administrations')
+  @ApiOperation({ summary: 'Daftar kerja eMAR — pemberian obat yang menunggu keputusan' })
+  daftarPemberian(
+    @Query('facilityId') facilityId: string,
+    @Query('status') status: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (!facilityId) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Parameter facilityId wajib diisi.');
+    }
+    return this.farmasi.daftarPemberian(requireSchema(user), facilityId, status);
+  }
+
+  @ApiBearerAuth('access-token')
   @Permissions('HEALTH_ADMINISTRATION.CREATE')
   @Post('administrations')
   @ApiOperation({

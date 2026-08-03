@@ -251,6 +251,37 @@ export interface ResepLengkap {
   lines: BarisResep[];
 }
 
+export interface BarisPemberianObat {
+  id: string;
+  status: 'SCHEDULED' | 'ADMINISTERED' | 'OMITTED' | 'REFUSED' | 'HELD' | 'CANCELLED';
+  scheduled_at: string | null;
+  administered_at: string | null;
+  dose_value: number;
+  dose_unit: string;
+  route: string;
+  omission_reason: string | null;
+  omission_note: string | null;
+  prescription_id: string;
+  prescription_number: string;
+  prescription_line_id: string;
+  line_no: number;
+  frequency_code: string;
+  patient_id: string;
+  patient_name: string;
+  birth_date: string | null;
+  medical_record_number: string | null;
+  drug_id: string;
+  generic_name: string;
+  brand_name: string | null;
+  active_ingredient: string;
+  drug_class: string;
+  is_controlled: boolean;
+  is_high_alert: boolean;
+  is_lasa: boolean;
+  overdue: boolean;
+  minutes_from_schedule: number | null;
+}
+
 // --- Laboratorium ------------------------------------------------------------
 
 export type PenilaianHasil =
@@ -1251,6 +1282,11 @@ export const healthApi = {
       '/health/pharmacy/dispensings',
       body,
       { headers: tajuk(ctx) },
+    ),
+
+  administrationQueue: (facilityId: string, status?: string) =>
+    api.get<BarisPemberianObat[]>(
+      `/health/pharmacy/administrations?facilityId=${facilityId}${status ? `&status=${status}` : ''}`,
     ),
 
   administer: (body: Record<string, unknown>, ctx: KonteksAkses) =>

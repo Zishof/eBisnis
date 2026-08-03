@@ -1,6 +1,6 @@
 ==============================================================================
 BUKTI KONTRAK — BENTUK JAWABAN PELADEN vs TIPE KLIEN WEB
-Waktu   : 2026-08-01T15:32:07.924Z
+Waktu   : 2026-08-03T23:09:16.456Z
 Schema  : demo
 ==============================================================================
 
@@ -8,6 +8,7 @@ Schema  : demo
   periksa berkas  : 201
   insiden         : 201
   pengukuran      : 201
+  pemberian obat  : siap
 
 --- Medan wajib klien harus ada pada jawaban peladen -------------------
   LULUS  facilities → Fasilitas (11 medan wajib)
@@ -18,6 +19,7 @@ Schema  : demo
   LULUS  codingWorklist → BarisKoding (9 medan wajib)
   LEWAT  deficiencies — tidak ada baris untuk diperiksa (BarisKekurangan)
   LULUS  incidents → BarisInsiden (10 medan wajib)
+  LULUS  administrationQueue → BarisPemberianObat (28 medan wajib)
   LULUS  qualityDashboard → PapanMutu (2 medan wajib)
   LULUS  breakGlassQueue → AntreanTelaah (3 medan wajib)
   LULUS  breakGlassReviews → RiwayatTelaah (2 medan wajib)
@@ -61,5 +63,5 @@ Schema  : demo
   Angka itu BUKAN kelulusan. Ia daftar yang masih harus dilihat orang.
 
 ==============================================================================
-SELURUH KONTRAK YANG DAPAT DIPERIKSA COCOK (40)
+SELURUH KONTRAK YANG DAPAT DIPERIKSA COCOK (41)
 ==============================================================================
