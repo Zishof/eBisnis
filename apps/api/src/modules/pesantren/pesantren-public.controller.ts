@@ -108,12 +108,12 @@ export class PesantrenPublicController {
     return this.situs.daftarAgama(host);
   }
 
-  /** Gelombang PSB yang sedang DIBUKA -- lihat `PesantrenPublicService.psbGelombangDibuka`. */
+  /** Seluruh gelombang PSB yang layak ditampilkan publik -- lihat `PesantrenPublicService.psbGelombangPublik`. */
   @Public()
   @Get('psb/gelombang')
-  @ApiOperation({ summary: 'Gelombang PSB yang sedang dibuka' })
+  @ApiOperation({ summary: 'Seluruh gelombang PSB (dibuka, ditutup, selesai) untuk halaman landing PSB' })
   psbGelombang(@Headers('host') host: string) {
-    return this.situs.psbGelombangDibuka(host);
+    return this.situs.psbGelombangPublik(host);
   }
 
   /**

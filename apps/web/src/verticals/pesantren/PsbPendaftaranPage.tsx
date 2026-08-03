@@ -1,6 +1,12 @@
 /**
  * Formulir Penerimaan Santri Baru (PSB) publik, di `<pondok>.santri.info`.
  *
+ * Diakses lewat `/santri/pondok/psb/daftar/:gelombangId` -- pengunjung
+ * memilih gelombangnya di `PsbGelombangPage` (landing PSB) dulu, formulir
+ * ini karena itu tidak lagi punya combobox gelombang sendiri (dulu ada,
+ * dipindah supaya alur pendaftaran punya dua langkah yang jelas, sama
+ * seperti sistem lama: daftar gelombang -> pilih -> formulir).
+ *
  * Referensi UX: modul PSB pada sistem lama (`psb.zul`/`CalonSiswaAction.java`,
  * `C:\opt\AIS\ais\...\action\master\sekolah\psb\`) -- portal publik tanpa
  * gerbang masuk, formulir pendaftaran sebagai pintu utamanya. Sesudah
@@ -12,13 +18,13 @@
  * disepakati menyusul, bukan bagian tahap ini.
  *
  * Memanggil tiga endpoint publik (tanpa sesi, tanpa hak akses):
- *   GET  /pesantren/public/psb/gelombang -- gelombang yang sedang DIBUKA
+ *   GET  /pesantren/public/psb/gelombang -- seluruh gelombang (untuk validasi :gelombangId)
  *   GET  /pesantren/public/agama         -- combobox agama (tabel referensi)
  *   POST /pesantren/public/psb/daftar    -- pendaftaran itu sendiri
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CheckCircle2 } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
@@ -35,6 +41,7 @@ interface Gelombang {
   tanggal_buka: string;
   tanggal_tutup: string;
   biaya_pendaftaran: string;
+  status: string;
 }
 
 interface UnitPendidikan {
@@ -58,7 +65,6 @@ interface DataOrangTua {
 }
 
 interface FormPendaftaran {
-  gelombangId: string;
   namaLengkap: string;
   jenisKelamin: string;
   tempatLahir: string;
@@ -79,7 +85,6 @@ interface FormPendaftaran {
 }
 
 const AWAL: FormPendaftaran = {
-  gelombangId: '',
   namaLengkap: '',
   jenisKelamin: 'L',
   tempatLahir: '',
@@ -112,6 +117,7 @@ function bersihkanOrangTua(data: DataOrangTua): DataOrangTua | undefined {
 }
 
 export function PsbPendaftaranPage() {
+  const { gelombangId } = useParams<{ gelombangId: string }>();
   const [form, setForm] = useState<FormPendaftaran>(AWAL);
   const [error, setError] = useState<string | null>(null);
   const [nomorPendaftaran, setNomorPendaftaran] = useState<string | null>(null);
@@ -122,7 +128,7 @@ export function PsbPendaftaranPage() {
     retry: false,
   });
 
-  const { data: gelombang, isLoading: gelombangMemuat } = useQuery({
+  const { data: gelombangList, isLoading: gelombangMemuat } = useQuery({
     queryKey: ['pesantren', 'psb-gelombang-publik'],
     queryFn: () => apiRequest<Gelombang[]>('/pesantren/public/psb/gelombang'),
     retry: false,
@@ -134,12 +140,14 @@ export function PsbPendaftaranPage() {
     retry: false,
   });
 
+  const gelombang = gelombangList?.find((g) => g.id === gelombangId);
+
   const daftar = useMutation({
     mutationFn: () =>
       apiRequest<{ nomor_pendaftaran: string }>('/pesantren/public/psb/daftar', {
         method: 'POST',
         body: {
-          gelombangId: form.gelombangId,
+          gelombangId,
           namaLengkap: form.namaLengkap,
           jenisKelamin: form.jenisKelamin,
           tempatLahir: bersihkanTeks(form.tempatLahir),
@@ -169,10 +177,6 @@ export function PsbPendaftaranPage() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!form.gelombangId) {
-      setError('Silakan pilih gelombang pendaftaran.');
-      return;
-    }
     daftar.mutate();
   };
 
@@ -205,6 +209,36 @@ export function PsbPendaftaranPage() {
     );
   }
 
+  // Gelombang belum termuat -- jangan tampilkan galat sebelum sempat tahu.
+  if (gelombangMemuat) {
+    return <div className="flex min-h-[50vh] items-center justify-center text-slate-500">Memuat…</div>;
+  }
+
+  // :gelombangId tidak cocok gelombang mana pun, atau sudah tidak DIBUKA
+  // lagi (mis. tautan lama, atau ditutup pengurus tepat saat pengunjung
+  // sedang mengisi) -- jangan biarkan tetap mengirim ke gelombang yang
+  // sudah tidak menerima; arahkan kembali ke daftar gelombang.
+  if (!gelombang || gelombang.status !== 'DIBUKA') {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+          {gelombang ? 'Gelombang Ini Sudah Ditutup' : 'Gelombang Tidak Ditemukan'}
+        </h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          {gelombang
+            ? 'Pendaftaran untuk gelombang ini sudah tidak dibuka lagi. Silakan pilih gelombang lain yang masih aktif.'
+            : 'Tautan pendaftaran tidak valid. Silakan pilih gelombang dari daftar berikut.'}
+        </p>
+        <Link
+          to="/santri/pondok/psb"
+          className="mt-6 inline-block rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"
+        >
+          Lihat Gelombang Pendaftaran
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -221,6 +255,13 @@ export function PsbPendaftaranPage() {
         </Link>
       </p>
 
+      <div className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/40">
+        <span className="font-semibold text-emerald-800 dark:text-emerald-300">Gelombang:</span>{' '}
+        <span className="text-emerald-700 dark:text-emerald-400">
+          {gelombang.nama} ({gelombang.kode})
+        </span>
+      </div>
+
       {error && (
         <div role="alert" className="mt-5 rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
           {error}
@@ -228,31 +269,6 @@ export function PsbPendaftaranPage() {
       )}
 
       <form className="mt-6 space-y-8" onSubmit={submit}>
-        <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold text-slate-900 dark:text-white">Gelombang Pendaftaran</legend>
-          {gelombangMemuat ? (
-            <p className="text-sm text-slate-500">Memuat gelombang…</p>
-          ) : gelombang && gelombang.length > 0 ? (
-            <select
-              className="field-input"
-              value={form.gelombangId}
-              onChange={(e) => setForm((f) => ({ ...f, gelombangId: e.target.value }))}
-              required
-            >
-              <option value="">Pilih gelombang…</option>
-              {gelombang.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.nama} ({g.kode})
-                </option>
-              ))}
-            </select>
-          ) : (
-            <p className="text-sm text-amber-700 dark:text-amber-400">
-              Belum ada gelombang pendaftaran yang dibuka saat ini. Silakan hubungi pengurus pondok.
-            </p>
-          )}
-        </fieldset>
-
         <fieldset className="space-y-4">
           <legend className="text-sm font-semibold text-slate-900 dark:text-white">Data Calon Santri</legend>
           <Field label="Nama Lengkap" required value={form.namaLengkap} onChange={(v) => setForm((f) => ({ ...f, namaLengkap: v }))} />
