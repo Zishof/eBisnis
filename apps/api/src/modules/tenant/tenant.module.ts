@@ -597,6 +597,73 @@ export class MasterController {
 }
 
 // ---------------------------------------------------------------------------
+// Controller: administrasi sistem tenant
+// ---------------------------------------------------------------------------
+
+@ApiTags('tenant-admin')
+@ApiBearerAuth('access-token')
+@Controller('admin')
+export class TenantAdminController {
+  constructor(private readonly tenantDb: TenantConnectionService) {}
+
+  @Get('users')
+  @Permissions('ADMIN_USER.READ')
+  @ApiOperation({ summary: 'Daftar pengguna pada tenant aktif beserta role yang dipegang' })
+  async users(@CurrentUser() user: AuthenticatedUser) {
+    const schema = schemaOf(user);
+    const rows = await this.tenantDb.query<{
+      id: string;
+      platform_user_id: string;
+      code: string;
+      name: string;
+      username_snapshot: string;
+      email_snapshot: string | null;
+      status: string;
+      is_owner: boolean;
+      is_active: boolean;
+      last_login_at: Date | null;
+      updated_at: Date;
+      roles: string | null;
+      role_count: string;
+    }>(
+      schema,
+      `SELECT us.id::text, us.platform_user_id::text, us.code, us.name,
+              us.username_snapshot, us.email_snapshot, us.status,
+              us.is_owner, us.is_active, us.last_login_at, us.updated_at,
+              string_agg(r.code, ', ' ORDER BY r.code)
+                FILTER (WHERE r.id IS NOT NULL) AS roles,
+              count(r.id)::text AS role_count
+         FROM "${schema}".user_subject us
+         LEFT JOIN "${schema}".user_role_assignment ura ON ura.user_subject_id = us.id
+           AND ura.valid_from <= now()
+           AND (ura.valid_until IS NULL OR ura.valid_until >= now())
+         LEFT JOIN "${schema}".role r ON r.id = ura.role_id
+           AND r.deleted_at IS NULL
+           AND r.is_active = TRUE
+        WHERE us.deleted_at IS NULL
+        GROUP BY us.id
+        ORDER BY us.is_owner DESC, us.name, us.username_snapshot`,
+    );
+
+    return rows.map((row) => ({
+      id: row.id,
+      platformUserId: row.platform_user_id,
+      code: row.code,
+      name: row.name,
+      username: row.username_snapshot,
+      email: row.email_snapshot,
+      status: row.status,
+      isOwner: row.is_owner,
+      isActive: row.is_active,
+      lastLoginAt: row.last_login_at,
+      updatedAt: row.updated_at,
+      roles: row.roles ? row.roles.split(', ') : [],
+      roleCount: Number(row.role_count),
+    }));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Controller: ERP vertical slice
 // ---------------------------------------------------------------------------
 
@@ -1301,10 +1368,17 @@ function context(user: AuthenticatedUser, meta: RequestMeta): LifecycleContext {
   };
 }
 
+function schemaOf(user: AuthenticatedUser): string {
+  if (!user.schemaName) {
+    throw AppError.forbidden(ErrorCodes.FORBIDDEN, 'Sesi ini tidak terhubung ke tenant mana pun.');
+  }
+  return user.schemaName;
+}
+
 @Module({
   // ErpController lebih dahulu: route spesifik harus menang atas
   // wildcard `:resource` pada MasterController.
-  controllers: [ErpController, MasterController],
+  controllers: [ErpController, MasterController, TenantAdminController],
   providers: [MasterLifecycleService, ErpPurchasingService, ErpInventoryService],
   exports: [MasterLifecycleService, ErpPurchasingService, ErpInventoryService],
 })

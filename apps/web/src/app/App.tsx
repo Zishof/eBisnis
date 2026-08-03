@@ -44,6 +44,18 @@ import { LoadingState } from '../components/ui';
 const MarketplaceActivationPage = lazy(() =>
   import('../pages/app/MarketplaceActivationPage').then((m) => ({ default: m.default })),
 );
+const AdminUsersPage = lazy(() =>
+  import('../pages/app/admin/AdminPages').then((m) => ({ default: m.AdminUsersPage })),
+);
+const RolePermissionsPage = lazy(() =>
+  import('../pages/app/admin/AdminPages').then((m) => ({ default: m.RolePermissionsPage })),
+);
+const TenantAuditPage = lazy(() =>
+  import('../pages/app/admin/AdminPages').then((m) => ({ default: m.TenantAuditPage })),
+);
+const TenantSettingsPage = lazy(() =>
+  import('../pages/app/admin/AdminPages').then((m) => ({ default: m.TenantSettingsPage })),
+);
 
 const PlatformLayout = lazy(() =>
   import('../pages/platform/PlatformLayout').then((m) => ({ default: m.PlatformLayout })),
@@ -332,6 +344,11 @@ export function App() {
           <Route path="vehicle-types" element={<MasterListPage resource="vehicle-types" />} />
           <Route path="chart-of-accounts" element={<MasterListPage resource="chart-of-accounts" />} />
           <Route path="roles" element={<MasterListPage resource="roles" />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="role-permissions" element={<RolePermissionsPage />} />
+          <Route path="audit" element={<TenantAuditPage />} />
+          <Route path="settings" element={<TenantSettingsPage />} />
+          <Route path="pengaturan" element={<TenantSettingsPage />} />
 
           <Route path="request-orders" element={<RequestOrderPage />} />
           <Route path="purchase-orders" element={<PurchaseOrderPage />} />
