@@ -75,12 +75,8 @@ export class PosUpdateController {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas pembaruan tidak ditemukan.');
     }
 
-    const root = resolve(UPDATE_DIR);
-    const path = resolve(join(root, safe));
-    if (!path.startsWith(`${root}\\`) && !path.startsWith(`${root}/`)) {
-      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas pembaruan tidak ditemukan.');
-    }
-    if (!existsSync(path)) {
+    const path = this.updateFilePath(safe);
+    if (!path) {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas pembaruan tidak ditemukan.');
     }
 
@@ -108,6 +104,11 @@ export class PosUpdateController {
   }
 
   private downloadLatestCustomerApk(aliasName: string, res: Response) {
+    const explicitApk = this.updateFilePath(aliasName);
+    if (explicitApk) {
+      return this.streamFile(explicitApk, aliasName, res, 'latest');
+    }
+
     const apk = this.assets()
       .filter((asset) => asset.platform === 'android')
       .sort((a, b) => compareVersion(a.version, b.version))
@@ -121,6 +122,18 @@ export class PosUpdateController {
     }
 
     return this.streamFile(apk.path, aliasName, res, 'latest');
+  }
+
+  private updateFilePath(file: string): string | null {
+    const safe = basename(file);
+    if (safe !== file) return null;
+
+    const root = resolve(UPDATE_DIR);
+    const path = resolve(join(root, safe));
+    if (!path.startsWith(`${root}\\`) && !path.startsWith(`${root}/`)) return null;
+    if (!existsSync(path)) return null;
+    if (!statSync(path).isFile()) return null;
+    return path;
   }
 
   private streamFile(path: string, filename: string, res: Response, cacheMode: 'immutable' | 'latest') {
