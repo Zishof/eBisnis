@@ -34,7 +34,6 @@ class _GateHomePageState extends State<GateHomePage> {
   final settings = GateSettings();
   final cardController = TextEditingController();
   final noteController = TextEditingController();
-  final fingerprintController = TextEditingController();
   GateScanResult? scanResult;
   String direction = 'KELUAR';
   String? selectedPermitId;
@@ -55,7 +54,6 @@ class _GateHomePageState extends State<GateHomePage> {
   void dispose() {
     cardController.dispose();
     noteController.dispose();
-    fingerprintController.dispose();
     super.dispose();
   }
 
@@ -129,10 +127,7 @@ class _GateHomePageState extends State<GateHomePage> {
         {
           'izinId': permitId,
           'arah': direction,
-          'catatan': [
-            noteController.text.trim(),
-            if (fingerprintController.text.trim().isNotEmpty) 'fingerprint:${fingerprintController.text.trim()}',
-          ].where((item) => item.isNotEmpty).join(' | '),
+          'catatan': noteController.text.trim(),
         },
         GateLog.fromJson,
       );
@@ -179,7 +174,6 @@ class _GateHomePageState extends State<GateHomePage> {
             ScanTab(
               cardController: cardController,
               noteController: noteController,
-              fingerprintController: fingerprintController,
               result: scanResult,
               selectedPermitId: selectedPermitId,
               direction: direction,
@@ -204,7 +198,6 @@ class ScanTab extends StatelessWidget {
     super.key,
     required this.cardController,
     required this.noteController,
-    required this.fingerprintController,
     required this.result,
     required this.selectedPermitId,
     required this.direction,
@@ -218,7 +211,6 @@ class ScanTab extends StatelessWidget {
 
   final TextEditingController cardController;
   final TextEditingController noteController;
-  final TextEditingController fingerprintController;
   final GateScanResult? result;
   final String? selectedPermitId;
   final String direction;
@@ -278,14 +270,6 @@ class ScanTab extends StatelessWidget {
             ],
             selected: {direction},
             onSelectionChanged: busy ? null : (values) => onDirectionChanged(values.first),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: fingerprintController,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: 'Fingerprint ID / vendor adapter',
-            ),
           ),
           const SizedBox(height: 12),
           TextField(
