@@ -191,6 +191,17 @@ class NewsletterDto {
   localeCode?: string;
 }
 
+class DemoSessionDto {
+  @ApiPropertyOptional({
+    description: 'Kode peran demo terbatas untuk simulasi persona uji.',
+    example: 'PEMILIK_USAHA',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  roleCode?: string;
+}
+
 class NewsQueryDto {
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
@@ -473,13 +484,14 @@ export class PublicController {
     summary: 'Membuat sesi sandbox demo tanpa pendaftaran',
     description: 'Token demo berumur pendek dan hanya mengarah ke schema `demo`.',
   })
-  createDemoSession(@RequestContext() meta: RequestMeta) {
+  createDemoSession(@Body() dto: DemoSessionDto | undefined, @RequestContext() meta: RequestMeta) {
     return this.auth.createDemoSession({
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
       localeCode: meta.localeCode,
       requestId: meta.requestId,
       hostname: meta.hostname,
+      requestedRoleCode: dto?.roleCode,
     });
   }
 

@@ -16,6 +16,12 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 const MIME_GAMBAR_SAH = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const UKURAN_MAKSIMUM_BYTES = 5 * 1024 * 1024;
 
+type BerkasUnggahan = {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+};
+
 function schemaWajib(user: AuthenticatedUser): string {
   if (!user.schemaName) {
     throw AppError.forbidden(ErrorCodes.FORBIDDEN, 'Konteks ruang kerja tidak ditemukan pada sesi Anda.');
@@ -124,7 +130,7 @@ export class PesantrenProfilController {
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: UKURAN_MAKSIMUM_BYTES } }))
   async unggahGambar(
     @Param('kategori') kategori: string,
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFile() file: BerkasUnggahan | undefined,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     const kategoriUpper = kategori.toUpperCase();

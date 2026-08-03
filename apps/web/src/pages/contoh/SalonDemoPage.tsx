@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -22,13 +23,18 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock,
+  Crown,
   Download,
+  LogIn,
   ReceiptText,
   Scissors,
   Sparkles,
   TrendingUp,
+  UserRound,
   Users,
 } from 'lucide-react';
+import { berandaSesudahMasuk } from '../../app/beranda-sesudah-masuk';
+import { useAuth } from '../../app/auth-context';
 import {
   buatProdukSalon,
   buatTransaksiSalon,
@@ -52,12 +58,56 @@ const angka = new Intl.NumberFormat('id-ID');
 
 type Tab = 'website' | 'booking' | 'dashboard' | 'produk' | 'transaksi';
 
+const AKUN_UJI_SALON = [
+  {
+    label: 'Pelanggan',
+    username: 'pelanggan.salon',
+    password: 'SalonDemo#2026',
+    roleCode: 'PELAPOR_TIKET',
+    tujuan: 'Melihat promo, booking, invoice, struk, dan riwayat kunjungan.',
+    icon: UserRound,
+  },
+  {
+    label: 'Manajemen Salon',
+    username: 'manajemen.salon',
+    password: 'SalonDemo#2026',
+    roleCode: 'MANAJER_OPERASIONAL',
+    tujuan: 'Mengelola booking, layanan, petugas, kursi, stok, dan operasional harian.',
+    icon: Users,
+  },
+  {
+    label: 'Pemilik Salon',
+    username: 'pemilik.salon',
+    password: 'SalonDemo#2026',
+    roleCode: 'PEMILIK_USAHA',
+    tujuan: 'Membaca dashboard omzet, laba, tren, performa layanan, dan keputusan bisnis.',
+    icon: Crown,
+  },
+];
+
 export function SalonDemoPage() {
   const [tab, setTab] = useState<Tab>('website');
+  const [busyRole, setBusyRole] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const { loginDemo } = useAuth();
+  const navigate = useNavigate();
   const produk = useMemo(() => buatProdukSalon(), []);
   const transaksi = useMemo(() => buatTransaksiSalon(produk), [produk]);
   const ringkasan = useMemo(() => ringkasTransaksi(transaksi), [transaksi]);
   const produkUnggulan = produk.filter((item) => item.unggulan).slice(0, 8);
+
+  const masukSebagai = async (roleCode: string) => {
+    setBusyRole(roleCode);
+    setLoginError(null);
+    try {
+      const session = await loginDemo(roleCode);
+      navigate(berandaSesudahMasuk(session), { replace: true });
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Tidak dapat membuat sesi demo salon.');
+    } finally {
+      setBusyRole(null);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
@@ -73,6 +123,13 @@ export function SalonDemoPage() {
             </span>
           </a>
           <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+            <a
+              href="#akun-uji"
+              className="inline-flex items-center gap-2 rounded-lg border border-teal-700 px-4 py-2 text-teal-800 transition hover:bg-teal-50"
+            >
+              <LogIn className="h-4 w-4" aria-hidden />
+              Login
+            </a>
             {[
               ['website', 'Website'],
               ['booking', 'Booking'],
@@ -135,6 +192,13 @@ export function SalonDemoPage() {
 
       <div className="container-page py-8">
         {tab === 'website' && <WebsiteSalon produk={produkUnggulan} />}
+        {tab === 'website' && (
+          <AkunUjiSalon
+            busyRole={busyRole}
+            error={loginError}
+            onMasuk={(roleCode) => void masukSebagai(roleCode)}
+          />
+        )}
         {tab === 'booking' && <BookingSalon transaksi={transaksi} />}
         {tab === 'dashboard' && <DashboardSalon transaksi={transaksi} produk={produk} />}
         {tab === 'produk' && <ProdukSalonTable produk={produk} />}
@@ -228,6 +292,88 @@ function WebsiteSalon({ produk }: { produk: ProdukSalon[] }) {
         </div>
       </section>
     </div>
+  );
+}
+
+function AkunUjiSalon({
+  busyRole,
+  error,
+  onMasuk,
+}: {
+  busyRole: string | null;
+  error: string | null;
+  onMasuk: (roleCode: string) => void;
+}) {
+  return (
+    <section id="akun-uji" className="mt-6 rounded-xl border border-teal-200 bg-teal-50 p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-teal-800">
+            Akun uji coba web dan Android
+          </p>
+          <h2 className="mt-1 text-xl font-bold text-slate-950">
+            Masuk sebagai pelanggan, manajemen, atau pemilik salon
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
+            Username dan password di bawah dipakai sebagai kredensial demo. Tombol masuk cepat
+            membuat sesi sandbox sesuai persona; APK Android pelanggan dan POS memakai daftar
+            persona yang sama agar alur uji tidak berbeda antara web dan perangkat.
+          </p>
+        </div>
+        <a
+          className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+          href="/update/ebisnis-pelanggan-salon.apk"
+        >
+          <Download className="h-4 w-4" aria-hidden />
+          APK pelanggan Android
+        </a>
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </p>
+      )}
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        {AKUN_UJI_SALON.map((akun) => {
+          const Icon = akun.icon;
+          const sibuk = busyRole === akun.roleCode;
+          return (
+            <article key={akun.roleCode} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-lg bg-teal-100 text-teal-800">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
+                <div>
+                  <h3 className="font-bold text-slate-950">{akun.label}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">{akun.tujuan}</p>
+                </div>
+              </div>
+              <dl className="mt-4 rounded-lg bg-slate-50 p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500">Username</dt>
+                  <dd className="font-semibold text-slate-950">{akun.username}</dd>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <dt className="text-slate-500">Password</dt>
+                  <dd className="font-semibold text-slate-950">{akun.password}</dd>
+                </div>
+              </dl>
+              <button
+                type="button"
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-wait disabled:opacity-70"
+                onClick={() => onMasuk(akun.roleCode)}
+                disabled={Boolean(busyRole)}
+              >
+                <LogIn className="h-4 w-4" aria-hidden />
+                {sibuk ? 'Membuka sesi...' : `Masuk sebagai ${akun.label}`}
+              </button>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

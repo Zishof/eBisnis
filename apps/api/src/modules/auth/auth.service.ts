@@ -14,6 +14,12 @@ import { fingerprintDevice } from './device-fingerprint';
 
 const MAX_FAILED_LOGINS = 8;
 const LOCK_MINUTES = 15;
+const DEMO_ROLE_ALLOWLIST = new Set([
+  'DEMO_USER',
+  'PELAPOR_TIKET',
+  'MANAJER_OPERASIONAL',
+  'PEMILIK_USAHA',
+]);
 
 export interface LoginResult {
   accessToken: string;
@@ -263,6 +269,7 @@ export class AuthService {
     localeCode?: string;
     requestId?: string;
     hostname?: string;
+    requestedRoleCode?: string;
   }): Promise<{
     accessToken: string;
     expiresIn: number;
@@ -277,6 +284,11 @@ export class AuthService {
       meta.hostname,
       schemaBawaan,
     );
+    const requestedRoleCode = meta.requestedRoleCode?.trim().toUpperCase();
+    const demoRoleCode =
+      requestedRoleCode && DEMO_ROLE_ALLOWLIST.has(requestedRoleCode)
+        ? requestedRoleCode
+        : defaultRoleCode;
     const registry = await this.prisma.tenantSchemaRegistry.findUnique({
       where: { schemaName: demoSchema },
       include: { tenant: true },
@@ -298,11 +310,12 @@ export class AuthService {
      * yang terlalu luas jauh lebih baik daripada demo yang gagal terbuka.
      */
     let activeRoleId: string | undefined;
-    if (defaultRoleCode) {
-      activeRoleId = await this.findRoleId(demoSchema, defaultRoleCode);
+    if (demoRoleCode) {
+      await this.ensureDemoRoleAssigned(demoSchema, demoRoleCode);
+      activeRoleId = await this.findRoleId(demoSchema, demoRoleCode);
       if (!activeRoleId) {
         this.logger.warn(
-          `Peran demo ${defaultRoleCode} tidak ditemukan pada ${demoSchema} -- sesi demo ` +
+          `Peran demo ${demoRoleCode} tidak ditemukan pada ${demoSchema} -- sesi demo ` +
             'jatuh ke gabungan seluruh peran yang dipegang subjek demo.',
         );
       }
@@ -327,7 +340,7 @@ export class AuthService {
         resetGeneration: lastReset?.generation ?? 0,
         expiresAt,
         activeRoleId: activeRoleId ?? null,
-        activeRoleCode: activeRoleId ? defaultRoleCode : null,
+        activeRoleCode: activeRoleId ? demoRoleCode : null,
       },
     });
 
@@ -426,6 +439,38 @@ export class AuthService {
       [roleCode],
     );
     return rows[0]?.id;
+  }
+
+  private async ensureDemoRoleAssigned(schemaName: string, roleCode: string): Promise<void> {
+    await this.tenantDb.transaction(schemaName, async (client) => {
+      const subject = await client.query<{ id: string }>(
+        `SELECT id::text AS id FROM "${schemaName}".user_subject
+         WHERE platform_user_id = $1::uuid AND deleted_at IS NULL AND is_active = TRUE
+         LIMIT 1`,
+        [DEMO_PLATFORM_USER_ID],
+      );
+      const role = await client.query<{ id: string }>(
+        `SELECT id::text AS id FROM "${schemaName}".role
+         WHERE code = $1 AND deleted_at IS NULL AND is_active = TRUE
+         LIMIT 1`,
+        [roleCode],
+      );
+      const subjectId = subject.rows[0]?.id;
+      const roleId = role.rows[0]?.id;
+      if (!subjectId || !roleId) return;
+
+      await client.query(
+        `INSERT INTO "${schemaName}".user_role_assignment (user_subject_id, role_id)
+         VALUES ($1, $2) ON CONFLICT (user_subject_id, role_id) DO NOTHING`,
+        [subjectId, roleId],
+      );
+      await client.query(
+        `INSERT INTO "${schemaName}".role_scope (role_id, scope_type, scope_id)
+         VALUES ($1::uuid, 'TENANT', NULL)
+         ON CONFLICT DO NOTHING`,
+        [roleId],
+      );
+    });
   }
 
   async refresh(

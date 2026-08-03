@@ -40,6 +40,8 @@ class AplikasiKasir extends StatefulWidget {
 }
 
 class _AplikasiKasirState extends State<AplikasiKasir> {
+  _PersonaSalon? _persona;
+
   /// Keadaan layar pelanggan.
   ///
   /// Hidup di sini, di atas layar kasir, sebab jendela layar kedua kelak dibuka
@@ -174,28 +176,42 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
     return MaterialApp(
       title: 'Kasir eBisnis.id',
       theme: temaKasir(),
-      home: FutureBuilder<_SumberKasir>(
-        future: _sumber,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const _MemuatKasir();
-          }
-          final sumber = snap.data ?? _SumberKasir.contoh();
-          return LayarKasir(
-            katalog: sumber.katalog,
-            metode: sumber.metode,
-            pencetak: _pencetak,
-            namaToko: sumber.namaToko,
-            pelanggan: _pelanggan,
-            namaOutlet: sumber.namaOutlet,
-            shift: sumber.shift,
-            koneksi: sumber.koneksi,
-            namaPengguna: sumber.namaPengguna,
-            pembaruan: _pembaruan,
-            pembukuan: sumber.pembukuan,
-          );
-        },
-      ),
+      home: _beranda(),
+    );
+  }
+
+  Widget _beranda() {
+    final persona = _persona;
+    if (persona == null) {
+      return _LoginSalonDemo(onMasuk: (p) => setState(() => _persona = p));
+    }
+    if (persona.jenis == _JenisPersonaSalon.pelanggan) {
+      return _PortalPelangganSalonDemo(
+        persona: persona,
+        onKeluar: () => setState(() => _persona = null),
+      );
+    }
+    return FutureBuilder<_SumberKasir>(
+      future: _sumber,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const _MemuatKasir();
+        }
+        final sumber = snap.data ?? _SumberKasir.contoh();
+        return LayarKasir(
+          katalog: sumber.katalog,
+          metode: sumber.metode,
+          pencetak: _pencetak,
+          namaToko: sumber.namaToko,
+          pelanggan: _pelanggan,
+          namaOutlet: sumber.namaOutlet,
+          shift: sumber.shift,
+          koneksi: sumber.koneksi,
+          namaPengguna: persona.label,
+          pembaruan: _pembaruan,
+          pembukuan: sumber.pembukuan,
+        );
+      },
     );
   }
 
@@ -259,6 +275,318 @@ class _SumberKasir {
   final KeadaanKoneksi? koneksi;
   final String? namaPengguna;
   final PembukuanKasir? pembukuan;
+}
+
+enum _JenisPersonaSalon { pelanggan, manajemen, pemilik }
+
+class _PersonaSalon {
+  const _PersonaSalon({
+    required this.label,
+    required this.username,
+    required this.password,
+    required this.jenis,
+    required this.keterangan,
+  });
+
+  final String label;
+  final String username;
+  final String password;
+  final _JenisPersonaSalon jenis;
+  final String keterangan;
+}
+
+const _akunSalon = [
+  _PersonaSalon(
+    label: 'Pelanggan',
+    username: 'pelanggan.salon',
+    password: 'SalonDemo#2026',
+    jenis: _JenisPersonaSalon.pelanggan,
+    keterangan: 'Promo, booking, invoice, struk, dan riwayat kunjungan.',
+  ),
+  _PersonaSalon(
+    label: 'Manajemen Salon',
+    username: 'manajemen.salon',
+    password: 'SalonDemo#2026',
+    jenis: _JenisPersonaSalon.manajemen,
+    keterangan: 'Booking, layanan, petugas, kursi, stok, dan operasional harian.',
+  ),
+  _PersonaSalon(
+    label: 'Pemilik Salon',
+    username: 'pemilik.salon',
+    password: 'SalonDemo#2026',
+    jenis: _JenisPersonaSalon.pemilik,
+    keterangan: 'Dashboard omzet, laba, tren, performa layanan, dan keputusan bisnis.',
+  ),
+];
+
+class _LoginSalonDemo extends StatefulWidget {
+  const _LoginSalonDemo({required this.onMasuk});
+
+  final ValueChanged<_PersonaSalon> onMasuk;
+
+  @override
+  State<_LoginSalonDemo> createState() => _LoginSalonDemoState();
+}
+
+class _LoginSalonDemoState extends State<_LoginSalonDemo> {
+  final _username = TextEditingController(text: _akunSalon.first.username);
+  final _password = TextEditingController(text: _akunSalon.first.password);
+  String? _pesan;
+
+  @override
+  void dispose() {
+    _username.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  void _pilih(_PersonaSalon akun) {
+    _username.text = akun.username;
+    _password.text = akun.password;
+    setState(() => _pesan = null);
+  }
+
+  void _masuk() {
+    final username = _username.text.trim().toLowerCase();
+    final password = _password.text;
+    final cocok = _akunSalon.where(
+      (akun) => akun.username == username && akun.password == password,
+    );
+    if (cocok.isEmpty) {
+      setState(() => _pesan = 'Username atau password demo salon tidak cocok.');
+      return;
+    }
+    widget.onMasuk(cocok.first);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F7F8),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 980),
+            child: LayoutBuilder(
+              builder: (context, box) {
+                final form = _FormLoginSalon(
+                  username: _username,
+                  password: _password,
+                  pesan: _pesan,
+                  onMasuk: _masuk,
+                );
+                final akun = Column(
+                  children: [
+                    for (final item in _akunSalon)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _KartuAkunSalon(akun: item, onPilih: () => _pilih(item)),
+                      ),
+                  ],
+                );
+                if (box.maxWidth < 760) {
+                  return Column(children: [form, const SizedBox(height: 16), akun]);
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: form),
+                    const SizedBox(width: 20),
+                    Expanded(child: akun),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FormLoginSalon extends StatelessWidget {
+  const _FormLoginSalon({
+    required this.username,
+    required this.password,
+    required this.pesan,
+    required this.onMasuk,
+  });
+
+  final TextEditingController username;
+  final TextEditingController password;
+  final String? pesan;
+  final VoidCallback onMasuk;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PanelPutih(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Salon Cantik Demo',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Masuk sebagai pelanggan, manajemen salon, atau pemilik salon. Akun ini sama dengan yang tampil di salon.ebisnis.id.',
+            style: TextStyle(color: Color(0xFF526173), height: 1.5),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: username,
+            decoration: const InputDecoration(
+              labelText: 'Username',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: password,
+            decoration: const InputDecoration(
+              labelText: 'Password',
+              border: OutlineInputBorder(),
+            ),
+            obscureText: true,
+          ),
+          if (pesan != null) ...[
+            const SizedBox(height: 12),
+            Text(pesan!, style: const TextStyle(color: Color(0xFFB91C1C))),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onMasuk,
+              icon: const Icon(Icons.login),
+              label: const Text('Masuk'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KartuAkunSalon extends StatelessWidget {
+  const _KartuAkunSalon({required this.akun, required this.onPilih});
+
+  final _PersonaSalon akun;
+  final VoidCallback onPilih;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PanelPutih(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(akun.label, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Text(akun.keterangan, style: const TextStyle(color: Color(0xFF526173), height: 1.45)),
+          const SizedBox(height: 12),
+          Text('Username: ${akun.username}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text('Password: ${akun.password}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onPilih,
+            icon: const Icon(Icons.person),
+            label: const Text('Pakai akun ini'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PortalPelangganSalonDemo extends StatelessWidget {
+  const _PortalPelangganSalonDemo({
+    required this.persona,
+    required this.onKeluar,
+  });
+
+  final _PersonaSalon persona;
+  final VoidCallback onKeluar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F7F8),
+      appBar: AppBar(
+        title: Text('Portal ${persona.label}'),
+        actions: [
+          TextButton.icon(
+            onPressed: onKeluar,
+            icon: const Icon(Icons.logout),
+            label: const Text('Keluar'),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: const [
+          _PanelPutih(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Promo minggu ini', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                SizedBox(height: 8),
+                Text('Diskon 20% untuk Hair Spa dan Creambath setiap Senin sampai Rabu.'),
+              ],
+            ),
+          ),
+          SizedBox(height: 12),
+          _PanelPutih(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Booking saya', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                SizedBox(height: 8),
+                Text('Selasa, 10:00 - Hair Treatment dengan Rina - Kursi 2.'),
+              ],
+            ),
+          ),
+          SizedBox(height: 12),
+          _PanelPutih(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Struk terakhir', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                SizedBox(height: 8),
+                Text('INV-SALON-1000 - Rp 186.000 - Tunai.'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PanelPutih extends StatelessWidget {
+  const _PanelPutih({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(padding: const EdgeInsets.all(20), child: child),
+    );
+  }
 }
 
 class _MemuatKasir extends StatelessWidget {

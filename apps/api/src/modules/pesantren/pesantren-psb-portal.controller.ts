@@ -40,6 +40,12 @@ import { DataOrangTuaDto } from './pesantren-santri.controller';
 const MIME_BUKTI_BAYAR_SAH = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 const UKURAN_MAKSIMUM_BYTES = 5 * 1024 * 1024;
 
+type BerkasUnggahan = {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+};
+
 /** Kode `file_object` bukti bayar -- satu per pendaftar, unggah ulang mengganti. */
 function kodeBuktiBayar(pendaftarId: string): string {
   return `PSB_BUKTI_BAYAR_${pendaftarId}`;
@@ -127,7 +133,7 @@ export class PesantrenPsbPortalController {
   @ApiOperation({ summary: 'Mengunggah/mengganti bukti pembayaran biaya pendaftaran' })
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: UKURAN_MAKSIMUM_BYTES } }))
   async unggahBuktiBayar(
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFile() file: BerkasUnggahan | undefined,
     @CurrentPendaftar() ctx: PsbApplicantContext,
   ) {
     if (!file) {
