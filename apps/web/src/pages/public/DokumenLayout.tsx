@@ -10,6 +10,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
+import { emedikPublicBrandFor } from './emedik-host';
 
 /**
  * Merek yang memakai kerangka ini.
@@ -47,12 +48,25 @@ export const MEREK_SANTRI: MerekDokumen = {
     'inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-800',
 };
 
+function merekDokumenDariHost(): MerekDokumen {
+  const emedikBrand = emedikPublicBrandFor();
+  if (!emedikBrand) return MEREK_EBISNIS;
+
+  return {
+    nama: emedikBrand.name,
+    beranda: emedikBrand.homeUrl,
+    aksenTeks: 'text-brand-700 dark:text-brand-400 print:text-brand-700',
+    aksenGaris: 'border-brand-600',
+    aksenTombol: 'btn-primary',
+  };
+}
+
 export function DokumenLayout({
   kategori,
   judul,
   ringkas,
   meta,
-  merek = MEREK_EBISNIS,
+  merek,
   children,
 }: {
   kategori: string;
@@ -62,13 +76,15 @@ export function DokumenLayout({
   merek?: MerekDokumen;
   children: ReactNode;
 }) {
+  const merekAktif = merek ?? merekDokumenDariHost();
+
   useEffect(() => {
     const sebelumnya = document.title;
-    document.title = `${judul} — ${merek.nama}`;
+    document.title = `${judul} — ${merekAktif.nama}`;
     return () => {
       document.title = sebelumnya;
     };
-  }, [judul, merek.nama]);
+  }, [judul, merekAktif.nama]);
 
   return (
     <div className="bg-slate-100 py-8 dark:bg-slate-950 print:bg-white print:py-0">
@@ -76,21 +92,21 @@ export function DokumenLayout({
         {/* Batang alat — tidak ikut tercetak. */}
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <Link
-            to={merek.beranda}
+            to={merekAktif.beranda}
             className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Kembali ke beranda
           </Link>
-          <button type="button" className={merek.aksenTombol} onClick={() => window.print()}>
+          <button type="button" className={merekAktif.aksenTombol} onClick={() => window.print()}>
             <Printer className="h-4 w-4" aria-hidden />
             Cetak / Simpan PDF
           </button>
         </div>
 
         <article className="mx-auto max-w-4xl rounded-xl bg-white p-6 shadow-sm sm:p-10 dark:bg-slate-900 print:max-w-none print:rounded-none print:bg-white print:p-0 print:shadow-none dark:print:bg-white">
-          <header className={`border-b-2 pb-5 ${merek.aksenGaris}`}>
-            <p className={`text-xs font-semibold uppercase tracking-widest ${merek.aksenTeks}`}>
+          <header className={`border-b-2 pb-5 ${merekAktif.aksenGaris}`}>
+            <p className={`text-xs font-semibold uppercase tracking-widest ${merekAktif.aksenTeks}`}>
               {kategori}
             </p>
             <h1 className="mt-2 text-2xl font-bold leading-snug text-slate-900 sm:text-3xl dark:text-white print:text-black">
@@ -123,7 +139,7 @@ export function DokumenLayout({
           <footer className="mt-10 border-t border-slate-200 pt-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 print:text-black">
             Dokumen ini bersifat konfidensial dan ditujukan untuk kebutuhan evaluasi kerja sama.
             Informasi di dalamnya tidak untuk disebarluaskan tanpa persetujuan pihak terkait.
-            © {new Date().getFullYear()} {merek.nama}.
+            © {new Date().getFullYear()} {merekAktif.nama}.
           </footer>
         </article>
       </div>

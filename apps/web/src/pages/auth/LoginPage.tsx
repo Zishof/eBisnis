@@ -7,6 +7,7 @@ import { useAuth, useErrorMessage } from '../../app/auth-context';
 import { berandaSesudahMasuk } from '../../app/beranda-sesudah-masuk';
 import { isSantriHost, isSantriPortalHost, slugPondokDariHost } from '../../verticals/pesantren/santri-host';
 import { isSalonDemoHost } from '../contoh/salon-host';
+import { emedikPublicBrandFor } from '../public/emedik-host';
 
 interface LoginForm {
   username: string;
@@ -26,6 +27,7 @@ export function LoginPage() {
   const { register, handleSubmit, formState } = useForm<LoginForm>();
   const santri = isSantriHost();
   const salon = isSalonDemoHost();
+  const emedikBrand = emedikPublicBrandFor();
   /*
    * Portal umum santri.info (apex/www) menawarkan demo dan pendaftaran pondok
    * BARU -- ajakan yang wajar bagi pengunjung yang belum jadi pelanggan.
@@ -79,13 +81,23 @@ export function LoginPage() {
       <div className="w-full max-w-md">
         <div className="card p-8">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            {slugPondok ? 'Masuk' : santri ? 'Masuk ke santri.info' : salon ? 'Masuk ke Salon Cantik Demo' : t('auth.loginTitle')}
+            {slugPondok
+              ? 'Masuk'
+              : santri
+                ? 'Masuk ke santri.info'
+                : salon
+                  ? 'Masuk ke Salon Cantik Demo'
+                  : emedikBrand
+                    ? emedikBrand.loginTitle
+                    : t('auth.loginTitle')}
           </h1>
           <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
             {santri
               ? 'Gunakan akun pengurus, ustadz/ustadzah, atau wali santri yang terdaftar.'
               : salon
                 ? 'Gunakan akun pelanggan, manajemen salon, atau pemilik salon untuk mencoba demo.'
+                : emedikBrand
+                  ? emedikBrand.loginSubtitle
               : t('auth.loginSubtitle')}
           </p>
 
@@ -155,7 +167,7 @@ export function LoginPage() {
                 onClick={() => void startDemo()}
                 disabled={busy}
               >
-                {santri ? 'Coba Demo Pesantren' : salon ? 'Coba Demo Salon' : t('nav.demo')}
+                {santri ? 'Coba Demo Pesantren' : salon ? 'Coba Demo Salon' : emedikBrand ? emedikBrand.demoLabel : t('nav.demo')}
               </button>
             </>
           )}
@@ -172,7 +184,7 @@ export function LoginPage() {
             <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
               {t('auth.noAccount')}{' '}
               <Link to="/daftar" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">
-                {t('auth.registerNow')}
+                {emedikBrand ? emedikBrand.registerLinkLabel : t('auth.registerNow')}
               </Link>
             </p>
           )}

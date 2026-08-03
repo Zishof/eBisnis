@@ -19,17 +19,29 @@ import {
   TARIF_POS,
   TERMASUK_POS,
 } from '../../content/solusi';
+import { emedikPublicBrandFor } from './emedik-host';
 
 export function PksPage() {
+  const emedikBrand = emedikPublicBrandFor();
+  const namaProduk = emedikBrand?.name ?? 'eBisnis.id';
+  const judul = emedikBrand
+    ? emedikBrand.kind === 'apotik'
+      ? 'Perjanjian Kerja Sama Pengadaan dan Implementasi Sistem Apotik & Kefarmasian Terpadu'
+      : 'Perjanjian Kerja Sama Pengadaan dan Implementasi Sistem Operasional Fasilitas Kesehatan'
+    : 'Perjanjian Kerja Sama Pengadaan dan Implementasi Sistem Gudang, Point of Sale (POS) & Ritel Terpadu';
+  const ringkas = emedikBrand
+    ? 'Draf ini memuat ruang lingkup implementasi, hak dan kewajiban para pihak, skema pembiayaan, dukungan layanan, perlindungan data kesehatan, serta mekanisme pelaksanaan kerja sama.'
+    : 'Draf ini memuat ruang lingkup implementasi, hak dan kewajiban para pihak, skema pembiayaan, dukungan layanan, perlindungan data, serta mekanisme pelaksanaan kerja sama. Naskahnya masih dapat disesuaikan berdasarkan pembahasan teknis, legal, dan keuangan sebelum ditandatangani.';
+
   return (
     <DokumenLayout
       kategori="Dokumen kerja sama strategis — DRAF"
-      judul="Perjanjian Kerja Sama Pengadaan dan Implementasi Sistem Gudang, Point of Sale (POS) & Ritel Terpadu"
-      ringkas="Draf ini memuat ruang lingkup implementasi, hak dan kewajiban para pihak, skema pembiayaan, dukungan layanan, perlindungan data, serta mekanisme pelaksanaan kerja sama. Naskahnya masih dapat disesuaikan berdasarkan pembahasan teknis, legal, dan keuangan sebelum ditandatangani."
+      judul={judul}
+      ringkas={ringkas}
       meta={[
         { label: 'Nomor perjanjian', nilai: '…………………………' },
         { label: 'Pihak pertama', nilai: '…………………………' },
-        { label: 'Pihak kedua', nilai: 'eBisnis.id' },
+        { label: 'Pihak kedua', nilai: namaProduk },
       ]}
     >
       <section className="rounded-lg border border-amber-400 bg-amber-50 p-4 text-sm dark:border-amber-700 dark:bg-amber-950/30 print:bg-white">
@@ -58,7 +70,7 @@ export function PksPage() {
         </p>
         <p className="mt-3">
           <strong>2.</strong> <Isian label="nama" lebar="w-56" />, selaku
-          representatif/konsultan dari <strong>eBisnis.id</strong>, berkedudukan di{' '}
+          representatif/konsultan dari <strong>{namaProduk}</strong>, berkedudukan di{' '}
           <Isian label="alamat" lebar="w-56" /> (kontak: <Isian label="kontak" lebar="w-44" />).
           Untuk selanjutnya disebut <strong>PIHAK KEDUA</strong>.
         </p>
@@ -86,7 +98,7 @@ export function PksPage() {
           butir={[
             <>
               <strong>Sistem / Perangkat Lunak</strong> adalah perangkat lunak berbasis web
-              eBisnis.id, yaitu Sistem Gudang, Point of Sale (POS), dan Ritel Terpadu yang
+              {namaProduk}, yaitu Sistem yang disediakan untuk ruang lingkup kerja sama ini dan
               dikembangkan oleh PIHAK KEDUA.
             </>,
             <>

@@ -37,6 +37,7 @@ import {
   TAHAPAN,
   TARIF_POS,
 } from '../../content/solusi';
+import { emedikPublicBrandFor } from './emedik-host';
 
 interface Slide {
   judul: string;
@@ -57,12 +58,22 @@ export function PresentasiPage() {
   const [indeks, setIndeks] = useState(0);
   const [layarPenuh, setLayarPenuh] = useState(false);
   const wadah = useRef<HTMLDivElement>(null);
+  const emedikBrand = emedikPublicBrandFor();
+  const namaProduk = emedikBrand?.name ?? 'eBisnis.id';
+  const judulPembuka = emedikBrand
+    ? emedikBrand.kind === 'apotik'
+      ? 'Transformasi Digital Apotik & Kefarmasian Terpadu'
+      : 'Transformasi Digital Rumah Sakit, Klinik, Puskesmas, dan Posyandu'
+    : 'Transformasi Digital Gudang, Kasir & Bisnis Ritel Terpadu';
+  const subPembuka = emedikBrand
+    ? `${namaProduk} — satu platform untuk pelayanan, farmasi, stok, billing, dan laporan kesehatan`
+    : 'eBisnis.id — satu platform untuk kasir, gudang, HPP, akuntansi, pengadaan, dan toko online';
 
   const slides = useMemo<Slide[]>(
     () => [
       {
-        judul: 'Transformasi Digital Gudang, Kasir & Bisnis Ritel Terpadu',
-        sub: 'eBisnis.id — satu platform untuk kasir, gudang, HPP, akuntansi, pengadaan, dan toko online',
+        judul: judulPembuka,
+        sub: subPembuka,
         isi: (
           <div className="grid gap-4 sm:grid-cols-3">
             <Kartu judul="Satu data terpadu">
@@ -446,7 +457,7 @@ export function PresentasiPage() {
         ),
       },
     ],
-    [],
+    [judulPembuka, subPembuka],
   );
 
   const total = slides.length;
@@ -492,11 +503,11 @@ export function PresentasiPage() {
 
   useEffect(() => {
     const sebelumnya = document.title;
-    document.title = 'Presentasi — eBisnis.id';
+    document.title = `Presentasi — ${namaProduk}`;
     return () => {
       document.title = sebelumnya;
     };
-  }, []);
+  }, [namaProduk]);
 
   const slide = slides[indeks];
 

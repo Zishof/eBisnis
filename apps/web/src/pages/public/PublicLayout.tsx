@@ -11,6 +11,7 @@ import { useAuth } from '../../app/auth-context';
 import { slugPondokDariHost } from '../../verticals/pesantren/santri-host';
 import { PondokChrome } from '../../verticals/pesantren/PondokChrome';
 import { isSalonDemoHost } from '../contoh/salon-host';
+import { emedikPublicBrandFor } from './emedik-host';
 
 export interface SiteConfig {
   code: string;
@@ -99,14 +100,24 @@ function PublicLayoutEBisnis({
   const [langOpen, setLangOpen] = useState(false);
   const location = useLocation();
   const salonHost = isSalonDemoHost();
+  const emedikBrand = emedikPublicBrandFor();
   const brand = salonHost
     ? {
+        logoText: null,
         name: 'Salon Cantik Demo',
         homeUrl: 'https://salon.ebisnis.id',
         description:
           'Demo website salon, booking layanan, katalog produk, invoice, dan dashboard transaksi untuk calon tenant eBisnis.',
       }
+    : emedikBrand
+      ? {
+          logoText: emedikBrand.logoText,
+          name: emedikBrand.name,
+          homeUrl: emedikBrand.homeUrl,
+          description: emedikBrand.description,
+        }
     : {
+        logoText: 'eB',
         name: site?.name ?? 'eBisnis.id',
         homeUrl: '/',
         description:
@@ -132,7 +143,9 @@ function PublicLayoutEBisnis({
           ],
         },
       ]
-    : site?.footer ?? [];
+    : emedikBrand
+      ? emedikBrand.footer
+      : site?.footer ?? [];
 
   const headerItems =
     salonHost
@@ -142,6 +155,8 @@ function PublicLayoutEBisnis({
           { labelKey: 'salon.dashboard', label: 'Dashboard', url: 'https://salon.ebisnis.id/contoh/salon', sortOrder: 3 },
           { labelKey: 'salon.products', label: '100+ Produk', url: 'https://salon.ebisnis.id/contoh/salon', sortOrder: 4 },
         ]
+      : emedikBrand
+        ? emedikBrand.headerItems
       : site?.navigation.find((nav) => nav.location === 'HEADER')?.items ?? [
       { labelKey: 'nav.home', label: t('nav.home'), url: '/', sortOrder: 1 },
       { labelKey: 'nav.pricing', label: t('nav.pricing'), url: '/harga', sortOrder: 2 },
@@ -167,7 +182,7 @@ function PublicLayoutEBisnis({
         <div className="container-page flex h-16 items-center justify-between gap-4">
           <Link to={brand.homeUrl} className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-700 text-sm font-black text-white">
-              {salonHost ? <Scissors className="h-4 w-4" aria-hidden /> : 'eB'}
+              {salonHost ? <Scissors className="h-4 w-4" aria-hidden /> : brand.logoText}
             </span>
             <span className="hidden sm:inline">{brand.name}</span>
           </Link>
@@ -250,8 +265,11 @@ function PublicLayoutEBisnis({
                 <Link to="/masuk" className="btn-ghost hidden sm:inline-flex">
                   {salonHost ? 'Masuk' : t('nav.login')}
                 </Link>
-                <Link to={salonHost ? 'https://salon.ebisnis.id' : '/daftar'} className="btn-primary hidden sm:inline-flex">
-                  {salonHost ? 'Website Salon' : t('nav.register')}
+                <Link
+                  to={salonHost ? 'https://salon.ebisnis.id' : '/daftar'}
+                  className="btn-primary hidden sm:inline-flex"
+                >
+                  {salonHost ? 'Website Salon' : emedikBrand ? emedikBrand.registerCtaLabel : t('nav.register')}
                 </Link>
               </>
             )}
@@ -285,8 +303,12 @@ function PublicLayoutEBisnis({
                 <Link to="/masuk" className="btn-outline flex-1" onClick={() => setMenuOpen(false)}>
                   {salonHost ? 'Masuk' : t('nav.login')}
                 </Link>
-                <Link to={salonHost ? 'https://salon.ebisnis.id' : '/daftar'} className="btn-primary flex-1" onClick={() => setMenuOpen(false)}>
-                  {salonHost ? 'Website Salon' : t('nav.register')}
+                <Link
+                  to={salonHost ? 'https://salon.ebisnis.id' : '/daftar'}
+                  className="btn-primary flex-1"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {salonHost ? 'Website Salon' : emedikBrand ? emedikBrand.registerCtaLabel : t('nav.register')}
                 </Link>
               </div>
             </div>
@@ -304,7 +326,7 @@ function PublicLayoutEBisnis({
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
                 <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-700 text-sm font-black text-white">
-                  {salonHost ? <Scissors className="h-4 w-4" aria-hidden /> : 'eB'}
+                  {salonHost ? <Scissors className="h-4 w-4" aria-hidden /> : brand.logoText}
                 </span>
                 {brand.name}
               </div>

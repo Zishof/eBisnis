@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isApotikHost, isDemoApotikHost, isEmedikHost, rootExperienceFor } from './emedik-host';
+import {
+  emedikPublicBrandFor,
+  isApotikHost,
+  isDemoApotikHost,
+  isEmedikHost,
+  rootExperienceFor,
+} from './emedik-host';
 
 describe('host publik eMedik', () => {
   it('mengenali portal utama eMedik', () => {
@@ -31,5 +37,15 @@ describe('host publik eMedik', () => {
   it('tidak mencari kata apotik di tengah host asing', () => {
     expect(isApotikHost('evil-apotik.emedik.id.evil.com')).toBe(false);
     expect(isApotikHost('x-apotik.evil.com')).toBe(false);
+  });
+
+  it('memberi brand publik sesuai host tanpa kembali ke eBisnis', () => {
+    expect(emedikPublicBrandFor('emedik.id')?.name).toBe('eMedik.id');
+    expect(emedikPublicBrandFor('emedik.id')?.homeUrl).toBe('https://emedik.id');
+    expect(emedikPublicBrandFor('apotik.emedik.id')?.name).toBe('Apotik eMedik');
+    expect(emedikPublicBrandFor('apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
+    expect(emedikPublicBrandFor('demo-apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
+    expect(emedikPublicBrandFor('sehatjaya-apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
+    expect(emedikPublicBrandFor('ebisnis.id')).toBeNull();
   });
 });

@@ -29,8 +29,24 @@ import {
   TARIF_POS,
   TERMASUK_POS,
 } from '../../content/solusi';
+import { emedikPublicBrandFor } from './emedik-host';
 
 export function ProposalPage() {
+  const emedikBrand = emedikPublicBrandFor();
+  const namaProduk = emedikBrand?.name ?? 'eBisnis.id';
+  const judul = emedikBrand
+    ? emedikBrand.kind === 'apotik'
+      ? 'Proposal Implementasi Sistem Apotik dan Kefarmasian Terpadu'
+      : 'Proposal Implementasi Sistem Rumah Sakit, Klinik, Puskesmas, dan Posyandu'
+    : 'Proposal Transformasi Digital Operasional Ritel, Gudang & Kasir';
+  const ringkas = emedikBrand
+    ? `Proposal ini disusun sebagai dasar kerja sama implementasi ${namaProduk}: sistem operasional kesehatan yang menyatukan pelayanan, farmasi, stok, billing, dan pelaporan dalam satu alur kerja terpadu.`
+    : 'Proposal ini disusun sebagai dasar kerja sama implementasi eBisnis.id — sistem yang menyatukan kasir (POS) multi-outlet, manajemen gudang berjenjang, perhitungan HPP, pembukuan akuntansi, pengadaan barang, dan toko online dalam satu sistem yang saling terhubung.';
+  const kategoriSolusi = emedikBrand
+    ? emedikBrand.kind === 'apotik'
+      ? 'Sistem Apotik & Kefarmasian Terpadu'
+      : 'Sistem Operasional Fasilitas Kesehatan Terpadu'
+    : 'Sistem Gudang, POS & Manajemen Ritel Terpadu';
   const hariIni = new Date().toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'long',
@@ -40,11 +56,11 @@ export function ProposalPage() {
   return (
     <DokumenLayout
       kategori="Dokumen penawaran resmi"
-      judul="Proposal Transformasi Digital Operasional Ritel, Gudang & Kasir"
-      ringkas="Proposal ini disusun sebagai dasar kerja sama implementasi eBisnis.id — sistem yang menyatukan kasir (POS) multi-outlet, manajemen gudang berjenjang, perhitungan HPP, pembukuan akuntansi, pengadaan barang, dan toko online dalam satu sistem yang saling terhubung."
+      judul={judul}
+      ringkas={ringkas}
       meta={[
         { label: 'Tanggal dokumen', nilai: hariIni },
-        { label: 'Kategori solusi', nilai: 'Sistem Gudang, POS & Manajemen Ritel Terpadu' },
+        { label: 'Kategori solusi', nilai: kategoriSolusi },
         { label: 'Sifat dokumen', nilai: 'Konfidensial — untuk evaluasi kerja sama' },
       ]}
     >
