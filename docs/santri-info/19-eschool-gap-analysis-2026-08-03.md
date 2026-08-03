@@ -1,6 +1,6 @@
 # Gap Analysis eSchool AIS vs ePesantren santri.info
 
-Tanggal: 2026-08-03
+Tanggal: 2026-08-04
 Referensi lama: `C:\opt\AIS\ais\src\main\src\ais\action\master\sekolah\*`
 Repo baru: `C:\opt\eBisnisGithub-ecosystem`
 
@@ -8,7 +8,22 @@ Repo baru: `C:\opt\eBisnisGithub-ecosystem`
 
 AIS lama berisi modul sekolah yang sangat luas: master siswa/guru/sekolah, asrama, absensi, jadwal, nilai, PSB, tagihan, pembayaran, deposit, pelanggaran, penghargaan, catatan guru/orang tua, kegiatan kesiswaan, dan kunjungan/pengajuan siswa. ePesantren baru sudah memecah sebagian besar domain inti ke modul NestJS/React, tetapi beberapa area AIS masih berupa daftar baca sederhana atau belum punya workflow penuh.
 
-Prioritas yang sudah langsung dilengkapi pada sesi ini adalah Gerbang Keluar-Masuk: petugas dapat memindai kartu, sistem mencari santri dan izin yang sudah DISETUJUI untuk hari berjalan, lalu mencatat lintasan KELUAR/MASUK tanpa memberi hak mengubah status izin.
+Prioritas yang sudah langsung dilengkapi pada sesi ini adalah Gerbang Keluar-Masuk: petugas dapat melihat daftar izin aktif hari ini, memindai kartu, sistem mencari santri dan izin yang sudah DISETUJUI untuk hari berjalan, lalu mencatat lintasan KELUAR/MASUK tanpa memberi hak mengubah status izin.
+
+## Cakupan Referensi AIS
+
+Audit dilakukan terhadap 240 file Java di folder sekolah AIS. Satu file bisa masuk lebih dari satu kelompok karena nama/fiturnya beririsan.
+
+| Kelompok | Jumlah file AIS terdeteksi | Contoh file |
+| --- | ---: | --- |
+| Santri/siswa/wali/asrama | 129 | `SiswaAction.java`, `BiodataSiswaAction.java`, `SiswaWaliAction.java`, `AsramaSiswaAction.java` |
+| PSB/PPDB | 52 | `CalonSiswaAction.java`, `GelombangPendaftaranPsbAction.java`, `PPDB*.java`, `VerifikasiPSBHelper.java` |
+| Tagihan/pembayaran/deposit | 35 | `TagihanAction.java`, `PembayaranSiswaAction.java`, `DepositSiswaAction.java`, `PostingPiutangSiswaAction.java` |
+| Jadwal/kurikulum | 31 | `JadwalPelajaranAction.java`, `KurikulumSekolahAction.java`, `TimetableJadwalPelajaranWindow.java` |
+| Nilai/rapor/penilaian | 19 | `PenilaianSiswaAction.java`, `JenisNilaiSiswaAction.java`, `NilaiHurufSekolahAction.java` |
+| Pelanggaran/prestasi/penghargaan | 12 | `PelanggaranSiswaAction.java`, `PrestasiSiswaAction.java`, `PenghargaanSiswaAction.java` |
+| Absensi/piket | 7 | `AbsensiAction.java`, `AbsenPiketAction.java`, `AbsenGuruPiketAction.java` |
+| Pengajuan/kunjungan/gerbang | 2 | `PengajuanSiswaAction.java`, `KunjunganSiswaAction.java` |
 
 ## Matriks Gap
 
@@ -27,7 +42,7 @@ Prioritas yang sudah langsung dilengkapi pada sesi ini adalah Gerbang Keluar-Mas
 | Pelanggaran/hukuman | `PelanggaranSiswaAction.java`, `PelanggaranDanHukumanAction.java`, `HukumanAction.java` | Ada sebagian | Pencatatan pelanggaran tersedia. Gap: katalog hukuman dan workflow tindak lanjut bertingkat masih perlu halaman operasional. |
 | Prestasi/penghargaan | `PrestasiSiswaAction.java`, `PenghargaanSiswaAction.java`, `ApresiasiSiswaAction.java` | Ada sebagian | Prestasi tersedia. Gap: penghargaan/apresiasi terpisah belum seluruhnya menjadi modul. |
 | Pengajuan/izin siswa | `PengajuanSiswaAction.java` | Ada | Perizinan santri dengan status MENUNGGU/DISETUJUI/DITOLAK/SELESAI/DIBATALKAN sudah ada. Gap: lampiran, parameter tambahan, SOP disposisi legacy belum semua ada. |
-| Kunjungan/gerbang | `KunjunganSiswaAction.java`, `PengajuanSiswaAction.java` | Dilengkapi | Endpoint scan kartu dan halaman Gerbang Keluar-Masuk ditambahkan. Petugas hanya mencatat lintasan terhadap izin DISETUJUI. |
+| Kunjungan/gerbang | `KunjunganSiswaAction.java`, `PengajuanSiswaAction.java` | Dilengkapi | Endpoint daftar izin aktif, scan kartu, dan halaman Gerbang Keluar-Masuk ditambahkan. Petugas hanya mencatat lintasan terhadap izin DISETUJUI. |
 | Catatan guru/orang tua | `CatatanGuruAction.java`, `CatatanSiswaAction.java`, `BukuPenghubungSiswa.java` | Belum penuh | Belum menjadi modul workflow tersendiri. Kandidat berikutnya: buku penghubung wali. |
 | Kegiatan kesiswaan/organisasi | `KegiatanKesiswaanAction.java`, `OrganisasiSiswaAction.java` | Ada sebagian | Ekstrakurikuler tersedia. Gap: organisasi, jabatan, penilaian kegiatan, dan detail anggota belum lengkap. |
 | Dashboard/laporan | `Dashboard*.java`, `LaporanRekapitulasi*.java` | Ada sebagian | Dashboard pondok dan katalog laporan tersedia. Gap: laporan legacy detail masih perlu prioritas per kebutuhan operasional. |
@@ -45,6 +60,9 @@ Prioritas yang sudah langsung dilengkapi pada sesi ini adalah Gerbang Keluar-Mas
 - API `GET /api/v1/pesantren/gerbang/kartu/:nomorKartu`
   - mencari kartu aktif;
   - mengembalikan santri, kartu, izin DISETUJUI yang berlaku hari ini, dan lintasan terakhir.
+- API `GET /api/v1/pesantren/gerbang/izin-aktif`
+  - mengembalikan daftar santri yang punya izin DISETUJUI untuk tanggal hari ini;
+  - ikut membawa NIS, nama, nomor kartu aktif bila ada, dan lintasan terakhir.
 - API `POST /api/v1/pesantren/gerbang`
   - tetap memakai izin yang disetujui;
   - response sekarang ikut membawa NIS/nama santri agar tabel riwayat mudah dibaca.
@@ -55,10 +73,30 @@ Prioritas yang sudah langsung dilengkapi pada sesi ini adalah Gerbang Keluar-Mas
   - catat lintasan;
   - tampilkan riwayat gerbang.
 - Skeleton Flutter `apps/pesantren-security-gate-flutter`
-  - tab Scan, Riwayat, Pengaturan;
+  - tab Daftar, Scan, Riwayat, Pengaturan;
+  - daftar izin aktif hari ini untuk petugas security;
   - scan nomor kartu dengan scanner keyboard-wedge/RFID;
   - catat keluar/masuk ke API;
   - field `fingerprintId` disiapkan sebagai adapter vendor fingerprint.
+
+## Status Implementasi Singkat
+
+Sudah operasional dasar:
+
+- master santri, unit pendidikan, asrama/kamar, kartu, tagihan, dompet, PSB, profil/berita pondok, perizinan, gerbang, guru, absensi guru, presensi, diniyah/tahfiz, nilai dasar, pelanggaran, prestasi, ekstrakurikuler, katering, laporan, dan portal wali.
+- website pondok/unit pendidikan dengan subdomain dinamis di sisi aplikasi; DNS wildcard Cloudflare cukup untuk subdomain `*.santri.info`, sedangkan custom domain `*.sch.id` tetap perlu proses ownership/DNS.
+- gerbang keluar-masuk berbasis izin disetujui, kartu aktif, dan log audit terpisah dari approval.
+
+Belum penuh dibanding AIS:
+
+- form dinamis PSB sebanyak variasi `PPDB*.java`;
+- parameter tambahan/lampiran/SOP disposisi pada `PengajuanSiswaAction.java`;
+- input massal presensi piket dan detail jadwal;
+- timetable visual serta kalender pertemuan pelajaran;
+- formula rapor, cetak rapor, nilai huruf lengkap;
+- workflow akuntansi legacy untuk seluruh variasi posting piutang/diskon/deposit;
+- buku penghubung dan catatan guru/orang tua;
+- integrasi fingerprint nyata sebelum SDK perangkat dipastikan.
 
 ## Gap Berikutnya yang Disarankan
 

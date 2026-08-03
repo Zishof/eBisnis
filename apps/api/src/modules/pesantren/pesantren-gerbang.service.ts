@@ -27,6 +27,10 @@ export interface BarisLintasan {
 
 export interface IzinGerbangAktif {
   id: string;
+  santri_id?: string;
+  nis?: string;
+  nama_lengkap?: string;
+  nomor_kartu?: string | null;
   jenis: string;
   alasan: string;
   tanggal_mulai: string;
@@ -94,6 +98,33 @@ export class PesantrenGerbangService {
     return { items, total: Number(totalRows[0]?.total ?? 0) };
   }
 
+  async daftarIzinAktif(schemaName: string): Promise<IzinGerbangAktif[]> {
+    const S = `"${schemaName}"`;
+    return this.tenantDb.query<IzinGerbangAktif>(
+      schemaName,
+      `SELECT i.id::text, i.santri_id::text, s.nis, s.nama_lengkap, k.nomor_kartu,
+              i.jenis, i.alasan, i.tanggal_mulai::text, i.tanggal_selesai_rencana::text,
+              i.status,
+              (
+                SELECT gl.arah
+                  FROM ${S}.pesantren_gerbang_log gl
+                 WHERE gl.izin_id = i.id
+                 ORDER BY gl.waktu DESC
+                 LIMIT 1
+              ) AS lintasan_terakhir
+         FROM ${S}.pesantren_izin i
+         JOIN ${S}.pesantren_santri s ON s.id = i.santri_id
+         LEFT JOIN ${S}.pesantren_kartu k
+           ON k.santri_id = i.santri_id AND k.status = 'AKTIF' AND k.deleted_at IS NULL
+        WHERE i.status = 'DISETUJUI'
+          AND i.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+          AND CURRENT_DATE BETWEEN i.tanggal_mulai AND i.tanggal_selesai_rencana
+        ORDER BY i.tanggal_mulai ASC, s.nama_lengkap ASC`,
+      [],
+    );
+  }
+
   async pindaiKartu(schemaName: string, nomorKartu: string): Promise<HasilPindaiGerbang> {
     const nomorBersih = nomorKartu.trim();
     if (!nomorBersih) {
@@ -136,7 +167,8 @@ export class PesantrenGerbangService {
 
     const izinAktif = await this.tenantDb.query<IzinGerbangAktif>(
       schemaName,
-      `SELECT i.id::text, i.jenis, i.alasan, i.tanggal_mulai::text, i.tanggal_selesai_rencana::text,
+      `SELECT i.id::text, i.santri_id::text, s.nis, s.nama_lengkap, $2::text AS nomor_kartu,
+              i.jenis, i.alasan, i.tanggal_mulai::text, i.tanggal_selesai_rencana::text,
               i.status,
               (
                 SELECT gl.arah
@@ -146,12 +178,13 @@ export class PesantrenGerbangService {
                  LIMIT 1
               ) AS lintasan_terakhir
          FROM ${S}.pesantren_izin i
+         JOIN ${S}.pesantren_santri s ON s.id = i.santri_id
         WHERE i.santri_id = $1
           AND i.status = 'DISETUJUI'
           AND i.deleted_at IS NULL
           AND CURRENT_DATE BETWEEN i.tanggal_mulai AND i.tanggal_selesai_rencana
         ORDER BY i.tanggal_mulai DESC, i.created_at DESC`,
-      [santri.id],
+      [santri.id, kartu.nomor_kartu],
     );
 
     const lintasanTerakhir = await this.tenantDb.queryOne<BarisLintasan>(

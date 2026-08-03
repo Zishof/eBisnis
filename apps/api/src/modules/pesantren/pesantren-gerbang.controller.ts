@@ -55,6 +55,13 @@ export class PesantrenGerbangController {
   constructor(private readonly gerbang: PesantrenGerbangService) {}
 
   @Permissions('EPESANTREN_GERBANG.READ')
+  @Get('izin-aktif')
+  @ApiOperation({ summary: 'Daftar izin yang boleh melewati gerbang hari ini' })
+  izinAktif(@CurrentUser() user: AuthenticatedUser) {
+    return this.gerbang.daftarIzinAktif(schemaWajib(user));
+  }
+
+  @Permissions('EPESANTREN_GERBANG.READ')
   @Get('kartu/:nomorKartu')
   @ApiOperation({ summary: 'Mencari santri dan izin aktif dari kartu gerbang' })
   pindaiKartu(@Param('nomorKartu') nomorKartu: string, @CurrentUser() user: AuthenticatedUser) {
