@@ -281,6 +281,13 @@
       "file": "V040__ready_menu_flags.sql",
       "name": "Flag menu yang sudah punya halaman",
       "description": "Mencabut is_coming_soon pada HOME_APPROVAL_INBOX, CATALOG_TAX, FINANCE_COA, dan SUPPORT_TICKET karena masing-masing sudah punya route web yang berjalan. Tenant lama tidak boleh terus menampilkan penanda placeholder untuk halaman yang sudah dapat dibuka."
+    },
+    {
+      "version": "V041",
+      "sequence": 41,
+      "file": "V041__journal_menu_ready.sql",
+      "name": "Flag menu jurnal sudah tersedia",
+      "description": "Mencabut is_coming_soon pada FINANCE_JOURNAL karena endpoint dan halaman baca-saja jurnal sudah tersedia. Tenant lama tidak boleh lagi diarahkan ke Coming Soon saat membuka /app/journal-entries."
     }
   ]
 }

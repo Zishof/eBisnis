@@ -37,6 +37,7 @@ import { GoodsReceiptPage } from '../pages/app/GoodsReceiptPage';
 import { BackorderPage } from '../pages/app/BackorderPage';
 import { InternalTransferPage } from '../pages/app/InternalTransferPage';
 import { StockAlertsPage, StockMovementsPage } from '../pages/app/InventoryLedgerPage';
+import { JournalEntriesPage } from '../pages/app/JournalEntriesPage';
 import { SampleDataPage } from '../pages/app/SampleDataPage';
 import { SubscriptionPage } from '../pages/app/SubscriptionPage';
 import { NotificationsPage } from '../pages/app/NotificationsPage';
@@ -351,6 +352,7 @@ export function App() {
           <Route path="leave-types" element={<MasterListPage resource="leave-types" />} />
           <Route path="vehicle-types" element={<MasterListPage resource="vehicle-types" />} />
           <Route path="chart-of-accounts" element={<MasterListPage resource="chart-of-accounts" />} />
+          <Route path="journal-entries" element={<JournalEntriesPage />} />
           <Route path="roles" element={<MasterListPage resource="roles" />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="role-permissions" element={<RolePermissionsPage />} />
