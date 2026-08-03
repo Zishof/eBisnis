@@ -265,7 +265,7 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
   { code: 'ADMIN_SETTING', parentCode: 'ADMIN', label: 'Pengaturan', translationKey: 'menu.admin.setting', route: '/app/settings', icon: 'sliders', sortOrder: 5, actions: ['READ', 'UPDATE'] },
 
   // 21 Bantuan dan Dukungan
-  { code: 'SUPPORT', label: 'Bantuan dan Dukungan', translationKey: 'menu.support', icon: 'life-buoy', sortOrder: 21, actions: ['READ'], comingSoon: true },
+  { code: 'SUPPORT', label: 'Bantuan dan Dukungan', translationKey: 'menu.support', route: '/app/support', icon: 'life-buoy', sortOrder: 21, actions: ['READ'] },
 
   // ==========================================================================
   // Versi 9 — Marketplace dan Toko Online

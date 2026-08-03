@@ -37,6 +37,8 @@ import { BackorderPage } from '../pages/app/BackorderPage';
 import { InternalTransferPage } from '../pages/app/InternalTransferPage';
 import { SampleDataPage } from '../pages/app/SampleDataPage';
 import { SubscriptionPage } from '../pages/app/SubscriptionPage';
+import { NotificationsPage } from '../pages/app/NotificationsPage';
+import { SupportPage } from '../pages/app/SupportPage';
 import { ComingSoonPage } from '../pages/app/ComingSoonPage';
 import { RequireAuth } from './RequireAuth';
 import { LoadingState } from '../components/ui';
@@ -321,6 +323,10 @@ export function App() {
           }
         >
           <Route index element={<AppHomePage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="approvals" element={<NotificationsPage />} />
+          <Route path="support" element={<SupportPage />} />
+          <Route path="tiket" element={<SupportPage />} />
           <Route path="products" element={<MasterListPage resource="products" />} />
           <Route path="product-categories" element={<MasterListPage resource="product-categories" />} />
           <Route path="uoms" element={<MasterListPage resource="uoms" />} />

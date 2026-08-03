@@ -267,6 +267,13 @@
       "file": "V038__file_object_blob.sql",
       "name": "Penyimpanan BLOB pada file_object",
       "description": "Menambah kolom oid (NULLABLE) pada file_object -- Metode 2 penyimpanan berkas (Large Object PostgreSQL di dalam basis data skema penyewa), berdampingan dengan storage_key (Metode 1, rujukan eksternal) yang sudah ada sejak V001. Diminta langsung pengguna (pola LampiranLain sistem lama). Baris berbasis BLOB mengisi storage_key dengan rujukan tampilan (blob:<id>), bukan alamat fisik, supaya kode lama yang membaca storage_key tanpa pemeriksaan NULL tetap aman."
+    },
+    {
+      "version": "V039",
+      "sequence": 39,
+      "file": "V039__support_menu_route.sql",
+      "name": "Route menu Bantuan dan Dukungan",
+      "description": "Mengisi route /app/support pada menu SUPPORT dan mencabut penanda coming soon untuk tenant lama. Halaman dukungan tenant sudah tersedia di web, sehingga menu dukungan tidak boleh lagi tampil sebagai grup kosong atau placeholder."
     }
   ]
 }
