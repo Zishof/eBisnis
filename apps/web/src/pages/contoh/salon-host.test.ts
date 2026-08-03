@@ -14,6 +14,8 @@ describe('host contoh salon', () => {
 
   it('mengalihkan root host salon ke halaman contoh', () => {
     expect(salonRootRedirectFor('salon.ebisnis.id', '/')).toBe('/contoh/salon');
+    expect(salonRootRedirectFor('salon.ebisnis.id', '/a/')).toBe('/contoh/salon');
+    expect(salonRootRedirectFor('salon.ebisnis.id', '/ebisnis/a')).toBe('/contoh/salon');
     expect(salonRootRedirectFor('salon.ebisnis.id', '/app')).toBeNull();
   });
 });

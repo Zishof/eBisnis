@@ -19,6 +19,7 @@ export function salonRootRedirectFor(
   hostname: string = window.location.hostname,
   pathname = '/',
 ): string | null {
-  if (pathname !== '/') return null;
-  return isSalonDemoHost(hostname) ? '/contoh/salon' : null;
+  if (!isSalonDemoHost(hostname)) return null;
+  const path = pathname.replace(/\/+$/, '') || '/';
+  return path === '/' || path === '/a' || path === '/ebisnis/a' ? '/contoh/salon' : null;
 }

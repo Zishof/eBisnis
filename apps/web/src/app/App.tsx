@@ -274,6 +274,7 @@ export function App() {
           <Route path="/daftar" element={<RegisterPage />} />
           <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
+          <Route path="/a/*" element={<AkarMenurutHost />} />
           <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />
         </Route>
 
