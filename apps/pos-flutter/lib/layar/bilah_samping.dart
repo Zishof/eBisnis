@@ -18,6 +18,8 @@ const daftarMenu = [
   ItemMenu('dashboard', 'Dashboard', Icons.home_outlined),
   ItemMenu('kasir', 'Kasir/POS', Icons.shopping_cart_outlined),
   ItemMenu('produk', 'Produk', Icons.inventory_2_outlined),
+  ItemMenu(
+      'riwayat-pembayaran', 'Riwayat Pembayaran', Icons.receipt_long_outlined),
   ItemMenu('pelanggan', 'Pelanggan', Icons.person_outline),
   ItemMenu('stok', 'Stok', Icons.warehouse_outlined),
   ItemMenu('pembelian', 'Pembelian', Icons.shopping_bag_outlined),

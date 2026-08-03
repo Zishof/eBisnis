@@ -92,6 +92,7 @@ class _LayarKasirState extends State<LayarKasir> {
   JenisPesanan _jenis = JenisPesanan.dineIn;
   String _menu = 'kasir';
   List<ProdukLokal>? _produkUnggahan;
+  final List<RiwayatPembayaranKasir> _riwayatPembayaran = [];
 
   SumberKatalog get _katalogAktif {
     final produk = _produkUnggahan;
@@ -666,6 +667,22 @@ class _LayarKasirState extends State<LayarKasir> {
         PelangganSelesai(total: t.grandTotal, kembalian: kembalian);
 
     setState(() {
+      _riwayatPembayaran.insert(
+        0,
+        RiwayatPembayaranKasir(
+          nomorStruk: nomorStruk ??
+              'LOKAL-${DateTime.now().millisecondsSinceEpoch.toString()}',
+          waktu: DateTime.now(),
+          metode: metode,
+          total: t.grandTotal,
+          diserahkan: diserahkan,
+          kembalian: kembalian,
+          jumlahBarang: t.lines
+              .fold<int>(0, (jumlah, baris) => jumlah + baris.quantity.round()),
+          jenisPesanan: namaJenisPesanan[_jenis]!,
+          catatan: _catatan.text.trim(),
+        ),
+      );
       _baris.clear();
       _terakhir = null;
       _catatan.clear();
@@ -771,6 +788,10 @@ class _LayarKasirState extends State<LayarKasir> {
             });
             _perbaruiPelanggan();
           },
+        ),
+      'riwayat-pembayaran' => HalamanRiwayatPembayaran(
+          riwayat: _riwayatPembayaran,
+          uang: _uang,
         ),
       'pelanggan' => const HalamanRingkas(
           judul: 'Pelanggan',

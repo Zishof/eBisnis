@@ -185,6 +185,31 @@ class TransaksiKasir {
   String get total => hasil.grandTotal;
 }
 
+/// Ringkasan transaksi selesai yang ditampilkan di menu riwayat pembayaran.
+class RiwayatPembayaranKasir {
+  const RiwayatPembayaranKasir({
+    required this.nomorStruk,
+    required this.waktu,
+    required this.metode,
+    required this.total,
+    required this.diserahkan,
+    required this.kembalian,
+    required this.jumlahBarang,
+    required this.jenisPesanan,
+    required this.catatan,
+  });
+
+  final String nomorStruk;
+  final DateTime waktu;
+  final MetodeBayar metode;
+  final String total;
+  final String diserahkan;
+  final String kembalian;
+  final int jumlahBarang;
+  final String jenisPesanan;
+  final String catatan;
+}
+
 /// Pembuku transaksi ke sistem pusat.
 ///
 /// Mengembalikan nomor struk dari peladen bila pembukuan berhasil. Bila null,

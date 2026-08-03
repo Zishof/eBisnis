@@ -253,6 +253,199 @@ class HalamanRingkas extends StatelessWidget {
   }
 }
 
+class HalamanRiwayatPembayaran extends StatefulWidget {
+  const HalamanRiwayatPembayaran({
+    required this.riwayat,
+    required this.uang,
+    super.key,
+  });
+
+  final List<RiwayatPembayaranKasir> riwayat;
+  final String Function(String) uang;
+
+  @override
+  State<HalamanRiwayatPembayaran> createState() =>
+      _HalamanRiwayatPembayaranState();
+}
+
+class _HalamanRiwayatPembayaranState extends State<HalamanRiwayatPembayaran> {
+  String _metode = 'Semua';
+  final TextEditingController _cari = TextEditingController();
+
+  @override
+  void dispose() {
+    _cari.dispose();
+    super.dispose();
+  }
+
+  List<RiwayatPembayaranKasir> get _tersaring {
+    final kunci = _cari.text.trim().toLowerCase();
+    return widget.riwayat.where((r) {
+      final cocokMetode = _metode == 'Semua' || r.metode.nama == _metode;
+      final cocokCari = kunci.isEmpty ||
+          r.nomorStruk.toLowerCase().contains(kunci) ||
+          r.metode.nama.toLowerCase().contains(kunci) ||
+          r.jenisPesanan.toLowerCase().contains(kunci) ||
+          r.catatan.toLowerCase().contains(kunci);
+      return cocokMetode && cocokCari;
+    }).toList();
+  }
+
+  num _angka(String nilai) => num.tryParse(nilai) ?? 0;
+
+  String _tanggal(DateTime waktu) {
+    String dua(int n) => n.toString().padLeft(2, '0');
+    return '${dua(waktu.day)}-${dua(waktu.month)}-${waktu.year} '
+        '${dua(waktu.hour)}:${dua(waktu.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final daftar = _tersaring;
+    final total = daftar.fold<num>(0, (nilai, r) => nilai + _angka(r.total));
+    final tunai = daftar
+        .where((r) => r.metode.memberiKembalian)
+        .fold<num>(0, (nilai, r) => nilai + _angka(r.total));
+    final nontunai = total - tunai;
+    final metode = {
+      'Semua',
+      for (final r in widget.riwayat) r.metode.nama,
+    }.toList();
+
+    return _HalamanDasar(
+      judul: 'Riwayat Pembayaran',
+      subjudul:
+          'Summary pembayaran dan transaksi lunas pada sesi aplikasi ini.',
+      anak: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 4,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 2.6,
+            children: [
+              _KartuAngka(label: 'Transaksi', nilai: '${daftar.length}'),
+              _KartuAngka(
+                  label: 'Total pembayaran',
+                  nilai: widget.uang(total.toStringAsFixed(0))),
+              _KartuAngka(
+                  label: 'Tunai', nilai: widget.uang(tunai.toStringAsFixed(0))),
+              _KartuAngka(
+                  label: 'Non tunai',
+                  nilai: widget.uang(nontunai.toStringAsFixed(0))),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              SizedBox(
+                width: 260,
+                child: TextField(
+                  key: const Key('cari-riwayat-pembayaran'),
+                  controller: _cari,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search_outlined),
+                    hintText: 'Cari struk, metode, atau catatan',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              for (final m in metode) ...[
+                ChoiceChip(
+                  key: Key('filter-riwayat-$m'),
+                  label: Text(m),
+                  selected: _metode == m,
+                  onSelected: (_) => setState(() => _metode = m),
+                ),
+                const SizedBox(width: 6),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: Container(
+              key: const Key('panel-riwayat-pembayaran'),
+              decoration: hiasanKartu(),
+              child: daftar.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'Belum ada pembayaran pada sesi aplikasi ini.',
+                        style: TextStyle(color: Warna.teksRedup),
+                      ),
+                    )
+                  : ListView.separated(
+                      key: const Key('daftar-riwayat-pembayaran'),
+                      itemCount: daftar.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, i) {
+                        final r = daftar[i];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Warna.utama.withValues(alpha: .12),
+                            child: Icon(
+                              r.metode.memberiKembalian
+                                  ? Icons.payments_outlined
+                                  : Icons.account_balance_wallet_outlined,
+                              color: Warna.utama,
+                            ),
+                          ),
+                          title: Text(
+                            r.nomorStruk,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          subtitle: Text(
+                            '${_tanggal(r.waktu)} - ${r.jenisPesanan} - '
+                            '${r.jumlahBarang} item - ${r.metode.nama}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 220),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  widget.uang(r.total),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: Warna.teks,
+                                  ),
+                                ),
+                                Text(
+                                  'Bayar ${widget.uang(r.diserahkan)} - '
+                                  'Kembali ${widget.uang(r.kembalian)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Warna.teksRedup,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _HalamanDasar extends StatelessWidget {
   const _HalamanDasar({
     required this.judul,
