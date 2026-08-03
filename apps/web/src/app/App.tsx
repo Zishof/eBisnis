@@ -2,6 +2,9 @@ import { Navigate, Route, Routes, Outlet} from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { PublicLayout } from '../pages/public/PublicLayout';
 import { HomePage } from '../pages/public/HomePage';
+import { EmedikLandingPage } from '../pages/public/EmedikLandingPage';
+import { ApotikLandingPage } from '../pages/public/ApotikLandingPage';
+import { rootExperienceFor } from '../pages/public/emedik-host';
 import { CmsPage } from '../pages/public/CmsPage';
 import { PricingPage } from '../pages/public/PricingPage';
 import { NewsListPage } from '../pages/public/NewsListPage';
@@ -169,17 +172,28 @@ const BelanjaProductPage = lazy(() =>
 );
 
 export function App() {
+  const rootExperience = rootExperienceFor(window.location.hostname, window.location.pathname);
+  const rootElement =
+    rootExperience === 'emedik' ? (
+      <EmedikLandingPage />
+    ) : rootExperience === 'apotik' ? (
+      <ApotikLandingPage />
+    ) : rootExperience === 'demo-apotik' ? (
+      <ApotikLandingPage demo />
+    ) : isMarketplaceHost() ? (
+      <Navigate to="/belanja" replace />
+    ) : (
+      <HomePage />
+    );
+
   return (
     <Suspense fallback={<LoadingState />}>
       <Routes>
+        <Route path="/" element={rootElement} />
         {/* Website publik — route `/` menampilkan website, bukan redirect login. */}
         <Route element={<PublicLayout />}>
           {/* Pengunjung yang datang lewat belanja.ebisnis.id langsung melihat
               katalog; pengunjung ebisnis.id melihat website perusahaan. */}
-          <Route
-            path="/"
-            element={isMarketplaceHost() ? <Navigate to="/belanja" replace /> : <HomePage />}
-          />
           <Route path="/harga" element={<PricingPage />} />
           <Route path="/presentasi" element={<PresentasiPage />} />
           <Route path="/proposal" element={<ProposalPage />} />

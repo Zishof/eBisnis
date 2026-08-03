@@ -5,6 +5,32 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## W-6A - Portal publik eMedik dan apotik
+
+Landing page publik untuk domain kesehatan dipisahkan dari beranda eBisnis.
+
+### Ditambahkan
+
+- **`emedik.id`** menampilkan landing page khusus sistem rumah sakit, klinik,
+  Puskesmas, dan Posyandu. Halaman ini statis di frontend sehingga tetap dapat
+  dibaca walau CMS/API publik belum menjawab.
+- **`apotik.emedik.id`**, **`demo-apotik.emedik.id`**, dan host tenant berpola
+  **`{tenant}-apotik.emedik.id`** dikenali sebagai pintu masuk apotik.
+- **`ApotikLandingPage`** menekankan alur farmasi: telaah resep, dispensing,
+  high-alert medication, obat terkendali, barcode/batch, dan batas adapter
+  inventory.
+- **`emedik-host.test.ts`** menjaga pemilihan pengalaman akar supaya host apotik
+  tidak tertukar dengan portal umum eMedik atau marketplace eBisnis.
+
+### Yang sengaja belum disentuh
+
+Belum ada deployment/domain binding di repo ini. DNS pada tangkapan layar sudah
+memakai wildcard `*.emedik.id`, tetapi perubahan ini hanya menyiapkan routing
+frontend di aplikasi. Aktivasi produksi tetap bergantung pada konfigurasi server
+yang mengarah ke build web yang sama.
+
+---
+
 ## W-5 — Layar alat medis
 
 Tiga layar untuk tujuh menu. Alat medis menyentuh pasien, dan itu yang
