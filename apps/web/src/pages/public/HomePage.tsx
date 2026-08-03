@@ -11,9 +11,13 @@ import {
   Check,
   ChevronDown,
   Coffee,
+  FileSignature,
+  FileText,
   Dumbbell,
   Hammer,
+  Mail,
   Pill,
+  Presentation,
   Scissors,
   Shirt,
   ShoppingBag,
@@ -91,6 +95,13 @@ interface FaqCategory {
   items: Array<{ code: string; question: string; answer: string }>;
 }
 
+const DOKUMEN_DEMO = [
+  { label: 'Proposal', href: '/proposal', icon: FileText },
+  { label: 'Surat', href: '/penawaran', icon: Mail },
+  { label: 'Presentasi', href: '/presentasi', icon: Presentation },
+  { label: 'PKS', href: '/pks', icon: FileSignature },
+];
+
 const CONTOH_USAHA = [
   {
     label: 'Demo',
@@ -116,49 +127,49 @@ const CONTOH_USAHA = [
   {
     label: 'Cuci Mobil',
     detail: 'Booking, paket cuci, membership',
-    href: '/contoh/salon',
+    href: '/demo',
     icon: Car,
     status: 'Berikutnya',
   },
   {
     label: 'Laundry',
     detail: 'Kiloan, satuan, antar jemput',
-    href: '/contoh/salon',
+    href: '/demo',
     icon: WashingMachine,
     status: 'Berikutnya',
   },
   {
     label: 'Rental Kendaraan',
     detail: 'Sewa mobil dan motor',
-    href: '/contoh/salon',
+    href: '/demo',
     icon: Truck,
     status: 'Berikutnya',
   },
   {
     label: 'Rental Sepeda',
     detail: 'Sewa harian dan wisata',
-    href: '/contoh/salon',
+    href: '/demo',
     icon: Bike,
     status: 'Berikutnya',
   },
   {
     label: 'Bengkel Motor',
     detail: 'Servis, sparepart, antrian',
-    href: '/contoh/salon',
+    href: '/demo',
     icon: Wrench,
     status: 'Berikutnya',
   },
   {
     label: 'Bengkel Mobil',
     detail: 'Work order, estimasi, invoice',
-    href: '/contoh/salon',
+    href: '/demo',
     icon: Hammer,
     status: 'Berikutnya',
   },
   {
     label: 'Bengkel Sepeda',
     detail: 'Servis ringan, part, booking',
-    href: '/contoh/salon',
+    href: '/demo',
     icon: Bike,
     status: 'Berikutnya',
   },
@@ -200,7 +211,7 @@ const CONTOH_USAHA = [
   {
     label: 'Fitness & Spa',
     detail: 'Member, jadwal, paket layanan',
-    href: '/contoh/salon',
+    href: '/demo',
     icon: Dumbbell,
     status: 'Umum',
   },
@@ -216,6 +227,48 @@ const CONTOH_USAHA = [
     detail: 'Servis rumahan dan pekerjaan lapangan',
     href: '/demo',
     icon: BriefcaseBusiness,
+    status: 'Umum',
+  },
+  {
+    label: 'Katering',
+    detail: 'Pesanan harian, paket acara, produksi',
+    href: '/demo',
+    icon: Utensils,
+    status: 'Umum',
+  },
+  {
+    label: 'Online Shop',
+    detail: 'Katalog, pesanan, stok, pengiriman',
+    href: '/belanja',
+    icon: ShoppingBag,
+    status: 'Umum',
+  },
+  {
+    label: 'Kosmetik & Skincare',
+    detail: 'Batch, varian, member, promo',
+    href: '/demo',
+    icon: Sparkles,
+    status: 'Umum',
+  },
+  {
+    label: 'Minimarket',
+    detail: 'Barcode, stok rak, promo harian',
+    href: '/demo',
+    icon: ShoppingBag,
+    status: 'Umum',
+  },
+  {
+    label: 'Kerajinan',
+    detail: 'Produksi kecil, konsinyasi, katalog',
+    href: '/demo',
+    icon: Hammer,
+    status: 'Umum',
+  },
+  {
+    label: 'Agribisnis',
+    detail: 'Panen, olahan, batch, distribusi',
+    href: '/demo',
+    icon: Sprout,
     status: 'Umum',
   },
 ];
@@ -642,8 +695,8 @@ function ContohUsahaGrid() {
           </h2>
         </div>
         <p className="max-w-xl text-sm text-slate-600 dark:text-slate-300">
-          Tombol siap dicoba membuka demo aktif. Contoh lainnya masuk daftar prioritas template
-          usaha umum berikutnya.
+          Jenis usaha disusun dari kebutuhan yang Anda sebut dan kategori UMKM umum:
+          perdagangan, kuliner, jasa, kecantikan, fashion, agribisnis, dan layanan harian.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -651,45 +704,61 @@ function ContohUsahaGrid() {
           const Icon = item.icon;
           const siap = item.status === 'Siap dicoba';
           return (
-            <TautanContohUsaha
+            <article
               key={`${item.label}-${item.detail}`}
-              href={item.href}
               className={clsx(
-                'group flex min-h-24 items-start gap-3 rounded-xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md',
+                'group flex min-h-40 flex-col rounded-xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md',
                 siap
                   ? 'border-brand-200 bg-brand-50/70 hover:border-brand-400 dark:border-brand-900 dark:bg-brand-950/30'
                   : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900',
               )}
             >
-              <span
-                className={clsx(
-                  'grid h-10 w-10 shrink-0 place-items-center rounded-lg',
-                  siap
-                    ? 'bg-brand-700 text-white'
-                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-                )}
-              >
-                <Icon className="h-5 w-5" aria-hidden />
-              </span>
-              <span className="min-w-0">
-                <span className="flex items-center gap-2">
-                  <span className="truncate font-semibold text-slate-900 dark:text-white">{item.label}</span>
-                  <span
-                    className={clsx(
-                      'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                      siap
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
-                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300',
-                    )}
-                  >
-                    {item.status}
+              <TautanContohUsaha href={item.href} className="flex flex-1 items-start gap-3">
+                <span
+                  className={clsx(
+                    'grid h-10 w-10 shrink-0 place-items-center rounded-lg',
+                    siap
+                      ? 'bg-brand-700 text-white'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+                  )}
+                >
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate font-semibold text-slate-900 dark:text-white">{item.label}</span>
+                    <span
+                      className={clsx(
+                        'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                        siap
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300',
+                      )}
+                    >
+                      {item.status}
+                    </span>
+                  </span>
+                  <span className="mt-1 block text-sm leading-5 text-slate-600 dark:text-slate-300">
+                    {item.detail}
                   </span>
                 </span>
-                <span className="mt-1 block text-sm leading-5 text-slate-600 dark:text-slate-300">
-                  {item.detail}
-                </span>
-              </span>
-            </TautanContohUsaha>
+              </TautanContohUsaha>
+              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
+                {DOKUMEN_DEMO.map((dokumen) => {
+                  const DokumenIcon = dokumen.icon;
+                  return (
+                    <Link
+                      key={`${item.label}-${dokumen.label}`}
+                      to={dokumen.href}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:border-brand-300 hover:bg-brand-50 dark:border-slate-800 dark:text-slate-200 dark:hover:border-brand-700 dark:hover:bg-brand-950/30"
+                    >
+                      <DokumenIcon className="h-3.5 w-3.5" aria-hidden />
+                      {dokumen.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </article>
           );
         })}
       </div>
