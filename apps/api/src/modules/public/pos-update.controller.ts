@@ -21,10 +21,10 @@ const UPDATE_DIR = process.env.POS_UPDATE_DIR || '/opt/ebisnis/updates/pos';
 const FILE_PATTERN = /^ebisnis-pos-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)(?:-windows)?\.(exe|apk)$/;
 
 @ApiTags('public')
-@Controller('update/pos')
+@Controller('update')
 export class PosUpdateController {
   @Public()
-  @Get(['latest', 'latest.json'])
+  @Get(['pos/latest', 'pos/latest.json'])
   @ApiOperation({ summary: 'Metadata rilis terakhir POS Flutter' })
   latest(@Headers('host') host: string, @Headers('x-forwarded-proto') proto?: string) {
     const assets = this.assets();
@@ -53,7 +53,21 @@ export class PosUpdateController {
   }
 
   @Public()
-  @Get(':file')
+  @Get('ebisnis-pelanggan-demo.apk')
+  @ApiOperation({ summary: 'Unduh APK pelanggan demo' })
+  downloadDemoCustomerApk(@Res({ passthrough: true }) res: Response) {
+    return this.downloadLatestCustomerApk('ebisnis-pelanggan-demo.apk', res);
+  }
+
+  @Public()
+  @Get('ebisnis-pelanggan-salon.apk')
+  @ApiOperation({ summary: 'Unduh APK pelanggan salon demo' })
+  downloadSalonCustomerApk(@Res({ passthrough: true }) res: Response) {
+    return this.downloadLatestCustomerApk('ebisnis-pelanggan-salon.apk', res);
+  }
+
+  @Public()
+  @Get('pos/:file')
   @ApiOperation({ summary: 'Unduh installer POS Flutter' })
   download(@Param('file') file: string, @Res({ passthrough: true }) res: Response) {
     const safe = basename(file);
@@ -70,14 +84,7 @@ export class PosUpdateController {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas pembaruan tidak ditemukan.');
     }
 
-    const ext = safe.endsWith('.apk') ? 'apk' : 'exe';
-    res.set({
-      'Content-Type':
-        ext === 'apk' ? 'application/vnd.android.package-archive' : 'application/vnd.microsoft.portable-executable',
-      'Content-Disposition': `attachment; filename="${safe}"`,
-      'Cache-Control': 'public, max-age=31536000, immutable',
-    });
-    return rawResponse(new StreamableFile(createReadStream(path)));
+    return this.streamFile(path, safe, res, 'immutable');
   }
 
   private assets(): PosAsset[] {
@@ -98,6 +105,33 @@ export class PosUpdateController {
         } satisfies PosAsset;
       })
       .filter((a): a is PosAsset => a !== null);
+  }
+
+  private downloadLatestCustomerApk(aliasName: string, res: Response) {
+    const apk = this.assets()
+      .filter((asset) => asset.platform === 'android')
+      .sort((a, b) => compareVersion(a.version, b.version))
+      .at(-1);
+
+    if (!apk) {
+      throw AppError.notFound(
+        ErrorCodes.NOT_FOUND,
+        'APK pelanggan belum tersedia. Unggah berkas .apk ke folder pembaruan POS atau GitHub Release.',
+      );
+    }
+
+    return this.streamFile(apk.path, aliasName, res, 'latest');
+  }
+
+  private streamFile(path: string, filename: string, res: Response, cacheMode: 'immutable' | 'latest') {
+    const ext = filename.endsWith('.apk') ? 'apk' : 'exe';
+    res.set({
+      'Content-Type':
+        ext === 'apk' ? 'application/vnd.android.package-archive' : 'application/vnd.microsoft.portable-executable',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Cache-Control': cacheMode === 'immutable' ? 'public, max-age=31536000, immutable' : 'no-cache',
+    });
+    return rawResponse(new StreamableFile(createReadStream(path)));
   }
 }
 
