@@ -191,6 +191,18 @@
       "file": "20260803T100000__pesantren__buku_penghubung.sql",
       "name": "Buku penghubung dan catatan guru/wali",
       "description": "pesantren_buku_penghubung -- menutup gap AIS BukuPenghubungSiswa, CatatanGuru, CatatanSiswa, dan catatan orang tua. Berisi catatan naratif per santri dengan visibilitas INTERNAL/WALI dan status tindak lanjut."
+    },
+    {
+      "id": "20260803T110000__pesantren__izin_lampiran_disposisi",
+      "file": "20260803T110000__pesantren__izin_lampiran_disposisi.sql",
+      "name": "Perizinan dengan lampiran, disposisi, dan riwayat",
+      "description": "Menambah lampiran_url, kontak penjemput, metadata, disposisi, dan pesantren_izin_riwayat agar PengajuanSiswaAction.java dari AIS punya jejak audit dan alur tindak lanjut yang setara. Presensi juga mendapat endpoint massal di service/API."
+    },
+    {
+      "id": "20260803T120000__pesantren__psb_form_schema",
+      "file": "20260803T120000__pesantren__psb_form_schema.sql",
+      "name": "Formulir PSB dinamis per gelombang",
+      "description": "Menambah form_schema pada pesantren_psb_gelombang dan jawaban_tambahan pada pesantren_psb_pendaftar. Ini menyiapkan variasi PPDB per unit seperti banyaknya PPDB*.java di AIS tanpa membuat tabel khusus per unit."
     }
   ]
 }

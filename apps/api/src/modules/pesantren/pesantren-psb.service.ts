@@ -39,11 +39,12 @@ export interface BarisGelombang {
   kuota: number | null;
   biaya_pendaftaran: string;
   status: string;
+  form_schema: unknown[];
   created_at: string;
 }
 
 const KOLOM_GELOMBANG = `id::text, tahun_ajaran_id::text, unit_pendidikan_id::text, kode, nama, tanggal_buka::text,
-  tanggal_tutup::text, kuota, biaya_pendaftaran::text, status, created_at::text`;
+  tanggal_tutup::text, kuota, biaya_pendaftaran::text, status, form_schema, created_at::text`;
 
 export interface BarisPendaftar {
   id: string;
@@ -62,6 +63,7 @@ export interface BarisPendaftar {
   catatan_verifikasi: string | null;
   catatan_keputusan: string | null;
   santri_id: string | null;
+  jawaban_tambahan: Record<string, unknown>;
   created_at: string;
 
   // -- Kelengkapan setara Dapodik (lihat migrasi 20260802T340000) ----------
@@ -106,7 +108,7 @@ export interface BarisPendaftar {
 const KOLOM_PENDAFTAR = `id::text, gelombang_id::text, nomor_pendaftaran, nama_lengkap, jenis_kelamin,
   tempat_lahir, tanggal_lahir::text, nama_orang_tua, no_hp_orang_tua, alamat, asal_sekolah,
   unit_pendidikan_tujuan_id::text, status, catatan_verifikasi, catatan_keputusan, santri_id::text,
-  created_at::text,
+  jawaban_tambahan, created_at::text,
   nik, nisn, nipd, agama, kewarganegaraan, kebutuhan_khusus, anak_ke,
   jumlah_saudara, alat_transportasi, jarak_tempat_tinggal_km::text,
   telepon, hp, email, penerima_kip, nomor_kip, penerima_kks, nomor_kks,
@@ -219,8 +221,8 @@ export class PesantrenPsbService {
       const rows = await this.tenantDb.query<BarisGelombang>(
         schemaName,
         `INSERT INTO ${S}.pesantren_psb_gelombang
-           (tahun_ajaran_id, unit_pendidikan_id, kode, nama, tanggal_buka, tanggal_tutup, kuota, biaya_pendaftaran, created_by, updated_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 0), $9, $9)
+           (tahun_ajaran_id, unit_pendidikan_id, kode, nama, tanggal_buka, tanggal_tutup, kuota, biaya_pendaftaran, form_schema, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 0), COALESCE($9::jsonb, '[]'::jsonb), $10, $10)
          RETURNING ${KOLOM_GELOMBANG}`,
         [
           masukan.tahunAjaranId,
@@ -231,6 +233,7 @@ export class PesantrenPsbService {
           masukan.tanggalTutup,
           masukan.kuota ?? null,
           masukan.biayaPendaftaran ?? null,
+          masukan.formSchema ? JSON.stringify(masukan.formSchema) : null,
           createdBy,
         ],
       );
@@ -503,7 +506,7 @@ export class PesantrenPsbService {
             nama_ayah, nik_ayah, tahun_lahir_ayah, pendidikan_ayah, pekerjaan_ayah, penghasilan_ayah,
             nama_ibu, nik_ibu, tahun_lahir_ibu, pendidikan_ibu, pekerjaan_ibu, penghasilan_ibu,
             nama_wali, nik_wali, tahun_lahir_wali, pendidikan_wali, pekerjaan_wali, penghasilan_wali,
-            created_by, updated_by)
+            jawaban_tambahan, created_by, updated_by)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
                  $12, $13, $14, $15, COALESCE($16, 'WNI'), COALESCE($17, 'TIDAK_ADA'),
                  $18, $19, $20, $21,
@@ -512,7 +515,7 @@ export class PesantrenPsbService {
                  $30, $31, $32, $33, $34, $35,
                  $36, $37, $38, $39, $40, $41,
                  $42, $43, $44, $45, $46, $47,
-                 $48, $48)
+                 COALESCE($48::jsonb, '{}'::jsonb), $49, $49)
          RETURNING ${KOLOM_PENDAFTAR}`,
         [
           gelombang.id,
@@ -547,6 +550,7 @@ export class PesantrenPsbService {
           ...kolomOrangTua(ayah),
           ...kolomOrangTua(ibu),
           ...kolomOrangTua(wali),
+          masukan.jawabanTambahan ? JSON.stringify(masukan.jawabanTambahan) : null,
           createdBy,
         ],
       );

@@ -65,6 +65,28 @@ class CatatPresensiDto {
   keterangan?: string;
 }
 
+class ItemPresensiMassalDto {
+  @ApiProperty() @IsString()
+  santriId!: string;
+
+  @ApiProperty({ enum: STATUS_PRESENSI }) @IsIn(STATUS_PRESENSI as unknown as string[])
+  status!: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500)
+  keterangan?: string;
+}
+
+class CatatPresensiMassalDto {
+  @ApiProperty({ example: '2026-08-02' }) @IsISO8601()
+  tanggal!: string;
+
+  @ApiProperty({ enum: JENIS_PRESENSI }) @IsIn(JENIS_PRESENSI as unknown as string[])
+  jenis!: string;
+
+  @ApiProperty({ type: [ItemPresensiMassalDto] })
+  items!: ItemPresensiMassalDto[];
+}
+
 @ApiTags('pesantren')
 @ApiBearerAuth('access-token')
 @Controller('pesantren/presensi')
@@ -93,5 +115,13 @@ export class PesantrenPresensiController {
   @ApiOperation({ summary: 'Mencatat presensi satu santri' })
   async catat(@Body() dto: CatatPresensiDto, @CurrentUser() user: AuthenticatedUser) {
     return this.presensi.catat(schemaWajib(user), dto, user.userId);
+  }
+
+  @Permissions('EPESANTREN_PRESENSI.CREATE')
+  @Post('massal')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mencatat atau memperbarui presensi banyak santri sekaligus' })
+  async catatMassal(@Body() dto: CatatPresensiMassalDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.presensi.catatMassal(schemaWajib(user), dto, user.userId);
   }
 }
