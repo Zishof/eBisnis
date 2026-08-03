@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Boxes, ClipboardList, PackageCheck, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Boxes, ClipboardList, Megaphone, PackageCheck, TrendingUp } from 'lucide-react';
 import { api, formatNumber } from '../../lib/api';
 import { PageHeader, StatusBadge, LoadingState, Code } from '../../components/ui';
 import { useAuth } from '../../app/auth-context';
@@ -101,6 +101,12 @@ export function DashboardPage() {
           label="Penerimaan menunggu validasi"
           value={String(waitingValidation)}
           href="/app/goods-receipts"
+        />
+        <StatCard
+          icon={<Megaphone className="h-5 w-5" aria-hidden />}
+          label="Portal pelanggan"
+          value="Demo"
+          href="/app/portal-pelanggan"
         />
       </div>
 

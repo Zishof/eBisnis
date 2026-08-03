@@ -14,7 +14,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'api/pos_api.dart';
 import 'aturan/harga_luring.dart';
+import 'aturan/koneksi.dart';
 import 'layar/layar_kasir.dart';
 import 'layar/sumber.dart';
 import 'layar/tampilan_pelanggan.dart';
@@ -56,6 +58,7 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
     sumber: _pilihSumberPembaruan(),
     versiBerjalan: versiAplikasi,
   );
+  late final Future<_SumberKasir> _sumber = _pilihSumberKasir();
 
   Timer? _jadwalPembaruan;
 
@@ -97,14 +100,19 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
   /// Alamat penuh disediakan supaya rilis dapat diperantarai peladen eBisnis
   /// kelak — bentuk jawabannya sama, dan penguraiannya tidak perlu berubah.
   SumberPembaruan _pilihSumberPembaruan() {
-    const alamatPenuh = String.fromEnvironment('PEMBARUAN_URL');
+    const alamatPenuh = String.fromEnvironment(
+      'PEMBARUAN_URL',
+      defaultValue: 'https://ebisnis.id/update/pos/latest',
+    );
     final akhiran = akhiranPemasang();
 
     if (alamatPenuh.isNotEmpty) {
-      return SumberRilisGitHub(alamat: Uri.parse(alamatPenuh), akhiranBerkas: akhiran);
+      return SumberRilisGitHub(
+          alamat: Uri.parse(alamatPenuh), akhiranBerkas: akhiran);
     }
 
-    const repo = String.fromEnvironment('PEMBARUAN_REPO', defaultValue: 'Zishof/eBisnis');
+    const repo = String.fromEnvironment('PEMBARUAN_REPO',
+        defaultValue: 'Zishof/eBisnis');
     final pisah = repo.split('/');
     return SumberRilisGitHub.repo(
       pemilik: pisah.first,
@@ -166,18 +174,108 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
     return MaterialApp(
       title: 'Kasir eBisnis.id',
       theme: temaKasir(),
-      home: LayarKasir(
+      home: FutureBuilder<_SumberKasir>(
+        future: _sumber,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const _MemuatKasir();
+          }
+          final sumber = snap.data ?? _SumberKasir.contoh();
+          return LayarKasir(
+            katalog: sumber.katalog,
+            metode: sumber.metode,
+            pencetak: _pencetak,
+            namaToko: sumber.namaToko,
+            pelanggan: _pelanggan,
+            namaOutlet: sumber.namaOutlet,
+            shift: sumber.shift,
+            koneksi: sumber.koneksi,
+            namaPengguna: sumber.namaPengguna,
+            pembaruan: _pembaruan,
+            pembukuan: sumber.pembukuan,
+          );
+        },
+      ),
+    );
+  }
+
+  Future<_SumberKasir> _pilihSumberKasir() async {
+    const apiBase = String.fromEnvironment('POS_API_BASE');
+    if (apiBase.isEmpty) return _SumberKasir.contoh();
+
+    final client = PosApiClient(
+      baseUrl: Uri.parse(apiBase.endsWith('/') ? apiBase : '$apiBase/'),
+      accessToken: const String.fromEnvironment('POS_ACCESS_TOKEN'),
+      username: const String.fromEnvironment('POS_USERNAME'),
+      password: const String.fromEnvironment('POS_PASSWORD'),
+      tenantCode: const String.fromEnvironment('POS_TENANT'),
+    );
+    final boot = await client.bootstrap();
+    final sesi = boot.sesi;
+    return _SumberKasir(
+      katalog: boot.katalog,
+      metode: boot.metode,
+      namaToko: 'eBisnis.id',
+      namaOutlet: sesi.outletName,
+      shift: sesi.shiftNumber ?? sesi.businessDate,
+      koneksi: KeadaanKoneksi.daring,
+      namaPengguna:
+          const String.fromEnvironment('POS_USERNAME', defaultValue: 'demo'),
+      pembukuan: (transaksi) =>
+          client.bukukan(sesi: sesi, transaksi: transaksi),
+    );
+  }
+}
+
+class _SumberKasir {
+  const _SumberKasir({
+    required this.katalog,
+    required this.metode,
+    required this.namaToko,
+    this.namaOutlet,
+    this.shift,
+    this.koneksi,
+    this.namaPengguna,
+    this.pembukuan,
+  });
+
+  factory _SumberKasir.contoh() => _SumberKasir(
         katalog: _KatalogContoh(),
         metode: const [
           MetodeBayar(id: 'TUNAI', nama: 'Tunai', memberiKembalian: true),
           MetodeBayar(id: 'QRIS', nama: 'QRIS', memberiKembalian: false),
           MetodeBayar(id: 'KARTU', nama: 'Kartu', memberiKembalian: false),
-          MetodeBayar(id: 'TRANSFER', nama: 'Transfer', memberiKembalian: false),
+          MetodeBayar(
+              id: 'TRANSFER', nama: 'Transfer', memberiKembalian: false),
         ],
-        pencetak: _pencetak,
         namaToko: 'eBisnis.id',
-        pelanggan: _pelanggan,
-        pembaruan: _pembaruan,
+      );
+
+  final SumberKatalog katalog;
+  final List<MetodeBayar> metode;
+  final String namaToko;
+  final String? namaOutlet;
+  final String? shift;
+  final KeadaanKoneksi? koneksi;
+  final String? namaPengguna;
+  final PembukuanKasir? pembukuan;
+}
+
+class _MemuatKasir extends StatelessWidget {
+  const _MemuatKasir();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Menyiapkan kasir...'),
+          ],
+        ),
       ),
     );
   }
@@ -256,8 +354,9 @@ class _KatalogContoh extends SumberKatalog {
   }
 
   @override
-  List<ProdukLokal> cari(String kunci) =>
-      _produk.where((p) => p.nama.toLowerCase().contains(kunci.toLowerCase())).toList();
+  List<ProdukLokal> cari(String kunci) => _produk
+      .where((p) => p.nama.toLowerCase().contains(kunci.toLowerCase()))
+      .toList();
 
   @override
   List<TarifLuring> get tarif => const [];
