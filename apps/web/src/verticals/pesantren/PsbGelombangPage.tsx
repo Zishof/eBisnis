@@ -19,9 +19,10 @@
  * pondok sudah menjawab kebutuhan yang sama: "apa yang sedang terjadi").
  */
 
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarDays, Newspaper } from 'lucide-react';
+import { CalendarDays, Newspaper, Search } from 'lucide-react';
 import { apiRequest, formatDate, formatMoney } from '../../lib/api';
 
 interface Gelombang {
@@ -82,7 +83,16 @@ const LENCANA_STATUS: Record<string, { label: string; kelas: string }> = {
   SELESAI: { label: 'Selesai', kelas: 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400' },
 };
 
+type FilterStatus = 'DIBUKA' | 'DITUTUP' | 'SEMUA';
+
 export function PsbGelombangPage() {
+  const [cari, setCari] = useState('');
+  // Bawaan "Sedang Dibuka" -- pengunjung yang datang ke halaman ini hampir
+  // selalu mencari gelombang yang MASIH BISA didaftari, bukan riwayat
+  // gelombang lama. "Ditutup" di sini mencakup DITUTUP maupun SELESAI --
+  // pengunjung tidak perlu tahu bedanya, keduanya sama-sama "sudah lewat".
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('DIBUKA');
+
   const { data: situs } = useQuery({
     queryKey: ['pesantren', 'situs-publik', 'psb-landing'],
     queryFn: () => apiRequest<IsiSitus>('/pesantren/public/site'),
@@ -93,6 +103,13 @@ export function PsbGelombangPage() {
     queryKey: ['pesantren', 'psb-gelombang-publik'],
     queryFn: () => apiRequest<Gelombang[]>('/pesantren/public/psb/gelombang'),
     retry: false,
+  });
+
+  const gelombangTersaring = (gelombang ?? []).filter((g) => {
+    if (filterStatus === 'DIBUKA' && g.status !== 'DIBUKA') return false;
+    if (filterStatus === 'DITUTUP' && g.status === 'DIBUKA') return false;
+    if (cari.trim() && !g.nama.toLowerCase().includes(cari.trim().toLowerCase())) return false;
+    return true;
   });
 
   const namaPondok = situs?.profil.nama_tampilan;
@@ -112,7 +129,29 @@ export function PsbGelombangPage() {
         </Link>
       </p>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-3">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+          <input
+            type="text"
+            value={cari}
+            onChange={(e) => setCari(e.target.value)}
+            placeholder="Cari nama gelombang…"
+            className="field-input pl-9"
+          />
+        </div>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
+          className="field-input sm:w-56"
+        >
+          <option value="DIBUKA">Sedang Dibuka</option>
+          <option value="DITUTUP">Ditutup</option>
+          <option value="SEMUA">Semua</option>
+        </select>
+      </div>
+
+      <div className="mt-6 grid gap-8 lg:grid-cols-3">
         {/* --- Kolom utama: daftar gelombang ------------------------------ */}
         <div className="space-y-4 lg:col-span-2">
           {isLoading ? (
@@ -123,8 +162,14 @@ export function PsbGelombangPage() {
                 Belum ada gelombang pendaftaran yang pernah dibuka. Silakan hubungi pengurus pondok.
               </p>
             </div>
+          ) : gelombangTersaring.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Tidak ada gelombang yang cocok dengan pencarian/filter ini. Coba ubah kata kunci atau pilih "Semua".
+              </p>
+            </div>
           ) : (
-            kelompokkanPerUnit(gelombang).map((kelompok) => (
+            kelompokkanPerUnit(gelombangTersaring).map((kelompok) => (
               <section key={kelompok.kunci}>
                 <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   {kelompok.label}
