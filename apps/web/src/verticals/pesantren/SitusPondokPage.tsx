@@ -64,6 +64,11 @@ interface UnitPendidikan {
   code: string;
   name: string;
   jenis: string;
+  website_enabled: boolean;
+  public_slug: string | null;
+  santri_subdomain: string | null;
+  custom_domain: string | null;
+  welcome_title: string | null;
 }
 
 interface IsiSitus {
@@ -312,9 +317,11 @@ export function SitusPondokPage() {
             </p>
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {unitPendidikan.map((u) => (
-                <div
+                <Link
                   key={u.code}
+                  to={u.website_enabled && u.public_slug ? `/santri/pondok/unit/${u.public_slug}` : '#'}
                   className="flex items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800"
+                  aria-disabled={!u.website_enabled || !u.public_slug}
                 >
                   <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${tema.badge}`}>
                     <GraduationCap className="h-5 w-5" aria-hidden />
@@ -324,8 +331,11 @@ export function SitusPondokPage() {
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {LABEL_JENIS_UNIT[u.jenis] ?? u.jenis}
                     </p>
+                    {u.santri_subdomain && (
+                      <p className="mt-1 text-xs text-slate-400">{u.santri_subdomain}.santri.info</p>
+                    )}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </section>

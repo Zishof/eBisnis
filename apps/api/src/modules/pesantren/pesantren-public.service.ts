@@ -66,13 +66,63 @@ export class PesantrenPublicService {
 
     const unitPendidikan = await this.tenantDb.query(
       S,
-      `SELECT id::text, code, name, jenis
+      `SELECT id::text, code, name, jenis, website_enabled, public_slug,
+              santri_subdomain, custom_domain, welcome_title
          FROM "${S}".pesantren_unit_pendidikan
         WHERE is_active = TRUE AND deleted_at IS NULL
         ORDER BY sort_order ASC, name ASC`,
     );
 
     return { profil, berita, unitPendidikan };
+  }
+
+  async unit(host: string | undefined, slug: string) {
+    const konteks = await this.resolver.resolve(host, VERTIKAL);
+    const S = konteks.schemaName;
+
+    const diterbitkan = await this.tenantDb.queryOne<{ is_published: boolean }>(
+      S,
+      `SELECT is_published FROM "${S}".pesantren_website_setting WHERE singleton = TRUE`,
+    );
+    if (!diterbitkan || diterbitkan.is_published !== true) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Situs tidak ditemukan.');
+    }
+
+    const unit = await this.tenantDb.queryOne<Record<string, unknown>>(
+      S,
+      `SELECT id::text, code, name, jenis, website_enabled, public_slug,
+              santri_subdomain, custom_domain, domain_status, welcome_title, welcome_body
+         FROM "${S}".pesantren_unit_pendidikan
+        WHERE website_enabled = TRUE
+          AND is_active = TRUE
+          AND deleted_at IS NULL
+          AND public_slug = $1`,
+      [slug.toLowerCase()],
+    );
+    if (!unit) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Unit pendidikan tidak ditemukan.');
+    }
+
+    const profil = await this.tenantDb.queryOne<Record<string, unknown>>(
+      S,
+      `SELECT theme_code, nama_tampilan, logo_url, hero_image_url, alamat_publik,
+              kontak_telepon, kontak_whatsapp, kontak_email
+         FROM "${S}".pesantren_website_setting
+        WHERE singleton = TRUE`,
+    );
+
+    const gelombang = await this.tenantDb.query(
+      S,
+      `SELECT id::text, kode, nama, tanggal_buka::text, tanggal_tutup::text,
+              biaya_pendaftaran::text, status
+         FROM "${S}".pesantren_psb_gelombang
+        WHERE unit_pendidikan_id = $1 AND status != 'DRAFT' AND deleted_at IS NULL
+        ORDER BY tanggal_buka DESC
+        LIMIT 10`,
+      [unit.id],
+    );
+
+    return { profil, unit, gelombang };
   }
 
   async beritaSatu(host: string | undefined, id: string) {

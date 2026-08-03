@@ -42,6 +42,13 @@ export class PesantrenPublicController {
   }
 
   @Public()
+  @Get('unit/:slug')
+  @ApiOperation({ summary: 'Halaman publik satu unit pendidikan' })
+  unit(@Headers('host') host: string, @Param('slug') slug: string) {
+    return this.situs.unit(host, slug);
+  }
+
+  @Public()
   @Get('berita/:id')
   @ApiOperation({ summary: 'Satu berita pondok' })
   berita(@Headers('host') host: string, @Param('id') id: string) {

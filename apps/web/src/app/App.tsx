@@ -20,6 +20,7 @@ import { DemoEntryPage } from '../pages/auth/DemoEntryPage';
 import { AppLayout } from '../pages/app/AppLayout';
 import { AppHomePage } from '../pages/app/AppHomePage';
 import { PesantrenSantriPage } from '../pages/app/pesantren/PesantrenSantriPage';
+import { PesantrenUnitPendidikanPage } from '../pages/app/pesantren/PesantrenUnitPendidikanPage';
 import { PesantrenAsramaPage } from '../pages/app/pesantren/PesantrenAsramaPage';
 import { PesantrenTagihanPage } from '../pages/app/pesantren/PesantrenTagihanPage';
 import { MasterListPage } from '../pages/app/MasterListPage';
@@ -110,6 +111,9 @@ const SantriInfoHomePage = lazy(() =>
 );
 const SitusPondokPage = lazy(() =>
   import('../verticals/pesantren/SitusPondokPage').then((m) => ({ default: m.SitusPondokPage })),
+);
+const SitusUnitPage = lazy(() =>
+  import('../verticals/pesantren/SitusUnitPage').then((m) => ({ default: m.SitusUnitPage })),
 );
 const PsbGelombangPage = lazy(() =>
   import('../verticals/pesantren/PsbGelombangPage').then((m) => ({ default: m.PsbGelombangPage })),
@@ -238,6 +242,7 @@ export function App() {
           pemeriksaan host lagi seperti pada PublicLayout/SantriLayout.
         */}
         <Route element={<PondokChrome />}>
+          <Route path="/santri/pondok/unit/:slug" element={<SitusUnitPage />} />
           <Route path="/santri/pondok/psb" element={<PsbGelombangPage />} />
           <Route path="/santri/pondok/psb/daftar/:gelombangId" element={<PsbPendaftaranPage />} />
           <Route path="/santri/pondok/psb/masuk" element={<PsbLoginPage />} />
@@ -336,6 +341,7 @@ export function App() {
           <Route path="subscription/checkout" element={<SubscriptionPage tab="checkout" />} />
           <Route path="subscription/invoices" element={<SubscriptionPage tab="invoices" />} />
           <Route path="marketplace/aktivasi" element={<MarketplaceActivationPage />} />
+          <Route path="pesantren/unit-pendidikan" element={<PesantrenUnitPendidikanPage />} />
           <Route path="pesantren/santri" element={<PesantrenSantriPage />} />
           <Route path="pesantren/asrama" element={<PesantrenAsramaPage />} />
           <Route path="pesantren/tagihan" element={<PesantrenTagihanPage />} />
