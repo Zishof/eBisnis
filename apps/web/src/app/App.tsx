@@ -48,7 +48,7 @@ import { SampleDataPage } from '../pages/app/SampleDataPage';
 import { SubscriptionPage } from '../pages/app/SubscriptionPage';
 import { NotificationsPage } from '../pages/app/NotificationsPage';
 import { SupportPage } from '../pages/app/SupportPage';
-import { ComingSoonPage } from '../pages/app/ComingSoonPage';
+import { OperationalModulePage } from '../pages/app/OperationalModulePage';
 import { RequireAuth } from './RequireAuth';
 import { LoadingState } from '../components/ui';
 
@@ -399,6 +399,7 @@ export function App() {
           <Route path="stock-movements" element={<StockMovementsPage />} />
           <Route path="stock-alerts" element={<StockAlertsPage />} />
           <Route path="pos" element={<PosPage />} />
+          <Route path="pos/kasir" element={<PosPage />} />
           <Route path="pos/laporan" element={<PosReportPage />} />
           <Route path="pos/aturan-diskon" element={<PosPromotionPage />} />
           <Route path="portal-pelanggan" element={<PortalPelangganAdminPage />} />
@@ -436,7 +437,7 @@ export function App() {
           <Route path="pesantren/gerbang" element={<PesantrenGerbangPage />} />
           <Route path="pesantren/portal-wali" element={<PesantrenDaftarModulPage module="portal-wali" />} />
           <Route path="pesantren/kiosk" element={<PesantrenKioskPage />} />
-          <Route path="*" element={<ComingSoonPage />} />
+          <Route path="*" element={<OperationalModulePage />} />
         </Route>
 
         {/* Portal Platform Super Admin */}
