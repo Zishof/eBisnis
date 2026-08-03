@@ -51,6 +51,21 @@ modul.
 **Langkah pertama bagi yang melanjutkan: gabungkan #66** (squash), lalu lanjut
 §5.
 
+> ### ⚠ CI mati sejak 2026-08-03 siang — kemungkinan kuota GitHub Actions
+>
+> Kelima check pada #66 sempat **hijau seluruhnya** (E2E 73 lulus, 0 flaky).
+> Sesudah itu setiap run gagal **dalam hitungan detik dengan nol langkah
+> dijalankan** — bukan hanya pada cabang ini, tetapi juga pada `main` dan pada
+> cabang sesi lain (`docs/session-handoff-2026-08-03`).
+>
+> Job yang gagal tanpa satu pun langkah berjalan berarti runner-nya tidak pernah
+> menyala. Yang paling cocok dengan gejala itu: **menit Actions habis atau batas
+> pembayaran repo tercapai**. Perlu diperiksa pemilik pada Settings → Billing.
+>
+> **Jangan menyimpulkan kode yang salah dari merahnya CI hari ini.** Periksa
+> dahulu apakah run pada `main` juga gagal seketika; bila ya, sebabnya bukan
+> cabang Anda.
+
 ---
 
 ## 3. Aturan kerja yang berlaku
