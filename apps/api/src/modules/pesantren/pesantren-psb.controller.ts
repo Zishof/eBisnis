@@ -6,7 +6,7 @@
 
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PesantrenPsbService } from './pesantren-psb.service';
 import { JENIS_JADWAL, STATUS_JADWAL } from './pesantren-psb';
@@ -80,6 +80,10 @@ class CatatGelombangDto {
 
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0)
   biayaPendaftaran?: number;
+
+  @ApiPropertyOptional({ description: 'Array konfigurasi field tambahan formulir PSB.' })
+  @IsOptional() @IsArray()
+  formSchema?: unknown[];
 }
 
 export class DaftarkanPendaftarDto {
@@ -184,6 +188,10 @@ export class DaftarkanPendaftarDto {
   @ApiPropertyOptional({ type: DataOrangTuaDto, description: 'Diisi hanya bila bukan ayah/ibu kandung.' })
   @IsOptional() @ValidateNested() @Type(() => DataOrangTuaDto)
   wali?: DataOrangTuaDto;
+
+  @ApiPropertyOptional({ description: 'Jawaban field tambahan sesuai formSchema gelombang.' })
+  @IsOptional() @IsObject()
+  jawabanTambahan?: Record<string, unknown>;
 }
 
 class CatatanDto {

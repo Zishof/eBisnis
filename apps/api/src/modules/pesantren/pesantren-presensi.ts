@@ -16,6 +16,12 @@ export interface MasukanPresensi {
   keterangan?: string;
 }
 
+export interface MasukanPresensiMassal {
+  tanggal?: string;
+  jenis?: string;
+  items?: MasukanPresensi[];
+}
+
 export interface Galat {
   field: string;
   code: string;
@@ -68,6 +74,23 @@ export function validasiPresensi(masukan: MasukanPresensi): Galat[] {
       code: 'WAJIB',
       message: 'Keterangan wajib diisi untuk status selain hadir (izin, sakit, atau alpa harus punya alasan).',
     });
+  }
+
+  return galat;
+}
+
+export function validasiPresensiMassal(masukan: MasukanPresensiMassal): Galat[] {
+  const galat = validasiPresensi({
+    santriId: 'placeholder',
+    tanggal: masukan.tanggal,
+    jenis: masukan.jenis,
+    status: 'HADIR',
+  }).filter((item) => item.field !== 'santriId');
+
+  if (!Array.isArray(masukan.items) || masukan.items.length === 0) {
+    galat.push({ field: 'items', code: 'WAJIB', message: 'Daftar santri presensi wajib diisi.' });
+  } else if (masukan.items.length > 500) {
+    galat.push({ field: 'items', code: 'TERLALU_BANYAK', message: 'Presensi massal maksimal 500 santri sekali simpan.' });
   }
 
   return galat;

@@ -6,7 +6,7 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
-import { MasukanPresensi, validasiPresensi } from './pesantren-presensi';
+import { MasukanPresensi, MasukanPresensiMassal, validasiPresensi, validasiPresensiMassal } from './pesantren-presensi';
 
 export interface BarisPresensi {
   id: string;
@@ -124,6 +124,62 @@ export class PesantrenPresensiService {
       }
       throw error;
     }
+  }
+
+  async catatMassal(
+    schemaName: string,
+    masukan: MasukanPresensiMassal,
+    createdBy: string,
+  ): Promise<{ items: BarisPresensi[]; total: number }> {
+    const galatMassal = validasiPresensiMassal(masukan);
+    const galatItem = (masukan.items ?? []).flatMap((item, index) =>
+      validasiPresensi({
+        santriId: item.santriId,
+        tanggal: masukan.tanggal,
+        jenis: masukan.jenis,
+        status: item.status,
+        keterangan: item.keterangan,
+      }).map((galat) => ({ ...galat, field: `items.${index}.${galat.field}` })),
+    );
+    const galat = [...galatMassal, ...galatItem];
+    if (galat.length) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Ada isian presensi massal yang belum benar.', { errors: galat });
+    }
+
+    const S = `"${schemaName}"`;
+    const ids = [...new Set(masukan.items!.map((item) => item.santriId).filter((id): id is string => typeof id === 'string' && id.trim() !== ''))];
+    const ditemukan = await this.tenantDb.query<{ id: string }>(
+      schemaName,
+      `SELECT id::text FROM ${S}.pesantren_santri WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL`,
+      [ids],
+    );
+    const idDitemukan = new Set(ditemukan.map((row) => row.id));
+    const tidakAda = ids.filter((id) => !idDitemukan.has(id));
+    if (tidakAda.length) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, `Ada ${tidakAda.length} santri yang tidak ditemukan.`);
+    }
+
+    const items: BarisPresensi[] = [];
+    for (const item of masukan.items!) {
+      const rows = await this.tenantDb.query<BarisPresensi>(
+        schemaName,
+        `INSERT INTO ${S}.pesantren_presensi
+           (santri_id, tanggal, jenis, status, keterangan, dicatat_oleh, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $6, $6)
+         ON CONFLICT (santri_id, tanggal, jenis) WHERE deleted_at IS NULL
+         DO UPDATE SET status = EXCLUDED.status,
+                       keterangan = EXCLUDED.keterangan,
+                       dicatat_oleh = EXCLUDED.dicatat_oleh,
+                       updated_at = now(),
+                       updated_by = EXCLUDED.updated_by,
+                       version = ${S}.pesantren_presensi.version + 1
+         RETURNING id::text, santri_id::text, tanggal::text, jenis, status, keterangan, created_at::text`,
+        [item.santriId, masukan.tanggal, masukan.jenis, item.status, bersihkan(item.keterangan), createdBy],
+      );
+      items.push(rows[0]);
+    }
+
+    return { items, total: items.length };
   }
 }
 

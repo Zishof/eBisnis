@@ -58,6 +58,20 @@ export const PESANTREN_MODUL: Record<string, ModulConfig> = {
       { key: 'created_at', header: 'Dibuat', kind: 'date' },
     ],
   },
+  jadwal: {
+    title: 'Jadwal Pelajaran',
+    description: 'Jadwal jam nyata per rombongan belajar dengan pencegahan bentrok.',
+    endpoint: '/pesantren/kurikulum/jadwal',
+    breadcrumbsLabel: 'Jadwal',
+    columns: [
+      { key: 'hari', header: 'Hari', kind: 'status' },
+      { key: 'waktu_mulai', header: 'Mulai' },
+      { key: 'waktu_selesai', header: 'Selesai' },
+      { key: 'rombongan_id', header: 'Rombongan' },
+      { key: 'mata_pelajaran_id', header: 'Mata Pelajaran' },
+      { key: 'ruangan', header: 'Ruang' },
+    ],
+  },
   diniyah: {
     title: 'Diniyah',
     description: 'Katalog kitab dan halaqah diniyah pondok.',
@@ -153,6 +167,18 @@ export const PESANTREN_MODUL: Record<string, ModulConfig> = {
       { key: 'status', header: 'Status', kind: 'status' },
     ],
   },
+  'skala-huruf': {
+    title: 'Skala Huruf Rapor',
+    description: 'Rentang konversi nilai angka ke huruf mutu rapor.',
+    endpoint: '/pesantren/nilai/skala-huruf',
+    breadcrumbsLabel: 'Skala Huruf',
+    columns: [
+      { key: 'huruf', header: 'Huruf', kind: 'status' },
+      { key: 'nilai_minimum', header: 'Minimum' },
+      { key: 'nilai_maksimum', header: 'Maksimum' },
+      { key: 'keterangan', header: 'Keterangan' },
+    ],
+  },
   'absensi-guru': {
     title: 'Absensi Guru',
     description: 'Daftar kehadiran guru dan ustadz.',
@@ -223,6 +249,7 @@ export const PESANTREN_MODUL: Record<string, ModulConfig> = {
       { key: 'jenis', header: 'Jenis' },
       { key: 'tanggal_mulai', header: 'Mulai', kind: 'date' },
       { key: 'tanggal_selesai_rencana', header: 'Rencana Kembali', kind: 'date' },
+      { key: 'kontak_penjemput', header: 'Penjemput' },
       { key: 'status', header: 'Status', kind: 'status' },
     ],
   },

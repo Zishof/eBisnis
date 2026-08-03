@@ -27,6 +27,10 @@ export interface MasukanIzin {
   alasan?: string;
   tanggalMulai?: string;
   tanggalSelesaiRencana?: string;
+  lampiranUrl?: string | null;
+  kontakPenjemput?: string | null;
+  noHpPenjemput?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export function validasiIzin(masukan: MasukanIzin): Galat[] {
@@ -74,6 +78,11 @@ export function validasiIzin(masukan: MasukanIzin): Galat[] {
 }
 
 export interface MasukanKeputusan {
+  catatan?: string;
+}
+
+export interface MasukanDisposisi {
+  disposisiKe?: string;
   catatan?: string;
 }
 

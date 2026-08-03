@@ -59,6 +59,7 @@ export interface MasukanGelombang {
   tanggalTutup?: string;
   kuota?: number | null;
   biayaPendaftaran?: number | null;
+  formSchema?: unknown[] | null;
 }
 
 export function validasiGelombang(masukan: MasukanGelombang): Galat[] {
@@ -113,6 +114,10 @@ export function validasiGelombang(masukan: MasukanGelombang): Galat[] {
     });
   }
 
+  if (masukan.formSchema != null && !Array.isArray(masukan.formSchema)) {
+    galat.push({ field: 'formSchema', code: 'TIDAK_SAH', message: 'Skema formulir harus berupa array field.' });
+  }
+
   return galat;
 }
 
@@ -152,6 +157,7 @@ export interface MasukanPendaftar {
   ayah?: DataOrangTua;
   ibu?: DataOrangTua;
   wali?: DataOrangTua;
+  jawabanTambahan?: Record<string, unknown> | null;
 }
 
 export function validasiPendaftar(masukan: MasukanPendaftar): Galat[] {

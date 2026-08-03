@@ -5,7 +5,7 @@
 
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { IsIn, IsISO8601, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsISO8601, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PesantrenPerizinanService } from './pesantren-perizinan.service';
 import { JENIS_IZIN } from './pesantren-perizinan';
@@ -56,10 +56,30 @@ class AjukanIzinDto {
   @ApiProperty({ example: '2026-08-03' })
   @IsISO8601()
   tanggalSelesaiRencana!: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000)
+  lampiranUrl?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120)
+  kontakPenjemput?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40)
+  noHpPenjemput?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsObject()
+  metadata?: Record<string, unknown>;
 }
 
 class KeputusanIzinDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500)
+  catatan?: string;
+}
+
+class DisposisiIzinDto {
+  @ApiProperty() @IsString()
+  disposisiKe!: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000)
   catatan?: string;
 }
 
@@ -102,6 +122,14 @@ export class PesantrenPerizinanController {
   }
 
   @Permissions('EPESANTREN_PERIZINAN.APPROVE')
+  @Post(':id/disposisi')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mendisposisikan izin menunggu ke pengurus lain' })
+  disposisi(@Param('id') id: string, @Body() dto: DisposisiIzinDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.perizinan.disposisi(schemaWajib(user), id, dto, user.userId);
+  }
+
+  @Permissions('EPESANTREN_PERIZINAN.APPROVE')
   @Post(':id/setujui')
   @HttpCode(200)
   @ApiOperation({ summary: 'Menyetujui izin yang menunggu' })
@@ -115,5 +143,28 @@ export class PesantrenPerizinanController {
   @ApiOperation({ summary: 'Menolak izin yang menunggu' })
   tolak(@Param('id') id: string, @Body() dto: KeputusanIzinDto, @CurrentUser() user: AuthenticatedUser) {
     return this.perizinan.tolak(schemaWajib(user), id, dto.catatan, user.userId);
+  }
+
+  @Permissions('EPESANTREN_PERIZINAN.CANCEL')
+  @Post(':id/batalkan')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Membatalkan izin yang belum selesai' })
+  batalkan(@Param('id') id: string, @Body() dto: KeputusanIzinDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.perizinan.batalkan(schemaWajib(user), id, dto.catatan, user.userId);
+  }
+
+  @Permissions('EPESANTREN_PERIZINAN.UPDATE')
+  @Post(':id/selesai')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Menandai izin selesai setelah santri kembali' })
+  selesaikan(@Param('id') id: string, @Body() dto: KeputusanIzinDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.perizinan.selesaikan(schemaWajib(user), id, dto.catatan, user.userId);
+  }
+
+  @Permissions('EPESANTREN_PERIZINAN.READ')
+  @Get(':id/riwayat')
+  @ApiOperation({ summary: 'Riwayat keputusan dan disposisi izin' })
+  riwayat(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.perizinan.riwayat(schemaWajib(user), id);
   }
 }
