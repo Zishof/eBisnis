@@ -9,6 +9,7 @@ import { NewsDetailPage } from '../pages/public/NewsDetailPage';
 import { ContactPage } from '../pages/public/ContactPage';
 import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
+import { salonRootRedirectFor } from '../pages/contoh/salon-host';
 import { pelangganRootRedirectFor } from '../pages/pelanggan/pelanggan-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
 import { isSantriPortalHost, slugPondokDariHost } from '../verticals/pesantren/santri-host';
@@ -86,6 +87,9 @@ const PosPromotionPage = lazy(() =>
 );
 const PelangganDemoPage = lazy(() =>
   import('../pages/pelanggan/PelangganDemoPage').then((m) => ({ default: m.PelangganDemoPage })),
+);
+const SalonDemoPage = lazy(() =>
+  import('../pages/contoh/SalonDemoPage').then((m) => ({ default: m.SalonDemoPage })),
 );
 const PortalPelangganAdminPage = lazy(() =>
   import('../pages/pelanggan/PortalPelangganAdminPage').then((m) => ({
@@ -188,6 +192,8 @@ const PenawaranPesantrenPage = lazy(() =>
  * API dari host permintaan, bukan dari peramban.
  */
 function AkarMenurutHost() {
+  const salonRedirect = salonRootRedirectFor();
+  if (salonRedirect) return <Navigate to={salonRedirect} replace />;
   const pelangganRedirect = pelangganRootRedirectFor();
   if (pelangganRedirect) return <Navigate to={pelangganRedirect} replace />;
   if (isMarketplaceHost()) return <Navigate to="/belanja" replace />;
@@ -305,6 +311,9 @@ export function App() {
 
         {/* Halaman pelanggan toko (pelanggan-demo.ebisnis.id) */}
         <Route path="/pelanggan/:slug" element={<PelangganDemoPage />} />
+
+        {/* Contoh jenis usaha untuk calon tenant */}
+        <Route path="/contoh/salon" element={<SalonDemoPage />} />
 
         {/* Aplikasi tenant */}
         <Route
