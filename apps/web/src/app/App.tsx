@@ -28,7 +28,6 @@ import { PesantrenTagihanPage } from '../pages/app/pesantren/PesantrenTagihanPag
 import { PesantrenProfilPage } from '../pages/app/pesantren/PesantrenProfilPage';
 import { PesantrenBeritaPage } from '../pages/app/pesantren/PesantrenBeritaPage';
 import { PesantrenPsbPage } from '../pages/app/pesantren/PesantrenPsbPage';
-import { PesantrenDaftarModulPage } from '../pages/app/pesantren/PesantrenDaftarModulPage';
 import { PesantrenKioskPage } from '../pages/app/pesantren/PesantrenKioskPage';
 import { PesantrenGerbangPage } from '../pages/app/pesantren/PesantrenGerbangPage';
 import { PesantrenPresensiPage } from '../pages/app/pesantren/PesantrenPresensiPage';
@@ -41,6 +40,12 @@ import { PesantrenKartuPage } from '../pages/app/pesantren/PesantrenKartuPage';
 import { PesantrenPembinaanPage } from '../pages/app/pesantren/PesantrenPembinaanPage';
 import { PesantrenBukuPenghubungPage } from '../pages/app/pesantren/PesantrenBukuPenghubungPage';
 import { PesantrenKelasKurikulumPage } from '../pages/app/pesantren/PesantrenKelasKurikulumPage';
+import { PesantrenAbsensiGuruPage } from '../pages/app/pesantren/PesantrenAbsensiGuruPage';
+import { PesantrenDompetPage } from '../pages/app/pesantren/PesantrenDompetPage';
+import { PesantrenKateringPage } from '../pages/app/pesantren/PesantrenKateringPage';
+import { PesantrenSkalaHurufPage } from '../pages/app/pesantren/PesantrenSkalaHurufPage';
+import { PesantrenLaporanPage } from '../pages/app/pesantren/PesantrenLaporanPage';
+import { PesantrenPortalWaliPage } from '../pages/app/pesantren/PesantrenPortalWaliPage';
 import { MasterListPage } from '../pages/app/MasterListPage';
 import { StockTreePage } from '../pages/app/StockTreePage';
 import { RequestOrderPage } from '../pages/app/RequestOrderPage';
@@ -430,18 +435,18 @@ export function App() {
           <Route path="pesantren/presensi" element={<PesantrenPresensiPage />} />
           <Route path="pesantren/tahfiz" element={<PesantrenDakwahPage initialTab="tahfiz" />} />
           <Route path="pesantren/nilai" element={<PesantrenNilaiPage />} />
-          <Route path="pesantren/nilai/skala-huruf" element={<PesantrenDaftarModulPage module="skala-huruf" />} />
-          <Route path="pesantren/absensi-guru" element={<PesantrenDaftarModulPage module="absensi-guru" />} />
+          <Route path="pesantren/nilai/skala-huruf" element={<PesantrenSkalaHurufPage />} />
+          <Route path="pesantren/absensi-guru" element={<PesantrenAbsensiGuruPage />} />
           <Route path="pesantren/ekstrakurikuler" element={<PesantrenPembinaanPage initialTab="ekskul" />} />
           <Route path="pesantren/prestasi" element={<PesantrenPembinaanPage initialTab="prestasi" />} />
           <Route path="pesantren/buku-penghubung" element={<PesantrenBukuPenghubungPage />} />
           <Route path="pesantren/perizinan" element={<PesantrenPerizinanPage />} />
           <Route path="pesantren/pelanggaran" element={<PesantrenPembinaanPage initialTab="pelanggaran" />} />
-          <Route path="pesantren/dompet" element={<PesantrenDaftarModulPage module="dompet" />} />
-          <Route path="pesantren/katering" element={<PesantrenDaftarModulPage module="katering" />} />
-          <Route path="pesantren/laporan" element={<PesantrenDaftarModulPage module="laporan" />} />
+          <Route path="pesantren/dompet" element={<PesantrenDompetPage />} />
+          <Route path="pesantren/katering" element={<PesantrenKateringPage />} />
+          <Route path="pesantren/laporan" element={<PesantrenLaporanPage />} />
           <Route path="pesantren/gerbang" element={<PesantrenGerbangPage />} />
-          <Route path="pesantren/portal-wali" element={<PesantrenDaftarModulPage module="portal-wali" />} />
+          <Route path="pesantren/portal-wali" element={<PesantrenPortalWaliPage />} />
           <Route path="pesantren/kiosk" element={<PesantrenKioskPage />} />
           <Route path="*" element={<OperationalModulePage />} />
         </Route>
