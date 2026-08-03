@@ -28,6 +28,7 @@ import { PesantrenBeritaPage } from '../pages/app/pesantren/PesantrenBeritaPage'
 import { PesantrenPsbPage } from '../pages/app/pesantren/PesantrenPsbPage';
 import { PesantrenDaftarModulPage } from '../pages/app/pesantren/PesantrenDaftarModulPage';
 import { PesantrenKioskPage } from '../pages/app/pesantren/PesantrenKioskPage';
+import { PesantrenGerbangPage } from '../pages/app/pesantren/PesantrenGerbangPage';
 import { MasterListPage } from '../pages/app/MasterListPage';
 import { StockTreePage } from '../pages/app/StockTreePage';
 import { RequestOrderPage } from '../pages/app/RequestOrderPage';
@@ -395,7 +396,7 @@ export function App() {
           <Route path="pesantren/dompet" element={<PesantrenDaftarModulPage module="dompet" />} />
           <Route path="pesantren/katering" element={<PesantrenDaftarModulPage module="katering" />} />
           <Route path="pesantren/laporan" element={<PesantrenDaftarModulPage module="laporan" />} />
-          <Route path="pesantren/gerbang" element={<PesantrenDaftarModulPage module="gerbang" />} />
+          <Route path="pesantren/gerbang" element={<PesantrenGerbangPage />} />
           <Route path="pesantren/portal-wali" element={<PesantrenDaftarModulPage module="portal-wali" />} />
           <Route path="pesantren/kiosk" element={<PesantrenKioskPage />} />
           <Route path="*" element={<ComingSoonPage />} />

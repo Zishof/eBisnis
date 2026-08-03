@@ -6,7 +6,7 @@
  * lihat catatan pada `pesantren-gerbang.service.ts`.
  */
 
-import { Body, Controller, Get, HttpCode, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -53,6 +53,13 @@ class CatatLintasanDto {
 @Controller('pesantren/gerbang')
 export class PesantrenGerbangController {
   constructor(private readonly gerbang: PesantrenGerbangService) {}
+
+  @Permissions('EPESANTREN_GERBANG.READ')
+  @Get('kartu/:nomorKartu')
+  @ApiOperation({ summary: 'Mencari santri dan izin aktif dari kartu gerbang' })
+  pindaiKartu(@Param('nomorKartu') nomorKartu: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.gerbang.pindaiKartu(schemaWajib(user), nomorKartu);
+  }
 
   @Permissions('EPESANTREN_GERBANG.READ')
   @Get()

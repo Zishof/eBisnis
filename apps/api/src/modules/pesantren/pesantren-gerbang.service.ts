@@ -16,9 +16,40 @@ import { MasukanLintasan, validasiLintasan } from './pesantren-perizinan';
 export interface BarisLintasan {
   id: string;
   izin_id: string;
+  santri_id?: string;
+  nis?: string;
+  nama_lengkap?: string;
+  jenis_izin?: string;
   arah: string;
   waktu: string;
   catatan: string | null;
+}
+
+export interface IzinGerbangAktif {
+  id: string;
+  jenis: string;
+  alasan: string;
+  tanggal_mulai: string;
+  tanggal_selesai_rencana: string;
+  status: string;
+  lintasan_terakhir: string | null;
+}
+
+export interface HasilPindaiGerbang {
+  santri: {
+    id: string;
+    nis: string;
+    nama_lengkap: string;
+    status: string;
+  };
+  kartu: {
+    id: string;
+    nomor_kartu: string;
+    jenis: string;
+    status: string;
+  };
+  izinAktif: IzinGerbangAktif[];
+  lintasanTerakhir: BarisLintasan | null;
 }
 
 @Injectable()
@@ -49,15 +80,104 @@ export class PesantrenGerbangService {
     params.push(opsi.ukuranHalaman, offset);
     const items = await this.tenantDb.query<BarisLintasan>(
       schemaName,
-      `SELECT id::text, izin_id::text, arah, waktu::text, catatan
-         FROM ${S}.pesantren_gerbang_log
-        WHERE ${where}
-        ORDER BY waktu DESC
+      `SELECT gl.id::text, gl.izin_id::text, i.santri_id::text, s.nis, s.nama_lengkap,
+              i.jenis AS jenis_izin, gl.arah, gl.waktu::text, gl.catatan
+         FROM ${S}.pesantren_gerbang_log gl
+         JOIN ${S}.pesantren_izin i ON i.id = gl.izin_id
+         JOIN ${S}.pesantren_santri s ON s.id = i.santri_id
+        WHERE ${where.replaceAll('izin_id', 'gl.izin_id')}
+        ORDER BY gl.waktu DESC
         LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
     );
 
     return { items, total: Number(totalRows[0]?.total ?? 0) };
+  }
+
+  async pindaiKartu(schemaName: string, nomorKartu: string): Promise<HasilPindaiGerbang> {
+    const nomorBersih = nomorKartu.trim();
+    if (!nomorBersih) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Nomor kartu wajib diisi.');
+    }
+
+    const S = `"${schemaName}"`;
+    const kartu = await this.tenantDb.queryOne<{
+      id: string;
+      santri_id: string;
+      nomor_kartu: string;
+      jenis: string;
+      status: string;
+    }>(
+      schemaName,
+      `SELECT id::text, santri_id::text, nomor_kartu, jenis, status
+         FROM ${S}.pesantren_kartu
+        WHERE nomor_kartu = $1 AND status = 'AKTIF' AND deleted_at IS NULL`,
+      [nomorBersih],
+    );
+    if (!kartu) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Kartu tidak dikenali atau sudah tidak aktif.');
+    }
+
+    const santri = await this.tenantDb.queryOne<{
+      id: string;
+      nis: string;
+      nama_lengkap: string;
+      status: string;
+    }>(
+      schemaName,
+      `SELECT id::text, nis, nama_lengkap, status
+         FROM ${S}.pesantren_santri
+        WHERE id = $1 AND deleted_at IS NULL`,
+      [kartu.santri_id],
+    );
+    if (!santri) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Data santri pemegang kartu ini tidak ditemukan.');
+    }
+
+    const izinAktif = await this.tenantDb.query<IzinGerbangAktif>(
+      schemaName,
+      `SELECT i.id::text, i.jenis, i.alasan, i.tanggal_mulai::text, i.tanggal_selesai_rencana::text,
+              i.status,
+              (
+                SELECT gl.arah
+                  FROM ${S}.pesantren_gerbang_log gl
+                 WHERE gl.izin_id = i.id
+                 ORDER BY gl.waktu DESC
+                 LIMIT 1
+              ) AS lintasan_terakhir
+         FROM ${S}.pesantren_izin i
+        WHERE i.santri_id = $1
+          AND i.status = 'DISETUJUI'
+          AND i.deleted_at IS NULL
+          AND CURRENT_DATE BETWEEN i.tanggal_mulai AND i.tanggal_selesai_rencana
+        ORDER BY i.tanggal_mulai DESC, i.created_at DESC`,
+      [santri.id],
+    );
+
+    const lintasanTerakhir = await this.tenantDb.queryOne<BarisLintasan>(
+      schemaName,
+      `SELECT gl.id::text, gl.izin_id::text, i.santri_id::text, s.nis, s.nama_lengkap,
+              i.jenis AS jenis_izin, gl.arah, gl.waktu::text, gl.catatan
+         FROM ${S}.pesantren_gerbang_log gl
+         JOIN ${S}.pesantren_izin i ON i.id = gl.izin_id
+         JOIN ${S}.pesantren_santri s ON s.id = i.santri_id
+        WHERE i.santri_id = $1
+        ORDER BY gl.waktu DESC
+        LIMIT 1`,
+      [santri.id],
+    );
+
+    return {
+      santri,
+      kartu: {
+        id: kartu.id,
+        nomor_kartu: kartu.nomor_kartu,
+        jenis: kartu.jenis,
+        status: kartu.status,
+      },
+      izinAktif,
+      lintasanTerakhir,
+    };
   }
 
   /**
@@ -91,9 +211,16 @@ export class PesantrenGerbangService {
 
     const rows = await this.tenantDb.query<BarisLintasan>(
       schemaName,
-      `INSERT INTO ${S}.pesantren_gerbang_log (izin_id, arah, dicatat_oleh, catatan)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id::text, izin_id::text, arah, waktu::text, catatan`,
+      `WITH inserted AS (
+         INSERT INTO ${S}.pesantren_gerbang_log (izin_id, arah, dicatat_oleh, catatan)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, izin_id, arah, waktu, catatan
+       )
+       SELECT inserted.id::text, inserted.izin_id::text, i.santri_id::text, s.nis, s.nama_lengkap,
+              i.jenis AS jenis_izin, inserted.arah, inserted.waktu::text, inserted.catatan
+         FROM inserted
+         JOIN ${S}.pesantren_izin i ON i.id = inserted.izin_id
+         JOIN ${S}.pesantren_santri s ON s.id = i.santri_id`,
       [masukan.izinId, masukan.arah, dicatatOleh, bersihkan(masukan.catatan)],
     );
     return rows[0];
