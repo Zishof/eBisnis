@@ -6,6 +6,7 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { NotificationService } from '../notification/notification.service';
 import {
   MasukanBukuPenghubung,
   MasukanTindakLanjutBukuPenghubung,
@@ -35,7 +36,10 @@ const KOLOM = `b.id::text, b.santri_id::text, s.nis, s.nama_lengkap, b.tanggal::
 
 @Injectable()
 export class PesantrenBukuPenghubungService {
-  constructor(private readonly tenantDb: TenantConnectionService) {}
+  constructor(
+    private readonly tenantDb: TenantConnectionService,
+    private readonly notifications: NotificationService,
+  ) {}
 
   async daftar(
     schemaName: string,
@@ -149,6 +153,7 @@ export class PesantrenBukuPenghubungService {
         createdBy,
       ],
     );
+    await this.beritahuWali(schemaName, rows[0], 'CATATAN_BARU');
     return rows[0];
   }
 
@@ -180,7 +185,41 @@ export class PesantrenBukuPenghubungService {
     if (!rows[0]) {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Catatan buku penghubung tidak ditemukan.');
     }
+    await this.beritahuWali(schemaName, rows[0], 'TINDAK_LANJUT');
     return rows[0];
+  }
+
+  private async beritahuWali(schemaName: string, catatan: BarisBukuPenghubung, jenis: 'CATATAN_BARU' | 'TINDAK_LANJUT'): Promise<void> {
+    if (catatan.visibilitas !== 'WALI') return;
+
+    const judul =
+      jenis === 'CATATAN_BARU'
+        ? `Catatan baru untuk ${catatan.nama_lengkap ?? 'santri'}`
+        : `Tindak lanjut buku penghubung ${catatan.nama_lengkap ?? 'santri'}`;
+    const isi =
+      jenis === 'CATATAN_BARU'
+        ? `${catatan.jenis}: ${catatan.judul}`
+        : catatan.tindak_lanjut || `Catatan "${catatan.judul}" sudah ditindaklanjuti.`;
+
+    await this.notifications.notify(schemaName, {
+      title: judul,
+      body: isi,
+      recipientRoleCode: 'WALI',
+      deepLink: '/app/pesantren/portal-wali',
+      entityType: 'pesantren_buku_penghubung',
+      entityId: catatan.id,
+      severity: jenis === 'CATATAN_BARU' ? 'INFO' : 'WARNING',
+      actionRequired: jenis === 'CATATAN_BARU',
+      groupKey: `PESANTREN_BUKU_PENGHUBUNG:${catatan.id}:${jenis}`,
+      channels: ['IN_APP'],
+      values: {
+        santriId: catatan.santri_id,
+        santri: catatan.nama_lengkap,
+        nis: catatan.nis,
+        jenis: catatan.jenis,
+        judul: catatan.judul,
+      },
+    });
   }
 }
 

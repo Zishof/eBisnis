@@ -60,6 +60,7 @@ import { PesantrenPublicController } from './pesantren-public.controller';
 import { PesantrenPublicService } from './pesantren-public.service';
 import { PesantrenUnitPendidikanController } from './pesantren-unit-pendidikan.controller';
 import { PesantrenUnitPendidikanService } from './pesantren-unit-pendidikan.service';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   /*
@@ -68,7 +69,7 @@ import { PesantrenUnitPendidikanService } from './pesantren-unit-pendidikan.serv
    * bergantung pada POS, bukan sebaliknya. POS tidak mengetahui apa pun
    * tentang dompet santri.
    */
-  imports: [PosModule],
+  imports: [PosModule, NotificationModule],
   controllers: [
     PesantrenSantriController,
     PesantrenPresensiController,
