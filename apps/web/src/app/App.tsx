@@ -80,6 +80,9 @@ const PosPage = lazy(() => import('../pages/pos/PosPage').then((m) => ({ default
 const PosReportPage = lazy(() =>
   import('../pages/pos/PosReportPage').then((m) => ({ default: m.PosReportPage })),
 );
+const PosPromotionPage = lazy(() =>
+  import('../pages/pos/PosPromotionPage').then((m) => ({ default: m.PosPromotionPage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -331,6 +334,7 @@ export function App() {
           <Route path="stock-tree" element={<StockTreePage />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="pos/laporan" element={<PosReportPage />} />
+          <Route path="pos/aturan-diskon" element={<PosPromotionPage />} />
           <Route path="sample-data" element={<SampleDataPage />} />
           <Route path="devices" element={<SubscriptionPage tab="devices" />} />
           <Route path="subscription/checkout" element={<SubscriptionPage tab="checkout" />} />
