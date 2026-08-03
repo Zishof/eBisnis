@@ -42,9 +42,12 @@ interface Gelombang {
   tanggal_tutup: string;
   biaya_pendaftaran: string;
   status: string;
+  unit_pendidikan_id: string | null;
+  unit_pendidikan_nama: string | null;
 }
 
 interface UnitPendidikan {
+  id: string;
   code: string;
   name: string;
   jenis: string;
@@ -156,7 +159,7 @@ export function PsbPendaftaranPage() {
           noHpOrangTua: bersihkanTeks(form.noHpOrangTua),
           alamat: bersihkanTeks(form.alamat),
           asalSekolah: bersihkanTeks(form.asalSekolah),
-          unitPendidikanTujuanId: bersihkanTeks(form.unitPendidikanTujuanId),
+          unitPendidikanTujuanId: gelombang?.unit_pendidikan_id ?? bersihkanTeks(form.unitPendidikanTujuanId),
           nik: bersihkanTeks(form.nik),
           nisn: bersihkanTeks(form.nisn),
           agama: bersihkanTeks(form.agama),
@@ -303,22 +306,35 @@ export function PsbPendaftaranPage() {
             </select>
           </div>
           <Field label="Asal Sekolah" value={form.asalSekolah} onChange={(v) => setForm((f) => ({ ...f, asalSekolah: v }))} />
-          {situs && situs.unitPendidikan.length > 0 && (
+          {gelombang.unit_pendidikan_id ? (
+            // Gelombang ini sudah khusus satu unit -- tidak ada yang perlu
+            // dipilih lagi (server juga menegakkan ini sendiri, lihat
+            // `PesantrenPsbService.daftarkan`), tampilkan saja apa adanya.
             <div>
               <label className="field-label">Unit Pendidikan yang Dituju</label>
-              <select
-                className="field-input"
-                value={form.unitPendidikanTujuanId}
-                onChange={(e) => setForm((f) => ({ ...f, unitPendidikanTujuanId: e.target.value }))}
-              >
-                <option value="">Belum menentukan</option>
-                {situs.unitPendidikan.map((u) => (
-                  <option key={u.code} value={u.code}>
-                    {u.name}
-                  </option>
-                ))}
-              </select>
+              <p className="field-input flex items-center bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                {gelombang.unit_pendidikan_nama}
+              </p>
             </div>
+          ) : (
+            situs &&
+            situs.unitPendidikan.length > 0 && (
+              <div>
+                <label className="field-label">Unit Pendidikan yang Dituju</label>
+                <select
+                  className="field-input"
+                  value={form.unitPendidikanTujuanId}
+                  onChange={(e) => setForm((f) => ({ ...f, unitPendidikanTujuanId: e.target.value }))}
+                >
+                  <option value="">Belum menentukan</option>
+                  {situs.unitPendidikan.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )
           )}
         </fieldset>
 

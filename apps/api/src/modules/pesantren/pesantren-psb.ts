@@ -47,6 +47,12 @@ const POLA_KODE_GELOMBANG = /^[A-Za-z0-9_-]{1,16}$/;
 
 export interface MasukanGelombang {
   tahunAjaranId?: string;
+  /**
+   * Opsional -- kosong berarti gelombang berlaku lintas seluruh unit
+   * (perilaku lama). Diisi bila jadwal/kuota/biayanya khusus satu unit
+   * (mis. gelombang MI berbeda dari gelombang Madrasah Diniyah).
+   */
+  unitPendidikanId?: string | null;
   kode?: string;
   nama?: string;
   tanggalBuka?: string;

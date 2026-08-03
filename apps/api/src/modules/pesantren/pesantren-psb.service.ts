@@ -31,6 +31,7 @@ import {
 export interface BarisGelombang {
   id: string;
   tahun_ajaran_id: string;
+  unit_pendidikan_id: string | null;
   kode: string;
   nama: string;
   tanggal_buka: string;
@@ -41,7 +42,7 @@ export interface BarisGelombang {
   created_at: string;
 }
 
-const KOLOM_GELOMBANG = `id::text, tahun_ajaran_id::text, kode, nama, tanggal_buka::text,
+const KOLOM_GELOMBANG = `id::text, tahun_ajaran_id::text, unit_pendidikan_id::text, kode, nama, tanggal_buka::text,
   tanggal_tutup::text, kuota, biaya_pendaftaran::text, status, created_at::text`;
 
 export interface BarisPendaftar {
@@ -143,7 +144,7 @@ export class PesantrenPsbService {
 
   async daftarGelombang(
     schemaName: string,
-    opsi: { status?: string; halaman: number; ukuranHalaman: number },
+    opsi: { status?: string; unitPendidikanId?: string; halaman: number; ukuranHalaman: number },
   ): Promise<{ items: BarisGelombang[]; total: number }> {
     const S = `"${schemaName}"`;
     const kondisi: string[] = ['deleted_at IS NULL'];
@@ -152,6 +153,10 @@ export class PesantrenPsbService {
     if (opsi.status) {
       params.push(opsi.status);
       kondisi.push(`status = $${params.length}`);
+    }
+    if (opsi.unitPendidikanId) {
+      params.push(opsi.unitPendidikanId);
+      kondisi.push(`unit_pendidikan_id = $${params.length}`);
     }
 
     const where = kondisi.join(' AND ');
@@ -199,15 +204,27 @@ export class PesantrenPsbService {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Tahun ajaran tidak ditemukan.');
     }
 
+    if (masukan.unitPendidikanId) {
+      const unit = await this.tenantDb.queryOne<{ id: string }>(
+        schemaName,
+        `SELECT id FROM ${S}.pesantren_unit_pendidikan WHERE id = $1 AND deleted_at IS NULL`,
+        [masukan.unitPendidikanId],
+      );
+      if (!unit) {
+        throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Unit pendidikan tidak ditemukan.');
+      }
+    }
+
     try {
       const rows = await this.tenantDb.query<BarisGelombang>(
         schemaName,
         `INSERT INTO ${S}.pesantren_psb_gelombang
-           (tahun_ajaran_id, kode, nama, tanggal_buka, tanggal_tutup, kuota, biaya_pendaftaran, created_by, updated_by)
-         VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 0), $8, $8)
+           (tahun_ajaran_id, unit_pendidikan_id, kode, nama, tanggal_buka, tanggal_tutup, kuota, biaya_pendaftaran, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 0), $9, $9)
          RETURNING ${KOLOM_GELOMBANG}`,
         [
           masukan.tahunAjaranId,
+          masukan.unitPendidikanId || null,
           masukan.kode!.trim(),
           masukan.nama!.trim(),
           masukan.tanggalBuka,
@@ -422,8 +439,9 @@ export class PesantrenPsbService {
         status: string;
         kode: string;
         tahun_ajaran_code: string;
+        unit_pendidikan_id: string | null;
       }>(
-        `SELECT g.id::text, g.status, g.kode, t.code AS tahun_ajaran_code
+        `SELECT g.id::text, g.status, g.kode, t.code AS tahun_ajaran_code, g.unit_pendidikan_id::text
            FROM ${S}.pesantren_psb_gelombang g
            JOIN ${S}.pesantren_tahun_ajaran t ON t.id = g.tahun_ajaran_id
           WHERE g.id = $1 AND g.deleted_at IS NULL
@@ -441,10 +459,20 @@ export class PesantrenPsbService {
         );
       }
 
-      if (masukan.unitPendidikanTujuanId) {
+      /*
+       * Gelombang khusus satu unit MENIMPA pilihan pengunjung, bukan
+       * sekadar menyarankan -- pendaftar yang mendaftar lewat gelombang
+       * MI tidak boleh tercatat bertujuan BLK hanya karena formulirnya
+       * (atau permintaan API yang dibuat manual) mengisi field itu berbeda.
+       * Gelombang lintas-unit (unit_pendidikan_id NULL) tetap memakai
+       * pilihan pengunjung apa adanya, seperti sebelumnya.
+       */
+      const unitPendidikanTujuanId = gelombang.unit_pendidikan_id ?? masukan.unitPendidikanTujuanId;
+
+      if (unitPendidikanTujuanId) {
         const unit = await client.query(
           `SELECT id FROM ${S}.pesantren_unit_pendidikan WHERE id = $1 AND deleted_at IS NULL`,
-          [masukan.unitPendidikanTujuanId],
+          [unitPendidikanTujuanId],
         );
         if (!unit.rows[0]) {
           throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Unit pendidikan tujuan tidak ditemukan.');
@@ -497,7 +525,7 @@ export class PesantrenPsbService {
           bersihkan(masukan.noHpOrangTua),
           bersihkan(masukan.alamat),
           bersihkan(masukan.asalSekolah),
-          masukan.unitPendidikanTujuanId || null,
+          unitPendidikanTujuanId || null,
           bersihkan(masukan.nik),
           bersihkan(masukan.nisn),
           bersihkan(masukan.nipd),

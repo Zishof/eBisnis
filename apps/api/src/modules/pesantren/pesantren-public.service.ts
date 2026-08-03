@@ -66,7 +66,7 @@ export class PesantrenPublicService {
 
     const unitPendidikan = await this.tenantDb.query(
       S,
-      `SELECT code, name, jenis
+      `SELECT id::text, code, name, jenis
          FROM "${S}".pesantren_unit_pendidikan
         WHERE is_active = TRUE AND deleted_at IS NULL
         ORDER BY sort_order ASC, name ASC`,
@@ -176,10 +176,13 @@ export class PesantrenPublicService {
 
     return this.tenantDb.query(
       S,
-      `SELECT id::text, kode, nama, tanggal_buka::text, tanggal_tutup::text, biaya_pendaftaran::text, status
-         FROM "${S}".pesantren_psb_gelombang
-        WHERE status != 'DRAFT' AND deleted_at IS NULL
-        ORDER BY tanggal_buka DESC`,
+      `SELECT g.id::text, g.kode, g.nama, g.tanggal_buka::text, g.tanggal_tutup::text,
+              g.biaya_pendaftaran::text, g.status,
+              g.unit_pendidikan_id::text, u.name AS unit_pendidikan_nama
+         FROM "${S}".pesantren_psb_gelombang g
+         LEFT JOIN "${S}".pesantren_unit_pendidikan u ON u.id = g.unit_pendidikan_id
+        WHERE g.status != 'DRAFT' AND g.deleted_at IS NULL
+        ORDER BY g.tanggal_buka DESC`,
     );
   }
 
