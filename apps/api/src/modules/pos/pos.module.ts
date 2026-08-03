@@ -57,6 +57,7 @@ import { PosShiftService } from './pos-shift.service';
 import { PosReportService } from './pos-report.service';
 import { PosSampleService, PROFIL_BAWAAN, PROFIL_RINGKAS } from './pos-sample.service';
 import { PosOfflineService } from './pos-offline.service';
+import { PosPromotionService } from './pos-promotion.service';
 import { AuthModule } from '../auth/auth.module';
 import { TenantPermissionService } from '../auth/tenant-permission.service';
 
@@ -573,6 +574,7 @@ export class PosController {
     private readonly laporan: PosReportService,
     private readonly contoh: PosSampleService,
     private readonly luring: PosOfflineService,
+    private readonly promosi: PosPromotionService,
   ) {}
 
   /**
@@ -1418,6 +1420,72 @@ export class PosController {
   shiftBerjalan(@CurrentUser() user: AuthenticatedUser) {
     return this.konteks.shiftBerjalan(requireSchema(user), user);
   }
+
+  // --- Aturan diskon --------------------------------------------------------
+  //
+  // Mesin promosinya sudah bekerja sejak lama; yang tidak ada adalah cara
+  // membuat aturannya. Sampai sebelum bagian ini, satu-satunya jalan adalah SQL
+  // langsung atau data contoh — dan mesin yang tidak dapat diisi sama saja
+  // dengan mesin yang tidak ada.
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_PROMO.READ')
+  @Get('promotions')
+  @ApiOperation({ summary: 'Daftar aturan diskon' })
+  daftarPromosi(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('includeInactive') includeInactive?: string,
+  ) {
+    return this.promosi.daftar(requireSchema(user), {
+      includeInactive: includeInactive === 'true',
+    });
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_PROMO.READ')
+  @Get('promotions/:id')
+  @ApiOperation({ summary: 'Satu aturan diskon' })
+  satuPromosi(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.promosi.satu(requireSchema(user), id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_PROMO.CREATE')
+  @Post('promotions')
+  @ApiOperation({
+    summary: 'Membuat aturan diskon',
+    description:
+      'Menolak diskon persen di atas 100%, lingkup outlet atau brand tanpa id, dan jam ' +
+      'mulai tanpa jam selesai. Seluruh masalah dilaporkan sekaligus.',
+  })
+  buatPromosi(@Body() dto: Record<string, unknown>, @CurrentUser() user: AuthenticatedUser) {
+    return this.promosi.buat(requireSchema(user), dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_PROMO.UPDATE')
+  @Patch('promotions/:id')
+  @ApiOperation({ summary: 'Mengubah aturan diskon' })
+  ubahPromosi(
+    @Param('id') id: string,
+    @Body() dto: Record<string, unknown>,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.promosi.ubah(requireSchema(user), id, dto, user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_PROMO.DELETE')
+  @Post('promotions/:id/deactivate')
+  @ApiOperation({
+    summary: 'Menonaktifkan aturan diskon',
+    description:
+      'Dinonaktifkan, bukan dihapus: transaksi yang sudah terjadi menunjuk aturan ini, dan ' +
+      'menghapusnya membuat struk lama tidak dapat dijelaskan lagi.',
+  })
+  nonaktifkanPromosi(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.promosi.nonaktifkan(requireSchema(user), id, user);
+  }
 }
 
 import { ExternalPaymentRegistry } from './external-payment.registry';
@@ -1436,6 +1504,7 @@ import { ExternalPaymentRegistry } from './external-payment.registry';
     PosReportService,
     PosSampleService,
     PosOfflineService,
+    PosPromotionService,
   ],
   exports: [
     ExternalPaymentRegistry,

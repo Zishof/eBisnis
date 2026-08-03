@@ -160,7 +160,8 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
   { code: 'POS_RETURN', parentCode: 'POS', label: 'Retur dan Refund', translationKey: 'menu.pos.return', route: '/app/pos/retur', icon: 'undo-2', moduleCode: 'POS', sortOrder: 5, actions: ['READ', 'CREATE', 'RETURN', 'RETURN_APPROVE', 'REFUND_APPROVE', 'REJECT', 'PRINT', 'EXPORT'] },
   { code: 'POS_TERMINAL', parentCode: 'POS', label: 'Terminal POS', translationKey: 'menu.pos.terminal', route: '/app/pos/terminals', icon: 'monitor', moduleCode: 'POS', sortOrder: 6, actions: CRUD },
   { code: 'POS_REGISTER_ASSIGN', parentCode: 'POS', label: 'Penugasan Register', translationKey: 'menu.pos.registerAssign', route: '/app/pos/penugasan', icon: 'user-check', moduleCode: 'POS', sortOrder: 7, actions: ['READ', 'CREATE', 'UPDATE', 'DELETE'] },
-  { code: 'POS_REPORT', parentCode: 'POS', label: 'Laporan POS', translationKey: 'menu.pos.report', route: '/app/pos/laporan', icon: 'bar-chart-3', moduleCode: 'POS', sortOrder: 8, actions: ['READ', 'PRINT', 'EXPORT', 'VIEW_AMOUNT', 'VIEW_COST', 'VIEW_PROFIT', 'AUDIT_READ'] },
+  { code: 'POS_PROMO', parentCode: 'POS', label: 'Aturan Diskon', translationKey: 'menu.pos.promo', route: '/app/pos/aturan-diskon', icon: 'percent', moduleCode: 'POS', sortOrder: 8, actions: CRUD },
+  { code: 'POS_REPORT', parentCode: 'POS', label: 'Laporan POS', translationKey: 'menu.pos.report', route: '/app/pos/laporan', icon: 'bar-chart-3', moduleCode: 'POS', sortOrder: 9, actions: ['READ', 'PRINT', 'EXPORT', 'VIEW_AMOUNT', 'VIEW_COST', 'VIEW_PROFIT', 'AUDIT_READ'] },
 
   // 03 Penjualan
   { code: 'SALES', label: 'Penjualan', translationKey: 'menu.sales', icon: 'trending-up', moduleCode: 'SALES', sortOrder: 3, actions: ['READ'], comingSoon: true },
