@@ -149,13 +149,20 @@ export class PesantrenPublicService {
   }
 
   /**
-   * Gelombang yang sedang DIBUKA -- satu-satunya yang boleh dipilih pada
-   * formulir pendaftaran publik. Sama aturan penerbitannya dengan
-   * `situs()` -- pondok yang belum menerbitkan situsnya tidak menawarkan
-   * pendaftaran lewat jalur publik, walau gelombangnya sudah dibuka
-   * pengurus untuk dipakai lewat panel admin.
+   * Seluruh gelombang yang layak ditampilkan pengunjung -- BUKAN hanya yang
+   * sedang DIBUKA. Halaman landing PSB (`PsbGelombangPage.tsx`) sengaja
+   * menampilkan gelombang yang sudah DITUTUP/SELESAI juga (dengan lencana
+   * berbeda, tombol nonaktif) supaya pengunjung tahu riwayat/pola
+   * penerimaan pondok -- pola sama dengan `_gelombang_ppdb.jsp` pada
+   * sistem lama, yang punya filter status "Semua/Buka/Tutup".
+   *
+   * `DRAFT` TIDAK pernah ikut -- itu gelombang yang bahkan belum diumumkan
+   * pengurus, beda dari "sudah pernah dibuka tapi kini tutup".
+   *
+   * Sama aturan penerbitannya dengan `situs()` -- pondok yang belum
+   * menerbitkan situsnya tidak menawarkan apa pun lewat jalur publik.
    */
-  async psbGelombangDibuka(host: string | undefined) {
+  async psbGelombangPublik(host: string | undefined) {
     const konteks = await this.resolver.resolve(host, VERTIKAL);
     const S = konteks.schemaName;
 
@@ -169,10 +176,10 @@ export class PesantrenPublicService {
 
     return this.tenantDb.query(
       S,
-      `SELECT id::text, kode, nama, tanggal_buka::text, tanggal_tutup::text, biaya_pendaftaran::text
+      `SELECT id::text, kode, nama, tanggal_buka::text, tanggal_tutup::text, biaya_pendaftaran::text, status
          FROM "${S}".pesantren_psb_gelombang
-        WHERE status = 'DIBUKA' AND deleted_at IS NULL
-        ORDER BY tanggal_buka ASC`,
+        WHERE status != 'DRAFT' AND deleted_at IS NULL
+        ORDER BY tanggal_buka DESC`,
     );
   }
 

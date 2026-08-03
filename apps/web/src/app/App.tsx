@@ -109,6 +109,9 @@ const SantriInfoHomePage = lazy(() =>
 const SitusPondokPage = lazy(() =>
   import('../verticals/pesantren/SitusPondokPage').then((m) => ({ default: m.SitusPondokPage })),
 );
+const PsbGelombangPage = lazy(() =>
+  import('../verticals/pesantren/PsbGelombangPage').then((m) => ({ default: m.PsbGelombangPage })),
+);
 const PsbPendaftaranPage = lazy(() =>
   import('../verticals/pesantren/PsbPendaftaranPage').then((m) => ({ default: m.PsbPendaftaranPage })),
 );
@@ -230,7 +233,8 @@ export function App() {
           pemeriksaan host lagi seperti pada PublicLayout/SantriLayout.
         */}
         <Route element={<PondokChrome />}>
-          <Route path="/santri/pondok/psb" element={<PsbPendaftaranPage />} />
+          <Route path="/santri/pondok/psb" element={<PsbGelombangPage />} />
+          <Route path="/santri/pondok/psb/daftar/:gelombangId" element={<PsbPendaftaranPage />} />
           <Route path="/santri/pondok/psb/masuk" element={<PsbLoginPage />} />
           <Route path="/santri/pondok/psb/status" element={<PsbDashboardPage />} />
         </Route>
