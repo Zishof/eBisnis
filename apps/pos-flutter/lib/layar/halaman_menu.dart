@@ -257,11 +257,15 @@ class HalamanRiwayatPembayaran extends StatefulWidget {
   const HalamanRiwayatPembayaran({
     required this.riwayat,
     required this.uang,
+    required this.printerSiap,
+    required this.onCetakStruk,
     super.key,
   });
 
   final List<RiwayatPembayaranKasir> riwayat;
   final String Function(String) uang;
+  final bool printerSiap;
+  final void Function(RiwayatPembayaranKasir) onCetakStruk;
 
   @override
   State<HalamanRiwayatPembayaran> createState() =>
@@ -408,29 +412,45 @@ class _HalamanRiwayatPembayaranState extends State<HalamanRiwayatPembayaran> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           trailing: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 220),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                            constraints: const BoxConstraints(maxWidth: 270),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  widget.uang(r.total),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    color: Warna.teks,
+                                Flexible(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        widget.uang(r.total),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          color: Warna.teks,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Bayar ${widget.uang(r.diserahkan)} - '
+                                        'Kembali ${widget.uang(r.kembalian)}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Warna.teksRedup,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                Text(
-                                  'Bayar ${widget.uang(r.diserahkan)} - '
-                                  'Kembali ${widget.uang(r.kembalian)}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Warna.teksRedup,
-                                    fontSize: 12,
-                                  ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  key: Key('cetak-riwayat-pembayaran-$i'),
+                                  tooltip: 'Cetak struk',
+                                  onPressed: widget.printerSiap
+                                      ? () => widget.onCetakStruk(r)
+                                      : null,
+                                  icon: const Icon(Icons.print_outlined),
                                 ),
                               ],
                             ),

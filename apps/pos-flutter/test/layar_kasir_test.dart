@@ -254,7 +254,7 @@ void main() {
     );
   });
 
-  testWidgets('alur penuh: pindai, bayar, struk tercetak dan laci terbuka',
+  testWidgets('alur penuh: pindai, bayar, lalu pilih cetak struk dan buka laci',
       (tester) async {
     final pencetak = PencetakPalsu();
     await pasang(tester, pencetak: pencetak);
@@ -267,17 +267,27 @@ void main() {
     await tester.tap(find.byKey(const Key('selesaikan')));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('dialog-transaksi-berhasil')), findsOneWidget);
+    expect(find.text('Rp 2.000'), findsOneWidget);
+    expect(pencetak.terkirim, isEmpty);
+
+    await tester.tap(find.byKey(const Key('aksi-cetak-struk-selesai')));
+    await tester.pumpAndSettle();
     expect(pencetak.terkirim, hasLength(1));
-
-    // Perintah membuka laci ikut pada byte struk: laci yang terbuka tanpa struk,
-    // atau sebaliknya, membuat kasir tidak yakin transaksinya sudah selesai.
     final byte = pencetak.terkirim.single;
-    expect(_memuatUrutan(byte, [0x1B, 0x70]), isTrue,
-        reason: 'perintah ESC p tidak ada');
+    expect(_memuatUrutan(byte, [0x1B, 0x70]), isFalse,
+        reason: 'cetak struk tidak boleh membuka laci otomatis');
 
-    // Keranjang dikosongkan dan kembaliannya disebutkan.
+    await tester.tap(find.byKey(const Key('aksi-buka-laci-selesai')));
+    await tester.pumpAndSettle();
+    expect(pencetak.terkirim, hasLength(2));
+    expect(pencetak.terkirim.last, [0x1B, 0x70, 0x00, 25, 125]);
+
+    await tester.tap(find.byKey(const Key('aksi-transaksi-baru')));
+    await tester.pumpAndSettle();
+
+    // Keranjang dikosongkan untuk transaksi berikutnya.
     expect(find.byKey(const Key('keranjang-kosong')), findsOneWidget);
-    expect(find.textContaining('Rp 2.000'), findsOneWidget);
   });
 
   testWidgets('pembayaran selesai masuk ke riwayat pembayaran dan summary',
@@ -290,6 +300,9 @@ void main() {
     await tester.enterText(find.byKey(const Key('uang-diserahkan')), '20000');
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('selesaikan')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('aksi-transaksi-baru')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('menu-riwayat-pembayaran')));
@@ -321,7 +334,8 @@ void main() {
     await tester.tap(find.byKey(const Key('selesaikan')));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('TIDAK tercetak'), findsOneWidget);
+    expect(find.byKey(const Key('dialog-transaksi-berhasil')), findsOneWidget);
+    expect(find.textContaining('Printer tidak terpasang'), findsOneWidget);
     expect(find.byKey(const Key('keranjang-kosong')), findsOneWidget);
   });
 

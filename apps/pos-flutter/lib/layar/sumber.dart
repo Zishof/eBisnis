@@ -197,6 +197,7 @@ class RiwayatPembayaranKasir {
     required this.jumlahBarang,
     required this.jenisPesanan,
     required this.catatan,
+    required this.byteStruk,
   });
 
   final String nomorStruk;
@@ -208,6 +209,7 @@ class RiwayatPembayaranKasir {
   final int jumlahBarang;
   final String jenisPesanan;
   final String catatan;
+  final List<int> byteStruk;
 }
 
 /// Pembuku transaksi ke sistem pusat.
