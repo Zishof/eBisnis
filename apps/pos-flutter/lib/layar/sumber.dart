@@ -114,6 +114,40 @@ class MetodeBayar {
   final bool memberiKembalian;
 }
 
+/// Transaksi yang sudah disetujui kasir untuk dibukukan.
+///
+/// Angka di dalam `hasil` tetap angka lokal dari salinan katalog. Saat
+/// tersambung peladen, angka otoritatif tetap dihitung ulang oleh endpoint POS;
+/// bentuk ini hanya memberi tahu peladen produk, jumlah, dan pembayaran yang
+/// dipilih kasir.
+class TransaksiKasir {
+  const TransaksiKasir({
+    required this.baris,
+    required this.hasil,
+    required this.metode,
+    required this.diserahkan,
+    required this.kembalian,
+    required this.jenisPesanan,
+    required this.catatan,
+  });
+
+  final List<BarisLuring> baris;
+  final HasilKeranjang hasil;
+  final MetodeBayar metode;
+  final String diserahkan;
+  final String kembalian;
+  final String jenisPesanan;
+  final String catatan;
+
+  String get total => hasil.grandTotal;
+}
+
+/// Pembuku transaksi ke sistem pusat.
+///
+/// Mengembalikan nomor struk dari peladen bila pembukuan berhasil. Bila null,
+/// layar tetap menjalankan mode lokal lama.
+typedef PembukuanKasir = Future<String?> Function(TransaksiKasir transaksi);
+
 /// Printer struk, sekaligus jalan membuka laci kas.
 abstract class Pencetak {
   /// Mengirim byte ESC/POS apa adanya.

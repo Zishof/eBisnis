@@ -48,6 +48,7 @@ class LayarKasir extends StatefulWidget {
     this.koneksi,
     this.namaPengguna,
     this.pembaruan,
+    this.pembukuan,
     super.key,
   });
 
@@ -68,6 +69,7 @@ class LayarKasir extends StatefulWidget {
   final KeadaanKoneksi? koneksi;
   final String? namaPengguna;
   final PengelolaPembaruan? pembaruan;
+  final PembukuanKasir? pembukuan;
 
   @override
   State<LayarKasir> createState() => _LayarKasirState();
@@ -88,14 +90,15 @@ class _LayarKasirState extends State<LayarKasir> {
   String _kunciCari = '';
   JenisPesanan _jenis = JenisPesanan.dineIn;
 
-  HasilKeranjang get _total =>
-      hitungKeranjangLuring(_baris, widget.katalog.tarif, widget.katalog.mataUang);
+  HasilKeranjang get _total => hitungKeranjangLuring(
+      _baris, widget.katalog.tarif, widget.katalog.mataUang);
 
   @override
   void initState() {
     super.initState();
     _perbaruiPelanggan();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fokusPindai.requestFocus());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _fokusPindai.requestFocus());
   }
 
   @override
@@ -123,7 +126,8 @@ class _LayarKasirState extends State<LayarKasir> {
     final p = widget.pelanggan;
     if (p == null) return;
     if (_baris.isEmpty) {
-      p.value = PelangganMenunggu(namaToko: widget.namaToko, sapaan: 'Selamat datang');
+      p.value = PelangganMenunggu(
+          namaToko: widget.namaToko, sapaan: 'Selamat datang');
       return;
     }
     final t = _total;
@@ -142,7 +146,8 @@ class _LayarKasirState extends State<LayarKasir> {
       terakhirDitambah: _terakhir == null
           ? null
           : () {
-              final l = t.lines.firstWhere((x) => x.productId == _terakhir!.productId);
+              final l = t.lines
+                  .firstWhere((x) => x.productId == _terakhir!.productId);
               return BarisPelanggan(
                 nama: l.name,
                 jumlah: l.quantity,
@@ -224,7 +229,8 @@ class _LayarKasirState extends State<LayarKasir> {
       _pindai.clear();
       if (_kunciCari.isNotEmpty) setState(() => _kunciCari = '');
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fokusPindai.requestFocus());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _fokusPindai.requestFocus());
   }
 
   /// Benar bila teksnya berbentuk barcode: hanya angka dan cukup panjang.
@@ -372,8 +378,12 @@ class _LayarKasirState extends State<LayarKasir> {
         title: Text(tindakan),
         content: Text('Lanjutkan $tindakan?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Lanjutkan')),
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Batal')),
+          FilledButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('Lanjutkan')),
         ],
       ),
     );
@@ -400,13 +410,17 @@ class _LayarKasirState extends State<LayarKasir> {
                   // Ditandai supaya kasir yang berpindah dari klien web tahu
                   // mana yang memang berbeda, alih-alih mengira salah satu rusak.
                   trailing: hanyaDiAplikasiAsli.contains(p.aksi)
-                      ? const Text('hanya di aplikasi', style: TextStyle(fontSize: 11))
+                      ? const Text('hanya di aplikasi',
+                          style: TextStyle(fontSize: 11))
                       : null,
                 ),
             ],
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('Tutup'))],
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c), child: const Text('Tutup'))
+        ],
       ),
     );
   }
@@ -440,9 +454,11 @@ class _LayarKasirState extends State<LayarKasir> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(h.pesan),
-              if (h.rilis?.catatan case final catatan? when catatan.trim().isNotEmpty) ...[
+              if (h.rilis?.catatan case final catatan?
+                  when catatan.trim().isNotEmpty) ...[
                 const SizedBox(height: 12),
-                const Text('Catatan rilis', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Catatan rilis',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 160),
@@ -459,7 +475,8 @@ class _LayarKasirState extends State<LayarKasir> {
                  * adalah tindakan yang harus dipilih manusia, pada saat yang ia
                  * pilih sendiri — dan gerai umumnya memperbarui sesudah tutup.
                  */
-                const Text('Tautan unduhan', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Tautan unduhan',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 SelectableText(
                   rilis.jalurUnduh,
@@ -480,7 +497,8 @@ class _LayarKasirState extends State<LayarKasir> {
               },
               child: const Text('Salin tautan'),
             ),
-          FilledButton(onPressed: () => Navigator.pop(c), child: const Text('Tutup')),
+          FilledButton(
+              onPressed: () => Navigator.pop(c), child: const Text('Tutup')),
         ],
       ),
     );
@@ -493,7 +511,8 @@ class _LayarKasirState extends State<LayarKasir> {
     if (!widget.pencetak.siap) {
       // Laci dibuka lewat printer. Tanpa printer tidak ada jalan lain, dan itu
       // harus dikatakan — kasir yang menunggu laci terbuka akan menekan lagi.
-      _kabar('Printer tidak terpasang, sehingga laci kas tidak dapat dibuka dari sini.',
+      _kabar(
+          'Printer tidak terpasang, sehingga laci kas tidak dapat dibuka dari sini.',
           galat: true);
       _kembalikanFokus();
       return;
@@ -510,9 +529,11 @@ class _LayarKasirState extends State<LayarKasir> {
       return;
     }
     final t = _total;
-    final metode = pilihan ?? (widget.metode.isEmpty ? null : widget.metode.first);
+    final metode =
+        pilihan ?? (widget.metode.isEmpty ? null : widget.metode.first);
     if (metode == null) {
-      _kabar('Belum ada metode pembayaran pada salinan di mesin ini.', galat: true);
+      _kabar('Belum ada metode pembayaran pada salinan di mesin ini.',
+          galat: true);
       _kembalikanFokus();
       return;
     }
@@ -527,7 +548,8 @@ class _LayarKasirState extends State<LayarKasir> {
         mataUang: widget.katalog.mataUang,
         uang: _uang,
         onUbah: (nilai) {
-          final k = hitungKembalian(t.grandTotal, nilai, widget.katalog.mataUang);
+          final k =
+              hitungKembalian(t.grandTotal, nilai, widget.katalog.mataUang);
           widget.pelanggan?.value = PelangganMembayar(
             total: t.grandTotal,
             diserahkan: nilai.isEmpty ? null : nilai,
@@ -544,7 +566,8 @@ class _LayarKasirState extends State<LayarKasir> {
       return;
     }
 
-    final kembalian = hitungKembalian(t.grandTotal, diserahkan, widget.katalog.mataUang);
+    final kembalian =
+        hitungKembalian(t.grandTotal, diserahkan, widget.katalog.mataUang);
     await _selesaikan(t, metode, diserahkan, kembalian.change);
   }
 
@@ -554,6 +577,29 @@ class _LayarKasirState extends State<LayarKasir> {
     String diserahkan,
     String kembalian,
   ) async {
+    String? nomorStruk;
+    if (widget.pembukuan != null) {
+      try {
+        _kabar('Membukukan transaksi ke peladen...');
+        nomorStruk = await widget.pembukuan!(
+          TransaksiKasir(
+            baris: List.unmodifiable(_baris),
+            hasil: t,
+            metode: metode,
+            diserahkan: diserahkan,
+            kembalian: kembalian,
+            jenisPesanan: namaJenisPesanan[_jenis]!,
+            catatan: _catatan.text.trim(),
+          ),
+        );
+      } catch (e) {
+        _kabar('Transaksi belum dibukukan: $e', galat: true);
+        _perbaruiPelanggan();
+        _kembalikanFokus();
+        return;
+      }
+    }
+
     /*
      * Struk dicetak dan laci dibuka pada perintah yang sama.
      *
@@ -571,10 +617,14 @@ class _LayarKasirState extends State<LayarKasir> {
         ..rata(Rata.kiri)
         ..baris(namaJenisPesanan[_jenis]!)
         ..garis();
+      if (nomorStruk != null && nomorStruk.trim().isNotEmpty) {
+        struk.baris('Struk: $nomorStruk');
+      }
       for (final l in t.lines) {
         struk
           ..baris(l.name)
-          ..barisKiriKanan('  ${l.quantity} x ${_uang(l.unitPrice)}', _uang(l.lineTotal));
+          ..barisKiriKanan(
+              '  ${l.quantity} x ${_uang(l.unitPrice)}', _uang(l.lineTotal));
       }
       struk
         ..garis()
@@ -599,7 +649,8 @@ class _LayarKasirState extends State<LayarKasir> {
       await widget.pencetak.kirim(struk.selesai());
     }
 
-    widget.pelanggan?.value = PelangganSelesai(total: t.grandTotal, kembalian: kembalian);
+    widget.pelanggan?.value =
+        PelangganSelesai(total: t.grandTotal, kembalian: kembalian);
 
     setState(() {
       _baris.clear();
@@ -608,8 +659,8 @@ class _LayarKasirState extends State<LayarKasir> {
     });
     _kabar(
       widget.pencetak.siap
-          ? 'Transaksi selesai. Kembalian ${_uang(kembalian)}.'
-          : 'Transaksi selesai. Kembalian ${_uang(kembalian)}. Struk TIDAK tercetak — printer tidak terpasang.',
+          ? 'Transaksi selesai${nomorStruk == null ? '' : ' ($nomorStruk)'}. Kembalian ${_uang(kembalian)}.'
+          : 'Transaksi selesai${nomorStruk == null ? '' : ' ($nomorStruk)'}. Kembalian ${_uang(kembalian)}. Struk TIDAK tercetak — printer tidak terpasang.',
       galat: !widget.pencetak.siap,
     );
     _kembalikanFokus();
@@ -635,7 +686,8 @@ class _LayarKasirState extends State<LayarKasir> {
                 if (m.diKlienIni) return;
                 // Menu yang layarnya ada di aplikasi web menjawab di mana
                 // layarnya berada. Diam akan membuat kasir menekannya lagi.
-                _kabar('${m.label} ada pada aplikasi web eBisnis, belum pada klien kasir ini.');
+                _kabar(
+                    '${m.label} ada pada aplikasi web eBisnis, belum pada klien kasir ini.');
               },
             ),
             Expanded(
@@ -717,7 +769,9 @@ class _LayarKasirState extends State<LayarKasir> {
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _pesanGalat ? const Color(0xFFFEE2E2) : const Color(0xFFE0F2FE),
+              color: _pesanGalat
+                  ? const Color(0xFFFEE2E2)
+                  : const Color(0xFFE0F2FE),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(_pesan!, style: const TextStyle(fontSize: 13)),
@@ -784,7 +838,8 @@ class _BilahPintasan extends StatelessWidget {
                   children: [
                     Text(
                       keteranganAksi[p.aksi]!,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(width: 7),
                     Text(
@@ -835,8 +890,8 @@ class _DialogBayarState extends State<_DialogBayar> {
 
   @override
   Widget build(BuildContext context) {
-    final k = hitungKembalian(widget.total, _kendali.text.isEmpty ? '0' : _kendali.text,
-        widget.mataUang);
+    final k = hitungKembalian(widget.total,
+        _kendali.text.isEmpty ? '0' : _kendali.text, widget.mataUang);
 
     return AlertDialog(
       key: const Key('dialog-bayar'),
@@ -878,7 +933,9 @@ class _DialogBayarState extends State<_DialogBayar> {
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal')),
         FilledButton(
           key: const Key('selesaikan'),
           // Tidak dapat ditekan selama uangnya kurang. Menyelesaikan transaksi
