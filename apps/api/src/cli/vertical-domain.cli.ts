@@ -32,7 +32,7 @@ import {
   kunciSimpanan,
 } from '../infrastructure/tenant/public-host';
 
-const VERTIKAL_DIKENAL = ['cooperative', 'health', 'village'];
+const VERTIKAL_DIKENAL = ['cooperative', 'health', 'village', 'pesantren'];
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
