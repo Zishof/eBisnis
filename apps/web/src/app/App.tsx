@@ -112,6 +112,9 @@ const SitusPondokPage = lazy(() =>
 const PsbGelombangPage = lazy(() =>
   import('../verticals/pesantren/PsbGelombangPage').then((m) => ({ default: m.PsbGelombangPage })),
 );
+const BeritaDetailPage = lazy(() =>
+  import('../verticals/pesantren/BeritaDetailPage').then((m) => ({ default: m.BeritaDetailPage })),
+);
 const PsbPendaftaranPage = lazy(() =>
   import('../verticals/pesantren/PsbPendaftaranPage').then((m) => ({ default: m.PsbPendaftaranPage })),
 );
@@ -237,6 +240,7 @@ export function App() {
           <Route path="/santri/pondok/psb/daftar/:gelombangId" element={<PsbPendaftaranPage />} />
           <Route path="/santri/pondok/psb/masuk" element={<PsbLoginPage />} />
           <Route path="/santri/pondok/psb/status" element={<PsbDashboardPage />} />
+          <Route path="/santri/pondok/berita/:id" element={<BeritaDetailPage />} />
         </Route>
 
         {/*

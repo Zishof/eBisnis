@@ -355,7 +355,12 @@ export function SitusPondokPage() {
                         })}
                       </p>
                     )}
-                    <h3 className="mt-1 font-semibold text-slate-900 dark:text-white">{b.judul}</h3>
+                    <Link
+                      to={`/santri/pondok/berita/${b.id}`}
+                      className="mt-1 block font-semibold text-slate-900 hover:text-emerald-700 dark:text-white dark:hover:text-emerald-400"
+                    >
+                      {b.judul}
+                    </Link>
                     {b.ringkasan && (
                       <p className="mt-2 line-clamp-3 text-sm text-slate-600 dark:text-slate-400">
                         {b.ringkasan}

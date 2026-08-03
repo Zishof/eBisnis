@@ -5,11 +5,14 @@
  * `_sebelum_login.jsp` (tata letak dua kolom: gelombang di kolom utama,
  * "Informasi Terkini" di kolom samping).
  *
- * Pengunjung memilih gelombang yang SEDANG DIBUKA untuk melanjutkan ke
- * formulir (`PsbFormulirPage`, di `/santri/pondok/psb/daftar/:gelombangId`).
- * Gelombang yang sudah DITUTUP/SELESAI tetap ditampilkan (lencana berbeda,
- * tombol nonaktif) supaya pengunjung tahu pondok memang aktif menerima
- * secara berkala -- bukan disembunyikan begitu tutup.
+ * Gelombang yang sudah DITUTUP/SELESAI tetap ditampilkan DAN tetap
+ * mengarah ke formulir (`PsbPendaftaranPage`, di
+ * `/santri/pondok/psb/daftar/:gelombangId`) -- sengaja BUKAN tombol mati.
+ * Halaman formulir sendiri yang menolak dan menjelaskan gelombangnya
+ * sudah tutup (lihat guard di sana). Pengunjung yang penasaran ("kok
+ * gelombang lama masih kelihatan, apa masih bisa daftar?") karena itu
+ * selalu mendapat jawaban eksplisit lewat klik, bukan tombol yang diam
+ * saja tanpa penjelasan.
  *
  * Kolom "Informasi" memakai BERITA yang sudah diterbitkan pengurus (tidak
  * ada tabel pengumuman PSB terpisah -- berita yang sudah ada di beranda
@@ -120,18 +123,16 @@ export function PsbGelombangPage() {
                     )}
                   </div>
                   <div className="mt-4 sm:mt-0">
-                    {bukaKembali ? (
-                      <Link
-                        to={`/santri/pondok/psb/daftar/${g.id}`}
-                        className="block rounded-lg bg-emerald-700 px-5 py-2.5 text-center text-sm font-semibold text-white hover:bg-emerald-800"
-                      >
-                        Daftar Sekarang
-                      </Link>
-                    ) : (
-                      <span className="block rounded-lg border border-slate-300 px-5 py-2.5 text-center text-sm font-semibold text-slate-400 dark:border-slate-700">
-                        Pendaftaran Ditutup
-                      </span>
-                    )}
+                    <Link
+                      to={`/santri/pondok/psb/daftar/${g.id}`}
+                      className={`block rounded-lg px-5 py-2.5 text-center text-sm font-semibold ${
+                        bukaKembali
+                          ? 'bg-emerald-700 text-white hover:bg-emerald-800'
+                          : 'border border-slate-300 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      {bukaKembali ? 'Daftar Sekarang' : 'Lihat Detail'}
+                    </Link>
                   </div>
                 </div>
               );
@@ -151,14 +152,8 @@ export function PsbGelombangPage() {
                 {situs.berita.slice(0, 5).map((b) => (
                   <li key={b.id} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0 dark:border-slate-800">
                     {b.tanggal_terbit && <p className="text-xs text-slate-400">{formatDate(b.tanggal_terbit)}</p>}
-                    {/*
-                      Tidak ada halaman detail berita tersendiri -- pondok
-                      hanya punya bagian "Kabar Pondok" di beranda
-                      (`SitusPondokPage`). Tautannya mengarah ke sana, bukan
-                      ke rute yang belum ada.
-                    */}
                     <Link
-                      to="/santri/pondok"
+                      to={`/santri/pondok/berita/${b.id}`}
                       className="mt-1 block text-sm font-semibold text-slate-800 hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-400"
                     >
                       {b.judul}
