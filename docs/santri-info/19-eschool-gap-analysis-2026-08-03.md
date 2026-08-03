@@ -32,7 +32,7 @@ Audit dilakukan terhadap 240 file Java di folder sekolah AIS. Satu file bisa mas
 | Master sekolah/yayasan/unit | `SekolahAction.java`, `YayasanAction.java`, `JenisSekolahAction.java` | Ada | `pesantren_unit_pendidikan`, profil pondok, subdomain unit, Cloudflare-ready setting. Gap: validasi domain eksternal `*.sch.id` masih perlu DNS ownership check saat go-live. |
 | Master santri/siswa | `SiswaAction.java`, `BiodataSiswaAction.java`, `SiswaWaliAction.java` | Ada | CRUD santri dan portal wali tersedia. Gap: biodata sangat detail dari AIS belum semua menjadi field typed; sebagian masuk metadata. |
 | Asrama dan kamar | `AsramaSiswaAction.java`, `DetailAsramaSiswaHelper.java` | Ada | Halaman asrama/kamar/penempatan sudah ada. Gap: laporan asrama legacy belum semua direplikasi. |
-| Absensi santri | `AbsensiAction.java`, `AbsensiSiswaHelper.java`, `AbsenPiketAction.java` | Dilengkapi | Presensi santri tersedia sebagai daftar/API dan endpoint massal `POST /pesantren/presensi/massal`. UI `/app/pesantren/presensi` sudah mendukung input massal per tanggal/jenis, status, dan keterangan. Gap lanjutan: relasi langsung ke sesi jadwal/detail piket. |
+| Absensi santri | `AbsensiAction.java`, `AbsensiSiswaHelper.java`, `AbsenPiketAction.java` | Dilengkapi | Presensi santri tersedia sebagai daftar/API dan endpoint massal `POST /pesantren/presensi/massal`. UI `/app/pesantren/presensi` sudah mendukung input massal manual per tanggal/jenis serta mode Jadwal Pelajaran: tanggal menentukan hari, petugas memilih jadwal, daftar santri diambil dari anggota rombongan, dan keterangan awal membawa konteks mapel/jam/ruang. Gap lanjutan: kolom foreign key `jadwal_id`/`piket_id` di tabel presensi bila ingin audit relasi fisik. |
 | Absensi guru | `AbsenGuruPiketAction.java`, `GuruAction.java` | Dilengkapi | Guru/ustadz, absensi guru, dan piket guru tersedia di UI `/app/pesantren/guru` dan `/app/pesantren/absensi-guru`; petugas dapat mencatat hadir/izin/sakit/alpa, menjadwalkan piket, dan menandai kehadiran piket. Gap lanjutan: jadwal mengajar AIS yang sangat rinci dan rekap honor/insentif piket. |
 | Diniyah/tahfiz | AIS tersebar di jadwal, nilai, kegiatan | Dilengkapi | UI `/app/pesantren/diniyah` mengelola kitab, halaqah, dan anggota; UI `/app/pesantren/tahfiz` mencatat setoran hafalan. Gap: rapor diniyah lengkap belum final. |
 | Rombongan/kurikulum/jadwal | `KelasSiswaAction.java`, `KurikulumSekolahAction.java`, `JadwalPelajaranAction.java`, `JamPelajaranAction.java`, `TimetableJadwalPelajaranWindow.java` | Dilengkapi | Rombongan belajar, kurikulum, dan jadwal jam nyata tersedia. UI `/app/pesantren/rombongan`, `/app/pesantren/kurikulum`, dan `/app/pesantren/jadwal` sudah bisa membuat kelas, menambah struktur mapel, tambah/filter/batalkan jadwal, serta tetap mencegah bentrok rombongan/pengajar. Gap lanjutan: promosi kelas massal dan timetable drag-drop. |
@@ -124,8 +124,8 @@ Belum penuh dibanding AIS:
 
 ## Gap Berikutnya yang Disarankan
 
-1. Relasi presensi ke jadwal/piket seperti AIS `AbsenPiketAction.java`.
-2. SOP disposisi per pondok di atas workflow perizinan seperti `PengajuanSiswaAction.java`.
-3. Balasan/notifikasi buku penghubung ke wali.
-4. Jadwal visual drag-drop dan rapor PDF.
+1. SOP disposisi per pondok di atas workflow perizinan seperti `PengajuanSiswaAction.java`.
+2. Balasan/notifikasi buku penghubung ke wali.
+3. Jadwal visual drag-drop dan rapor PDF.
+4. Relasi fisik `jadwal_id`/`piket_id` di tabel presensi bila diperlukan audit granular.
 5. Integrasi fingerprint nyata setelah merek/perangkat SDK dipastikan.
