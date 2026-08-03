@@ -21,6 +21,9 @@ Landing page publik untuk domain kesehatan dipisahkan dari beranda eBisnis.
   inventory.
 - Landing `emedik.id` dan `apotik.emedik.id` memuat tautan ke **Proposal
   Penawaran**, **Surat Penawaran**, **Presentasi**, dan **Draft PKS**.
+- Template Apache deploy menambahkan `emedik.id`, `www.emedik.id`,
+  `apotik.emedik.id`, `demo-apotik.emedik.id`, dan `*.emedik.id` ke vhost web
+  aplikasi supaya host kesehatan tidak jatuh ke vhost eCampus/default.
 - **`emedik-host.test.ts`** menjaga pemilihan pengalaman akar supaya host apotik
   tidak tertukar dengan portal umum eMedik atau marketplace eBisnis.
 
