@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -33,8 +32,6 @@ import {
   UserRound,
   Users,
 } from 'lucide-react';
-import { berandaSesudahMasuk } from '../../app/beranda-sesudah-masuk';
-import { useAuth } from '../../app/auth-context';
 import {
   buatProdukSalon,
   buatTransaksiSalon,
@@ -88,25 +85,15 @@ const AKUN_UJI_SALON = [
 export function SalonDemoPage() {
   const [tab, setTab] = useState<Tab>('website');
   const [busyRole, setBusyRole] = useState<string | null>(null);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const { loginDemo } = useAuth();
-  const navigate = useNavigate();
   const produk = useMemo(() => buatProdukSalon(), []);
   const transaksi = useMemo(() => buatTransaksiSalon(produk), [produk]);
   const ringkasan = useMemo(() => ringkasTransaksi(transaksi), [transaksi]);
   const produkUnggulan = produk.filter((item) => item.unggulan).slice(0, 8);
 
-  const masukSebagai = async (roleCode: string) => {
+  const masukSebagai = (roleCode: string) => {
     setBusyRole(roleCode);
-    setLoginError(null);
-    try {
-      const session = await loginDemo(roleCode);
-      navigate(berandaSesudahMasuk(session), { replace: true });
-    } catch (error) {
-      setLoginError(error instanceof Error ? error.message : 'Tidak dapat membuat sesi demo salon.');
-    } finally {
-      setBusyRole(null);
-    }
+    const params = new URLSearchParams({ role: roleCode });
+    window.location.href = `https://salon.ebisnis.id/masuk?${params.toString()}`;
   };
 
   return (
@@ -195,8 +182,8 @@ export function SalonDemoPage() {
         {tab === 'website' && (
           <AkunUjiSalon
             busyRole={busyRole}
-            error={loginError}
-            onMasuk={(roleCode) => void masukSebagai(roleCode)}
+            error={null}
+            onMasuk={masukSebagai}
           />
         )}
         {tab === 'booking' && <BookingSalon transaksi={transaksi} />}

@@ -12,7 +12,7 @@ import { NewsDetailPage } from '../pages/public/NewsDetailPage';
 import { ContactPage } from '../pages/public/ContactPage';
 import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
-import { salonRootRedirectFor } from '../pages/contoh/salon-host';
+import { isSalonDemoHost, salonRootRedirectFor } from '../pages/contoh/salon-host';
 import { pelangganRootRedirectFor } from '../pages/pelanggan/pelanggan-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
 import { isSantriPortalHost, slugPondokDariHost } from '../verticals/pesantren/santri-host';
@@ -342,6 +342,15 @@ function AkarMenurutHost() {
   return <HomePage />;
 }
 
+function AppTenantGate() {
+  if (isSalonDemoHost()) return <Navigate to="/masuk" replace />;
+  return (
+    <RequireAuth>
+      <AppLayout />
+    </RequireAuth>
+  );
+}
+
 export function App() {
   const rootExperience = rootExperienceFor(window.location.hostname, window.location.pathname);
   const rootElement =
@@ -466,11 +475,7 @@ export function App() {
         {/* Aplikasi tenant */}
         <Route
           path="/app"
-          element={
-            <RequireAuth>
-              <AppLayout />
-            </RequireAuth>
-          }
+          element={<AppTenantGate />}
         >
           <Route index element={<AppHomePage />} />
           <Route path="notifications" element={<NotificationsPage />} />
