@@ -148,7 +148,7 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
   // 01 Beranda
   { code: 'HOME', label: 'Beranda', translationKey: 'menu.home', route: '/app', icon: 'home', sortOrder: 1, actions: ['READ'] },
   { code: 'HOME_DASHBOARD', parentCode: 'HOME', label: 'Dashboard Saya', translationKey: 'menu.home.dashboard', route: '/app', icon: 'layout-dashboard', sortOrder: 1, actions: ['READ'] },
-  { code: 'HOME_APPROVAL_INBOX', parentCode: 'HOME', label: 'Kotak Masuk Persetujuan', translationKey: 'menu.home.approvalInbox', route: '/app/approvals', icon: 'inbox', sortOrder: 2, actions: ['READ', 'APPROVE', 'REJECT'], comingSoon: true },
+  { code: 'HOME_APPROVAL_INBOX', parentCode: 'HOME', label: 'Kotak Masuk Persetujuan', translationKey: 'menu.home.approvalInbox', route: '/app/approvals', icon: 'inbox', sortOrder: 2, actions: ['READ', 'APPROVE', 'REJECT'] },
   { code: 'HOME_NOTIFICATIONS', parentCode: 'HOME', label: 'Notifikasi', translationKey: 'menu.home.notifications', route: '/app/notifications', icon: 'bell', sortOrder: 3, actions: ['READ'] },
 
   // 02 Kasir / POS — langsung di root
@@ -174,7 +174,7 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
   { code: 'CATALOG_CATEGORY', parentCode: 'CATALOG', label: 'Kategori', translationKey: 'menu.catalog.category', route: '/app/product-categories', icon: 'folder-tree', moduleCode: 'PRODUCT_PRICING', sortOrder: 2, actions: [...CRUD, 'HARD_DELETE', 'RESTORE'] },
   { code: 'CATALOG_UOM', parentCode: 'CATALOG', label: 'Satuan (UOM)', translationKey: 'menu.catalog.uom', route: '/app/uoms', icon: 'ruler', moduleCode: 'PRODUCT_PRICING', sortOrder: 3, actions: [...CRUD, 'HARD_DELETE', 'RESTORE'] },
   { code: 'CATALOG_PRICE_BOOK', parentCode: 'CATALOG', label: 'Buku Harga', translationKey: 'menu.catalog.priceBook', route: '/app/price-books', icon: 'tag', moduleCode: 'PRODUCT_PRICING', sortOrder: 4, actions: CRUD, comingSoon: true },
-  { code: 'CATALOG_TAX', parentCode: 'CATALOG', label: 'Pajak', translationKey: 'menu.catalog.tax', route: '/app/tax-categories', icon: 'percent', moduleCode: 'PRODUCT_PRICING', sortOrder: 5, actions: CRUD, comingSoon: true },
+  { code: 'CATALOG_TAX', parentCode: 'CATALOG', label: 'Pajak', translationKey: 'menu.catalog.tax', route: '/app/tax-categories', icon: 'percent', moduleCode: 'PRODUCT_PRICING', sortOrder: 5, actions: CRUD },
 
   // 05 Pelanggan dan CRM
   { code: 'CRM', label: 'Pelanggan dan CRM', translationKey: 'menu.crm', icon: 'users', moduleCode: 'CRM', sortOrder: 5, actions: ['READ'] },
@@ -213,7 +213,7 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
 
   // 11 Keuangan dan Akuntansi
   { code: 'FINANCE', label: 'Keuangan dan Akuntansi', translationKey: 'menu.finance', icon: 'wallet', moduleCode: 'ACCOUNTING', sortOrder: 11, actions: ['READ'], comingSoon: true },
-  { code: 'FINANCE_COA', parentCode: 'FINANCE', label: 'Bagan Akun', translationKey: 'menu.finance.coa', route: '/app/chart-of-accounts', moduleCode: 'ACCOUNTING', sortOrder: 1, actions: CRUD, comingSoon: true },
+  { code: 'FINANCE_COA', parentCode: 'FINANCE', label: 'Bagan Akun', translationKey: 'menu.finance.coa', route: '/app/chart-of-accounts', moduleCode: 'ACCOUNTING', sortOrder: 1, actions: CRUD },
   { code: 'FINANCE_JOURNAL', parentCode: 'FINANCE', label: 'Jurnal', translationKey: 'menu.finance.journal', route: '/app/journal-entries', moduleCode: 'ACCOUNTING', sortOrder: 2, actions: [...DOC, 'POST', 'CLOSE_PERIOD', 'REOPEN'], comingSoon: true },
 
   // 12 Investor dan Bagi Hasil
@@ -353,7 +353,7 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
   { code: 'MARKETPLACE_FEE', parentCode: 'MARKETPLACE_PLATFORM', label: 'Fee Marketplace', translationKey: 'menu.marketplacePlatform.fee', route: '/platform/marketplace/fee', moduleCode: 'MARKETPLACE', sortOrder: 3, actions: [...CRUD, 'APPROVE', 'VIEW_AMOUNT'], comingSoon: true },
 
   // 35 Tiket Dukungan
-  { code: 'SUPPORT_TICKET', label: 'Tiket Dukungan', translationKey: 'menu.supportTicket', route: '/app/tiket', icon: 'ticket', moduleCode: 'SUPPORT', sortOrder: 35, actions: ['READ', 'CREATE', 'UPDATE', 'ASSIGN', 'CANCEL'], comingSoon: true },
+  { code: 'SUPPORT_TICKET', label: 'Tiket Dukungan', translationKey: 'menu.supportTicket', route: '/app/tiket', icon: 'ticket', moduleCode: 'SUPPORT', sortOrder: 35, actions: ['READ', 'CREATE', 'UPDATE', 'ASSIGN', 'CANCEL'] },
 
   // 36 Bantuan Marketplace
   { code: 'MARKETPLACE_HELP', label: 'Bantuan Marketplace', translationKey: 'menu.marketplaceHelp', route: '/app/marketplace/bantuan', icon: 'book-open', moduleCode: 'MARKETPLACE', sortOrder: 36, actions: ['READ'], comingSoon: true },

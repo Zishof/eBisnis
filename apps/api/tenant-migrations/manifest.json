@@ -274,6 +274,13 @@
       "file": "V039__support_menu_route.sql",
       "name": "Route menu Bantuan dan Dukungan",
       "description": "Mengisi route /app/support pada menu SUPPORT dan mencabut penanda coming soon untuk tenant lama. Halaman dukungan tenant sudah tersedia di web, sehingga menu dukungan tidak boleh lagi tampil sebagai grup kosong atau placeholder."
+    },
+    {
+      "version": "V040",
+      "sequence": 40,
+      "file": "V040__ready_menu_flags.sql",
+      "name": "Flag menu yang sudah punya halaman",
+      "description": "Mencabut is_coming_soon pada HOME_APPROVAL_INBOX, CATALOG_TAX, FINANCE_COA, dan SUPPORT_TICKET karena masing-masing sudah punya route web yang berjalan. Tenant lama tidak boleh terus menampilkan penanda placeholder untuk halaman yang sudah dapat dibuka."
     }
   ]
 }
