@@ -288,6 +288,13 @@
       "file": "V041__journal_menu_ready.sql",
       "name": "Flag menu jurnal sudah tersedia",
       "description": "Mencabut is_coming_soon pada FINANCE_JOURNAL karena endpoint dan halaman baca-saja jurnal sudah tersedia. Tenant lama tidak boleh lagi diarahkan ke Coming Soon saat membuka /app/journal-entries."
+    },
+    {
+      "version": "V042",
+      "sequence": 42,
+      "file": "V042__clear_coming_soon_menu_flags.sql",
+      "name": "Bersihkan seluruh flag Coming Soon menu",
+      "description": "Mencabut seluruh is_coming_soon dari menu tenant lama karena web sudah menyediakan halaman kerja demo untuk route aplikasi yang belum memiliki layar transaksi penuh. Sidebar tidak perlu lagi menampilkan label Coming Soon."
     }
   ]
 }
