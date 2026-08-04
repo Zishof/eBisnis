@@ -129,15 +129,25 @@ describe('kejujuran kesiapan', () => {
     expect(kembar).toEqual([]);
   });
 
-  it('modul yang belum dibangun ada di daftar bertahap, bukan daftar siap', () => {
-    // Ketiganya memang belum ada. Menaruhnya di daftar "siap" adalah janji yang
-    // ditemukan pondok pada minggu pertama.
+  it('modul yang sudah punya API dan layar tidak lagi ditaruh sebagai bertahap', () => {
+    /*
+     * Gap analysis 2026-08-04 menemukan ketiganya sudah punya API dan layar.
+     * Membiarkannya di daftar "bertahap" membuat dokumen komersial sendiri
+     * ketinggalan dari source aktual.
+     */
     const siap = KESIAPAN_SEKARANG.join(' ').toLowerCase();
-    for (const belum of ['tahfiz', 'asrama', 'anjungan']) {
-      expect(siap).not.toContain(belum);
+    for (const sudah of ['tahfiz', 'asrama', 'anjungan']) {
+      expect(siap).toContain(sudah);
     }
     const bertahap = KESIAPAN_BERTAHAP.join(' ').toLowerCase();
-    for (const belum of ['tahfiz', 'asrama', 'anjungan']) {
+    for (const sudah of ['tahfiz', 'asrama', 'anjungan']) {
+      expect(bertahap).not.toContain(sudah);
+    }
+  });
+
+  it('gap yang tersisa disebut sebagai pekerjaan bertahap', () => {
+    const bertahap = KESIAPAN_BERTAHAP.join(' ').toLowerCase();
+    for (const belum of ['eschool', 'klinik', 'perpustakaan', 'ai']) {
       expect(bertahap).toContain(belum);
     }
   });

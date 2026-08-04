@@ -1,7 +1,20 @@
-import { useState } from 'react';
+import { useState, type SyntheticEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Award, Building2, ClipboardList, Download, Receipt, Users, X } from 'lucide-react';
+import {
+  ArrowRight,
+  Award,
+  BookOpen,
+  Building2,
+  ClipboardList,
+  Download,
+  Image as ImageIcon,
+  Receipt,
+  ShieldCheck,
+  Users,
+  WalletCards,
+  X,
+} from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -103,7 +116,50 @@ interface DasborPesantren {
   psb: PsbFunnelRow[];
 }
 
+interface ProfilSitusPondok {
+  nama_tampilan: string | null;
+  tagline: string | null;
+  logo_url: string | null;
+  hero_image_url: string | null;
+  is_published: boolean;
+}
+
 const TAGIHAN_LUNAS = new Set(['PAID', 'VOID']);
+const FALLBACK_HERO =
+  'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=1600&q=85';
+const FOTO_RUANG_KELAS =
+  'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=85';
+const FOTO_PERPUSTAKAAN =
+  'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&q=85';
+const FOTO_DIGITAL =
+  'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1200&q=85';
+
+const AKSI_UTAMA = [
+  {
+    href: '/app/pesantren/santri',
+    label: 'Data Santri',
+    description: 'Tambah santri, wali, NIS, NISN, dan data Dapodik pondok.',
+    icon: Users,
+  },
+  {
+    href: '/app/pesantren/diniyah',
+    label: 'Diniyah dan Tahfiz',
+    description: 'Kelola kitab, halaqah, anggota, dan setoran hafalan.',
+    icon: BookOpen,
+  },
+  {
+    href: '/app/pesantren/perizinan',
+    label: 'Perizinan',
+    description: 'Ajukan, disposisi, setujui, dan tutup izin santri.',
+    icon: ShieldCheck,
+  },
+  {
+    href: '/app/pesantren/tagihan',
+    label: 'Tagihan SPP',
+    description: 'Buat, terbitkan, cicil, dan catat pembayaran santri.',
+    icon: WalletCards,
+  },
+] as const;
 
 /*
  * Tidak digenerikkan atas satu T -- satu dialog (mis. "Ringkasan Santri")
@@ -145,8 +201,15 @@ export function PesantrenDashboardPage() {
     queryKey: ['pesantren-dasbor'],
     queryFn: () => api.get<DasborPesantren>('/pesantren/laporan/dasbor'),
   });
+  const profil = useQuery({
+    queryKey: ['pesantren-profil', 'dashboard'],
+    queryFn: () => api.get<ProfilSitusPondok>('/pesantren/profil'),
+    retry: false,
+  });
 
   const data = dasbor.data;
+  const namaPondok = profil.data?.nama_tampilan ?? 'Pondok Pesantren';
+  const heroImage = profil.data?.hero_image_url || FALLBACK_HERO;
   const santriAktif = (data?.santri ?? [])
     .filter((row) => row.status === 'AKTIF')
     .reduce((sum, row) => sum + row.jumlah, 0);
@@ -207,15 +270,92 @@ export function PesantrenDashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title="Dasbor Pondok"
-        description={`Selamat datang, ${user?.displayName ?? ''}`}
-      />
+      <PageHeader title="Dasbor Pondok" description={`Selamat datang, ${user?.displayName ?? ''}`} />
+
+      <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm dark:border-slate-800">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="relative min-h-[320px] p-6 sm:p-8">
+            <DashboardImage src={heroImage} alt={`Kegiatan belajar di ${namaPondok}`} className="absolute inset-0 opacity-40" />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/40" aria-hidden />
+            <div className="relative max-w-2xl">
+              <div className="flex items-center gap-3">
+                {profil.data?.logo_url ? (
+                  <img
+                    src={profil.data.logo_url}
+                    alt=""
+                    className="h-12 w-12 rounded-xl bg-white object-cover p-1"
+                    onError={sembunyikanGambar}
+                  />
+                ) : (
+                  <span className="grid h-12 w-12 place-items-center rounded-xl bg-emerald-400 text-lg font-black text-slate-950">
+                    ص
+                  </span>
+                )}
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-emerald-300">
+                    Ruang kerja ePesantren
+                  </p>
+                  <h1 className="text-2xl font-black sm:text-3xl">{namaPondok}</h1>
+                </div>
+              </div>
+              <p className="mt-5 max-w-xl text-sm leading-7 text-slate-100 sm:text-base">
+                {profil.data?.tagline ??
+                  'Pantau santri, asrama, diniyah, tahfiz, PSB, tagihan, dan perizinan dari satu dasbor operasional.'}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link to="/app/pesantren/profil" className="btn-primary bg-emerald-500 text-slate-950 hover:bg-emerald-400">
+                  <ImageIcon className="h-4 w-4" aria-hidden />
+                  Atur gambar situs
+                </Link>
+                <Link to="/app/pesantren/unit-pendidikan" className="btn-outline border-white/35 bg-white/10 text-white hover:bg-white/20">
+                  Unit pendidikan
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-1 bg-white/8 p-1 sm:grid-cols-3 lg:grid-cols-1">
+            {[
+              { src: FOTO_RUANG_KELAS, label: 'Kelas dan jadwal', href: '/app/pesantren/kurikulum' },
+              { src: FOTO_PERPUSTAKAAN, label: 'Kitab dan rapor', href: '/app/pesantren/diniyah' },
+              { src: FOTO_DIGITAL, label: 'Layanan wali', href: '/app/pesantren/portal-wali' },
+            ].map((item) => (
+              <Link key={item.href} to={item.href} className="group relative min-h-28 overflow-hidden rounded-xl bg-slate-900">
+                <DashboardImage src={item.src} alt={item.label} className="absolute inset-0 transition duration-300 group-hover:scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/25 to-transparent" aria-hidden />
+                <span className="absolute bottom-3 left-3 inline-flex items-center gap-2 text-sm font-bold">
+                  {item.label}
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {dasbor.isLoading ? (
         <LoadingState />
       ) : (
         <>
+          <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {AKSI_UTAMA.map((aksi) => {
+              const Icon = aksi.icon;
+              return (
+                <Link
+                  key={aksi.href}
+                  to={aksi.href}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-700"
+                >
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </span>
+                  <h2 className="mt-4 font-bold text-slate-950 dark:text-white">{aksi.label}</h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{aksi.description}</p>
+                </Link>
+              );
+            })}
+          </section>
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               icon={<Users className="h-5 w-5" aria-hidden />}
@@ -546,6 +686,31 @@ function StatCard({
         <p className="text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
       </div>
     </button>
+  );
+}
+
+function sembunyikanGambar(e: SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.style.display = 'none';
+}
+
+function DashboardImage({
+  src,
+  alt,
+  className = '',
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={`h-full w-full object-cover ${className}`}
+      loading="lazy"
+      decoding="async"
+      onError={sembunyikanGambar}
+    />
   );
 }
 

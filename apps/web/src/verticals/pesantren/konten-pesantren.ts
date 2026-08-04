@@ -540,6 +540,11 @@ export const KOLABORASI_BMT: Butir[] = [
 export const KESIAPAN_SEKARANG: string[] = [
   'Pendaftaran pondok mandiri beserta penyiapan alamat situs.',
   'Pengelolaan pengguna, peran, dan hak akses berjenjang.',
+  'Santri dan wali, unit pendidikan, rombongan belajar, kurikulum, jadwal, nilai, dan rapor.',
+  'Asrama, kamar, penempatan santri, perizinan keluar-masuk, gerbang, kartu santri, dan anjungan mandiri.',
+  'Diniyah, kitab, halaqah, tahfiz, presensi santri, absensi guru, pembinaan, prestasi, dan buku penghubung.',
+  'PSB/PPDB publik, portal pendaftar, portal wali, profil situs pondok, berita, logo, dan gambar hero yang dapat diunggah pengurus.',
+  'Tagihan SPP, pencatatan pembayaran, dompet santri, batas belanja harian, dapur, dan katering.',
   'Kasir (POS) multi-gerai, gudang, dan stok.',
   'Keuangan dan akuntansi: jurnal, buku besar, dan laporan keuangan.',
   'Persuratan dengan penomoran terpusat.',
@@ -548,10 +553,10 @@ export const KESIAPAN_SEKARANG: string[] = [
 ];
 
 export const KESIAPAN_BERTAHAP: string[] = [
-  'Santri dan asrama, diniyah, tahfiz, serta perizinan keluar–masuk.',
-  'Tagihan SPP, tabungan santri, dan e-wallet pesantren.',
-  'Anjungan mandiri dan kartu RFID santri.',
-  'Klinik pesantren dan rekam medis santri.',
-  'Situs pondok yang dapat disunting sendiri beserta beritanya.',
+  'eSchool umum di luar konteks pesantren: template rapor sekolah formal lengkap, kalender akademik lintas kurikulum, dan integrasi Dapodik/EMIS resmi.',
+  'Klinik pesantren dan rekam medis santri yang terhubung penuh ke eMedik.',
+  'Kunjungan wali/buku tamu, ekspedisi paket santri, antar-jemput, dan transportasi pondok.',
   'Perpustakaan manual dan digital.',
+  'AI use case khusus pesantren untuk rekomendasi pembinaan, ringkasan wali, dan bantuan perangkat ajar.',
+  'Integrasi pembayaran/keuangan eksternal khusus pesantren di luar POS dan dompet internal.',
 ];
