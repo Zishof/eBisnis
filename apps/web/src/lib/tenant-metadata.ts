@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { emedikPublicBrandFor, isApotikHost, isEmedikHost } from '../pages/public/emedik-host';
 import { isSalonDemoHost } from '../pages/contoh/salon-host';
-import { inventoryTenantLabelFromHost, isInventoryHost } from '../pages/inventory/inventory-host';
+import { inventoryTenantLabelFromHost, isCmnInventoryHost, isInventoryHost } from '../pages/inventory/inventory-host';
 
 export interface TenantMetadata {
   title: string;
@@ -70,13 +70,18 @@ export function metadataForTenant(hostname = window.location.hostname): TenantMe
   const host = cleanHost(hostname);
   if (isInventoryHost(host)) {
     const tenantName = inventoryTenantLabelFromHost(host);
-    const isRoot = host === 'inventory.ebisnis.id';
+    const isRoot = host === 'inventory.ebisnis.id' || host === 'nventory.ebisnis.id';
     const isDemo = host === 'demo-inventory.ebisnis.id';
+    const isCmn = isCmnInventoryHost(host);
     const title = isRoot
       ? 'eBisnis Inventory — Sales dan Stok Obat Terintegrasi'
+      : isCmn
+        ? 'Caruban Medika Nusantara — Sales Obat Cirebon'
       : `${tenantName} — Inventory Obat Terintegrasi`;
     const description = isRoot
       ? 'Aplikasi inventory untuk sales lapangan, admin gudang, batch, expiry, piutang, hutang, dan dashboard pemilik.'
+      : isCmn
+        ? 'Company profile dan katalog display Caruban Medika Nusantara, sales obat untuk Cirebon dan sekitarnya. Pemesanan hanya untuk pelanggan terdaftar melalui aplikasi.'
       : `Inventory obat terintegrasi untuk sales, admin gudang, piutang, batch, expiry, dan dashboard pemilik ${tenantName}.`;
     return {
       title,

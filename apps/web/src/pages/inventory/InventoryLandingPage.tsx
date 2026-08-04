@@ -33,6 +33,8 @@ const photos = {
     'https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1200&q=82',
   pharmacy:
     'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=82',
+  delivery:
+    'https://images.unsplash.com/photo-1580674285054-bed31e145f59?auto=format&fit=crop&w=1200&q=82',
 };
 
 const legacyMetrics = [
@@ -174,9 +176,62 @@ const downloads = [
   },
 ];
 
+const cmnProductCatalog = [
+  {
+    name: 'Analgesik dan Antipiretik',
+    category: 'Obat nyeri dan demam',
+    body: 'Pilihan obat nyeri ringan, demam, dan kebutuhan harian apotek dengan ketersediaan stok terpantau.',
+    image: 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&w=900&q=82',
+  },
+  {
+    name: 'Antasida dan Lambung',
+    category: 'Pencernaan',
+    body: 'Katalog produk maag, asam lambung, dan pendukung kesehatan pencernaan untuk outlet farmasi.',
+    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=900&q=82',
+  },
+  {
+    name: 'Vitamin dan Suplemen',
+    category: 'Daya tahan tubuh',
+    body: 'Vitamin harian, mineral, dan suplemen keluarga untuk kebutuhan ritel kesehatan.',
+    image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=900&q=82',
+  },
+  {
+    name: 'Obat Batuk dan Flu',
+    category: 'Respirasi',
+    body: 'Produk batuk, flu, dekongestan, dan pendukung pemulihan yang umum dicari pelanggan apotek.',
+    image: 'https://images.unsplash.com/photo-1585435557343-3b092031a831?auto=format&fit=crop&w=900&q=82',
+  },
+  {
+    name: 'Perawatan Luka',
+    category: 'Alat kesehatan',
+    body: 'Kasa, plester, antiseptik, dan produk perawatan luka untuk klinik kecil, apotek, dan toko obat.',
+    image: 'https://images.unsplash.com/photo-1584516150909-c43483ee7932?auto=format&fit=crop&w=900&q=82',
+  },
+  {
+    name: 'Produk Ibu dan Anak',
+    category: 'Keluarga',
+    body: 'Kebutuhan bayi, anak, ibu, dan nutrisi pendamping yang lazim dijual di jaringan apotek.',
+    image: 'https://images.unsplash.com/photo-1583947581924-a6d1dc388ed3?auto=format&fit=crop&w=900&q=82',
+  },
+  {
+    name: 'Alat Diagnostik Mandiri',
+    category: 'Monitoring kesehatan',
+    body: 'Termometer, alat cek gula darah, test strip, dan perlengkapan monitoring kesehatan rumah.',
+    image: 'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=900&q=82',
+  },
+  {
+    name: 'Personal Care Farmasi',
+    category: 'Perawatan harian',
+    body: 'Produk perawatan kulit, rambut, kebersihan, dan kebutuhan personal care farmasi.',
+    image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=900&q=82',
+  },
+];
+
 export function InventoryLandingPage() {
   const tenantName = inventoryTenantLabelFromHost();
   const cmnHost = isCmnInventoryHost();
+
+  if (cmnHost) return <CmnCompanyProfile />;
 
   return (
     <div className="bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
@@ -256,7 +311,7 @@ export function InventoryLandingPage() {
         </div>
       </section>
 
-      <section className="border-y border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">
+      <section id="cara-pesan" className="border-y border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">
         <div className="container-page">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950 shadow-sm dark:border-slate-800">
@@ -495,6 +550,191 @@ export function InventoryLandingPage() {
             Catatan implementasi: aplikasi Flutter khusus inventory akan memakai artefak download di halaman ini.
             Endpoint download sudah disiapkan, lalu build APK/EXE dapat ditempatkan di folder update server saat pipeline rilis selesai.
           </p>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function CmnCompanyProfile() {
+  return (
+    <div className="bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
+      <section className="relative overflow-hidden border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+        <div className="container-page grid gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:items-center lg:py-16">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+              <Pill className="h-3.5 w-3.5" aria-hidden />
+              Sales obat wilayah Cirebon dan sekitarnya
+            </p>
+            <h1 className="mt-5 max-w-4xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl dark:text-white">
+              Caruban Medika Nusantara, mitra pasokan obat untuk apotek, toko obat, dan fasilitas kesehatan.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 dark:text-slate-300">
+              Caruban Medika Nusantara melayani kebutuhan produk farmasi dan alat kesehatan untuk wilayah Cirebon,
+              Kuningan, Indramayu, Majalengka, dan area sekitar. Halaman ini menampilkan profil perusahaan dan katalog
+              display; pemesanan online hanya tersedia untuk pelanggan terdaftar melalui aplikasi.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <a href="#katalog" className="btn-primary px-5 py-3">
+                Lihat katalog display
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </a>
+              <a href="#download" className="btn-outline px-5 py-3">
+                Download aplikasi pelanggan
+              </a>
+              <Link to="/masuk?produk=inventory&role=PELANGGAN" className="btn-outline px-5 py-3">
+                Login pelanggan
+              </Link>
+            </div>
+            <dl className="mt-8 grid gap-3 sm:grid-cols-3">
+              {[
+                ['Cirebon Raya', 'wilayah layanan utama'],
+                ['626+', 'item obat terdata'],
+                ['B2B', 'khusus pelanggan terdaftar'],
+              ].map(([value, label]) => (
+                <div key={label} className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+                  <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</dt>
+                  <dd className="mt-1 text-2xl font-black">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950 shadow-xl dark:border-slate-800">
+            <img
+              src={photos.pharmacy}
+              alt="Produk farmasi dan obat yang dipasarkan Caruban Medika Nusantara"
+              className="h-72 w-full object-cover sm:h-80"
+            />
+            <div className="grid gap-3 p-4 sm:grid-cols-3">
+              {[
+                ['Stok obat', 'display katalog'],
+                ['Sales', 'kunjungan outlet'],
+                ['Pelanggan', 'order via aplikasi'],
+              ].map(([title, body]) => (
+                <div key={title} className="rounded-lg bg-white/10 p-3 text-white">
+                  <p className="text-sm font-bold">{title}</p>
+                  <p className="mt-1 text-xs text-slate-300">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-page py-12">
+        <div className="grid gap-5 lg:grid-cols-4">
+          {[
+            [MapPin, 'Fokus area lokal', 'Sales diarahkan untuk melayani outlet farmasi di Cirebon dan kota sekitar dengan ritme kunjungan yang teratur.'],
+            [Boxes, 'Katalog terstruktur', 'Produk dikelompokkan menurut kebutuhan apotek: obat umum, suplemen, alat kesehatan, dan personal care.'],
+            [CalendarClock, 'Kontrol batch dan expiry', 'Pengelolaan stok memperhatikan nomor batch dan tanggal kedaluwarsa agar kualitas barang tetap terjaga.'],
+            [WalletCards, 'Pelanggan terdaftar', 'Harga, order, dan riwayat transaksi hanya dibuka untuk pelanggan yang sudah diverifikasi.'],
+          ].map(([Icon, title, body]) => (
+            <article key={String(title)} className="card p-5">
+              <span className="grid h-11 w-11 place-items-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
+                <Icon className="h-5 w-5" aria-hidden />
+              </span>
+              <h2 className="mt-4 text-lg font-bold text-slate-950 dark:text-white">{title as string}</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{body as string}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-y border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">
+        <div className="container-page grid gap-8 lg:grid-cols-[440px_minmax(0,1fr)] lg:items-center">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950 shadow-sm dark:border-slate-800">
+            <img src={photos.delivery} alt="Distribusi produk kesehatan ke pelanggan wilayah Cirebon" className="h-72 w-full object-cover opacity-90" />
+          </div>
+          <div>
+            <p className="section-eyebrow">Cara pemesanan</p>
+            <h2 className="text-3xl font-black text-slate-950 dark:text-white">
+              Website ini hanya katalog publik. Order online dilakukan dari aplikasi pelanggan.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
+              Pengunjung umum dapat melihat kelompok produk dan profil layanan. Tombol order tidak ditampilkan di web
+              publik. Setelah menjadi pelanggan Caruban Medika Nusantara, pengguna dapat login di APK atau aplikasi
+              desktop untuk melihat harga yang berlaku, membuat pesanan, dan memantau status transaksi.
+            </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {['Daftar/verifikasi pelanggan', 'Login aplikasi pelanggan', 'Pesan dan pantau transaksi'].map((step, index) => (
+                <div key={step} className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">0{index + 1}</p>
+                  <p className="mt-2 text-sm font-bold">{step}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="katalog" className="container-page py-12">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-3xl">
+            <p className="section-eyebrow">Katalog display</p>
+            <h2 className="text-3xl font-black text-slate-950 dark:text-white">
+              Contoh kelompok produk yang dipasarkan Caruban Medika Nusantara.
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+              Katalog ini bersifat informasi. Stok, harga, diskon, dan pemesanan hanya tersedia setelah pelanggan login
+              melalui aplikasi.
+            </p>
+          </div>
+          <span className="inline-flex rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+            Tidak menerima order dari web publik
+          </span>
+        </div>
+        <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {cmnProductCatalog.map((product) => (
+            <article key={product.name} className="card overflow-hidden">
+              <img src={product.image} alt={product.name} className="h-40 w-full object-cover" />
+              <div className="p-5">
+                <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                  {product.category}
+                </p>
+                <h3 className="mt-2 text-lg font-bold">{product.name}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{product.body}</p>
+                <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  Display katalog saja
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="download" className="border-t border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">
+        <div className="container-page grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
+          <div>
+            <p className="section-eyebrow">Aplikasi pelanggan</p>
+            <h2 className="text-3xl font-black text-slate-950 dark:text-white">
+              Pelanggan terdaftar dapat memakai APK atau aplikasi desktop untuk order online.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
+              Aplikasi ini dipakai sebagai akses pelanggan Caruban Medika Nusantara: login, lihat katalog lengkap,
+              membuat pesanan, dan memantau transaksi. Versi web publik tetap hanya profil dan katalog display.
+            </p>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            {downloads.map((download) => {
+              const Icon = download.icon;
+              return (
+                <a
+                  key={download.href}
+                  href={download.href}
+                  className="group rounded-xl border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/30"
+                >
+                  <Icon className="h-7 w-7 text-emerald-700 dark:text-emerald-300" aria-hidden />
+                  <h3 className="mt-4 text-lg font-bold">{download.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{download.body}</p>
+                  <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-emerald-800 dark:text-emerald-200">
+                    {download.label}
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden />
+                  </span>
+                </a>
+              );
+            })}
+          </div>
         </div>
       </section>
     </div>

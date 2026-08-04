@@ -286,7 +286,7 @@ function svgIcon(text: string, color: string): string {
 }
 
 function inventoryTenantName(host: string): string {
-  if (host === 'inventory.ebisnis.id') return 'eBisnis Inventory';
+  if (host === 'inventory.ebisnis.id' || host === 'nventory.ebisnis.id') return 'eBisnis Inventory';
   if (host === 'demo-inventory.ebisnis.id') return 'Demo Inventory Obat';
   if (host === 'cmnmedika-inventory.ebisnis.id') return 'Caruban Medika Nusantara';
   const slug = host.endsWith('.inventory.ebisnis.id')
@@ -299,17 +299,23 @@ function metadataForHost(hostname: string): PreviewMetadata {
   const host = cleanHost(hostname);
   const inventoryHost =
     host === 'inventory.ebisnis.id' ||
+    host === 'nventory.ebisnis.id' ||
     host === 'demo-inventory.ebisnis.id' ||
     host.endsWith('-inventory.ebisnis.id') ||
     host.endsWith('.inventory.ebisnis.id');
   if (inventoryHost) {
     const tenantName = inventoryTenantName(host);
-    const root = host === 'inventory.ebisnis.id';
+    const root = host === 'inventory.ebisnis.id' || host === 'nventory.ebisnis.id';
+    const cmn = host === 'cmnmedika-inventory.ebisnis.id';
     const title = root
       ? 'eBisnis Inventory — Sales dan Stok Obat Terintegrasi'
+      : cmn
+        ? 'Caruban Medika Nusantara — Sales Obat Cirebon'
       : `${tenantName} — Inventory Obat Terintegrasi`;
     const description = root
       ? 'Aplikasi inventory untuk sales lapangan, admin gudang, batch, expiry, piutang, hutang, dan dashboard pemilik.'
+      : cmn
+        ? 'Company profile dan katalog display Caruban Medika Nusantara, sales obat untuk Cirebon dan sekitarnya. Pemesanan hanya untuk pelanggan terdaftar melalui aplikasi.'
       : `Inventory obat terintegrasi untuk sales, admin gudang, piutang, batch, expiry, dan dashboard pemilik ${tenantName}.`;
     const iconText = root ? 'eI' : initials(tenantName);
     return {

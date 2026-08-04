@@ -8,6 +8,7 @@ import {
 describe('host inventory eBisnis', () => {
   it('mengenali host demo dan host tenant inventory', () => {
     expect(isInventoryHost('inventory.ebisnis.id')).toBe(true);
+    expect(isInventoryHost('nventory.ebisnis.id')).toBe(true);
     expect(isInventoryHost('demo-inventory.ebisnis.id')).toBe(true);
     expect(isInventoryHost('DEMO-INVENTORY.EBISNIS.ID:443')).toBe(true);
     expect(isInventoryHost('toko-obat-inventory.ebisnis.id')).toBe(true);
@@ -33,6 +34,7 @@ describe('host inventory eBisnis', () => {
 
   it('membuat label tenant dari host', () => {
     expect(inventoryTenantLabelFromHost('inventory.ebisnis.id')).toBe('eBisnis Inventory');
+    expect(inventoryTenantLabelFromHost('nventory.ebisnis.id')).toBe('eBisnis Inventory');
     expect(inventoryTenantLabelFromHost('demo-inventory.ebisnis.id')).toBe('Demo Inventory Obat');
     expect(inventoryTenantLabelFromHost('cmnmedika-inventory.ebisnis.id')).toBe('Caruban Medika Nusantara');
     expect(inventoryTenantLabelFromHost('toko-obat-jaya-inventory.ebisnis.id')).toBe('Toko Obat Jaya');

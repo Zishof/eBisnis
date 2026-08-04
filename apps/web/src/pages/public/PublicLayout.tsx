@@ -11,7 +11,7 @@ import { useAuth } from '../../app/auth-context';
 import { slugPondokDariHost } from '../../verticals/pesantren/santri-host';
 import { PondokChrome } from '../../verticals/pesantren/PondokChrome';
 import { isSalonDemoHost } from '../contoh/salon-host';
-import { inventoryTenantLabelFromHost, isInventoryHost } from '../inventory/inventory-host';
+import { inventoryTenantLabelFromHost, isCmnInventoryHost, isInventoryHost } from '../inventory/inventory-host';
 import { emedikPublicBrandFor } from './emedik-host';
 import { educationPublicBrandFor } from '../../verticals/education/education-host';
 
@@ -103,6 +103,7 @@ function PublicLayoutEBisnis({
   const location = useLocation();
   const salonHost = isSalonDemoHost();
   const inventoryHost = isInventoryHost();
+  const cmnInventoryHost = isCmnInventoryHost();
   const inventoryTenantName = inventoryHost ? inventoryTenantLabelFromHost() : null;
   const inventoryHomeUrl = inventoryHost ? '/' : 'https://inventory.ebisnis.id';
   const inventoryLandingUrl = inventoryHost ? '/inventory' : 'https://inventory.ebisnis.id/inventory';
@@ -213,8 +214,18 @@ function PublicLayoutEBisnis({
         : inventoryHost
           ? [
               { labelKey: 'inventory.home', label: 'Website', url: inventoryHomeUrl, sortOrder: 1 },
-              { labelKey: 'inventory.flow', label: 'Alur Sales', url: '/inventory#alur', sortOrder: 2 },
-              { labelKey: 'inventory.dashboard', label: 'Dashboard', url: '/inventory#dashboard', sortOrder: 3 },
+              {
+                labelKey: 'inventory.flow',
+                label: cmnInventoryHost ? 'Katalog' : 'Alur Sales',
+                url: cmnInventoryHost ? '/inventory#katalog' : '/inventory#alur',
+                sortOrder: 2,
+              },
+              {
+                labelKey: 'inventory.dashboard',
+                label: cmnInventoryHost ? 'Cara Pesan' : 'Dashboard',
+                url: cmnInventoryHost ? '/inventory#cara-pesan' : '/inventory#dashboard',
+                sortOrder: 3,
+              },
               { labelKey: 'inventory.download', label: 'Download', url: inventoryDownloadUrl, sortOrder: 4 },
             ]
       : site?.navigation.find((nav) => nav.location === 'HEADER')?.items ?? [

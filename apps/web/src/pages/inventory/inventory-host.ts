@@ -14,6 +14,7 @@ export function isInventoryHost(hostname: string = window.location.hostname): bo
   const host = cleanHost(hostname);
   return (
     host === 'inventory.ebisnis.id' ||
+    host === 'nventory.ebisnis.id' ||
     host === 'demo-inventory.ebisnis.id' ||
     host.endsWith('-inventory.ebisnis.id') ||
     host.endsWith('.inventory.ebisnis.id')
@@ -35,7 +36,7 @@ export function inventoryRootRedirectFor(
 
 export function inventoryTenantLabelFromHost(hostname: string = window.location.hostname): string {
   const host = cleanHost(hostname);
-  if (host === 'inventory.ebisnis.id') return 'eBisnis Inventory';
+  if (host === 'inventory.ebisnis.id' || host === 'nventory.ebisnis.id') return 'eBisnis Inventory';
   if (host === 'demo-inventory.ebisnis.id') return 'Demo Inventory Obat';
   if (host === 'cmnmedika-inventory.ebisnis.id') return 'Caruban Medika Nusantara';
 
