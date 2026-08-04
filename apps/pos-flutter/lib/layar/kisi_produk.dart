@@ -106,7 +106,8 @@ class KisiProduk extends StatelessWidget {
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.aktif, required this.onTekan});
+  const _Chip(
+      {required this.label, required this.aktif, required this.onTekan});
 
   final String label;
   final bool aktif;
@@ -143,7 +144,8 @@ class _Chip extends StatelessWidget {
 }
 
 class _KartuProduk extends StatelessWidget {
-  const _KartuProduk({required this.produk, required this.uang, required this.onTekan});
+  const _KartuProduk(
+      {required this.produk, required this.uang, required this.onTekan});
 
   final ProdukLokal produk;
   final String Function(String) uang;
@@ -183,7 +185,8 @@ class _KartuProduk extends StatelessWidget {
                   produk.nama,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      fontSize: 13.5, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 2),
                 Row(
@@ -201,13 +204,16 @@ class _KartuProduk extends StatelessWidget {
                     if (produk.stok != null)
                       Container(
                         key: Key('stok-${produk.productId}'),
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
                           color: warna.latar,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          keadaan == KeadaanStok.habis ? 'Habis' : 'Stok ${produk.stok}',
+                          keadaan == KeadaanStok.habis
+                              ? 'Habis'
+                              : 'Stok ${produk.stok}',
                           style: TextStyle(
                             color: warna.teks,
                             fontSize: 10.5,
@@ -217,6 +223,34 @@ class _KartuProduk extends StatelessWidget {
                       ),
                   ],
                 ),
+                if (produk.penanda.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      for (final p in produk.penanda.take(2))
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _warnaPenanda(p).latar,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            p,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _warnaPenanda(p).teks,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Expanded(child: _KotakGambar(produk: produk)),
                 const SizedBox(height: 8),
@@ -227,7 +261,8 @@ class _KartuProduk extends StatelessWidget {
                         produk.varian ?? '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11.5, color: Warna.teksRedup),
+                        style: const TextStyle(
+                            fontSize: 11.5, color: Warna.teksRedup),
                       ),
                     ),
                     Container(
@@ -254,6 +289,22 @@ class _KartuProduk extends StatelessWidget {
   }
 }
 
+({Color latar, Color teks}) _warnaPenanda(String label) {
+  final kecil = label.toLowerCase();
+  if (kecil.contains('resep') || kecil.contains('keras')) {
+    return (latar: const Color(0xFFFEE2E2), teks: const Color(0xFF991B1B));
+  }
+  if (kecil.contains('alert') ||
+      kecil.contains('nark') ||
+      kecil.contains('psiko')) {
+    return (latar: const Color(0xFFFEF3C7), teks: const Color(0xFF92400E));
+  }
+  if (kecil.contains('racik') || kecil.contains('produksi')) {
+    return (latar: const Color(0xFFE0F2FE), teks: const Color(0xFF075985));
+  }
+  return (latar: Warna.utamaMuda, teks: Warna.utama);
+}
+
 /// Kotak berwarna dengan huruf awal produk.
 ///
 /// Salinan katalog belum membawa foto. Ini bukan tempat penampung sementara yang
@@ -266,7 +317,8 @@ class _KotakGambar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final huruf = produk.nama.trim().isEmpty ? '?' : produk.nama.trim()[0].toUpperCase();
+    final huruf =
+        produk.nama.trim().isEmpty ? '?' : produk.nama.trim()[0].toUpperCase();
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(

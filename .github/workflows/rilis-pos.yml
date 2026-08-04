@@ -121,6 +121,18 @@ jobs:
             "/DSumber=$PWD\${{ env.JALUR }}\build\windows\x64\runner\Release" `
             "/DKeluaran=$PWD\keluaran" `
             "${{ env.JALUR }}\windows\pemasang.iss"
+
+          flutter build windows --release --dart-define=VERSI=${{ steps.versi.outputs.nilai }} --dart-define=POS_MODE=apotik
+          & $iscc `
+            "/DVersi=${{ steps.versi.outputs.nilai }}" `
+            "/DNamaApl=POS Apotik eMedik" `
+            "/DPenerbit=eMedik.id" `
+            "/DSitus=https://apotik.emedik.id" `
+            "/DAppIdPemasang={{5C2B4B6E-9F8F-4308-B2F2-2D3A3709B7C2}" `
+            "/DNamaBerkasKeluaran=emedik-pos-apotik" `
+            "/DSumber=$PWD\${{ env.JALUR }}\build\windows\x64\runner\Release" `
+            "/DKeluaran=$PWD\keluaran" `
+            "${{ env.JALUR }}\windows\pemasang.iss"
           Get-ChildItem keluaran
 
       - uses: actions/upload-artifact@v4
@@ -201,13 +213,20 @@ jobs:
         working-directory: ${{ env.JALUR }}
         run: |
           flutter pub get
-          flutter build apk --release \
+          flutter build apk --release --flavor penjualan \
             --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
             --build-name=${{ steps.versi.outputs.nilai }} \
             --build-number=${{ github.run_number }}
           mkdir -p "${GITHUB_WORKSPACE}/keluaran"
-          cp build/app/outputs/flutter-apk/app-release.apk \
+          cp build/app/outputs/flutter-apk/app-penjualan-release.apk \
              "${GITHUB_WORKSPACE}/keluaran/ebisnis-pos-${{ steps.versi.outputs.nilai }}.apk"
+          flutter build apk --release --flavor apotik \
+            --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
+            --dart-define=POS_MODE=apotik \
+            --build-name=${{ steps.versi.outputs.nilai }} \
+            --build-number=${{ github.run_number }}
+          cp build/app/outputs/flutter-apk/app-apotik-release.apk \
+             "${GITHUB_WORKSPACE}/keluaran/emedik-pos-apotik-${{ steps.versi.outputs.nilai }}.apk"
 
       - name: Hapus kunci dari runner
         if: always()
@@ -283,8 +302,10 @@ jobs:
             echo "| Berkas | Untuk |"
             echo "| --- | --- |"
             echo "| \`ebisnis-pos-$versi-windows.exe\` | Windows 64-bit — pemasang, dijalankan tanpa hak administrator |"
+            echo "| \`emedik-pos-apotik-$versi-windows.exe\` | Windows 64-bit - POS Apotik eMedik |"
             if [ "$DITANDATANGANI" = "true" ]; then
               echo "| \`ebisnis-pos-$versi.apk\` | Android — pasang langsung dari berkas |"
+              echo "| \`emedik-pos-apotik-$versi.apk\` | Android - POS Apotik eMedik |"
             else
               echo
               echo "> **APK Android belum tersedia pada rilis ini.** Rahasia penandatanganan"

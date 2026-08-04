@@ -28,16 +28,36 @@ const daftarMenu = [
   ItemMenu('pengaturan', 'Pengaturan', Icons.settings_outlined),
 ];
 
+const daftarMenuApotik = [
+  ItemMenu('dashboard', 'Dashboard', Icons.home_outlined),
+  ItemMenu('kasir', 'POS Apotik', Icons.medication_outlined),
+  ItemMenu('produk', 'Obat & Farmasi', Icons.inventory_2_outlined),
+  ItemMenu(
+      'riwayat-pembayaran', 'Riwayat Pembayaran', Icons.receipt_long_outlined),
+  ItemMenu('pelanggan', 'Pasien', Icons.person_outline),
+  ItemMenu('stok', 'Stok & Expiry', Icons.warehouse_outlined),
+  ItemMenu('pembelian', 'PBF & Pembelian', Icons.shopping_bag_outlined),
+  ItemMenu('promo', 'Paket & Promo', Icons.local_offer_outlined),
+  ItemMenu('laporan', 'Laporan Farmasi', Icons.description_outlined),
+  ItemMenu('pengaturan', 'Pengaturan', Icons.settings_outlined),
+];
+
 class BilahSamping extends StatelessWidget {
   const BilahSamping({
     required this.terpilih,
     required this.onPilih,
+    this.judul = 'eBisnis POS',
+    this.ikon = Icons.bolt,
+    this.menu = daftarMenu,
     this.keteranganLangganan,
     super.key,
   });
 
   final String terpilih;
   final void Function(ItemMenu) onPilih;
+  final String judul;
+  final IconData ikon;
+  final List<ItemMenu> menu;
   final String? keteranganLangganan;
 
   @override
@@ -62,13 +82,12 @@ class BilahSamping extends StatelessWidget {
                       color: Warna.utama,
                       borderRadius: BorderRadius.circular(9),
                     ),
-                    child:
-                        const Icon(Icons.bolt, color: Colors.white, size: 19),
+                    child: Icon(ikon, color: Colors.white, size: 19),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'eBisnis POS',
+                      judul,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -85,7 +104,7 @@ class BilahSamping extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 children: [
-                  for (final m in daftarMenu)
+                  for (final m in menu)
                     _BarisMenu(
                       item: m,
                       aktif: m.kunci == terpilih,

@@ -113,6 +113,7 @@ Future<ValueNotifier<KeadaanPelanggan>> pasang(
   Pencetak? pencetak,
   List<MetodeBayar>? metode,
   PengelolaPembaruan? pembaruan,
+  ModeKasir mode = ModeKasir.penjualan,
 }) async {
   /*
    * Ukuran meja kasir, bukan ukuran bawaan uji (800x600).
@@ -144,6 +145,7 @@ Future<ValueNotifier<KeadaanPelanggan>> pasang(
         namaToko: 'Toko Uji',
         pelanggan: pelanggan,
         pembaruan: pembaruan,
+        mode: mode,
       ),
     ),
   );
@@ -175,6 +177,19 @@ void main() {
         tester.widget<TextField>(find.byKey(const Key('kotak-pindai')));
     expect(kotak.focusNode!.hasFocus, isTrue);
     expect(kotak.controller!.text, isEmpty);
+  });
+
+  testWidgets('mode apotik memakai istilah dan konteks farmasi',
+      (tester) async {
+    await pasang(tester, mode: ModeKasir.apotik);
+
+    expect(find.text('POS Apotik'), findsWidgets);
+    expect(find.byKey(const Key('panel-konteks-apotik')), findsOneWidget);
+    expect(find.byKey(const Key('nomor-resep-apotik')), findsOneWidget);
+    expect(find.text('Resep'), findsOneWidget);
+    expect(find.text('Bebas'), findsOneWidget);
+    expect(find.text('Antar'), findsOneWidget);
+    expect(find.textContaining('Pindai barcode obat'), findsOneWidget);
   });
 
   testWidgets('barcode alternatif ditemukan sama saja', (tester) async {

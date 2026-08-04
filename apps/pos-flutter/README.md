@@ -47,6 +47,31 @@ Disetel lewat argumen dan bukan lewat layar setelan karena layar setelannya belu
 ada — dan menebak bawaannya akan salah, sebab mesin kasir Windows umumnya memakai
 porta COM sedangkan gerai dengan printer bersama memakai jaringan.
 
+## POS Apotik
+
+POS Apotik memakai aplikasi Flutter yang sama, tetapi dibangun dalam mode
+farmasi:
+
+```bash
+flutter run -d windows --dart-define=POS_MODE=apotik
+flutter build apk --release --flavor apotik --dart-define=POS_MODE=apotik
+flutter build windows --release --dart-define=POS_MODE=apotik
+```
+
+Mode ini mengganti brand menjadi **POS Apotik**, memakai katalog demo obat, dan
+menampilkan konteks kerja farmasi: nomor resep/e-resep, pasien, resep dokter,
+obat bebas, antar, racikan, produksi farmasi, high-alert, batch, dan kedaluwarsa.
+
+POS Apotik memang dipisah dari POS Penjualan biasa karena alurnya berbeda:
+apotik perlu telaah resep, penanda obat keras/high-alert, racikan, nomor batch,
+kedaluwarsa, konseling, dan jejak audit farmasi. Menyatukannya sebagai tombol
+tambahan di POS biasa akan membuat kasir ritel membawa aturan klinis yang tidak
+ia pakai, sementara apoteker kehilangan konteks keselamatan obat.
+
+Pada Android, flavor `apotik` memakai `applicationId` berbeda
+(`id.emedik.pos_apotik`), sehingga POS Apotik dapat dipasang berdampingan dengan
+POS Penjualan biasa (`id.ebisnis.ebisnis_pos`) pada perangkat yang sama.
+
 ## Perangkat keras
 
 Tiga hal yang biasanya disebut "integrasi perangkat keras" ternyata satu.

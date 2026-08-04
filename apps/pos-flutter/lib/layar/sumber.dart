@@ -23,6 +23,7 @@ class ProdukLokal {
     this.taxRateId,
     this.kategori,
     this.varian,
+    this.penanda = const [],
     this.stok,
     this.favorit = false,
   });
@@ -43,6 +44,10 @@ class ProdukLokal {
 
   /// Keterangan varian yang tampil di bawah nama, misalnya `Reguler`, `Slice`.
   final String? varian;
+
+  /// Penanda ringkas yang penting untuk kasir, misalnya `Resep`,
+  /// `High-alert`, `Racikan`, atau `Batch`.
+  final List<String> penanda;
 
   /// Sisa stok pada salinan katalog, atau **null bila tidak diketahui**.
   ///
