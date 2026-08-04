@@ -231,11 +231,13 @@ const LEGACY_FILE_CLASSIFICATION: Record<string, LegacyFileClass> = {
 async function main(): Promise<void> {
   const ctx = await createSeedContext();
   try {
+    const registration = await ensureCmnRegistration(ctx);
     const owner = await ensurePlatformUser(ctx, USERS[0]);
     let tenant = await ctx.prisma.tenant.findUnique({ where: { code: TENANT.code } });
     if (!tenant) {
       tenant = await ctx.prisma.tenant.create({
         data: {
+          registrationId: registration.id,
           code: TENANT.code,
           name: TENANT.name,
           slug: TENANT.slug,
@@ -250,10 +252,19 @@ async function main(): Promise<void> {
         },
       });
       process.stdout.write(`Tenant ${TENANT.name} dibuat.\n`);
-    } else if (tenant.verticalCode !== TENANT.verticalCode || tenant.name !== TENANT.name) {
+    } else if (
+      tenant.registrationId !== registration.id ||
+      tenant.verticalCode !== TENANT.verticalCode ||
+      tenant.name !== TENANT.name
+    ) {
       tenant = await ctx.prisma.tenant.update({
         where: { id: tenant.id },
-        data: { name: TENANT.name, slug: TENANT.slug, verticalCode: TENANT.verticalCode },
+        data: {
+          registrationId: registration.id,
+          name: TENANT.name,
+          slug: TENANT.slug,
+          verticalCode: TENANT.verticalCode,
+        },
       });
     }
 
@@ -273,6 +284,7 @@ async function main(): Promise<void> {
       process.stdout.write(`Schema ${registry.schemaName} ditemukan; migration dan seed dasar disinkronkan.\n`);
     } else {
       await ctx.provisioner.provision({
+        registrationId: registration.id,
         tenantId: tenant.id,
         desiredUsername: TENANT.schema,
         businessName: TENANT.name,
@@ -310,12 +322,110 @@ async function main(): Promise<void> {
     }
 
     const imported = await importLegacyDataIfPresent(ctx, TENANT.schema);
+    await ensureCmnRegistrationReady(ctx, registration.id, tenant.id);
     process.stdout.write(
       `CMN siap: tenant=${TENANT.code}, schema=${TENANT.schema}, host=${TENANT.host}, ` +
         `produk=${imported.products}, pelanggan=${imported.customers}, pemasok=${imported.suppliers}, penjualan=${imported.salesOrders}.\n`,
     );
   } finally {
     await ctx.app.close();
+  }
+}
+
+async function ensureCmnRegistration(ctx: Awaited<ReturnType<typeof createSeedContext>>) {
+  const now = new Date();
+  const email = 'cmnmedika@cmnmedika-inventory.ebisnis.id';
+  const existing = await ctx.prisma.registration.findFirst({
+    where: {
+      OR: [
+        { registrationCode: 'REG-CMN-INVENTORY' },
+        { normalizedUsername: TENANT.schema },
+      ],
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const data = {
+    registrationCode: 'REG-CMN-INVENTORY',
+    businessName: TENANT.name,
+    businessType: 'Distribusi dan sales obat',
+    country: 'Indonesia',
+    province: 'Jawa Barat',
+    cityRegency: 'Cirebon',
+    district: null,
+    address: 'Wilayah operasional Cirebon dan sekitarnya',
+    contactPerson: 'Muklis',
+    contactPhone: null,
+    businessPhone: null,
+    email,
+    desiredUsername: TENANT.schema,
+    normalizedUsername: TENANT.schema,
+    generatePassword: false,
+    status: 'PROVISIONING' as const,
+    source: 'BOOTSTRAP_CMN_INVENTORY',
+    localeCode: 'id',
+    termsAcceptedAt: now,
+    privacyAcceptedAt: now,
+    failureCode: null,
+    failureMessage: null,
+  };
+
+  const registration = existing
+    ? await ctx.prisma.registration.update({
+        where: { id: existing.id },
+        data: {
+          ...data,
+          registrationCode: existing.registrationCode,
+          status: existing.status === 'READY' ? 'READY' : data.status,
+          deletedAt: null,
+        },
+      })
+    : await ctx.prisma.registration.create({ data });
+
+  await ctx.prisma.schemaNameReservation.upsert({
+    where: { normalizedName: TENANT.schema },
+    create: {
+      normalizedName: TENANT.schema,
+      auditName: `${TENANT.schema}__audit`,
+      registrationId: registration.id,
+      expiresAt: new Date(now.getTime() + 30 * 60_000),
+      consumedAt: now,
+    },
+    update: {
+      auditName: `${TENANT.schema}__audit`,
+      registrationId: registration.id,
+      consumedAt: now,
+      releasedAt: null,
+      expiresAt: new Date(now.getTime() + 30 * 60_000),
+    },
+  });
+
+  return registration;
+}
+
+async function ensureCmnRegistrationReady(
+  ctx: Awaited<ReturnType<typeof createSeedContext>>,
+  registrationId: string,
+  tenantId: string,
+) {
+  await ctx.prisma.registration.update({
+    where: { id: registrationId },
+    data: {
+      status: 'READY',
+      failureCode: null,
+      failureMessage: null,
+    },
+  });
+
+  const latestJob = await ctx.prisma.provisioningJob.findFirst({
+    where: { tenantId },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (latestJob && !latestJob.registrationId) {
+    await ctx.prisma.provisioningJob.update({
+      where: { id: latestJob.id },
+      data: { registrationId },
+    });
   }
 }
 
