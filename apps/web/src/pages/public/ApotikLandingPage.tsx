@@ -15,6 +15,7 @@ import {
   ShoppingCart,
 } from 'lucide-react';
 import { LandingHeader, LandingCta, LandingImage, OfferDocumentSection } from './EmedikLandingPage';
+import { emedikPublicBrandFor } from './emedik-host';
 
 const photo = {
   scan:
@@ -73,12 +74,23 @@ const posSteps = [
 ];
 
 export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
-  const host = demo ? 'demo-apotik.emedik.id' : 'apotik.emedik.id';
-  const title = demo ? 'Demo Apotik eMedik' : 'Apotik eMedik';
+  const brand = emedikPublicBrandFor();
+  const title = demo ? 'Demo Apotik eMedik' : brand?.kind === 'apotik' ? brand.name : 'Apotik eMedik';
+  const host =
+    brand?.kind === 'apotik'
+      ? brand.homeUrl.replace(/^https?:\/\//, '')
+      : demo
+        ? 'demo-apotik.emedik.id'
+        : 'apotik.emedik.id';
 
   return (
     <div className="min-h-screen bg-[#f6fbf8] text-slate-950">
-      <LandingHeader brand={title} links={['Farmasi', 'POS Apotik', 'Racikan', 'Keamanan', 'Dokumen', 'Demo']} />
+      <LandingHeader
+        brand={title}
+        logoText={brand?.logoText ?? 'Rx'}
+        tone="emerald"
+        links={['Farmasi', 'POS Apotik', 'Racikan', 'Keamanan', 'Dokumen', 'Demo']}
+      />
 
       <main>
         <section className="overflow-hidden bg-white">
@@ -281,9 +293,10 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
         <OfferDocumentSection tone="emerald" />
 
         <LandingCta
-          title={demo ? 'Buka demo apotik sekarang' : 'Bangun kanal apotik di eMedik.id'}
+          title={demo ? 'Buka demo apotik sekarang' : `Bangun kanal apotik di ${title}`}
           primary={demo ? 'Masuk demo' : 'Mulai daftar'}
           secondary="Hubungi tim"
+          tone="emerald"
         />
       </main>
     </div>

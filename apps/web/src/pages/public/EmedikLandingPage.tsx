@@ -22,6 +22,9 @@ import {
   Syringe,
   UsersRound,
 } from 'lucide-react';
+import { emedikPublicBrandFor } from './emedik-host';
+
+type LandingTone = 'teal' | 'emerald';
 
 const photos = {
   hero:
@@ -207,9 +210,16 @@ export const offerDocuments = [
 ];
 
 export function EmedikLandingPage() {
+  const brand = emedikPublicBrandFor();
+  const brandName = brand?.kind === 'emedik' ? brand.name : 'eMedik.id';
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
-      <LandingHeader brand="eMedik.id" links={['Solusi', 'Alur', 'Keamanan', 'Dokumen', 'Demo']} />
+      <LandingHeader
+        brand={brandName}
+        logoText={brand?.logoText ?? 'eM'}
+        links={['Solusi', 'Alur', 'Keamanan', 'Dokumen', 'Demo']}
+      />
 
       <main>
         <section className="overflow-hidden border-b border-slate-200 bg-white">
@@ -456,18 +466,39 @@ export function EmedikLandingPage() {
 
         <OfferDocumentSection tone="teal" />
 
-        <LandingCta title="Siapkan fasilitas kesehatan Anda di eMedik.id" primary="Mulai daftar" secondary="Buka demo" />
+        <LandingCta
+          title={`Siapkan fasilitas kesehatan Anda di ${brandName}`}
+          primary="Mulai daftar"
+          secondary="Buka demo"
+        />
       </main>
     </div>
   );
 }
 
-export function LandingHeader({ brand, links }: { brand: string; links: string[] }) {
+export function LandingHeader({
+  brand,
+  links,
+  logoText = 'eM',
+  tone = 'teal',
+}: {
+  brand: string;
+  links: string[];
+  logoText?: string;
+  tone?: LandingTone;
+}) {
+  const logoClass = tone === 'emerald' ? 'bg-emerald-700' : 'bg-teal-700';
+  const navHover =
+    tone === 'emerald' ? 'hover:bg-emerald-50 hover:text-emerald-800' : 'hover:bg-teal-50 hover:text-teal-800';
+  const mobileClass = tone === 'emerald' ? 'bg-emerald-50 text-emerald-800' : 'bg-teal-50 text-teal-800';
+
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="container-page flex min-h-16 items-center justify-between gap-4 py-3">
         <Link to="/" className="flex items-center gap-2 font-black text-slate-950">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-teal-700 text-sm text-white">eM</span>
+          <span className={`grid h-9 w-9 place-items-center rounded-lg text-sm text-white ${logoClass}`}>
+            {logoText}
+          </span>
           <span>{brand}</span>
         </Link>
         <nav className="hidden items-center gap-1 md:flex" aria-label="Navigasi landing">
@@ -475,7 +506,7 @@ export function LandingHeader({ brand, links }: { brand: string; links: string[]
             <a
               key={link}
               href={`#${link.replace(/\s+/g, '-')}`}
-              className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+              className={`rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 ${navHover}`}
             >
               {link}
             </a>
@@ -490,7 +521,7 @@ export function LandingHeader({ brand, links }: { brand: string; links: string[]
           <a
             key={link}
             href={`#${link.replace(/\s+/g, '-')}`}
-            className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700"
+            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold ${mobileClass}`}
           >
             {link}
           </a>
@@ -500,19 +531,34 @@ export function LandingHeader({ brand, links }: { brand: string; links: string[]
   );
 }
 
-export function LandingCta({ title, primary, secondary }: { title: string; primary: string; secondary: string }) {
+export function LandingCta({
+  title,
+  primary,
+  secondary,
+  tone = 'teal',
+}: {
+  title: string;
+  primary: string;
+  secondary: string;
+  tone?: LandingTone;
+}) {
+  const sectionClass = tone === 'emerald' ? 'bg-emerald-700' : 'bg-teal-700';
+  const copyClass = tone === 'emerald' ? 'text-emerald-50' : 'text-teal-50';
+  const primaryClass =
+    tone === 'emerald' ? 'text-emerald-800 hover:bg-emerald-50' : 'text-teal-800 hover:bg-teal-50';
+
   return (
-    <section id="Demo" className="bg-teal-700 py-14 text-white">
+    <section id="Demo" className={`${sectionClass} py-14 text-white`}>
       <div className="container-page flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
         <div>
           <h2 className="text-2xl font-black sm:text-3xl">{title}</h2>
-          <p className="mt-2 max-w-2xl text-teal-50">
+          <p className={`mt-2 max-w-2xl ${copyClass}`}>
             Tim operasional bisa mulai dari data demo, lalu memindahkan konfigurasi
             ke lingkungan produksi setelah alurnya disepakati.
           </p>
         </div>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <Link to="/daftar" className="btn bg-white px-5 py-3 text-teal-800 hover:bg-teal-50">
+          <Link to="/daftar" className={`btn bg-white px-5 py-3 ${primaryClass}`}>
             {primary}
           </Link>
           <Link to="/demo" className="btn border border-white/40 px-5 py-3 text-white hover:bg-white/10">

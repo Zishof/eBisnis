@@ -107,6 +107,7 @@ export default defineConfig({
       'www.apotik.emedik.id',
       'demo.emedik.id',
       'demo-apotik.emedik.id',
+      '.emedik.id',
     ],
     /*
      * Proxy yang sama seperti server pengembangan.
