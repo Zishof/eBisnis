@@ -149,6 +149,7 @@ export function LoginPage() {
    */
   const portalUmum = isSantriPortalHost();
   const slugPondok = slugPondokDariHost();
+  const tampilkanDemoLogin = !slugPondok && !cmnInventory;
 
   const pilihAkunSalon = useCallback((roleCode: string) => {
     const akun = AKUN_SALON_DEMO.find((item) => item.roleCode === roleCode) ?? AKUN_SALON_DEMO[0];
@@ -302,7 +303,7 @@ export function LoginPage() {
             </button>
           </form>
 
-          {!slugPondok && (
+          {tampilkanDemoLogin && (
             <>
               <div className="mt-6 flex items-center gap-3">
                 <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
@@ -361,7 +362,7 @@ export function LoginPage() {
             </div>
           )}
 
-          {inventory && (
+          {inventory && !cmnInventory && (
             <div className="mt-6 space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Pilih persona demo inventory
