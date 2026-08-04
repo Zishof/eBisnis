@@ -648,6 +648,7 @@ export function App() {
           <Route path="pesantren/rombongan" element={<PesantrenKelasKurikulumPage initialTab="rombongan" />} />
           <Route path="pesantren/kurikulum" element={<PesantrenKelasKurikulumPage initialTab="kurikulum" />} />
           <Route path="pesantren/jadwal" element={<PesantrenJadwalPage />} />
+          <Route path="pesantren/dakwah" element={<PesantrenDakwahPage initialTab="kajian" />} />
           <Route path="pesantren/diniyah" element={<PesantrenDakwahPage initialTab="halaqah" />} />
           <Route path="pesantren/guru" element={<PesantrenGuruPage />} />
           <Route path="pesantren/kartu" element={<PesantrenKartuPage />} />
