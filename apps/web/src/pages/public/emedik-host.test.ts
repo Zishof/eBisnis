@@ -11,7 +11,11 @@ describe('host publik eMedik', () => {
   it('mengenali portal utama eMedik', () => {
     expect(isEmedikHost('emedik.id')).toBe(true);
     expect(isEmedikHost('www.emedik.id')).toBe(true);
+    expect(isEmedikHost('demo.emedik.id')).toBe(true);
+    expect(isEmedikHost('kliniksehat.emedik.id')).toBe(true);
     expect(isEmedikHost('apotik.emedik.id')).toBe(false);
+    expect(isEmedikHost('sehatjaya-apotik.emedik.id')).toBe(false);
+    expect(isEmedikHost('emedik.id.evil.test')).toBe(false);
   });
 
   it('mengenali landing apotik dan tenant apotik', () => {
@@ -28,6 +32,7 @@ describe('host publik eMedik', () => {
 
   it('memilih pengalaman akar tanpa menyentuh path lain', () => {
     expect(rootExperienceFor('emedik.id', '/')).toBe('emedik');
+    expect(rootExperienceFor('demo.emedik.id', '/')).toBe('emedik');
     expect(rootExperienceFor('apotik.emedik.id', '/')).toBe('apotik');
     expect(rootExperienceFor('demo-apotik.emedik.id', '/')).toBe('demo-apotik');
     expect(rootExperienceFor('demo-apotik.emedik.id', '/masuk')).toBeNull();
@@ -42,6 +47,8 @@ describe('host publik eMedik', () => {
   it('memberi brand publik sesuai host tanpa kembali ke eBisnis', () => {
     expect(emedikPublicBrandFor('emedik.id')?.name).toBe('eMedik.id');
     expect(emedikPublicBrandFor('emedik.id')?.homeUrl).toBe('https://emedik.id');
+    expect(emedikPublicBrandFor('demo.emedik.id')?.name).toBe('eMedik.id');
+    expect(emedikPublicBrandFor('demo.emedik.id')?.homeUrl).toBe('https://emedik.id');
     expect(emedikPublicBrandFor('apotik.emedik.id')?.name).toBe('Apotik eMedik');
     expect(emedikPublicBrandFor('apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
     expect(emedikPublicBrandFor('demo-apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');

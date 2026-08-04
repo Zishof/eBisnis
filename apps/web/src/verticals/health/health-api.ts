@@ -105,6 +105,7 @@ export interface PasienLengkap extends RingkasPasien {
 
 export interface BarisAntrean {
   id: string;
+  registration_id: string;
   queue_label: string;
   priority: number;
   priority_reason: string | null;

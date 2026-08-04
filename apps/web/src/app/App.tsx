@@ -154,8 +154,16 @@ const HealthFacilityPage = lazy(() =>
 const HealthPatientPage = lazy(() =>
   import('../verticals/health/PatientPage').then((m) => ({ default: m.PatientPage })),
 );
+const HealthDuplicatePatientPage = lazy(() =>
+  import('../verticals/health/DuplicatePatientPage').then((m) => ({
+    default: m.DuplicatePatientPage,
+  })),
+);
 const HealthQueuePage = lazy(() =>
   import('../verticals/health/QueuePage').then((m) => ({ default: m.QueuePage })),
+);
+const HealthOutpatientPage = lazy(() =>
+  import('../verticals/health/OutpatientPage').then((m) => ({ default: m.OutpatientPage })),
 );
 const HealthEncounterPage = lazy(() =>
   import('../verticals/health/EncounterPage').then((m) => ({ default: m.EncounterPage })),
@@ -174,6 +182,12 @@ const HealthWardPage = lazy(() =>
 );
 const HealthEmergencyPage = lazy(() =>
   import('../verticals/health/EmergencyPage').then((m) => ({ default: m.EmergencyPage })),
+);
+const HealthSurgeryPage = lazy(() =>
+  import('../verticals/health/SurgeryPage').then((m) => ({ default: m.SurgeryPage })),
+);
+const HealthIcuPage = lazy(() =>
+  import('../verticals/health/IcuPage').then((m) => ({ default: m.IcuPage })),
 );
 const HealthFamilyPage = lazy(() =>
   import('../verticals/health/FamilyPage').then((m) => ({ default: m.FamilyPage })),
@@ -587,7 +601,9 @@ export function App() {
           <Route path="emedik" element={<PurposeProvider><Outlet /></PurposeProvider>}>
             <Route path="fasilitas" element={<HealthFacilityPage />} />
             <Route path="pasien" element={<HealthPatientPage />} />
+            <Route path="pasien/ganda" element={<HealthDuplicatePatientPage />} />
             <Route path="pendaftaran" element={<HealthQueuePage />} />
+            <Route path="rawat-jalan" element={<HealthOutpatientPage />} />
             <Route path="kunjungan/:id" element={<HealthEncounterPage />} />
             <Route path="resep" element={<HealthPharmacyPage />} />
             <Route path="penyerahan" element={<HealthPharmacyPage />} />
@@ -600,6 +616,8 @@ export function App() {
             <Route path="keperawatan" element={<HealthWardPage />} />
             <Route path="tempat-tidur" element={<HealthWardPage />} />
             <Route path="igd" element={<HealthEmergencyPage />} />
+            <Route path="operasi" element={<HealthSurgeryPage />} />
+            <Route path="intensif" element={<HealthIcuPage />} />
 
             <Route path="keluarga" element={<HealthFamilyPage />} />
             <Route path="pertumbuhan" element={<HealthGrowthPage />} />

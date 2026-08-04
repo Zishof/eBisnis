@@ -8,6 +8,11 @@
 const EMEDIK_ROOT_HOSTS = ['emedik.id', 'www.emedik.id'];
 const APOTIK_ROOT_HOSTS = ['apotik.emedik.id', 'www.apotik.emedik.id'];
 const DEMO_APOTIK_HOST = 'demo-apotik.emedik.id';
+const EMEDIK_TENANT_SUFFIX = '.emedik.id';
+
+function normalizedHost(hostname: string): string {
+  return hostname.toLowerCase().replace(/\.$/, '');
+}
 
 export interface EmedikPublicBrand {
   kind: 'emedik' | 'apotik';
@@ -37,21 +42,26 @@ export interface EmedikPublicBrand {
 }
 
 export function isEmedikHost(hostname: string = window.location.hostname): boolean {
-  const host = hostname.toLowerCase();
-  return EMEDIK_ROOT_HOSTS.includes(host);
+  const host = normalizedHost(hostname);
+  if (EMEDIK_ROOT_HOSTS.includes(host)) return true;
+  if (isApotikHost(host)) return false;
+  if (!host.endsWith(EMEDIK_TENANT_SUFFIX)) return false;
+
+  const subdomain = host.slice(0, -EMEDIK_TENANT_SUFFIX.length);
+  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(subdomain);
 }
 
 export function isApotikHost(hostname: string = window.location.hostname): boolean {
-  const host = hostname.toLowerCase();
+  const host = normalizedHost(hostname);
   return (
     APOTIK_ROOT_HOSTS.includes(host) ||
     host === DEMO_APOTIK_HOST ||
-    host.endsWith('-apotik.emedik.id')
+    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?-apotik\.emedik\.id$/.test(host)
   );
 }
 
 export function isDemoApotikHost(hostname: string = window.location.hostname): boolean {
-  return hostname.toLowerCase() === DEMO_APOTIK_HOST;
+  return normalizedHost(hostname) === DEMO_APOTIK_HOST;
 }
 
 export function rootExperienceFor(

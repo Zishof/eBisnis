@@ -757,6 +757,11 @@
       "file": "H066__health__menu_truth_w6a.sql",
       "name": "eMedik: menu berlayar W-6A eMAR",
       "description": "Membuka /app/emedik/pemberian sebagai layar eMAR. Pemberian obat memakai daftar kerja yang diurutkan menurut keterlambatan, high-alert, dan obat terkendali; aksi tetap divalidasi peladen dengan enam benar."
+    },
+    {
+      "file": "H067__health__menu_truth_w6b.sql",
+      "name": "eMedik: menu berlayar W-6B klinis harian",
+      "description": "Membuka /app/emedik/rawat-jalan, /app/emedik/operasi, /app/emedik/intensif, dan /app/emedik/pasien/ganda. Rawat jalan memakai registration_id dari antrean untuk membuka EncounterPage secara benar; operasi, ICU, dan pasien ganda memakai API H-2 sampai H-7 yang sudah tersedia."
     }
   ]
 }

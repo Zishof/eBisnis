@@ -222,7 +222,7 @@ export class HealthVisitService {
     const businessDate = tanggalUsaha(new Date(), 'Asia/Jakarta');
     const rows = await this.tenantDb.query<Record<string, unknown>>(
       schema,
-      `SELECT q.id, q.queue_prefix, q.queue_number, q.queue_label, q.priority,
+      `SELECT q.id, q.registration_id, q.queue_prefix, q.queue_number, q.queue_label, q.priority,
               q.priority_reason, q.status, q.created_at, q.called_at,
               p.full_name AS patient_name, r.registration_number
          FROM "${schema}".health_queue q
