@@ -32,7 +32,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 
 | Area | Status | Sudah tersedia | Gap yang masih tersisa |
 | --- | --- | --- | --- |
-| Website pondok publik | Sebagian besar selesai | Profil pondok, berita, logo, hero image, muqodimah, subdomain tenant, halaman publik santri.info | CMS generik lengkap belum ada: page builder, gallery, menu editor, draft/publish multi-section, crop/alt text gambar |
+| Website pondok publik | Sebagian besar selesai | Profil pondok, berita, upload gambar sampul berita dari admin, logo, hero image, muqodimah, subdomain tenant, halaman publik santri.info | CMS generik lengkap belum ada: page builder, gallery, menu editor, draft/publish multi-section, crop/alt text gambar |
 | Website unit sekolah | Sebagian besar selesai | Unit pendidikan punya website sendiri, subdomain/custom domain field, logo/hero URL, upload logo/hero langsung dari admin, halaman unit cerah, kartu unit dari halaman pondok bisa menuju alamat unit | Gallery/program/kegiatan per unit belum jadi modul penuh; custom domain `*.sch.id` masih perlu verifikasi DNS/ownership dan automation ops |
 | Cloudflare/subdomain | Sebagian selesai | Wildcard DNS `*.santri.info` cukup untuk subdomain dinamis di aplikasi; setting subdomain unit ada di CRUD unit pendidikan | Cloudflare API automation untuk membuat/mengubah record custom belum diaktifkan; perlu token, zone id, audit log, retry, dan validasi konflik |
 | Master eSchool | Sebagian besar selesai | Unit pendidikan, guru/ustadz, santri, wali, kartu, rombongan, kurikulum, mapel, jadwal | Field biodata AIS yang sangat rinci belum semua menjadi kolom typed; beberapa masih perlu metadata/ekstensi |
@@ -56,7 +56,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 ### P0 - UI/UX dan Media Website
 
 1. Buat media manager pesantren yang rapi untuk gambar pondok, unit sekolah, berita, dan gallery.
-2. Tambahkan upload gambar berita dari admin; saat ini berita masih mengisi `gambarUrl` manual.
+2. Upload gambar berita dari admin sudah tersedia; fase berikutnya adalah crop/editor gambar dan alt text terstruktur.
 3. Tambahkan gallery/program unggulan per unit sekolah agar halaman unit tidak hanya hero + ringkasan.
 4. Tambahkan metadata gambar: judul, alt text, sumber/atribusi, urutan tampil, status publish.
 5. Terapkan pola UI/UX modern: hierarki bersih, banyak whitespace, navigasi jelas, kartu informatif tanpa bertumpuk, state hover/focus yang nyata, dan aksesibilitas keyboard.
@@ -109,6 +109,7 @@ Batch berikut sudah diterapkan di repo aktif:
 - Gerbang pesantren menutup sebagian gap security: pos keamanan kini punya API dan UI untuk mencatat tamu, paket kiriman, dan penjemput tanpa mencampur alur izin keluar-masuk santri.
 - Vault impor legacy CMN ditambahkan agar seluruh DBF inventory lama tersimpan sebagai raw audit terlebih dahulu sebelum projection operasional dilengkapi bertahap.
 - PSB dan laporan dipoles: pembuatan gelombang memakai pilihan tahun ajaran/unit dari data sistem, tabel gelombang menampilkan nama tahun ajaran dan unit, serta filter laporan tidak lagi meminta ID teknis.
+- Berita pondok dipoles: admin dapat memilih file gambar sampul langsung saat membuat draft, lalu sistem mengunggahnya otomatis setelah draft tersimpan.
 
 Yang masih belum penuh setelah batch ini:
 

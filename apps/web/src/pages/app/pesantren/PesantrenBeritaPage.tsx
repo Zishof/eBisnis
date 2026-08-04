@@ -29,6 +29,7 @@ export function PesantrenBeritaPage() {
   const [creating, setCreating] = useState(false);
   const [detail, setDetail] = useState<BeritaRow | null>(null);
   const [form, setForm] = useState(FORM_KOSONG);
+  const [formGambar, setFormGambar] = useState<File | null>(null);
 
   const queryKey = ['pesantren-berita', page, status];
   const list = useQuery({
@@ -49,12 +50,17 @@ export function PesantrenBeritaPage() {
         gambarUrl: form.gambarUrl || undefined,
         sumberUrl: form.sumberUrl || undefined,
         tanggalTerbit: form.tanggalTerbit || undefined,
-      }),
+    }),
     onSuccess: (row) => {
       toast.push('Berita berhasil dibuat sebagai draft.', 'success');
       setCreating(false);
       setForm(FORM_KOSONG);
-      setDetail(row);
+      if (formGambar) {
+        unggahGambar.mutate({ id: row.id, file: formGambar });
+      } else {
+        setDetail(row);
+      }
+      setFormGambar(null);
       void queryClient.invalidateQueries({ queryKey: ['pesantren-berita'] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal membuat berita.'), 'error'),
@@ -165,7 +171,14 @@ export function PesantrenBeritaPage() {
       {creating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="card max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Tulis Berita</h2>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700">Kabar Pondok</p>
+                <h2 className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">Tulis Berita</h2>
+                <p className="mt-1 text-sm text-slate-500">Buat draft, lampirkan sampul, lalu terbitkan saat konten siap dibaca publik.</p>
+              </div>
+              <StatusBadge status="DRAFT" />
+            </div>
             <div className="mt-4 space-y-3">
               <Field label="Judul *">
                 <input className="field-input" value={form.judul} onChange={(e) => setForm({ ...form, judul: e.target.value })} />
@@ -180,16 +193,35 @@ export function PesantrenBeritaPage() {
                 <Field label="Tanggal terbit">
                   <input type="date" className="field-input" value={form.tanggalTerbit} onChange={(e) => setForm({ ...form, tanggalTerbit: e.target.value })} />
                 </Field>
-                <Field label="Gambar URL">
+                <Field label="URL gambar luar">
                   <input className="field-input" value={form.gambarUrl} onChange={(e) => setForm({ ...form, gambarUrl: e.target.value })} />
                 </Field>
+              </div>
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 dark:text-white">Sampul dari komputer</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">Opsional. JPEG, PNG, atau WEBP maksimal 5 MB. Jika diisi, file ini menggantikan URL gambar luar.</p>
+                    {formGambar && <p className="mt-2 truncate text-sm font-medium text-emerald-700">{formGambar.name}</p>}
+                  </div>
+                  <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                    <Upload className="h-4 w-4" aria-hidden />
+                    Pilih gambar
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      onChange={(event) => setFormGambar(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
               </div>
               <Field label="Sumber URL">
                 <input className="field-input" value={form.sumberUrl} onChange={(e) => setForm({ ...form, sumberUrl: e.target.value })} />
               </Field>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" className="btn-outline" onClick={() => setCreating(false)}>
+              <button type="button" className="btn-outline" onClick={() => { setCreating(false); setFormGambar(null); }}>
                 Batal
               </button>
               <button type="button" className="btn-primary" disabled={!form.judul.trim() || buat.isPending} onClick={() => buat.mutate()}>
