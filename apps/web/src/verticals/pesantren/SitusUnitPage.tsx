@@ -25,6 +25,8 @@ interface UnitPublik {
   santri_subdomain: string | null;
   custom_domain: string | null;
   domain_status: string;
+  logo_url: string | null;
+  hero_image_url: string | null;
   welcome_title: string | null;
   welcome_body: string | null;
 }
@@ -68,7 +70,7 @@ export function SitusUnitPage() {
     };
   }, [data?.unit.name]);
 
-  usePondokFavicon(data?.profil.logo_url);
+  usePondokFavicon(data?.unit.logo_url || data?.profil.logo_url);
   usePondokSeo(
     data
       ? {
@@ -77,8 +79,8 @@ export function SitusUnitPage() {
             data.unit.welcome_body ||
             data.unit.welcome_title ||
             (data.profil.nama_tampilan ? `Unit pendidikan Pondok Pesantren ${data.profil.nama_tampilan}` : null),
-          logoUrl: data.profil.logo_url,
-          heroImageUrl: data.profil.hero_image_url,
+          logoUrl: data.unit.logo_url || data.profil.logo_url,
+          heroImageUrl: data.unit.hero_image_url || data.profil.hero_image_url,
           alamat: data.profil.alamat_publik,
           telepon: data.profil.kontak_telepon,
         }
@@ -90,13 +92,15 @@ export function SitusUnitPage() {
 
   const { profil, unit, gelombang } = data;
   const alamatDigital = unit.custom_domain || (unit.santri_subdomain ? `${unit.santri_subdomain}.santri.info` : null);
+  const logoUrl = unit.logo_url || profil.logo_url;
+  const heroUrl = unit.hero_image_url || profil.hero_image_url;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <section className="relative overflow-hidden border-b border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-sky-50">
-        {profil.hero_image_url && (
+        {heroUrl && (
           <>
-            <img src={profil.hero_image_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />
+            <img src={heroUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />
             <div className="absolute inset-0 bg-gradient-to-r from-white via-white/90 to-white/40" aria-hidden />
           </>
         )}
@@ -107,8 +111,8 @@ export function SitusUnitPage() {
               Situs pondok
             </Link>
             <div className="mt-8 flex items-center gap-4">
-              {profil.logo_url ? (
-                <img src={profil.logo_url} alt="" className="h-16 w-16 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-slate-200" />
+              {logoUrl ? (
+                <img src={logoUrl} alt="" className="h-16 w-16 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-slate-200" />
               ) : (
                 <span className="grid h-16 w-16 place-items-center rounded-2xl bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200">
                   <GraduationCap className="h-8 w-8" aria-hidden />

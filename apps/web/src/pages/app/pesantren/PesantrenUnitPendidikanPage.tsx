@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Edit2, Plus, Trash2 } from 'lucide-react';
+import { Edit2, Image, Plus, Trash2 } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { DataGrid, PageHeader, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -17,6 +17,8 @@ interface UnitPendidikanRow extends Record<string, unknown> {
   santri_subdomain: string | null;
   custom_domain: string | null;
   domain_status: string;
+  logo_url: string | null;
+  hero_image_url: string | null;
   welcome_title: string | null;
   welcome_body: string | null;
 }
@@ -38,6 +40,8 @@ const FORM_KOSONG = {
   publicSlug: '',
   santriSubdomain: '',
   customDomain: '',
+  logoUrl: '',
+  heroImageUrl: '',
   welcomeTitle: '',
   welcomeBody: '',
 };
@@ -55,6 +59,8 @@ function isiForm(row: UnitPendidikanRow): FormState {
     publicSlug: row.public_slug ?? '',
     santriSubdomain: row.santri_subdomain ?? '',
     customDomain: row.custom_domain ?? '',
+    logoUrl: row.logo_url ?? '',
+    heroImageUrl: row.hero_image_url ?? '',
     welcomeTitle: row.welcome_title ?? '',
     welcomeBody: row.welcome_body ?? '',
   };
@@ -71,6 +77,8 @@ function bangunPayload(form: FormState) {
     publicSlug: form.publicSlug || undefined,
     santriSubdomain: form.santriSubdomain || undefined,
     customDomain: form.customDomain || undefined,
+    logoUrl: form.logoUrl || undefined,
+    heroImageUrl: form.heroImageUrl || undefined,
     welcomeTitle: form.welcomeTitle || undefined,
     welcomeBody: form.welcomeBody || undefined,
   };
@@ -137,7 +145,19 @@ export function PesantrenUnitPendidikanPage() {
 
   const columns: Array<GridColumn<UnitPendidikanRow>> = [
     { key: 'code', header: 'Kode' },
-    { key: 'name', header: 'Nama Unit' },
+    {
+      key: 'name',
+      header: 'Nama Unit',
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <VisualPreview url={row.logo_url || row.hero_image_url} fallback={row.name} />
+          <div>
+            <p className="font-semibold text-slate-900 dark:text-white">{row.name}</p>
+            <p className="text-xs text-slate-500">{row.logo_url || row.hero_image_url ? 'Visual unit aktif' : 'Memakai visual pondok'}</p>
+          </div>
+        </div>
+      ),
+    },
     {
       key: 'jenis',
       header: 'Jenis',
@@ -347,6 +367,47 @@ export function PesantrenUnitPendidikanPage() {
                   />
                 </Field>
 
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+                  <div className="mb-4 flex items-center gap-2">
+                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      <Image className="h-5 w-5" aria-hidden />
+                    </span>
+                    <div>
+                      <h3 className="font-semibold text-slate-900 dark:text-white">Visual Halaman Unit</h3>
+                      <p className="text-xs text-slate-500">Kosongkan untuk memakai logo dan foto hero pondok induk.</p>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-[150px_minmax(0,1fr)]">
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+                      {form.heroImageUrl || form.logoUrl ? (
+                        <img src={form.heroImageUrl || form.logoUrl} alt="" className="h-28 w-full object-cover" />
+                      ) : (
+                        <div className="grid h-28 place-items-center text-slate-300">
+                          <Image className="h-8 w-8" aria-hidden />
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      <Field label="Logo unit URL">
+                        <input
+                          className="field-input"
+                          value={form.logoUrl}
+                          onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+                          placeholder="https://.../logo-mi.png"
+                        />
+                      </Field>
+                      <Field label="Foto hero unit URL">
+                        <input
+                          className="field-input"
+                          value={form.heroImageUrl}
+                          onChange={(e) => setForm({ ...form, heroImageUrl: e.target.value })}
+                          placeholder="https://.../kegiatan-belajar.jpg"
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+
                 <Field label="Judul welcome">
                   <input
                     className="field-input"
@@ -397,5 +458,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label className="field-label">{label}</label>
       {children}
     </div>
+  );
+}
+
+function VisualPreview({ url, fallback }: { url: string | null; fallback: string }) {
+  if (url) {
+    return <img src={url} alt="" className="h-11 w-11 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-800" />;
+  }
+  return (
+    <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-sm font-bold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-900">
+      {fallback.slice(0, 2).toUpperCase()}
+    </span>
   );
 }

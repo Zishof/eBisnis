@@ -68,6 +68,8 @@ interface UnitPendidikan {
   public_slug: string | null;
   santri_subdomain: string | null;
   custom_domain: string | null;
+  logo_url: string | null;
+  hero_image_url: string | null;
   welcome_title: string | null;
 }
 
@@ -368,11 +370,14 @@ export function SitusPondokPage() {
                 const target = urlUnitPendidikan(u);
                 const isi = (
                   <>
-                    <div className="h-24 overflow-hidden rounded-t-xl bg-emerald-50 dark:bg-slate-900">
-                      {profil.hero_image_url ? (
-                        <img src={profil.hero_image_url} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                    <div className="relative h-28 overflow-hidden rounded-t-xl bg-emerald-50 dark:bg-slate-900">
+                      {u.hero_image_url || profil.hero_image_url ? (
+                        <img src={u.hero_image_url || profil.hero_image_url || ''} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
                       ) : (
                         <VisualPendidikan className="h-full w-full text-emerald-700/80 dark:text-emerald-300/70" />
+                      )}
+                      {u.logo_url && (
+                        <img src={u.logo_url} alt="" className="absolute bottom-3 start-3 h-12 w-12 rounded-xl bg-white p-1 shadow-sm ring-1 ring-white/80" />
                       )}
                     </div>
                     <div className="flex items-start gap-3 p-4">

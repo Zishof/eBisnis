@@ -22,6 +22,8 @@ export interface MasukanUnitPendidikan {
   publicSlug?: string | null;
   santriSubdomain?: string | null;
   customDomain?: string | null;
+  logoUrl?: string | null;
+  heroImageUrl?: string | null;
   welcomeTitle?: string | null;
   welcomeBody?: string | null;
 }
@@ -63,6 +65,12 @@ export function validasiUnitPendidikan(masukan: MasukanUnitPendidikan): Galat[] 
   }
   if (masukan.customDomain && !/^[a-z0-9.-]+$/.test(masukan.customDomain)) {
     galat.push({ field: 'customDomain', code: 'FORMAT_TIDAK_SAH', message: 'Domain kustom tidak sah.' });
+  }
+  if (masukan.logoUrl && masukan.logoUrl.length > 500) {
+    galat.push({ field: 'logoUrl', code: 'TERLALU_PANJANG', message: 'URL logo unit maksimal 500 karakter.' });
+  }
+  if (masukan.heroImageUrl && masukan.heroImageUrl.length > 500) {
+    galat.push({ field: 'heroImageUrl', code: 'TERLALU_PANJANG', message: 'URL gambar hero unit maksimal 500 karakter.' });
   }
   if (masukan.welcomeTitle && masukan.welcomeTitle.length > 180) {
     galat.push({ field: 'welcomeTitle', code: 'TERLALU_PANJANG', message: 'Judul sambutan maksimal 180 karakter.' });

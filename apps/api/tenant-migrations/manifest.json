@@ -304,6 +304,13 @@
       "description": "Menambahkan menu POS_PHARMACY pada modul POS dengan route /app/apotik/pos. Engine transaksi, pembayaran, shift, dan stok tetap memakai POS yang sama, tetapi UI dipisah karena apotik membawa resep dokter, racikan, batch-expiry, high-alert, dan obat terkendali yang tidak boleh tenggelam dalam POS retail umum."
     },
     {
+      "version": "V044",
+      "sequence": 44,
+      "file": "V044__pesantren_unit_visuals.sql",
+      "name": "Visual situs per unit pendidikan pesantren",
+      "description": "Menambahkan logo_url dan hero_image_url pada pesantren_unit_pendidikan agar setiap unit sekolah dapat memiliki identitas visual sendiri. Kolom nullable/aditif; halaman publik tetap memakai gambar pondok sebagai fallback sampai admin mengisi gambar unit."
+    },
+    {
       "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",
