@@ -104,7 +104,15 @@ function PublicLayoutEBisnis({
   const salonHost = isSalonDemoHost();
   const inventoryHost = isInventoryHost();
   const inventoryTenantName = inventoryHost ? inventoryTenantLabelFromHost() : null;
-  const inventoryBaseUrl = inventoryHost ? window.location.origin : 'https://inventory.ebisnis.id';
+  const inventoryHomeUrl = inventoryHost ? '/' : 'https://inventory.ebisnis.id';
+  const inventoryLandingUrl = inventoryHost ? '/inventory' : 'https://inventory.ebisnis.id/inventory';
+  const inventoryDownloadUrl = inventoryHost ? '/inventory#download' : 'https://inventory.ebisnis.id/inventory#download';
+  const inventoryApkUrl = inventoryHost
+    ? '/update/ebisnis-inventory-sales.apk'
+    : 'https://demo-inventory.ebisnis.id/update/ebisnis-inventory-sales.apk';
+  const inventoryExeUrl = inventoryHost
+    ? '/update/ebisnis-inventory-sales.exe'
+    : 'https://demo-inventory.ebisnis.id/update/ebisnis-inventory-sales.exe';
   const emedikBrand = emedikPublicBrandFor();
   const educationBrand = educationPublicBrandFor();
   const brand = salonHost
@@ -133,7 +141,7 @@ function PublicLayoutEBisnis({
       ? {
           logoText: null,
           name: inventoryTenantName ?? 'eBisnis Inventory',
-          homeUrl: inventoryBaseUrl,
+          homeUrl: inventoryHomeUrl,
           description:
             'Aplikasi inventory terintegrasi untuk sales obat, gudang, pembelian, piutang, hutang, dan monitoring pemilik usaha.',
         }
@@ -174,7 +182,7 @@ function PublicLayoutEBisnis({
               code: 'INVENTORY',
               title: 'Inventory',
               items: [
-                { label: 'Landing inventory', url: 'https://inventory.ebisnis.id' },
+                { label: 'Landing inventory', url: inventoryLandingUrl },
                 { label: 'Demo bersama', url: 'https://demo-inventory.ebisnis.id' },
                 { label: 'Caruban Medika Nusantara', url: 'https://cmnmedika-inventory.ebisnis.id' },
               ],
@@ -183,8 +191,8 @@ function PublicLayoutEBisnis({
               code: 'DOWNLOAD',
               title: 'Download',
               items: [
-                { label: 'APK Sales Android', url: 'https://demo-inventory.ebisnis.id/update/ebisnis-inventory-sales.apk' },
-                { label: 'EXE Desktop Windows', url: 'https://demo-inventory.ebisnis.id/update/ebisnis-inventory-sales.exe' },
+                { label: 'APK Sales Android', url: inventoryApkUrl },
+                { label: 'EXE Desktop Windows', url: inventoryExeUrl },
               ],
             },
           ]
@@ -204,10 +212,10 @@ function PublicLayoutEBisnis({
           ? educationBrand.headerItems
         : inventoryHost
           ? [
-              { labelKey: 'inventory.home', label: 'Website', url: inventoryBaseUrl, sortOrder: 1 },
-              { labelKey: 'inventory.flow', label: 'Alur Sales', url: `${inventoryBaseUrl}/inventory#alur`, sortOrder: 2 },
-              { labelKey: 'inventory.dashboard', label: 'Dashboard', url: `${inventoryBaseUrl}/inventory#dashboard`, sortOrder: 3 },
-              { labelKey: 'inventory.download', label: 'Download', url: `${inventoryBaseUrl}/inventory#download`, sortOrder: 4 },
+              { labelKey: 'inventory.home', label: 'Website', url: inventoryHomeUrl, sortOrder: 1 },
+              { labelKey: 'inventory.flow', label: 'Alur Sales', url: '/inventory#alur', sortOrder: 2 },
+              { labelKey: 'inventory.dashboard', label: 'Dashboard', url: '/inventory#dashboard', sortOrder: 3 },
+              { labelKey: 'inventory.download', label: 'Download', url: inventoryDownloadUrl, sortOrder: 4 },
             ]
       : site?.navigation.find((nav) => nav.location === 'HEADER')?.items ?? [
       { labelKey: 'nav.home', label: t('nav.home'), url: '/', sortOrder: 1 },
@@ -328,7 +336,7 @@ function PublicLayoutEBisnis({
                     salonHost
                       ? 'https://salon.ebisnis.id'
                       : inventoryHost
-                        ? 'https://inventory.ebisnis.id/inventory#download'
+                        ? inventoryDownloadUrl
                         : educationBrand
                           ? '/kontak'
                           : '/daftar'
@@ -382,7 +390,7 @@ function PublicLayoutEBisnis({
                     salonHost
                       ? 'https://salon.ebisnis.id'
                       : inventoryHost
-                        ? 'https://inventory.ebisnis.id/inventory#download'
+                        ? inventoryDownloadUrl
                         : educationBrand
                           ? '/kontak'
                           : '/daftar'
