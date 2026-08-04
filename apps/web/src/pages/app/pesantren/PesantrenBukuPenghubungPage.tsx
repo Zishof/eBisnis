@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, MessageSquareText, Plus, RefreshCw, Send } from 'lucide-react';
+import { Bell, BookOpenCheck, CalendarDays, MessageSquareText, Plus, RefreshCw, Send } from 'lucide-react';
 import { api, formatDate } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -26,7 +26,7 @@ interface SantriRow {
 }
 
 const PAGE_SIZE = 25;
-const JENIS = ['AKADEMIK', 'KESEHATAN', 'KEDISIPLINAN', 'IBADAH', 'ASRAMA', 'WALI', 'LAINNYA'];
+const JENIS = ['AKTIVITAS_HARIAN', 'MATERI_HARIAN', 'AKADEMIK', 'KESEHATAN', 'KEDISIPLINAN', 'IBADAH', 'ASRAMA', 'WALI', 'LAINNYA'];
 const VISIBILITAS = ['INTERNAL', 'WALI'];
 
 function today() {
@@ -44,7 +44,7 @@ export function PesantrenBukuPenghubungPage() {
   const [form, setForm] = useState({
     santriId: '',
     tanggal: today(),
-    jenis: 'KEDISIPLINAN',
+    jenis: 'AKTIVITAS_HARIAN',
     visibilitas: 'WALI',
     judul: '',
     isi: '',
@@ -77,7 +77,7 @@ export function PesantrenBukuPenghubungPage() {
       }),
     onSuccess: () => {
       toast.push('Catatan buku penghubung tersimpan.', 'success');
-      setForm({ santriId: '', tanggal: form.tanggal, jenis: 'KEDISIPLINAN', visibilitas: 'WALI', judul: '', isi: '', tindakLanjut: '' });
+      setForm({ santriId: '', tanggal: form.tanggal, jenis: 'AKTIVITAS_HARIAN', visibilitas: 'WALI', judul: '', isi: '', tindakLanjut: '' });
       void queryClient.invalidateQueries({ queryKey: ['pesantren-buku-penghubung'] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan catatan.'), 'error'),
@@ -97,6 +97,7 @@ export function PesantrenBukuPenghubungPage() {
   const catatanDipilih = detail.data ?? (list.data?.items ?? []).find((item) => item.id === dipilihId) ?? list.data?.items[0] ?? null;
   const terbuka = (list.data?.items ?? []).filter((item) => item.status === 'TERBUKA').length;
   const untukWali = (list.data?.items ?? []).filter((item) => item.visibilitas === 'WALI').length;
+  const aktivitasHarian = (list.data?.items ?? []).filter((item) => item.jenis === 'AKTIVITAS_HARIAN' || item.jenis === 'MATERI_HARIAN').length;
   const columns: Array<GridColumn<CatatanRow>> = [
     { key: 'tanggal', header: 'Tanggal', render: (row) => formatDate(row.tanggal) },
     { key: 'santri_id', header: 'Santri', render: (row) => row.nama_lengkap ? `${row.nis ?? ''} ${row.nama_lengkap}` : namaSantri.get(row.santri_id) ?? row.santri_id },
@@ -128,8 +129,8 @@ export function PesantrenBukuPenghubungPage() {
   return (
     <>
       <PageHeader
-        title="Buku Penghubung"
-        description="Catatan guru, pengurus, dan wali untuk tindak lanjut perkembangan santri."
+        title="Buku Penghubung dan Aktivitas Harian"
+        description="Catatan guru, pengurus, wali, aktivitas harian, dan materi harian untuk tindak lanjut perkembangan santri."
         breadcrumbs={[{ label: 'Beranda', href: '/app' }, { label: 'Pesantren' }, { label: 'Buku Penghubung' }]}
         actions={
           <button type="button" className="btn-outline" onClick={() => void list.refetch()}>
@@ -138,12 +139,25 @@ export function PesantrenBukuPenghubungPage() {
           </button>
         }
       />
-      <div className="mb-4 grid gap-3 md:grid-cols-3">
+      <div className="mb-4 grid gap-3 md:grid-cols-4">
         <Metric icon={<MessageSquareText className="h-4 w-4" aria-hidden />} label="Catatan halaman ini" value={list.data?.items.length ?? 0} />
+        <Metric icon={<CalendarDays className="h-4 w-4" aria-hidden />} label="Aktivitas/materi" value={aktivitasHarian} />
         <Metric icon={<Send className="h-4 w-4" aria-hidden />} label="Perlu tindak lanjut" value={terbuka} />
         <Metric icon={<Bell className="h-4 w-4" aria-hidden />} label="Terkirim ke wali" value={untukWali} />
       </div>
-      <div className="card mb-4 p-4">
+      <div className="card mb-4 overflow-hidden p-0">
+        <div className="border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-sky-50 px-4 py-3 dark:border-slate-800 dark:from-emerald-950/30 dark:to-sky-950/20">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-emerald-700 shadow-sm dark:bg-slate-950 dark:text-emerald-300">
+              <BookOpenCheck className="h-5 w-5" aria-hidden />
+            </span>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Catatan perkembangan santri</h2>
+              <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Gunakan aktivitas harian untuk adab, ibadah, asrama, makan, kesehatan ringan, atau kabar rutin yang perlu diketahui wali.</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4">
         <div className="grid gap-3 md:grid-cols-3">
           <div>
             <label className="field-label">Santri</label>
@@ -167,6 +181,7 @@ export function PesantrenBukuPenghubungPage() {
             <Plus className="h-4 w-4" aria-hidden />
             Simpan Catatan
           </button>
+        </div>
         </div>
       </div>
       <div className="card mb-4 max-w-xs p-4">

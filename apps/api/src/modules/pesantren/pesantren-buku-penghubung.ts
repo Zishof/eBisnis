@@ -9,6 +9,8 @@ export const JENIS_BUKU_PENGHUBUNG = [
   'KEDISIPLINAN',
   'IBADAH',
   'ASRAMA',
+  'AKTIVITAS_HARIAN',
+  'MATERI_HARIAN',
   'WALI',
   'LAINNYA',
 ] as const;

@@ -221,6 +221,12 @@
       "file": "20260804T030000__pesantren__kajian_dakwah.sql",
       "name": "Jadwal kajian dan arsip dakwah",
       "description": "Menambah pesantren_kajian_dakwah untuk kalender kajian, materi, rekaman audio/video, gambar publikasi, dan status publish/arsip pada situs pondok."
+    },
+    {
+      "id": "20260805T010000__pesantren__buku_penghubung_aktivitas_harian",
+      "file": "20260805T010000__pesantren__buku_penghubung_aktivitas_harian.sql",
+      "name": "Aktivitas dan materi harian di buku penghubung",
+      "description": "Memperluas jenis pesantren_buku_penghubung dengan AKTIVITAS_HARIAN dan MATERI_HARIAN untuk menutup pola AIS AktiftasHarianSiswa, DaftarAktifitasHarianSiswa, DashboardAktifitasHarianSiswa, JenisAktiftasHarianDefault, dan JenisMateriHarianDefault tanpa membuat menu skeleton baru."
     }
   ]
 }
