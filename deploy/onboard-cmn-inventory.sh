@@ -7,8 +7,9 @@
 # Idempotent:
 #   - tenant/schema/domain dibuat melalui CLI internal dan aman dipanggil ulang;
 #   - akun CMN disinkronkan ulang sesuai kredensial awal yang diminta;
-#   - impor legacy ditandai marker `CMN_LEGACY_IMPORT_V1`, sehingga tidak
-#     menimpa berulang jika data sudah masuk.
+#   - impor legacy ditandai marker `CMN_LEGACY_IMPORT_V2`, sehingga tidak
+#     menimpa berulang jika data sudah masuk;
+#   - metadata audit DBF tetap disinkronkan ulang pada deploy berikutnya.
 #
 # Untuk impor DBF di server, salin folder lama ke:
 #   /opt/ebisnis/imports/cmn-inventory

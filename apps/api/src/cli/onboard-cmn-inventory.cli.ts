@@ -443,7 +443,19 @@ async function importLegacyDataIfPresent(
       `SELECT value_json AS value FROM "${schemaName}".app_setting WHERE code = 'CMN_LEGACY_IMPORT_V2' AND deleted_at IS NULL`,
     )
     .then((r) => r[0]?.value ?? null);
-  if (marker) return { products: 0, customers: 0, suppliers: 0, salesOrders: 0, purchaseOrders: 0, rawRecords: 0, receivables: 0, payables: 0 };
+  if (marker) {
+    await ctx.tenantDb.transaction(schemaName, async (client) => {
+      const S = `"${schemaName}"`;
+      await syncLegacyAuditMetadata(client, S);
+    });
+    await markImport(ctx, schemaName, {
+      ...(typeof marker === 'object' && marker !== null ? marker : { previousMarker: marker }),
+      auditSyncedAt: new Date().toISOString(),
+      auditVersion: 'CMN_LEGACY_AUDIT_V3',
+    });
+    process.stdout.write('Import legacy CMN sudah pernah selesai; metadata audit file DBF disinkronkan ulang.\n');
+    return { products: 0, customers: 0, suppliers: 0, salesOrders: 0, purchaseOrders: 0, rawRecords: 0, receivables: 0, payables: 0 };
+  }
 
   const dir = LEGACY_DIR_CANDIDATES.find((candidate) => existsSync(join(candidate, 'STOK.DBF')));
   if (!dir) {
@@ -724,6 +736,43 @@ function classifyLegacyFile(fileName: string): LegacyFileClass {
     projectionClass: 'historical',
     note: 'File legacy disimpan utuh di raw vault dan belum diproyeksikan ke tabel operasional.',
   };
+}
+
+async function syncLegacyAuditMetadata(client: PoolClient, S: string): Promise<void> {
+  for (const [fileName, info] of Object.entries(LEGACY_FILE_CLASSIFICATION)) {
+    await client.query(
+      `UPDATE ${S}.legacy_import_file
+          SET status = $2,
+              metadata = metadata || $3::jsonb,
+              updated_at = now(),
+              version = version + 1
+        WHERE upper(file_name) = $1`,
+      [
+        fileName,
+        info.status,
+        JSON.stringify({
+          projectedTable: info.projectedTable ?? null,
+          projectionClass: info.projectionClass,
+          projectionNote: info.note,
+        }),
+      ],
+    );
+
+    await client.query(
+      `UPDATE ${S}.legacy_import_record
+          SET projection_status = $2,
+              projected_table = $3,
+              projection_note = $4
+        WHERE upper(file_name) = $1
+          AND is_deleted = FALSE`,
+      [
+        fileName,
+        info.status === 'PROJECTED' ? 'PROJECTED' : 'RAW_ONLY',
+        info.status === 'PROJECTED' ? info.projectedTable ?? null : null,
+        info.note,
+      ],
+    );
+  }
 }
 
 async function importSalespeople(client: PoolClient, S: string, rows: Array<Record<string, unknown>>): Promise<Map<string, string>> {
