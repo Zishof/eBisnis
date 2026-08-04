@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, RefreshCw } from 'lucide-react';
+import { CalendarDays, Link as LinkIcon, Plus, RefreshCw, Send, Trash2 } from 'lucide-react';
 import { api, formatDate } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -32,6 +32,21 @@ interface TahfizRow extends Record<string, unknown> {
   catatan: string | null;
 }
 
+interface KajianRow extends Record<string, unknown> {
+  id: string;
+  judul: string;
+  pemateri: string | null;
+  tanggal_mulai: string;
+  tanggal_selesai: string | null;
+  lokasi: string | null;
+  ringkasan: string | null;
+  materi_url: string | null;
+  rekaman_url: string | null;
+  gambar_url: string | null;
+  status: string;
+  sort_order: number;
+}
+
 interface SantriRow {
   id: string;
   nis: string;
@@ -41,28 +56,31 @@ interface SantriRow {
 const PAGE_SIZE = 25;
 const JENIS_SETORAN = ['SETORAN_BARU', 'MURAJAAH', 'TASMI'];
 const PREDIKAT_SETORAN = ['LANCAR', 'CUKUP', 'MENGULANG'];
+const STATUS_KAJIAN = ['DRAFT', 'TERBIT', 'ARSIP'];
 
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function PesantrenDakwahPage({ initialTab = 'halaqah' }: { initialTab?: 'kitab' | 'halaqah' | 'tahfiz' }) {
+export function PesantrenDakwahPage({ initialTab = 'halaqah' }: { initialTab?: 'kitab' | 'halaqah' | 'tahfiz' | 'kajian' }) {
   const [tab, setTab] = useState(initialTab);
 
   return (
     <>
       <PageHeader
         title="Dakwah, Diniyah, dan Tahfiz"
-        description="Kelola kitab, halaqah, anggota diniyah, dan setoran hafalan santri."
+        description="Kelola kitab, halaqah, kajian publik, materi dakwah, dan setoran hafalan santri."
         breadcrumbs={[{ label: 'Beranda', href: '/app' }, { label: 'Pesantren' }, { label: 'Dakwah' }]}
       />
       <div className="mb-4 flex flex-wrap gap-2">
         <button type="button" className={tab === 'kitab' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('kitab')}>Kitab</button>
         <button type="button" className={tab === 'halaqah' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('halaqah')}>Halaqah</button>
+        <button type="button" className={tab === 'kajian' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('kajian')}>Kajian</button>
         <button type="button" className={tab === 'tahfiz' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('tahfiz')}>Tahfiz</button>
       </div>
       {tab === 'kitab' && <TabKitab />}
       {tab === 'halaqah' && <TabHalaqah />}
+      {tab === 'kajian' && <TabKajian />}
       {tab === 'tahfiz' && <TabTahfiz />}
     </>
   );
@@ -341,6 +359,187 @@ function TabTahfiz() {
       />
       <Pagination page={page} totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))} total={total} onChange={setPage} />
     </>
+  );
+}
+
+function TabKajian() {
+  const toast = useToast();
+  const toMessage = useErrorMessage();
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState('');
+  const [form, setForm] = useState({
+    judul: '',
+    pemateri: '',
+    tanggalMulai: `${today()}T19:30`,
+    tanggalSelesai: '',
+    lokasi: '',
+    ringkasan: '',
+    materiUrl: '',
+    rekamanUrl: '',
+    gambarUrl: '',
+    status: 'DRAFT',
+    sortOrder: '0',
+  });
+
+  const kajian = useQuery({
+    queryKey: ['pesantren-kajian', status],
+    queryFn: () => api.get<KajianRow[]>(`/pesantren/kajian${status ? `?status=${status}` : ''}`),
+  });
+
+  const payload = (statusOverride?: string) => ({
+    judul: form.judul,
+    pemateri: form.pemateri.trim() || undefined,
+    tanggalMulai: form.tanggalMulai,
+    tanggalSelesai: form.tanggalSelesai || undefined,
+    lokasi: form.lokasi.trim() || undefined,
+    ringkasan: form.ringkasan.trim() || undefined,
+    materiUrl: form.materiUrl.trim() || undefined,
+    rekamanUrl: form.rekamanUrl.trim() || undefined,
+    gambarUrl: form.gambarUrl.trim() || undefined,
+    status: statusOverride ?? form.status,
+    sortOrder: Number(form.sortOrder || 0),
+  });
+
+  const simpan = useMutation({
+    mutationFn: () => api.post<KajianRow>('/pesantren/kajian', payload()),
+    onSuccess: () => {
+      toast.push('Kajian dakwah berhasil disimpan.', 'success');
+      setForm({
+        judul: '',
+        pemateri: '',
+        tanggalMulai: `${today()}T19:30`,
+        tanggalSelesai: '',
+        lokasi: '',
+        ringkasan: '',
+        materiUrl: '',
+        rekamanUrl: '',
+        gambarUrl: '',
+        status: 'DRAFT',
+        sortOrder: '0',
+      });
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-kajian'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan kajian.'), 'error'),
+  });
+
+  const ubahStatus = useMutation({
+    mutationFn: ({ item, next }: { item: KajianRow; next: string }) =>
+      api.patch<KajianRow>(`/pesantren/kajian/${item.id}`, {
+        judul: item.judul,
+        pemateri: item.pemateri,
+        tanggalMulai: item.tanggal_mulai,
+        tanggalSelesai: item.tanggal_selesai,
+        lokasi: item.lokasi,
+        ringkasan: item.ringkasan,
+        materiUrl: item.materi_url,
+        rekamanUrl: item.rekaman_url,
+        gambarUrl: item.gambar_url,
+        sortOrder: item.sort_order,
+        status: next,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-kajian'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mengubah status kajian.'), 'error'),
+  });
+
+  const hapus = useMutation({
+    mutationFn: (id: string) => api.delete(`/pesantren/kajian/${id}`),
+    onSuccess: () => {
+      toast.push('Kajian dakwah dihapus.', 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-kajian'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menghapus kajian.'), 'error'),
+  });
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(300px,420px)_1fr]">
+      <div className="card p-4">
+        <div className="mb-4 flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+            <CalendarDays className="h-5 w-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-semibold text-slate-900 dark:text-white">Jadwal dan Arsip Kajian</h2>
+            <p className="text-xs text-slate-500">Materi yang berstatus TERBIT muncul di situs pondok.</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <Input label="Judul kajian *" value={form.judul} onChange={(value) => setForm({ ...form, judul: value })} />
+          <Input label="Pemateri" value={form.pemateri} onChange={(value) => setForm({ ...form, pemateri: value })} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input label="Mulai" type="datetime-local" value={form.tanggalMulai} onChange={(value) => setForm({ ...form, tanggalMulai: value })} />
+            <Input label="Selesai" type="datetime-local" value={form.tanggalSelesai} onChange={(value) => setForm({ ...form, tanggalSelesai: value })} />
+          </div>
+          <Input label="Lokasi" value={form.lokasi} onChange={(value) => setForm({ ...form, lokasi: value })} />
+          <div>
+            <label className="field-label">Ringkasan</label>
+            <textarea className="field-input min-h-24" value={form.ringkasan} onChange={(event) => setForm({ ...form, ringkasan: event.target.value })} />
+          </div>
+          <Input label="URL materi" value={form.materiUrl} onChange={(value) => setForm({ ...form, materiUrl: value })} />
+          <Input label="URL rekaman audio/video" value={form.rekamanUrl} onChange={(value) => setForm({ ...form, rekamanUrl: value })} />
+          <Input label="URL gambar publikasi" value={form.gambarUrl} onChange={(value) => setForm({ ...form, gambarUrl: value })} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Select label="Status" value={form.status} options={STATUS_KAJIAN} onChange={(value) => setForm({ ...form, status: value })} />
+            <Input label="Urutan" type="number" value={form.sortOrder} onChange={(value) => setForm({ ...form, sortOrder: value })} />
+          </div>
+          <button type="button" className="btn-primary w-full justify-center" disabled={!form.judul.trim() || !form.tanggalMulai || simpan.isPending} onClick={() => simpan.mutate()}>
+            <Plus className="h-4 w-4" aria-hidden />
+            Simpan kajian
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div className="card mb-4 p-4">
+          <div className="max-w-xs">
+            <Select label="Filter status" value={status} options={['', ...STATUS_KAJIAN]} onChange={setStatus} />
+          </div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {kajian.isLoading && <div className="card p-5 text-sm text-slate-500">Memuat kajian...</div>}
+          {kajian.isSuccess && (kajian.data ?? []).length === 0 && (
+            <div className="card p-5 text-sm text-slate-500">Belum ada jadwal kajian atau arsip dakwah.</div>
+          )}
+          {(kajian.data ?? []).map((item) => (
+            <article key={item.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+              {item.gambar_url && <img src={item.gambar_url} alt="" className="h-36 w-full object-cover" />}
+              <div className="p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <StatusBadge status={item.status} />
+                    <h3 className="mt-2 font-semibold text-slate-900 dark:text-white">{item.judul}</h3>
+                  </div>
+                  <p className="text-xs text-slate-500">{formatDate(item.tanggal_mulai)}</p>
+                </div>
+                <div className="mt-3 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                  {item.pemateri && <p>Pemateri: {item.pemateri}</p>}
+                  {item.lokasi && <p>Lokasi: {item.lokasi}</p>}
+                  {item.ringkasan && <p className="line-clamp-3">{item.ringkasan}</p>}
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {item.materi_url && <a className="btn-outline px-3 py-2 text-xs" href={item.materi_url} target="_blank" rel="noreferrer"><LinkIcon className="h-4 w-4" aria-hidden /> Materi</a>}
+                  {item.rekaman_url && <a className="btn-outline px-3 py-2 text-xs" href={item.rekaman_url} target="_blank" rel="noreferrer"><LinkIcon className="h-4 w-4" aria-hidden /> Rekaman</a>}
+                  <button
+                    type="button"
+                    className="btn-outline px-3 py-2 text-xs"
+                    disabled={ubahStatus.isPending}
+                    onClick={() => ubahStatus.mutate({ item, next: item.status === 'TERBIT' ? 'DRAFT' : 'TERBIT' })}
+                  >
+                    <Send className="h-4 w-4" aria-hidden />
+                    {item.status === 'TERBIT' ? 'Draft' : 'Terbitkan'}
+                  </button>
+                  <button type="button" className="btn-outline px-3 py-2 text-xs text-red-700" disabled={hapus.isPending} onClick={() => hapus.mutate(item.id)}>
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 

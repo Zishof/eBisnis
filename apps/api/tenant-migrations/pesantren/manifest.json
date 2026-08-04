@@ -215,6 +215,12 @@
       "file": "20260804T020000__pesantren__media_gallery.sql",
       "name": "Media dan galeri situs pesantren",
       "description": "Menambah pesantren_media untuk galeri pondok dan galeri/program per unit pendidikan, lengkap dengan judul, alt text, atribusi, urutan, status publish, URL gambar, dan kode file BLOB opsional."
+    },
+    {
+      "id": "20260804T030000__pesantren__kajian_dakwah",
+      "file": "20260804T030000__pesantren__kajian_dakwah.sql",
+      "name": "Jadwal kajian dan arsip dakwah",
+      "description": "Menambah pesantren_kajian_dakwah untuk kalender kajian, materi, rekaman audio/video, gambar publikasi, dan status publish/arsip pada situs pondok."
     }
   ]
 }

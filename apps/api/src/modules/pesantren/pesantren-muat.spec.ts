@@ -16,6 +16,8 @@ import { PesantrenAsramaController, PesantrenPenempatanController } from './pesa
 import { PesantrenAsramaService } from './pesantren-asrama.service';
 import { PesantrenKitabController, PesantrenHalaqahController } from './pesantren-diniyah.controller';
 import { PesantrenDiniyahService } from './pesantren-diniyah.service';
+import { PesantrenKajianController } from './pesantren-dakwah.controller';
+import { PesantrenDakwahService } from './pesantren-dakwah.service';
 import { PesantrenTahfizController } from './pesantren-tahfiz.controller';
 import { PesantrenTahfizService } from './pesantren-tahfiz.service';
 import { PesantrenPerizinanController } from './pesantren-perizinan.controller';
@@ -129,8 +131,20 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(tipe.filter((t) => t === undefined)).toEqual([]);
   });
 
+  it('setiap dependensi controller kajian punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenKajianController);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
   it('setiap dependensi service diniyah punya tipe yang terdefinisi', () => {
     const tipe = paramtypes(PesantrenDiniyahService);
+    expect(tipe.length).toBeGreaterThan(0);
+    expect(tipe.filter((t) => t === undefined)).toEqual([]);
+  });
+
+  it('setiap dependensi service dakwah punya tipe yang terdefinisi', () => {
+    const tipe = paramtypes(PesantrenDakwahService);
     expect(tipe.length).toBeGreaterThan(0);
     expect(tipe.filter((t) => t === undefined)).toEqual([]);
   });
@@ -422,6 +436,8 @@ describe('pemuatan modul pesantren-santri', () => {
     expect(sumber).toContain('PesantrenKitabController');
     expect(sumber).toContain('PesantrenHalaqahController');
     expect(sumber).toContain('PesantrenDiniyahService');
+    expect(sumber).toContain('PesantrenKajianController');
+    expect(sumber).toContain('PesantrenDakwahService');
     expect(sumber).toContain('PesantrenTahfizController');
     expect(sumber).toContain('PesantrenTahfizService');
     expect(sumber).toContain('PesantrenPerizinanController');

@@ -22,7 +22,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, BookOpen, Building2, CheckCircle2, ExternalLink, GraduationCap, Images, Mail, MapPin, Newspaper, Phone } from 'lucide-react';
+import { ArrowRight, BookOpen, Building2, CalendarDays, CheckCircle2, ExternalLink, GraduationCap, Images, Mail, MapPin, Newspaper, Phone, PlayCircle } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
 import { usePondokFavicon } from './use-pondok-favicon';
 import { usePondokSeo } from './use-pondok-seo';
@@ -85,11 +85,25 @@ interface MediaPublik {
   attribution: string | null;
 }
 
+interface KajianPublik {
+  id: string;
+  judul: string;
+  pemateri: string | null;
+  tanggal_mulai: string;
+  tanggal_selesai: string | null;
+  lokasi: string | null;
+  ringkasan: string | null;
+  materi_url: string | null;
+  rekaman_url: string | null;
+  gambar_url: string | null;
+}
+
 interface IsiSitus {
   profil: Profil;
   berita: Berita[];
   unitPendidikan: UnitPendidikan[];
   media: MediaPublik[];
+  kajian?: KajianPublik[];
   currentUnit?: { public_slug: string | null } | null;
 }
 
@@ -207,6 +221,7 @@ export function SitusPondokPage() {
   }
 
   const { profil, berita, unitPendidikan, media } = data;
+  const kajian = data.kajian ?? [];
   const tema = temaDari(profil.theme_code);
   const beritaUtama = berita.slice(0, 3);
 
@@ -469,6 +484,61 @@ export function SitusPondokPage() {
                     <h3 className="mt-1 font-bold text-slate-950 dark:text-white">{item.judul}</h3>
                     {item.deskripsi && <p className="mt-2 line-clamp-3 text-sm text-slate-600 dark:text-slate-400">{item.deskripsi}</p>}
                     {item.attribution && <p className="mt-3 text-[11px] text-slate-400">{item.attribution}</p>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* --- Kajian dan dakwah ------------------------------------------- */}
+        {kajian.length > 0 && (
+          <section>
+            <h2 className={`flex items-center gap-2 text-xl font-bold ${tema.aksen}`}>
+              <CalendarDays className="h-5 w-5" aria-hidden />
+              Kajian dan Dakwah
+            </h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Jadwal kajian, materi, dan arsip dakwah yang diterbitkan pengurus pondok.
+            </p>
+            <div className="mt-6 grid gap-4 lg:grid-cols-3">
+              {kajian.map((item) => (
+                <article key={item.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <div className="h-40 bg-emerald-50 dark:bg-slate-950">
+                    {item.gambar_url ? (
+                      <img src={item.gambar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <VisualPendidikan className="h-full w-full text-emerald-700/70 dark:text-emerald-300/70" />
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <p className={`text-xs font-semibold uppercase tracking-wide ${tema.aksen}`}>
+                      {new Date(item.tanggal_mulai).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </p>
+                    <h3 className="mt-2 font-semibold text-slate-900 dark:text-white">{item.judul}</h3>
+                    <div className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                      {item.pemateri && <p>{item.pemateri}</p>}
+                      {item.lokasi && <p>{item.lokasi}</p>}
+                      {item.ringkasan && <p className="line-clamp-3 leading-6">{item.ringkasan}</p>}
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      {item.materi_url && (
+                        <a href={item.materi_url} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1.5 text-xs font-semibold ${tema.aksen}`}>
+                          <BookOpen className="h-4 w-4" aria-hidden />
+                          Materi
+                        </a>
+                      )}
+                      {item.rekaman_url && (
+                        <a href={item.rekaman_url} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1.5 text-xs font-semibold ${tema.aksen}`}>
+                          <PlayCircle className="h-4 w-4" aria-hidden />
+                          Rekaman
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </article>
               ))}

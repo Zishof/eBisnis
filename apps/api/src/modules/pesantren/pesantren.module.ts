@@ -9,6 +9,8 @@ import { PesantrenAsramaController, PesantrenPenempatanController } from './pesa
 import { PesantrenAsramaService } from './pesantren-asrama.service';
 import { PesantrenKitabController, PesantrenHalaqahController } from './pesantren-diniyah.controller';
 import { PesantrenDiniyahService } from './pesantren-diniyah.service';
+import { PesantrenKajianController } from './pesantren-dakwah.controller';
+import { PesantrenDakwahService } from './pesantren-dakwah.service';
 import { PesantrenTahfizController } from './pesantren-tahfiz.controller';
 import { PesantrenTahfizService } from './pesantren-tahfiz.service';
 import { PesantrenPerizinanController } from './pesantren-perizinan.controller';
@@ -80,6 +82,7 @@ import { NotificationModule } from '../notification/notification.module';
     PesantrenPenempatanController,
     PesantrenKitabController,
     PesantrenHalaqahController,
+    PesantrenKajianController,
     PesantrenTahfizController,
     PesantrenPerizinanController,
     PesantrenGerbangController,
@@ -113,6 +116,7 @@ import { NotificationModule } from '../notification/notification.module';
     PesantrenTagihanService,
     PesantrenAsramaService,
     PesantrenDiniyahService,
+    PesantrenDakwahService,
     PesantrenTahfizService,
     PesantrenPerizinanService,
     PesantrenGerbangService,

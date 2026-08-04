@@ -190,6 +190,17 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     actions: CATAT,
   },
   {
+    code: 'EPESANTREN_DAKWAH',
+    parentCode: 'EPESANTREN_GRP_SETUP',
+    label: 'Kajian dan Dakwah',
+    translationKey: 'menu.epesantren.dakwah',
+    route: '/app/pesantren/dakwah',
+    icon: 'Megaphone',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 6,
+    actions: CATAT,
+  },
+  {
     code: 'EPESANTREN_KATERING',
     parentCode: 'EPESANTREN_GRP_SETUP',
     label: 'Dapur dan Katering',
@@ -197,7 +208,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/katering',
     icon: 'CookingPot',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 6,
+    sortOrder: 7,
     actions: KATERING_AKSI,
   },
   {
@@ -208,7 +219,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/profil',
     icon: 'Palette',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 7,
+    sortOrder: 8,
     actions: PROFIL_AKSI,
   },
   {
@@ -219,7 +230,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/berita',
     icon: 'Newspaper',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 8,
+    sortOrder: 9,
     actions: BERITA_AKSI,
   },
 

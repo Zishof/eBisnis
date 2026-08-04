@@ -76,9 +76,10 @@ export class PesantrenPublicService {
     );
 
     const media = await this.mediaPublik(S, null);
+    const kajian = await this.kajianPublik(S);
     const currentUnit = await this.unitDariHost(S, konteks.host);
 
-    return { profil, berita, unitPendidikan, media, currentUnit };
+    return { profil, berita, unitPendidikan, media, kajian, currentUnit };
   }
 
   async unit(host: string | undefined, slug: string) {
@@ -425,6 +426,19 @@ export class PesantrenPublicService {
         ORDER BY m.sort_order ASC, m.created_at DESC
         LIMIT 12`,
       params,
+    );
+  }
+
+  private kajianPublik(schemaName: string) {
+    return this.tenantDb.query(
+      schemaName,
+      `SELECT id::text, judul, pemateri, tanggal_mulai::text, tanggal_selesai::text,
+              lokasi, ringkasan, materi_url, rekaman_url, gambar_url
+         FROM "${schemaName}".pesantren_kajian_dakwah
+        WHERE deleted_at IS NULL
+          AND status = 'TERBIT'
+        ORDER BY sort_order ASC, tanggal_mulai DESC, created_at DESC
+        LIMIT 12`,
     );
   }
 }
