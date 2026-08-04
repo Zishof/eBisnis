@@ -20,6 +20,20 @@ interface LaporanResult {
   [key: string]: unknown;
 }
 
+interface TahunAjaranRow {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+}
+
+interface GelombangPsbRow {
+  id: string;
+  kode: string;
+  nama: string;
+  status: string;
+}
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -36,6 +50,11 @@ export function PesantrenLaporanPage() {
   const [filter, setFilter] = useState({ from: defaultFrom(), to: today(), tahunAjaranId: '', gelombangId: '' });
 
   const daftar = useQuery({ queryKey: ['pesantren-laporan-daftar'], queryFn: () => api.get<LaporanItem[]>('/pesantren/laporan') });
+  const tahunAjaran = useQuery({ queryKey: ['pesantren-laporan-tahun-ajaran'], queryFn: () => api.get<TahunAjaranRow[]>('/pesantren/nilai/tahun-ajaran') });
+  const gelombang = useQuery({
+    queryKey: ['pesantren-laporan-gelombang'],
+    queryFn: () => api.get<{ items: GelombangPsbRow[]; total: number }>('/pesantren/psb/gelombang?halaman=1&ukuranHalaman=100'),
+  });
   const kodeAktif = code || daftar.data?.[0]?.code || '';
   const laporanAktif = daftar.data?.find((item) => item.code === kodeAktif);
 
@@ -94,8 +113,22 @@ export function PesantrenLaporanPage() {
             <Field label="Dari" type="date" value={filter.from} onChange={(value) => setFilter({ ...filter, from: value })} />
             <Field label="Sampai" type="date" value={filter.to} onChange={(value) => setFilter({ ...filter, to: value })} />
           </div>
-          <Field label="Tahun Ajaran ID" value={filter.tahunAjaranId} onChange={(value) => setFilter({ ...filter, tahunAjaranId: value })} />
-          <Field label="Gelombang PSB ID" value={filter.gelombangId} onChange={(value) => setFilter({ ...filter, gelombangId: value })} />
+          <SelectField label="Tahun ajaran" value={filter.tahunAjaranId} onChange={(value) => setFilter({ ...filter, tahunAjaranId: value })}>
+            <option value="">Semua tahun ajaran</option>
+            {(tahunAjaran.data ?? []).map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.code} - {item.name}{item.status === 'ACTIVE' ? ' (aktif)' : ''}
+              </option>
+            ))}
+          </SelectField>
+          <SelectField label="Gelombang PSB" value={filter.gelombangId} onChange={(value) => setFilter({ ...filter, gelombangId: value })}>
+            <option value="">Semua gelombang</option>
+            {(gelombang.data?.items ?? []).map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.kode} - {item.nama} ({item.status})
+              </option>
+            ))}
+          </SelectField>
           <button type="button" className="btn-primary mt-3 w-full" onClick={() => void hasil.refetch()} disabled={!kodeAktif}>
             <BarChart3 className="h-4 w-4" aria-hidden />
             Tampilkan
@@ -182,6 +215,17 @@ function Field({ label, value, onChange, type = 'text' }: { label: string; value
     <label className="mb-3 block">
       <span className="field-label">{label}</span>
       <input className="field-input" type={type} value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function SelectField({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
+  return (
+    <label className="mb-3 block">
+      <span className="field-label">{label}</span>
+      <select className="field-input" value={value} onChange={(event) => onChange(event.target.value)}>
+        {children}
+      </select>
     </label>
   );
 }

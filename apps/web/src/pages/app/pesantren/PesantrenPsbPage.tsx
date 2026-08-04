@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, CalendarDays, CheckCircle2, GripVertical, Plus, Save, Trash2, XCircle } from 'lucide-react';
 import { api, formatDate, formatMoney } from '../../../lib/api';
@@ -46,6 +46,19 @@ interface JadwalPsbRow {
   nilai: string | null;
   catatan_hasil: string | null;
   created_at: string;
+}
+
+interface TahunAjaranRow {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+}
+
+interface UnitPendidikanRow {
+  id: string;
+  kode: string;
+  nama: string;
 }
 
 const PAGE_SIZE = 25;
@@ -135,6 +148,16 @@ export function PesantrenPsbPage() {
   const [jadwalHasilId, setJadwalHasilId] = useState('');
   const [formHasilJadwal, setFormHasilJadwal] = useState(FORM_HASIL_JADWAL_KOSONG);
 
+  const tahunAjaran = useQuery({
+    queryKey: ['pesantren-psb-tahun-ajaran'],
+    queryFn: () => api.get<TahunAjaranRow[]>('/pesantren/nilai/tahun-ajaran'),
+  });
+
+  const unitPendidikan = useQuery({
+    queryKey: ['pesantren-psb-unit-pendidikan'],
+    queryFn: () => api.get<{ items: UnitPendidikanRow[]; total: number }>('/pesantren/unit-pendidikan?status=AKTIF&halaman=1&ukuranHalaman=100'),
+  });
+
   const gelombang = useQuery({
     queryKey: ['pesantren-psb-gelombang', pageGelombang, statusGelombang],
     queryFn: () => {
@@ -168,7 +191,7 @@ export function PesantrenPsbPage() {
         formSchema = Array.isArray(parsed) ? parsed : [];
       }
       return api.post<GelombangRow>('/pesantren/psb/gelombang', {
-        tahunAjaranId: formGelombang.tahunAjaranId,
+        tahunAjaranId: formGelombang.tahunAjaranId || tahunAktif?.id,
         unitPendidikanId: formGelombang.unitPendidikanId || undefined,
         kode: formGelombang.kode,
         nama: formGelombang.nama,
@@ -244,9 +267,15 @@ export function PesantrenPsbPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan hasil seleksi.'), 'error'),
   });
 
+  const tahunAktif = tahunAjaran.data?.find((item) => item.status === 'ACTIVE') ?? tahunAjaran.data?.[0];
+  const namaTahun = useMemo(() => new Map((tahunAjaran.data ?? []).map((item) => [item.id, `${item.code} - ${item.name}`])), [tahunAjaran.data]);
+  const namaUnit = useMemo(() => new Map((unitPendidikan.data?.items ?? []).map((item) => [item.id, `${item.kode} - ${item.nama}`])), [unitPendidikan.data]);
+
   const gelombangColumns: Array<GridColumn<GelombangRow>> = [
     { key: 'kode', header: 'Kode' },
     { key: 'nama', header: 'Nama' },
+    { key: 'tahun_ajaran_id', header: 'Tahun Ajaran', render: (row) => namaTahun.get(row.tahun_ajaran_id) ?? row.tahun_ajaran_id },
+    { key: 'unit_pendidikan_id', header: 'Unit', render: (row) => (row.unit_pendidikan_id ? namaUnit.get(row.unit_pendidikan_id) ?? row.unit_pendidikan_id : 'Lintas unit') },
     { key: 'tanggal_buka', header: 'Buka', render: (row) => formatDate(row.tanggal_buka) },
     { key: 'tanggal_tutup', header: 'Tutup', render: (row) => formatDate(row.tanggal_tutup) },
     { key: 'kuota', header: 'Kuota', render: (row) => row.kuota ?? '-' },
@@ -602,14 +631,19 @@ export function PesantrenPsbPage() {
       {membuatGelombang && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="card max-h-[88vh] w-full max-w-5xl overflow-y-auto p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Buat Gelombang PSB</h2>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700">Gelombang Penerimaan</p>
+                <h2 className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">Buat Gelombang PSB</h2>
+                <p className="mt-1 text-sm text-slate-500">Atur periode, kuota, biaya, dan formulir tambahan tanpa mengisi ID teknis.</p>
+              </div>
+              {tahunAktif && <StatusBadge status={`TA ${tahunAktif.code}`} />}
+            </div>
             <div className="mt-4 space-y-3">
-              <Field label="Tahun ajaran ID *">
-                <input className="field-input" value={formGelombang.tahunAjaranId} onChange={(e) => setFormGelombang({ ...formGelombang, tahunAjaranId: e.target.value })} />
-              </Field>
-              <Field label="Unit pendidikan ID">
-                <input className="field-input" value={formGelombang.unitPendidikanId} onChange={(e) => setFormGelombang({ ...formGelombang, unitPendidikanId: e.target.value })} />
-              </Field>
+              <div className="grid gap-3 md:grid-cols-2">
+                <TahunAjaranSelect value={formGelombang.tahunAjaranId || tahunAktif?.id || ''} tahunAjaran={tahunAjaran.data ?? []} onChange={(value) => setFormGelombang({ ...formGelombang, tahunAjaranId: value })} />
+                <UnitPendidikanSelect value={formGelombang.unitPendidikanId} units={unitPendidikan.data?.items ?? []} onChange={(value) => setFormGelombang({ ...formGelombang, unitPendidikanId: value })} />
+              </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Kode *">
                   <input className="field-input uppercase" value={formGelombang.kode} onChange={(e) => setFormGelombang({ ...formGelombang, kode: e.target.value.toUpperCase() })} />
@@ -801,7 +835,7 @@ export function PesantrenPsbPage() {
               <button
                 type="button"
                 className="btn-primary"
-                disabled={!formGelombang.tahunAjaranId || !formGelombang.kode || !formGelombang.nama || !formGelombang.tanggalBuka || !formGelombang.tanggalTutup || buatGelombang.isPending}
+                disabled={!(formGelombang.tahunAjaranId || tahunAktif?.id) || !formGelombang.kode || !formGelombang.nama || !formGelombang.tanggalBuka || !formGelombang.tanggalTutup || buatGelombang.isPending}
                 onClick={() => buatGelombang.mutate()}
               >
                 Simpan
@@ -959,6 +993,52 @@ function StatusAction({ label, onClick }: { label: string; onClick: () => void }
     <button type="button" className="btn-outline px-2 py-1.5 text-xs" onClick={onClick}>
       {label}
     </button>
+  );
+}
+
+function TahunAjaranSelect({
+  value,
+  tahunAjaran,
+  onChange,
+}: {
+  value: string;
+  tahunAjaran: TahunAjaranRow[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Field label="Tahun ajaran *">
+      <select className="field-input" value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Pilih tahun ajaran</option>
+        {tahunAjaran.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.code} - {item.name}{item.status === 'ACTIVE' ? ' (aktif)' : ''}
+          </option>
+        ))}
+      </select>
+    </Field>
+  );
+}
+
+function UnitPendidikanSelect({
+  value,
+  units,
+  onChange,
+}: {
+  value: string;
+  units: UnitPendidikanRow[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Field label="Unit pendidikan">
+      <select className="field-input" value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Lintas semua unit</option>
+        {units.map((unit) => (
+          <option key={unit.id} value={unit.id}>
+            {unit.kode} - {unit.nama}
+          </option>
+        ))}
+      </select>
+    </Field>
   );
 }
 
