@@ -26,6 +26,16 @@ RewriteEngine On
 RewriteRule ^/ebisnis/?$      / [R=302,L]
 RewriteRule ^/ebisnis/(.*)$   /$1 [R=302,L]
 
+# Bot pratinjau tautan (WhatsApp/Telegram/Facebook/dll.) tidak menjalankan
+# JavaScript, sehingga mereka hanya membaca meta tag mentah dari index.html.
+# Untuk mereka saja, balas HTML kecil dari API yang menyuntikkan title, icon,
+# OG image, dan deskripsi berdasarkan Host tenant/modul. Pengguna biasa tetap
+# menerima SPA React di bawah.
+RewriteCond %{REQUEST_METHOD} GET [NC]
+RewriteCond %{HTTP_USER_AGENT} (WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot) [NC]
+RewriteCond %{REQUEST_URI} !^/(api|update|assets|health|docs|docs-yaml)(/|$) [NC]
+RewriteRule ^/(.*)$ ${EBISNIS_API}/api/v1/public/link-preview?path=/$1 [P,L,QSA]
+
 ProxyPreserveHost On
 ProxyRequests Off
 

@@ -1,7 +1,8 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Param, Post, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiPropertyOptional, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Transform, Type } from 'class-transformer';
+import type { Response } from 'express';
 import {
   IsBoolean,
   IsEmail,
@@ -20,6 +21,7 @@ import { AuthService } from '../auth/auth.service';
 import { tautanKanonik } from '../../infrastructure/portal/portal-host';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { Public, RequestContext, RequestMeta } from '../../common/decorators';
+import { rawResponse } from '../../common/interceptors/response-envelope.interceptor';
 
 class CheckUsernameDto {
   @ApiProperty({ example: 'joni_utama' })
@@ -231,6 +233,154 @@ class NewsQueryDto {
   tag?: string;
 }
 
+interface PreviewMetadata {
+  title: string;
+  description: string;
+  siteName: string;
+  themeColor: string;
+  iconDataUri: string;
+  imageUrl: string;
+}
+
+const PREVIEW_IMAGES = {
+  default: 'https://images.unsplash.com/photo-1556745757-8d76bdb6984b?auto=format&fit=crop&w=1200&q=80',
+  inventory: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80',
+  salon: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80',
+  apotik: 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=80',
+  emedik: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=1200&q=80',
+};
+
+function cleanHost(hostname: string): string {
+  return hostname.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function titleizeTenantSlug(slug: string): string {
+  return slug
+    .split(/[-.]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+}
+
+function svgIcon(text: string, color: string): string {
+  const safeText = text.slice(0, 3).replace(/[<>&"]/g, '');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="${color}"/><text x="64" y="76" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="800" fill="white">${safeText}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function inventoryTenantName(host: string): string {
+  if (host === 'inventory.ebisnis.id') return 'eBisnis Inventory';
+  if (host === 'demo-inventory.ebisnis.id') return 'Demo Inventory Obat';
+  if (host === 'cmnmedika-inventory.ebisnis.id') return 'Caruban Medika Nusantara';
+  const slug = host.endsWith('.inventory.ebisnis.id')
+    ? host.replace(/\.inventory\.ebisnis\.id$/, '')
+    : host.replace(/-inventory\.ebisnis\.id$/, '');
+  return titleizeTenantSlug(slug);
+}
+
+function metadataForHost(hostname: string): PreviewMetadata {
+  const host = cleanHost(hostname);
+  const inventoryHost =
+    host === 'inventory.ebisnis.id' ||
+    host === 'demo-inventory.ebisnis.id' ||
+    host.endsWith('-inventory.ebisnis.id') ||
+    host.endsWith('.inventory.ebisnis.id');
+  if (inventoryHost) {
+    const tenantName = inventoryTenantName(host);
+    const root = host === 'inventory.ebisnis.id';
+    const title = root
+      ? 'eBisnis Inventory — Sales dan Stok Obat Terintegrasi'
+      : `${tenantName} — Inventory Obat Terintegrasi`;
+    const description = root
+      ? 'Aplikasi inventory untuk sales lapangan, admin gudang, batch, expiry, piutang, hutang, dan dashboard pemilik.'
+      : `Inventory obat terintegrasi untuk sales, admin gudang, piutang, batch, expiry, dan dashboard pemilik ${tenantName}.`;
+    const iconText = root ? 'eI' : initials(tenantName);
+    return {
+      title,
+      description,
+      siteName: tenantName,
+      themeColor: '#0f766e',
+      iconDataUri: svgIcon(iconText, '#0f766e'),
+      imageUrl: PREVIEW_IMAGES.inventory,
+    };
+  }
+
+  const salonHost =
+    host === 'salon.ebisnis.id' ||
+    host === 'salon.ebinis.id' ||
+    host === 'salon.ebisinis.id' ||
+    host.endsWith('-salon.ebisnis.id') ||
+    host.endsWith('-salon.ebinis.id') ||
+    host.endsWith('-salon.ebisinis.id');
+  if (salonHost) {
+    return {
+      title: 'Salon Cantik Demo — Booking, Produk, dan Dashboard Salon',
+      description:
+        'Demo salon eBisnis dengan booking online, katalog layanan, manajemen kursi, invoice, promo, dan dashboard transaksi.',
+      siteName: 'Salon Cantik Demo',
+      themeColor: '#0f766e',
+      iconDataUri: svgIcon('SC', '#0f766e'),
+      imageUrl: PREVIEW_IMAGES.salon,
+    };
+  }
+
+  if (
+    host === 'apotik.emedik.id' ||
+    host === 'www.apotik.emedik.id' ||
+    host === 'demo-apotik.emedik.id' ||
+    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?-apotik\.emedik\.id$/.test(host)
+  ) {
+    return {
+      title: 'Apotik eMedik — Farmasi dan POS Apotik',
+      description:
+        'Landing dan akses apotik eMedik untuk pelayanan farmasi, stok obat, resep, pembelian, dan penjualan obat.',
+      siteName: 'Apotik eMedik',
+      themeColor: '#0f766e',
+      iconDataUri: svgIcon('Rx', '#0f766e'),
+      imageUrl: PREVIEW_IMAGES.apotik,
+    };
+  }
+
+  if (host === 'emedik.id' || host === 'www.emedik.id' || host.endsWith('.emedik.id')) {
+    return {
+      title: 'eMedik.id — Sistem Operasional Kesehatan',
+      description:
+        'Sistem operasional terpadu untuk rumah sakit, klinik, puskesmas, posyandu, dan apotik.',
+      siteName: 'eMedik.id',
+      themeColor: '#2563eb',
+      iconDataUri: svgIcon('eM', '#2563eb'),
+      imageUrl: PREVIEW_IMAGES.emedik,
+    };
+  }
+
+  return {
+    title: 'eBisnis.id — Platform SaaS POS dan ERP Terintegrasi',
+    description:
+      'Satu aplikasi untuk kasir, toko, persediaan, pembelian, keuangan, SDM, dan monitoring seluruh bisnis Anda.',
+    siteName: 'eBisnis.id',
+    themeColor: '#0f766e',
+    iconDataUri: svgIcon('eB', '#0f766e'),
+    imageUrl: PREVIEW_IMAGES.default,
+  };
+}
+
 @ApiTags('public')
 @Controller('public')
 export class PublicController {
@@ -325,6 +475,56 @@ export class PublicController {
   @ApiOperation({ summary: 'Fitur, modul, langkah, keunggulan, testimoni, mitra, CTA, dan kontak' })
   getMarketing() {
     return this.site.listMarketingContent();
+  }
+
+  @Public()
+  @Get('link-preview')
+  @ApiOperation({ summary: 'HTML metadata dinamis untuk crawler pratinjau tautan sosial' })
+  linkPreview(
+    @Headers('host') host: string | undefined,
+    @Headers('x-forwarded-proto') forwardedProto: string | undefined,
+    @Query('path') path = '/',
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const proto = forwardedProto === 'http' ? 'http' : 'https';
+    const meta = metadataForHost(host ?? 'ebisnis.id');
+    const safePath = typeof path === 'string' && path.startsWith('/') ? path : '/';
+    const url = `${proto}://${cleanHost(host ?? 'ebisnis.id')}${safePath}`;
+
+    res.set({
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, max-age=300',
+    });
+
+    return rawResponse(`<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${escapeHtml(meta.title)}</title>
+    <meta name="description" content="${escapeHtml(meta.description)}">
+    <meta name="theme-color" content="${escapeHtml(meta.themeColor)}">
+    <link rel="canonical" href="${escapeHtml(url)}">
+    <link rel="icon" href="${escapeHtml(meta.iconDataUri)}" type="image/svg+xml">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="${escapeHtml(meta.title)}">
+    <meta property="og:description" content="${escapeHtml(meta.description)}">
+    <meta property="og:site_name" content="${escapeHtml(meta.siteName)}">
+    <meta property="og:url" content="${escapeHtml(url)}">
+    <meta property="og:image" content="${escapeHtml(meta.imageUrl)}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${escapeHtml(meta.title)}">
+    <meta name="twitter:description" content="${escapeHtml(meta.description)}">
+    <meta name="twitter:image" content="${escapeHtml(meta.imageUrl)}">
+  </head>
+  <body>
+    <main>
+      <h1>${escapeHtml(meta.siteName)}</h1>
+      <p>${escapeHtml(meta.description)}</p>
+      <p><a href="${escapeHtml(url)}">Buka website</a></p>
+    </main>
+  </body>
+</html>`);
   }
 
   @Public()

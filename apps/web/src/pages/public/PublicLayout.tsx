@@ -11,7 +11,7 @@ import { useAuth } from '../../app/auth-context';
 import { slugPondokDariHost } from '../../verticals/pesantren/santri-host';
 import { PondokChrome } from '../../verticals/pesantren/PondokChrome';
 import { isSalonDemoHost } from '../contoh/salon-host';
-import { isInventoryHost } from '../inventory/inventory-host';
+import { inventoryTenantLabelFromHost, isInventoryHost } from '../inventory/inventory-host';
 import { emedikPublicBrandFor } from './emedik-host';
 import { educationPublicBrandFor } from '../../verticals/education/education-host';
 
@@ -103,6 +103,8 @@ function PublicLayoutEBisnis({
   const location = useLocation();
   const salonHost = isSalonDemoHost();
   const inventoryHost = isInventoryHost();
+  const inventoryTenantName = inventoryHost ? inventoryTenantLabelFromHost() : null;
+  const inventoryBaseUrl = inventoryHost ? window.location.origin : 'https://inventory.ebisnis.id';
   const emedikBrand = emedikPublicBrandFor();
   const educationBrand = educationPublicBrandFor();
   const brand = salonHost
@@ -130,8 +132,8 @@ function PublicLayoutEBisnis({
     : inventoryHost
       ? {
           logoText: null,
-          name: 'eBisnis Inventory',
-          homeUrl: 'https://inventory.ebisnis.id',
+          name: inventoryTenantName ?? 'eBisnis Inventory',
+          homeUrl: inventoryBaseUrl,
           description:
             'Aplikasi inventory terintegrasi untuk sales obat, gudang, pembelian, piutang, hutang, dan monitoring pemilik usaha.',
         }
@@ -202,10 +204,10 @@ function PublicLayoutEBisnis({
           ? educationBrand.headerItems
         : inventoryHost
           ? [
-              { labelKey: 'inventory.home', label: 'Website', url: 'https://inventory.ebisnis.id', sortOrder: 1 },
-              { labelKey: 'inventory.flow', label: 'Alur Sales', url: 'https://inventory.ebisnis.id/inventory#alur', sortOrder: 2 },
-              { labelKey: 'inventory.dashboard', label: 'Dashboard', url: 'https://inventory.ebisnis.id/inventory#dashboard', sortOrder: 3 },
-              { labelKey: 'inventory.download', label: 'Download', url: 'https://inventory.ebisnis.id/inventory#download', sortOrder: 4 },
+              { labelKey: 'inventory.home', label: 'Website', url: inventoryBaseUrl, sortOrder: 1 },
+              { labelKey: 'inventory.flow', label: 'Alur Sales', url: `${inventoryBaseUrl}/inventory#alur`, sortOrder: 2 },
+              { labelKey: 'inventory.dashboard', label: 'Dashboard', url: `${inventoryBaseUrl}/inventory#dashboard`, sortOrder: 3 },
+              { labelKey: 'inventory.download', label: 'Download', url: `${inventoryBaseUrl}/inventory#download`, sortOrder: 4 },
             ]
       : site?.navigation.find((nav) => nav.location === 'HEADER')?.items ?? [
       { labelKey: 'nav.home', label: t('nav.home'), url: '/', sortOrder: 1 },

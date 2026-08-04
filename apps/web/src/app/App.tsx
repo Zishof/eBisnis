@@ -69,6 +69,7 @@ import { OperationalModulePage } from '../pages/app/OperationalModulePage';
 import { PurposeProvider } from '../verticals/health/PurposeGate';
 import { RequireAuth } from './RequireAuth';
 import { LoadingState } from '../components/ui';
+import { useTenantMetadata } from '../lib/tenant-metadata';
 
 const MarketplaceActivationPage = lazy(() =>
   import('../pages/app/MarketplaceActivationPage').then((m) => ({ default: m.default })),
@@ -414,6 +415,8 @@ function AppTenantGate() {
 }
 
 export function App() {
+  useTenantMetadata();
+
   const rootExperience = rootExperienceFor(window.location.hostname, window.location.pathname);
   const educationHost = isEducationPublicHost();
   const rootElement =
