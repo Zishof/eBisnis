@@ -14,6 +14,7 @@ import { PrismaService } from '../database/prisma.service';
 import { TenantConnectionService } from '../database/tenant-connection.service';
 import { SCHEMA_NAME_REGEX } from '../database/schema-name.util';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { PERMISSION_ACTIONS_SEED } from './tenant-menu.seed';
 
 export type { TenantMigrationDefinition } from './migration-catalog';
 
@@ -48,6 +49,10 @@ export interface MigrationApplyResult {
  */
 export function normalizeLineEndings(text: string): string {
   return text.replace(/\r\n/g, '\n');
+}
+
+function sqlString(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
 }
 
 function readJsonFile<T>(path: string): T {
@@ -158,11 +163,22 @@ export class TenantMigrationService {
     `);
   }
 
-  private async prepareHealthDeviceMaintenanceReleasePrerequisites(schemaName: string): Promise<void> {
+  private async prepareSharedPermissionActionPrerequisites(schemaName: string): Promise<void> {
     const schema = `"${schemaName}"`;
+    const values = PERMISSION_ACTIONS_SEED.map((action) => {
+      const code = sqlString(action.code);
+      const name = sqlString(action.name);
+      const nameKey = sqlString(action.nameKey);
+      const actionType = sqlString(action.actionType);
+      const requiresStepUp = action.requiresStepUp === true ? 'TRUE' : 'FALSE';
+      return `(${code}, ${name}, ${nameKey}, ${actionType}, ${action.sortOrder}, ${requiresStepUp}, TRUE)`;
+    }).join(',\n        ');
+
     await this.tenantDb.executeAdmin(`
-      INSERT INTO ${schema}.permission_action (code, name, name_key, is_system)
-      VALUES ('RELEASE', 'Lepas Reservasi', 'action.release', TRUE)
+      INSERT INTO ${schema}.permission_action
+        (code, name, name_key, action_type, sort_order, requires_step_up, is_system)
+      VALUES
+        ${values}
       ON CONFLICT DO NOTHING;
     `);
   }
@@ -377,8 +393,8 @@ export class TenantMigrationService {
       }
 
       try {
-        if (definition.version === 'H037') {
-          await this.prepareHealthDeviceMaintenanceReleasePrerequisites(schemaName);
+        if (definition.version === 'H037' || definition.version === 'H040') {
+          await this.prepareSharedPermissionActionPrerequisites(schemaName);
         }
         if (definition.version === 'V043') {
           await this.preparePosPharmacyMenuPrerequisites(schemaName);
