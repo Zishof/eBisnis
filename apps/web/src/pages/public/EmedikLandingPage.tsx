@@ -31,9 +31,9 @@ const photos = {
   clinic:
     'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=900&q=82',
   community:
-    'https://images.unsplash.com/photo-1576765974257-b414b9ea005a?auto=format&fit=crop&w=900&q=82',
+    'https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&w=900&q=82',
   lab:
-    'https://images.unsplash.com/photo-1581093458791-9d42e8f80f6a?auto=format&fit=crop&w=900&q=82',
+    'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=900&q=82',
 };
 
 const facilityTypes = [
@@ -280,8 +280,15 @@ export function EmedikLandingPage() {
                     key={item.title}
                     className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-lg"
                   >
-                    <div className="relative h-44 overflow-hidden">
-                      <img src={item.image} alt={item.alt} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                    <div className="relative h-44 overflow-hidden bg-gradient-to-br from-teal-100 via-cyan-50 to-slate-200">
+                      <img
+                        src={item.image}
+                        alt={item.alt}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        onError={(event) => {
+                          event.currentTarget.style.display = 'none';
+                        }}
+                      />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 to-transparent" />
                       <span className="absolute bottom-3 left-3 grid h-10 w-10 place-items-center rounded-lg bg-white text-teal-700 shadow">
                         <Icon className="h-5 w-5" aria-hidden />
