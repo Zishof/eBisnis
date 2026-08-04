@@ -9,10 +9,24 @@
 ; Dibangun oleh .github/workflows/rilis-pos.yml:
 ;   ISCC /DVersi=1.2.0 /DSumber=... /DKeluaran=... pemasang.iss
 
-#define NamaApl "eBisnis POS"
-#define Penerbit "eBisnis.id"
-#define Situs "https://ebisnis.id"
-#define BerkasExe "ebisnis_pos.exe"
+#ifndef NamaApl
+  #define NamaApl "eBisnis POS"
+#endif
+#ifndef Penerbit
+  #define Penerbit "eBisnis.id"
+#endif
+#ifndef Situs
+  #define Situs "https://ebisnis.id"
+#endif
+#ifndef BerkasExe
+  #define BerkasExe "ebisnis_pos.exe"
+#endif
+#ifndef AppIdPemasang
+  #define AppIdPemasang "{{8E2B4F31-0C7A-4D96-9B55-1F3E7A2C6D40}"
+#endif
+#ifndef NamaBerkasKeluaran
+  #define NamaBerkasKeluaran "ebisnis-pos"
+#endif
 
 #ifndef Versi
   #define Versi "0.0.0"
@@ -44,7 +58,7 @@
 ; pemasang berikutnya tidak melihat versi lama dan memasang aplikasi KEDUA
 ; berdampingan — dua ikon, dua penyimpanan lokal, dan kasir yang membuka yang
 ; salah lalu tidak menemukan transaksinya.
-AppId={{8E2B4F31-0C7A-4D96-9B55-1F3E7A2C6D40}
+AppId={#AppIdPemasang}
 AppName={#NamaApl}
 AppVersion={#Versi}
 AppVerName={#NamaApl} {#Versi}
@@ -68,7 +82,7 @@ CloseApplications=yes
 RestartApplications=no
 
 OutputDir={#Keluaran}
-OutputBaseFilename=ebisnis-pos-{#Versi}-windows
+OutputBaseFilename={#NamaBerkasKeluaran}-{#Versi}-windows
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

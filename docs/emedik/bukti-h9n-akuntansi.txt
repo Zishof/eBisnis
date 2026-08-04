@@ -1,0 +1,80 @@
+==============================================================================
+BUKTI H-9N — PEMETAAN AKUNTANSI KESEHATAN
+Waktu   : 2026-07-31T23:17:03.829Z
+Schema  : demo
+==============================================================================
+
+Satu pengguna: petugas keuangan, sengaja TANPA hak membaca rekam medis.
+Ia perlu tahu bahwa pendapatan laboratorium masuk ke akun 4160; ia tidak
+perlu tahu siapa yang diperiksa.
+
+1. Templat bagan akun disemai sebagai DATA, bukan ditanam di dalam kode
+  LULUS  templat terbaca
+  LULUS  memuat sekurang-kurangnya 35 akun
+  LULUS  memuat Beban Penyesuaian Klaim
+  LULUS  dan menerangkan mengapa selisih klaim harus terlihat
+  LULUS  akumulasi penyusutan bergolongan ASET tetapi bersaldo normal KREDIT
+  LULUS  deposit pasien adalah LIABILITAS, bukan pendapatan
+
+2. Peran akun ditautkan ke akun BERSAMA — tidak ada bagan akun kedua
+  LULUS  profil dibuat
+  LULUS  peristiwa yang tidak dikenal ditolak
+  LULUS  penautan yang sah diterima
+  LULUS  peran PENDAPATAN ke akun bersaldo normal debit DITOLAK
+  LULUS  penolakannya menyebut akibatnya pada laporan
+  LULUS  penautan ke akun INDUK ditolak
+  LULUS  penolakannya menyuruh memakai akun anaknya
+  LULUS  menembusnya lewat basis data pun ditolak trigger
+  LULUS  akun induk pun ditolak trigger
+  LULUS  menautkan ulang peran yang sama menggantikan, bukan menggandakan
+  LULUS  satu peran hanya menunjuk satu akun
+  LULUS  menembusnya lewat basis data ditolak indeks unik
+
+3. Pemetaan tinggal di DATA, dan medan nilainya bukan rumus
+  LULUS  aturan bawaan disemai
+  LULUS  hanya bagi peristiwa yang MEMANG dipakai fasilitas ini
+  LULUS  dan menyuruh memeriksanya sebelum dipakai
+  LULUS  debit dan kredit peran yang SAMA ditolak
+  LULUS  penolakannya berkata jurnalnya tidak mengubah apa pun
+  LULUS  RUMUS pada medan nilai ditolak
+  LULUS  menembus rumus lewat basis data ditolak constraint
+  LULUS  menembus sisi yang sama lewat basis data ditolak constraint
+
+4. Laporan kesiapan memisahkan pekerjaan kami dari yang menunggu Core
+  LULUS  laporan kesiapan terbaca
+  LULUS  profil akunnya dinyatakan lengkap
+  LULUS  tetapi BELUM siap menjurnal
+  LULUS  tidak ada lagi pekerjaan di pihak kami
+  LULUS  seluruh peristiwanya menunggu mesin akuntansi bersama
+  LULUS  dan pesannya berkata membuat buku besar kedua bukan jalan keluarnya
+  LULUS  peran yang belum tertaut disebut namanya
+  LULUS  dan menyebut peristiwa apa yang menjadi buntu karenanya
+  LULUS  pekerjaan kami kini muncul terpisah
+
+5. TIDAK ADA BUKU BESAR KEDUA
+  LULUS  peta terbaca
+  LULUS  dan menyatakan sendiri bahwa ia tidak menghasilkan jurnal
+  LULUS  peta menunjuk akun bagan akun BERSAMA, bukan tabel akun sendiri
+  LULUS  tidak ada satu pun tabel jurnal, buku besar, atau saldo milik kesehatan
+  LULUS  memakai seluruh modul ini tidak menambah satu pun baris jurnal
+  LULUS  dan tidak menambah satu pun peristiwa akuntansi
+
+6. Selisih klaim adalah BEBAN, bukan pendapatan yang hilang begitu saja
+  LULUS  selisihnya dihitung
+  LULUS  dan dinyatakan sebagai beban penyesuaian klaim
+  LULUS  bukan dihapus dari piutang begitu saja
+  LULUS  dan TIDAK dijurnal
+  LULUS  sebabnya disebutkan terus terang
+  LULUS  disetujui LEBIH BESAR daripada diajukan menuntut telaah
+  LULUS  dan tidak menghasilkan peristiwa apa pun
+  LULUS  pesannya berkata itu bukan keuntungan
+  LULUS  nilai negatif ditolak
+
+7. Petugas keuangan tidak membaca rekam medis
+  LULUS  petugas keuangan TIDAK dapat membaca rekam medis pasien
+  LULUS  dan aturan pemisahannya benar-benar terpasang
+  LULUS  peran bawaan Petugas Keuangan tidak diberi hak atas menu pasien mana pun
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

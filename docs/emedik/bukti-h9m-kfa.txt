@@ -1,0 +1,78 @@
+==============================================================================
+BUKTI H-9M — KERANGKA IMPOR KFA DAN TERMINOLOGI RESMI
+Waktu   : 2026-08-01T03:59:41.825Z
+Schema  : demo
+==============================================================================
+
+Dua pengguna. Apoteker mengimpor, memvalidasi, dan memetakan; penanggung
+jawab farmasi menerapkan. Apoteker sengaja DIBERI hak menerapkan pula,
+supaya penolakannya datang dari pemeriksaan baris — bukan dari hak akses.
+
+1. OBAT TANPA PEMETAAN KFA TETAP DAPAT DIPAKAI
+  LULUS  tidak ada kolom KFA yang WAJIB pada tabel produk
+  LULUS  dan tidak ada constraint yang menahan resep tanpa pemetaan
+  LULUS  katalog terbaca
+  LULUS  dinyatakan tegas: dapat dipakai
+  LULUS  tetapi tidak dapat dikirim ke SATUSEHAT
+  LULUS  dan alasannya menyebut dijalankan di luar sistem
+
+2. Katalog kosong dijawab "belum dapat dinilai", bukan "tidak ada masalah"
+  LULUS  kesiapan terbaca
+  LULUS  enam katalog tercatat
+  LULUS  empat katalog yang tidak disentuh naskah ini tetap kosong
+  LULUS  dan seluruhnya dijawab BELUM DAPAT DINILAI
+  LULUS  jawabannya membedakannya dari "tidak ada masalah"
+  LULUS  dan seluruhnya bersumber SYNTHETIC_DEMO, bukan OFFICIAL_REFERENCE
+
+3. HARGA SINTETIS TIDAK DAPAT MENYEBUT DIRINYA RESMI
+  LULUS  rujukan RESMI tanpa terbitan DITOLAK
+  LULUS  penolakannya menyebut yang tidak dapat diperiksa akan dipercaya
+  LULUS  menembusnya lewat basis data ditolak constraint
+  LULUS  berkas impor "resmi" tanpa terbitan pun ditolak constraint
+  LULUS  rujukan resmi BERTERBITAN diterima
+  LULUS  sidik jarinya dihitung
+  LULUS  dan dinyatakan BELUM diterapkan
+  LULUS  berkas dengan ISI yang sama ditolak sekalipun namanya berbeda
+  LULUS  penolakannya menyebut berkas yang sama dengan nama berbeda
+
+4. Impor yang masih bergalat TIDAK diterapkan
+  LULUS  impor bergalat berstatus REJECTED
+  LULUS  dan alasannya menyebut baris mana yang mana
+  LULUS  impor REJECTED tidak dapat diterapkan
+  LULUS  penolakannya menyebut berkas yang belum dibaca siapa pun
+  LULUS  menembusnya lewat basis data ditolak constraint
+
+5. Yang memvalidasi impor TIDAK menerapkannya sendiri
+  LULUS  yang memvalidasi tidak menerapkannya sendiri
+  LULUS  penolakannya menyebut membaca ulang keyakinannya
+  LULUS  penanggung jawab farmasi menerapkannya
+  LULUS  dan katalognya kini bersumber terbitan resmi
+  LULUS  ringkasannya menyebut berapa katalog yang terisi
+  LULUS  katalog KFA kini terisi
+  LULUS  dan bersumber OFFICIAL_REFERENCE
+  LULUS  serta tidak lagi dijawab belum dapat dinilai
+  LULUS  menembus pemisahannya lewat basis data ditolak constraint
+  LULUS  riwayat impor tidak dapat dihapus
+
+6. PEMETAAN BERDASARKAN KEMIRIPAN NAMA DITOLAK
+  LULUS  pemetaan berdasarkan kemiripan nama DITOLAK
+  LULUS  penolakannya menyebut dua kali lipat dosisnya
+  LULUS  dan menyebut akan dikirim sebagai obat yang bukan diberikan
+  LULUS  menembusnya lewat basis data ditolak constraint
+  LULUS  produk yang belum terpeta DAPAT DIPAKAI
+  LULUS  tetapi tidak dapat dikirim
+  LULUS  pemetaan MANUAL diterima
+  LULUS  sesudah dipetakan, ia dapat dikirim
+  LULUS  dan kode KFA-nya disebutkan
+  LULUS  pemetaan yang sudah ada TIDAK ditimpa
+  LULUS  penolakannya menyebut kiriman lama yang dipersengketakan
+  LULUS  pemetaan tanpa nama pemetanya ditolak basis data
+
+7. SESUDAH SELURUHNYA — KATALOG SINTETIS TETAP BERTANDA SINTETIS
+  LULUS  tidak satu pun katalog sintetis yang mengaku berterbitan
+  LULUS  dan tidak satu pun yang mengaku resmi tanpa terbitannya
+  LULUS  di SELURUH tenant, tidak ada pemetaan berdasarkan kemiripan nama
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

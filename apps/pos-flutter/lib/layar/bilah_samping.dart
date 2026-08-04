@@ -1,15 +1,4 @@
 /// Bilah navigasi kiri.
-///
-/// ## Mengapa menu yang belum ada tetap ditampilkan
-///
-/// Klien ini hanya punya layar kasir. Sisanya — produk, stok, pembelian,
-/// laporan — hidup di aplikasi web eBisnis.
-///
-/// Menyembunyikannya akan membuat kasir dan pemilik gerai mengira aplikasi ini
-/// kehilangan fitur. Menampilkannya seolah-olah bekerja lebih buruk lagi.
-/// Karena itu menunya ada, tampak sebagaimana pada rancangan, dan ketika ditekan
-/// **mengatakan di mana layarnya berada** — bukan diam, dan bukan membuka layar
-/// kosong.
 library;
 
 import 'package:flutter/material.dart';
@@ -17,20 +6,20 @@ import 'package:flutter/material.dart';
 import 'tema.dart';
 
 class ItemMenu {
-  const ItemMenu(this.kunci, this.label, this.ikon, {this.diKlienIni = false});
+  const ItemMenu(this.kunci, this.label, this.ikon, {this.diKlienIni = true});
 
   final String kunci;
   final String label;
   final IconData ikon;
-
-  /// Benar hanya untuk layar yang benar-benar ada pada klien kasir ini.
   final bool diKlienIni;
 }
 
 const daftarMenu = [
   ItemMenu('dashboard', 'Dashboard', Icons.home_outlined),
-  ItemMenu('kasir', 'Kasir/POS', Icons.shopping_cart_outlined, diKlienIni: true),
+  ItemMenu('kasir', 'Kasir/POS', Icons.shopping_cart_outlined),
   ItemMenu('produk', 'Produk', Icons.inventory_2_outlined),
+  ItemMenu(
+      'riwayat-pembayaran', 'Riwayat Pembayaran', Icons.receipt_long_outlined),
   ItemMenu('pelanggan', 'Pelanggan', Icons.person_outline),
   ItemMenu('stok', 'Stok', Icons.warehouse_outlined),
   ItemMenu('pembelian', 'Pembelian', Icons.shopping_bag_outlined),
@@ -39,21 +28,36 @@ const daftarMenu = [
   ItemMenu('pengaturan', 'Pengaturan', Icons.settings_outlined),
 ];
 
+const daftarMenuApotik = [
+  ItemMenu('dashboard', 'Dashboard', Icons.home_outlined),
+  ItemMenu('kasir', 'POS Apotik', Icons.medication_outlined),
+  ItemMenu('produk', 'Obat & Farmasi', Icons.inventory_2_outlined),
+  ItemMenu(
+      'riwayat-pembayaran', 'Riwayat Pembayaran', Icons.receipt_long_outlined),
+  ItemMenu('pelanggan', 'Pasien', Icons.person_outline),
+  ItemMenu('stok', 'Stok & Expiry', Icons.warehouse_outlined),
+  ItemMenu('pembelian', 'PBF & Pembelian', Icons.shopping_bag_outlined),
+  ItemMenu('promo', 'Paket & Promo', Icons.local_offer_outlined),
+  ItemMenu('laporan', 'Laporan Farmasi', Icons.description_outlined),
+  ItemMenu('pengaturan', 'Pengaturan', Icons.settings_outlined),
+];
+
 class BilahSamping extends StatelessWidget {
   const BilahSamping({
     required this.terpilih,
     required this.onPilih,
+    this.judul = 'eBisnis POS',
+    this.ikon = Icons.bolt,
+    this.menu = daftarMenu,
     this.keteranganLangganan,
     super.key,
   });
 
   final String terpilih;
   final void Function(ItemMenu) onPilih;
-
-  /// Baris keterangan langganan di kaki bilah, atau null bila tidak diketahui.
-  ///
-  /// Null bila belum tersambung ke peladen. Tidak ditebak: masa aktif langganan
-  /// yang salah tampil lebih buruk daripada tidak tampil.
+  final String judul;
+  final IconData ikon;
+  final List<ItemMenu> menu;
   final String? keteranganLangganan;
 
   @override
@@ -78,12 +82,12 @@ class BilahSamping extends StatelessWidget {
                       color: Warna.utama,
                       borderRadius: BorderRadius.circular(9),
                     ),
-                    child: const Icon(Icons.bolt, color: Colors.white, size: 19),
+                    child: Icon(ikon, color: Colors.white, size: 19),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'eBisnis POS',
+                      judul,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -100,7 +104,7 @@ class BilahSamping extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 children: [
-                  for (final m in daftarMenu)
+                  for (final m in menu)
                     _BarisMenu(
                       item: m,
                       aktif: m.kunci == terpilih,
@@ -126,7 +130,8 @@ class BilahSamping extends StatelessWidget {
                       Expanded(
                         child: Text(
                           keteranganLangganan!,
-                          style: const TextStyle(color: Warna.teksAtasGelap, fontSize: 11),
+                          style: const TextStyle(
+                              color: Warna.teksAtasGelap, fontSize: 11),
                         ),
                       ),
                     ],
@@ -141,7 +146,11 @@ class BilahSamping extends StatelessWidget {
 }
 
 class _BarisMenu extends StatelessWidget {
-  const _BarisMenu({required this.item, required this.aktif, required this.onTekan});
+  const _BarisMenu({
+    required this.item,
+    required this.aktif,
+    required this.onTekan,
+  });
 
   final ItemMenu item;
   final bool aktif;
@@ -149,12 +158,7 @@ class _BarisMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Menu yang layarnya tidak ada di klien ini ditulis lebih redup. Bukan
-    // dimatikan — kasir tetap boleh menekannya dan mendapat jawaban tentang di
-    // mana layarnya berada.
-    final warnaTeks = aktif
-        ? Colors.white
-        : (item.diKlienIni ? const Color(0xFFCBD5E1) : Warna.teksAtasGelap);
+    final warnaTeks = aktif ? Colors.white : const Color(0xFFCBD5E1);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),

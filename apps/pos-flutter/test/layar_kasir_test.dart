@@ -113,6 +113,7 @@ Future<ValueNotifier<KeadaanPelanggan>> pasang(
   Pencetak? pencetak,
   List<MetodeBayar>? metode,
   PengelolaPembaruan? pembaruan,
+  ModeKasir mode = ModeKasir.penjualan,
 }) async {
   /*
    * Ukuran meja kasir, bukan ukuran bawaan uji (800x600).
@@ -137,11 +138,14 @@ Future<ValueNotifier<KeadaanPelanggan>> pasang(
       home: LayarKasir(
         katalog: KatalogPalsu(),
         metode: metode ??
-            const [MetodeBayar(id: 'TUNAI', nama: 'Tunai', memberiKembalian: true)],
+            const [
+              MetodeBayar(id: 'TUNAI', nama: 'Tunai', memberiKembalian: true)
+            ],
         pencetak: pencetak ?? PencetakPalsu(),
         namaToko: 'Toko Uji',
         pelanggan: pelanggan,
         pembaruan: pembaruan,
+        mode: mode,
       ),
     ),
   );
@@ -156,7 +160,8 @@ Future<void> pindai(WidgetTester tester, String kode) async {
 }
 
 void main() {
-  testWidgets('memindai barcode memasukkan barang, dan fokus kembali ke kotak pindai',
+  testWidgets(
+      'memindai barcode memasukkan barang, dan fokus kembali ke kotak pindai',
       (tester) async {
     /*
      * Pemindai mengetik lalu menekan Enter. Bila fokus tidak kembali, pindaian
@@ -168,9 +173,23 @@ void main() {
 
     expect(diKeranjang('Kopi Susu Gula Aren'), findsOneWidget);
 
-    final kotak = tester.widget<TextField>(find.byKey(const Key('kotak-pindai')));
+    final kotak =
+        tester.widget<TextField>(find.byKey(const Key('kotak-pindai')));
     expect(kotak.focusNode!.hasFocus, isTrue);
     expect(kotak.controller!.text, isEmpty);
+  });
+
+  testWidgets('mode apotik memakai istilah dan konteks farmasi',
+      (tester) async {
+    await pasang(tester, mode: ModeKasir.apotik);
+
+    expect(find.text('POS Apotik'), findsWidgets);
+    expect(find.byKey(const Key('panel-konteks-apotik')), findsOneWidget);
+    expect(find.byKey(const Key('nomor-resep-apotik')), findsOneWidget);
+    expect(find.text('Resep'), findsOneWidget);
+    expect(find.text('Bebas'), findsOneWidget);
+    expect(find.text('Antar'), findsOneWidget);
+    expect(find.textContaining('Pindai barcode obat'), findsOneWidget);
   });
 
   testWidgets('barcode alternatif ditemukan sama saja', (tester) async {
@@ -180,18 +199,22 @@ void main() {
     expect(diKeranjang('Kopi Susu Gula Aren'), findsOneWidget);
   });
 
-  testWidgets('memindai barang yang sama dua kali menambah jumlah, bukan baris', (tester) async {
+  testWidgets('memindai barang yang sama dua kali menambah jumlah, bukan baris',
+      (tester) async {
     await pasang(tester);
     await pindai(tester, '8991234567890');
     await pindai(tester, '8991234567890');
 
     expect(diKeranjang('Kopi Susu Gula Aren'), findsOneWidget);
     expect(tester.widget<Text>(find.byKey(const Key('jumlah-0'))).data, '2');
-    expect(tester.widget<Text>(find.byKey(const Key('total-baris-0'))).data, 'Rp 36.000');
-    expect(tester.widget<Text>(find.byKey(const Key('total'))).data, 'Rp 36.000');
+    expect(tester.widget<Text>(find.byKey(const Key('total-baris-0'))).data,
+        'Rp 36.000');
+    expect(
+        tester.widget<Text>(find.byKey(const Key('total'))).data, 'Rp 36.000');
   });
 
-  testWidgets('barcode tak dikenal menyebut kodenya dan langkah berikutnya', (tester) async {
+  testWidgets('barcode tak dikenal menyebut kodenya dan langkah berikutnya',
+      (tester) async {
     /*
      * "Barcode tidak dikenali" tanpa kodenya tidak memberi tahu kasir apakah ia
      * salah pindai atau barangnya memang belum terdaftar — dua hal dengan
@@ -207,7 +230,8 @@ void main() {
 
   testWidgets('tombol bayar mati selama keranjang kosong', (tester) async {
     await pasang(tester);
-    final tombol = tester.widget<FilledButton>(find.byKey(const Key('tombol-bayar')));
+    final tombol =
+        tester.widget<FilledButton>(find.byKey(const Key('tombol-bayar')));
     expect(tombol.onPressed, isNull);
   });
 
@@ -221,7 +245,8 @@ void main() {
     expect(find.byKey(const Key('dialog-bayar')), findsOneWidget);
   });
 
-  testWidgets('selesaikan tidak dapat ditekan selama uang kurang', (tester) async {
+  testWidgets('selesaikan tidak dapat ditekan selama uang kurang',
+      (tester) async {
     /*
      * Menyelesaikan transaksi dengan pembayaran kurang berarti selisih laci kas
      * yang baru ketahuan saat tutup shift — tanpa cara mengetahui transaksi mana
@@ -237,12 +262,15 @@ void main() {
 
     expect(find.textContaining('Kurang'), findsOneWidget);
     expect(
-      tester.widget<FilledButton>(find.byKey(const Key('selesaikan'))).onPressed,
+      tester
+          .widget<FilledButton>(find.byKey(const Key('selesaikan')))
+          .onPressed,
       isNull,
     );
   });
 
-  testWidgets('alur penuh: pindai, bayar, struk tercetak dan laci terbuka', (tester) async {
+  testWidgets('alur penuh: pindai, bayar, lalu pilih cetak struk dan buka laci',
+      (tester) async {
     final pencetak = PencetakPalsu();
     await pasang(tester, pencetak: pencetak);
     await pindai(tester, '8991234567890');
@@ -254,19 +282,57 @@ void main() {
     await tester.tap(find.byKey(const Key('selesaikan')));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('dialog-transaksi-berhasil')), findsOneWidget);
+    expect(find.text('Rp 2.000'), findsOneWidget);
+    expect(pencetak.terkirim, isEmpty);
+
+    await tester.tap(find.byKey(const Key('aksi-cetak-struk-selesai')));
+    await tester.pumpAndSettle();
     expect(pencetak.terkirim, hasLength(1));
-
-    // Perintah membuka laci ikut pada byte struk: laci yang terbuka tanpa struk,
-    // atau sebaliknya, membuat kasir tidak yakin transaksinya sudah selesai.
     final byte = pencetak.terkirim.single;
-    expect(_memuatUrutan(byte, [0x1B, 0x70]), isTrue, reason: 'perintah ESC p tidak ada');
+    expect(_memuatUrutan(byte, [0x1B, 0x70]), isFalse,
+        reason: 'cetak struk tidak boleh membuka laci otomatis');
 
-    // Keranjang dikosongkan dan kembaliannya disebutkan.
+    await tester.tap(find.byKey(const Key('aksi-buka-laci-selesai')));
+    await tester.pumpAndSettle();
+    expect(pencetak.terkirim, hasLength(2));
+    expect(pencetak.terkirim.last, [0x1B, 0x70, 0x00, 25, 125]);
+
+    await tester.tap(find.byKey(const Key('aksi-transaksi-baru')));
+    await tester.pumpAndSettle();
+
+    // Keranjang dikosongkan untuk transaksi berikutnya.
     expect(find.byKey(const Key('keranjang-kosong')), findsOneWidget);
-    expect(find.textContaining('Rp 2.000'), findsOneWidget);
   });
 
-  testWidgets('tanpa printer, transaksi tetap selesai tetapi dikatakan struk tidak tercetak',
+  testWidgets('pembayaran selesai masuk ke riwayat pembayaran dan summary',
+      (tester) async {
+    await pasang(tester);
+    await pindai(tester, '8991234567890');
+
+    await tester.tap(find.byKey(const Key('tombol-bayar')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('uang-diserahkan')), '20000');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('selesaikan')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('aksi-transaksi-baru')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('menu-riwayat-pembayaran')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Riwayat Pembayaran'), findsWidgets);
+    expect(find.text('Transaksi'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+    expect(find.textContaining('LOKAL-'), findsOneWidget);
+    expect(find.textContaining('Tunai'), findsWidgets);
+    expect(find.text('Rp 18.000'), findsWidgets);
+  });
+
+  testWidgets(
+      'tanpa printer, transaksi tetap selesai tetapi dikatakan struk tidak tercetak',
       (tester) async {
     /*
      * Menghentikan transaksi karena printer mati akan menahan antrean untuk
@@ -283,11 +349,13 @@ void main() {
     await tester.tap(find.byKey(const Key('selesaikan')));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('TIDAK tercetak'), findsOneWidget);
+    expect(find.byKey(const Key('dialog-transaksi-berhasil')), findsOneWidget);
+    expect(find.textContaining('Printer tidak terpasang'), findsOneWidget);
     expect(find.byKey(const Key('keranjang-kosong')), findsOneWidget);
   });
 
-  testWidgets('F10 membatalkan transaksi HANYA setelah dikonfirmasi', (tester) async {
+  testWidgets('F10 membatalkan transaksi HANYA setelah dikonfirmasi',
+      (tester) async {
     await pasang(tester);
     await pindai(tester, '8991234567890');
 
@@ -307,7 +375,8 @@ void main() {
     expect(find.byKey(const Key('keranjang-kosong')), findsOneWidget);
   });
 
-  testWidgets('F6 membuka laci lewat printer, setelah dikonfirmasi', (tester) async {
+  testWidgets('F6 membuka laci lewat printer, setelah dikonfirmasi',
+      (tester) async {
     final pencetak = PencetakPalsu();
     await pasang(tester, pencetak: pencetak);
 
@@ -319,7 +388,8 @@ void main() {
     expect(pencetak.terkirim.single, [0x1B, 0x70, 0x00, 25, 125]);
   });
 
-  testWidgets('tanpa printer, F6 mengatakan lacinya tidak dapat dibuka', (tester) async {
+  testWidgets('tanpa printer, F6 mengatakan lacinya tidak dapat dibuka',
+      (tester) async {
     // Laci dibuka lewat printer; tanpa printer tidak ada jalan lain.
     await pasang(tester, pencetak: PencetakPalsu(siap: false));
 
@@ -362,7 +432,8 @@ void main() {
   });
 
   group('kisi produk', () {
-    testWidgets('menekan kartu produk memasukkannya ke keranjang', (tester) async {
+    testWidgets('menekan kartu produk memasukkannya ke keranjang',
+        (tester) async {
       /*
        * Sebagian besar barang di gerai makanan dan minuman tidak punya barcode.
        * Kopi yang baru diseduh tidak dapat dipindai, sehingga bagi gerai seperti
@@ -373,10 +444,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(diKeranjang('Kopi Susu Gula Aren'), findsOneWidget);
-      expect(tester.widget<Text>(find.byKey(const Key('total'))).data, 'Rp 18.000');
+      expect(tester.widget<Text>(find.byKey(const Key('total'))).data,
+          'Rp 18.000');
     });
 
-    testWidgets('barang habis TAMPIL tetapi tidak dapat ditekan', (tester) async {
+    testWidgets('barang habis TAMPIL tetapi tidak dapat ditekan',
+        (tester) async {
       /*
        * Menyembunyikannya membuat kasir mencarinya berulang kali dan
        * menyimpulkan bahwa katalognya rusak. Yang perlu diketahuinya adalah
@@ -392,7 +465,8 @@ void main() {
       expect(find.byKey(const Key('keranjang-kosong')), findsOneWidget);
     });
 
-    testWidgets('stok yang TIDAK diketahui tidak ditampilkan sebagai nol', (tester) async {
+    testWidgets('stok yang TIDAK diketahui tidak ditampilkan sebagai nol',
+        (tester) async {
       // Menampilkan "Stok 0" untuk stok yang tidak diketahui membuat kasir
       // menolak menjual barang yang sebenarnya ada di rak.
       await tester.pumpWidget(
@@ -403,7 +477,11 @@ void main() {
                 // Namanya sengaja tidak memuat kata "Stok": pencarian teks di
                 // bawah akan lulus atau gagal karena nama produknya, bukan
                 // karena badge yang sedang diuji.
-                ProdukLokal(productId: 'X', nama: 'Kopi Tubruk', harga: '1000', barcodes: []),
+                ProdukLokal(
+                    productId: 'X',
+                    nama: 'Kopi Tubruk',
+                    harga: '1000',
+                    barcodes: []),
               ],
               kategori: const [],
               terpilih: kategoriSemua,
@@ -432,7 +510,8 @@ void main() {
       expect(find.byKey(const Key('produk-P2')), findsNothing);
     });
 
-    testWidgets('mengetik nama menyaring kisi, bukan mengeluh soal barcode', (tester) async {
+    testWidgets('mengetik nama menyaring kisi, bukan mengeluh soal barcode',
+        (tester) async {
       /*
        * Satu kotak melayani pemindai dan pengetikan nama sekaligus. Yang
        * menentukan perlakuannya adalah bentuk teksnya: barcode yang tak dikenal
@@ -447,7 +526,8 @@ void main() {
       expect(find.byKey(const Key('pesan')), findsNothing);
     });
 
-    testWidgets('nama yang tidak ada dikatakan tanpa menyebut master produk', (tester) async {
+    testWidgets('nama yang tidak ada dikatakan tanpa menyebut master produk',
+        (tester) async {
       await pasang(tester);
       await pindai(tester, 'nasi goreng');
 
@@ -457,10 +537,12 @@ void main() {
   });
 
   group('cek pembaruan', () {
-    testWidgets('menekan tombol memeriksa dan menampilkan hasilnya', (tester) async {
+    testWidgets('menekan tombol memeriksa dan menampilkan hasilnya',
+        (tester) async {
       final p = PengelolaPembaruan(
         sumber: SumberPembaruanPalsu(
-          const RilisTersedia(versi: '9.9.9', jalurUnduh: 'https://contoh/pos.exe'),
+          const RilisTersedia(
+              versi: '9.9.9', jalurUnduh: 'https://contoh/pos.exe'),
         ),
         versiBerjalan: '1.0.0',
       );
@@ -477,7 +559,8 @@ void main() {
       expect(find.byKey(const Key('tautan-unduh')), findsOneWidget);
     });
 
-    testWidgets('sumber yang gagal TIDAK dilaporkan sebagai sudah terbaru', (tester) async {
+    testWidgets('sumber yang gagal TIDAK dilaporkan sebagai sudah terbaru',
+        (tester) async {
       /*
        * Melaporkan "sudah terbaru" ketika sebenarnya tidak dapat memeriksa
        * adalah kebohongan yang paling mudah dipercaya — dan mesin kasir dapat
@@ -497,19 +580,22 @@ void main() {
       expect(find.byKey(const Key('tautan-unduh')), findsNothing);
     });
 
-    testWidgets('tanpa pengelola pembaruan, tombolnya tidak ada sama sekali', (tester) async {
+    testWidgets('tanpa pengelola pembaruan, tombolnya tidak ada sama sekali',
+        (tester) async {
       await pasang(tester);
       expect(find.byKey(const Key('tombol-cek-pembaruan')), findsNothing);
     });
   });
 
   group('bilah atas mengatakan yang benar-benar diketahui', () {
-    testWidgets('printer yang tidak terpasang disebut merah, bukan didiamkan', (tester) async {
+    testWidgets('printer yang tidak terpasang disebut merah, bukan didiamkan',
+        (tester) async {
       await pasang(tester, pencetak: PencetakPalsu(siap: false));
       expect(find.text('Tidak terpasang'), findsOneWidget);
     });
 
-    testWidgets('sinkronisasi yang belum pernah diperiksa BUKAN "Online"', (tester) async {
+    testWidgets('sinkronisasi yang belum pernah diperiksa BUKAN "Online"',
+        (tester) async {
       /*
        * Penanda pada bilah atas dibaca sekilas, sekali di pagi hari, lalu
        * dipercaya sepanjang hari. Penanda hijau yang tidak pernah memeriksa apa
@@ -523,13 +609,46 @@ void main() {
   });
 
   group('bilah samping', () {
-    testWidgets('menu yang layarnya di aplikasi web mengatakan di mana layarnya', (tester) async {
-      // Diam akan membuat kasir menekannya lagi lebih keras.
+    testWidgets('menu non-kasir membuka halaman aktif', (tester) async {
       await pasang(tester);
       await tester.tap(find.byKey(const Key('menu-laporan')));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('aplikasi web eBisnis'), findsOneWidget);
+      expect(find.textContaining('Ringkasan transaksi'), findsOneWidget);
+    });
+
+    testWidgets('dashboard bisnis memuat tab analitik lengkap', (tester) async {
+      await pasang(tester);
+      await tester.tap(find.byKey(const Key('menu-dashboard')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Dashboard Bisnis'), findsOneWidget);
+      expect(find.text('Ringkasan Umum'), findsOneWidget);
+      expect(find.text('Keuangan & Kinerja'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('dashboard-tab-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Pendapatan Kotor'), findsOneWidget);
+
+      final daftarTab = find.descendant(
+        of: find.byKey(const Key('dashboard-tab-list')),
+        matching: find.byType(Scrollable),
+      );
+      for (var i = 0; i < 16; i += 1) {
+        await tester.drag(daftarTab, const Offset(-180, 0));
+        await tester.pumpAndSettle();
+        final tabAkhir = find.byKey(const Key('dashboard-tab-8'));
+        if (tabAkhir.evaluate().isEmpty) continue;
+        final pusat = tester.getCenter(tabAkhir);
+        if (pusat.dx < tester.view.physicalSize.width - 40) {
+          break;
+        }
+      }
+      await tester.tap(find.byKey(const Key('dashboard-tab-8')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kepatuhan Operasional'), findsWidgets);
+      expect(find.text('Struk Tersimpan'), findsOneWidget);
     });
   });
 
@@ -549,7 +668,8 @@ void main() {
       expect(k.jumlahBarang, 1);
     });
 
-    testWidgets('kembalian tampil sebelum transaksi diselesaikan', (tester) async {
+    testWidgets('kembalian tampil sebelum transaksi diselesaikan',
+        (tester) async {
       /*
        * Pembeli perlu melihat kembaliannya SEBELUM uangnya diserahkan, bukan
        * sesudah — itulah saat ia dapat menyanggah tanpa membuka dompet lagi.
@@ -566,7 +686,8 @@ void main() {
       expect(k.kembalian, '2000');
     });
 
-    testWidgets('kembali ke sapaan setelah keranjang dikosongkan', (tester) async {
+    testWidgets('kembali ke sapaan setelah keranjang dikosongkan',
+        (tester) async {
       // Data pembeli sebelumnya tidak boleh tertinggal di layar yang menghadap
       // pembeli berikutnya.
       final p = await pasang(tester);

@@ -43,8 +43,8 @@ export const PROFIL_BAWAAN: ProfilDemo = {
   brands: 3,
   outletsPerBrand: 3,
   registersPerOutlet: 2,
-  products: 120,
-  customers: 40,
+  products: 500,
+  customers: 50,
   salesPerOutlet: 25,
   daysBack: 7,
 };

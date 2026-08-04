@@ -50,6 +50,10 @@ export function normalizeLineEndings(text: string): string {
   return text.replace(/\r\n/g, '\n');
 }
 
+function readJsonFile<T>(path: string): T {
+  return JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/, '')) as T;
+}
+
 @Injectable()
 export class TenantMigrationService {
   private readonly logger = new Logger(TenantMigrationService.name);
@@ -87,7 +91,7 @@ export class TenantMigrationService {
       const manifestPath = join(dir, 'manifest.json');
       if (!existsSync(manifestPath)) continue;
 
-      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as ModuleManifest;
+      const manifest = readJsonFile<ModuleManifest>(manifestPath);
       if (manifest.module !== nama) {
         throw AppError.internal(
           ErrorCodes.PROVISIONING_FAILED,
@@ -103,7 +107,7 @@ export class TenantMigrationService {
   getManifest(): Manifest {
     if (!this.manifest) {
       const manifestPath = join(this.migrationsDir, 'manifest.json');
-      const core = JSON.parse(readFileSync(manifestPath, 'utf8')) as CoreManifest;
+      const core = readJsonFile<CoreManifest>(manifestPath);
       this.manifest = gabungkanKatalog(core, this.discoverModuleManifests());
     }
     return this.manifest;
@@ -128,6 +132,30 @@ export class TenantMigrationService {
     const entry = { sql, checksum };
     this.sqlCache.set(definition.file, entry);
     return entry;
+  }
+
+  private async preparePosPharmacyMenuPrerequisites(schemaName: string): Promise<void> {
+    const schema = `"${schemaName}"`;
+    await this.tenantDb.executeAdmin(`
+      INSERT INTO ${schema}.menu
+        (code, parent_id, name, translation_key, route, icon, module_code,
+         platform_target, path, level, is_coming_soon, is_system, sort_order)
+      VALUES
+        ('POS', NULL, 'Kasir / POS', 'menu.pos', '/app/pos', 'shopping-cart',
+         'POS', 'WEB', '/POS', 0, FALSE, TRUE, 1)
+      ON CONFLICT DO NOTHING;
+
+      INSERT INTO ${schema}.permission_action (code, name, name_key, is_system)
+      SELECT action_code, initcap(replace(action_code, '_', ' ')), 'permission.' || lower(action_code), TRUE
+        FROM unnest(ARRAY[
+          'READ', 'CREATE', 'UPDATE', 'DELETE', 'PRINT',
+          'SELL', 'HOLD', 'RESUME',
+          'DISCOUNT_LINE', 'DISCOUNT_CART', 'PRICE_OVERRIDE',
+          'APPROVE', 'REJECT',
+          'VIEW_AMOUNT', 'VIEW_COST'
+        ]) AS action_code
+      ON CONFLICT DO NOTHING;
+    `);
   }
 
   /** Sinkronkan katalog canonical ke platform.schema_migration_catalog. */
@@ -232,6 +260,9 @@ export class TenantMigrationService {
 
       const startedAt = Date.now();
       try {
+        if (definition.version === 'V043') {
+          await this.preparePosPharmacyMenuPrerequisites(schemaName);
+        }
         await this.tenantDb.executeAdmin(rendered);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

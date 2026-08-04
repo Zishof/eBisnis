@@ -50,6 +50,20 @@ android {
         versionName = flutter.versionName
     }
 
+    flavorDimensions "produk"
+    productFlavors {
+        penjualan {
+            dimension "produk"
+            applicationId = "id.ebisnis.ebisnis_pos"
+            resValue "string", "app_name", "eBisnis POS"
+        }
+        apotik {
+            dimension "produk"
+            applicationId = "id.emedik.pos_apotik"
+            resValue "string", "app_name", "POS Apotik eMedik"
+        }
+    }
+
     signingConfigs {
         release {
             if (keystorePropertiesFile.exists()) {

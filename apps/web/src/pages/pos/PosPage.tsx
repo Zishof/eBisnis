@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -369,6 +370,40 @@ export function PosPage() {
   );
 
   if (konteks.isLoading) return <LoadingState />;
+  if (konteks.isError) {
+    return (
+      <div className="flex min-h-[calc(100vh-7rem)] items-center justify-center bg-slate-100 p-4 dark:bg-slate-950">
+        <div className="w-full max-w-xl rounded-xl border border-amber-200 bg-white p-6 shadow-sm dark:border-amber-900 dark:bg-slate-900">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+              <AlertTriangle className="h-5 w-5" aria-hidden />
+            </span>
+            <div>
+              <h1 className="text-lg font-bold text-slate-950 dark:text-white">
+                Kasir POS belum bisa dibuka
+              </h1>
+              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Sesi Anda masih berada di aplikasi, tetapi konteks kasir tidak dapat
+                dimuat. Biasanya karena izin POS, outlet/register, shift, atau sesi demo
+                belum disiapkan untuk tenant ini.
+              </p>
+              <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                {pesanGalat(konteks.error, (k, f) => t(k, f ?? k))}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button type="button" className="btn-primary" onClick={() => void konteks.refetch()}>
+                  Coba lagi
+                </button>
+                <Link to="/app" className="btn-outline">
+                  Kembali ke dashboard
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-slate-100 dark:bg-slate-950">

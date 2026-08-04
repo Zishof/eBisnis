@@ -1,0 +1,88 @@
+==============================================================================
+BUKTI H-9A — KERANGKA SATUSEHAT DAN GERBANG KEMAMPUANNYA
+Waktu   : 2026-08-01T03:23:34.871Z
+Schema  : demo
+==============================================================================
+
+Dua pengguna. Administrator memasang kredensial dan mengaktifkan lingkungan;
+petugas interoperabilitas memverifikasi kemampuannya. Administrator sengaja
+TIDAK diberi VERIFY — ia orang yang paling ingin gerbangnya terbuka.
+
+1. TIDAK ADA KOLOM PAYLOAD MAUPUN RAHASIA
+  LULUS  tidak ada kolom payload, badan permintaan, maupun rahasia
+  LULUS  lima tabel kerangka terbangun
+
+2. SELURUH KEMAMPUAN BLOCKED, DAN ITU KEADAAN YANG SESUNGGUHNYA
+  LULUS  katalog terbaca
+  LULUS  dua puluh sumber daya tercatat
+  LULUS  setiap sumber daya menyebut penghalangnya
+  LULUS  enam syarat verifikasi tercatat
+  LULUS  katalognya menyebut penghalangnya hanya pada lapisan pertukaran
+  LULUS  kemampuan tersemai bagi fasilitas BARU
+  LULUS  SELURUHNYA BLOCKED
+  LULUS  tidak satu pun siap kirim
+  LULUS  dan dijelaskan bahwa ini bukan kegagalan pembangunan
+  LULUS  sumber datanya di sisi kami disebutkan
+
+3. Rahasia tidak pernah masuk basis data tenant
+  LULUS  kredensial sebagai NILAI DITOLAK
+  LULUS  penolakannya menyebut mengirimkan data atas nama fasilitas itu
+  LULUS  menembusnya lewat basis data ditolak constraint
+  LULUS  lingkungan dengan rujukan brankas diterima
+  LULUS  tetapi TIDAK aktif
+  LULUS  dan dikatakan gerbangnya adalah status kemampuan
+  LULUS  rujukan brankas TIDAK ikut dikembalikan
+
+4. LINGKUNGAN AKTIF TIDAK MEMBUKA GERBANG
+  LULUS  lingkungan diaktifkan
+  LULUS  dan dinyatakan TIDAK membuka pengiriman
+  LULUS  SELURUH KEMAMPUAN MASIH BLOCKED sesudah lingkungan aktif
+  LULUS  pengiriman disiapkan
+  LULUS  TETAPI TIDAK DIKIRIM
+  LULUS  gerbangnya tertutup
+  LULUS  alasannya menyebut MENOLAK, bukan memperingatkan
+  LULUS  dan menyebut apa yang dibutuhkan
+  LULUS  dinyatakan tidak ada panggilan jaringan
+  LULUS  PERCOBAANNYA TETAP DICATAT
+  LULUS  dengan hasil BLOCKED
+  LULUS  dan sebabnya
+
+5. Kunci idempotensi deterministik dari isinya
+  LULUS  kunci idempotensinya sama
+  LULUS  dan transaksinya pun sama
+  LULUS  hanya satu transaksi tersimpan
+  LULUS  kunci tidak memuat cap waktu
+
+6. Kenaikan status tidak boleh melompat, dan VERIFIED menuntut keenamnya
+  LULUS  kenaikan yang MELOMPAT ditolak
+  LULUS  penolakannya menyebut perbedaan yang selalu ada
+  LULUS  kenaikan satu tahap diterima
+  LULUS  VERIFIED dengan bukti kurang DITOLAK
+  LULUS  penolakannya menyebut yang tergesa
+  LULUS  UJI KENDALI: PENURUNAN lewat basis data DIIZINKAN
+  LULUS  tetapi kenaikan yang melompat ditolak trigger
+  LULUS  VERIFIED tanpa nama manusianya ditolak constraint
+
+7. Yang mengaktifkan lingkungan TIDAK memverifikasi kemampuannya
+  LULUS  administrator tidak berwenang mengubah status kemampuan
+  LULUS  dan petugas interoperabilitas tidak mengaktifkan lingkungan
+  LULUS  maupun memasang kredensial
+
+8. Rekonsiliasi: "sudah dikirim" tidak sama dengan "sudah kami coba"
+  LULUS  rekonsiliasi terbaca
+  LULUS  satu pengiriman tercatat, tidak satu pun diterima
+  LULUS  selisihnya dinamai
+  LULUS  dan keterangannya menyebut sudah kami coba
+
+9. Jejak pengiriman tidak dapat dihapus
+  LULUS  jejak transaksi tidak dapat dihapus
+  LULUS  jejak percobaan pun tidak
+
+10. SESUDAH SELURUHNYA — TIDAK SATU PUN KEMAMPUAN TERVERIFIKASI
+  LULUS  tidak satu pun VERIFIED
+  LULUS  di SELURUH tenant, tidak ada VERIFIED tanpa nama manusianya
+  LULUS  tabel transaksi tidak punya satu pun kolom JSON untuk menampung payload
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

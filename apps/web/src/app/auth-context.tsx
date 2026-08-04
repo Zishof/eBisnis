@@ -64,7 +64,7 @@ interface AuthContextValue {
   user: SessionUser | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<SessionUser>;
-  loginDemo: () => Promise<SessionUser>;
+  loginDemo: (roleCode?: string) => Promise<SessionUser>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   stepUp: (password: string, purpose: string, reason?: string) => Promise<string>;
@@ -183,10 +183,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loadSession],
   );
 
-  const loginDemo = useCallback(async () => {
+  const loginDemo = useCallback(async (roleCode?: string) => {
     const result = await api.post<{ accessToken: string; schemaName: string }>(
       '/public/demo/session',
-      undefined,
+      roleCode ? { roleCode } : undefined,
       { skipRefresh: true },
     );
     setAccessToken(result.accessToken);

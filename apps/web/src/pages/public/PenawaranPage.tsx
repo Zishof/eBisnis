@@ -18,8 +18,19 @@ import {
   TARIF_POS,
   TERMASUK_POS,
 } from '../../content/solusi';
+import { emedikPublicBrandFor } from './emedik-host';
 
 export function PenawaranPage() {
+  const emedikBrand = emedikPublicBrandFor();
+  const namaProduk = emedikBrand?.name ?? 'eBisnis.id';
+  const judul = emedikBrand
+    ? emedikBrand.kind === 'apotik'
+      ? 'Penawaran Implementasi Sistem Apotik & Kefarmasian Terpadu'
+      : 'Penawaran Implementasi Sistem Operasional Fasilitas Kesehatan'
+    : 'Penawaran Implementasi Sistem Gudang, Kasir (POS) & Ritel Terpadu';
+  const pembuka = emedikBrand
+    ? `${namaProduk} adalah sistem berbasis web untuk pelayanan kesehatan, farmasi, stok, billing, dan pelaporan yang saling terhubung dan dapat diaudit.`
+    : 'eBisnis.id adalah sistem berbasis web yang menyatukan kasir multi-outlet, manajemen gudang berjenjang, perhitungan harga pokok, pembukuan akuntansi, pengadaan barang, dan toko online dalam satu sistem yang saling terhubung dan dapat diaudit.';
   const hariIni = new Date().toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'long',
@@ -29,7 +40,7 @@ export function PenawaranPage() {
   return (
     <DokumenLayout
       kategori="Surat penawaran resmi — DRAF"
-      judul="Penawaran Implementasi Sistem Gudang, Kasir (POS) & Ritel Terpadu"
+      judul={judul}
       ringkas="Surat ini memuat pokok penawaran beserta biayanya. Rincian modul, metodologi, dan peta jalan tersedia pada dokumen proposal; syarat kerja sama selengkapnya tersedia pada draf perjanjian."
       meta={[
         { label: 'Nomor surat', nilai: '…………………………' },
@@ -51,16 +62,13 @@ export function PenawaranPage() {
         </p>
 
         <p className="mt-4">
-          <strong>Perihal: Penawaran Implementasi Sistem Gudang, Kasir (POS) &amp; Ritel Terpadu</strong>
+          <strong>Perihal: {judul}</strong>
         </p>
 
         <p className="mt-4">Dengan hormat,</p>
         <p className="mt-2">
-          Sehubungan dengan kebutuhan digitalisasi tata kelola gudang, kasir, dan pembukuan pada
-          unit usaha Bapak/Ibu, bersama ini kami menyampaikan penawaran implementasi{' '}
-          <strong>eBisnis.id</strong> — sistem berbasis web yang menyatukan kasir multi-outlet,
-          manajemen gudang berjenjang, perhitungan harga pokok, pembukuan akuntansi, pengadaan
-          barang, dan toko online dalam satu sistem yang saling terhubung dan dapat diaudit.
+          Sehubungan dengan kebutuhan digitalisasi operasional Bapak/Ibu, bersama ini kami
+          menyampaikan penawaran implementasi <strong>{namaProduk}</strong>. {pembuka}
         </p>
       </section>
 
@@ -221,7 +229,7 @@ export function PenawaranPage() {
         </p>
         <ol className="ms-5 list-decimal space-y-1">
           <li>
-            Mencoba sendiri lebih dahulu — pendaftaran mandiri di eBisnis.id menyiapkan ruang
+            Mencoba sendiri lebih dahulu — pendaftaran mandiri di {namaProduk} menyiapkan ruang
             kerja dalam hitungan menit, dengan atau tanpa data contoh, tanpa biaya.
           </li>
           <li>Sesi presentasi (sekitar 45 menit), daring maupun di tempat Bapak/Ibu.</li>
@@ -235,7 +243,7 @@ export function PenawaranPage() {
 
         <div className="mt-10 text-sm">
           <p>Hormat kami,</p>
-          <p className="mt-1">eBisnis.id</p>
+          <p className="mt-1">{namaProduk}</p>
           <div className="mt-16 w-64 border-t border-slate-400 pt-1">
             <Isian label="nama dan jabatan" lebar="w-60" />
           </div>

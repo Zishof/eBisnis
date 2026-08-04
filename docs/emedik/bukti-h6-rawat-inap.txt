@@ -1,0 +1,71 @@
+==============================================================================
+BUKTI H-6 — SATU TEMPAT TIDUR, SATU PASIEN
+Waktu   : 2026-07-31T19:51:59.196Z
+Schema  : demo
+==============================================================================
+
+Dua pengguna: dokter dan perawat. Perawat TIDAK diberi hak ADMIT maupun
+DISCHARGE — memutuskan pasien dirawat dan boleh pulang adalah keputusan
+klinis, bukan penutupan berkas.
+
+Kamar bersama berkapasitas dua, kamar isolasi berkapasitas satu.
+
+1. Penerimaan dan penempatan tempat tidur
+  LULUS  pasien pertama diterima
+  LULUS  penempatan tempat tidurnya ikut dilaporkan
+  LULUS  perawat TIDAK berwenang menerima pasien rawat inap
+
+2. Satu tempat tidur, satu pasien
+  LULUS  menempatkan pasien kedua di tempat tidur yang sama DITOLAK
+  LULUS  penolakannya menyebut tempat tidurnya sedang ditempati
+  LULUS  menembus lewat jalur basis data pun ditolak indeks unik parsial
+  LULUS  pasien yang masih dirawat tidak dapat diterima lagi
+
+3. Kamar bersama: jenis kelamin dan isolasi
+  LULUS  kamar bersama berpenghuni laki-laki menolak pasien perempuan
+  LULUS  kamar tanpa kemampuan isolasi menolak pasien yang membutuhkannya
+  LULUS  penolakannya menyebut isolasi, bukan jenis kelamin
+  LULUS  kamar isolasi yang sesuai menerimanya
+
+4. Pengamatan keperawatan dan skor peringatan dini
+  LULUS  pengamatan tercatat
+  LULUS  tanda vital normal berisiko rendah
+  LULUS  jarak pengamatan berikutnya empat jam
+  LULUS  pasien memburuk berisiko tinggi
+  LULUS  dan jarak pengamatannya dipersingkat menjadi tiga puluh menit
+  LULUS  tanda vital yang tidak diukur DILAPORKAN, bukan dianggap normal
+  LULUS  pengamatan tidak dapat diubah, ditegakkan basis data
+
+5. Pemulangan
+  LULUS  memulangkan tanpa ringkasan pulang ditolak
+  LULUS  penolakannya menyebut ringkasan pulang
+  LULUS  ringkasan pulang tersimpan
+  LULUS  NILAI KRITIS yang belum diterima menahan pemulangan
+  LULUS  penolakannya menyebut nilai kritis
+  LULUS  setelah nilai kritisnya diterima, pemulangan berhasil
+  LULUS  lama rawat dihitung dan disimpan
+
+6. Tempat tidur yang baru ditinggalkan bukan tempat tidur yang kosong
+  LULUS  tempat tidur menjadi MENUNGGU PEMBERSIHAN, bukan langsung kosong
+  LULUS  menempatkan pasien di tempat tidur yang belum dibersihkan DITOLAK
+  LULUS  penolakannya menyebut kebersihan
+  LULUS  perawat menyatakan tempat tidur sudah bersih
+  LULUS  setelah dibersihkan, pasien berikutnya dapat ditempatkan
+
+7. Pulang paksa tidak ditolak, tetapi wajib berketerangan
+  LULUS  pulang paksa tanpa keterangan ditolak
+  LULUS  dengan keterangan, pulang paksa TIDAK ditolak
+
+8. Papan bangsal
+  LULUS  papan bangsal terbaca
+  LULUS  hanya pasien yang masih dirawat yang tampil
+  LULUS  daftar tempat tidur terbaca
+  LULUS  tempat tidur yang baru ditinggalkan tampak menunggu pembersihan
+
+9. Jejak dan tujuan penggunaan
+  LULUS  menerima pasien tanpa tujuan penggunaan ditolak
+  LULUS  jejak pembacaan tercatat
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

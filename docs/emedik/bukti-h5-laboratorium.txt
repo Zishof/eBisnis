@@ -1,0 +1,70 @@
+==============================================================================
+BUKTI H-5 — DARI PESANAN PEMERIKSAAN SAMPAI NILAI KRITIS DITERIMA DOKTER
+Waktu   : 2026-07-31T19:30:14.073Z
+Schema  : demo
+==============================================================================
+
+Empat pengguna: dokter, perawat, analis, penyelia. Analis TIDAK diberi hak
+memverifikasi, dan TIDAK diberi hak menerima nilai kritis — dua pemisahan
+yang justru hendak dibuktikan naskah ini.
+
+1. Memesan pemeriksaan
+  LULUS  pesanan dibuat
+  LULUS  dua pemeriksaan dari dua jenis spesimen menghasilkan dua spesimen
+  LULUS  satu jenis spesimen menghasilkan satu spesimen
+  LULUS  pesanan tanpa pemeriksaan ditolak
+
+2. Spesimen — yang tanpa label tidak pernah diterima
+  LULUS  pengambilan spesimen tercatat
+  LULUS  spesimen TANPA LABEL ditolak
+  LULUS  penolakannya menyebut sebabnya
+  LULUS  spesimennya tercatat DITOLAK dengan sebab tertutup
+  LULUS  spesimen yang baik diterima
+
+3. Hasil, rentang rujukan, dan verifikasi otomatis
+  LULUS  hasil dalam rentang dinilai NORMAL
+  LULUS  dan boleh lolos verifikasi otomatis
+  LULUS  kalium 7,2 dinilai KRITIS TINGGI
+  LULUS  nilai kritis TIDAK lolos verifikasi otomatis
+  LULUS  sebab penahanannya disebutkan
+  LULUS  catatan penyampaian terbuka SENDIRI, tanpa ada yang menekan tombol
+
+4. Pemisahan wewenang: pemasuk hasil tidak memverifikasi hasilnya sendiri
+  LULUS  analis tidak berwenang memverifikasi sama sekali
+  LULUS  penyelia memverifikasi
+  LULUS  hasil dilepas kepada klinisi
+  LULUS  pelepasannya menyebutkan bahwa hasilnya kritis
+
+5. Nilai kritis — bacaan ulang wajib, dan dicocokkan di peladen
+  LULUS  nilai kritis tampil pada daftar tertunda
+  LULUS  statusnya menunggu penerimaan
+  LULUS  percobaan penyampaian tercatat
+  LULUS  analis TIDAK berwenang menerima nilai kritis yang ia sampaikan sendiri
+  LULUS  bacaan ulang yang KELIRU ditolak
+  LULUS  penolakannya meminta penyampaian diulang
+  LULUS  bacaan ulang dengan koma Indonesia diterima
+  LULUS  penerimanya tercatat beserta bacaan ulangnya
+  LULUS  penerimaan tidak dapat dicatat dua kali
+
+6. Hasil yang sudah dilepas hanya dapat diamandemen
+  LULUS  menimpa hasil yang sudah dilepas ditolak
+  LULUS  penolakannya menunjuk amandemen
+  LULUS  amandemen dengan alasan terlalu pendek ditolak
+  LULUS  amandemen beralasan diterima
+  LULUS  nilai barunya dinilai ulang dan tidak lagi kritis
+  LULUS  nilai yang lama TETAP TERLIHAT beserta penggantinya
+  LULUS  catatan amandemen tidak dapat dihapus, ditegakkan basis data
+
+7. Daftar kerja — nilai kritis di atas STAT sekalipun
+  LULUS  daftar kerja terbaca
+  LULUS  pesanan yang spesimennya ditolak tidak menghuni daftar kerja
+
+8. Setiap sentuhan rekam medis meninggalkan jejak
+  LULUS  hasil pasien terbaca
+  LULUS  hasil yang diamandemen menyertakan jumlah amandemennya
+  LULUS  membaca hasil tanpa tujuan penggunaan ditolak
+  LULUS  jejak pembacaan tercatat
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

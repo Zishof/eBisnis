@@ -1,0 +1,95 @@
+==============================================================================
+BUKTI H-9K — DASBOR INVESTOR AGREGAT, WATERFALL, DAN DISTRIBUSI
+Waktu   : 2026-08-01T02:47:23.836Z
+Schema  : demo
+==============================================================================
+
+Empat pengguna. Analis menghitung; manajemen menyetujui; kasir membayar;
+investor HANYA membaca. Manajemen dan kasir sengaja diberi hak yang lebih
+luas daripada yang dipakainya, supaya penolakan "yang menghitung tidak
+menyetujui" datang dari pemeriksaan baris — bukan dari ketiadaan hak.
+
+1. TABEL PROYEKSI INVESTOR TIDAK PUNYA SATU PUN KOLOM PASIEN
+  LULUS  tidak ada kolom pasien, kunjungan, atau diagnosis
+  LULUS  dan tidak satu pun kunci asing ke tabel klinis
+
+2. Ambang kohort tidak boleh nol
+  LULUS  kebijakan tersemai bagi fasilitas baru
+  LULUS  dengan ambang bawaan bukan nol
+  LULUS  ambang nol DITOLAK
+  LULUS  menembusnya lewat basis data ditolak constraint
+
+3. Penyamaran: yang kohortnya kecil disembunyikan, dan BUKAN menjadi nol
+  LULUS  proyeksi dihitung
+  LULUS  sebagian selnya tersamar
+  LULUS  Poliklinik Kulit tersamar
+  LULUS  NILAINYA TIDAK TERSIMPAN DI BASIS DATA
+  LULUS  dan bukan tersimpan sebagai nol
+  LULUS  KOHORTNYA pun tidak tersimpan
+  LULUS  sebabnya tercatat
+  LULUS  menyimpan nilai pada sel tersamar ditolak constraint
+  LULUS  UJI KENDALI: Poliklinik Umum yang berkohort 12 TIDAK tersamar
+  LULUS  PENYAMARAN PELENGKAP: Poliklinik Gigi ikut tersamar sekalipun berkohort 7
+  LULUS  dan sebabnya dibedakan
+
+4. INVESTOR MEMEGANG TEPAT SATU HAK: MEMBACA
+  LULUS  investor dapat membaca proyeksi
+  LULUS  yang tersamar dikembalikan sebagai null, bukan nol
+  LULUS  dan disebutkan sebabnya kepada investor
+  LULUS  dasbornya mengatakan bahwa ia menyembunyikan
+  LULUS  tidak ada satu pun nama pasien pada jawabannya
+  LULUS  dan tidak ada medan pasien mana pun
+  LULUS  INVESTOR TIDAK DAPAT MENGHITUNG ULANG
+  LULUS  dan tidak dapat melonggarkan ambang kohortnya
+  LULUS  dan tidak dapat melihat daftar distribusi
+  LULUS  dan tidak dapat membaca daftar pasien
+
+5. Waterfall: urutan mengikat, dan lapisan tidak boleh berdua dasar
+  LULUS  waterfall yang menunjuk kontrak fee SISTEM ditolak
+  LULUS  penolakannya menyebut aturan yang bukan miliknya
+  LULUS  lapisan berupa jumlah SEKALIGUS persentase ditolak
+  LULUS  penolakannya menyebut lapisan yang tidak pernah menerima apa pun
+  LULUS  waterfall tersusun
+  LULUS  simulasi dana cukup memenuhi seluruh lapisan
+  LULUS  persentase dihitung terhadap SISA, bukan nilai awal
+  LULUS  DANA YANG KURANG TIDAK DIBAGI RATA
+  LULUS  kekurangannya dicatat
+  LULUS  dan simulasinya tidak menyimpan apa pun
+  LULUS  tidak ada distribusi yang lahir dari simulasi
+
+6. Tanpa kontrak AKTIF, bagian investor bernilai NOL
+  LULUS  perhitungannya BERHASIL, bukan galat
+  LULUS  dan bagiannya NOL
+  LULUS  alasannya menyebut nol sebagai jawaban yang benar
+
+7. Persentase yang melampaui batas kontrak DIBATASI
+  LULUS  dibatasi pada batas kontraknya
+  LULUS  penandanya diangkat
+  LULUS  alasannya menyebut batas yang tidak pernah dibaca
+  LULUS  perhitungan TIDAK memindahkan uang
+
+8. Tiga orang: yang menghitung, yang menyetujui, yang membayar
+  LULUS  penghitung tidak menyetujuinya sendiri
+  LULUS  penolakannya menyebut ia yang membuatnya
+  LULUS  yang belum disetujui tidak dapat dibayar
+  LULUS  penolakannya menyebut tidak ada pembayaran otomatis
+  LULUS  manajemen menyetujuinya
+  LULUS  penyetuju tidak membayarkannya sendiri
+  LULUS  kasir membayarkannya
+  LULUS  menembus pemisahannya lewat basis data ditolak constraint
+
+9. Nilai distribusi yang sudah dibayar tidak dapat diubah
+  LULUS  mengubah nilainya ditolak trigger
+  LULUS  alasannya menyebut catatan yang berbeda dari mutasi rekening
+  LULUS  menghapusnya pun ditolak
+  LULUS  UJI KENDALI: yang belum dibayar masih dapat disunting
+  LULUS  bagian yang melampaui dana yang dibagikan ditolak constraint
+
+10. Daftar distribusi memuat siapa yang berbuat apa
+  LULUS  daftar terbaca
+  LULUS  yang dibayar punya ketiganya
+  LULUS  tidak satu pun distribusi PAID tanpa penyetuju atau pembayar
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================

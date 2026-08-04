@@ -5,9 +5,10 @@ import { RegistrationService } from './registration.service';
 import { PesantrenRegistrationController } from './pesantren-registration.controller';
 import { PesantrenRegistrationService } from './pesantren-registration.service';
 import { ContactService } from './contact.service';
+import { PosUpdateController } from './pos-update.controller';
 
 @Module({
-  controllers: [PublicController, PesantrenRegistrationController],
+  controllers: [PublicController, PesantrenRegistrationController, PosUpdateController],
   providers: [
     PublicSiteService,
     RegistrationService,

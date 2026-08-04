@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, CheckCircle2, Copy, Download } from 'lucide-react';
 import { useToast } from '../../components/ui';
+import { emedikPublicBrandFor } from '../public/emedik-host';
 
 interface RegistrationResult {
   status: string;
@@ -21,6 +22,9 @@ export function RegisterSuccessPage() {
   const location = useLocation();
   const toast = useToast();
   const [copied, setCopied] = useState<string | null>(null);
+  const emedikBrand = emedikPublicBrandFor();
+  const brandName = emedikBrand?.name ?? 'eBisnis.id';
+  const filePrefix = emedikBrand?.kind === 'apotik' ? 'apotik-emedik' : emedikBrand ? 'emedik' : 'ebisnis';
 
   const result = (location.state as { result?: RegistrationResult } | null)?.result;
 
@@ -40,7 +44,7 @@ export function RegisterSuccessPage() {
 
   const downloadSummary = () => {
     const lines = [
-      'RINGKASAN AKUN eBisnis.id',
+      `RINGKASAN AKUN ${brandName}`,
       '=========================',
       `Nama pengguna   : ${result.username}`,
       `Schema ERP      : ${result.schemaName}`,
@@ -56,7 +60,7 @@ export function RegisterSuccessPage() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `ebisnis-akun-${result.username}.txt`;
+    anchor.download = `${filePrefix}-akun-${result.username}.txt`;
     anchor.click();
     URL.revokeObjectURL(url);
   };

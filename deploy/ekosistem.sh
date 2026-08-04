@@ -46,6 +46,7 @@ as_app() { sudo -u "$APP_USER" bash -lc "$*"; }
 # terhadap kenyataan.
 HOST_PUBLIK=(
   ebisnis.id
+  salon.ebisnis.id
   enterprise-education.id
   santri.info
   emedik.id

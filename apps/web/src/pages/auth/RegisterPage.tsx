@@ -7,6 +7,7 @@ import { Check, Loader2, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { api } from '../../lib/api';
 import { useErrorMessage } from '../../app/auth-context';
+import { emedikPublicBrandFor } from '../public/emedik-host';
 
 interface RegistrationConfig {
   countries: string[];
@@ -62,6 +63,7 @@ export function RegisterPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toMessage = useErrorMessage();
+  const emedikBrand = emedikPublicBrandFor();
 
   const [step, setStep] = useState(0);
   const [generatePassword, setGeneratePassword] = useState(true);
@@ -165,8 +167,10 @@ export function RegisterPage() {
     <div className="py-12">
       <div className="container-page max-w-3xl">
         <header className="mb-8 text-center">
-          <h1 className="section-heading">{t('register.title')}</h1>
-          <p className="section-lead mx-auto">{t('register.subtitle')}</p>
+          <h1 className="section-heading">{emedikBrand ? emedikBrand.registerTitle : t('register.title')}</h1>
+          <p className="section-lead mx-auto">
+            {emedikBrand ? emedikBrand.registerSubtitle : t('register.subtitle')}
+          </p>
         </header>
 
         {/* Stepper responsif */}
@@ -209,20 +213,20 @@ export function RegisterPage() {
             <div className="space-y-4">
               <div>
                 <label className="field-label" htmlFor="businessName">
-                  {t('register.businessName')} *
+                  {emedikBrand ? emedikBrand.businessNameLabel : t('register.businessName')} *
                 </label>
                 <input id="businessName" className="field-input" {...register('businessName', { required: true, maxLength: 255 })} />
                 {errors.businessName && <p className="field-error">{t('common.required')}</p>}
               </div>
               <div>
                 <label className="field-label" htmlFor="businessType">
-                  {t('register.businessType')}
+                  {emedikBrand ? emedikBrand.businessTypeLabel : t('register.businessType')}
                 </label>
                 <input
                   id="businessType"
                   className="field-input"
                   list="business-types"
-                  placeholder="mis. Kafe, Retail, Distributor"
+                  placeholder={emedikBrand ? emedikBrand.businessTypePlaceholder : 'mis. Kafe, Retail, Distributor'}
                   {...register('businessType')}
                 />
                 <datalist id="business-types">
@@ -249,14 +253,16 @@ export function RegisterPage() {
                     onChange={(event) => setIncludeSampleData(event.target.checked)}
                   />
                   <span>
-                    <span className="block text-sm font-medium">{t('register.includeSample')}</span>
+                    <span className="block text-sm font-medium">
+                      {emedikBrand ? emedikBrand.includeSampleLabel : t('register.includeSample')}
+                    </span>
                     <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
-                      {t('register.includeSampleHint')}
+                      {emedikBrand ? emedikBrand.includeSampleHint : t('register.includeSampleHint')}
                     </span>
                   </span>
                 </label>
                 <p className="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  {t('register.includeSampleAlways')}
+                  {emedikBrand ? emedikBrand.includeSampleAlways : t('register.includeSampleAlways')}
                 </p>
               </div>
             </div>

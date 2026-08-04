@@ -23,6 +23,7 @@ class ProdukLokal {
     this.taxRateId,
     this.kategori,
     this.varian,
+    this.penanda = const [],
     this.stok,
     this.favorit = false,
   });
@@ -43,6 +44,10 @@ class ProdukLokal {
 
   /// Keterangan varian yang tampil di bawah nama, misalnya `Reguler`, `Slice`.
   final String? varian;
+
+  /// Penanda ringkas yang penting untuk kasir, misalnya `Resep`,
+  /// `High-alert`, `Racikan`, atau `Batch`.
+  final List<String> penanda;
 
   /// Sisa stok pada salinan katalog, atau **null bila tidak diketahui**.
   ///
@@ -98,6 +103,49 @@ abstract class SumberKatalog {
   String get mataUang;
 }
 
+/// Katalog sederhana yang hidup di memori aplikasi.
+///
+/// Dipakai untuk data contoh dan untuk hasil upload Excel pada mesin kasir.
+/// Peladen tetap menjadi sumber utama bila POS tersambung, tetapi kasir perlu
+/// dapat mencoba daftar produk dari file tanpa menunggu sinkronisasi penuh.
+class KatalogMemori extends SumberKatalog {
+  KatalogMemori({
+    required List<ProdukLokal> produk,
+    required this.mataUang,
+    List<TarifLuring> tarif = const [],
+  })  : _produk = List.of(produk),
+        _tarif = List.of(tarif);
+
+  final List<ProdukLokal> _produk;
+  final List<TarifLuring> _tarif;
+
+  @override
+  final String mataUang;
+
+  @override
+  ProdukLokal? dariBarcode(String kode) {
+    final bersih = kode.trim();
+    for (final p in _produk) {
+      if (p.barcodes.contains(bersih)) return p;
+    }
+    return null;
+  }
+
+  @override
+  List<ProdukLokal> cari(String kunci) {
+    final kecil = kunci.trim().toLowerCase();
+    if (kecil.isEmpty) return List.unmodifiable(_produk);
+    return _produk.where((p) {
+      return p.nama.toLowerCase().contains(kecil) ||
+          p.productId.toLowerCase().contains(kecil) ||
+          p.barcodes.any((b) => b.contains(kunci.trim()));
+    }).toList();
+  }
+
+  @override
+  List<TarifLuring> get tarif => List.unmodifiable(_tarif);
+}
+
 /// Metode pembayaran sebagaimana tersalin dari peladen.
 class MetodeBayar {
   const MetodeBayar({
@@ -113,6 +161,67 @@ class MetodeBayar {
   /// tertulis dua kali dan cepat atau lambat berbeda dari peladen.
   final bool memberiKembalian;
 }
+
+/// Transaksi yang sudah disetujui kasir untuk dibukukan.
+///
+/// Angka di dalam `hasil` tetap angka lokal dari salinan katalog. Saat
+/// tersambung peladen, angka otoritatif tetap dihitung ulang oleh endpoint POS;
+/// bentuk ini hanya memberi tahu peladen produk, jumlah, dan pembayaran yang
+/// dipilih kasir.
+class TransaksiKasir {
+  const TransaksiKasir({
+    required this.baris,
+    required this.hasil,
+    required this.metode,
+    required this.diserahkan,
+    required this.kembalian,
+    required this.jenisPesanan,
+    required this.catatan,
+  });
+
+  final List<BarisLuring> baris;
+  final HasilKeranjang hasil;
+  final MetodeBayar metode;
+  final String diserahkan;
+  final String kembalian;
+  final String jenisPesanan;
+  final String catatan;
+
+  String get total => hasil.grandTotal;
+}
+
+/// Ringkasan transaksi selesai yang ditampilkan di menu riwayat pembayaran.
+class RiwayatPembayaranKasir {
+  const RiwayatPembayaranKasir({
+    required this.nomorStruk,
+    required this.waktu,
+    required this.metode,
+    required this.total,
+    required this.diserahkan,
+    required this.kembalian,
+    required this.jumlahBarang,
+    required this.jenisPesanan,
+    required this.catatan,
+    required this.byteStruk,
+  });
+
+  final String nomorStruk;
+  final DateTime waktu;
+  final MetodeBayar metode;
+  final String total;
+  final String diserahkan;
+  final String kembalian;
+  final int jumlahBarang;
+  final String jenisPesanan;
+  final String catatan;
+  final List<int> byteStruk;
+}
+
+/// Pembuku transaksi ke sistem pusat.
+///
+/// Mengembalikan nomor struk dari peladen bila pembukuan berhasil. Bila null,
+/// layar tetap menjalankan mode lokal lama.
+typedef PembukuanKasir = Future<String?> Function(TransaksiKasir transaksi);
 
 /// Printer struk, sekaligus jalan membuka laci kas.
 abstract class Pencetak {

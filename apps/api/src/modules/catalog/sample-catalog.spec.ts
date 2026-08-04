@@ -3,8 +3,9 @@ import { MARKETPLACE_CATEGORIES, computeParentCodes } from './marketplace-catego
 
 describe('katalog produk contoh', () => {
   describe('jumlah dan sebaran', () => {
-    it('menyediakan 25 produk', () => {
-      expect(SAMPLE_PRODUCTS).toHaveLength(25);
+    it('menyediakan 50 sampai 1000 produk', () => {
+      expect(SAMPLE_PRODUCTS.length).toBeGreaterThanOrEqual(50);
+      expect(SAMPLE_PRODUCTS.length).toBeLessThanOrEqual(1000);
     });
 
     it('menyebar pada banyak kategori', () => {
@@ -83,7 +84,7 @@ describe('katalog produk contoh', () => {
 
     it('mengizinkan pre-order pada setiap produk berstok nol', () => {
       // Stok nol tanpa izin pre-order ditolak gerbang, sehingga produk itu
-      // tidak akan pernah terbit dan jumlahnya kurang dari 25.
+      // tidak akan pernah terbit dan jumlahnya kurang dari batas minimum demo.
       const offending = SAMPLE_PRODUCTS.filter((p) => p.stock === 0 && !p.allowPreorder).map(
         (p) => p.code,
       );

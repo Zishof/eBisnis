@@ -1,7 +1,10 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { PublicLayout } from '../pages/public/PublicLayout';
 import { HomePage } from '../pages/public/HomePage';
+import { EmedikLandingPage } from '../pages/public/EmedikLandingPage';
+import { ApotikLandingPage } from '../pages/public/ApotikLandingPage';
+import { rootExperienceFor } from '../pages/public/emedik-host';
 import { CmsPage } from '../pages/public/CmsPage';
 import { PricingPage } from '../pages/public/PricingPage';
 import { NewsListPage } from '../pages/public/NewsListPage';
@@ -9,6 +12,9 @@ import { NewsDetailPage } from '../pages/public/NewsDetailPage';
 import { ContactPage } from '../pages/public/ContactPage';
 import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
+import { isSalonDemoHost, salonRootRedirectFor } from '../pages/contoh/salon-host';
+import { pelangganRootRedirectFor } from '../pages/pelanggan/pelanggan-host';
+import { inventoryRootRedirectFor } from '../pages/inventory/inventory-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
 import { isSantriPortalHost, slugPondokDariHost } from '../verticals/pesantren/santri-host';
 import { PondokChrome } from '../verticals/pesantren/PondokChrome';
@@ -57,7 +63,8 @@ import { SampleDataPage } from '../pages/app/SampleDataPage';
 import { SubscriptionPage } from '../pages/app/SubscriptionPage';
 import { NotificationsPage } from '../pages/app/NotificationsPage';
 import { SupportPage } from '../pages/app/SupportPage';
-import { ComingSoonPage } from '../pages/app/ComingSoonPage';
+import { OperationalModulePage } from '../pages/app/OperationalModulePage';
+import { PurposeProvider } from '../verticals/health/PurposeGate';
 import { RequireAuth } from './RequireAuth';
 import { LoadingState } from '../components/ui';
 
@@ -112,11 +119,123 @@ const PenawaranPage = lazy(() =>
   import('../pages/public/PenawaranPage').then((m) => ({ default: m.PenawaranPage })),
 );
 
+// Vertical kesehatan. Dimuat terpisah: sebagian besar penyewa bukan fasilitas
+// kesehatan, dan tidak ada alasan mereka mengunduh layar rekam medis.
+const HealthFacilityPage = lazy(() =>
+  import('../verticals/health/FacilityPage').then((m) => ({ default: m.FacilityPage })),
+);
+const HealthPatientPage = lazy(() =>
+  import('../verticals/health/PatientPage').then((m) => ({ default: m.PatientPage })),
+);
+const HealthQueuePage = lazy(() =>
+  import('../verticals/health/QueuePage').then((m) => ({ default: m.QueuePage })),
+);
+const HealthEncounterPage = lazy(() =>
+  import('../verticals/health/EncounterPage').then((m) => ({ default: m.EncounterPage })),
+);
+const HealthPharmacyPage = lazy(() =>
+  import('../verticals/health/PharmacyPage').then((m) => ({ default: m.PharmacyPage })),
+);
+const HealthAdministrationPage = lazy(() =>
+  import('../verticals/health/AdministrationPage').then((m) => ({ default: m.AdministrationPage })),
+);
+const HealthLabPage = lazy(() =>
+  import('../verticals/health/LabPage').then((m) => ({ default: m.LabPage })),
+);
+const HealthWardPage = lazy(() =>
+  import('../verticals/health/WardPage').then((m) => ({ default: m.WardPage })),
+);
+const HealthEmergencyPage = lazy(() =>
+  import('../verticals/health/EmergencyPage').then((m) => ({ default: m.EmergencyPage })),
+);
+const HealthFamilyPage = lazy(() =>
+  import('../verticals/health/FamilyPage').then((m) => ({ default: m.FamilyPage })),
+);
+const HealthGrowthPage = lazy(() =>
+  import('../verticals/health/GrowthPage').then((m) => ({ default: m.GrowthPage })),
+);
+const HealthImmunizationPage = lazy(() =>
+  import('../verticals/health/ImmunizationPage').then((m) => ({ default: m.ImmunizationPage })),
+);
+const HealthHomeVisitPage = lazy(() =>
+  import('../verticals/health/HomeVisitPage').then((m) => ({ default: m.HomeVisitPage })),
+);
+const HealthCoveragePage = lazy(() =>
+  import('../verticals/health/CoveragePage').then((m) => ({ default: m.CoveragePage })),
+);
+const HealthCodingPage = lazy(() =>
+  import('../verticals/health/CodingPage').then((m) => ({ default: m.CodingPage })),
+);
+const HealthLegalHoldPage = lazy(() =>
+  import('../verticals/health/LegalHoldPage').then((m) => ({ default: m.LegalHoldPage })),
+);
+const HealthInfoReleasePage = lazy(() =>
+  import('../verticals/health/InfoReleasePage').then((m) => ({ default: m.InfoReleasePage })),
+);
+const HealthBreakGlassPage = lazy(() =>
+  import('../verticals/health/BreakGlassPage').then((m) => ({ default: m.BreakGlassPage })),
+);
+const HealthSafetyPage = lazy(() =>
+  import('../verticals/health/SafetyPage').then((m) => ({ default: m.SafetyPage })),
+);
+const HealthQualityPage = lazy(() =>
+  import('../verticals/health/QualityPage').then((m) => ({ default: m.QualityPage })),
+);
+const HealthClaimPage = lazy(() =>
+  import('../verticals/health/ClaimPage').then((m) => ({ default: m.ClaimPage })),
+);
+const HealthBpjsPage = lazy(() =>
+  import('../verticals/health/BpjsPage').then((m) => ({ default: m.BpjsPage })),
+);
+const HealthTariffPage = lazy(() =>
+  import('../verticals/health/TariffPage').then((m) => ({ default: m.TariffPage })),
+);
+const HealthFeePolicyPage = lazy(() =>
+  import('../verticals/health/FeePolicyPage').then((m) => ({ default: m.FeePolicyPage })),
+);
+const HealthSettlementPage = lazy(() =>
+  import('../verticals/health/SettlementPage').then((m) => ({ default: m.SettlementPage })),
+);
+const HealthFeeContractPage = lazy(() =>
+  import('../verticals/health/FeeContractPage').then((m) => ({ default: m.FeeContractPage })),
+);
+const HealthDevicePage = lazy(() =>
+  import('../verticals/health/DevicePage').then((m) => ({ default: m.DevicePage })),
+);
+const HealthDeviceMaintenancePage = lazy(() =>
+  import('../verticals/health/DeviceMaintenancePage').then((m) => ({
+    default: m.DeviceMaintenancePage,
+  })),
+);
+const HealthDeviceAdapterPage = lazy(() =>
+  import('../verticals/health/DeviceAdapterPage').then((m) => ({ default: m.DeviceAdapterPage })),
+);
+
 // Layar kasir dimuat terpisah: berkasnya besar dan hanya dipakai peran kasir,
 // sementara pengguna lain tidak perlu ikut menunggunya diunduh.
 const PosPage = lazy(() => import('../pages/pos/PosPage').then((m) => ({ default: m.PosPage })));
+const PharmacyPosPage = lazy(() =>
+  import('../pages/pos/PharmacyPosPage').then((m) => ({ default: m.PharmacyPosPage })),
+);
 const PosReportPage = lazy(() =>
   import('../pages/pos/PosReportPage').then((m) => ({ default: m.PosReportPage })),
+);
+const PosPromotionPage = lazy(() =>
+  import('../pages/pos/PosPromotionPage').then((m) => ({ default: m.PosPromotionPage })),
+);
+const PelangganDemoPage = lazy(() =>
+  import('../pages/pelanggan/PelangganDemoPage').then((m) => ({ default: m.PelangganDemoPage })),
+);
+const SalonDemoPage = lazy(() =>
+  import('../pages/contoh/SalonDemoPage').then((m) => ({ default: m.SalonDemoPage })),
+);
+const PortalPelangganAdminPage = lazy(() =>
+  import('../pages/pelanggan/PortalPelangganAdminPage').then((m) => ({
+    default: m.PortalPelangganAdminPage,
+  })),
+);
+const InventoryLandingPage = lazy(() =>
+  import('../pages/inventory/InventoryLandingPage').then((m) => ({ default: m.InventoryLandingPage })),
 );
 
 const BelanjaHomePage = lazy(() =>
@@ -217,6 +336,12 @@ const PenawaranPesantrenPage = lazy(() =>
  * API dari host permintaan, bukan dari peramban.
  */
 function AkarMenurutHost() {
+  const salonRedirect = salonRootRedirectFor();
+  if (salonRedirect) return <Navigate to={salonRedirect} replace />;
+  const pelangganRedirect = pelangganRootRedirectFor();
+  if (pelangganRedirect) return <Navigate to={pelangganRedirect} replace />;
+  const inventoryRedirect = inventoryRootRedirectFor();
+  if (inventoryRedirect) return <Navigate to={inventoryRedirect} replace />;
   if (isMarketplaceHost()) return <Navigate to="/belanja" replace />;
   if (isCooperativeHost()) return <Navigate to="/ekoperasi/situs" replace />;
   /*
@@ -229,16 +354,37 @@ function AkarMenurutHost() {
   return <HomePage />;
 }
 
+function AppTenantGate() {
+  if (isSalonDemoHost()) return <Navigate to="/masuk" replace />;
+  return (
+    <RequireAuth>
+      <AppLayout />
+    </RequireAuth>
+  );
+}
+
 export function App() {
+  const rootExperience = rootExperienceFor(window.location.hostname, window.location.pathname);
+  const rootElement =
+    rootExperience === 'emedik' ? (
+      <EmedikLandingPage />
+    ) : rootExperience === 'apotik' ? (
+      <ApotikLandingPage />
+    ) : rootExperience === 'demo-apotik' ? (
+      <ApotikLandingPage demo />
+    ) : null;
+
   return (
     <Suspense fallback={<LoadingState />}>
       <Routes>
+        {rootElement && <Route path="/" element={rootElement} />}
+
         {/* Website publik — route `/` menampilkan website, bukan redirect login. */}
         <Route element={<PublicLayout />}>
           {/* Pengunjung yang datang lewat belanja.ebisnis.id langsung melihat
               katalog, lewat koperasi.ebisnis.id langsung melihat situs
               koperasinya; pengunjung ebisnis.id melihat website perusahaan. */}
-          <Route path="/" element={<AkarMenurutHost />} />
+          {!rootElement && <Route path="/" element={<AkarMenurutHost />} />}
           <Route path="/harga" element={<PricingPage />} />
           <Route path="/presentasi" element={<PresentasiPage />} />
           <Route path="/proposal" element={<ProposalPage />} />
@@ -254,6 +400,8 @@ export function App() {
           <Route path="/daftar" element={<RegisterPage />} />
           <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
+          <Route path="/inventory" element={<InventoryLandingPage />} />
+          <Route path="/a/*" element={<AkarMenurutHost />} />
           <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />
         </Route>
 
@@ -331,14 +479,16 @@ export function App() {
           <Route path=":storeSlug/:productSlug" element={<BelanjaProductPage />} />
         </Route>
 
+        {/* Halaman pelanggan toko (pelanggan-demo.ebisnis.id) */}
+        <Route path="/pelanggan/:slug" element={<PelangganDemoPage />} />
+
+        {/* Contoh jenis usaha untuk calon tenant */}
+        <Route path="/contoh/salon" element={<SalonDemoPage />} />
+
         {/* Aplikasi tenant */}
         <Route
           path="/app"
-          element={
-            <RequireAuth>
-              <AppLayout />
-            </RequireAuth>
-          }
+          element={<AppTenantGate />}
         >
           <Route index element={<AppHomePage />} />
           <Route path="notifications" element={<NotificationsPage />} />
@@ -383,13 +533,78 @@ export function App() {
           <Route path="stock-tree" element={<StockTreePage />} />
           <Route path="stock-movements" element={<StockMovementsPage />} />
           <Route path="stock-alerts" element={<StockAlertsPage />} />
-          <Route path="pos" element={<PosPage />} />
+          <Route path="pos" element={<Navigate to="/app/pos/kasir" replace />} />
+          <Route path="pos/kasir" element={<PosPage />} />
+          <Route path="pos/apotik" element={<PharmacyPosPage />} />
+          <Route path="apotik/pos" element={<PharmacyPosPage />} />
           <Route path="pos/laporan" element={<PosReportPage />} />
+          <Route path="pos/aturan-diskon" element={<PosPromotionPage />} />
+          <Route path="portal-pelanggan" element={<PortalPelangganAdminPage />} />
           <Route path="sample-data" element={<SampleDataPage />} />
           <Route path="devices" element={<SubscriptionPage tab="devices" />} />
           <Route path="subscription/checkout" element={<SubscriptionPage tab="checkout" />} />
           <Route path="subscription/invoices" element={<SubscriptionPage tab="invoices" />} />
           <Route path="marketplace/aktivasi" element={<MarketplaceActivationPage />} />
+
+          {/*
+            eMedik. Seluruh layar yang menyentuh rekam medis berada di bawah
+            PurposeProvider, sehingga tujuan penggunaan selalu terbawa pada
+            setiap pembacaan.
+          */}
+          <Route path="emedik" element={<PurposeProvider><Outlet /></PurposeProvider>}>
+            <Route path="fasilitas" element={<HealthFacilityPage />} />
+            <Route path="pasien" element={<HealthPatientPage />} />
+            <Route path="pendaftaran" element={<HealthQueuePage />} />
+            <Route path="kunjungan/:id" element={<HealthEncounterPage />} />
+            <Route path="resep" element={<HealthPharmacyPage />} />
+            <Route path="penyerahan" element={<HealthPharmacyPage />} />
+            <Route path="pemberian" element={<HealthAdministrationPage />} />
+            <Route path="lab/pesanan" element={<HealthLabPage />} />
+            <Route path="lab/spesimen" element={<HealthLabPage />} />
+            <Route path="lab/hasil" element={<HealthLabPage />} />
+            <Route path="lab/kritis" element={<HealthLabPage />} />
+            <Route path="rawat-inap" element={<HealthWardPage />} />
+            <Route path="keperawatan" element={<HealthWardPage />} />
+            <Route path="tempat-tidur" element={<HealthWardPage />} />
+            <Route path="igd" element={<HealthEmergencyPage />} />
+
+            <Route path="keluarga" element={<HealthFamilyPage />} />
+            <Route path="pertumbuhan" element={<HealthGrowthPage />} />
+            <Route path="imunisasi" element={<HealthImmunizationPage />} />
+            <Route path="kunjungan-rumah" element={<HealthHomeVisitPage />} />
+            <Route path="cakupan" element={<HealthCoveragePage />} />
+
+            <Route path="koding" element={<HealthCodingPage />} />
+            <Route path="penahanan" element={<HealthLegalHoldPage />} />
+            <Route path="jejak-akses" element={<HealthLegalHoldPage />} />
+            <Route path="pelepasan" element={<HealthInfoReleasePage />} />
+            <Route path="telaah-darurat" element={<HealthBreakGlassPage />} />
+            <Route path="keselamatan" element={<HealthSafetyPage />} />
+            <Route path="mutu" element={<HealthQualityPage />} />
+
+            <Route path="klaim" element={<HealthClaimPage />} />
+            <Route path="telaah-klaim" element={<HealthClaimPage />} />
+            <Route path="bpjs" element={<HealthBpjsPage />} />
+            <Route path="sep" element={<HealthBpjsPage />} />
+            <Route path="kepesertaan" element={<HealthBpjsPage />} />
+
+            <Route path="tarif" element={<HealthTariffPage />} />
+            <Route path="kebijakan-jasa" element={<HealthFeePolicyPage />} />
+            <Route path="kontributor" element={<HealthFeePolicyPage />} />
+            <Route path="settlement" element={<HealthSettlementPage />} />
+            <Route path="distribusi" element={<HealthSettlementPage />} />
+            <Route path="pernyataan" element={<HealthSettlementPage />} />
+            <Route path="kontrak-fee" element={<HealthFeeContractPage />} />
+
+            <Route path="alat" element={<HealthDevicePage />} />
+            <Route path="gateway" element={<HealthDevicePage />} />
+            <Route path="pemeliharaan-alat" element={<HealthDeviceMaintenancePage />} />
+            <Route path="keamanan-alat" element={<HealthDeviceMaintenancePage />} />
+            <Route path="pesan-alat" element={<HealthDeviceAdapterPage />} />
+            <Route path="pemetaan-kode" element={<HealthDeviceAdapterPage />} />
+            <Route path="hasil-alat" element={<HealthDeviceAdapterPage />} />
+          </Route>
+
           <Route path="pesantren/unit-pendidikan" element={<PesantrenUnitPendidikanPage />} />
           <Route path="pesantren/santri" element={<PesantrenSantriPage />} />
           <Route path="pesantren/asrama" element={<PesantrenAsramaPage />} />
@@ -419,7 +634,7 @@ export function App() {
           <Route path="pesantren/gerbang" element={<PesantrenGerbangPage />} />
           <Route path="pesantren/portal-wali" element={<PesantrenPortalWaliPage />} />
           <Route path="pesantren/kiosk" element={<PesantrenKioskPage />} />
-          <Route path="*" element={<ComingSoonPage />} />
+          <Route path="*" element={<OperationalModulePage />} />
         </Route>
 
         {/* Portal Platform Super Admin */}

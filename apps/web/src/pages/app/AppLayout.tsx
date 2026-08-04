@@ -265,14 +265,15 @@ function MenuList({
     <ul className={depth === 0 ? 'space-y-1' : 'mt-0.5 space-y-0.5 ps-3'}>
       {menus.map((menu) => {
         const hasChildren = menu.children.length > 0;
+        const route = menu.route ? routeAplikasi(menu.route) : null;
 
         // Node dengan rute dan tanpa anak menjadi tautan biasa.
-        if (menu.route && !hasChildren) {
+        if (route && !hasChildren) {
           return (
             <li key={menu.id}>
               <NavLink
-                to={menu.route}
-                end={menu.route === '/app'}
+                to={route}
+                end={route === '/app'}
                 onClick={onNavigate}
                 className={({ isActive }) =>
                   clsx(
@@ -311,9 +312,9 @@ function MenuList({
                     : 'py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300',
                 )}
               >
-                {menu.route ? (
+                {route ? (
                   <NavLink
-                    to={menu.route}
+                    to={route}
                     onClick={onNavigate}
                     className="truncate hover:underline"
                     onClickCapture={(event) => event.stopPropagation()}
@@ -331,4 +332,16 @@ function MenuList({
       })}
     </ul>
   );
+}
+
+function routeAplikasi(route: string): string {
+  try {
+    const url = new URL(route);
+    if (url.hostname === 'ebisnis.id' || url.hostname.endsWith('.ebisnis.id')) {
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+  } catch {
+    // Route relatif memang bukan URL absolut.
+  }
+  return route;
 }

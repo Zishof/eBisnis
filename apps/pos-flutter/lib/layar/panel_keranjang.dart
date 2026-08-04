@@ -48,6 +48,14 @@ class PanelKeranjang extends StatelessWidget {
     required this.onHapus,
     required this.onBayar,
     required this.kendaliCatatan,
+    this.labelJenis = namaJenisPesanan,
+    this.ikonJenis = ikonJenisPesanan,
+    this.labelPelanggan = 'Pelanggan Umum',
+    this.labelMeja = 'Tanpa meja',
+    this.pesanKosong =
+        'Pindai barang atau tekan produk di sebelah kiri\nuntuk mulai melayani pembeli.',
+    this.labelCatatan = 'Catatan Pesanan (Opsional)',
+    this.hintCatatan = 'Contoh: tanpa gula, pisah saus, dll',
     super.key,
   });
 
@@ -65,6 +73,13 @@ class PanelKeranjang extends StatelessWidget {
   final void Function(MetodeBayar)? onBayar;
 
   final TextEditingController kendaliCatatan;
+  final Map<JenisPesanan, String> labelJenis;
+  final Map<JenisPesanan, IconData> ikonJenis;
+  final String labelPelanggan;
+  final String labelMeja;
+  final String pesanKosong;
+  final String labelCatatan;
+  final String hintCatatan;
 
   @override
   Widget build(BuildContext context) {
@@ -76,28 +91,38 @@ class PanelKeranjang extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _TabJenis(jenis: jenis, onPilih: onJenis),
+          _TabJenis(
+            jenis: jenis,
+            onPilih: onJenis,
+            labelJenis: labelJenis,
+            ikonJenis: ikonJenis,
+          ),
           const Divider(height: 1, color: Warna.garis),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(12, 12, 12, 0),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             child: Row(
               children: [
-                Expanded(child: _PemilihMati(ikon: Icons.person_outline, label: 'Pelanggan Umum')),
-                SizedBox(width: 8),
-                Expanded(child: _PemilihMati(ikon: Icons.table_bar_outlined, label: 'Tanpa meja')),
+                Expanded(
+                    child: _PemilihMati(
+                        ikon: Icons.person_outline, label: labelPelanggan)),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: _PemilihMati(
+                        ikon: Icons.medical_information_outlined,
+                        label: labelMeja)),
               ],
             ),
           ),
           Expanded(
             child: kosong
-                ? const Center(
-                    key: Key('keranjang-kosong'),
+                ? Center(
+                    key: const Key('keranjang-kosong'),
                     child: Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
                       child: Text(
-                        'Pindai barang atau tekan produk di sebelah kiri\nuntuk mulai melayani pembeli.',
+                        pesanKosong,
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Warna.teksRedup),
+                        style: const TextStyle(color: Warna.teksRedup),
                       ),
                     ),
                   )
@@ -105,7 +130,8 @@ class PanelKeranjang extends StatelessWidget {
                     key: const Key('daftar-keranjang'),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: hasil.lines.length,
-                    separatorBuilder: (c, i) => const Divider(height: 1, color: Warna.garis),
+                    separatorBuilder: (c, i) =>
+                        const Divider(height: 1, color: Warna.garis),
                     itemBuilder: (c, i) => _BarisKeranjang(
                       baris: hasil.lines[i],
                       indeks: i,
@@ -121,9 +147,10 @@ class PanelKeranjang extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Catatan Pesanan (Opsional)',
-                  style: TextStyle(fontSize: 11.5, color: Warna.teksRedup),
+                Text(
+                  labelCatatan,
+                  style:
+                      const TextStyle(fontSize: 11.5, color: Warna.teksRedup),
                 ),
                 const SizedBox(height: 6),
                 TextField(
@@ -132,10 +159,13 @@ class PanelKeranjang extends StatelessWidget {
                   style: const TextStyle(fontSize: 13),
                   decoration: InputDecoration(
                     isDense: true,
-                    hintText: 'Contoh: tanpa gula, pisah saus, dll',
-                    hintStyle: const TextStyle(fontSize: 13, color: Warna.teksRedup),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    hintText: hintCatatan,
+                    hintStyle:
+                        const TextStyle(fontSize: 13, color: Warna.teksRedup),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 10),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -179,7 +209,8 @@ class PanelKeranjang extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: _TombolBayar(metode: metode, onBayar: kosong ? null : onBayar),
+            child:
+                _TombolBayar(metode: metode, onBayar: kosong ? null : onBayar),
           ),
         ],
       ),
@@ -188,10 +219,17 @@ class PanelKeranjang extends StatelessWidget {
 }
 
 class _TabJenis extends StatelessWidget {
-  const _TabJenis({required this.jenis, required this.onPilih});
+  const _TabJenis({
+    required this.jenis,
+    required this.onPilih,
+    required this.labelJenis,
+    required this.ikonJenis,
+  });
 
   final JenisPesanan jenis;
   final void Function(JenisPesanan) onPilih;
+  final Map<JenisPesanan, String> labelJenis;
+  final Map<JenisPesanan, IconData> ikonJenis;
 
   @override
   Widget build(BuildContext context) {
@@ -216,19 +254,20 @@ class _TabJenis extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      ikonJenisPesanan[j],
+                      ikonJenis[j] ?? ikonJenisPesanan[j],
                       size: 17,
                       color: j == jenis ? Warna.utama : Warna.teksRedup,
                     ),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        namaJenisPesanan[j]!,
+                        labelJenis[j] ?? namaJenisPesanan[j]!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: j == jenis ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight:
+                              j == jenis ? FontWeight.w600 : FontWeight.w500,
                           color: j == jenis ? Warna.utama : Warna.teksRedup,
                         ),
                       ),
@@ -315,7 +354,9 @@ class _BarisKeranjang extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              baris.name.trim().isEmpty ? '?' : baris.name.trim()[0].toUpperCase(),
+              baris.name.trim().isEmpty
+                  ? '?'
+                  : baris.name.trim()[0].toUpperCase(),
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 color: Warna.teks.withValues(alpha: 0.4),
@@ -331,11 +372,13 @@ class _BarisKeranjang extends StatelessWidget {
                   baris.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 Text(
                   uang(baris.unitPrice),
-                  style: const TextStyle(fontSize: 11.5, color: Warna.teksRedup),
+                  style:
+                      const TextStyle(fontSize: 11.5, color: Warna.teksRedup),
                 ),
               ],
             ),
@@ -366,7 +409,8 @@ class _BarisKeranjang extends StatelessWidget {
 }
 
 class _Stepper extends StatelessWidget {
-  const _Stepper({required this.indeks, required this.jumlah, required this.onUbah});
+  const _Stepper(
+      {required this.indeks, required this.jumlah, required this.onUbah});
 
   final int indeks;
   final int jumlah;
@@ -382,7 +426,10 @@ class _Stepper extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _TombolStep(kunci: 'kurang-$indeks', ikon: Icons.remove, onTekan: () => onUbah(indeks, -1)),
+          _TombolStep(
+              kunci: 'kurang-$indeks',
+              ikon: Icons.remove,
+              onTekan: () => onUbah(indeks, -1)),
           SizedBox(
             width: 26,
             child: Text(
@@ -392,7 +439,10 @@ class _Stepper extends StatelessWidget {
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
-          _TombolStep(kunci: 'tambah-$indeks', ikon: Icons.add, onTekan: () => onUbah(indeks, 1)),
+          _TombolStep(
+              kunci: 'tambah-$indeks',
+              ikon: Icons.add,
+              onTekan: () => onUbah(indeks, 1)),
         ],
       ),
     );
@@ -400,7 +450,8 @@ class _Stepper extends StatelessWidget {
 }
 
 class _TombolStep extends StatelessWidget {
-  const _TombolStep({required this.kunci, required this.ikon, required this.onTekan});
+  const _TombolStep(
+      {required this.kunci, required this.ikon, required this.onTekan});
 
   final String kunci;
   final IconData ikon;
@@ -431,9 +482,12 @@ class _Ringkas extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(fontSize: 12.5, color: Warna.teksRedup)),
+          Text(label,
+              style: const TextStyle(fontSize: 12.5, color: Warna.teksRedup)),
           const Spacer(),
-          Text(nilai, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+          Text(nilai,
+              style:
+                  const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -482,8 +536,10 @@ class _TombolBayar extends StatelessWidget {
                       // Kunci tetap pada tombol pertama: itulah tombol bayar
                       // utama, dan uji layar menuntutnya mati selama keranjang
                       // kosong.
-                      key: Key(i == 0 ? 'tombol-bayar' : 'bayar-${metode[i].id}'),
-                      onPressed: onBayar == null ? null : () => onBayar!(metode[i]),
+                      key: Key(
+                          i == 0 ? 'tombol-bayar' : 'bayar-${metode[i].id}'),
+                      onPressed:
+                          onBayar == null ? null : () => onBayar!(metode[i]),
                       style: FilledButton.styleFrom(
                         backgroundColor: warnaMetode(metode[i].id),
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -519,6 +575,8 @@ IconData _ikonMetode(String id) {
   if (k.contains('KARTU') || k.contains('CARD') || k.contains('DEBIT')) {
     return Icons.credit_card;
   }
-  if (k.contains('TRANSFER') || k.contains('BANK')) return Icons.account_balance_outlined;
+  if (k.contains('TRANSFER') || k.contains('BANK')) {
+    return Icons.account_balance_outlined;
+  }
   return Icons.payment_outlined;
 }

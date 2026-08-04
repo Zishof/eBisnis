@@ -1263,6 +1263,103 @@ export class ErpController {
     return this.inventory.listStockAlerts(context(user, meta), status ?? 'OPEN');
   }
 
+  @Get('inventory/sales-dashboard')
+  @Permissions('SALES.READ')
+  @ApiOperation({ summary: 'Dashboard sales dan inventory untuk pemilik, admin, dan sales lapangan' })
+  async salesInventoryDashboard(
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const [summary, topSales, topProducts, topCustomers, expiringLots, recentOrders] =
+      await Promise.all([
+        this.inventoryQuery(
+          ctx,
+          `SELECT
+             (SELECT count(*)::int FROM ${S}.product WHERE deleted_at IS NULL) AS products,
+             (SELECT count(*)::int FROM ${S}.customer WHERE deleted_at IS NULL) AS customers,
+             (SELECT count(*)::int FROM ${S}.supplier WHERE deleted_at IS NULL) AS suppliers,
+             (SELECT count(*)::int FROM ${S}.sales_order WHERE order_date = CURRENT_DATE) AS orders_today,
+             (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE order_date = CURRENT_DATE) AS revenue_today,
+             (SELECT count(*)::int FROM ${S}.sales_order WHERE order_date >= date_trunc('month', CURRENT_DATE)::date) AS orders_month,
+             (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE order_date >= date_trunc('month', CURRENT_DATE)::date) AS revenue_month,
+             (SELECT COALESCE(sum(on_hand_qty), 0)::text FROM ${S}.stock_balance) AS on_hand_qty,
+             (SELECT COALESCE(sum(available_qty), 0)::text FROM ${S}.stock_balance) AS available_qty,
+             (SELECT count(*)::int FROM ${S}.inventory_lot WHERE expiry_date < CURRENT_DATE AND deleted_at IS NULL) AS expired_lots,
+             (SELECT count(*)::int FROM ${S}.inventory_lot WHERE expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days' AND deleted_at IS NULL) AS expiring_lots`,
+        ),
+        this.inventoryQuery(
+          ctx,
+          `SELECT COALESCE(us.name, us.username_snapshot, 'Tanpa sales') AS sales_name,
+                  count(so.id)::int AS orders,
+                  COALESCE(sum(so.grand_total), 0)::text AS revenue
+             FROM ${S}.sales_order so
+             LEFT JOIN ${S}.user_subject us ON us.id = so.created_by
+            WHERE so.order_date >= date_trunc('month', CURRENT_DATE)::date
+            GROUP BY us.name, us.username_snapshot
+            ORDER BY COALESCE(sum(so.grand_total), 0) DESC
+            LIMIT 8`,
+        ),
+        this.inventoryQuery(
+          ctx,
+          `SELECT p.code AS product_code, p.name AS product_name,
+                  COALESCE(sum(sol.ordered_qty), 0)::text AS qty,
+                  COALESCE(sum(sol.line_total), 0)::text AS revenue
+             FROM ${S}.sales_order_line sol
+             JOIN ${S}.sales_order so ON so.id = sol.sales_order_id
+             JOIN ${S}.product p ON p.id = sol.product_id
+            WHERE so.order_date >= date_trunc('month', CURRENT_DATE)::date
+            GROUP BY p.code, p.name
+            ORDER BY COALESCE(sum(sol.line_total), 0) DESC
+            LIMIT 10`,
+        ),
+        this.inventoryQuery(
+          ctx,
+          `SELECT COALESCE(c.name, 'Pelanggan umum') AS customer_name,
+                  count(so.id)::int AS orders,
+                  COALESCE(sum(so.grand_total), 0)::text AS revenue
+             FROM ${S}.sales_order so
+             LEFT JOIN ${S}.customer c ON c.id = so.customer_id
+            WHERE so.order_date >= date_trunc('month', CURRENT_DATE)::date
+            GROUP BY c.name
+            ORDER BY COALESCE(sum(so.grand_total), 0) DESC
+            LIMIT 8`,
+        ),
+        this.inventoryQuery(
+          ctx,
+          `SELECT p.code AS product_code, p.name AS product_name, l.lot_number, l.expiry_date::text
+             FROM ${S}.inventory_lot l
+             JOIN ${S}.product p ON p.id = l.product_id
+            WHERE l.expiry_date IS NOT NULL
+              AND l.expiry_date <= CURRENT_DATE + INTERVAL '180 days'
+              AND l.deleted_at IS NULL
+            ORDER BY l.expiry_date ASC
+            LIMIT 10`,
+        ),
+        this.inventoryQuery(
+          ctx,
+          `SELECT so.id::text, so.order_number, so.order_date::text, so.status,
+                  so.grand_total::text, COALESCE(c.name, 'Pelanggan umum') AS customer_name,
+                  COALESCE(us.name, us.username_snapshot, 'Tanpa sales') AS sales_name
+             FROM ${S}.sales_order so
+             LEFT JOIN ${S}.customer c ON c.id = so.customer_id
+             LEFT JOIN ${S}.user_subject us ON us.id = so.created_by
+            ORDER BY so.order_date DESC, so.created_at DESC
+            LIMIT 12`,
+        ),
+      ]);
+
+    return {
+      summary: summary[0] ?? {},
+      topSales,
+      topProducts,
+      topCustomers,
+      expiringLots,
+      recentOrders,
+    };
+  }
+
   // --- Internal Transfer ---------------------------------------------------
 
   @Get('internal-transfers')

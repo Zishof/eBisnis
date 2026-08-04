@@ -1,0 +1,79 @@
+==============================================================================
+BUKTI H-9F — SETTLEMENT JASA, KOREKSI, DAN PERNYATAAN
+Waktu   : 2026-08-01T00:15:02.742Z
+Schema  : demo
+==============================================================================
+
+Empat pengguna, satu untuk tiap wewenang: menghitung, menyetujui, mengunci
+dan membayar, lalu mengoreksi. Tidak satu pun memegang dua di antaranya.
+
+1. Simulasi tidak pernah menjadi utang
+  LULUS  simulasi dihitung
+  LULUS  nomornya berawalan SIM, bukan STL
+  LULUS  dan diberi tahu bahwa ia tidak akan pernah dibayarkan
+  LULUS  membayar simulasi DITOLAK
+  LULUS  penolakannya menyebut salah menekan tombol
+  LULUS  mengubah tanda simulasi lewat basis data ditolak trigger
+  LULUS  penolakannya menyebut pintu paling sunyi
+  LULUS  membayar simulasi lewat basis data ditolak constraint
+
+2. Empat wewenang, empat pemegang berbeda
+  LULUS  settlement sungguhan dihitung
+  LULUS  nomornya berawalan STL
+  LULUS  versi kebijakan DISALIN
+  LULUS  jumlah baris sama persis dengan nilai dasarnya
+  LULUS  pajak hanya dipotong dari jasa perorangan
+  LULUS  nilai bersih sama dengan kotor dikurangi pajak
+  LULUS  yang menghitung tidak berwenang menyetujui
+  LULUS  penyetuju menyetujuinya
+  LULUS  yang menyetujui tidak berwenang mengunci dan membayar
+  LULUS  petugas pembayaran menguncinya
+  LULUS  dan diberi tahu bahwa sejak ini hanya koreksi yang mungkin
+  LULUS  pembayaran tanpa rujukan transaksi ditolak
+  LULUS  pembayaran dicatat beserta rujukannya
+
+3. Yang sudah dikunci tidak diubah dan tidak dihapus
+  LULUS  mengubah baris settlement terkunci ditolak trigger
+  LULUS  menghapusnya pun ditolak
+  LULUS  mengubah nilai dasarnya ditolak trigger
+  LULUS  settlement tidak dapat dihapus sama sekali
+
+4. Kekeliruan diperbaiki lewat koreksi, bukan penghapusan
+  LULUS  pembalikan SEBAGIAN ditolak
+  LULUS  penolakannya menyebut selisih yang ditemukan setahun kemudian
+  LULUS  koreksi tanpa alasan yang bermakna ditolak
+  LULUS  penyesuaian sebagian diterima
+  LULUS  dan menyebutkan nilai akhirnya
+  LULUS  serta menyatakan ia belum berlaku sampai disetujui
+  LULUS  pembuat koreksi tidak berwenang menyetujuinya
+  LULUS  penyetuju menyetujui koreksinya
+  LULUS  koreksi yang membuat nilainya negatif DITOLAK
+  LULUS  penolakannya menyebut menagih kembali kepada dokter
+  LULUS  menembusnya lewat basis data ditolak constraint trigger
+  LULUS  koreksi tidak dapat dihapus
+  LULUS  menyetujui koreksi sendiri lewat basis data ditolak constraint
+
+5. Pernyataan memuat yang benar-benar dibayarkan
+  LULUS  pernyataan diterbitkan
+  LULUS  nilai kotor, pajak, dan bersih dinyatakan ketiganya
+  LULUS  koreksi yang sudah disetujui mengurangi nilai bersihnya
+  LULUS  dan nilai bersihnya memperhitungkan keduanya
+  LULUS  simulasi memang ada barisnya di basis data
+  LULUS  tetapi TIDAK ikut masuk pernyataan
+  LULUS  dan yang dikecualikan disebutkan
+  LULUS  menerbitkan ulang pernyataan yang sama DITOLAK
+  LULUS  penolakannya menyebut dua kertas
+  LULUS  pernyataan KOREKSI diterima bila menunjuk yang dikoreksinya
+  LULUS  pernyataan tidak dapat dihapus
+  LULUS  dua pernyataan ASLI pada periode yang sama ditolak indeks unik
+  LULUS  penerimanya memegang DUA kertas, bukan satu yang berganti isi
+
+6. TIDAK ADA SATU PUN JALAN YANG MENGHAPUS
+  LULUS  ketiga tabelnya berpenjaga anti-hapus
+  LULUS  settlement terbaca beserta baris dan koreksinya
+  LULUS  papan settlement memisahkan simulasi dari yang sungguhan
+  LULUS  dan yang sungguhan berada di atas
+
+==============================================================================
+SELURUH PEMERIKSAAN LULUS
+==============================================================================
