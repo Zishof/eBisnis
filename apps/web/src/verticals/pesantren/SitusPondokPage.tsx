@@ -227,7 +227,7 @@ export function SitusPondokPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950">
       {/* --- Hero -------------------------------------------------------- */}
-      <header className={`relative overflow-hidden bg-gradient-to-br ${tema.grad} text-white`}>
+      <header className="relative overflow-hidden border-b border-emerald-100 bg-[radial-gradient(circle_at_top_left,#ecfdf5,transparent_34%),linear-gradient(135deg,#ffffff,#f8fafc_52%,#ecfeff)] text-slate-950">
         {profil.hero_image_url ? (
           <>
             {/*
@@ -239,9 +239,9 @@ export function SitusPondokPage() {
             <img
               src={profil.hero_image_url}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover opacity-[0.16]"
             />
-            <div className={`absolute inset-0 bg-gradient-to-br ${tema.grad} opacity-70`} aria-hidden />
+            <div className="absolute inset-0 bg-gradient-to-r from-white via-white/95 to-white/70" aria-hidden />
           </>
         ) : (
           // Belum ada foto sungguhan diunggah -- ilustrasi asli sebagai bawaan.
@@ -250,50 +250,50 @@ export function SitusPondokPage() {
         {profil.hero_image_attribution && (
           // Lisensi gambar bawaan (CC BY-SA dsb.) mewajibkan atribusi ini --
           // lihat scripts/onboard-raudlatul-ulum/assets/ATTRIBUTION.md.
-          <p className="absolute bottom-1.5 end-2 text-[10px] text-white/50">
+          <p className="absolute bottom-1.5 end-2 text-[10px] text-slate-500">
             {profil.hero_image_attribution}
           </p>
         )}
-        <div className="container-page relative grid gap-10 py-16 sm:py-20 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
+        <div className="container-page relative grid gap-8 py-12 sm:py-16 lg:grid-cols-[minmax(0,1fr)_440px] lg:items-center">
           <div>
-            <p className="text-sm font-medium uppercase tracking-widest text-white/70">
+            <p className={`text-sm font-semibold uppercase tracking-widest ${tema.aksen}`}>
               Bismillahirrahmanirrahim
             </p>
-            <div className="mt-4 flex items-center gap-4">
+            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
               {profil.logo_url && (
-                <img src={profil.logo_url} alt="" className={`h-16 w-16 rounded-2xl bg-white/95 p-1 ring-4 ${tema.ring}`} />
+                <img src={profil.logo_url} alt="" className="h-16 w-16 shrink-0 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-slate-200" />
               )}
               <div>
-                <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-5xl">Pondok Pesantren {profil.nama_tampilan}</h1>
-                {profil.tagline && <p className="mt-3 max-w-2xl text-lg leading-8 text-white/90">{profil.tagline}</p>}
+                <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">Pondok Pesantren {profil.nama_tampilan}</h1>
+                {profil.tagline && <p className="mt-3 max-w-2xl text-lg leading-8 text-slate-700">{profil.tagline}</p>}
               </div>
             </div>
-            <div className="mt-8 flex flex-wrap gap-3 text-sm">
+            <div className="mt-7 flex flex-wrap gap-3 text-sm">
               {profil.tahun_berdiri && (
-                <span className="rounded-full bg-white/15 px-4 py-1.5 backdrop-blur">
+                <span className="rounded-full border border-emerald-100 bg-white px-4 py-1.5 font-semibold text-slate-700 shadow-sm">
                   Berdiri sejak {profil.tahun_berdiri}
                 </span>
               )}
               {profil.afiliasi && (
-                <span className="rounded-full bg-white/15 px-4 py-1.5 backdrop-blur">{profil.afiliasi}</span>
+                <span className="rounded-full border border-emerald-100 bg-white px-4 py-1.5 font-semibold text-slate-700 shadow-sm">{profil.afiliasi}</span>
               )}
               {profil.pengasuh && (
-                <span className="rounded-full bg-white/15 px-4 py-1.5 backdrop-blur">
+                <span className="rounded-full border border-emerald-100 bg-white px-4 py-1.5 font-semibold text-slate-700 shadow-sm">
                   Pengasuh: {profil.pengasuh}
                 </span>
               )}
             </div>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link
                 to="/santri/pondok/psb"
-                className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50"
+                className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-lg px-5 py-3 font-semibold text-white shadow-sm ${tema.tombol}`}
               >
                 Penerimaan Santri Baru
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
               <Link
                 to="/santri/masuk"
-                className="rounded-lg border border-white/50 px-5 py-3 font-semibold text-white hover:bg-white/10"
+                className="inline-flex min-h-12 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-800 shadow-sm hover:border-emerald-300 hover:text-emerald-800"
               >
                 Masuk Sistem Informasi Santri
               </Link>
@@ -302,20 +302,20 @@ export function SitusPondokPage() {
                   href={profil.instagram_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-lg border border-white/40 px-5 py-3 font-semibold text-white hover:bg-white/10"
+                  className="inline-flex min-h-12 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-800 shadow-sm hover:border-emerald-300 hover:text-emerald-800"
                 >
                   Instagram
                 </a>
               )}
             </div>
           </div>
-          <div className="rounded-3xl border border-white/20 bg-white/12 p-3 shadow-2xl backdrop-blur">
+          <div className="overflow-hidden rounded-3xl border border-white bg-white p-3 shadow-sm ring-1 ring-slate-200/80">
             <div className="grid gap-3">
-              <div className="h-56 overflow-hidden rounded-2xl bg-white/10">
+              <div className="h-56 overflow-hidden rounded-2xl bg-emerald-50 sm:h-64">
                 {profil.hero_image_url ? (
-                  <img src={profil.hero_image_url} alt="" className="h-full w-full object-cover" />
+                  <img src={profil.hero_image_url} alt="" className="h-full w-full object-cover" loading="eager" />
                 ) : (
-                  <VisualPendidikan className="h-full w-full text-white/80" />
+                  <VisualPendidikan className="h-full w-full text-emerald-700/80" />
                 )}
               </div>
               <div className="grid grid-cols-3 gap-3">
@@ -329,7 +329,7 @@ export function SitusPondokPage() {
       </header>
 
       <main className="container-page space-y-16 py-14">
-        <section className="-mt-24 grid gap-4 sm:grid-cols-3">
+        <section className="-mt-10 grid gap-4 sm:grid-cols-3">
           <HighlightCard icon={<CheckCircle2 className="h-5 w-5" aria-hidden />} label="Profil Pondok" value={profil.is_published ? 'Situs aktif' : 'Draft'} />
           <HighlightCard icon={<GraduationCap className="h-5 w-5" aria-hidden />} label="Unit Pendidikan" value={`${unitPendidikan.length} unit`} />
           <HighlightCard icon={<Newspaper className="h-5 w-5" aria-hidden />} label="Kabar Pondok" value={`${berita.length} berita`} />
@@ -736,9 +736,9 @@ function IlustrasiHeroSantri() {
 
 function HeroMini({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="rounded-xl bg-white/14 p-3 text-center backdrop-blur">
-      <span className="mx-auto grid h-9 w-9 place-items-center rounded-lg bg-white/20">{icon}</span>
-      <p className="mt-2 text-xs font-semibold text-white/90">{label}</p>
+    <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-center">
+      <span className="mx-auto grid h-9 w-9 place-items-center rounded-lg bg-white text-emerald-700 shadow-sm">{icon}</span>
+      <p className="mt-2 text-xs font-semibold text-slate-700">{label}</p>
     </div>
   );
 }
