@@ -200,16 +200,25 @@ export function _setelUlangUntukUji(): void {
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const bodyAdalahForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  let bodyPermintaan: BodyInit | null | undefined;
+  if (options.body === undefined) {
+    bodyPermintaan = undefined;
+  } else if (bodyAdalahForm) {
+    bodyPermintaan = options.body as FormData;
+  } else {
+    bodyPermintaan = JSON.stringify(options.body) ?? null;
+  }
   const execute = async (): Promise<Response> =>
     fetch(`${API_BASE}${path}`, {
       method: options.method ?? 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        ...(bodyAdalahForm ? {} : { 'Content-Type': 'application/json' }),
         'Accept-Language': currentLocale,
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...options.headers,
       },
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: bodyPermintaan,
       signal: options.signal,
     });
 

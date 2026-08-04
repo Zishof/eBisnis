@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save } from 'lucide-react';
+import { Image, Save, Upload } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { PageHeader, StatusBadge, useToast } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -141,6 +141,21 @@ export function PesantrenProfilPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan profil.'), 'error'),
   });
 
+  const unggahGambar = useMutation({
+    mutationFn: async ({ kategori, file }: { kategori: 'LOGO' | 'HERO'; file: File }) => {
+      const body = new FormData();
+      body.append('file', file);
+      return api.post<ProfilSitus>(`/pesantren/profil/gambar/${kategori}`, body);
+    },
+    onSuccess: (data, variables) => {
+      toast.push(variables.kategori === 'LOGO' ? 'Logo berhasil diunggah.' : 'Gambar hero berhasil diunggah.', 'success');
+      setForm(isiForm(data));
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-profil'] });
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-public-site'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mengunggah gambar.'), 'error'),
+  });
+
   return (
     <>
       <PageHeader
@@ -258,8 +273,31 @@ export function PesantrenProfilPage() {
           </div>
 
           <div className="card p-5">
-            <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">Media dan SEO</h2>
-            <div className="space-y-3">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                <Image className="h-5 w-5" aria-hidden />
+              </span>
+              <div>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">Media dan SEO</h2>
+                <p className="text-xs text-slate-500">Gambar ini tampil di situs pondok dan halaman unit sekolah.</p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <MediaUpload
+                title="Logo pondok"
+                description="PNG/JPG/WEBP, maksimal 5 MB. Disarankan rasio 1:1."
+                previewUrl={form.logoUrl}
+                disabled={unggahGambar.isPending}
+                onFile={(file) => unggahGambar.mutate({ kategori: 'LOGO', file })}
+              />
+              <MediaUpload
+                title="Foto hero situs"
+                description="Foto aktivitas pesantren/sekolah. Disarankan rasio lebar 16:9."
+                previewUrl={form.heroImageUrl}
+                disabled={unggahGambar.isPending}
+                wide
+                onFile={(file) => unggahGambar.mutate({ kategori: 'HERO', file })}
+              />
               <Field label="Logo URL">
                 <input className="field-input" value={form.logoUrl} onChange={(e) => setForm({ ...form, logoUrl: e.target.value })} />
               </Field>
@@ -292,6 +330,57 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <label className="field-label">{label}</label>
       {children}
+    </div>
+  );
+}
+
+function MediaUpload({
+  title,
+  description,
+  previewUrl,
+  disabled,
+  wide = false,
+  onFile,
+}: {
+  title: string;
+  description: string;
+  previewUrl: string;
+  disabled?: boolean;
+  wide?: boolean;
+  onFile: (file: File) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+      <div className="flex gap-3">
+        <div className={wide ? 'h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-slate-950' : 'h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-slate-950'}>
+          {previewUrl ? (
+            <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="grid h-full w-full place-items-center text-slate-300">
+              <Image className="h-6 w-6" aria-hidden />
+            </span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-slate-900 dark:text-white">{title}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
+          <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+            <Upload className="h-4 w-4" aria-hidden />
+            Unggah gambar
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              disabled={disabled}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onFile(file);
+                e.currentTarget.value = '';
+              }}
+            />
+          </label>
+        </div>
+      </div>
     </div>
   );
 }
