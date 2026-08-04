@@ -51,7 +51,7 @@ export function AppLayout() {
 
   const menus = useMenuTree();
   const visibleMenus = useMemo(
-    () => (isCmnInventoryOwner(user) ? filterCmnOwnerMenus(menus.data ?? []) : menus.data ?? []),
+    () => (isCmnInventoryOwner(user) ? withCmnInventoryControlMenu(filterCmnOwnerMenus(menus.data ?? [])) : menus.data ?? []),
     [menus.data, user],
   );
 
@@ -266,6 +266,7 @@ const CMN_OWNER_TOP_MENU = new Set([
 const CMN_OWNER_EXACT_ROUTES = new Set(['/app']);
 
 const CMN_OWNER_ROUTE_PREFIXES = [
+  '/app/inventory-control',
   '/app/sales',
   '/app/products',
   '/app/product-categories',
@@ -279,6 +280,24 @@ const CMN_OWNER_ROUTE_PREFIXES = [
   '/app/support',
   '/app/tiket',
 ];
+
+function withCmnInventoryControlMenu(menus: MenuNode[]): MenuNode[] {
+  if (menus.some((menu) => menu.code === 'CMN_INVENTORY_CONTROL')) return menus;
+  const control: MenuNode = {
+    id: 'cmn-inventory-control',
+    code: 'CMN_INVENTORY_CONTROL',
+    label: 'Inventory Control',
+    translationKey: 'inventory.control',
+    route: '/app/inventory-control',
+    icon: 'boxes',
+    moduleCode: 'INVENTORY',
+    sortOrder: 2,
+    isComingSoon: false,
+    actions: ['READ'],
+    children: [],
+  };
+  return [menus[0], control, ...menus.slice(1)].filter(Boolean);
+}
 
 function filterCmnOwnerMenus(menus: MenuNode[]): MenuNode[] {
   const prune = (menu: MenuNode, depth: number): MenuNode | null => {
