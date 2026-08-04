@@ -5,6 +5,7 @@ import {
   BarChart3,
   CalendarDays,
   ClipboardList,
+  FileDown,
   PackageCheck,
   RefreshCw,
   Search,
@@ -13,6 +14,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { api, formatDate, formatMoney, formatNumber } from '../../lib/api';
+import { downloadExcel, downloadPdf, type ExportColumn } from '../../lib/export-table';
 import {
   Code,
   DataGrid,
@@ -89,6 +91,54 @@ interface SalesOrderDetail {
     uom_code: string;
   }>;
 }
+
+type LegacyReceivableRow = Record<string, unknown> & {
+  id: string;
+  source_file: string;
+  legacy_invoice_number: string;
+  transaction_date: string | null;
+  due_date: string | null;
+  paid_at: string | null;
+  amount: string;
+  customer_name: string;
+  sales_name: string;
+  bank_name: string | null;
+};
+
+type LegacyPayableRow = Record<string, unknown> & {
+  id: string;
+  source_file: string;
+  legacy_invoice_number: string;
+  transaction_date: string | null;
+  due_date: string | null;
+  paid_at: string | null;
+  amount: string;
+  supplier_name: string;
+  bank_name: string | null;
+};
+
+type LegacyPriceRow = Record<string, unknown> & {
+  id: string;
+  source_file: string;
+  party_type: string;
+  effective_date: string | null;
+  price: string;
+  product_code: string | null;
+  product_name: string | null;
+  party_name: string;
+};
+
+type LegacyStockOpnameRow = Record<string, unknown> & {
+  id: string;
+  source_file: string;
+  opname_date: string | null;
+  system_qty: string;
+  physical_qty: string;
+  variance_qty: string;
+  unit_cost: string;
+  product_code: string | null;
+  product_name: string | null;
+};
 
 export function SalesOrdersPage() {
   const [search, setSearch] = useState('');
@@ -245,10 +295,27 @@ export function SalesOrdersPage() {
 }
 
 export function SalesReportsPage() {
+  const [legacyTab, setLegacyTab] = useState<'receivables' | 'payables' | 'prices' | 'opname'>('receivables');
   const toMessage = useErrorMessage();
   const dashboard = useQuery({
     queryKey: ['inventory-sales-dashboard-report'],
     queryFn: () => api.get<SalesInventoryDashboard>('/inventory/sales-dashboard'),
+  });
+  const receivables = useQuery({
+    queryKey: ['legacy-receivables-report'],
+    queryFn: () => api.get<LegacyReceivableRow[]>('/inventory/legacy/receivables?pageSize=200'),
+  });
+  const payables = useQuery({
+    queryKey: ['legacy-payables-report'],
+    queryFn: () => api.get<LegacyPayableRow[]>('/inventory/legacy/payables?pageSize=200'),
+  });
+  const prices = useQuery({
+    queryKey: ['legacy-prices-report'],
+    queryFn: () => api.get<LegacyPriceRow[]>('/inventory/legacy/price-history?pageSize=200'),
+  });
+  const opname = useQuery({
+    queryKey: ['legacy-opname-report'],
+    queryFn: () => api.get<LegacyStockOpnameRow[]>('/inventory/legacy/stock-opname?pageSize=200'),
   });
 
   if (dashboard.isLoading) return <LoadingState />;
@@ -275,10 +342,16 @@ export function SalesReportsPage() {
         description="Ringkasan untuk pemilik, admin, dan supervisor sales: omzet, kontribusi sales, produk laris, pelanggan terbesar, dan risiko expiry."
         breadcrumbs={[{ label: 'Dashboard', href: '/app' }, { label: 'Laporan Penjualan' }]}
         actions={
-          <button type="button" className="btn-outline" onClick={() => void dashboard.refetch()} disabled={dashboard.isFetching}>
-            <RefreshCw className="h-4 w-4" aria-hidden />
-            Muat ulang
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-outline" onClick={() => exportDashboard(data)}>
+              <FileDown className="h-4 w-4" aria-hidden />
+              Ekspor ringkasan
+            </button>
+            <button type="button" className="btn-outline" onClick={() => void dashboard.refetch()} disabled={dashboard.isFetching}>
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Muat ulang
+            </button>
+          </div>
         }
       />
 
@@ -371,6 +444,21 @@ export function SalesReportsPage() {
           </div>
         </Panel>
       </section>
+
+      <LegacyReportSection
+        active={legacyTab}
+        onChange={setLegacyTab}
+        receivables={receivables.data ?? []}
+        payables={payables.data ?? []}
+        prices={prices.data ?? []}
+        opname={opname.data ?? []}
+        loading={receivables.isLoading || payables.isLoading || prices.isLoading || opname.isLoading}
+        error={
+          receivables.isError || payables.isError || prices.isError || opname.isError
+            ? 'Sebagian laporan legacy belum dapat dimuat.'
+            : undefined
+        }
+      />
     </>
   );
 }
@@ -406,6 +494,188 @@ function SalesOrderDetailPanel({ detail }: { detail: SalesOrderDetail }) {
       />
     </div>
   );
+}
+
+function LegacyReportSection({
+  active,
+  onChange,
+  receivables,
+  payables,
+  prices,
+  opname,
+  loading,
+  error,
+}: {
+  active: 'receivables' | 'payables' | 'prices' | 'opname';
+  onChange: (tab: 'receivables' | 'payables' | 'prices' | 'opname') => void;
+  receivables: LegacyReceivableRow[];
+  payables: LegacyPayableRow[];
+  prices: LegacyPriceRow[];
+  opname: LegacyStockOpnameRow[];
+  loading: boolean;
+  error?: string;
+}) {
+  const tabs = [
+    { key: 'receivables' as const, label: 'Piutang', count: receivables.length },
+    { key: 'payables' as const, label: 'Hutang', count: payables.length },
+    { key: 'prices' as const, label: 'Riwayat Harga', count: prices.length },
+    { key: 'opname' as const, label: 'Stock Opname', count: opname.length },
+  ];
+  const table = legacyTableFor(active, { receivables, payables, prices, opname });
+
+  return (
+    <section className="card mt-6 p-5">
+      <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
+            <FileDown className="h-4 w-4 text-brand-700 dark:text-brand-300" aria-hidden />
+            Laporan Legacy CMN
+          </h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Data lama tetap dapat dibaca sebagai laporan piutang, hutang, harga historis, dan opname.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-outline" onClick={() => downloadExcel(table.filename, table.exportColumns, table.rows)}>
+            Excel
+          </button>
+          <button type="button" className="btn-outline" onClick={() => downloadPdf(table.filename, table.title, table.exportColumns, table.rows)}>
+            PDF
+          </button>
+        </div>
+      </div>
+      <div className="mb-4 flex gap-2 overflow-x-auto">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className={tab.key === active ? 'btn-primary whitespace-nowrap px-3 py-2' : 'btn-outline whitespace-nowrap px-3 py-2'}
+            onClick={() => onChange(tab.key)}
+          >
+            {tab.label} <span className="text-xs opacity-75">({formatNumber(tab.count)})</span>
+          </button>
+        ))}
+      </div>
+      {error && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+          {error}
+        </div>
+      )}
+      <DataGrid
+        columns={table.columns}
+        rows={table.rows}
+        loading={loading}
+        rowKey={(row) => String(row.id)}
+        emptyTitle="Belum ada data pada laporan ini."
+      />
+    </section>
+  );
+}
+
+function legacyTableFor(
+  active: 'receivables' | 'payables' | 'prices' | 'opname',
+  data: {
+    receivables: LegacyReceivableRow[];
+    payables: LegacyPayableRow[];
+    prices: LegacyPriceRow[];
+    opname: LegacyStockOpnameRow[];
+  },
+): {
+  title: string;
+  filename: string;
+  rows: Array<Record<string, unknown>>;
+  columns: Array<GridColumn<Record<string, unknown>>>;
+  exportColumns: Array<ExportColumn<Record<string, unknown>>>;
+} {
+  if (active === 'payables') {
+    const rows = data.payables;
+    return {
+      title: 'Laporan Hutang Legacy CMN',
+      filename: 'cmn-hutang-legacy',
+      rows,
+      columns: [
+        { key: 'legacy_invoice_number', header: 'Faktur', render: (row) => <Code>{String(row.legacy_invoice_number)}</Code> },
+        { key: 'supplier_name', header: 'Supplier' },
+        { key: 'due_date', header: 'Jatuh Tempo', render: (row) => formatDate(String(row.due_date ?? '')) },
+        { key: 'paid_at', header: 'Bayar', render: (row) => formatDate(String(row.paid_at ?? '')) },
+        { key: 'amount', header: 'Jumlah', className: 'text-end', render: (row) => formatMoney(String(row.amount ?? 0)) },
+        { key: 'bank_name', header: 'Bank' },
+      ],
+      exportColumns: legacyExportColumns(['legacy_invoice_number', 'supplier_name', 'due_date', 'paid_at', 'amount', 'bank_name']),
+    };
+  }
+  if (active === 'prices') {
+    const rows = data.prices;
+    return {
+      title: 'Riwayat Harga Legacy CMN',
+      filename: 'cmn-riwayat-harga-legacy',
+      rows,
+      columns: [
+        { key: 'party_type', header: 'Jenis', render: (row) => <StatusBadge status={String(row.party_type)} tone="info" /> },
+        { key: 'party_name', header: 'Mitra' },
+        { key: 'product_code', header: 'Kode', render: (row) => <Code>{String(row.product_code ?? '-')}</Code> },
+        { key: 'product_name', header: 'Produk' },
+        { key: 'effective_date', header: 'Tanggal', render: (row) => formatDate(String(row.effective_date ?? '')) },
+        { key: 'price', header: 'Harga', className: 'text-end', render: (row) => formatMoney(String(row.price ?? 0)) },
+      ],
+      exportColumns: legacyExportColumns(['party_type', 'party_name', 'product_code', 'product_name', 'effective_date', 'price']),
+    };
+  }
+  if (active === 'opname') {
+    const rows = data.opname;
+    return {
+      title: 'Stock Opname Legacy CMN',
+      filename: 'cmn-stock-opname-legacy',
+      rows,
+      columns: [
+        { key: 'opname_date', header: 'Tanggal', render: (row) => formatDate(String(row.opname_date ?? '')) },
+        { key: 'product_code', header: 'Kode', render: (row) => <Code>{String(row.product_code ?? '-')}</Code> },
+        { key: 'product_name', header: 'Produk' },
+        { key: 'system_qty', header: 'Sistem', className: 'text-end', render: (row) => formatNumber(String(row.system_qty ?? 0)) },
+        { key: 'physical_qty', header: 'Fisik', className: 'text-end', render: (row) => formatNumber(String(row.physical_qty ?? 0)) },
+        { key: 'variance_qty', header: 'Selisih', className: 'text-end', render: (row) => formatNumber(String(row.variance_qty ?? 0)) },
+      ],
+      exportColumns: legacyExportColumns(['opname_date', 'product_code', 'product_name', 'system_qty', 'physical_qty', 'variance_qty', 'unit_cost']),
+    };
+  }
+  const rows = data.receivables;
+  return {
+    title: 'Laporan Piutang Legacy CMN',
+    filename: 'cmn-piutang-legacy',
+    rows,
+    columns: [
+      { key: 'legacy_invoice_number', header: 'Faktur', render: (row) => <Code>{String(row.legacy_invoice_number)}</Code> },
+      { key: 'customer_name', header: 'Pelanggan' },
+      { key: 'sales_name', header: 'Sales' },
+      { key: 'due_date', header: 'Jatuh Tempo', render: (row) => formatDate(String(row.due_date ?? '')) },
+      { key: 'paid_at', header: 'Bayar', render: (row) => formatDate(String(row.paid_at ?? '')) },
+      { key: 'amount', header: 'Jumlah', className: 'text-end', render: (row) => formatMoney(String(row.amount ?? 0)) },
+    ],
+    exportColumns: legacyExportColumns(['legacy_invoice_number', 'customer_name', 'sales_name', 'due_date', 'paid_at', 'amount', 'bank_name']),
+  };
+}
+
+function legacyExportColumns(keys: string[]): Array<ExportColumn<Record<string, unknown>>> {
+  return keys.map((key) => ({ key, label: key.replaceAll('_', ' ').toUpperCase() }));
+}
+
+function exportDashboard(data: SalesInventoryDashboard): void {
+  const rows: Array<Record<string, unknown>> = [
+    { metrik: 'Omzet hari ini', nilai: data.summary.revenue_today ?? '0' },
+    { metrik: 'Order hari ini', nilai: data.summary.orders_today ?? 0 },
+    { metrik: 'Omzet bulan ini', nilai: data.summary.revenue_month ?? '0' },
+    { metrik: 'Order bulan ini', nilai: data.summary.orders_month ?? 0 },
+    { metrik: 'Produk', nilai: data.summary.products ?? 0 },
+    { metrik: 'Pelanggan', nilai: data.summary.customers ?? 0 },
+    { metrik: 'Supplier', nilai: data.summary.suppliers ?? 0 },
+    { metrik: 'Batch expired', nilai: data.summary.expired_lots ?? 0 },
+    { metrik: 'Batch akan expired', nilai: data.summary.expiring_lots ?? 0 },
+  ];
+  const columns: Array<ExportColumn<Record<string, unknown>>> = [
+    { key: 'metrik', label: 'Metrik' },
+    { key: 'nilai', label: 'Nilai' },
+  ];
+  downloadExcel('cmn-ringkasan-penjualan', columns, rows);
 }
 
 function MetricCard({
