@@ -311,6 +311,13 @@
       "description": "Menambahkan logo_url dan hero_image_url pada pesantren_unit_pendidikan agar setiap unit sekolah dapat memiliki identitas visual sendiri. Kolom nullable/aditif; halaman publik tetap memakai gambar pondok sebagai fallback sampai admin mengisi gambar unit."
     },
     {
+      "version": "V045",
+      "sequence": 45,
+      "file": "V045__cmn_legacy_inventory_vault.sql",
+      "name": "Vault impor legacy inventory CMN",
+      "description": "legacy_import_file, legacy_import_record, legacy_salesperson_map, ledger piutang/hutang legacy, riwayat harga jual/beli, stock opname, dan view rekonsiliasi impor. Tujuannya memastikan seluruh informasi DBF lama masuk utuh terlebih dahulu walaupun projection ERP bertahap."
+    },
+    {
       "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

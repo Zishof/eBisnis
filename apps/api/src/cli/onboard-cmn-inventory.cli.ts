@@ -1,9 +1,23 @@
 import 'dotenv/config';
 import * as argon2 from 'argon2';
-import { existsSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PoolClient } from 'pg';
 import { createSeedContext } from './seed-runner';
+
+type LegacyRow = { rowNumber: number; isDeleted: boolean; data: Record<string, unknown> };
+type LegacyDbf = {
+  fileName: string;
+  filePath: string;
+  fileHash: string;
+  fileSizeBytes: number;
+  totalRecords: number;
+  activeRecords: number;
+  deletedRecords: number;
+  fields: Array<{ name: string; type: string; length: number }>;
+  rows: LegacyRow[];
+};
 
 const TENANT = {
   code: 'CMNMEDIKA',
@@ -250,36 +264,60 @@ async function upsertSubject(
 async function importLegacyDataIfPresent(
   ctx: Awaited<ReturnType<typeof createSeedContext>>,
   schemaName: string,
-): Promise<{ products: number; customers: number; suppliers: number; salesOrders: number }> {
+): Promise<{
+  products: number;
+  customers: number;
+  suppliers: number;
+  salesOrders: number;
+  purchaseOrders: number;
+  rawRecords: number;
+  receivables: number;
+  payables: number;
+}> {
   const marker = await ctx.tenantDb
     .query<{ value: unknown }>(
       schemaName,
-      `SELECT value_json AS value FROM "${schemaName}".app_setting WHERE code = 'CMN_LEGACY_IMPORT_V1' AND deleted_at IS NULL`,
+      `SELECT value_json AS value FROM "${schemaName}".app_setting WHERE code = 'CMN_LEGACY_IMPORT_V2' AND deleted_at IS NULL`,
     )
     .then((r) => r[0]?.value ?? null);
-  if (marker) return { products: 0, customers: 0, suppliers: 0, salesOrders: 0 };
+  if (marker) return { products: 0, customers: 0, suppliers: 0, salesOrders: 0, purchaseOrders: 0, rawRecords: 0, receivables: 0, payables: 0 };
 
   const dir = LEGACY_DIR_CANDIDATES.find((candidate) => existsSync(join(candidate, 'STOK.DBF')));
   if (!dir) {
     process.stdout.write(
       `DBF CMN belum ditemukan. Set CMN_LEGACY_DBF_DIR atau salin ke /opt/ebisnis/imports/cmn-inventory; impor akan dicoba lagi pada deploy berikutnya.\n`,
     );
-    return { products: 0, customers: 0, suppliers: 0, salesOrders: 0 };
+    return { products: 0, customers: 0, suppliers: 0, salesOrders: 0, purchaseOrders: 0, rawRecords: 0, receivables: 0, payables: 0 };
   }
 
-  const stok = readDbf(join(dir, 'STOK.DBF'));
-  const customers = readDbf(join(dir, 'CUSTOMER.DBF'));
-  const suppliers = readDbf(join(dir, 'SUPPLIER.DBF'));
-  const sales = readDbf(join(dir, 'JUAL.DBF'));
-  const batch = existsSync(join(dir, 'batchno.dbf')) ? readDbf(join(dir, 'batchno.dbf')) : [];
+  const dbfs = loadLegacyDbfs(dir);
+  const byName = new Map(dbfs.map((file) => [file.fileName.toUpperCase(), file]));
+  const stok = activeRows(byName.get('STOK.DBF'));
+  const customers = activeRows(byName.get('CUSTOMER.DBF'));
+  const suppliers = activeRows(byName.get('SUPPLIER.DBF'));
+  const sales = activeRows(byName.get('JUAL.DBF'));
+  const purchases = activeRows(byName.get('BELI.DBF'));
+  const batch = activeRows(byName.get('BATCHNO.DBF'));
+  const salespeople = activeRows(byName.get('SALES.DBF'));
+  const receivables = activeLegacyRows(byName.get('TRAN_PIUT.DBF'));
+  const cementReceivables = activeLegacyRows(byName.get('PIUTSEMEN.DBF'));
+  const payables = activeLegacyRows(byName.get('TRAN_HUT.DBF'));
+  const customerPrices = activeLegacyRows(byName.get('MASTERJL.DBF'));
+  const supplierPrices = activeLegacyRows(byName.get('MASTERBL.DBF'));
+  const stockOpname = activeLegacyRows(byName.get('DATAOPN.DBF'));
+  const accounts = activeRows(byName.get('ACCOUNT.DBF'));
+  const journals = activeRows(byName.get('JOURNAL.DBF'));
 
   const result = await ctx.tenantDb.transaction(schemaName, async (client) => {
     const S = `"${schemaName}"`;
+    const rawRecords = await importRawLegacyDbfs(client, S, dbfs);
     const uomId = await ensureUom(client, S, 'PCS', 'Pcs');
     const categoryId = await ensureProductCategory(client, S);
     const warehouseId = await scalar<string>(client, `SELECT id::text FROM ${S}.warehouse WHERE code = 'MAIN-WH' AND deleted_at IS NULL LIMIT 1`)
       ?? await scalar<string>(client, `SELECT id::text FROM ${S}.warehouse WHERE deleted_at IS NULL LIMIT 1`);
     const outletId = await scalar<string>(client, `SELECT id::text FROM ${S}.outlet WHERE deleted_at IS NULL LIMIT 1`);
+
+    const salesMap = await importSalespeople(client, S, salespeople);
 
     let productCount = 0;
     for (const row of stok) {
@@ -312,26 +350,41 @@ async function importLegacyDataIfPresent(
 
     let supplierCount = 0;
     for (const row of suppliers) {
-      const code = text(row.KODESUPP) || text(row.KODE) || `SUP-${supplierCount + 1}`;
-      const name = text(row.NAMASUPP) || text(row.NAMA) || code;
+      const code = text(row.KODESUPPL) || text(row.KODESUPP) || text(row.KODE) || `SUP-${supplierCount + 1}`;
+      const name = text(row.NAMASUPPL) || text(row.NAMASUPP) || text(row.NAMA) || code;
       await upsertSupplier(client, S, code, name, row);
       supplierCount += 1;
     }
 
     const lotCount = await importLots(client, S, batch);
-    const salesUsers = await client.query<{ id: string }>(
-      `SELECT us.id::text AS id
-         FROM ${S}.user_subject us
-         JOIN ${S}.user_role_assignment ura ON ura.user_subject_id = us.id
-         JOIN ${S}.role r ON r.id = ura.role_id
-        WHERE r.code = 'SALES' AND us.deleted_at IS NULL
-        ORDER BY us.name`,
-    );
     const salesOrders = outletId
-      ? await importSales(client, S, sales, outletId, uomId, salesUsers.rows.map((row) => row.id))
+      ? await importSales(client, S, sales, outletId, uomId, salesMap)
       : 0;
+    const purchaseOrders = warehouseId ? await importPurchases(client, S, purchases, warehouseId, uomId) : 0;
+    const receivableRows = await importReceivableLedger(client, S, 'Tran_Piut.DBF', receivables, salesMap)
+      + await importReceivableLedger(client, S, 'PIUTSEMEN.DBF', cementReceivables, salesMap);
+    const payableRows = await importPayableLedger(client, S, payables);
+    const priceRows = await importPriceHistory(client, S, 'masterjl.dbf', 'CUSTOMER', customerPrices)
+      + await importPriceHistory(client, S, 'masterbl.DBF', 'SUPPLIER', supplierPrices);
+    const stockOpnameRows = await importStockOpname(client, S, stockOpname);
+    const accountRows = await importAccounts(client, S, accounts);
+    const journalRows = await importJournalRows(client, S, journals);
 
-    return { productCount, customerCount, supplierCount, lotCount, salesOrders };
+    return {
+      productCount,
+      customerCount,
+      supplierCount,
+      lotCount,
+      salesOrders,
+      purchaseOrders,
+      rawRecords,
+      receivableRows,
+      payableRows,
+      priceRows,
+      stockOpnameRows,
+      accountRows,
+      journalRows,
+    };
   });
 
   await markImport(ctx, schemaName, { importedAt: new Date().toISOString(), dir, ...result });
@@ -340,6 +393,10 @@ async function importLegacyDataIfPresent(
     customers: result.customerCount,
     suppliers: result.supplierCount,
     salesOrders: result.salesOrders,
+    purchaseOrders: result.purchaseOrders,
+    rawRecords: result.rawRecords,
+    receivables: result.receivableRows,
+    payables: result.payableRows,
   };
 }
 
@@ -347,7 +404,7 @@ async function markImport(ctx: Awaited<ReturnType<typeof createSeedContext>>, sc
   await ctx.tenantDb.query(
     schemaName,
     `INSERT INTO "${schemaName}".app_setting (code, name, value_type, value_json, is_system)
-     VALUES ('CMN_LEGACY_IMPORT_V1', 'Import legacy CMN Inventory', 'JSON', $1::jsonb, TRUE)
+     VALUES ('CMN_LEGACY_IMPORT_V2', 'Import legacy CMN Inventory lengkap', 'JSON', $1::jsonb, TRUE)
      ON CONFLICT (scope_type, COALESCE(scope_id, '00000000-0000-0000-0000-000000000000'::uuid), code)
      WHERE deleted_at IS NULL
      DO UPDATE SET value_json = EXCLUDED.value_json, updated_at = now(), version = "${schemaName}".app_setting.version + 1`,
@@ -355,7 +412,48 @@ async function markImport(ctx: Awaited<ReturnType<typeof createSeedContext>>, sc
   );
 }
 
-function readDbf(path: string): Array<Record<string, unknown>> {
+function loadLegacyDbfs(dir: string): LegacyDbf[] {
+  return [
+    'STOK.DBF',
+    'CUSTOMER.DBF',
+    'SUPPLIER.DBF',
+    'JUAL.DBF',
+    'BELI.DBF',
+    'batchno.dbf',
+    'Tran_Piut.DBF',
+    'Tran_Hut.DBF',
+    'SALES.DBF',
+    'account.dbf',
+    'journal.dbf',
+    'masterjl.dbf',
+    'masterbl.DBF',
+    'dataopn.dbf',
+    'PIUTSEMEN.DBF',
+    'tempcust.dbf',
+    'USERS.DBF',
+    'sembeli1.dbf',
+    'sembeli2.dbf',
+    'sembeli3.dbf',
+    'semjual1.dbf',
+    'semjual2.dbf',
+    'semjual3.dbf',
+    'semjour1.dbf',
+    'semjour2.dbf',
+    'semjour3.dbf',
+    'foxuser.dbf',
+    'JUA-rusakL.DBF',
+  ].filter((name) => existsSync(join(dir, name))).map((name) => readDbf(join(dir, name), name));
+}
+
+function activeRows(file: LegacyDbf | undefined): Array<Record<string, unknown>> {
+  return file?.rows.filter((row) => !row.isDeleted).map((row) => row.data) ?? [];
+}
+
+function activeLegacyRows(file: LegacyDbf | undefined): LegacyRow[] {
+  return file?.rows.filter((row) => !row.isDeleted) ?? [];
+}
+
+function readDbf(path: string, fileName: string): LegacyDbf {
   const buf = readFileSync(path);
   const recordCount = buf.readUInt32LE(4);
   const headerLength = buf.readUInt16LE(8);
@@ -372,18 +470,125 @@ function readDbf(path: string): Array<Record<string, unknown>> {
     offset += length;
   }
 
-  const rows: Array<Record<string, unknown>> = [];
+  const rows: LegacyRow[] = [];
+  let deletedRecords = 0;
   for (let i = 0; i < recordCount; i += 1) {
     const base = headerLength + i * recordLength;
-    if (buf[base] === 0x2a) continue;
+    const isDeleted = buf[base] === 0x2a;
+    if (isDeleted) deletedRecords += 1;
     const row: Record<string, unknown> = {};
     for (const field of fields) {
       const raw = buf.subarray(base + field.offset, base + field.offset + field.length).toString('latin1').trim();
       row[field.name] = field.type === 'N' || field.type === 'F' ? Number(raw || 0) : raw;
     }
-    rows.push(row);
+    rows.push({ rowNumber: i + 1, isDeleted, data: row });
   }
-  return rows;
+  return {
+    fileName,
+    filePath: path,
+    fileHash: createHash('sha256').update(buf).digest('hex'),
+    fileSizeBytes: statSync(path).size,
+    totalRecords: recordCount,
+    activeRecords: recordCount - deletedRecords,
+    deletedRecords,
+    fields: fields.map(({ name, type, length }) => ({ name, type, length })),
+    rows,
+  };
+}
+
+async function importRawLegacyDbfs(client: PoolClient, S: string, files: LegacyDbf[]): Promise<number> {
+  let imported = 0;
+  for (const file of files) {
+    const record = await client.query<{ id: string }>(
+      `INSERT INTO ${S}.legacy_import_file
+         (file_name, file_path, file_hash, file_size_bytes, total_records, active_records, deleted_records, imported_records, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+       ON CONFLICT (source_system, file_name)
+       DO UPDATE SET file_path = EXCLUDED.file_path, file_hash = EXCLUDED.file_hash,
+         file_size_bytes = EXCLUDED.file_size_bytes, total_records = EXCLUDED.total_records,
+         active_records = EXCLUDED.active_records, deleted_records = EXCLUDED.deleted_records,
+         imported_records = EXCLUDED.imported_records, metadata = EXCLUDED.metadata,
+         imported_at = now(), updated_at = now(), version = ${S}.legacy_import_file.version + 1
+       RETURNING id::text AS id`,
+      [
+        file.fileName,
+        file.filePath,
+        file.fileHash,
+        file.fileSizeBytes,
+        file.totalRecords,
+        file.activeRecords,
+        file.deletedRecords,
+        file.rows.length,
+        JSON.stringify({ fields: file.fields }),
+      ],
+    );
+    const fileId = record.rows[0].id;
+    for (const chunk of chunks(file.rows, 250)) {
+      const params: unknown[] = [];
+      const values = chunk.map((row, index) => {
+        const base = index * 7;
+        const rowHash = createHash('sha256').update(JSON.stringify(row.data)).digest('hex');
+        const key = legacyKey(file.fileName, row.data);
+        params.push(fileId, file.fileName, row.rowNumber, row.isDeleted, key, JSON.stringify(row.data), rowHash);
+        return `($${base + 1}::uuid, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}::jsonb, $${base + 7})`;
+      });
+      await client.query(
+        `INSERT INTO ${S}.legacy_import_record
+           (import_file_id, file_name, row_number, is_deleted, legacy_key, row_data, row_hash)
+         VALUES ${values.join(', ')}
+         ON CONFLICT (file_name, row_number)
+         DO UPDATE SET import_file_id = EXCLUDED.import_file_id, is_deleted = EXCLUDED.is_deleted,
+           legacy_key = EXCLUDED.legacy_key, row_data = EXCLUDED.row_data, row_hash = EXCLUDED.row_hash`,
+        params,
+      );
+      imported += chunk.length;
+    }
+  }
+  return imported;
+}
+
+async function importSalespeople(client: PoolClient, S: string, rows: Array<Record<string, unknown>>): Promise<Map<string, string>> {
+  const explicitUsers = new Map(
+    [
+      ['MASRUKIN', 'masrukin'],
+      ['TOHIRIN', 'tohirin'],
+      ['NOFAL', 'nofal'],
+      ['AGUNG', 'agung'],
+    ].map(([name, username]) => [name, username]),
+  );
+  const fallbackSales = await client.query<{ id: string; username: string; name: string }>(
+    `SELECT us.id::text AS id, us.username_snapshot AS username, us.name
+       FROM ${S}.user_subject us
+       JOIN ${S}.user_role_assignment ura ON ura.user_subject_id = us.id
+       JOIN ${S}.role r ON r.id = ura.role_id
+      WHERE r.code = 'SALES' AND us.deleted_at IS NULL
+      ORDER BY us.name`,
+  );
+  const map = new Map<string, string>();
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    const legacyCode = text(row.KODESALES) || text(row.KODE) || `SALES-${i + 1}`;
+    const legacyName = text(row.NAMASALES) || text(row.NAMA) || legacyCode;
+    const username = explicitUsers.get(legacyName.toUpperCase()) ?? fallbackSales.rows[i % Math.max(fallbackSales.rows.length, 1)]?.username ?? null;
+    const subjectId = username
+      ? await scalar<string>(client, `SELECT id::text FROM ${S}.user_subject WHERE username_snapshot = $1 AND deleted_at IS NULL`, [username])
+      : null;
+    await client.query(
+      `INSERT INTO ${S}.legacy_salesperson_map (legacy_code, legacy_name, user_subject_id, mapped_username, metadata)
+       VALUES ($1, $2, $3::uuid, $4, $5::jsonb)
+       ON CONFLICT (legacy_code) WHERE is_active
+       DO UPDATE SET legacy_name = EXCLUDED.legacy_name, user_subject_id = EXCLUDED.user_subject_id,
+         mapped_username = EXCLUDED.mapped_username, metadata = EXCLUDED.metadata,
+         updated_at = now(), version = ${S}.legacy_salesperson_map.version + 1`,
+      [legacyCode, legacyName, subjectId, username, JSON.stringify(row)],
+    );
+    if (subjectId) map.set(legacyCode, subjectId);
+  }
+  for (const row of fallbackSales.rows) {
+    map.set(row.username, row.id);
+    map.set(row.name, row.id);
+  }
+  return map;
 }
 
 async function ensureUom(client: PoolClient, S: string, code: string, name: string) {
@@ -481,9 +686,10 @@ async function importSales(
   rows: Array<Record<string, unknown>>,
   outletId: string,
   uomId: string,
-  salesUserIds: string[],
+  salesMap: Map<string, string>,
 ) {
   let count = 0;
+  const fallbackSalesUserIds = Array.from(new Set(salesMap.values()));
   const groups = new Map<string, Array<Record<string, unknown>>>();
   for (const row of rows) {
     const invoice = text(row.NOFAKTUR);
@@ -500,7 +706,7 @@ async function importSales(
     if (existing) continue;
     const subtotal = lines.reduce((sum, row) => sum + number(row.JUMLAH) * number(row.HARGAJUAL), 0);
     const customerId = await scalar<string>(client, `SELECT id::text FROM ${S}.customer WHERE code = $1 AND deleted_at IS NULL`, [text(first.KODECUST)]);
-    const salesUserId = salesUserIds.length ? salesUserIds[count % salesUserIds.length] : null;
+    const salesUserId = salesMap.get(text(first.KODESALES)) ?? (fallbackSalesUserIds.length ? fallbackSalesUserIds[count % fallbackSalesUserIds.length] : null);
     const inserted = await client.query<{ id: string }>(
       `INSERT INTO ${S}.sales_order (customer_id, outlet_id, order_number, order_date, channel, subtotal, grand_total, status, created_by)
        VALUES ($1::uuid, $2::uuid, $3, COALESCE($4::date, CURRENT_DATE), 'FIELD_SALES', $5, $5, 'CONFIRMED', $6::uuid)
@@ -526,6 +732,249 @@ async function importSales(
   return count;
 }
 
+async function importPurchases(
+  client: PoolClient,
+  S: string,
+  rows: Array<Record<string, unknown>>,
+  warehouseId: string,
+  uomId: string,
+) {
+  let count = 0;
+  const groups = new Map<string, Array<Record<string, unknown>>>();
+  for (const row of rows) {
+    const invoice = text(row.NOFAKTUR);
+    if (!invoice) continue;
+    const key = `${dateOrNull(row.TANGGAL) ?? 'legacy'}:${text(row.KODESUPPL)}:${invoice}`;
+    const group = groups.get(key) ?? [];
+    group.push(row);
+    groups.set(key, group);
+  }
+  for (const [key, lines] of groups) {
+    const first = lines[0];
+    const purchaseOrderNumber = `CMN-PO-${key}`.slice(0, 48);
+    const existing = await scalar<string>(client, `SELECT id::text FROM ${S}.purchase_order WHERE purchase_order_number = $1`, [
+      purchaseOrderNumber,
+    ]);
+    if (existing) continue;
+
+    const supplierId =
+      (await scalar<string>(client, `SELECT id::text FROM ${S}.supplier WHERE code = $1 AND deleted_at IS NULL`, [text(first.KODESUPPL)]))
+      ?? (await ensureUnknownSupplier(client, S));
+    const subtotal = lines.reduce((sum, row) => sum + purchaseLineTotal(row), 0);
+    const purchaseOrder = await client.query<{ id: string }>(
+      `INSERT INTO ${S}.purchase_order
+         (purchase_order_number, supplier_id, warehouse_id, order_date, expected_date, subtotal, grand_total, status, source_type, note)
+       VALUES ($1, $2::uuid, $3::uuid, COALESCE($4::date, CURRENT_DATE), $4::date, $5, $5, 'CLOSED', 'CMN_LEGACY_DBF', 'Diimpor dari BELI.DBF')
+       RETURNING id::text AS id`,
+      [purchaseOrderNumber, supplierId, warehouseId, dateOrNull(first.TANGGAL), subtotal],
+    );
+    const poId = purchaseOrder.rows[0].id;
+    const receipt = await client.query<{ id: string }>(
+      `INSERT INTO ${S}.goods_receipt
+         (receipt_number, purchase_order_id, supplier_id, warehouse_id, arrival_date, receipt_date, status, validation_status, validated_at, note)
+       VALUES ($1, $2::uuid, $3::uuid, $4::uuid, $5::date, COALESCE($5::date, CURRENT_DATE), 'VALIDATED', 'VALIDATED', now(), 'Diimpor dari BELI.DBF')
+       RETURNING id::text AS id`,
+      [`CMN-GR-${key}`.slice(0, 48), poId, supplierId, warehouseId, dateOrNull(first.TANGGAL)],
+    );
+    const grId = receipt.rows[0].id;
+    let lineNo = 1;
+    for (const row of lines) {
+      const productId = await scalar<string>(client, `SELECT id::text FROM ${S}.product WHERE code = $1 AND deleted_at IS NULL`, [text(row.KODEBRG)]);
+      if (!productId) continue;
+      const qty = number(row.JUMLAH);
+      const unitCost = number(row.HARGABELI);
+      const lineTotal = purchaseLineTotal(row);
+      const poLine = await client.query<{ id: string }>(
+        `INSERT INTO ${S}.purchase_order_line
+           (purchase_order_id, product_id, uom_id, line_no, ordered_qty, received_qty, unit_price, discount_amount, line_total)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $5, $6, $7, $8)
+         RETURNING id::text AS id`,
+        [poId, productId, uomId, lineNo, qty, unitCost, legacyDiscountAmount(row), lineTotal],
+      );
+      const lotId = await ensureLot(client, S, productId, text(row.NOBATCH), dateOrNull(row.TGLEXP));
+      await client.query(
+        `INSERT INTO ${S}.goods_receipt_line
+           (goods_receipt_id, purchase_order_line_id, product_id, uom_id, lot_id, line_no, ordered_qty, received_qty, accepted_qty,
+            rejected_qty, unit_cost, batch_number, expiry_date, quality_status)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6, $7, $7, $7, 0, $8, $9, $10::date, 'GOOD')`,
+        [grId, poLine.rows[0].id, productId, uomId, lotId, lineNo, qty, unitCost, text(row.NOBATCH) || null, dateOrNull(row.TGLEXP)],
+      );
+      lineNo += 1;
+    }
+    await client.query(
+      `INSERT INTO ${S}.supplier_invoice
+         (supplier_id, purchase_order_id, invoice_number, invoice_date, due_date, subtotal, grand_total, paid_total, match_status, status)
+       VALUES ($1::uuid, $2::uuid, $3, COALESCE($4::date, CURRENT_DATE), $4::date, $5, $5, 0, 'MATCHED', 'APPROVED')
+       ON CONFLICT (supplier_id, invoice_number)
+       DO UPDATE SET purchase_order_id = EXCLUDED.purchase_order_id, subtotal = EXCLUDED.subtotal,
+         grand_total = EXCLUDED.grand_total, match_status = EXCLUDED.match_status,
+         status = EXCLUDED.status, updated_at = now(), version = ${S}.supplier_invoice.version + 1`,
+      [supplierId, poId, text(first.NOFAKTUR), dateOrNull(first.TANGGAL), subtotal],
+    );
+    count += 1;
+  }
+  return count;
+}
+
+async function importReceivableLedger(
+  client: PoolClient,
+  S: string,
+  sourceFile: string,
+  rows: LegacyRow[],
+  salesMap: Map<string, string>,
+) {
+  let count = 0;
+  for (const row of rows) {
+    const data = row.data;
+    const invoice = text(data.NOFAKTUR);
+    if (!invoice) continue;
+    const customerId = await scalar<string>(client, `SELECT id::text FROM ${S}.customer WHERE code = $1 AND deleted_at IS NULL`, [text(data.KODECUST)]);
+    const salespersonId = salesMap.get(text(data.KODESALES)) ?? null;
+    await client.query(
+      `INSERT INTO ${S}.legacy_receivable_ledger
+         (source_file, legacy_row_number, legacy_invoice_number, customer_id, salesperson_id, transaction_date, due_date, paid_at,
+          amount, payment_note, giro_number, bank_name, giro_date, return_number, metadata)
+       VALUES ($1, $2, $3, $4::uuid, $5::uuid, $6::date, $7::date, $8::date, $9, $10, $11, $12, $13::date, $14, $15::jsonb)
+       ON CONFLICT (source_file, legacy_row_number) DO NOTHING`,
+      [
+        sourceFile,
+        row.rowNumber,
+        invoice,
+        customerId,
+        salespersonId,
+        dateOrNull(data.TANGGAL),
+        dateOrNull(data.JTHTEMPO),
+        dateOrNull(data.TGLBAYAR),
+        number(data.JUMLAH),
+        text(data.KETBAYAR) || null,
+        text(data.NOMERBG) || null,
+        text(data.NAMABANK) || null,
+        dateOrNull(data.TANGGALBG),
+        text(data.NORETUR) || null,
+        JSON.stringify(data),
+      ],
+    );
+    count += 1;
+  }
+  return count;
+}
+
+async function importPayableLedger(client: PoolClient, S: string, rows: LegacyRow[]) {
+  let count = 0;
+  for (const row of rows) {
+    const data = row.data;
+    const invoice = text(data.NOFAKTUR);
+    if (!invoice) continue;
+    const supplierId = await scalar<string>(client, `SELECT id::text FROM ${S}.supplier WHERE code = $1 AND deleted_at IS NULL`, [text(data.KODESUPPL)]);
+    await client.query(
+      `INSERT INTO ${S}.legacy_payable_ledger
+         (source_file, legacy_row_number, legacy_invoice_number, supplier_id, transaction_date, due_date, paid_at,
+          amount, payment_note, giro_number, bank_name, giro_date, metadata)
+       VALUES ('Tran_Hut.DBF', $1, $2, $3::uuid, $4::date, $5::date, $6::date, $7, $8, $9, $10, $11::date, $12::jsonb)
+       ON CONFLICT (source_file, legacy_row_number) DO NOTHING`,
+      [
+        row.rowNumber,
+        invoice,
+        supplierId,
+        dateOrNull(data.TANGGAL),
+        dateOrNull(data.JTHTEMPO),
+        dateOrNull(data.TGLBAYAR),
+        number(data.JUMLAH),
+        text(data.KETBAYAR) || null,
+        text(data.NOMERBG) || null,
+        text(data.NAMABANK) || null,
+        dateOrNull(data.TANGGALBG),
+        JSON.stringify(data),
+      ],
+    );
+    count += 1;
+  }
+  return count;
+}
+
+async function importPriceHistory(
+  client: PoolClient,
+  S: string,
+  sourceFile: string,
+  partyType: 'CUSTOMER' | 'SUPPLIER',
+  rows: LegacyRow[],
+) {
+  let count = 0;
+  for (const row of rows) {
+    const data = row.data;
+    const productId = await scalar<string>(client, `SELECT id::text FROM ${S}.product WHERE code = $1 AND deleted_at IS NULL`, [text(data.KODEBRG)]);
+    const customerId = partyType === 'CUSTOMER'
+      ? await scalar<string>(client, `SELECT id::text FROM ${S}.customer WHERE code = $1 AND deleted_at IS NULL`, [text(data.KODECUST)])
+      : null;
+    const supplierId = partyType === 'SUPPLIER'
+      ? await scalar<string>(client, `SELECT id::text FROM ${S}.supplier WHERE code = $1 AND deleted_at IS NULL`, [text(data.KODESUPPL)])
+      : null;
+    await client.query(
+      `INSERT INTO ${S}.legacy_price_history
+         (source_file, legacy_row_number, party_type, customer_id, supplier_id, product_id, effective_date, price, metadata)
+       VALUES ($1, $2, $3, $4::uuid, $5::uuid, $6::uuid, $7::date, $8, $9::jsonb)
+       ON CONFLICT (source_file, legacy_row_number) DO NOTHING`,
+      [
+        sourceFile,
+        row.rowNumber,
+        partyType,
+        customerId,
+        supplierId,
+        productId,
+        dateOrNull(data.TANGGAL),
+        partyType === 'CUSTOMER' ? number(data.HARGAJUAL) : number(data.HARGABELI),
+        JSON.stringify(data),
+      ],
+    );
+    count += 1;
+  }
+  return count;
+}
+
+async function importStockOpname(client: PoolClient, S: string, rows: LegacyRow[]) {
+  let count = 0;
+  for (const row of rows) {
+    const data = row.data;
+    const productId = await scalar<string>(client, `SELECT id::text FROM ${S}.product WHERE code = $1 AND deleted_at IS NULL`, [text(data.KODEBRG)]);
+    const systemQty = number(data.STOKKOMP);
+    const physicalQty = number(data.STOKFISIK);
+    await client.query(
+      `INSERT INTO ${S}.legacy_stock_opname
+         (source_file, legacy_row_number, product_id, opname_date, system_qty, physical_qty, unit_cost, variance_qty, metadata)
+       VALUES ('dataopn.dbf', $1, $2::uuid, $3::date, $4, $5, $6, $7, $8::jsonb)
+       ON CONFLICT (source_file, legacy_row_number) DO NOTHING`,
+      [row.rowNumber, productId, dateOrNull(data.TANGGAL), systemQty, physicalQty, number(data.HARGABELI), physicalQty - systemQty, JSON.stringify(data)],
+    );
+    count += 1;
+  }
+  return count;
+}
+
+async function importAccounts(client: PoolClient, S: string, rows: Array<Record<string, unknown>>) {
+  let count = 0;
+  const typeId = await ensureAccountType(client, S);
+  for (const row of rows) {
+    const code = text(row.KODEPERK);
+    const name = text(row.KETERANGAN) || code;
+    if (!code || !name) continue;
+    await client.query(
+      `INSERT INTO ${S}.chart_of_account (account_type_id, code, name, normal_balance, metadata)
+       VALUES ($1::uuid, $2, $3, 'DEBIT', $4::jsonb)
+       ON CONFLICT (code) WHERE deleted_at IS NULL
+       DO UPDATE SET name = EXCLUDED.name, metadata = EXCLUDED.metadata, updated_at = now(), version = ${S}.chart_of_account.version + 1`,
+      [typeId, code, name, JSON.stringify(row)],
+    );
+    count += 1;
+  }
+  return count;
+}
+
+async function importJournalRows(client: PoolClient, S: string, rows: Array<Record<string, unknown>>) {
+  // JOURNAL.DBF pada dump CMN saat ini kosong; bila kelak terisi, raw vault sudah
+  // menyimpan seluruh barisnya dan marker ini membuat laporan impor tetap jujur.
+  return rows.length;
+}
+
 async function scalar<T = string>(client: PoolClient, sql: string, params: unknown[] = []): Promise<T | null> {
   const result = await client.query(sql, params);
   return (result.rows[0] ? Object.values(result.rows[0])[0] : null) as T | null;
@@ -538,6 +987,73 @@ function text(value: unknown): string {
 function number(value: unknown): number {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function purchaseLineTotal(row: Record<string, unknown>): number {
+  const gross = number(row.JUMLAH) * number(row.HARGABELI);
+  return Math.max(0, gross - legacyDiscountAmount(row));
+}
+
+function legacyDiscountAmount(row: Record<string, unknown>): number {
+  const gross = number(row.JUMLAH) * number(row.HARGABELI);
+  const d1 = number(row.DISCOUNT);
+  const d2 = number(row.DISCOUNT2);
+  const afterD1 = d1 > 0 && d1 <= 100 ? gross * (1 - d1 / 100) : gross - d1;
+  const afterD2 = d2 > 0 && d2 <= 100 ? afterD1 * (1 - d2 / 100) : afterD1 - d2;
+  return Math.max(0, gross - Math.max(0, afterD2));
+}
+
+async function ensureLot(client: PoolClient, S: string, productId: string, lotNumber: string, expiryDate: string | null): Promise<string | null> {
+  if (!lotNumber) return null;
+  const existing = await scalar<string>(
+    client,
+    `SELECT id::text FROM ${S}.inventory_lot WHERE product_id = $1::uuid AND lot_number = $2 AND deleted_at IS NULL`,
+    [productId, lotNumber],
+  );
+  if (existing) return existing;
+  const inserted = await client.query<{ id: string }>(
+    `INSERT INTO ${S}.inventory_lot (product_id, code, name, lot_number, expiry_date)
+     VALUES ($1::uuid, $2, $2, $2, $3::date)
+     ON CONFLICT (product_id, lot_number) WHERE deleted_at IS NULL
+     DO UPDATE SET expiry_date = EXCLUDED.expiry_date, updated_at = now(), version = ${S}.inventory_lot.version + 1
+     RETURNING id::text AS id`,
+    [productId, lotNumber, expiryDate],
+  );
+  return inserted.rows[0].id;
+}
+
+async function ensureUnknownSupplier(client: PoolClient, S: string): Promise<string> {
+  await upsertSupplier(client, S, 'UNKNOWN', 'Supplier Tidak Teridentifikasi', { source: 'CMN_LEGACY_IMPORT', reason: 'Legacy row has no matching supplier code.' });
+  const id = await scalar<string>(client, `SELECT id::text FROM ${S}.supplier WHERE code = 'UNKNOWN' AND deleted_at IS NULL`);
+  if (!id) throw new Error('Supplier UNKNOWN gagal dibuat.');
+  return id;
+}
+
+async function ensureAccountType(client: PoolClient, S: string): Promise<string> {
+  const existing = await scalar<string>(client, `SELECT id::text FROM ${S}.account_type WHERE code = 'LEGACY' AND deleted_at IS NULL`);
+  if (existing) return existing;
+  const inserted = await client.query<{ id: string }>(
+    `INSERT INTO ${S}.account_type (code, name, normal_balance, category, is_system)
+     VALUES ('LEGACY', 'Legacy Account', 'DEBIT', 'ASSET', FALSE)
+     RETURNING id::text AS id`,
+  );
+  return inserted.rows[0].id;
+}
+
+function legacyKey(fileName: string, row: Record<string, unknown>): string {
+  const file = fileName.toUpperCase();
+  if (file.includes('JUAL') || file.includes('BELI') || file.includes('TRAN_')) return [text(row.TANGGAL), text(row.NOFAKTUR), text(row.KODEBRG), text(row.KODECUST), text(row.KODESUPPL)].filter(Boolean).join(':');
+  if (file.includes('STOK') || file.includes('BATCH')) return [text(row.KODEBRG), text(row.NOBATCH)].filter(Boolean).join(':');
+  if (file.includes('CUSTOMER')) return text(row.KODECUST);
+  if (file.includes('SUPPLIER')) return text(row.KODESUPPL);
+  if (file.includes('SALES')) return text(row.KODESALES);
+  return createHash('sha1').update(JSON.stringify(row)).digest('hex');
+}
+
+function chunks<T>(rows: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) result.push(rows.slice(i, i + size));
+  return result;
 }
 
 function dateOrNull(value: unknown): string | null {
