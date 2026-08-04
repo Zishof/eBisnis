@@ -158,6 +158,15 @@ export class TenantMigrationService {
     `);
   }
 
+  private async prepareHealthDeviceMaintenanceReleasePrerequisites(schemaName: string): Promise<void> {
+    const schema = `"${schemaName}"`;
+    await this.tenantDb.executeAdmin(`
+      INSERT INTO ${schema}.permission_action (code, name, name_key, is_system)
+      VALUES ('RELEASE', 'Lepas Reservasi', 'action.release', TRUE)
+      ON CONFLICT DO NOTHING;
+    `);
+  }
+
   private async hasTenantTable(schemaName: string, tableName: string): Promise<boolean> {
     const rows = await this.tenantDb.queryAdmin<{ exists: boolean }>(
       `SELECT EXISTS (
@@ -368,6 +377,9 @@ export class TenantMigrationService {
       }
 
       try {
+        if (definition.version === 'H037') {
+          await this.prepareHealthDeviceMaintenanceReleasePrerequisites(schemaName);
+        }
         if (definition.version === 'V043') {
           await this.preparePosPharmacyMenuPrerequisites(schemaName);
         }
