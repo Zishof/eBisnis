@@ -22,7 +22,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { ExternalLink, GraduationCap, Mail, MapPin, Newspaper, Phone } from 'lucide-react';
+import { ArrowRight, BookOpen, Building2, CheckCircle2, ExternalLink, GraduationCap, Mail, MapPin, Newspaper, Phone } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
 import { usePondokFavicon } from './use-pondok-favicon';
 import { usePondokSeo } from './use-pondok-seo';
@@ -193,9 +193,10 @@ export function SitusPondokPage() {
 
   const { profil, berita, unitPendidikan } = data;
   const tema = temaDari(profil.theme_code);
+  const beritaUtama = berita.slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950">
       {/* --- Hero -------------------------------------------------------- */}
       <header className={`relative overflow-hidden bg-gradient-to-br ${tema.grad} text-white`}>
         {profil.hero_image_url ? (
@@ -224,62 +225,87 @@ export function SitusPondokPage() {
             {profil.hero_image_attribution}
           </p>
         )}
-        <div className="container-page relative py-16 sm:py-24">
-          <p className="text-sm font-medium uppercase tracking-widest text-white/70">
-            Bismillahirrahmanirrahim
-          </p>
-          <div className="mt-4 flex items-center gap-4">
-            {profil.logo_url && (
-              <img src={profil.logo_url} alt="" className={`h-16 w-16 rounded-full ring-4 ${tema.ring}`} />
-            )}
-            <div>
-              <h1 className="text-3xl font-bold sm:text-4xl">Pondok Pesantren {profil.nama_tampilan}</h1>
-              {profil.tagline && <p className="mt-2 max-w-2xl text-lg text-white/90">{profil.tagline}</p>}
+        <div className="container-page relative grid gap-10 py-16 sm:py-20 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-widest text-white/70">
+              Bismillahirrahmanirrahim
+            </p>
+            <div className="mt-4 flex items-center gap-4">
+              {profil.logo_url && (
+                <img src={profil.logo_url} alt="" className={`h-16 w-16 rounded-2xl bg-white/95 p-1 ring-4 ${tema.ring}`} />
+              )}
+              <div>
+                <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-5xl">Pondok Pesantren {profil.nama_tampilan}</h1>
+                {profil.tagline && <p className="mt-3 max-w-2xl text-lg leading-8 text-white/90">{profil.tagline}</p>}
+              </div>
+            </div>
+            <div className="mt-8 flex flex-wrap gap-3 text-sm">
+              {profil.tahun_berdiri && (
+                <span className="rounded-full bg-white/15 px-4 py-1.5 backdrop-blur">
+                  Berdiri sejak {profil.tahun_berdiri}
+                </span>
+              )}
+              {profil.afiliasi && (
+                <span className="rounded-full bg-white/15 px-4 py-1.5 backdrop-blur">{profil.afiliasi}</span>
+              )}
+              {profil.pengasuh && (
+                <span className="rounded-full bg-white/15 px-4 py-1.5 backdrop-blur">
+                  Pengasuh: {profil.pengasuh}
+                </span>
+              )}
+            </div>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                to="/santri/pondok/psb"
+                className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50"
+              >
+                Penerimaan Santri Baru
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+              <Link
+                to="/santri/masuk"
+                className="rounded-lg border border-white/50 px-5 py-3 font-semibold text-white hover:bg-white/10"
+              >
+                Masuk Sistem Informasi Santri
+              </Link>
+              {profil.instagram_url && (
+                <a
+                  href={profil.instagram_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg border border-white/40 px-5 py-3 font-semibold text-white hover:bg-white/10"
+                >
+                  Instagram
+                </a>
+              )}
             </div>
           </div>
-          <div className="mt-8 flex flex-wrap gap-3 text-sm">
-            {profil.tahun_berdiri && (
-              <span className="rounded-full bg-white/15 px-4 py-1.5 backdrop-blur">
-                Berdiri sejak {profil.tahun_berdiri}
-              </span>
-            )}
-            {profil.afiliasi && (
-              <span className="rounded-full bg-white/15 px-4 py-1.5 backdrop-blur">{profil.afiliasi}</span>
-            )}
-            {profil.pengasuh && (
-              <span className="rounded-full bg-white/15 px-4 py-1.5 backdrop-blur">
-                Pengasuh: {profil.pengasuh}
-              </span>
-            )}
-          </div>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              to="/santri/masuk"
-              className={`rounded-lg px-5 py-2.5 font-semibold text-white ${tema.tombol}`}
-            >
-              Masuk Sistem Informasi Santri
-            </Link>
-            <Link
-              to="/santri/pondok/psb"
-              className="rounded-lg border border-white/50 px-5 py-2.5 font-semibold text-white hover:bg-white/10"
-            >
-              Penerimaan Santri Baru
-            </Link>
-            {profil.instagram_url && (
-              <a
-                href={profil.instagram_url}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-lg border border-white/40 px-5 py-2.5 font-semibold text-white hover:bg-white/10"
-              >
-                Instagram
-              </a>
-            )}
+          <div className="rounded-3xl border border-white/20 bg-white/12 p-3 shadow-2xl backdrop-blur">
+            <div className="grid gap-3">
+              <div className="h-56 overflow-hidden rounded-2xl bg-white/10">
+                {profil.hero_image_url ? (
+                  <img src={profil.hero_image_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <VisualPendidikan className="h-full w-full text-white/80" />
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <HeroMini icon={<BookOpen className="h-5 w-5" aria-hidden />} label="Ngaji" />
+                <HeroMini icon={<GraduationCap className="h-5 w-5" aria-hidden />} label="Sekolah" />
+                <HeroMini icon={<Building2 className="h-5 w-5" aria-hidden />} label="Asrama" />
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="container-page space-y-16 py-14">
+        <section className="-mt-24 grid gap-4 sm:grid-cols-3">
+          <HighlightCard icon={<CheckCircle2 className="h-5 w-5" aria-hidden />} label="Profil Pondok" value={profil.is_published ? 'Situs aktif' : 'Draft'} />
+          <HighlightCard icon={<GraduationCap className="h-5 w-5" aria-hidden />} label="Unit Pendidikan" value={`${unitPendidikan.length} unit`} />
+          <HighlightCard icon={<Newspaper className="h-5 w-5" aria-hidden />} label="Kabar Pondok" value={`${berita.length} berita`} />
+        </section>
+
         {/* --- Muqodimah ----------------------------------------------------- */}
         {profil.muqodimah_html && (
           <section
@@ -342,21 +368,30 @@ export function SitusPondokPage() {
                 const target = urlUnitPendidikan(u);
                 const isi = (
                   <>
-                    <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${tema.badge}`}>
-                      <GraduationCap className="h-5 w-5" aria-hidden />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-900 dark:text-white">{u.name}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {LABEL_JENIS_UNIT[u.jenis] ?? u.jenis}
-                      </p>
-                      {target && <p className="mt-1 break-all text-xs text-slate-400">{target.label}</p>}
+                    <div className="h-24 overflow-hidden rounded-t-xl bg-emerald-50 dark:bg-slate-900">
+                      {profil.hero_image_url ? (
+                        <img src={profil.hero_image_url} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                      ) : (
+                        <VisualPendidikan className="h-full w-full text-emerald-700/80 dark:text-emerald-300/70" />
+                      )}
                     </div>
-                    {target && <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-slate-300" aria-hidden />}
+                    <div className="flex items-start gap-3 p-4">
+                      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${tema.badge}`}>
+                        <GraduationCap className="h-5 w-5" aria-hidden />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-900 dark:text-white">{u.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {LABEL_JENIS_UNIT[u.jenis] ?? u.jenis}
+                        </p>
+                        {target && <p className="mt-1 break-all text-xs text-slate-400">{target.label}</p>}
+                      </div>
+                      {target && <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-slate-300" aria-hidden />}
+                    </div>
                   </>
                 );
                 const kelas =
-                  'flex items-start gap-3 rounded-xl border border-slate-200 p-4 transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-sm dark:border-slate-800 dark:hover:border-emerald-500';
+                  'group overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-500';
                 if (!target) {
                   return (
                     <div key={u.code} className={`${kelas} opacity-70`}>
@@ -394,7 +429,13 @@ export function SitusPondokPage() {
                   key={b.id}
                   className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800"
                 >
-                  {b.gambar_url && <img src={b.gambar_url} alt="" className="h-36 w-full object-cover" />}
+                  <div className="h-40 overflow-hidden bg-emerald-50 dark:bg-slate-900">
+                    {b.gambar_url ? (
+                      <img src={b.gambar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <VisualPendidikan className="h-full w-full text-emerald-700/70 dark:text-emerald-300/70" />
+                    )}
+                  </div>
                   <div className="p-4">
                     {b.tanggal_terbit && (
                       <p className="text-xs text-slate-400">
@@ -434,7 +475,15 @@ export function SitusPondokPage() {
         )}
 
         {/* --- Kontak ---------------------------------------------------------- */}
-        <section className="rounded-2xl border border-slate-200 p-8 dark:border-slate-800">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          {(profil.hero_image_url || beritaUtama.length > 0) && (
+            <div className="grid gap-1 bg-slate-100 p-1 sm:grid-cols-3 dark:bg-slate-950">
+              {[profil.hero_image_url, ...beritaUtama.map((b) => b.gambar_url)].filter(Boolean).slice(0, 3).map((url, index) => (
+                <img key={`${url}-${index}`} src={url as string} alt="" className="h-32 w-full object-cover" />
+              ))}
+            </div>
+          )}
+          <div className="p-8">
           <h2 className={`text-xl font-bold ${tema.aksen}`}>Hubungi Kami</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {profil.alamat_publik && (
@@ -464,6 +513,7 @@ export function SitusPondokPage() {
               loading="lazy"
             />
           )}
+          </div>
         </section>
 
         <footer className="border-t border-slate-200 pt-8 text-center text-sm text-slate-400 dark:border-slate-800">
@@ -558,6 +608,43 @@ function IlustrasiHeroSantri() {
         <rect x="-24" y="24" width="48" height="14" rx="2" />
         <line x1="0" y1="24" x2="0" y2="38" stroke="currentColor" strokeWidth="1.8" />
       </g>
+    </svg>
+  );
+}
+
+function HeroMini({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="rounded-xl bg-white/14 p-3 text-center backdrop-blur">
+      <span className="mx-auto grid h-9 w-9 place-items-center rounded-lg bg-white/20">{icon}</span>
+      <p className="mt-2 text-xs font-semibold text-white/90">{label}</p>
+    </div>
+  );
+}
+
+function HighlightCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+        {icon}
+      </span>
+      <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{value}</p>
+    </div>
+  );
+}
+
+function VisualPendidikan({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true">
+      <rect width="640" height="360" fill="currentColor" opacity="0.08" />
+      <circle cx="500" cy="86" r="84" fill="currentColor" opacity="0.12" />
+      <path d="M48 272c74-58 142-80 204-64 88 23 132 102 240 58 52-21 86-59 100-82v176H48v-88Z" fill="currentColor" opacity="0.18" />
+      <rect x="96" y="116" width="164" height="122" rx="14" fill="white" opacity="0.9" />
+      <path d="M116 142h124M116 170h96M116 198h112" stroke="currentColor" strokeWidth="10" strokeLinecap="round" opacity="0.35" />
+      <path d="M336 132 456 84l120 48-120 48-120-48Z" fill="white" opacity="0.94" />
+      <path d="M384 166v54c0 20 32 36 72 36s72-16 72-36v-54" stroke="white" strokeWidth="18" strokeLinecap="round" opacity="0.94" />
+      <path d="M456 180v70" stroke="currentColor" strokeWidth="10" strokeLinecap="round" opacity="0.45" />
+      <circle cx="456" cy="266" r="12" fill="white" opacity="0.94" />
     </svg>
   );
 }
