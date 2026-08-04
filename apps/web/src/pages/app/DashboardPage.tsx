@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Boxes, ClipboardList, Megaphone, PackageCheck, TrendingUp } from 'lucide-react';
-import { api, formatNumber } from '../../lib/api';
+import { AlertTriangle, Boxes, ClipboardList, Megaphone, PackageCheck, ReceiptText, TrendingUp, UsersRound } from 'lucide-react';
+import { api, formatMoney, formatNumber } from '../../lib/api';
 import { PageHeader, StatusBadge, LoadingState, Code } from '../../components/ui';
 import { useAuth } from '../../app/auth-context';
 
@@ -28,6 +28,35 @@ interface SeedReport {
   failingResources: number;
 }
 
+interface SalesInventoryDashboard {
+  summary: {
+    products?: number;
+    customers?: number;
+    suppliers?: number;
+    orders_today?: number;
+    revenue_today?: string;
+    orders_month?: number;
+    revenue_month?: string;
+    on_hand_qty?: string;
+    available_qty?: string;
+    expired_lots?: number;
+    expiring_lots?: number;
+  };
+  topSales: Array<{ sales_name: string; orders: number; revenue: string }>;
+  topProducts: Array<{ product_code: string; product_name: string; qty: string; revenue: string }>;
+  topCustomers: Array<{ customer_name: string; orders: number; revenue: string }>;
+  expiringLots: Array<{ product_code: string; product_name: string; lot_number: string; expiry_date: string }>;
+  recentOrders: Array<{
+    id: string;
+    order_number: string;
+    order_date: string;
+    status: string;
+    grand_total: string;
+    customer_name: string;
+    sales_name: string;
+  }>;
+}
+
 export function DashboardPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -47,6 +76,11 @@ export function DashboardPage() {
   const receipts = useQuery({
     queryKey: ['receipts-summary'],
     queryFn: () => api.get<Array<Record<string, unknown>>>('/goods-receipts?pageSize=5'),
+  });
+  const salesDashboard = useQuery({
+    queryKey: ['inventory-sales-dashboard'],
+    queryFn: () => api.get<SalesInventoryDashboard>('/inventory/sales-dashboard'),
+    retry: false,
   });
   const seed = useQuery({
     queryKey: ['seed-verify-summary'],
@@ -81,6 +115,30 @@ export function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
+          icon={<ReceiptText className="h-5 w-5" aria-hidden />}
+          label="Omzet hari ini"
+          value={salesDashboard.data ? formatMoney(salesDashboard.data.summary.revenue_today) : '—'}
+          href="/app/sales/reports"
+        />
+        <StatCard
+          icon={<TrendingUp className="h-5 w-5" aria-hidden />}
+          label="Omzet bulan ini"
+          value={salesDashboard.data ? formatMoney(salesDashboard.data.summary.revenue_month) : '—'}
+          href="/app/sales/reports"
+        />
+        <StatCard
+          icon={<ClipboardList className="h-5 w-5" aria-hidden />}
+          label="Order bulan ini"
+          value={salesDashboard.data ? formatNumber(salesDashboard.data.summary.orders_month) : '—'}
+          href="/app/sales/orders"
+        />
+        <StatCard
+          icon={<UsersRound className="h-5 w-5" aria-hidden />}
+          label="Pelanggan"
+          value={salesDashboard.data ? formatNumber(salesDashboard.data.summary.customers) : '—'}
+          href="/app/customers"
+        />
+        <StatCard
           icon={<Boxes className="h-5 w-5" aria-hidden />}
           label={t('inventory.onHand')}
           value={tree.data ? formatNumber(tree.data.totals.onHand) : '—'}
@@ -109,6 +167,96 @@ export function DashboardPage() {
           href="/app/portal-pelanggan"
         />
       </div>
+
+      {salesDashboard.data && (
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <section className="card p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
+                <TrendingUp className="h-4 w-4" aria-hidden />
+                Performa Sales Bulan Ini
+              </h2>
+              <Link to="/app/sales/reports" className="text-sm font-semibold text-brand-700 dark:text-brand-300">
+                Laporan
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {salesDashboard.data.topSales.map((row) => (
+                <ProgressRow
+                  key={row.sales_name}
+                  label={row.sales_name}
+                  note={`${formatNumber(row.orders)} order`}
+                  value={formatMoney(row.revenue)}
+                  max={Math.max(...salesDashboard.data.topSales.map((s) => Number(s.revenue) || 0), 1)}
+                  current={Number(row.revenue) || 0}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="card p-5">
+            <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
+              <AlertTriangle className="h-4 w-4" aria-hidden />
+              Risiko Batch & Expiry
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MiniMetric label="Batch kadaluarsa" value={formatNumber(salesDashboard.data.summary.expired_lots)} tone="danger" />
+              <MiniMetric label="Akan expired 90 hari" value={formatNumber(salesDashboard.data.summary.expiring_lots)} tone="warning" />
+            </div>
+            <ul className="mt-4 space-y-2">
+              {salesDashboard.data.expiringLots.slice(0, 6).map((lot) => (
+                <li key={`${lot.product_code}-${lot.lot_number}`} className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium">{lot.product_name}</span>
+                    <Code>{lot.lot_number}</Code>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {lot.product_code} - ED {lot.expiry_date}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="card p-5">
+            <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
+              <PackageCheck className="h-4 w-4" aria-hidden />
+              Produk Terlaris
+            </h2>
+            <div className="space-y-3">
+              {salesDashboard.data.topProducts.slice(0, 8).map((row) => (
+                <ProgressRow
+                  key={row.product_code}
+                  label={row.product_name}
+                  note={`${row.product_code} - ${formatNumber(row.qty)} qty`}
+                  value={formatMoney(row.revenue)}
+                  max={Math.max(...salesDashboard.data.topProducts.map((p) => Number(p.revenue) || 0), 1)}
+                  current={Number(row.revenue) || 0}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="card p-5">
+            <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
+              <UsersRound className="h-4 w-4" aria-hidden />
+              Pelanggan Terbesar
+            </h2>
+            <div className="space-y-3">
+              {salesDashboard.data.topCustomers.slice(0, 8).map((row) => (
+                <ProgressRow
+                  key={row.customer_name}
+                  label={row.customer_name}
+                  note={`${formatNumber(row.orders)} order`}
+                  value={formatMoney(row.revenue)}
+                  max={Math.max(...salesDashboard.data.topCustomers.map((c) => Number(c.revenue) || 0), 1)}
+                  current={Number(row.revenue) || 0}
+                />
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <section className="card p-5">
@@ -167,6 +315,49 @@ export function DashboardPage() {
         </section>
       </div>
     </>
+  );
+}
+
+function ProgressRow({
+  label,
+  note,
+  value,
+  current,
+  max,
+}: {
+  label: string;
+  note: string;
+  value: string;
+  current: number;
+  max: number;
+}) {
+  const width = max > 0 ? Math.max(4, Math.min(100, (current / max) * 100)) : 0;
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-3 text-sm">
+        <div className="min-w-0">
+          <p className="truncate font-medium text-slate-900 dark:text-white">{label}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{note}</p>
+        </div>
+        <span className="shrink-0 font-semibold">{value}</span>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div className="h-full rounded-full bg-brand-600" style={{ width: `${width}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function MiniMetric({ label, value, tone }: { label: string; value: string; tone: 'warning' | 'danger' }) {
+  const toneClass =
+    tone === 'danger'
+      ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200'
+      : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200';
+  return (
+    <div className={`rounded-lg border p-3 ${toneClass}`}>
+      <p className="text-xs font-medium">{label}</p>
+      <p className="mt-1 text-2xl font-bold">{value}</p>
+    </div>
   );
 }
 

@@ -314,7 +314,17 @@ async function importLegacyDataIfPresent(
     }
 
     const lotCount = await importLots(client, S, batch);
-    const salesOrders = outletId ? await importSales(client, S, sales, outletId, uomId) : 0;
+    const salesUsers = await client.query<{ id: string }>(
+      `SELECT us.id::text AS id
+         FROM ${S}.user_subject us
+         JOIN ${S}.user_role_assignment ura ON ura.user_subject_id = us.id
+         JOIN ${S}.role r ON r.id = ura.role_id
+        WHERE r.code = 'SALES' AND us.deleted_at IS NULL
+        ORDER BY us.name`,
+    );
+    const salesOrders = outletId
+      ? await importSales(client, S, sales, outletId, uomId, salesUsers.rows.map((row) => row.id))
+      : 0;
 
     return { productCount, customerCount, supplierCount, lotCount, salesOrders };
   });
@@ -460,7 +470,14 @@ async function importLots(client: PoolClient, S: string, rows: Array<Record<stri
   return count;
 }
 
-async function importSales(client: PoolClient, S: string, rows: Array<Record<string, unknown>>, outletId: string, uomId: string) {
+async function importSales(
+  client: PoolClient,
+  S: string,
+  rows: Array<Record<string, unknown>>,
+  outletId: string,
+  uomId: string,
+  salesUserIds: string[],
+) {
   let count = 0;
   const groups = new Map<string, Array<Record<string, unknown>>>();
   for (const row of rows) {
@@ -478,11 +495,12 @@ async function importSales(client: PoolClient, S: string, rows: Array<Record<str
     if (existing) continue;
     const subtotal = lines.reduce((sum, row) => sum + number(row.JUMLAH) * number(row.HARGAJUAL), 0);
     const customerId = await scalar<string>(client, `SELECT id::text FROM ${S}.customer WHERE code = $1 AND deleted_at IS NULL`, [text(first.KODECUST)]);
+    const salesUserId = salesUserIds.length ? salesUserIds[count % salesUserIds.length] : null;
     const inserted = await client.query<{ id: string }>(
-      `INSERT INTO ${S}.sales_order (customer_id, outlet_id, order_number, order_date, channel, subtotal, grand_total, status)
-       VALUES ($1::uuid, $2::uuid, $3, COALESCE($4::date, CURRENT_DATE), 'FIELD_SALES', $5, $5, 'CONFIRMED')
+      `INSERT INTO ${S}.sales_order (customer_id, outlet_id, order_number, order_date, channel, subtotal, grand_total, status, created_by)
+       VALUES ($1::uuid, $2::uuid, $3, COALESCE($4::date, CURRENT_DATE), 'FIELD_SALES', $5, $5, 'CONFIRMED', $6::uuid)
        RETURNING id::text AS id`,
-      [customerId, outletId, orderNumber, dateOrNull(first.TANGGAL), subtotal],
+      [customerId, outletId, orderNumber, dateOrNull(first.TANGGAL), subtotal, salesUserId],
     );
     let lineNo = 1;
     for (const row of lines) {
