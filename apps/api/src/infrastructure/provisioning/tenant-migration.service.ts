@@ -134,6 +134,30 @@ export class TenantMigrationService {
     return entry;
   }
 
+  private async preparePosPharmacyMenuPrerequisites(schemaName: string): Promise<void> {
+    const schema = `"${schemaName}"`;
+    await this.tenantDb.executeAdmin(`
+      INSERT INTO ${schema}.menu
+        (code, parent_id, name, translation_key, route, icon, module_code,
+         platform_target, path, level, is_coming_soon, is_system, sort_order)
+      VALUES
+        ('POS', NULL, 'Kasir / POS', 'menu.pos', '/app/pos', 'shopping-cart',
+         'POS', 'WEB', '/POS', 0, FALSE, TRUE, 1)
+      ON CONFLICT DO NOTHING;
+
+      INSERT INTO ${schema}.permission_action (code, name, name_key, is_system)
+      SELECT action_code, initcap(replace(action_code, '_', ' ')), 'permission.' || lower(action_code), TRUE
+        FROM unnest(ARRAY[
+          'READ', 'CREATE', 'UPDATE', 'DELETE', 'PRINT',
+          'SELL', 'HOLD', 'RESUME',
+          'DISCOUNT_LINE', 'DISCOUNT_CART', 'PRICE_OVERRIDE',
+          'APPROVE', 'REJECT',
+          'VIEW_AMOUNT', 'VIEW_COST'
+        ]) AS action_code
+      ON CONFLICT DO NOTHING;
+    `);
+  }
+
   /** Sinkronkan katalog canonical ke platform.schema_migration_catalog. */
   async syncCatalog(): Promise<void> {
     for (const definition of this.getManifest().migrations) {
@@ -236,6 +260,9 @@ export class TenantMigrationService {
 
       const startedAt = Date.now();
       try {
+        if (definition.version === 'V043') {
+          await this.preparePosPharmacyMenuPrerequisites(schemaName);
+        }
         await this.tenantDb.executeAdmin(rendered);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

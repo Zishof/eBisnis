@@ -66,7 +66,7 @@ async function main(): Promise<void> {
     }
 
     const registry = await ctx.prisma.tenantSchemaRegistry.findUnique({ where: { tenantId: tenant.id } });
-    if (registry?.status === 'READY') {
+    if (registry) {
       await ctx.provisioner.migrateTenant(tenant.id);
       await ctx.masterSeed.seedTenant(registry.schemaName, { includeExamples: false });
       await ctx.bootstrap.seedOrganization(registry.schemaName, {
@@ -74,7 +74,11 @@ async function main(): Promise<void> {
         businessType: 'Distribusi dan sales obat',
         contactPerson: 'Muklis',
       });
-      process.stdout.write(`Schema ${registry.schemaName} sudah READY; migration dan seed dasar disinkronkan.\n`);
+      await ctx.prisma.tenant.update({
+        where: { id: tenant.id },
+        data: { status: 'ACTIVE', activatedAt: new Date() },
+      });
+      process.stdout.write(`Schema ${registry.schemaName} ditemukan; migration dan seed dasar disinkronkan.\n`);
     } else {
       await ctx.provisioner.provision({
         tenantId: tenant.id,
