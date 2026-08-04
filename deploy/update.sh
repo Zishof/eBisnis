@@ -356,9 +356,44 @@ POS_UPDATE_DIR=/opt/ebisnis/updates/pos
 install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$POS_UPDATE_DIR"
 
 # Asset POS/Inventory Flutter boleh hidup publik di server, sementara repository
-# tetap private. Bila token server tersedia, tarik asset dari GitHub Release
-# private ke folder publik ini. Token TIDAK pernah dikirim ke klien; klien hanya
-# membaca https://ebisnis.id/update/...
+# tetap private. Artefak yang ikut dalam repository private disalin dulu ke
+# folder publik update, supaya server yang belum punya token GitHub Release pun
+# tetap dapat melayani /update/ebisnis-inventory-sales.apk dan .exe.
+LOCAL_INVENTORY_RELEASE_DIR="$APP_DIR/artifacts/inventory-release"
+if [[ -d "$LOCAL_INVENTORY_RELEASE_DIR" ]]; then
+  shopt -s nullglob
+  for asset in "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales-*.apk \
+               "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales-*-windows.exe \
+               "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales-*-windows.zip \
+               "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales.apk; do
+    install -m 644 -o "$APP_USER" -g "$APP_USER" "$asset" "$POS_UPDATE_DIR/$(basename "$asset")"
+  done
+
+  latest_inventory_apk=$(
+    find "$LOCAL_INVENTORY_RELEASE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*.apk' \
+      | sort -V \
+      | tail -1
+  )
+  if [[ -n "$latest_inventory_apk" ]]; then
+    install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_apk" \
+      "$POS_UPDATE_DIR/ebisnis-inventory-sales.apk"
+  fi
+
+  latest_inventory_exe=$(
+    find "$LOCAL_INVENTORY_RELEASE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*-windows.exe' \
+      | sort -V \
+      | tail -1
+  )
+  if [[ -n "$latest_inventory_exe" ]]; then
+    install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_exe" \
+      "$POS_UPDATE_DIR/ebisnis-inventory-sales.exe"
+  fi
+  shopt -u nullglob
+fi
+
+# Bila token server tersedia, tarik juga asset dari GitHub Release private ke
+# folder publik ini. Token TIDAK pernah dikirim ke klien; klien hanya membaca
+# https://ebisnis.id/update/...
 POS_RELEASE_TOKEN=$(
   { grep -E '^(POS_RELEASE_GITHUB_TOKEN|GITHUB_TOKEN)=' "$ENV_FILE" || true; } \
     | head -1 \
