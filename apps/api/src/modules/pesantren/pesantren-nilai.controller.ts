@@ -98,6 +98,13 @@ export class PesantrenNilaiController {
   constructor(private readonly nilai: PesantrenNilaiService) {}
 
   @Permissions('EPESANTREN_NILAI.READ')
+  @Get('tahun-ajaran')
+  @ApiOperation({ summary: 'Daftar tahun ajaran untuk input nilai dan rapor' })
+  daftarTahunAjaran(@CurrentUser() user: AuthenticatedUser) {
+    return this.nilai.daftarTahunAjaran(schemaWajib(user));
+  }
+
+  @Permissions('EPESANTREN_NILAI.READ')
   @Get('mata-pelajaran')
   @ApiOperation({ summary: 'Daftar mata pelajaran' })
   daftarMataPelajaran(@CurrentUser() user: AuthenticatedUser) {
