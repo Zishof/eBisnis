@@ -34,6 +34,27 @@ const proof = [
   'Responsive untuk calon tenant di desktop maupun mobile',
 ];
 
+const inventoryBestSellers = [
+  'Bodrex',
+  'Bodrex Extra',
+  'Bodrex Flu-B',
+  'Paramex',
+  'Konidin',
+  'Mixagrip',
+  'Decolgen',
+  'Promag',
+  'Antimo',
+  'Antangin Cair',
+  'Komix OBH',
+  'Tolak Angin',
+  'Laserin Madu',
+  'Salonpas',
+  'Betadine',
+  'Oskadon SP',
+  'Panadol Merah',
+  'Vegeta Herbal',
+];
+
 export function BusinessVerticalPage() {
   const params = useParams();
   const fallbackVertical = businessVerticalByCode('toko');
@@ -60,6 +81,7 @@ export function BusinessVerticalPage() {
     ? `${tenantName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${vertical.tenantSuffix}.ebisnis.id`
     : `demo-${vertical.tenantSuffix}.ebisnis.id`;
   const related = ALL_BUSINESS_VERTICALS.filter((item) => item.code !== vertical.code).slice(0, 8);
+  const catalogItems = isTenantProfile && vertical.code === 'inventory' ? inventoryBestSellers : vertical.features;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
@@ -172,13 +194,15 @@ export function BusinessVerticalPage() {
               </p>
             </div>
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {vertical.features.map((feature) => (
+              {catalogItems.map((feature, index) => (
                 <div key={feature} className="rounded-lg border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950">
                   <BadgeCheck className="h-5 w-5 text-teal-700 dark:text-teal-300" aria-hidden />
                   <h3 className="mt-4 font-bold">{feature}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                    {isTenantProfile
-                      ? `Ditampilkan sebagai layanan/produk ${tenantName}; detail harga, foto, dan promo dapat dikelola admin tenant.`
+                    {isTenantProfile && vertical.code === 'inventory'
+                      ? `Produk fast moving CMN untuk katalog display. Detail harga, stok, foto, dan promo dapat dikelola admin tenant. Kode katalog: CMN-${String(index + 1).padStart(3, '0')}.`
+                      : isTenantProfile
+                        ? `Ditampilkan sebagai layanan/produk ${tenantName}; detail harga, foto, dan promo dapat dikelola admin tenant.`
                       : 'Disiapkan dengan pola data demo, hak akses, dan jalur audit yang konsisten dengan modul eBisnis lain.'}
                   </p>
                 </div>
