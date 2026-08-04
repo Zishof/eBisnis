@@ -369,6 +369,7 @@ async function importLegacyDataIfPresent(
     const stockOpnameRows = await importStockOpname(client, S, stockOpname);
     const accountRows = await importAccounts(client, S, accounts);
     const journalRows = await importJournalRows(client, S, journals);
+    await markProjectedFiles(client, S);
 
     return {
       productCount,
@@ -973,6 +974,35 @@ async function importJournalRows(client: PoolClient, S: string, rows: Array<Reco
   // JOURNAL.DBF pada dump CMN saat ini kosong; bila kelak terisi, raw vault sudah
   // menyimpan seluruh barisnya dan marker ini membuat laporan impor tetap jujur.
   return rows.length;
+}
+
+async function markProjectedFiles(client: PoolClient, S: string): Promise<void> {
+  const projections = [
+    ['STOK.DBF', 'product'],
+    ['CUSTOMER.DBF', 'customer'],
+    ['SUPPLIER.DBF', 'supplier'],
+    ['JUAL.DBF', 'sales_order'],
+    ['BELI.DBF', 'purchase_order'],
+    ['batchno.dbf', 'inventory_lot'],
+    ['Tran_Piut.DBF', 'legacy_receivable_ledger'],
+    ['PIUTSEMEN.DBF', 'legacy_receivable_ledger'],
+    ['Tran_Hut.DBF', 'legacy_payable_ledger'],
+    ['SALES.DBF', 'legacy_salesperson_map'],
+    ['account.dbf', 'chart_of_account'],
+    ['masterjl.dbf', 'legacy_price_history'],
+    ['masterbl.DBF', 'legacy_price_history'],
+    ['dataopn.dbf', 'legacy_stock_opname'],
+  ] as const;
+  for (const [fileName, tableName] of projections) {
+    await client.query(
+      `UPDATE ${S}.legacy_import_record
+          SET projection_status = 'PROJECTED',
+              projected_table = $2,
+              projection_note = 'Projected during CMN legacy import V2.'
+        WHERE file_name = $1 AND is_deleted = FALSE`,
+      [fileName, tableName],
+    );
+  }
 }
 
 async function scalar<T = string>(client: PoolClient, sql: string, params: unknown[] = []): Promise<T | null> {
