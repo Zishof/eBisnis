@@ -94,6 +94,14 @@ const FORM_MEDIA_KOSONG = {
 
 const KATEGORI_MEDIA = ['GALERI', 'PROGRAM', 'FASILITAS', 'KEGIATAN', 'PRESTASI'];
 
+const LABEL_KATEGORI_MEDIA: Record<string, string> = {
+  GALERI: 'Galeri',
+  PROGRAM: 'Program',
+  FASILITAS: 'Fasilitas',
+  KEGIATAN: 'Kegiatan',
+  PRESTASI: 'Prestasi',
+};
+
 type FormState = typeof FORM_KOSONG;
 type FormMediaState = typeof FORM_MEDIA_KOSONG;
 
@@ -266,6 +274,12 @@ export function PesantrenProfilPage() {
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menghapus media.'), 'error'),
   });
+  const daftarMedia = media.data ?? [];
+  const ringkasanMedia = KATEGORI_MEDIA.map((kategori) => ({
+    kategori,
+    total: daftarMedia.filter((item) => item.kategori === kategori).length,
+    terbit: daftarMedia.filter((item) => item.kategori === kategori && item.is_published).length,
+  }));
 
   return (
     <>
@@ -452,6 +466,25 @@ export function PesantrenProfilPage() {
           </button>
         </div>
 
+        <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {ringkasanMedia.map((item) => (
+            <button
+              key={item.kategori}
+              type="button"
+              className={`rounded-xl border p-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20 ${
+                formMedia.kategori === item.kategori
+                  ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30'
+                  : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950'
+              }`}
+              onClick={() => setFormMedia({ ...formMedia, kategori: item.kategori })}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{LABEL_KATEGORI_MEDIA[item.kategori]}</p>
+              <p className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">{item.total}</p>
+              <p className="mt-1 text-xs text-slate-500">{item.terbit} terbit</p>
+            </button>
+          ))}
+        </div>
+
         <div className="grid gap-4 xl:grid-cols-[minmax(280px,360px)_1fr]">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
             <div className="space-y-3">
@@ -477,7 +510,7 @@ export function PesantrenProfilPage() {
                 >
                   {KATEGORI_MEDIA.map((kategori) => (
                     <option key={kategori} value={kategori}>
-                      {kategori}
+                      {LABEL_KATEGORI_MEDIA[kategori]}
                     </option>
                   ))}
                 </select>
@@ -516,16 +549,16 @@ export function PesantrenProfilPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {media.isLoading ? (
               <p className="text-sm text-slate-500">Memuat media...</p>
-            ) : (media.data ?? []).length === 0 ? (
+            ) : daftarMedia.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700">
                 Belum ada galeri. Tambahkan foto kegiatan, fasilitas, prestasi, atau program unggulan.
               </div>
             ) : (
-              (media.data ?? []).map((item) => (
+              daftarMedia.map((item) => (
                 <article key={item.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <div className="relative h-40 bg-slate-100 dark:bg-slate-900">
                     {item.image_url ? (
-                      <img src={item.image_url} alt={item.alt_text ?? item.judul} className="h-full w-full object-cover" />
+                      <img src={item.image_url} alt={item.alt_text ?? item.judul} className="h-full w-full object-cover" loading="lazy" />
                     ) : (
                       <span className="grid h-full w-full place-items-center text-slate-300">
                         <Image className="h-8 w-8" aria-hidden />
