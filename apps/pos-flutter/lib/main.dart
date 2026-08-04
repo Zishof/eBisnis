@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'api/pos_api.dart';
 import 'aturan/harga_luring.dart';
 import 'aturan/koneksi.dart';
+import 'inventory/inventory_app.dart';
 import 'layar/layar_kasir.dart';
 import 'layar/sumber.dart';
 import 'layar/tampilan_pelanggan.dart';
@@ -29,6 +30,11 @@ import 'perangkat/pencetak_jaringan.dart';
 import 'perangkat/pencetak_perangkat.dart';
 
 void main() {
+  const product = String.fromEnvironment('APP_PRODUCT');
+  if (product == 'inventory') {
+    runApp(const AplikasiInventory());
+    return;
+  }
   runApp(const AplikasiKasir());
 }
 

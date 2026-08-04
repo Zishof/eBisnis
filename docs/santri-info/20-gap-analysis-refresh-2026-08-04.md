@@ -26,14 +26,14 @@ Referensi AIS: `C:\opt\AIS\ais\src\main\src\ais\action\master\sekolah\*`
 
 Dokumen awal `04`, `05`, dan `09` sudah sebagian stale karena banyak modul yang sebelumnya `MISSING` kini sudah dibuat. Status terkini: ePesantren/eSchool sudah punya fondasi operasional, website pondok, website unit pendidikan, PSB, santri/wali, asrama, presensi, perizinan, gerbang, diniyah/tahfiz, nilai, guru, kartu, dompet, katering, laporan, dan portal wali.
 
-Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak berupa penyempurnaan workflow legacy AIS, ekspor/cetak, visual builder, media management, dan integrasi perangkat.
+Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak berupa penyempurnaan workflow legacy AIS, ekspor/cetak, visual builder, CMS lanjutan, dan integrasi perangkat.
 
 ## Matriks Status Terkini
 
 | Area | Status | Sudah tersedia | Gap yang masih tersisa |
 | --- | --- | --- | --- |
-| Website pondok publik | Sebagian besar selesai | Profil pondok, berita, logo, hero image, muqodimah, subdomain tenant, halaman publik santri.info | CMS generik lengkap belum ada: page builder, gallery, menu editor, draft/publish multi-section, crop/alt text gambar |
-| Website unit sekolah | Sebagian besar selesai | Unit pendidikan punya website sendiri, subdomain/custom domain field, logo/hero URL, upload logo/hero langsung dari admin, halaman unit cerah, kartu unit dari halaman pondok bisa menuju alamat unit | Gallery/program/kegiatan per unit belum jadi modul penuh; custom domain `*.sch.id` masih perlu verifikasi DNS/ownership dan automation ops |
+| Website pondok publik | Sebagian besar selesai | Profil pondok, berita, logo, hero image, muqodimah, subdomain tenant, galeri/program/fasilitas terbit, halaman publik santri.info | CMS generik lengkap belum ada: page builder, menu editor, draft/publish multi-section, crop gambar, dan bulk media |
+| Website unit sekolah | Sebagian besar selesai | Unit pendidikan punya website sendiri, subdomain/custom domain field, logo/hero URL, upload logo/hero langsung dari admin, galeri/program/kegiatan per unit, kartu unit dari halaman pondok bisa menuju alamat unit | Custom domain `*.sch.id` masih perlu verifikasi DNS/ownership dan automation ops; gallery belum punya drag-drop ordering visual |
 | Cloudflare/subdomain | Sebagian selesai | Wildcard DNS `*.santri.info` cukup untuk subdomain dinamis di aplikasi; setting subdomain unit ada di CRUD unit pendidikan | Cloudflare API automation untuk membuat/mengubah record custom belum diaktifkan; perlu token, zone id, audit log, retry, dan validasi konflik |
 | Master eSchool | Sebagian besar selesai | Unit pendidikan, guru/ustadz, santri, wali, kartu, rombongan, kurikulum, mapel, jadwal | Field biodata AIS yang sangat rinci belum semua menjadi kolom typed; beberapa masih perlu metadata/ekstensi |
 | PSB/PPDB | Operasional dasar | Gelombang, unit tujuan, portal pendaftar, login/status, schema tambahan berbasis JSON | Builder drag-drop form, verifikasi multi-step AIS, jadwal ujian/interview detail, dan cetak/rekap lanjutan belum penuh |
@@ -55,11 +55,11 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 
 ### P0 - UI/UX dan Media Website
 
-1. Buat media manager pesantren yang rapi untuk gambar pondok, unit sekolah, berita, dan gallery.
-2. Tambahkan upload gambar berita dari admin; saat ini berita masih mengisi `gambarUrl` manual.
-3. Tambahkan gallery/program unggulan per unit sekolah agar halaman unit tidak hanya hero + ringkasan.
-4. Tambahkan metadata gambar: judul, alt text, sumber/atribusi, urutan tampil, status publish.
-5. Terapkan pola UI/UX modern: hierarki bersih, banyak whitespace, navigasi jelas, kartu informatif tanpa bertumpuk, state hover/focus yang nyata, dan aksesibilitas keyboard.
+1. Media manager pondok/unit sudah tersedia untuk galeri, program, fasilitas, kegiatan, dan prestasi.
+2. Admin sudah dapat menambah media, mengisi URL gambar atau upload berkas, alt text, sumber/atribusi, urutan tampil, dan status publish.
+3. Gallery/program unggulan sudah tampil di situs pondok dan situs unit sekolah.
+4. Tambahkan upload gambar berita dari admin; saat ini berita masih mengisi `gambarUrl` manual.
+5. Fase berikutnya: crop/editor gambar, bulk upload, drag-drop ordering visual, dan page/menu builder.
 
 ### P1 - eSchool Inti dari AIS
 
@@ -97,7 +97,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 
 ## Kesimpulan
 
-Yang paling perlu dikerjakan berikutnya adalah media manager + upload gambar berita/gallery, lalu rapor PDF, timetable drag-drop, dan PSB form builder. Ini memberi dampak paling besar ke tampilan publik pesantren/sekolah sekaligus menutup gap AIS yang masih paling terasa oleh pengguna harian.
+Yang paling perlu dikerjakan berikutnya adalah upload gambar berita + penyempurnaan CMS media, lalu rapor PDF, timetable drag-drop, dan PSB form builder. Ini memberi dampak paling besar ke tampilan publik pesantren/sekolah sekaligus menutup gap AIS yang masih paling terasa oleh pengguna harian.
 
 ## Update Implementasi 2026-08-04
 
@@ -108,9 +108,11 @@ Batch berikut sudah diterapkan di repo aktif:
 - Laporan pesantren menutup sebagian gap ekspor: tabel laporan bisa dicetak/disimpan PDF lewat browser dan diunduh sebagai CSV yang bisa dibuka Excel.
 - Gerbang pesantren menutup sebagian gap security: pos keamanan kini punya API dan UI untuk mencatat tamu, paket kiriman, dan penjemput tanpa mencampur alur izin keluar-masuk santri.
 - Vault impor legacy CMN ditambahkan agar seluruh DBF inventory lama tersimpan sebagai raw audit terlebih dahulu sebelum projection operasional dilengkapi bertahap.
+- Media manager pesantren ditambahkan: admin dapat membuat media pondok/unit, mengunggah gambar manual, mengisi alt text/atribusi/urutan/status publish, dan media tampil di situs pondok maupun situs unit pendidikan.
+- Aplikasi Flutter inventory sales terpisah dari POS kasir lewat `APP_PRODUCT=inventory`, dengan login demo CMN, dashboard sales, order terbaru, rekonsiliasi legacy, dan risiko batch/stok.
 
 Yang masih belum penuh setelah batch ini:
 
-- Media manager generik portal masih berupa pola slot stabil di UI; backend CMS media lintas portal belum dibuat.
-- Gallery/program unggulan per unit sekolah belum menjadi modul CRUD penuh.
+- Media manager generik lintas portal masih belum dibuat; yang sudah tersedia sekarang khusus pesantren pondok/unit.
+- Upload gambar berita, crop/editor gambar, bulk upload, dan drag-drop ordering visual belum penuh.
 - Timetable visual drag-drop, template rapor resmi per jenjang, dan builder PSB drag-drop tingkat lanjut masih perlu fase berikutnya.

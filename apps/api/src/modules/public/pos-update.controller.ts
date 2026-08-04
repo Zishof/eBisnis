@@ -8,6 +8,7 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { rawResponse } from '../../common/interceptors/response-envelope.interceptor';
 
 type PlatformAsset = 'windows' | 'android';
+type UpdateProduct = 'pos' | 'inventory';
 
 interface PosAsset {
   name: string;
@@ -15,10 +16,12 @@ interface PosAsset {
   size: number;
   platform: PlatformAsset;
   version: string;
+  product: UpdateProduct;
 }
 
 const UPDATE_DIR = process.env.POS_UPDATE_DIR || '/opt/ebisnis/updates/pos';
 const FILE_PATTERN = /^ebisnis-pos-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)(?:-windows)?\.(exe|apk)$/;
+const INVENTORY_FILE_PATTERN = /^ebisnis-inventory-sales-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)(?:-windows)?\.(exe|apk)$/;
 
 @ApiTags('public')
 @Controller('update')
@@ -27,7 +30,7 @@ export class PosUpdateController {
   @Get(['pos/latest', 'pos/latest.json'])
   @ApiOperation({ summary: 'Metadata rilis terakhir POS Flutter' })
   latest(@Headers('host') host: string, @Headers('x-forwarded-proto') proto?: string) {
-    const assets = this.assets();
+    const assets = this.assets('pos');
     if (!assets.length) {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Belum ada berkas pembaruan POS.');
     }
@@ -53,6 +56,35 @@ export class PosUpdateController {
   }
 
   @Public()
+  @Get(['inventory/latest', 'inventory/latest.json'])
+  @ApiOperation({ summary: 'Metadata rilis terakhir aplikasi sales inventory Flutter' })
+  latestInventory(@Headers('host') host: string, @Headers('x-forwarded-proto') proto?: string) {
+    const assets = this.assets('inventory');
+    if (!assets.length) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Belum ada berkas pembaruan inventory sales.');
+    }
+
+    const latestVersion = assets.map((a) => a.version).sort(compareVersion).at(-1)!;
+    const latestAssets = assets.filter((a) => a.version === latestVersion);
+    const base = `${proto === 'http' ? 'http' : 'https'}://${host}`;
+
+    return rawResponse({
+      tag_name: `inventory-v${latestVersion}`,
+      name: `eBisnis Inventory Sales ${latestVersion}`,
+      draft: false,
+      prerelease: latestVersion.includes('-'),
+      body:
+        'Pembaruan eBisnis Inventory Sales disajikan dari server eBisnis. ' +
+        'Kode sumber tetap berada di repository private.',
+      assets: latestAssets.map((a) => ({
+        name: a.name,
+        size: a.size,
+        browser_download_url: `${base}/update/inventory/${a.name}`,
+      })),
+    });
+  }
+
+  @Public()
   @Get('ebisnis-pelanggan-demo.apk')
   @ApiOperation({ summary: 'Unduh APK pelanggan demo' })
   downloadDemoCustomerApk(@Res({ passthrough: true }) res: Response) {
@@ -70,14 +102,14 @@ export class PosUpdateController {
   @Get('ebisnis-inventory-sales.apk')
   @ApiOperation({ summary: 'Unduh APK sales inventory demo' })
   downloadInventorySalesApk(@Res({ passthrough: true }) res: Response) {
-    return this.downloadExplicitApp('ebisnis-inventory-sales.apk', res, 'APK inventory sales belum tersedia.');
+    return this.downloadExplicitApp('ebisnis-inventory-sales.apk', res, 'APK inventory sales belum tersedia.', 'inventory', 'android');
   }
 
   @Public()
   @Get('ebisnis-inventory-sales.exe')
   @ApiOperation({ summary: 'Unduh EXE sales inventory demo' })
   downloadInventorySalesExe(@Res({ passthrough: true }) res: Response) {
-    return this.downloadExplicitApp('ebisnis-inventory-sales.exe', res, 'EXE inventory sales belum tersedia.');
+    return this.downloadExplicitApp('ebisnis-inventory-sales.exe', res, 'EXE inventory sales belum tersedia.', 'inventory', 'windows');
   }
 
   @Public()
@@ -97,11 +129,29 @@ export class PosUpdateController {
     return this.streamFile(path, safe, res, 'immutable');
   }
 
-  private assets(): PosAsset[] {
+  @Public()
+  @Get('inventory/:file')
+  @ApiOperation({ summary: 'Unduh installer inventory sales Flutter' })
+  downloadInventoryVersioned(@Param('file') file: string, @Res({ passthrough: true }) res: Response) {
+    const safe = basename(file);
+    if (safe !== file || !INVENTORY_FILE_PATTERN.test(file)) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas pembaruan inventory tidak ditemukan.');
+    }
+
+    const path = this.updateFilePath(safe);
+    if (!path) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas pembaruan inventory tidak ditemukan.');
+    }
+
+    return this.streamFile(path, safe, res, 'immutable');
+  }
+
+  private assets(product: UpdateProduct): PosAsset[] {
     if (!existsSync(UPDATE_DIR)) return [];
+    const pattern = product === 'inventory' ? INVENTORY_FILE_PATTERN : FILE_PATTERN;
     return readdirSync(UPDATE_DIR)
       .map((name) => {
-        const match = FILE_PATTERN.exec(name);
+        const match = pattern.exec(name);
         if (!match) return null;
         const path = join(UPDATE_DIR, name);
         const stat = statSync(path);
@@ -112,6 +162,7 @@ export class PosUpdateController {
           size: stat.size,
           platform: match[2] === 'apk' ? 'android' : 'windows',
           version: match[1],
+          product,
         } satisfies PosAsset;
       })
       .filter((a): a is PosAsset => a !== null);
@@ -123,7 +174,7 @@ export class PosUpdateController {
       return this.streamFile(explicitApk, aliasName, res, 'latest');
     }
 
-    const apk = this.assets()
+    const apk = this.assets('pos')
       .filter((asset) => asset.platform === 'android')
       .sort((a, b) => compareVersion(a.version, b.version))
       .at(-1);
@@ -138,10 +189,26 @@ export class PosUpdateController {
     return this.streamFile(apk.path, aliasName, res, 'latest');
   }
 
-  private downloadExplicitApp(aliasName: string, res: Response, message: string) {
+  private downloadExplicitApp(
+    aliasName: string,
+    res: Response,
+    message: string,
+    product?: UpdateProduct,
+    platform?: PlatformAsset,
+  ) {
     const explicit = this.updateFilePath(aliasName);
     if (explicit) {
       return this.streamFile(explicit, aliasName, res, 'latest');
+    }
+
+    if (product && platform) {
+      const asset = this.assets(product)
+        .filter((candidate) => candidate.platform === platform)
+        .sort((a, b) => compareVersion(a.version, b.version))
+        .at(-1);
+      if (asset) {
+        return this.streamFile(asset.path, aliasName, res, 'latest');
+      }
     }
 
     throw AppError.notFound(
