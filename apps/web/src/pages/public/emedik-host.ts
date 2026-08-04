@@ -11,7 +11,7 @@ const DEMO_APOTIK_HOST = 'demo-apotik.emedik.id';
 const EMEDIK_TENANT_SUFFIX = '.emedik.id';
 
 function normalizedHost(hostname: string): string {
-  return hostname.toLowerCase().replace(/\.$/, '');
+  return hostname.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
 }
 
 export interface EmedikPublicBrand {

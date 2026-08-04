@@ -204,6 +204,9 @@ export function EmedikLandingPage() {
                     src={photos.hero}
                     alt="Tim rumah sakit menyiapkan layanan pasien di ruang perawatan"
                     className="absolute inset-0 h-full w-full object-cover opacity-80"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-slate-950/10" />
                   <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">

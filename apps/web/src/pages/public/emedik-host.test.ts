@@ -10,6 +10,7 @@ import {
 describe('host publik eMedik', () => {
   it('mengenali portal utama eMedik', () => {
     expect(isEmedikHost('emedik.id')).toBe(true);
+    expect(isEmedikHost('emedik.id:443')).toBe(true);
     expect(isEmedikHost('www.emedik.id')).toBe(true);
     expect(isEmedikHost('demo.emedik.id')).toBe(true);
     expect(isEmedikHost('kliniksehat.emedik.id')).toBe(true);
@@ -20,6 +21,7 @@ describe('host publik eMedik', () => {
 
   it('mengenali landing apotik dan tenant apotik', () => {
     expect(isApotikHost('apotik.emedik.id')).toBe(true);
+    expect(isApotikHost('apotik.emedik.id:443')).toBe(true);
     expect(isApotikHost('demo-apotik.emedik.id')).toBe(true);
     expect(isApotikHost('sehatjaya-apotik.emedik.id')).toBe(true);
     expect(isApotikHost('kliniksehat.emedik.id')).toBe(false);
@@ -63,5 +65,24 @@ describe('host publik eMedik', () => {
     expect(emedikPublicBrandFor('demo-apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
     expect(emedikPublicBrandFor('sehatjaya-apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
     expect(emedikPublicBrandFor('ebisnis.id')).toBeNull();
+  });
+
+  it('menjaga link dokumen tetap pada domain brand masing-masing', () => {
+    const emedikDocs = emedikPublicBrandFor('demo.emedik.id')?.footer.find((section) => section.code === 'DOKUMEN')?.items;
+    const apotikDocs = emedikPublicBrandFor('demo-apotik.emedik.id')?.footer.find((section) => section.code === 'DOKUMEN')?.items;
+
+    expect(emedikDocs?.map((item) => item.url)).toEqual([
+      'https://emedik.id/proposal',
+      'https://emedik.id/penawaran',
+      'https://emedik.id/presentasi',
+      'https://emedik.id/pks',
+    ]);
+    expect(apotikDocs?.map((item) => item.url)).toEqual([
+      'https://apotik.emedik.id/proposal',
+      'https://apotik.emedik.id/penawaran',
+      'https://apotik.emedik.id/presentasi',
+      'https://apotik.emedik.id/pks',
+    ]);
+    expect([...(emedikDocs ?? []), ...(apotikDocs ?? [])].some((item) => item.url.includes('ebisnis.id'))).toBe(false);
   });
 });
