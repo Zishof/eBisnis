@@ -1,5 +1,6 @@
 import { useAuth } from '../../app/auth-context';
 import { VERTIKAL_PESANTREN } from '../../app/beranda-sesudah-masuk';
+import { CmnInventoryOwnerDashboardPage } from './CmnInventoryOwnerDashboardPage';
 import { DashboardPage } from './DashboardPage';
 import { PesantrenDashboardPage } from './pesantren/PesantrenDashboardPage';
 
@@ -17,6 +18,9 @@ import { PesantrenDashboardPage } from './pesantren/PesantrenDashboardPage';
  */
 export function AppHomePage() {
   const { user } = useAuth();
+  if (user?.tenant?.schemaName === 'cmnmedika_inventory' && user.username.toLowerCase() === 'muklis') {
+    return <CmnInventoryOwnerDashboardPage />;
+  }
   if (user?.tenant?.verticalCode === VERTIKAL_PESANTREN) {
     return <PesantrenDashboardPage />;
   }

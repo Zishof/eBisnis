@@ -50,6 +50,10 @@ export function AppLayout() {
   };
 
   const menus = useMenuTree();
+  const visibleMenus = useMemo(
+    () => (isCmnInventoryOwner(user) ? filterCmnOwnerMenus(menus.data ?? []) : menus.data ?? []),
+    [menus.data, user],
+  );
 
   const flatMenus = useMemo(() => {
     const out: MenuNode[] = [];
@@ -59,9 +63,9 @@ export function AppLayout() {
         walk(node.children);
       }
     };
-    walk(menus.data ?? []);
+    walk(visibleMenus);
     return out;
-  }, [menus.data]);
+  }, [visibleMenus]);
 
   const filtered = useMemo(
     () =>
@@ -75,7 +79,7 @@ export function AppLayout() {
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Sidebar desktop */}
       <aside className="hidden w-64 shrink-0 border-e border-slate-200 bg-white lg:block dark:border-slate-800 dark:bg-slate-900">
-        <SidebarContent menus={menus.data ?? []} />
+        <SidebarContent menus={visibleMenus} />
       </aside>
 
       {/* Drawer mobile */}
@@ -93,7 +97,7 @@ export function AppLayout() {
                 <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
-            <SidebarContent menus={menus.data ?? []} onNavigate={() => setSidebarOpen(false)} />
+            <SidebarContent menus={visibleMenus} onNavigate={() => setSidebarOpen(false)} />
           </aside>
         </div>
       )}
@@ -241,6 +245,61 @@ export function AppLayout() {
       )}
     </div>
   );
+}
+
+function isCmnInventoryOwner(user: ReturnType<typeof useAuth>['user']): boolean {
+  return user?.tenant?.schemaName === 'cmnmedika_inventory' && user.username.toLowerCase() === 'muklis';
+}
+
+const CMN_OWNER_TOP_MENU = new Set([
+  'Beranda',
+  'Penjualan',
+  'Produk dan Harga',
+  'Pelanggan dan CRM',
+  'Gudang dan Persediaan',
+  'Keuangan dan Akuntansi',
+  'Investor dan Bagi Hasil',
+  'Laporan dan Analitik',
+  'Bantuan dan Dukungan',
+]);
+
+const CMN_OWNER_EXACT_ROUTES = new Set(['/app']);
+
+const CMN_OWNER_ROUTE_PREFIXES = [
+  '/app/sales',
+  '/app/products',
+  '/app/product-categories',
+  '/app/customers',
+  '/app/customer-groups',
+  '/app/stock-tree',
+  '/app/stock-movements',
+  '/app/stock-alerts',
+  '/app/journal-entries',
+  '/app/portal-pelanggan',
+  '/app/support',
+  '/app/tiket',
+];
+
+function filterCmnOwnerMenus(menus: MenuNode[]): MenuNode[] {
+  const prune = (menu: MenuNode, depth: number): MenuNode | null => {
+    const children = menu.children.map((child) => prune(child, depth + 1)).filter((child): child is MenuNode => Boolean(child));
+    const route = menu.route ? routeAplikasi(menu.route) : null;
+    const routeAllowed = route
+      ? CMN_OWNER_EXACT_ROUTES.has(route) ||
+        CMN_OWNER_ROUTE_PREFIXES.some((prefix) => route === prefix || route.startsWith(`${prefix}/`))
+      : false;
+    const topAllowed = depth === 0 && CMN_OWNER_TOP_MENU.has(menu.label);
+
+    if (!topAllowed && !routeAllowed && children.length === 0) return null;
+
+    return {
+      ...menu,
+      route: routeAllowed || topAllowed ? menu.route : null,
+      children,
+    };
+  };
+
+  return menus.map((menu) => prune(menu, 0)).filter((menu): menu is MenuNode => Boolean(menu));
 }
 
 function SidebarContent({ menus, onNavigate }: { menus: MenuNode[]; onNavigate?: () => void }) {
