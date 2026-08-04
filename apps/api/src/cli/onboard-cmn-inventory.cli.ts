@@ -24,6 +24,16 @@ type LegacyFileClass = {
   projectionClass: 'operational' | 'ledger' | 'historical' | 'security' | 'runtime' | 'damaged';
   note: string;
 };
+type LegacyImportCounts = {
+  products: number;
+  customers: number;
+  suppliers: number;
+  salesOrders: number;
+  purchaseOrders: number;
+  rawRecords: number;
+  receivables: number;
+  payables: number;
+};
 
 const TENANT = {
   code: 'CMNMEDIKA',
@@ -427,57 +437,33 @@ async function upsertSubject(
 async function importLegacyDataIfPresent(
   ctx: Awaited<ReturnType<typeof createSeedContext>>,
   schemaName: string,
-): Promise<{
-  products: number;
-  customers: number;
-  suppliers: number;
-  salesOrders: number;
-  purchaseOrders: number;
-  rawRecords: number;
-  receivables: number;
-  payables: number;
-}> {
+): Promise<LegacyImportCounts> {
   const marker = await ctx.tenantDb
     .query<{ value: unknown }>(
       schemaName,
       `SELECT value_json AS value FROM "${schemaName}".app_setting WHERE code = 'CMN_LEGACY_IMPORT_V2' AND deleted_at IS NULL`,
     )
     .then((r) => r[0]?.value ?? null);
-  if (marker) {
-    const counts = await operationalImportCounts(ctx, schemaName);
-    if (counts.products > 0 && counts.salesOrders > 0) {
+  const currentCounts = await operationalImportCounts(ctx, schemaName);
+  const dir = LEGACY_DIR_CANDIDATES.find((candidate) => existsSync(join(candidate, 'STOK.DBF')));
+  if (!dir) {
+    if (marker && currentCounts.products > 0 && currentCounts.salesOrders > 0) {
       await ctx.tenantDb.transaction(schemaName, async (client) => {
         const S = `"${schemaName}"`;
         await syncLegacyAuditMetadata(client, S);
       });
       await markImport(ctx, schemaName, {
         ...(typeof marker === 'object' && marker !== null ? marker : { previousMarker: marker }),
-        ...counts,
+        ...currentCounts,
         auditSyncedAt: new Date().toISOString(),
-        auditVersion: 'CMN_LEGACY_AUDIT_V3',
+        auditVersion: 'CMN_LEGACY_AUDIT_V4',
+        warning: 'Folder DBF sumber tidak ditemukan saat deploy ini; memakai data import yang sudah ada.',
       });
       process.stdout.write(
-        `Import legacy CMN sudah lengkap; produk=${counts.products}, penjualan=${counts.salesOrders}. Metadata audit DBF disinkronkan ulang.\n`,
+        `DBF CMN tidak ditemukan, tetapi data import sudah ada; produk=${currentCounts.products}, penjualan=${currentCounts.salesOrders}.\n`,
       );
-      return {
-        products: counts.products,
-        customers: counts.customers,
-        suppliers: counts.suppliers,
-        salesOrders: counts.salesOrders,
-        purchaseOrders: counts.purchaseOrders,
-        rawRecords: counts.rawRecords,
-        receivables: counts.receivables,
-        payables: counts.payables,
-      };
+      return currentCounts;
     }
-    process.stdout.write(
-      `Marker import CMN ditemukan, tetapi data operasional belum lengkap ` +
-        `(produk=${counts.products}, penjualan=${counts.salesOrders}); import DBF dijalankan ulang secara idempotent.\n`,
-    );
-  }
-
-  const dir = LEGACY_DIR_CANDIDATES.find((candidate) => existsSync(join(candidate, 'STOK.DBF')));
-  if (!dir) {
     process.stdout.write(
       `DBF CMN belum ditemukan. Set CMN_LEGACY_DBF_DIR atau salin ke /opt/ebisnis/imports/cmn-inventory; impor akan dicoba lagi pada deploy berikutnya.\n`,
     );
@@ -486,6 +472,31 @@ async function importLegacyDataIfPresent(
 
   const dbfs = loadLegacyDbfs(dir);
   const byName = new Map(dbfs.map((file) => [file.fileName.toUpperCase(), file]));
+  const expectedCounts = expectedLegacyImportCounts(byName);
+  if (marker) {
+    if (legacyImportComplete(currentCounts, expectedCounts)) {
+      await ctx.tenantDb.transaction(schemaName, async (client) => {
+        const S = `"${schemaName}"`;
+        await syncLegacyAuditMetadata(client, S);
+      });
+      await markImport(ctx, schemaName, {
+        ...(typeof marker === 'object' && marker !== null ? marker : { previousMarker: marker }),
+        ...currentCounts,
+        expected: expectedCounts,
+        auditSyncedAt: new Date().toISOString(),
+        auditVersion: 'CMN_LEGACY_AUDIT_V4',
+      });
+      process.stdout.write(
+        `Import legacy CMN sudah lengkap; ${legacyCountSummary(currentCounts, expectedCounts)}. Metadata audit DBF disinkronkan ulang.\n`,
+      );
+      return currentCounts;
+    }
+    process.stdout.write(
+      `Marker import CMN ditemukan, tetapi import belum lengkap (${legacyCountSummary(currentCounts, expectedCounts)}); ` +
+        `import DBF dijalankan ulang secara idempotent.\n`,
+    );
+  }
+
   const stok = activeRows(byName.get('STOK.DBF'));
   const customers = activeRows(byName.get('CUSTOMER.DBF'));
   const suppliers = activeRows(byName.get('SUPPLIER.DBF'));
@@ -582,7 +593,7 @@ async function importLegacyDataIfPresent(
     };
   });
 
-  await markImport(ctx, schemaName, { importedAt: new Date().toISOString(), dir, ...result });
+  await markImport(ctx, schemaName, { importedAt: new Date().toISOString(), dir, expected: expectedCounts, ...result });
   return {
     products: result.productCount,
     customers: result.customerCount,
@@ -681,6 +692,65 @@ function activeRows(file: LegacyDbf | undefined): Array<Record<string, unknown>>
 
 function activeLegacyRows(file: LegacyDbf | undefined): LegacyRow[] {
   return file?.rows.filter((row) => !row.isDeleted) ?? [];
+}
+
+function expectedLegacyImportCounts(byName: Map<string, LegacyDbf>): LegacyImportCounts {
+  const stok = activeRows(byName.get('STOK.DBF'));
+  const customers = activeRows(byName.get('CUSTOMER.DBF'));
+  const suppliers = activeRows(byName.get('SUPPLIER.DBF'));
+  const sales = activeRows(byName.get('JUAL.DBF'));
+  const purchases = activeRows(byName.get('BELI.DBF'));
+  return {
+    products: stok.filter((row) => text(row.KODEBRG) && text(row.NAMABRG)).length,
+    customers: customers.filter((row) => text(row.KODECUST) || text(row.KODE) || text(row.NAMACUST) || text(row.NAMA)).length,
+    suppliers: suppliers.filter((row) => text(row.KODESUPPL) || text(row.KODESUPP) || text(row.KODE) || text(row.NAMASUPPL) || text(row.NAMASUPP) || text(row.NAMA)).length,
+    salesOrders: countLegacyGroups(sales, (row) => {
+      const invoice = text(row.NOFAKTUR);
+      return invoice ? `${dateOrNull(row.TANGGAL) ?? 'legacy'}:${invoice}` : null;
+    }),
+    purchaseOrders: countLegacyGroups(purchases, (row) => {
+      const invoice = text(row.NOFAKTUR);
+      return invoice ? `${dateOrNull(row.TANGGAL) ?? 'legacy'}:${text(row.KODESUPPL)}:${invoice}` : null;
+    }),
+    rawRecords: Array.from(byName.values()).reduce((sum, file) => sum + file.rows.length, 0),
+    receivables: activeLegacyRows(byName.get('TRAN_PIUT.DBF')).length + activeLegacyRows(byName.get('PIUTSEMEN.DBF')).length,
+    payables: activeLegacyRows(byName.get('TRAN_HUT.DBF')).length,
+  };
+}
+
+function countLegacyGroups(rows: Array<Record<string, unknown>>, keyOf: (row: Record<string, unknown>) => string | null): number {
+  const groups = new Set<string>();
+  for (const row of rows) {
+    const key = keyOf(row);
+    if (key) groups.add(key);
+  }
+  return groups.size;
+}
+
+function legacyImportComplete(current: LegacyImportCounts, expected: LegacyImportCounts): boolean {
+  return (
+    current.products >= expected.products &&
+    current.customers >= expected.customers &&
+    current.suppliers >= expected.suppliers &&
+    current.salesOrders >= expected.salesOrders &&
+    current.purchaseOrders >= expected.purchaseOrders &&
+    current.rawRecords >= expected.rawRecords &&
+    current.receivables >= expected.receivables &&
+    current.payables >= expected.payables
+  );
+}
+
+function legacyCountSummary(current: LegacyImportCounts, expected: LegacyImportCounts): string {
+  return [
+    `produk=${current.products}/${expected.products}`,
+    `customer=${current.customers}/${expected.customers}`,
+    `supplier=${current.suppliers}/${expected.suppliers}`,
+    `penjualan=${current.salesOrders}/${expected.salesOrders}`,
+    `pembelian=${current.purchaseOrders}/${expected.purchaseOrders}`,
+    `raw=${current.rawRecords}/${expected.rawRecords}`,
+    `piutang=${current.receivables}/${expected.receivables}`,
+    `hutang=${current.payables}/${expected.payables}`,
+  ].join(', ');
 }
 
 function readDbf(path: string, fileName: string): LegacyDbf {
