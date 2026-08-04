@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { DoorClosed, DoorOpen, RefreshCw, Search } from 'lucide-react';
+import { DoorClosed, DoorOpen, Package, RefreshCw, Search, UserRoundCheck } from 'lucide-react';
 import { api, formatDate, formatDateTime } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -44,6 +44,22 @@ interface BarisLintasan extends Record<string, unknown> {
   catatan: string | null;
 }
 
+interface KunjunganGerbang extends Record<string, unknown> {
+  id: string;
+  kategori: string;
+  nama_tamu: string;
+  no_hp: string | null;
+  instansi: string | null;
+  tujuan: string;
+  santri_id: string | null;
+  nis?: string | null;
+  nama_santri?: string | null;
+  status: string;
+  waktu_masuk: string;
+  waktu_keluar: string | null;
+  catatan: string | null;
+}
+
 const PAGE_SIZE = 25;
 
 export function PesantrenGerbangPage() {
@@ -56,6 +72,15 @@ export function PesantrenGerbangPage() {
   const [izinId, setIzinId] = useState('');
   const [arah, setArah] = useState<'KELUAR' | 'MASUK'>('KELUAR');
   const [catatan, setCatatan] = useState('');
+  const [formKunjungan, setFormKunjungan] = useState({
+    kategori: 'TAMU',
+    namaTamu: '',
+    noHp: '',
+    instansi: '',
+    tujuan: '',
+    santriId: '',
+    catatan: '',
+  });
 
   const hasil = useQuery({
     queryKey: ['pesantren-gerbang-kartu', nomorDicari],
@@ -69,6 +94,16 @@ export function PesantrenGerbangPage() {
       api.get<{ items: BarisLintasan[]; total: number }>(
         `/pesantren/gerbang?halaman=${page}&ukuranHalaman=${PAGE_SIZE}`,
       ),
+  });
+
+  const kunjungan = useQuery({
+    queryKey: ['pesantren-gerbang-kunjungan'],
+    queryFn: () => api.get<{ items: KunjunganGerbang[]; total: number }>('/pesantren/gerbang/kunjungan?status=MASUK&halaman=1&ukuranHalaman=25'),
+  });
+
+  const santri = useQuery({
+    queryKey: ['pesantren-gerbang-santri'],
+    queryFn: () => api.get<{ items: Array<{ id: string; nis: string; nama_lengkap: string }>; total: number }>('/pesantren/santri?status=AKTIF&halaman=1&ukuranHalaman=100'),
   });
 
   const izinDipilih = useMemo(
@@ -88,6 +123,34 @@ export function PesantrenGerbangPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mencatat lintasan.'), 'error'),
   });
 
+  const catatKunjungan = useMutation({
+    mutationFn: () =>
+      api.post<KunjunganGerbang>('/pesantren/gerbang/kunjungan', {
+        kategori: formKunjungan.kategori,
+        namaTamu: formKunjungan.namaTamu,
+        noHp: formKunjungan.noHp.trim() || undefined,
+        instansi: formKunjungan.instansi.trim() || undefined,
+        tujuan: formKunjungan.tujuan,
+        santriId: formKunjungan.santriId || undefined,
+        catatan: formKunjungan.catatan.trim() || undefined,
+      }),
+    onSuccess: () => {
+      toast.push('Kunjungan gerbang berhasil dicatat.', 'success');
+      setFormKunjungan({ kategori: 'TAMU', namaTamu: '', noHp: '', instansi: '', tujuan: '', santriId: '', catatan: '' });
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-gerbang-kunjungan'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mencatat kunjungan.'), 'error'),
+  });
+
+  const selesaiKunjungan = useMutation({
+    mutationFn: (id: string) => api.post<KunjunganGerbang>(`/pesantren/gerbang/kunjungan/${id}/selesai`),
+    onSuccess: () => {
+      toast.push('Kunjungan ditandai selesai.', 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-gerbang-kunjungan'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menutup kunjungan.'), 'error'),
+  });
+
   const columns: Array<GridColumn<BarisLintasan>> = [
     { key: 'waktu', header: 'Waktu', render: (row) => formatDateTime(row.waktu) },
     { key: 'arah', header: 'Arah', render: (row) => <StatusBadge status={row.arah} /> },
@@ -95,6 +158,23 @@ export function PesantrenGerbangPage() {
     { key: 'nis', header: 'NIS', render: (row) => row.nis ?? '-' },
     { key: 'jenis_izin', header: 'Izin', render: (row) => row.jenis_izin ?? row.izin_id },
     { key: 'catatan', header: 'Catatan', render: (row) => row.catatan ?? '-' },
+  ];
+
+  const kunjunganColumns: Array<GridColumn<KunjunganGerbang>> = [
+    { key: 'waktu_masuk', header: 'Masuk', render: (row) => formatDateTime(row.waktu_masuk) },
+    { key: 'kategori', header: 'Kategori', render: (row) => <StatusBadge status={row.kategori} /> },
+    { key: 'nama_tamu', header: 'Nama' },
+    { key: 'tujuan', header: 'Tujuan' },
+    { key: 'nama_santri', header: 'Santri', render: (row) => row.nama_santri ?? '-' },
+    {
+      key: 'id',
+      header: 'Aksi',
+      render: (row) => (
+        <button type="button" className="btn-outline px-2 py-1.5 text-xs" onClick={() => selesaiKunjungan.mutate(row.id)}>
+          Selesai
+        </button>
+      ),
+    },
   ];
 
   const total = riwayat.data?.total ?? 0;
@@ -253,6 +333,78 @@ export function PesantrenGerbangPage() {
         </div>
       </div>
 
+      <div className="mb-6 grid gap-4 xl:grid-cols-[minmax(360px,0.8fr)_minmax(0,1.2fr)]">
+        <div className="card p-5">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+              {formKunjungan.kategori === 'PAKET' ? <Package className="h-5 w-5" aria-hidden /> : <UserRoundCheck className="h-5 w-5" aria-hidden />}
+            </span>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">Tamu, Paket, dan Penjemput</h2>
+              <p className="mt-1 text-xs text-slate-500">Catat aktivitas pos keamanan yang tidak memakai izin keluar santri.</p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <Field label="Kategori">
+              <select className="field-input" value={formKunjungan.kategori} onChange={(event) => setFormKunjungan({ ...formKunjungan, kategori: event.target.value })}>
+                <option value="TAMU">Tamu</option>
+                <option value="PAKET">Paket</option>
+                <option value="PENJEMPUT">Penjemput</option>
+              </select>
+            </Field>
+            <Field label="Nama *">
+              <input className="field-input" value={formKunjungan.namaTamu} onChange={(event) => setFormKunjungan({ ...formKunjungan, namaTamu: event.target.value })} />
+            </Field>
+            <Field label="No. HP">
+              <input className="field-input" value={formKunjungan.noHp} onChange={(event) => setFormKunjungan({ ...formKunjungan, noHp: event.target.value })} />
+            </Field>
+            <Field label="Instansi/kurir">
+              <input className="field-input" value={formKunjungan.instansi} onChange={(event) => setFormKunjungan({ ...formKunjungan, instansi: event.target.value })} />
+            </Field>
+            <Field label="Tujuan *">
+              <input className="field-input" value={formKunjungan.tujuan} onChange={(event) => setFormKunjungan({ ...formKunjungan, tujuan: event.target.value })} />
+            </Field>
+            <Field label="Santri terkait">
+              <select className="field-input" value={formKunjungan.santriId} onChange={(event) => setFormKunjungan({ ...formKunjungan, santriId: event.target.value })}>
+                <option value="">Tidak terkait santri tertentu</option>
+                {(santri.data?.items ?? []).map((item) => (
+                  <option key={item.id} value={item.id}>{item.nis} - {item.nama_lengkap}</option>
+                ))}
+              </select>
+            </Field>
+            <div className="md:col-span-2">
+              <Field label="Catatan">
+                <input className="field-input" value={formKunjungan.catatan} onChange={(event) => setFormKunjungan({ ...formKunjungan, catatan: event.target.value })} />
+              </Field>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!formKunjungan.namaTamu.trim() || !formKunjungan.tujuan.trim() || catatKunjungan.isPending}
+              onClick={() => catatKunjungan.mutate()}
+            >
+              Catat Masuk
+            </button>
+          </div>
+        </div>
+        <div className="card overflow-hidden">
+          <div className="border-b border-slate-200 p-4 dark:border-slate-800">
+            <h2 className="font-semibold text-slate-900 dark:text-white">Kunjungan Aktif</h2>
+          </div>
+          <DataGrid
+            columns={kunjunganColumns}
+            rows={kunjungan.data?.items ?? []}
+            loading={kunjungan.isLoading}
+            error={kunjungan.isError ? toMessage(kunjungan.error, (_key, fallback) => fallback ?? 'Gagal memuat kunjungan.') : undefined}
+            rowKey={(row) => row.id}
+            onRetry={() => void kunjungan.refetch()}
+            emptyTitle="Tidak ada tamu/paket aktif."
+          />
+        </div>
+      </div>
+
       <DataGrid
         columns={columns}
         rows={riwayat.data?.items ?? []}
@@ -272,6 +424,15 @@ function Info({ label, value }: { label: string; value: string }) {
     <div className="text-sm">
       <div className="text-slate-500">{label}</div>
       <div className="font-medium text-slate-900 dark:text-white">{value}</div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="field-label">{label}</label>
+      {children}
     </div>
   );
 }

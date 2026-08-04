@@ -56,6 +56,34 @@ export interface HasilPindaiGerbang {
   lintasanTerakhir: BarisLintasan | null;
 }
 
+export interface BarisKunjunganGerbang {
+  id: string;
+  kategori: string;
+  nama_tamu: string;
+  no_hp: string | null;
+  instansi: string | null;
+  tujuan: string;
+  santri_id: string | null;
+  nis?: string | null;
+  nama_santri?: string | null;
+  status: string;
+  waktu_masuk: string;
+  waktu_keluar: string | null;
+  catatan: string | null;
+}
+
+export interface MasukanKunjunganGerbang {
+  kategori?: string;
+  namaTamu?: string;
+  noHp?: string | null;
+  instansi?: string | null;
+  tujuan?: string;
+  santriId?: string | null;
+  catatan?: string | null;
+}
+
+const KATEGORI_KUNJUNGAN = new Set(['TAMU', 'PAKET', 'PENJEMPUT']);
+
 @Injectable()
 export class PesantrenGerbangService {
   constructor(private readonly tenantDb: TenantConnectionService) {}
@@ -256,6 +284,117 @@ export class PesantrenGerbangService {
          JOIN ${S}.pesantren_santri s ON s.id = i.santri_id`,
       [masukan.izinId, masukan.arah, dicatatOleh, bersihkan(masukan.catatan)],
     );
+    return rows[0];
+  }
+
+  async daftarKunjungan(
+    schemaName: string,
+    opsi: { status?: string; halaman: number; ukuranHalaman: number },
+  ): Promise<{ items: BarisKunjunganGerbang[]; total: number }> {
+    const S = `"${schemaName}"`;
+    const kondisi: string[] = ['1=1'];
+    const params: unknown[] = [];
+    if (opsi.status) {
+      params.push(opsi.status);
+      kondisi.push(`gk.status = $${params.length}`);
+    }
+    const where = kondisi.join(' AND ');
+    const totalRows = await this.tenantDb.query<{ total: string }>(
+      schemaName,
+      `SELECT COUNT(*)::text AS total FROM ${S}.pesantren_gerbang_kunjungan gk WHERE ${where}`,
+      params,
+    );
+
+    const offset = (opsi.halaman - 1) * opsi.ukuranHalaman;
+    params.push(opsi.ukuranHalaman, offset);
+    const items = await this.tenantDb.query<BarisKunjunganGerbang>(
+      schemaName,
+      `SELECT gk.id::text, gk.kategori, gk.nama_tamu, gk.no_hp, gk.instansi, gk.tujuan,
+              gk.santri_id::text, s.nis, s.nama_lengkap AS nama_santri,
+              gk.status, gk.waktu_masuk::text, gk.waktu_keluar::text, gk.catatan
+         FROM ${S}.pesantren_gerbang_kunjungan gk
+         LEFT JOIN ${S}.pesantren_santri s ON s.id = gk.santri_id
+        WHERE ${where}
+        ORDER BY gk.waktu_masuk DESC
+        LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params,
+    );
+    return { items, total: Number(totalRows[0]?.total ?? 0) };
+  }
+
+  async catatKunjungan(
+    schemaName: string,
+    masukan: MasukanKunjunganGerbang,
+    actorUserId: string,
+  ): Promise<BarisKunjunganGerbang> {
+    const kategori = (masukan.kategori ?? '').toUpperCase();
+    if (!KATEGORI_KUNJUNGAN.has(kategori)) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Kategori kunjungan harus TAMU, PAKET, atau PENJEMPUT.');
+    }
+    if (!(masukan.namaTamu ?? '').trim()) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Nama tamu/pengantar wajib diisi.');
+    }
+    if (!(masukan.tujuan ?? '').trim()) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Tujuan kunjungan wajib diisi.');
+    }
+
+    const S = `"${schemaName}"`;
+    if (masukan.santriId) {
+      const santri = await this.tenantDb.queryOne(schemaName, `SELECT id FROM ${S}.pesantren_santri WHERE id = $1 AND deleted_at IS NULL`, [
+        masukan.santriId,
+      ]);
+      if (!santri) {
+        throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Santri tujuan tidak ditemukan.');
+      }
+    }
+
+    const rows = await this.tenantDb.query<BarisKunjunganGerbang>(
+      schemaName,
+      `WITH inserted AS (
+         INSERT INTO ${S}.pesantren_gerbang_kunjungan
+           (kategori, nama_tamu, no_hp, instansi, tujuan, santri_id, catatan, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
+         RETURNING *
+       )
+       SELECT inserted.id::text, inserted.kategori, inserted.nama_tamu, inserted.no_hp, inserted.instansi,
+              inserted.tujuan, inserted.santri_id::text, s.nis, s.nama_lengkap AS nama_santri,
+              inserted.status, inserted.waktu_masuk::text, inserted.waktu_keluar::text, inserted.catatan
+         FROM inserted
+         LEFT JOIN ${S}.pesantren_santri s ON s.id = inserted.santri_id`,
+      [
+        kategori,
+        masukan.namaTamu!.trim(),
+        bersihkan(masukan.noHp),
+        bersihkan(masukan.instansi),
+        masukan.tujuan!.trim(),
+        masukan.santriId || null,
+        bersihkan(masukan.catatan),
+        actorUserId,
+      ],
+    );
+    return rows[0];
+  }
+
+  async selesaikanKunjungan(schemaName: string, id: string, actorUserId: string): Promise<BarisKunjunganGerbang> {
+    const S = `"${schemaName}"`;
+    const rows = await this.tenantDb.query<BarisKunjunganGerbang>(
+      schemaName,
+      `WITH updated AS (
+         UPDATE ${S}.pesantren_gerbang_kunjungan
+            SET status = 'SELESAI', waktu_keluar = now(), updated_at = now(), updated_by = $2, version = version + 1
+          WHERE id = $1 AND status = 'MASUK'
+          RETURNING *
+       )
+       SELECT updated.id::text, updated.kategori, updated.nama_tamu, updated.no_hp, updated.instansi,
+              updated.tujuan, updated.santri_id::text, s.nis, s.nama_lengkap AS nama_santri,
+              updated.status, updated.waktu_masuk::text, updated.waktu_keluar::text, updated.catatan
+         FROM updated
+         LEFT JOIN ${S}.pesantren_santri s ON s.id = updated.santri_id`,
+      [id, actorUserId],
+    );
+    if (!rows[0]) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Kunjungan aktif tidak ditemukan.');
+    }
     return rows[0];
   }
 }

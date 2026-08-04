@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, RefreshCw } from 'lucide-react';
+import { BarChart3, Download, Printer, RefreshCw } from 'lucide-react';
 import { useErrorMessage } from '../../../app/auth-context';
 import { PageHeader, StatusBadge } from '../../../components/ui';
 import { api, formatDate, formatMoney } from '../../../lib/api';
@@ -52,6 +52,7 @@ export function PesantrenLaporanPage() {
 
   const rows = useMemo(() => normalisasiRows(hasil.data), [hasil.data]);
   const columns = useMemo(() => Object.keys(rows[0] ?? {}).slice(0, 8), [rows]);
+  const bisaEkspor = rows.length > 0 && columns.length > 0;
 
   return (
     <>
@@ -60,15 +61,25 @@ export function PesantrenLaporanPage() {
         description="Katalog laporan operasional pondok dengan rentang tanggal terkendali."
         breadcrumbs={[{ label: 'Beranda', href: '/app' }, { label: 'Pesantren' }, { label: 'Laporan' }]}
         actions={
-          <button type="button" className="btn-outline" onClick={() => void hasil.refetch()} disabled={!kodeAktif}>
-            <RefreshCw className="h-4 w-4" aria-hidden />
-            Jalankan
-          </button>
+          <>
+            <button type="button" className="btn-outline" onClick={() => void hasil.refetch()} disabled={!kodeAktif}>
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Jalankan
+            </button>
+            <button type="button" className="btn-outline" onClick={() => window.print()} disabled={!rows.length}>
+              <Printer className="h-4 w-4" aria-hidden />
+              Cetak / PDF
+            </button>
+            <button type="button" className="btn-outline" onClick={() => unduhCsv(kodeAktif, rows, columns)} disabled={!bisaEkspor}>
+              <Download className="h-4 w-4" aria-hidden />
+              Excel CSV
+            </button>
+          </>
         }
       />
 
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
-        <aside className="card p-4">
+        <aside className="card p-4 print:hidden">
           <label className="mb-3 block">
             <span className="field-label">Jenis laporan</span>
             <select className="field-input" value={kodeAktif} onChange={(event) => setCode(event.target.value)}>
@@ -114,7 +125,7 @@ export function PesantrenLaporanPage() {
             </div>
           )}
 
-          <div className="card overflow-hidden">
+          <div className="card overflow-hidden print:border-0 print:shadow-none">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 text-sm">
                 <thead className="bg-slate-50">
@@ -136,6 +147,25 @@ export function PesantrenLaporanPage() {
       </div>
     </>
   );
+}
+
+function unduhCsv(code: string, rows: Record<string, unknown>[], columns: string[]) {
+  const csv = [
+    columns.map(csvCell).join(','),
+    ...rows.map((row) => columns.map((column) => csvCell(row[column])).join(',')),
+  ].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${code || 'laporan-pesantren'}-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvCell(value: unknown) {
+  const text = renderValue(value);
+  return `"${text.replace(/"/g, '""')}"`;
 }
 
 function normalisasiRows(data?: LaporanResult): Record<string, unknown>[] {

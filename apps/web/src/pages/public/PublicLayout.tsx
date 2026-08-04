@@ -13,6 +13,7 @@ import { PondokChrome } from '../../verticals/pesantren/PondokChrome';
 import { isSalonDemoHost } from '../contoh/salon-host';
 import { isInventoryHost } from '../inventory/inventory-host';
 import { emedikPublicBrandFor } from './emedik-host';
+import { educationPublicBrandFor } from '../../verticals/education/education-host';
 
 export interface SiteConfig {
   code: string;
@@ -103,6 +104,7 @@ function PublicLayoutEBisnis({
   const salonHost = isSalonDemoHost();
   const inventoryHost = isInventoryHost();
   const emedikBrand = emedikPublicBrandFor();
+  const educationBrand = educationPublicBrandFor();
   const brand = salonHost
     ? {
         logoText: null,
@@ -117,6 +119,13 @@ function PublicLayoutEBisnis({
           name: emedikBrand.name,
           homeUrl: emedikBrand.homeUrl,
           description: emedikBrand.description,
+        }
+    : educationBrand
+      ? {
+          logoText: educationBrand.logoText,
+          name: educationBrand.name,
+          homeUrl: educationBrand.homeUrl,
+          description: educationBrand.description,
         }
     : inventoryHost
       ? {
@@ -155,6 +164,8 @@ function PublicLayoutEBisnis({
       ]
     : emedikBrand
       ? emedikBrand.footer
+      : educationBrand
+        ? educationBrand.footer
       : inventoryHost
         ? [
             {
@@ -187,6 +198,8 @@ function PublicLayoutEBisnis({
         ]
       : emedikBrand
         ? emedikBrand.headerItems
+        : educationBrand
+          ? educationBrand.headerItems
         : inventoryHost
           ? [
               { labelKey: 'inventory.home', label: 'Website', url: 'https://inventory.ebisnis.id', sortOrder: 1 },
@@ -309,10 +322,26 @@ function PublicLayoutEBisnis({
                   {salonHost ? 'Masuk' : t('nav.login')}
                 </Link>
                 <Link
-                  to={salonHost ? 'https://salon.ebisnis.id' : inventoryHost ? 'https://inventory.ebisnis.id/inventory#download' : '/daftar'}
+                  to={
+                    salonHost
+                      ? 'https://salon.ebisnis.id'
+                      : inventoryHost
+                        ? 'https://inventory.ebisnis.id/inventory#download'
+                        : educationBrand
+                          ? '/kontak'
+                          : '/daftar'
+                  }
                   className="btn-primary hidden sm:inline-flex"
                 >
-                  {salonHost ? 'Website Salon' : inventoryHost ? 'Download' : emedikBrand ? emedikBrand.registerCtaLabel : t('nav.register')}
+                  {salonHost
+                    ? 'Website Salon'
+                    : inventoryHost
+                      ? 'Download'
+                      : emedikBrand
+                        ? emedikBrand.registerCtaLabel
+                        : educationBrand
+                          ? educationBrand.registerCtaLabel
+                          : t('nav.register')}
                 </Link>
               </>
             )}
@@ -347,11 +376,27 @@ function PublicLayoutEBisnis({
                   {salonHost ? 'Masuk' : t('nav.login')}
                 </Link>
                 <Link
-                  to={salonHost ? 'https://salon.ebisnis.id' : inventoryHost ? 'https://inventory.ebisnis.id/inventory#download' : '/daftar'}
+                  to={
+                    salonHost
+                      ? 'https://salon.ebisnis.id'
+                      : inventoryHost
+                        ? 'https://inventory.ebisnis.id/inventory#download'
+                        : educationBrand
+                          ? '/kontak'
+                          : '/daftar'
+                  }
                   className="btn-primary flex-1"
                   onClick={() => setMenuOpen(false)}
                 >
-                  {salonHost ? 'Website Salon' : inventoryHost ? 'Download' : emedikBrand ? emedikBrand.registerCtaLabel : t('nav.register')}
+                  {salonHost
+                    ? 'Website Salon'
+                    : inventoryHost
+                      ? 'Download'
+                      : emedikBrand
+                        ? emedikBrand.registerCtaLabel
+                        : educationBrand
+                          ? educationBrand.registerCtaLabel
+                          : t('nav.register')}
                 </Link>
               </div>
             </div>

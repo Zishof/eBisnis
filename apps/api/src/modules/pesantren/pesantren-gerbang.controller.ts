@@ -48,6 +48,50 @@ class CatatLintasanDto {
   catatan?: string;
 }
 
+class DaftarKunjunganQuery {
+  @ApiPropertyOptional({ enum: ['MASUK', 'SELESAI', 'DIBATALKAN'] })
+  @IsOptional() @IsString()
+  status?: string;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional() @Type(() => Number)
+  halaman?: number;
+
+  @ApiPropertyOptional({ default: 25 })
+  @IsOptional() @Type(() => Number)
+  ukuranHalaman?: number;
+}
+
+class CatatKunjunganDto {
+  @ApiProperty({ enum: ['TAMU', 'PAKET', 'PENJEMPUT'] })
+  @IsString()
+  kategori!: string;
+
+  @ApiProperty()
+  @IsString() @MaxLength(160)
+  namaTamu!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsString() @MaxLength(40)
+  noHp?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsString() @MaxLength(160)
+  instansi?: string;
+
+  @ApiProperty()
+  @IsString() @MaxLength(240)
+  tujuan!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsString()
+  santriId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsString() @MaxLength(500)
+  catatan?: string;
+}
+
 @ApiTags('pesantren')
 @ApiBearerAuth('access-token')
 @Controller('pesantren/gerbang')
@@ -86,5 +130,32 @@ export class PesantrenGerbangController {
   @ApiOperation({ summary: 'Mencatat lintasan keluar atau masuk terhadap izin yang sudah disetujui' })
   catat(@Body() dto: CatatLintasanDto, @CurrentUser() user: AuthenticatedUser) {
     return this.gerbang.catat(schemaWajib(user), dto, user.userId);
+  }
+
+  @Permissions('EPESANTREN_GERBANG.READ')
+  @Get('kunjungan')
+  @ApiOperation({ summary: 'Daftar tamu, paket, dan penjemput di gerbang' })
+  daftarKunjungan(@Query() query: DaftarKunjunganQuery, @CurrentUser() user: AuthenticatedUser) {
+    return this.gerbang.daftarKunjungan(schemaWajib(user), {
+      status: query.status,
+      halaman: query.halaman && query.halaman > 0 ? query.halaman : 1,
+      ukuranHalaman:
+        query.ukuranHalaman && query.ukuranHalaman > 0 && query.ukuranHalaman <= 100 ? query.ukuranHalaman : 25,
+    });
+  }
+
+  @Permissions('EPESANTREN_GERBANG.CREATE')
+  @Post('kunjungan')
+  @HttpCode(201)
+  @ApiOperation({ summary: 'Mencatat tamu, paket, atau penjemput masuk gerbang' })
+  catatKunjungan(@Body() dto: CatatKunjunganDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.gerbang.catatKunjungan(schemaWajib(user), dto, user.userId);
+  }
+
+  @Permissions('EPESANTREN_GERBANG.CREATE')
+  @Post('kunjungan/:id/selesai')
+  @ApiOperation({ summary: 'Menandai tamu, paket, atau penjemput sudah keluar/selesai' })
+  selesaikanKunjungan(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.gerbang.selesaikanKunjungan(schemaWajib(user), id, user.userId);
   }
 }

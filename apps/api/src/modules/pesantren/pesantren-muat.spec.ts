@@ -176,7 +176,9 @@ describe('pemuatan modul pesantren-santri', () => {
     const metode = Object.getOwnPropertyNames(PesantrenGerbangService.prototype).filter(
       (m) => m !== 'constructor',
     );
-    expect(metode.sort()).toEqual(['catat', 'daftar', 'daftarIzinAktif', 'pindaiKartu'].sort());
+    expect(metode.sort()).toEqual(
+      ['catat', 'catatKunjungan', 'daftar', 'daftarIzinAktif', 'daftarKunjungan', 'pindaiKartu', 'selesaikanKunjungan'].sort(),
+    );
     expect(metode.join(' ')).not.toMatch(/setujui|tolak|ubahStatus|putuskan/i);
   });
 
