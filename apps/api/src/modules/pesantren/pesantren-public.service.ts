@@ -16,6 +16,7 @@ import { PublicTenantResolver } from '../../infrastructure/tenant/public-tenant-
 import { TenantFileBlobService, BerkasBlob } from '../../infrastructure/files/tenant-file-blob.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { KategoriGambarProfil, KODE_BERKAS_GAMBAR_PROFIL } from './pesantren-profil';
+import { KategoriGambarUnitPendidikan, kodeBerkasGambarUnit } from './pesantren-unit-pendidikan';
 import { PesantrenPsbService, BarisPendaftar } from './pesantren-psb.service';
 import { MasukanPendaftar } from './pesantren-psb';
 import { PSB_APPLICANT_TOKEN_TYPE, PsbApplicantTokenPayload } from './psb-applicant-auth.guard';
@@ -209,6 +210,37 @@ export class PesantrenPublicService {
     }
 
     const berkas = await this.fileBlob.ambilByCode(S, code);
+    if (!berkas) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
+    }
+    return berkas;
+  }
+
+  async unitGambar(
+    host: string | undefined,
+    unitId: string,
+    kategori: KategoriGambarUnitPendidikan,
+  ): Promise<BerkasBlob> {
+    const konteks = await this.resolver.resolve(host, VERTIKAL);
+    const S = konteks.schemaName;
+
+    const unit = await this.tenantDb.queryOne<{ id: string }>(
+      S,
+      `SELECT u.id::text AS id
+         FROM "${S}".pesantren_unit_pendidikan u
+         JOIN "${S}".pesantren_website_setting s ON s.singleton = TRUE
+        WHERE u.id = $1
+          AND u.is_active = TRUE
+          AND u.website_enabled = TRUE
+          AND u.deleted_at IS NULL
+          AND s.is_published = TRUE`,
+      [unitId],
+    );
+    if (!unit) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
+    }
+
+    const berkas = await this.fileBlob.ambilByCode(S, kodeBerkasGambarUnit(unitId, kategori));
     if (!berkas) {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
     }

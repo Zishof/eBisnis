@@ -1,7 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
+import { TenantFileBlobService } from '../../infrastructure/files/tenant-file-blob.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
-import { MasukanUnitPendidikan, validasiUnitPendidikan } from './pesantren-unit-pendidikan';
+import {
+  KategoriGambarUnitPendidikan,
+  kodeBerkasGambarUnit,
+  lintasanGambarUnit,
+  MasukanUnitPendidikan,
+  validasiUnitPendidikan,
+} from './pesantren-unit-pendidikan';
 
 const DOMAIN_SANTRI = 'santri.info';
 const VERTIKAL_SITUS_PESANTREN = 'pesantren';
@@ -52,7 +59,10 @@ const KOLOM_UNIT = `id::text, code, name, jenis, sort_order, is_active,
 
 @Injectable()
 export class PesantrenUnitPendidikanService {
-  constructor(private readonly tenantDb: TenantConnectionService) {}
+  constructor(
+    private readonly tenantDb: TenantConnectionService,
+    private readonly fileBlob: TenantFileBlobService,
+  ) {}
 
   async daftar(schemaName: string, opsi: { cari?: string; aktif?: boolean }): Promise<BarisUnitPendidikan[]> {
     const S = `"${schemaName}"`;
@@ -268,6 +278,43 @@ export class PesantrenUnitPendidikanService {
     );
     await this.nonaktifkanDomainTenant(unit, actorUserId);
     return { id };
+  }
+
+  async unggahGambar(
+    schemaName: string,
+    id: string,
+    kategori: KategoriGambarUnitPendidikan,
+    berkas: { filename: string; mimeType: string; buffer: Buffer },
+    actorUserId: string,
+  ): Promise<BarisUnitPendidikan> {
+    const unit = await this.satu(schemaName, id);
+    if (!unit) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Unit pendidikan tidak ditemukan.');
+    }
+
+    await this.fileBlob.simpanTunggal(
+      schemaName,
+      {
+        code: kodeBerkasGambarUnit(id, kategori),
+        name: kategori === 'LOGO' ? `Logo ${unit.name}` : `Foto hero ${unit.name}`,
+        filename: berkas.filename,
+        mimeType: berkas.mimeType,
+        buffer: berkas.buffer,
+      },
+      actorUserId,
+    );
+
+    const kolom = kategori === 'LOGO' ? 'logo_url' : 'hero_image_url';
+    const S = `"${schemaName}"`;
+    const rows = await this.tenantDb.query<BarisUnitPendidikan>(
+      schemaName,
+      `UPDATE ${S}.pesantren_unit_pendidikan
+          SET ${kolom} = $2, updated_at = now(), updated_by = $3, version = version + 1
+        WHERE id = $1 AND deleted_at IS NULL
+        RETURNING ${KOLOM_UNIT}`,
+      [id, lintasanGambarUnit(id, kategori), actorUserId],
+    );
+    return rows[0];
   }
 
   private async sinkronkanDomainUnit(

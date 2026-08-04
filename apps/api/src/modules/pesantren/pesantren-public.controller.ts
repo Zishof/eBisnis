@@ -10,6 +10,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { PesantrenPublicService } from './pesantren-public.service';
 import { KATEGORI_GAMBAR_PROFIL, KategoriGambarProfil } from './pesantren-profil';
+import { KATEGORI_GAMBAR_UNIT_PENDIDIKAN, KategoriGambarUnitPendidikan } from './pesantren-unit-pendidikan';
 import { DaftarkanPendaftarDto } from './pesantren-psb.controller';
 import { Public } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
@@ -99,6 +100,30 @@ export class PesantrenPublicController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const berkas = await this.situs.beritaGambar(host, code);
+    res.set({
+      'Content-Type': berkas.mimeType,
+      'Content-Disposition': `inline; filename="${berkas.namaFile}"`,
+      'Cache-Control': 'public, max-age=300',
+    });
+    return rawResponse(new StreamableFile(berkas.buffer));
+  }
+
+  /** Logo/foto hero satu unit pendidikan. */
+  @Public()
+  @Get('unit-gambar/:id/:kategori')
+  @ApiParam({ name: 'kategori', enum: KATEGORI_GAMBAR_UNIT_PENDIDIKAN })
+  @ApiOperation({ summary: 'Logo atau gambar latar satu unit pendidikan' })
+  async unitGambar(
+    @Headers('host') host: string,
+    @Param('id') id: string,
+    @Param('kategori') kategori: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const kategoriUpper = kategori.toUpperCase();
+    if (!KATEGORI_GAMBAR_UNIT_PENDIDIKAN.includes(kategoriUpper as KategoriGambarUnitPendidikan)) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
+    }
+    const berkas = await this.situs.unitGambar(host, id, kategoriUpper as KategoriGambarUnitPendidikan);
     res.set({
       'Content-Type': berkas.mimeType,
       'Content-Disposition': `inline; filename="${berkas.namaFile}"`,

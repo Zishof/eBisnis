@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Edit2, Image, Plus, Trash2 } from 'lucide-react';
+import { Edit2, Image, Plus, Trash2, Upload } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { DataGrid, PageHeader, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -132,6 +132,21 @@ export function PesantrenUnitPendidikanPage() {
       void queryClient.invalidateQueries({ queryKey: ['pesantren-unit-pendidikan'] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan.'), 'error'),
+  });
+
+  const unggahGambar = useMutation({
+    mutationFn: async ({ id, kategori, file }: { id: string; kategori: 'LOGO' | 'HERO'; file: File }) => {
+      const body = new FormData();
+      body.append('file', file);
+      return api.post<UnitPendidikanRow>(`/pesantren/unit-pendidikan/${id}/gambar/${kategori}`, body);
+    },
+    onSuccess: (row, variables) => {
+      toast.push(variables.kategori === 'LOGO' ? 'Logo unit berhasil diunggah.' : 'Foto hero unit berhasil diunggah.', 'success');
+      setEditing(row);
+      setForm(isiForm(row));
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-unit-pendidikan'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mengunggah gambar.'), 'error'),
   });
 
   const remove = useMutation({
@@ -395,6 +410,12 @@ export function PesantrenUnitPendidikanPage() {
                           onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
                           placeholder="https://.../logo-mi.png"
                         />
+                        {editing && (
+                          <UploadButton
+                            disabled={unggahGambar.isPending}
+                            onFile={(file) => unggahGambar.mutate({ id: editing.id, kategori: 'LOGO', file })}
+                          />
+                        )}
                       </Field>
                       <Field label="Foto hero unit URL">
                         <input
@@ -403,9 +424,20 @@ export function PesantrenUnitPendidikanPage() {
                           onChange={(e) => setForm({ ...form, heroImageUrl: e.target.value })}
                           placeholder="https://.../kegiatan-belajar.jpg"
                         />
+                        {editing && (
+                          <UploadButton
+                            disabled={unggahGambar.isPending}
+                            onFile={(file) => unggahGambar.mutate({ id: editing.id, kategori: 'HERO', file })}
+                          />
+                        )}
                       </Field>
                     </div>
                   </div>
+                  {!editing && (
+                    <p className="mt-3 text-xs text-slate-500">
+                      Simpan unit terlebih dahulu untuk mengunggah gambar dari komputer.
+                    </p>
+                  )}
                 </div>
 
                 <Field label="Judul welcome">
@@ -469,5 +501,25 @@ function VisualPreview({ url, fallback }: { url: string | null; fallback: string
     <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-sm font-bold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-900">
       {fallback.slice(0, 2).toUpperCase()}
     </span>
+  );
+}
+
+function UploadButton({ disabled, onFile }: { disabled?: boolean; onFile: (file: File) => void }) {
+  return (
+    <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+      <Upload className="h-4 w-4" aria-hidden />
+      Unggah gambar
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="sr-only"
+        disabled={disabled}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) onFile(file);
+          event.currentTarget.value = '';
+        }}
+      />
+    </label>
   );
 }
