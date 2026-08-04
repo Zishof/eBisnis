@@ -5,6 +5,7 @@ import { HomePage } from '../pages/public/HomePage';
 import { EmedikLandingPage } from '../pages/public/EmedikLandingPage';
 import { ApotikLandingPage } from '../pages/public/ApotikLandingPage';
 import { rootExperienceFor } from '../pages/public/emedik-host';
+import { isEducationPublicHost } from '../verticals/education/education-host';
 import { CmsPage } from '../pages/public/CmsPage';
 import { PricingPage } from '../pages/public/PricingPage';
 import { NewsListPage } from '../pages/public/NewsListPage';
@@ -118,6 +119,31 @@ const ProposalPage = lazy(() =>
 const PksPage = lazy(() => import('../pages/public/PksPage').then((m) => ({ default: m.PksPage })));
 const PenawaranPage = lazy(() =>
   import('../pages/public/PenawaranPage').then((m) => ({ default: m.PenawaranPage })),
+);
+const EducationLandingPage = lazy(() =>
+  import('../verticals/education/EducationLandingPage').then((m) => ({
+    default: m.EducationLandingPage,
+  })),
+);
+const EducationProposalPage = lazy(() =>
+  import('../verticals/education/EducationDocuments').then((m) => ({
+    default: m.EducationProposalPage,
+  })),
+);
+const EducationPenawaranPage = lazy(() =>
+  import('../verticals/education/EducationDocuments').then((m) => ({
+    default: m.EducationPenawaranPage,
+  })),
+);
+const EducationPksPage = lazy(() =>
+  import('../verticals/education/EducationDocuments').then((m) => ({
+    default: m.EducationPksPage,
+  })),
+);
+const EducationPresentationPage = lazy(() =>
+  import('../verticals/education/EducationDocuments').then((m) => ({
+    default: m.EducationPresentationPage,
+  })),
 );
 
 // Vertical kesehatan. Dimuat terpisah: sebagian besar penyewa bukan fasilitas
@@ -366,8 +392,11 @@ function AppTenantGate() {
 
 export function App() {
   const rootExperience = rootExperienceFor(window.location.hostname, window.location.pathname);
+  const educationHost = isEducationPublicHost();
   const rootElement =
-    rootExperience === 'emedik' ? (
+    educationHost ? (
+      <EducationLandingPage />
+    ) : rootExperience === 'emedik' ? (
       <EmedikLandingPage />
     ) : rootExperience === 'apotik' ? (
       <ApotikLandingPage />
@@ -379,6 +408,7 @@ export function App() {
     <Suspense fallback={<LoadingState />}>
       <Routes>
         {rootElement && <Route path="/" element={rootElement} />}
+        <Route path="/education" element={<EducationLandingPage />} />
 
         {/* Website publik — route `/` menampilkan website, bukan redirect login. */}
         <Route element={<PublicLayout />}>
@@ -387,10 +417,10 @@ export function App() {
               koperasinya; pengunjung ebisnis.id melihat website perusahaan. */}
           {!rootElement && <Route path="/" element={<AkarMenurutHost />} />}
           <Route path="/harga" element={<PricingPage />} />
-          <Route path="/presentasi" element={<PresentasiPage />} />
-          <Route path="/proposal" element={<ProposalPage />} />
-          <Route path="/pks" element={<PksPage />} />
-          <Route path="/penawaran" element={<PenawaranPage />} />
+          <Route path="/presentasi" element={educationHost ? <EducationPresentationPage /> : <PresentasiPage />} />
+          <Route path="/proposal" element={educationHost ? <EducationProposalPage /> : <ProposalPage />} />
+          <Route path="/pks" element={educationHost ? <EducationPksPage /> : <PksPage />} />
+          <Route path="/penawaran" element={educationHost ? <EducationPenawaranPage /> : <PenawaranPage />} />
           <Route path="/berita" element={<NewsListPage />} />
           <Route path="/berita/:slug" element={<NewsDetailPage />} />
           <Route path="/kontak" element={<ContactPage />} />

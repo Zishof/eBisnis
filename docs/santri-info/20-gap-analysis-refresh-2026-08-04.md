@@ -98,3 +98,19 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 ## Kesimpulan
 
 Yang paling perlu dikerjakan berikutnya adalah media manager + upload gambar berita/gallery, lalu rapor PDF, timetable drag-drop, dan PSB form builder. Ini memberi dampak paling besar ke tampilan publik pesantren/sekolah sekaligus menutup gap AIS yang masih paling terasa oleh pengguna harian.
+
+## Update Implementasi 2026-08-04
+
+Batch berikut sudah diterapkan di repo aktif:
+
+- Portal publik `enterprise-education.id` tidak lagi jatuh ke landing eBisnis. Frontend kini punya landing Enterprise Education sendiri dengan gambar pendidikan/pesantren, empat dokumen publik, dan brand-aware header/footer untuk domain pendidikan.
+- Dokumen `proposal`, `penawaran`, `presentasi`, dan `pks` pada domain pendidikan memakai narasi Enterprise Education, bukan narasi POS/retail.
+- Laporan pesantren menutup sebagian gap ekspor: tabel laporan bisa dicetak/disimpan PDF lewat browser dan diunduh sebagai CSV yang bisa dibuka Excel.
+- Gerbang pesantren menutup sebagian gap security: pos keamanan kini punya API dan UI untuk mencatat tamu, paket kiriman, dan penjemput tanpa mencampur alur izin keluar-masuk santri.
+- Vault impor legacy CMN ditambahkan agar seluruh DBF inventory lama tersimpan sebagai raw audit terlebih dahulu sebelum projection operasional dilengkapi bertahap.
+
+Yang masih belum penuh setelah batch ini:
+
+- Media manager generik portal masih berupa pola slot stabil di UI; backend CMS media lintas portal belum dibuat.
+- Gallery/program unggulan per unit sekolah belum menjadi modul CRUD penuh.
+- Timetable visual drag-drop, template rapor resmi per jenjang, dan builder PSB drag-drop tingkat lanjut masih perlu fase berikutnya.

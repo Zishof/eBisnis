@@ -203,6 +203,12 @@
       "file": "20260803T120000__pesantren__psb_form_schema.sql",
       "name": "Formulir PSB dinamis per gelombang",
       "description": "Menambah form_schema pada pesantren_psb_gelombang dan jawaban_tambahan pada pesantren_psb_pendaftar. Ini menyiapkan variasi PPDB per unit seperti banyaknya PPDB*.java di AIS tanpa membuat tabel khusus per unit."
+    },
+    {
+      "id": "20260804T010000__pesantren__gerbang_tamu_paket",
+      "file": "20260804T010000__pesantren__gerbang_tamu_paket.sql",
+      "name": "Gerbang tamu, paket, dan penjemput",
+      "description": "Menambah pesantren_gerbang_kunjungan untuk mencatat tamu, paket kiriman, dan penjemput di pos keamanan tanpa mencampur alur persetujuan izin santri."
     }
   ]
 }
