@@ -14,6 +14,7 @@ import { ContactPage } from '../pages/public/ContactPage';
 import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
 import { isSalonDemoHost, salonRootRedirectFor } from '../pages/contoh/salon-host';
+import { businessVerticalRootRedirectFor } from '../pages/contoh/business-verticals';
 import { pelangganRootRedirectFor } from '../pages/pelanggan/pelanggan-host';
 import { inventoryRootRedirectFor } from '../pages/inventory/inventory-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
@@ -281,6 +282,9 @@ const PelangganDemoPage = lazy(() =>
 const SalonDemoPage = lazy(() =>
   import('../pages/contoh/SalonDemoPage').then((m) => ({ default: m.SalonDemoPage })),
 );
+const BusinessVerticalPage = lazy(() =>
+  import('../pages/contoh/BusinessVerticalPage').then((m) => ({ default: m.BusinessVerticalPage })),
+);
 const PortalPelangganAdminPage = lazy(() =>
   import('../pages/pelanggan/PortalPelangganAdminPage').then((m) => ({
     default: m.PortalPelangganAdminPage,
@@ -394,6 +398,8 @@ function AkarMenurutHost() {
   if (pelangganRedirect) return <Navigate to={pelangganRedirect} replace />;
   const inventoryRedirect = inventoryRootRedirectFor();
   if (inventoryRedirect) return <Navigate to={inventoryRedirect} replace />;
+  const businessVerticalRedirect = businessVerticalRootRedirectFor();
+  if (businessVerticalRedirect) return <Navigate to={businessVerticalRedirect} replace />;
   if (isMarketplaceHost()) return <Navigate to="/belanja" replace />;
   if (isCooperativeHost()) return <Navigate to="/ekoperasi/situs" replace />;
   /*
@@ -462,6 +468,7 @@ export function App() {
           <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
           <Route path="/inventory" element={<InventoryLandingPage />} />
+          <Route path="/contoh-usaha/:vertical" element={<BusinessVerticalPage />} />
           <Route path="/a/*" element={<AkarMenurutHost />} />
           <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />
         </Route>
