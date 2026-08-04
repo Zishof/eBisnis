@@ -32,7 +32,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 
 | Area | Status | Sudah tersedia | Gap yang masih tersisa |
 | --- | --- | --- | --- |
-| Website pondok publik | Sebagian besar selesai | Profil pondok, berita, upload gambar sampul berita dari admin, logo, hero image, muqodimah, subdomain tenant, halaman publik santri.info | CMS generik lengkap belum ada: page builder, gallery, menu editor, draft/publish multi-section, crop/alt text gambar |
+| Website pondok publik | Sebagian besar selesai | Profil pondok, berita, upload gambar sampul berita/kajian dari admin, logo, hero image, muqodimah, subdomain tenant, halaman publik santri.info | CMS generik lengkap belum ada: page builder, gallery, menu editor, draft/publish multi-section, crop/alt text gambar |
 | Website unit sekolah | Sebagian besar selesai | Unit pendidikan punya website sendiri, subdomain/custom domain field, logo/hero URL, upload logo/hero langsung dari admin, halaman unit cerah, kartu unit dari halaman pondok bisa menuju alamat unit | Gallery/program/kegiatan per unit belum jadi modul penuh; custom domain `*.sch.id` masih perlu verifikasi DNS/ownership dan automation ops |
 | Cloudflare/subdomain | Sebagian selesai | Wildcard DNS `*.santri.info` cukup untuk subdomain dinamis di aplikasi; setting subdomain unit ada di CRUD unit pendidikan | Cloudflare API automation untuk membuat/mengubah record custom belum diaktifkan; perlu token, zone id, audit log, retry, dan validasi konflik |
 | Master eSchool | Sebagian besar selesai | Unit pendidikan, guru/ustadz, santri, wali, kartu, rombongan, kurikulum, mapel, jadwal | Field biodata AIS yang sangat rinci belum semua menjadi kolom typed; beberapa masih perlu metadata/ekstensi |
@@ -40,7 +40,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 | Asrama | Operasional dasar | Asrama, kamar, penempatan santri | Locking kapasitas dan laporan asrama legacy belum lengkap; mutasi kamar historis perlu diperdalam |
 | Keluar-masuk santri | Operasional dasar | Perizinan, lampiran, disposisi, izin aktif, gerbang, scan kartu/RFID keyboard-wedge, log keluar/masuk, app Flutter security gate dasar | Fingerprint ditunda; kunjungan tamu, paket kiriman, transport/penjemput, dan dashboard security detail belum penuh |
 | Presensi santri | Operasional dasar | Presensi massal, presensi per tanggal/jenis, integrasi pilihan jadwal | Relasi fisik `jadwal_id`/`piket_id`, rekap absensi formal lengkap, dan perangkat absensi belum penuh |
-| Diniyah/tahfiz/dakwah | Operasional dasar | Kitab, halaqah, anggota, setoran tahfiz, modul diniyah/tahfiz | Kalender kajian/dakwah publik, materi/arsip kajian, sanad/ustadz pengampu, sertifikat/syahadah belum penuh |
+| Diniyah/tahfiz/dakwah | Operasional dasar | Kitab, halaqah, anggota, setoran tahfiz, modul diniyah/tahfiz, kajian publik dengan materi/rekaman/gambar unggahan | Sanad/ustadz pengampu rinci, sertifikat/syahadah, crop/editor media, dan penjadwalan publish belum penuh |
 | Nilai/rapor | Sebagian selesai | Komponen nilai, skala huruf, entry nilai, endpoint rapor berbobot | Entry nilai per kelas lebih cepat, rapor PDF, template rapor, leger, ranking, kenaikan kelas/promosi belum penuh |
 | Jadwal | Sebagian selesai | Jadwal pelajaran dengan validasi bentrok dasar | Timetable drag-drop, copy jadwal mingguan, substitusi guru, kalender ujian, dan ekspor belum penuh |
 | Buku penghubung | Sebagian selesai | Catatan santri, visibilitas wali/internal, status tindak lanjut, notifikasi wali | Thread balasan dua arah, lampiran, template komunikasi, dan SLA tindak lanjut belum penuh |
@@ -75,7 +75,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 2. Tambahkan relasi fisik presensi ke jadwal/piket bila diperlukan audit granular.
 3. Lengkapi pembinaan: hukuman/poin, tindak lanjut, apresiasi, penghargaan.
 4. Lengkapi ekstrakurikuler: anggota, jabatan, kehadiran, nilai partisipasi.
-5. Lengkapi dakwah: jadwal kajian, materi, arsip video/audio, publikasi ke website.
+5. Lengkapi dakwah lanjutan: sanad, ustadz pengampu rinci, sertifikat/syahadah, dan editorial publish scheduler.
 
 ### P2 - Keuangan, Laporan, dan Integrasi
 
@@ -110,6 +110,7 @@ Batch berikut sudah diterapkan di repo aktif:
 - Vault impor legacy CMN ditambahkan agar seluruh DBF inventory lama tersimpan sebagai raw audit terlebih dahulu sebelum projection operasional dilengkapi bertahap.
 - PSB dan laporan dipoles: pembuatan gelombang memakai pilihan tahun ajaran/unit dari data sistem, tabel gelombang menampilkan nama tahun ajaran dan unit, serta filter laporan tidak lagi meminta ID teknis.
 - Berita pondok dipoles: admin dapat memilih file gambar sampul langsung saat membuat draft, lalu sistem mengunggahnya otomatis setelah draft tersimpan.
+- Kajian dakwah dipoles: admin dapat memilih file gambar publikasi langsung saat membuat jadwal/arsip kajian; server menyimpan gambar sebagai BLOB tenant dan menyajikannya melalui endpoint publik khusus kajian.
 
 Yang masih belum penuh setelah batch ini:
 

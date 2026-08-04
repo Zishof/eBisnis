@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsISO8601, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PesantrenDakwahService } from './pesantren-dakwah.service';
@@ -7,6 +8,8 @@ import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decora
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 
 const STATUS_KAJIAN = ['DRAFT', 'TERBIT', 'ARSIP'] as const;
+const MIME_GAMBAR_SAH = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const UKURAN_MAKSIMUM_BYTES = 5 * 1024 * 1024;
 
 function schemaWajib(user: AuthenticatedUser): string {
   if (!user.schemaName) {
@@ -110,6 +113,33 @@ export class PesantrenKajianController {
   @ApiOperation({ summary: 'Memperbarui jadwal kajian atau arsip dakwah' })
   ubah(@Param('id') id: string, @Body() dto: SimpanKajianDto, @CurrentUser() user: AuthenticatedUser) {
     return this.dakwah.ubah(schemaWajib(user), id, dto, user.userId);
+  }
+
+  @Permissions('EPESANTREN_DINIYAH.UPDATE')
+  @Post(':id/gambar')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Mengunggah gambar publikasi kajian dakwah' })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: UKURAN_MAKSIMUM_BYTES } }))
+  unggahGambar(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (!file) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Berkas gambar wajib disertakan.');
+    }
+    if (!MIME_GAMBAR_SAH.has(file.mimetype)) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Jenis berkas tidak didukung. Gunakan JPEG, PNG, atau WEBP.',
+      );
+    }
+    return this.dakwah.unggahGambar(
+      schemaWajib(user),
+      id,
+      { filename: file.originalname, mimeType: file.mimetype, buffer: file.buffer },
+      user.userId,
+    );
   }
 
   @Permissions('EPESANTREN_DINIYAH.UPDATE')

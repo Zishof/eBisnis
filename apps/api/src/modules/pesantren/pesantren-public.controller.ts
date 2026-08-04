@@ -108,6 +108,24 @@ export class PesantrenPublicController {
     return rawResponse(new StreamableFile(berkas.buffer));
   }
 
+  /** Gambar publikasi kajian dakwah. */
+  @Public()
+  @Get('kajian-gambar/:code')
+  @ApiOperation({ summary: 'Gambar publikasi kajian dakwah' })
+  async kajianGambar(
+    @Headers('host') host: string,
+    @Param('code') code: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const berkas = await this.situs.kajianGambar(host, code);
+    res.set({
+      'Content-Type': berkas.mimeType,
+      'Content-Disposition': `inline; filename="${berkas.namaFile}"`,
+      'Cache-Control': 'public, max-age=300',
+    });
+    return rawResponse(new StreamableFile(berkas.buffer));
+  }
+
   /** Logo/foto hero satu unit pendidikan. */
   @Public()
   @Get('unit-gambar/:id/:kategori')

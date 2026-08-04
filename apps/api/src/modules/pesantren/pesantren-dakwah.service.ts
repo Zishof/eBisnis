@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
+import { TenantFileBlobService } from '../../infrastructure/files/tenant-file-blob.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 
 export interface BarisKajianDakwah {
@@ -38,7 +39,10 @@ const KOLOM = `id::text, judul, pemateri, tanggal_mulai::text, tanggal_selesai::
 
 @Injectable()
 export class PesantrenDakwahService {
-  constructor(private readonly tenantDb: TenantConnectionService) {}
+  constructor(
+    private readonly tenantDb: TenantConnectionService,
+    private readonly fileBlob: TenantFileBlobService,
+  ) {}
 
   async daftar(schemaName: string, opsi: { status?: string; publik?: boolean } = {}): Promise<BarisKajianDakwah[]> {
     const S = `"${schemaName}"`;
@@ -154,6 +158,41 @@ export class PesantrenDakwahService {
     return { id };
   }
 
+  async unggahGambar(
+    schemaName: string,
+    id: string,
+    berkas: { filename: string; mimeType: string; buffer: Buffer },
+    actorUserId: string,
+  ): Promise<BarisKajianDakwah> {
+    const kajian = await this.satu(schemaName, id);
+    if (!kajian) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Kajian tidak ditemukan.');
+    }
+
+    await this.fileBlob.simpanTunggal(
+      schemaName,
+      {
+        code: kodeBerkasGambarKajian(id),
+        name: `Gambar kajian ${kajian.judul}`,
+        filename: berkas.filename,
+        mimeType: berkas.mimeType,
+        buffer: berkas.buffer,
+      },
+      actorUserId,
+    );
+
+    const S = `"${schemaName}"`;
+    const rows = await this.tenantDb.query<BarisKajianDakwah>(
+      schemaName,
+      `UPDATE ${S}.pesantren_kajian_dakwah
+          SET gambar_url = $2, updated_at = now(), updated_by = $3, version = version + 1
+        WHERE id = $1 AND deleted_at IS NULL
+        RETURNING ${KOLOM}`,
+      [id, lintasanGambarKajian(id), actorUserId],
+    );
+    return rows[0];
+  }
+
   async satu(schemaName: string, id: string): Promise<BarisKajianDakwah | null> {
     const S = `"${schemaName}"`;
     return this.tenantDb.queryOne<BarisKajianDakwah>(
@@ -175,4 +214,12 @@ export class PesantrenDakwahService {
 function bersihkan(nilai?: string | null): string | null {
   const bersih = (nilai ?? '').trim();
   return bersih ? bersih : null;
+}
+
+export function kodeBerkasGambarKajian(id: string): string {
+  return `KAJIAN_${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+}
+
+export function lintasanGambarKajian(id: string): string {
+  return `/api/v1/pesantren/public/kajian-gambar/${kodeBerkasGambarKajian(id)}`;
 }

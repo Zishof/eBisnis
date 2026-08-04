@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, Link as LinkIcon, Plus, RefreshCw, Send, Trash2 } from 'lucide-react';
+import { CalendarDays, ImagePlus, Link as LinkIcon, Plus, RefreshCw, Send, Trash2 } from 'lucide-react';
 import { api, formatDate } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -367,6 +367,7 @@ function TabKajian() {
   const toMessage = useErrorMessage();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
+  const [gambarKajian, setGambarKajian] = useState<File | null>(null);
   const [form, setForm] = useState({
     judul: '',
     pemateri: '',
@@ -402,7 +403,7 @@ function TabKajian() {
 
   const simpan = useMutation({
     mutationFn: () => api.post<KajianRow>('/pesantren/kajian', payload()),
-    onSuccess: () => {
+    onSuccess: (row) => {
       toast.push('Kajian dakwah berhasil disimpan.', 'success');
       setForm({
         judul: '',
@@ -417,9 +418,26 @@ function TabKajian() {
         status: 'DRAFT',
         sortOrder: '0',
       });
+      if (gambarKajian) {
+        unggahGambar.mutate({ id: row.id, file: gambarKajian });
+      }
+      setGambarKajian(null);
       void queryClient.invalidateQueries({ queryKey: ['pesantren-kajian'] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan kajian.'), 'error'),
+  });
+
+  const unggahGambar = useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => {
+      const body = new FormData();
+      body.append('file', file);
+      return api.post<KajianRow>(`/pesantren/kajian/${id}/gambar`, body);
+    },
+    onSuccess: () => {
+      toast.push('Gambar kajian berhasil diunggah.', 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-kajian'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mengunggah gambar kajian.'), 'error'),
   });
 
   const ubahStatus = useMutation({
@@ -478,12 +496,35 @@ function TabKajian() {
           </div>
           <Input label="URL materi" value={form.materiUrl} onChange={(value) => setForm({ ...form, materiUrl: value })} />
           <Input label="URL rekaman audio/video" value={form.rekamanUrl} onChange={(value) => setForm({ ...form, rekamanUrl: value })} />
-          <Input label="URL gambar publikasi" value={form.gambarUrl} onChange={(value) => setForm({ ...form, gambarUrl: value })} />
+          <Input label="URL gambar luar" value={form.gambarUrl} onChange={(value) => setForm({ ...form, gambarUrl: value })} />
+          <div className="rounded-lg border border-dashed border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-emerald-700 shadow-sm dark:bg-slate-950 dark:text-emerald-300">
+                  <ImagePlus className="h-5 w-5" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">Gambar dari komputer</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">Opsional. JPEG, PNG, atau WEBP maksimal 5 MB. Jika dipilih, file ini menggantikan URL gambar luar.</p>
+                  {gambarKajian && <p className="mt-2 truncate text-xs font-semibold text-emerald-700 dark:text-emerald-300">{gambarKajian.name}</p>}
+                </div>
+              </div>
+              <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                Pilih gambar
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={(event) => setGambarKajian(event.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Select label="Status" value={form.status} options={STATUS_KAJIAN} onChange={(value) => setForm({ ...form, status: value })} />
             <Input label="Urutan" type="number" value={form.sortOrder} onChange={(value) => setForm({ ...form, sortOrder: value })} />
           </div>
-          <button type="button" className="btn-primary w-full justify-center" disabled={!form.judul.trim() || !form.tanggalMulai || simpan.isPending} onClick={() => simpan.mutate()}>
+          <button type="button" className="btn-primary w-full justify-center" disabled={!form.judul.trim() || !form.tanggalMulai || simpan.isPending || unggahGambar.isPending} onClick={() => simpan.mutate()}>
             <Plus className="h-4 w-4" aria-hidden />
             Simpan kajian
           </button>

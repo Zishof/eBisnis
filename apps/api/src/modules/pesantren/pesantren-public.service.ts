@@ -221,6 +221,28 @@ export class PesantrenPublicService {
     return berkas;
   }
 
+  async kajianGambar(host: string | undefined, code: string): Promise<BerkasBlob> {
+    if (!code.startsWith('KAJIAN_')) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
+    }
+    const konteks = await this.resolver.resolve(host, VERTIKAL);
+    const S = konteks.schemaName;
+
+    const diterbitkan = await this.tenantDb.queryOne<{ is_published: boolean }>(
+      S,
+      `SELECT is_published FROM "${S}".pesantren_website_setting WHERE singleton = TRUE`,
+    );
+    if (!diterbitkan || diterbitkan.is_published !== true) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
+    }
+
+    const berkas = await this.fileBlob.ambilByCode(S, code);
+    if (!berkas) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
+    }
+    return berkas;
+  }
+
   async unitGambar(
     host: string | undefined,
     unitId: string,
