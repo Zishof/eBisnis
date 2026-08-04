@@ -163,7 +163,7 @@ function PublicLayoutEBisnis({
               items: [
                 { label: 'Landing inventory', url: 'https://inventory.ebisnis.id' },
                 { label: 'Demo bersama', url: 'https://demo-inventory.ebisnis.id' },
-                { label: 'CMN Medika', url: 'https://cmnmedika-inventory.ebisnis.id' },
+                { label: 'Caruban Medika Nusantara', url: 'https://cmnmedika-inventory.ebisnis.id' },
               ],
             },
             {

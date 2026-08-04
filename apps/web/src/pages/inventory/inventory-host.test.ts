@@ -34,6 +34,7 @@ describe('host inventory eBisnis', () => {
   it('membuat label tenant dari host', () => {
     expect(inventoryTenantLabelFromHost('inventory.ebisnis.id')).toBe('eBisnis Inventory');
     expect(inventoryTenantLabelFromHost('demo-inventory.ebisnis.id')).toBe('Demo Inventory Obat');
+    expect(inventoryTenantLabelFromHost('cmnmedika-inventory.ebisnis.id')).toBe('Caruban Medika Nusantara');
     expect(inventoryTenantLabelFromHost('toko-obat-jaya-inventory.ebisnis.id')).toBe('Toko Obat Jaya');
     expect(inventoryTenantLabelFromHost('apotek-sehat.inventory.ebisnis.id')).toBe('Apotek Sehat');
   });

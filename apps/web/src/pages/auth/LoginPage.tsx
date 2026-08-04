@@ -230,7 +230,7 @@ export function LoginPage() {
                   ? 'Masuk ke Salon Cantik Demo'
                   : inventory
                     ? cmnInventory
-                      ? 'Masuk ke CMN Medika Inventory'
+                      ? 'Masuk ke Caruban Medika Nusantara Inventory'
                       : 'Masuk ke Demo Inventory Obat'
                   : emedikBrand
                     ? emedikBrand.loginTitle
@@ -243,7 +243,7 @@ export function LoginPage() {
                 ? 'Gunakan akun pelanggan, manajemen salon, atau pemilik salon untuk mencoba demo.'
                 : inventory
                   ? cmnInventory
-                    ? 'Gunakan akun Muklis, sales, atau admin CMN Medika.'
+                    ? 'Gunakan akun Muklis, sales, atau admin Caruban Medika Nusantara.'
                     : 'Gunakan akun sales, manajemen inventory, atau pemilik untuk mencoba alur inventory obat.'
                 : emedikBrand
                   ? emedikBrand.loginSubtitle

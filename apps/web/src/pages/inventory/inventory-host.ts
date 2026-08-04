@@ -37,6 +37,7 @@ export function inventoryTenantLabelFromHost(hostname: string = window.location.
   const host = cleanHost(hostname);
   if (host === 'inventory.ebisnis.id') return 'eBisnis Inventory';
   if (host === 'demo-inventory.ebisnis.id') return 'Demo Inventory Obat';
+  if (host === 'cmnmedika-inventory.ebisnis.id') return 'Caruban Medika Nusantara';
 
   const tenantSlug = host.endsWith('.inventory.ebisnis.id')
     ? host.replace(/\.inventory\.ebisnis\.id$/, '')

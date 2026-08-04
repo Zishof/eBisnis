@@ -140,7 +140,7 @@ export function InventoryLandingPage() {
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link to={cmnHost ? '/masuk?produk=inventory&role=PEMILIK_USAHA' : '/masuk?produk=inventory&role=SALES_OBAT'} className="btn-primary px-5 py-3">
-                {cmnHost ? 'Masuk CMN Medika' : 'Masuk demo inventory'}
+                {cmnHost ? 'Masuk Caruban Medika Nusantara' : 'Masuk demo inventory'}
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
               <a href="#download" className="btn-outline px-5 py-3">
