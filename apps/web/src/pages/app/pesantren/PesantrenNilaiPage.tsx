@@ -26,6 +26,19 @@ interface SantriRow {
   nama_lengkap: string;
 }
 
+interface RombonganRow {
+  id: string;
+  tingkat: string;
+  nama: string;
+}
+
+interface AnggotaRombonganRow {
+  id: string;
+  santri_id: string;
+  nis: string | null;
+  nama_lengkap: string | null;
+}
+
 interface RaporRow {
   mata_pelajaran: string;
   komponen: Array<{ nama: string; nilai: number; bobot_persen: number }>;
@@ -43,6 +56,7 @@ export function PesantrenNilaiPage() {
   const [formMapel, setFormMapel] = useState({ code: '', nama: '', kelompok: '', jenjang: '' });
   const [formKomponen, setFormKomponen] = useState({ kode: '', nama: '', bobotPersen: '0' });
   const [formNilai, setFormNilai] = useState({ santriId: '', komponenId: '', nilaiAngka: '', catatan: '' });
+  const [rombonganNilaiId, setRombonganNilaiId] = useState('');
   const [nilaiMassal, setNilaiMassal] = useState<Record<string, string>>({});
   const [filterRapor, setFilterRapor] = useState({ santriId: '', tahunAjaranId: '' });
 
@@ -60,6 +74,17 @@ export function PesantrenNilaiPage() {
   const santri = useQuery({
     queryKey: ['pesantren-nilai-santri'],
     queryFn: () => api.get<{ items: SantriRow[]; total: number }>('/pesantren/santri?status=AKTIF&halaman=1&ukuranHalaman=100'),
+  });
+
+  const rombongan = useQuery({
+    queryKey: ['pesantren-nilai-rombongan'],
+    queryFn: () => api.get<{ items: RombonganRow[]; total: number }>('/pesantren/rombongan?halaman=1&ukuranHalaman=100'),
+  });
+
+  const anggotaRombongan = useQuery({
+    queryKey: ['pesantren-nilai-anggota-rombongan', rombonganNilaiId],
+    enabled: Boolean(rombonganNilaiId),
+    queryFn: () => api.get<AnggotaRombonganRow[]>(`/pesantren/rombongan/${rombonganNilaiId}/anggota`),
   });
 
   const rapor = useQuery({
@@ -139,6 +164,16 @@ export function PesantrenNilaiPage() {
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan nilai massal.'), 'error'),
   });
+
+  const santriMassal: SantriRow[] = rombonganNilaiId
+    ? (anggotaRombongan.data ?? []).map((item) => ({
+        id: item.santri_id,
+        nis: item.nis ?? '-',
+        nama_lengkap: item.nama_lengkap ?? item.santri_id,
+      }))
+    : santri.data?.items ?? [];
+  const rombonganTerpilih = (rombongan.data?.items ?? []).find((item) => item.id === rombonganNilaiId);
+  const santriTerpilih = (santri.data?.items ?? []).find((item) => item.id === filterRapor.santriId);
 
   const columns: Array<GridColumn<MataPelajaranRow>> = [
     { key: 'code', header: 'Kode' },
@@ -256,7 +291,7 @@ export function PesantrenNilaiPage() {
                 <div>
                   <h3 className="font-semibold text-slate-900 dark:text-white">Input massal per kelas/komponen</h3>
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Pilih tahun ajaran dan komponen di atas, lalu isi nilai santri yang perlu disimpan.
+                    Pilih tahun ajaran dan komponen di atas, batasi rombongan bila perlu, lalu isi nilai yang perlu disimpan.
                   </p>
                 </div>
                 <button
@@ -265,6 +300,7 @@ export function PesantrenNilaiPage() {
                   disabled={
                     !tahunAjaranId ||
                     !formNilai.komponenId ||
+                    !santriMassal.length ||
                     Object.values(nilaiMassal).every((nilai) => !nilai.trim()) ||
                     simpanNilaiMassal.isPending
                   }
@@ -274,6 +310,35 @@ export function PesantrenNilaiPage() {
                   Simpan Massal
                 </button>
               </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(220px,1fr)_auto]">
+                <Field label="Rombongan/kelas">
+                  <select
+                    className="field-input"
+                    value={rombonganNilaiId}
+                    onChange={(e) => {
+                      setRombonganNilaiId(e.target.value);
+                      setNilaiMassal({});
+                    }}
+                  >
+                    <option value="">Semua santri aktif</option>
+                    {(rombongan.data?.items ?? []).map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.tingkat} - {item.nama}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <div className="flex items-end">
+                  <span className="inline-flex min-h-10 items-center rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
+                    {anggotaRombongan.isFetching ? 'Memuat santri...' : `${santriMassal.length} santri`}
+                  </span>
+                </div>
+              </div>
+              {rombonganTerpilih && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Daftar dibatasi ke {rombonganTerpilih.tingkat} - {rombonganTerpilih.nama}; nilai kosong tidak dikirim.
+                </p>
+              )}
               <div className="mt-4 max-h-[420px] overflow-auto rounded-xl border border-slate-200 dark:border-slate-800">
                 <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
                   <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900">
@@ -283,7 +348,7 @@ export function PesantrenNilaiPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
-                    {(santri.data?.items ?? []).map((item) => (
+                    {santriMassal.map((item) => (
                       <tr key={item.id}>
                         <td className="px-3 py-2">
                           <p className="font-semibold text-slate-900 dark:text-white">{item.nama_lengkap}</p>
@@ -303,8 +368,8 @@ export function PesantrenNilaiPage() {
                     ))}
                   </tbody>
                 </table>
-                {(santri.data?.items ?? []).length === 0 && (
-                  <p className="bg-white p-4 text-sm text-slate-500 dark:bg-slate-950">Belum ada santri aktif untuk diisi nilainya.</p>
+                {santriMassal.length === 0 && (
+                  <p className="bg-white p-4 text-sm text-slate-500 dark:bg-slate-950">Belum ada santri pada filter ini.</p>
                 )}
               </div>
             </div>
@@ -331,12 +396,28 @@ export function PesantrenNilaiPage() {
           </div>
 
           <section className="card overflow-hidden p-0 print:border-0 print:shadow-none">
-            <div className="border-b border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 print:border-slate-300">
-              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700">Rapor Santri</p>
-              <h2 className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">
-                {(santri.data?.items ?? []).find((item) => item.id === filterRapor.santriId)?.nama_lengkap ?? 'Pilih santri'}
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">Tahun ajaran: {filterRapor.tahunAjaranId || '-'}</p>
+            <div className="border-b border-slate-200 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900 print:border-slate-300">
+              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700 print:text-slate-700">
+                Laporan Hasil Belajar Santri
+              </p>
+              <h2 className="mt-2 text-2xl font-bold text-slate-950 dark:text-white print:text-slate-950">ePesantren.id</h2>
+              <p className="mt-1 text-sm text-slate-500 print:text-slate-600">
+                Dokumen akademik, diniyah, dan pembinaan santri
+              </p>
+            </div>
+            <div className="grid gap-3 border-b border-slate-100 bg-slate-50 p-6 text-sm dark:border-slate-800 dark:bg-slate-900/60 print:grid-cols-3 print:bg-white">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Nama santri</p>
+                <p className="mt-1 font-semibold text-slate-950 dark:text-white print:text-slate-950">{santriTerpilih?.nama_lengkap ?? '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">NIS</p>
+                <p className="mt-1 font-semibold text-slate-950 dark:text-white print:text-slate-950">{santriTerpilih?.nis ?? '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tahun ajaran</p>
+                <p className="mt-1 font-semibold text-slate-950 dark:text-white print:text-slate-950">{filterRapor.tahunAjaranId || '-'}</p>
+              </div>
             </div>
             {!filterRapor.santriId || !filterRapor.tahunAjaranId ? (
               <div className="p-6 text-sm text-slate-500">Pilih santri dan tahun ajaran untuk menampilkan rapor.</div>
@@ -374,6 +455,25 @@ export function PesantrenNilaiPage() {
                 </table>
               </div>
             )}
+            {rapor.data?.length ? (
+              <div className="grid gap-8 border-t border-slate-100 bg-white p-6 text-center text-sm dark:border-slate-800 dark:bg-slate-950 print:grid-cols-3">
+                <div>
+                  <p className="text-slate-600">Mengetahui,</p>
+                  <p className="font-semibold text-slate-950 dark:text-white print:text-slate-950">Wali Kelas</p>
+                  <div className="mx-auto mt-14 w-40 border-t border-slate-300 pt-2 text-slate-500">Nama terang</div>
+                </div>
+                <div>
+                  <p className="text-slate-600">Diterima,</p>
+                  <p className="font-semibold text-slate-950 dark:text-white print:text-slate-950">Orang Tua/Wali</p>
+                  <div className="mx-auto mt-14 w-40 border-t border-slate-300 pt-2 text-slate-500">Nama terang</div>
+                </div>
+                <div>
+                  <p className="text-slate-600">Disahkan,</p>
+                  <p className="font-semibold text-slate-950 dark:text-white print:text-slate-950">Kepala Satuan Pendidikan</p>
+                  <div className="mx-auto mt-14 w-40 border-t border-slate-300 pt-2 text-slate-500">Nama terang</div>
+                </div>
+              </div>
+            ) : null}
           </section>
         </div>
       )}

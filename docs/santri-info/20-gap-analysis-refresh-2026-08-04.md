@@ -38,10 +38,10 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 | Master eSchool | Sebagian besar selesai | Unit pendidikan, guru/ustadz, santri, wali, kartu, rombongan, kurikulum, mapel, jadwal | Field biodata AIS yang sangat rinci belum semua menjadi kolom typed; beberapa masih perlu metadata/ekstensi |
 | PSB/PPDB | Operasional dasar | Gelombang, unit tujuan, portal pendaftar, login/status, builder field tambahan dengan urutan/preview, schema tambahan berbasis JSON | Verifikasi multi-step AIS, jadwal ujian/interview detail, dan cetak/rekap lanjutan belum penuh |
 | Asrama | Operasional dasar | Asrama, kamar, penempatan santri | Locking kapasitas dan laporan asrama legacy belum lengkap; mutasi kamar historis perlu diperdalam |
-| Keluar-masuk santri | Operasional dasar | Perizinan, lampiran, disposisi, izin aktif, gerbang, scan kartu/RFID keyboard-wedge, log keluar/masuk, app Flutter security gate dasar | Fingerprint ditunda; kunjungan tamu, paket kiriman, transport/penjemput, dan dashboard security detail belum penuh |
+| Keluar-masuk santri | Operasional dasar | Perizinan, lampiran, disposisi, izin aktif, gerbang, scan kartu/RFID keyboard-wedge, log keluar/masuk, tamu, paket kiriman, penjemput, app Flutter security gate dasar | Fingerprint ditunda; transport/perjalanan detail dan dashboard security detail belum penuh |
 | Presensi santri | Operasional dasar | Presensi massal, presensi per tanggal/jenis, integrasi pilihan jadwal | Relasi fisik `jadwal_id`/`piket_id`, rekap absensi formal lengkap, dan perangkat absensi belum penuh |
-| Diniyah/tahfiz/dakwah | Operasional dasar | Kitab, halaqah, anggota, setoran tahfiz, modul diniyah/tahfiz | Kalender kajian/dakwah publik, materi/arsip kajian, sanad/ustadz pengampu, sertifikat/syahadah belum penuh |
-| Nilai/rapor | Sebagian selesai | Komponen nilai, skala huruf, entry nilai satuan, input nilai massal per komponen, endpoint rapor berbobot, cetak/simpan PDF lewat browser | Template rapor resmi per jenjang, leger, ranking, kenaikan kelas/promosi belum penuh |
+| Diniyah/tahfiz/dakwah | Operasional dasar | Kitab, halaqah, anggota, setoran tahfiz, modul diniyah/tahfiz, kajian publik, materi URL, rekaman URL, gambar, dan publish ke website | Sanad/ustadz pengampu, sertifikat/syahadah, dan arsip dakwah tingkat lanjut belum penuh |
+| Nilai/rapor | Sebagian selesai | Komponen nilai, skala huruf, entry nilai satuan, input nilai massal per rombongan dan komponen, endpoint rapor berbobot, template cetak/PDF browser dasar | Leger, ranking, kenaikan kelas/promosi, impor Excel, dan template rapor spesifik per yayasan/jenjang belum penuh |
 | Jadwal | Sebagian selesai | Jadwal pelajaran dengan validasi bentrok dasar dan timetable visual per hari | Drag-drop langsung pada kalender, copy jadwal mingguan, substitusi guru, kalender ujian, dan ekspor belum penuh |
 | Buku penghubung | Sebagian selesai | Catatan santri, visibilitas wali/internal, status tindak lanjut, notifikasi wali | Thread balasan dua arah, lampiran, template komunikasi, dan SLA tindak lanjut belum penuh |
 | Pembinaan santri | Sebagian selesai | Pelanggaran, prestasi, ekstrakurikuler | Katalog hukuman/poin, workflow pembinaan berjenjang, penghargaan/apresiasi terpisah, anggota/jabatan/partisipasi ekskul belum penuh |
@@ -63,19 +63,19 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 
 ### P1 - eSchool Inti dari AIS
 
-1. Template rapor cetak resmi per jenjang.
+1. Template rapor cetak dasar sudah tersedia; fase berikutnya adalah template resmi spesifik per yayasan/jenjang dan kop digital.
 2. Drag-drop langsung pada timetable jadwal pelajaran.
 3. Builder PSB sudah punya field berurutan dan preview; fase berikutnya tinggal komponen drag gesture penuh.
-4. Input nilai massal sudah tersedia per komponen; fase berikutnya penyaringan kelas/rombongan dan impor Excel.
+4. Input nilai massal sudah tersedia per rombongan dan komponen; fase berikutnya impor Excel dan validasi nilai lintas komponen.
 5. Promosi/kenaikan kelas dan histori akademik.
 
 ### P1 - Pesantren Operasional
 
-1. Perluas modul gerbang: tamu, paket kiriman, transport, dan penjemput.
+1. Perluas modul gerbang berikutnya ke transport/perjalanan detail; tamu, paket kiriman, dan penjemput sudah tersedia.
 2. Tambahkan relasi fisik presensi ke jadwal/piket bila diperlukan audit granular.
 3. Lengkapi pembinaan: hukuman/poin, tindak lanjut, apresiasi, penghargaan.
 4. Lengkapi ekstrakurikuler: anggota, jabatan, kehadiran, nilai partisipasi.
-5. Lengkapi dakwah: jadwal kajian, materi, arsip video/audio, publikasi ke website.
+5. Lengkapi dakwah lanjutan: sanad, syahadah/sertifikat, kurasi ustadz pengampu, dan arsip tematik.
 
 ### P2 - Keuangan, Laporan, dan Integrasi
 
@@ -112,9 +112,11 @@ Batch berikut sudah diterapkan di repo aktif:
 - Aplikasi Flutter inventory sales terpisah dari POS kasir lewat `APP_PRODUCT=inventory`, dengan login demo CMN, dashboard sales, order terbaru, rekonsiliasi legacy, dan risiko batch/stok.
 - Builder field tambahan PSB dipoles dengan pengurutan naik/turun dan preview formulir publik, sehingga admin tidak perlu menebak JSON untuk kebutuhan umum.
 - Input nilai massal per komponen ditambahkan agar guru dapat mengisi banyak santri dalam satu tabel dan menyimpannya sebagai batch.
+- Input nilai massal kini bisa difilter per rombongan/kelas, sehingga guru tidak perlu memuat seluruh santri aktif saat mengisi satu kelas.
+- Rapor santri dipoles menjadi template cetak/PDF browser dasar dengan header resmi, identitas santri, tabel nilai, dan area tanda tangan wali kelas, orang tua/wali, serta kepala satuan pendidikan.
 
 Yang masih belum penuh setelah batch ini:
 
 - Media manager generik lintas portal masih belum dibuat; yang sudah tersedia sekarang khusus pesantren pondok/unit.
 - Crop/editor gambar, bulk upload, dan drag-drop ordering visual belum penuh.
-- Drag gesture penuh untuk timetable/PSB, template rapor resmi per jenjang, dan builder PSB tingkat lanjut masih perlu fase berikutnya.
+- Drag gesture penuh untuk timetable/PSB, template rapor spesifik per yayasan/jenjang, dan builder PSB tingkat lanjut masih perlu fase berikutnya.
