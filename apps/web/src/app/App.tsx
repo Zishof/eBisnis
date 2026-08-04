@@ -526,7 +526,7 @@ export function App() {
           <Route path="stock-tree" element={<StockTreePage />} />
           <Route path="stock-movements" element={<StockMovementsPage />} />
           <Route path="stock-alerts" element={<StockAlertsPage />} />
-          <Route path="pos" element={<PosPage />} />
+          <Route path="pos" element={<Navigate to="/app/pos/kasir" replace />} />
           <Route path="pos/kasir" element={<PosPage />} />
           <Route path="pos/apotik" element={<PharmacyPosPage />} />
           <Route path="apotik/pos" element={<PharmacyPosPage />} />
