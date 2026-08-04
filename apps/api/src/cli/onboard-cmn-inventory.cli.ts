@@ -444,17 +444,36 @@ async function importLegacyDataIfPresent(
     )
     .then((r) => r[0]?.value ?? null);
   if (marker) {
-    await ctx.tenantDb.transaction(schemaName, async (client) => {
-      const S = `"${schemaName}"`;
-      await syncLegacyAuditMetadata(client, S);
-    });
-    await markImport(ctx, schemaName, {
-      ...(typeof marker === 'object' && marker !== null ? marker : { previousMarker: marker }),
-      auditSyncedAt: new Date().toISOString(),
-      auditVersion: 'CMN_LEGACY_AUDIT_V3',
-    });
-    process.stdout.write('Import legacy CMN sudah pernah selesai; metadata audit file DBF disinkronkan ulang.\n');
-    return { products: 0, customers: 0, suppliers: 0, salesOrders: 0, purchaseOrders: 0, rawRecords: 0, receivables: 0, payables: 0 };
+    const counts = await operationalImportCounts(ctx, schemaName);
+    if (counts.products > 0 && counts.salesOrders > 0) {
+      await ctx.tenantDb.transaction(schemaName, async (client) => {
+        const S = `"${schemaName}"`;
+        await syncLegacyAuditMetadata(client, S);
+      });
+      await markImport(ctx, schemaName, {
+        ...(typeof marker === 'object' && marker !== null ? marker : { previousMarker: marker }),
+        ...counts,
+        auditSyncedAt: new Date().toISOString(),
+        auditVersion: 'CMN_LEGACY_AUDIT_V3',
+      });
+      process.stdout.write(
+        `Import legacy CMN sudah lengkap; produk=${counts.products}, penjualan=${counts.salesOrders}. Metadata audit DBF disinkronkan ulang.\n`,
+      );
+      return {
+        products: counts.products,
+        customers: counts.customers,
+        suppliers: counts.suppliers,
+        salesOrders: counts.salesOrders,
+        purchaseOrders: counts.purchaseOrders,
+        rawRecords: counts.rawRecords,
+        receivables: counts.receivables,
+        payables: counts.payables,
+      };
+    }
+    process.stdout.write(
+      `Marker import CMN ditemukan, tetapi data operasional belum lengkap ` +
+        `(produk=${counts.products}, penjualan=${counts.salesOrders}); import DBF dijalankan ulang secara idempotent.\n`,
+    );
   }
 
   const dir = LEGACY_DIR_CANDIDATES.find((candidate) => existsSync(join(candidate, 'STOK.DBF')));
@@ -573,6 +592,41 @@ async function importLegacyDataIfPresent(
     rawRecords: result.rawRecords,
     receivables: result.receivableRows,
     payables: result.payableRows,
+  };
+}
+
+async function operationalImportCounts(ctx: Awaited<ReturnType<typeof createSeedContext>>, schemaName: string) {
+  const rows = await ctx.tenantDb.query<{
+    products: string;
+    customers: string;
+    suppliers: string;
+    sales_orders: string;
+    purchase_orders: string;
+    raw_records: string;
+    receivables: string;
+    payables: string;
+  }>(
+    schemaName,
+    `SELECT
+       (SELECT count(*) FROM "${schemaName}".product WHERE deleted_at IS NULL)::text AS products,
+       (SELECT count(*) FROM "${schemaName}".customer WHERE deleted_at IS NULL)::text AS customers,
+       (SELECT count(*) FROM "${schemaName}".supplier WHERE deleted_at IS NULL)::text AS suppliers,
+       (SELECT count(*) FROM "${schemaName}".sales_order)::text AS sales_orders,
+       (SELECT count(*) FROM "${schemaName}".purchase_order WHERE source_type = 'CMN_LEGACY_DBF')::text AS purchase_orders,
+       (SELECT count(*) FROM "${schemaName}".legacy_import_record)::text AS raw_records,
+       (SELECT count(*) FROM "${schemaName}".legacy_receivable_ledger)::text AS receivables,
+       (SELECT count(*) FROM "${schemaName}".legacy_payable_ledger)::text AS payables`,
+  );
+  const row = rows[0];
+  return {
+    products: Number(row?.products ?? 0),
+    customers: Number(row?.customers ?? 0),
+    suppliers: Number(row?.suppliers ?? 0),
+    salesOrders: Number(row?.sales_orders ?? 0),
+    purchaseOrders: Number(row?.purchase_orders ?? 0),
+    rawRecords: Number(row?.raw_records ?? 0),
+    receivables: Number(row?.receivables ?? 0),
+    payables: Number(row?.payables ?? 0),
   };
 }
 

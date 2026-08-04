@@ -345,6 +345,13 @@ log "9/10  Pelanggan inventory: Caruban Medika Nusantara"
 # Membuat schema `cmnmedika_inventory`, akun pemilik/sales/admin, domain
 # cmnmedika-inventory.ebisnis.id, serta impor DBF legacy bila foldernya tersedia.
 # Kegagalan di sini tidak menggagalkan deploy utama.
+CMN_BUNDLED_IMPORT_DIR="$APP_DIR/deploy/imports/cmn-inventory"
+CMN_IMPORT_DIR=/opt/ebisnis/imports/cmn-inventory
+if [[ -d "$CMN_BUNDLED_IMPORT_DIR" ]]; then
+  install -d -o "$APP_USER" -g "$APP_USER" -m 750 "$CMN_IMPORT_DIR"
+  find "$CMN_BUNDLED_IMPORT_DIR" -maxdepth 1 -type f -iname '*.dbf' -print0 \
+    | xargs -0 -r -I{} install -m 640 -o "$APP_USER" -g "$APP_USER" "{}" "$CMN_IMPORT_DIR/"
+fi
 APP_DIR="$APP_DIR" APP_USER="$APP_USER" \
   bash "$APP_DIR/deploy/onboard-cmn-inventory.sh" \
   || warn "Penyiapan tenant Caruban Medika Nusantara gagal -- periksa manual bila perlu."
