@@ -103,6 +103,48 @@ const DOKUMEN_DEMO = [
   { label: 'PKS', href: '/pks', icon: FileSignature },
 ];
 
+const DOMAIN_CONTOH_USAHA: Record<string, string> = {
+  Demo: 'demo.ebisnis.id',
+  Barbershop: 'barbershop.ebisnis.id',
+  Salon: 'salon.ebisnis.id',
+  'Cuci Mobil': 'cucimobil.ebisnis.id',
+  'Cuci Motor': 'cucimotor.ebisnis.id',
+  Laundry: 'laundry.ebisnis.id',
+  'Rental Kendaraan': 'rentalkendaraan.ebisnis.id',
+  'Rental Sepeda': 'rentalsepeda.ebisnis.id',
+  'Bengkel Motor': 'bengkelmotor.ebisnis.id',
+  'Bengkel Mobil': 'bengkelmobil.ebisnis.id',
+  'Bengkel Sepeda': 'bengkelsepeda.ebisnis.id',
+  Apotek: 'apotik.emedik.id',
+  'Inventory Obat': 'inventory.ebisnis.id',
+  Restoran: 'restoran.ebisnis.id',
+  Kuliner: 'kuliner.ebisnis.id',
+  Kafe: 'cafe.ebisnis.id',
+  Fashion: 'fashion.ebisnis.id',
+  'Toko Kelontong': 'toko.ebisnis.id',
+  Warteg: 'warteg.ebisnis.id',
+  'Fitness & Spa': 'fitnes.ebisnis.id',
+  Fitness: 'fitnes.ebisnis.id',
+  Spa: 'spa.ebisnis.id',
+  'Toko Pertanian': 'tokopertanian.ebisnis.id',
+  'Pertanian Olahan': 'olahanpertanian.ebisnis.id',
+  'Jasa Umum': 'jasa.ebisnis.id',
+  Katering: 'katering.ebisnis.id',
+  'Online Shop': 'toko.ebisnis.id',
+  'Kosmetik & Skincare': 'kosmetik.ebisnis.id',
+  Minimarket: 'minimarket.ebisnis.id',
+  Kerajinan: 'kerajinan.ebisnis.id',
+  'Rental Alat': 'rentalalat.ebisnis.id',
+  'Event Organizer': 'eventorganizer.ebisnis.id',
+  'Toko Bangunan': 'tokobangunan.ebisnis.id',
+  Percetakan: 'percetakan.ebisnis.id',
+  Optik: 'optik.ebisnis.id',
+  'Klinik Kecil': 'demo.emedik.id',
+  'Toko Elektronik': 'tokoelektronik.ebisnis.id',
+  'Jasa Kebersihan': 'jasakebersihan.ebisnis.id',
+  Agribisnis: 'agribisnis.ebisnis.id',
+};
+
 const CONTOH_USAHA = [
   {
     label: 'Demo',
@@ -139,6 +181,15 @@ const CONTOH_USAHA = [
     status: 'Berikutnya',
     imageUrl: 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=900&q=80',
     imageAlt: 'Mobil sedang dicuci di layanan car wash',
+  },
+  {
+    label: 'Cuci Motor',
+    detail: 'Antrean, paket cuci, membership',
+    href: '/demo',
+    icon: Bike,
+    status: 'Berikutnya',
+    imageUrl: 'https://images.unsplash.com/photo-1609630875171-b1321377ee65?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Motor dicuci di layanan cuci motor',
   },
   {
     label: 'Laundry',
@@ -213,6 +264,15 @@ const CONTOH_USAHA = [
     imageAlt: 'Rak obat dan pengelolaan inventory farmasi',
   },
   {
+    label: 'Restoran',
+    detail: 'Meja, order dapur, resep HPP',
+    href: '/demo',
+    icon: Utensils,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Dapur restoran menyiapkan pesanan',
+  },
+  {
     label: 'Kuliner',
     detail: 'Restoran, warung, katering',
     href: '/demo',
@@ -249,6 +309,15 @@ const CONTOH_USAHA = [
     imageAlt: 'Rak produk toko kelontong',
   },
   {
+    label: 'Warteg',
+    detail: 'Menu harian, lauk matang, kasir',
+    href: '/demo',
+    icon: Utensils,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Aneka lauk matang untuk warteg',
+  },
+  {
     label: 'Fitness & Spa',
     detail: 'Member, jadwal, paket layanan',
     href: '/demo',
@@ -256,6 +325,24 @@ const CONTOH_USAHA = [
     status: 'Umum',
     imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=80',
     imageAlt: 'Area fitness dan layanan kebugaran',
+  },
+  {
+    label: 'Spa',
+    detail: 'Booking therapist, room, paket',
+    href: '/demo',
+    icon: Sparkles,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Ruang spa dan treatment relaksasi',
+  },
+  {
+    label: 'Toko Pertanian',
+    detail: 'Pupuk, benih, pestisida, alat tani',
+    href: '/demo',
+    icon: Sprout,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Kebutuhan toko pertanian dan hasil panen',
   },
   {
     label: 'Pertanian Olahan',
@@ -850,7 +937,7 @@ function UnitUsahaHeroStrip() {
           return (
             <TautanContohUsaha
               key={item.label}
-              href={item.href}
+              href={tautanWebsiteContohUsaha(item)}
               className="group relative min-h-28 overflow-hidden rounded-xl border border-white/70 bg-slate-900 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800"
             >
               <img
@@ -928,7 +1015,7 @@ function ContohUsahaGrid() {
               <p className="mt-1 font-bold text-slate-950 dark:text-white">{usahaUtama.label}</p>
               <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">{usahaUtama.detail}</p>
               <TautanContohUsaha
-                href={usahaUtama.href}
+                href={tautanWebsiteContohUsaha(usahaUtama)}
                 className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-800"
               >
                 Buka contoh
@@ -974,7 +1061,7 @@ function ContohUsahaGrid() {
                   : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900',
               )}
             >
-              <TautanContohUsaha href={item.href} className="flex flex-1 flex-col">
+              <TautanContohUsaha href={tautanWebsiteContohUsaha(item)} className="flex flex-1 flex-col">
                 <span className="relative block aspect-[16/10] overflow-hidden bg-slate-200 dark:bg-slate-800">
                   <img
                     src={item.imageUrl}
@@ -1037,6 +1124,11 @@ function ContohUsahaGrid() {
       </div>
     </div>
   );
+}
+
+function tautanWebsiteContohUsaha(item: (typeof CONTOH_USAHA)[number]): string {
+  const domain = DOMAIN_CONTOH_USAHA[item.label];
+  return domain ? `https://${domain}` : item.href;
 }
 
 function TautanContohUsaha({
