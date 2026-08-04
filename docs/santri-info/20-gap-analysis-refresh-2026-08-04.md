@@ -36,7 +36,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 | Website unit sekolah | Sebagian besar selesai | Unit pendidikan punya website sendiri, subdomain/custom domain field, logo/hero URL, upload logo/hero langsung dari admin, halaman unit cerah, kartu unit dari halaman pondok bisa menuju alamat unit | Gallery/program/kegiatan per unit belum jadi modul penuh; custom domain `*.sch.id` masih perlu verifikasi DNS/ownership dan automation ops |
 | Cloudflare/subdomain | Sebagian selesai | Wildcard DNS `*.santri.info` cukup untuk subdomain dinamis di aplikasi; setting subdomain unit ada di CRUD unit pendidikan | Cloudflare API automation untuk membuat/mengubah record custom belum diaktifkan; perlu token, zone id, audit log, retry, dan validasi konflik |
 | Master eSchool | Sebagian besar selesai | Unit pendidikan, guru/ustadz, santri, wali, kartu, rombongan, kurikulum, mapel, jadwal | Field biodata AIS yang sangat rinci belum semua menjadi kolom typed; beberapa masih perlu metadata/ekstensi |
-| PSB/PPDB | Operasional dasar | Gelombang, unit tujuan, portal pendaftar, login/status, schema tambahan berbasis JSON | Builder drag-drop form, verifikasi multi-step AIS, jadwal ujian/interview detail, dan cetak/rekap lanjutan belum penuh |
+| PSB/PPDB | Operasional dasar | Gelombang, unit tujuan, portal pendaftar, login/status, schema tambahan berbasis JSON, pilihan tahun ajaran/unit dari data sistem, dan tabel gelombang tanpa ID mentah | Builder drag-drop form lanjutan, verifikasi multi-step AIS, jadwal ujian/interview detail, dan cetak/rekap lanjutan belum penuh |
 | Asrama | Operasional dasar | Asrama, kamar, penempatan santri | Locking kapasitas dan laporan asrama legacy belum lengkap; mutasi kamar historis perlu diperdalam |
 | Keluar-masuk santri | Operasional dasar | Perizinan, lampiran, disposisi, izin aktif, gerbang, scan kartu/RFID keyboard-wedge, log keluar/masuk, app Flutter security gate dasar | Fingerprint ditunda; kunjungan tamu, paket kiriman, transport/penjemput, dan dashboard security detail belum penuh |
 | Presensi santri | Operasional dasar | Presensi massal, presensi per tanggal/jenis, integrasi pilihan jadwal | Relasi fisik `jadwal_id`/`piket_id`, rekap absensi formal lengkap, dan perangkat absensi belum penuh |
@@ -47,7 +47,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 | Pembinaan santri | Sebagian selesai | Pelanggaran, prestasi, ekstrakurikuler | Katalog hukuman/poin, workflow pembinaan berjenjang, penghargaan/apresiasi terpisah, anggota/jabatan/partisipasi ekskul belum penuh |
 | Keuangan santri | Operasional dasar | Tagihan, dompet santri, top-up, transaksi kantin/POS, saldo, batas harian | Payment gateway, rekonsiliasi, posting akuntansi legacy piutang/diskon/deposit lengkap, invoice wali, dan settlement belum penuh |
 | Katering/dapur | Sebagian selesai | Menu, status persiapan, realisasi konsumsi, bahan, stok minimum, transaksi stok | Perencanaan belanja otomatis, recipe/BOM, biaya makan per periode, notifikasi stok dan procurement belum penuh |
-| Laporan | Sebagian selesai | Katalog laporan dan tabel ringkasan | Ekspor PDF/XLS, replika seluruh laporan AIS, layout cetak resmi, dan scheduler laporan belum penuh |
+| Laporan | Sebagian selesai | Katalog laporan, tabel ringkasan, filter tanggal, pilihan tahun ajaran/gelombang dari data sistem, cetak/PDF browser, dan unduh CSV Excel | Replika seluruh laporan AIS, layout cetak resmi lanjutan, dan scheduler laporan belum penuh |
 | Administrasi sistem | Operasional | Pengguna, role, hak akses menu, audit, pengaturan sudah memiliki halaman kerja | Data-scope granular per anak/wali dan audit template per modul masih perlu diperluas lewat test coverage |
 | Help/Excel/AI/Observability | Sebagian/missing | Support/tiket, knowledge base, beberapa endpoint audit sudah ada di platform | Help center per modul, import/export Excel massal, AI assistant khusus pesantren, metric dashboard dan alert domain belum penuh |
 
@@ -108,6 +108,7 @@ Batch berikut sudah diterapkan di repo aktif:
 - Laporan pesantren menutup sebagian gap ekspor: tabel laporan bisa dicetak/disimpan PDF lewat browser dan diunduh sebagai CSV yang bisa dibuka Excel.
 - Gerbang pesantren menutup sebagian gap security: pos keamanan kini punya API dan UI untuk mencatat tamu, paket kiriman, dan penjemput tanpa mencampur alur izin keluar-masuk santri.
 - Vault impor legacy CMN ditambahkan agar seluruh DBF inventory lama tersimpan sebagai raw audit terlebih dahulu sebelum projection operasional dilengkapi bertahap.
+- PSB dan laporan dipoles: pembuatan gelombang memakai pilihan tahun ajaran/unit dari data sistem, tabel gelombang menampilkan nama tahun ajaran dan unit, serta filter laporan tidak lagi meminta ID teknis.
 
 Yang masih belum penuh setelah batch ini:
 
