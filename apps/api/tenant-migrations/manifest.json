@@ -762,6 +762,16 @@
       "file": "H067__health__menu_truth_w6b.sql",
       "name": "eMedik: menu berlayar W-6B klinis harian",
       "description": "Membuka /app/emedik/rawat-jalan, /app/emedik/operasi, /app/emedik/intensif, dan /app/emedik/pasien/ganda. Rawat jalan memakai registration_id dari antrean untuk membuka EncounterPage secara benar; operasi, ICU, dan pasien ganda memakai API H-2 sampai H-7 yang sudah tersedia."
+    },
+    {
+      "file": "H068__health__menu_truth_w7_master_data.sql",
+      "name": "eMedik: menu berlayar W-7 master data",
+      "description": "Membuka 12 menu W-7: layanan, unit, pemberi layanan, formularium, katalog lab, penjamin, master data, terminologi, KFA, pemetaan, SATUSEHAT, dan kemampuan SATUSEHAT. Route yang berbagi konteks diarahkan ke layar operasional yang sudah ada; layanan/terminologi/KFA/pemetaan memakai MasterDataPage, SATUSEHAT memakai OperationalReadinessPage."
+    },
+    {
+      "file": "H069__health__menu_truth_w8_portal_reports_security.sql",
+      "name": "eMedik: menu berlayar W-8 portal, laporan, keamanan",
+      "description": "Membuka menu akun portal, pelepasan hasil, website, data contoh, laporan, akuntansi, rekonsiliasi, investor, waterfall, zona data, dan penjaga AI. Layar menyatakan penghalang ekspor dokumen, HEALTH_* Core, dan privasi investor secara eksplisit."
     }
   ]
 }

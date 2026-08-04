@@ -4,7 +4,7 @@ import { PublicLayout } from '../pages/public/PublicLayout';
 import { HomePage } from '../pages/public/HomePage';
 import { EmedikLandingPage } from '../pages/public/EmedikLandingPage';
 import { ApotikLandingPage } from '../pages/public/ApotikLandingPage';
-import { rootExperienceFor } from '../pages/public/emedik-host';
+import { isApotikHost, rootExperienceFor } from '../pages/public/emedik-host';
 import { isEducationPublicHost } from '../verticals/education/education-host';
 import { CmsPage } from '../pages/public/CmsPage';
 import { PricingPage } from '../pages/public/PricingPage';
@@ -231,6 +231,12 @@ const HealthBpjsPage = lazy(() =>
 const HealthTariffPage = lazy(() =>
   import('../verticals/health/TariffPage').then((m) => ({ default: m.TariffPage })),
 );
+const HealthMasterDataPage = lazy(() =>
+  import('../verticals/health/MasterDataPage').then((m) => ({ default: m.MasterDataPage })),
+);
+const HealthOperationalReadinessPage = lazy(() =>
+  import('../verticals/health/OperationalReadinessPage').then((m) => ({ default: m.OperationalReadinessPage })),
+);
 const HealthFeePolicyPage = lazy(() =>
   import('../verticals/health/FeePolicyPage').then((m) => ({ default: m.FeePolicyPage })),
 );
@@ -397,6 +403,9 @@ function AkarMenurutHost() {
 
 function AppTenantGate() {
   if (isSalonDemoHost()) return <Navigate to="/masuk" replace />;
+  if (isApotikHost() && window.location.pathname === '/app/pos') {
+    return <Navigate to="/app/apotik/pos" replace />;
+  }
   return (
     <RequireAuth>
       <AppLayout />
@@ -600,6 +609,8 @@ export function App() {
           */}
           <Route path="emedik" element={<PurposeProvider><Outlet /></PurposeProvider>}>
             <Route path="fasilitas" element={<HealthFacilityPage />} />
+            <Route path="unit" element={<HealthFacilityPage />} />
+            <Route path="pemberi-layanan" element={<HealthFacilityPage />} />
             <Route path="pasien" element={<HealthPatientPage />} />
             <Route path="pasien/ganda" element={<HealthDuplicatePatientPage />} />
             <Route path="pendaftaran" element={<HealthQueuePage />} />
@@ -607,11 +618,13 @@ export function App() {
             <Route path="kunjungan/:id" element={<HealthEncounterPage />} />
             <Route path="resep" element={<HealthPharmacyPage />} />
             <Route path="penyerahan" element={<HealthPharmacyPage />} />
+            <Route path="formularium" element={<HealthPharmacyPage />} />
             <Route path="pemberian" element={<HealthAdministrationPage />} />
             <Route path="lab/pesanan" element={<HealthLabPage />} />
             <Route path="lab/spesimen" element={<HealthLabPage />} />
             <Route path="lab/hasil" element={<HealthLabPage />} />
             <Route path="lab/kritis" element={<HealthLabPage />} />
+            <Route path="lab/katalog" element={<HealthLabPage />} />
             <Route path="rawat-inap" element={<HealthWardPage />} />
             <Route path="keperawatan" element={<HealthWardPage />} />
             <Route path="tempat-tidur" element={<HealthWardPage />} />
@@ -640,6 +653,14 @@ export function App() {
             <Route path="kepesertaan" element={<HealthBpjsPage />} />
 
             <Route path="tarif" element={<HealthTariffPage />} />
+            <Route path="penjamin" element={<HealthTariffPage />} />
+            <Route path="layanan" element={<HealthMasterDataPage mode="services" />} />
+            <Route path="master-data" element={<HealthMasterDataPage mode="services" />} />
+            <Route path="pemetaan" element={<HealthMasterDataPage mode="services" />} />
+            <Route path="terminologi" element={<HealthMasterDataPage mode="terminology" />} />
+            <Route path="kfa" element={<HealthMasterDataPage mode="kfa" />} />
+            <Route path="satusehat" element={<HealthOperationalReadinessPage mode="satusehat" />} />
+            <Route path="satusehat-kemampuan" element={<HealthOperationalReadinessPage mode="satusehat" />} />
             <Route path="kebijakan-jasa" element={<HealthFeePolicyPage />} />
             <Route path="kontributor" element={<HealthFeePolicyPage />} />
             <Route path="settlement" element={<HealthSettlementPage />} />
@@ -654,6 +675,17 @@ export function App() {
             <Route path="pesan-alat" element={<HealthDeviceAdapterPage />} />
             <Route path="pemetaan-kode" element={<HealthDeviceAdapterPage />} />
             <Route path="hasil-alat" element={<HealthDeviceAdapterPage />} />
+            <Route path="akun-portal" element={<HealthOperationalReadinessPage mode="portal" />} />
+            <Route path="pelepasan-hasil" element={<HealthOperationalReadinessPage mode="portal" />} />
+            <Route path="website" element={<HealthOperationalReadinessPage mode="portal" />} />
+            <Route path="data-contoh" element={<HealthOperationalReadinessPage mode="sample" />} />
+            <Route path="laporan" element={<HealthOperationalReadinessPage mode="report" />} />
+            <Route path="akuntansi" element={<HealthOperationalReadinessPage mode="accounting" />} />
+            <Route path="rekonsiliasi" element={<HealthClaimPage />} />
+            <Route path="dasbor-investor" element={<HealthOperationalReadinessPage mode="investor" />} />
+            <Route path="waterfall" element={<HealthOperationalReadinessPage mode="investor" />} />
+            <Route path="zona-data" element={<HealthOperationalReadinessPage mode="security" />} />
+            <Route path="penjaga-ai" element={<HealthOperationalReadinessPage mode="ai" />} />
           </Route>
 
           <Route path="pesantren/unit-pendidikan" element={<PesantrenUnitPendidikanPage />} />

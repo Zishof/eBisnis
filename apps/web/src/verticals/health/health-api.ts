@@ -1688,6 +1688,91 @@ export const healthApi = {
   tariffRegulations: () => api.get<BarisPeraturanTarif[]>('/health/tariff/regulations'),
 
   tariffVersions: () => api.get<BarisVersiTarif[]>('/health/tariff/versions'),
+  payerCoverages: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/tariff/payers?facilityId=${facilityId}`),
+
+  // --- W-7/W-9: master data dan terminologi --------------------------------
+  serviceCatalog: (facilityId: string, activeOnly = false) =>
+    api.get<Array<Record<string, unknown>>>(
+      `/health/master-data/services?facilityId=${facilityId}&activeOnly=${activeOnly ? 'true' : 'false'}`,
+    ),
+
+  serviceMappingGaps: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/master-data/gaps?facilityId=${facilityId}`),
+
+  codeMappings: (targetSystem?: string) =>
+    api.get<Array<Record<string, unknown>>>(
+      `/health/master-data/code-mappings${targetSystem ? `?targetSystem=${encodeURIComponent(targetSystem)}` : ''}`,
+    ),
+
+  terminologyCatalog: () => api.get<Record<string, unknown>>('/health/terminology/catalog'),
+
+  terminologyReadiness: () =>
+    api.get<{
+      items: Array<Record<string, unknown>>;
+      summary?: Record<string, unknown>;
+    }>('/health/terminology/readiness'),
+
+  terminologyImports: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/terminology/imports?facilityId=${facilityId}`),
+
+  kfaMappings: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/terminology/kfa-mappings?facilityId=${facilityId}`),
+
+  satusehatCatalog: () => api.get<Record<string, unknown>>('/health/satusehat/catalog'),
+
+  satusehatEnvironments: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/satusehat/environments?facilityId=${facilityId}`),
+
+  satusehatCapabilities: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/satusehat/capabilities?facilityId=${facilityId}`),
+
+  satusehatTransmissions: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/satusehat/transmissions?facilityId=${facilityId}`),
+
+  satusehatReconciliation: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/satusehat/reconciliation?facilityId=${facilityId}`),
+
+  portalQueue: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/portal/queue?facilityId=${facilityId}`),
+
+  portalLabResults: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/portal/lab-results?facilityId=${facilityId}`),
+
+  portalWebsite: (schema: string) => api.get<Record<string, unknown>>(`/health/public/${schema}/website`),
+
+  sampleCatalog: () => api.get<Record<string, unknown>>('/health/sample/catalog'),
+
+  sampleTables: () => api.get<Array<Record<string, unknown>>>('/health/sample/tables'),
+
+  sampleRuns: () => api.get<Array<Record<string, unknown>>>('/health/sample/runs'),
+
+  sampleBlockers: () => api.get<Array<Record<string, unknown>>>('/health/sample/blockers'),
+
+  sampleRoles: () => api.get<Array<Record<string, unknown>>>('/health/sample/roles'),
+
+  accountingRoles: () => api.get<Array<Record<string, unknown>>>('/health/accounting/roles'),
+
+  accountingEvents: () => api.get<Array<Record<string, unknown>>>('/health/accounting/events'),
+
+  accountingCoaTemplate: () => api.get<Array<Record<string, unknown>>>('/health/accounting/coa-template'),
+
+  securityZones: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/security/zones?facilityId=${facilityId}`),
+
+  securityFields: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/security/fields?facilityId=${facilityId}`),
+
+  securityPurposes: () => api.get<Array<Record<string, unknown>>>('/health/security/purposes'),
+
+  securityAiLog: (facilityId: string) =>
+    api.get<Array<Record<string, unknown>>>(`/health/security/ai/log?facilityId=${facilityId}`),
+
+  securityAiForbiddenActions: () =>
+    api.get<Array<Record<string, unknown>>>('/health/security/ai/forbidden-actions'),
+
+  securityPosture: (facilityId: string) =>
+    api.get<Record<string, unknown>>(`/health/security/posture?facilityId=${facilityId}`),
 
   feePolicies: (facilityId: string) =>
     api.get<BarisKebijakanJasa[]>(`/health/fee/policies?facilityId=${facilityId}`),

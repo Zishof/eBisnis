@@ -9,6 +9,7 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../app/auth-context';
 import { useTheme } from '../../app/theme-context';
 import { SUPPORTED_LOCALES } from '../../i18n';
+import { emedikPublicBrandFor, isApotikHost } from '../public/emedik-host';
 
 export interface MenuNode {
   id: string;
@@ -42,6 +43,11 @@ export function AppLayout() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const emedikBrand = emedikPublicBrandFor();
+  const appBrand = {
+    logoText: emedikBrand?.logoText ?? 'eB',
+    name: emedikBrand?.name ?? 'eBisnis.id',
+  };
 
   const menus = useMenuTree();
 
@@ -82,7 +88,7 @@ export function AppLayout() {
           />
           <aside className="absolute inset-y-0 start-0 w-72 overflow-y-auto bg-white shadow-xl dark:bg-slate-900">
             <div className="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-800">
-              <span className="font-bold text-slate-900 dark:text-white">eBisnis.id</span>
+              <span className="font-bold text-slate-900 dark:text-white">{appBrand.name}</span>
               <button type="button" onClick={() => setSidebarOpen(false)} aria-label={t('common.close')}>
                 <X className="h-5 w-5" aria-hidden />
               </button>
@@ -106,7 +112,7 @@ export function AppLayout() {
 
             <Link to="/app" className="hidden items-center gap-2 font-bold text-slate-900 lg:flex dark:text-white">
               <span className="grid h-7 w-7 place-items-center rounded bg-brand-700 text-xs font-black text-white">
-                eB
+                {appBrand.logoText}
               </span>
             </Link>
 
@@ -335,6 +341,8 @@ function MenuList({
 }
 
 function routeAplikasi(route: string): string {
+  if (route === '/app/pos' && isApotikHost()) return '/app/apotik/pos';
+
   try {
     const url = new URL(route);
     if (url.hostname === 'ebisnis.id' || url.hostname.endsWith('.ebisnis.id')) {
