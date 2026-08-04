@@ -18,6 +18,12 @@ type LegacyDbf = {
   fields: Array<{ name: string; type: string; length: number }>;
   rows: LegacyRow[];
 };
+type LegacyFileClass = {
+  status: 'PROJECTED' | 'RAW_VAULT_ONLY' | 'DUPLICATE_SUMMARY' | 'BROKEN_ARCHIVE' | 'RUNTIME_ARTIFACT' | 'SECURITY_ARCHIVE';
+  projectedTable?: string;
+  projectionClass: 'operational' | 'ledger' | 'historical' | 'security' | 'runtime' | 'damaged';
+  note: string;
+};
 
 const TENANT = {
   code: 'CMNMEDIKA',
@@ -54,6 +60,163 @@ const LEGACY_DIR_CANDIDATES = [
   '/opt/ebisnis/imports/cmn-inventory',
   'C:/Users/USER/Documents/5-Inventory--/5-Inventory',
 ].filter(Boolean) as string[];
+
+const LEGACY_FILE_CLASSIFICATION: Record<string, LegacyFileClass> = {
+  'STOK.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'product',
+    projectionClass: 'operational',
+    note: 'Master obat diproyeksikan ke product dan stok awal.',
+  },
+  'CUSTOMER.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'customer',
+    projectionClass: 'operational',
+    note: 'Master pelanggan diproyeksikan ke customer.',
+  },
+  'SUPPLIER.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'supplier',
+    projectionClass: 'operational',
+    note: 'Master pemasok diproyeksikan ke supplier.',
+  },
+  'JUAL.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'sales_order',
+    projectionClass: 'operational',
+    note: 'Transaksi penjualan diproyeksikan ke sales order dan laporan sales.',
+  },
+  'BELI.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'purchase_order',
+    projectionClass: 'operational',
+    note: 'Transaksi pembelian diproyeksikan ke purchase order, receipt, dan invoice supplier.',
+  },
+  'BATCHNO.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'inventory_lot',
+    projectionClass: 'operational',
+    note: 'Batch dan tanggal kedaluwarsa diproyeksikan ke inventory lot.',
+  },
+  'TRAN_PIUT.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'legacy_receivable_ledger',
+    projectionClass: 'ledger',
+    note: 'Ledger piutang lama dipertahankan sebagai laporan piutang legacy.',
+  },
+  'PIUTSEMEN.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'legacy_receivable_ledger',
+    projectionClass: 'ledger',
+    note: 'Ledger piutang tambahan dipertahankan sebagai laporan piutang legacy.',
+  },
+  'TRAN_HUT.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'legacy_payable_ledger',
+    projectionClass: 'ledger',
+    note: 'Ledger hutang lama dipertahankan sebagai laporan hutang legacy.',
+  },
+  'SALES.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'legacy_salesperson_map',
+    projectionClass: 'operational',
+    note: 'Sales lama dipetakan ke akun sales CMN.',
+  },
+  'ACCOUNT.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'chart_of_account',
+    projectionClass: 'ledger',
+    note: 'Akun legacy diproyeksikan ke chart of account legacy.',
+  },
+  'JOURNAL.DBF': {
+    status: 'RAW_VAULT_ONLY',
+    projectionClass: 'ledger',
+    note: 'Dump saat ini kosong atau belum punya pasangan debit-kredit final; raw vault tetap menyimpan struktur dan barisnya.',
+  },
+  'MASTERJL.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'legacy_price_history',
+    projectionClass: 'historical',
+    note: 'Riwayat harga jual customer dipertahankan untuk audit harga.',
+  },
+  'MASTERBL.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'legacy_price_history',
+    projectionClass: 'historical',
+    note: 'Riwayat harga beli supplier dipertahankan untuk audit harga.',
+  },
+  'DATAOPN.DBF': {
+    status: 'PROJECTED',
+    projectedTable: 'legacy_stock_opname',
+    projectionClass: 'historical',
+    note: 'Stock opname lama dipertahankan sebagai laporan audit stok.',
+  },
+  'TEMPCUST.DBF': {
+    status: 'RAW_VAULT_ONLY',
+    projectionClass: 'historical',
+    note: 'File staging customer lama disimpan di raw vault; master resmi tetap CUSTOMER.DBF.',
+  },
+  'USERS.DBF': {
+    status: 'SECURITY_ARCHIVE',
+    projectionClass: 'security',
+    note: 'User legacy diarsipkan sebagai bukti migrasi; akun baru dibuat ulang dengan hashing modern.',
+  },
+  'SEMBELI1.DBF': {
+    status: 'DUPLICATE_SUMMARY',
+    projectionClass: 'historical',
+    note: 'File ringkasan/sementara pembelian disimpan raw-only; detail resmi dari BELI.DBF.',
+  },
+  'SEMBELI2.DBF': {
+    status: 'DUPLICATE_SUMMARY',
+    projectionClass: 'historical',
+    note: 'File ringkasan/sementara pembelian disimpan raw-only; detail resmi dari BELI.DBF.',
+  },
+  'SEMBELI3.DBF': {
+    status: 'DUPLICATE_SUMMARY',
+    projectionClass: 'historical',
+    note: 'File ringkasan/sementara pembelian disimpan raw-only; detail resmi dari BELI.DBF.',
+  },
+  'SEMJUAL1.DBF': {
+    status: 'DUPLICATE_SUMMARY',
+    projectionClass: 'historical',
+    note: 'File ringkasan/sementara penjualan disimpan raw-only; detail resmi dari JUAL.DBF.',
+  },
+  'SEMJUAL2.DBF': {
+    status: 'DUPLICATE_SUMMARY',
+    projectionClass: 'historical',
+    note: 'File ringkasan/sementara penjualan disimpan raw-only; detail resmi dari JUAL.DBF.',
+  },
+  'SEMJUAL3.DBF': {
+    status: 'DUPLICATE_SUMMARY',
+    projectionClass: 'historical',
+    note: 'File ringkasan/sementara penjualan disimpan raw-only; detail resmi dari JUAL.DBF.',
+  },
+  'SEMJOUR1.DBF': {
+    status: 'DUPLICATE_SUMMARY',
+    projectionClass: 'historical',
+    note: 'File ringkasan/sementara jurnal disimpan raw-only untuk rekonsiliasi.',
+  },
+  'SEMJOUR2.DBF': {
+    status: 'DUPLICATE_SUMMARY',
+    projectionClass: 'historical',
+    note: 'File ringkasan/sementara jurnal disimpan raw-only untuk rekonsiliasi.',
+  },
+  'SEMJOUR3.DBF': {
+    status: 'DUPLICATE_SUMMARY',
+    projectionClass: 'historical',
+    note: 'File ringkasan/sementara jurnal disimpan raw-only untuk rekonsiliasi.',
+  },
+  'FOXUSER.DBF': {
+    status: 'RUNTIME_ARTIFACT',
+    projectionClass: 'runtime',
+    note: 'File runtime Visual FoxPro, bukan data bisnis; tetap dicatat agar audit folder lengkap.',
+  },
+  'JUA-RUSAKL.DBF': {
+    status: 'BROKEN_ARCHIVE',
+    projectionClass: 'damaged',
+    note: 'File penjualan rusak/backup disimpan raw-only; transaksi resmi berasal dari JUAL.DBF.',
+  },
+};
 
 async function main(): Promise<void> {
   const ctx = await createSeedContext();
@@ -500,15 +663,16 @@ function readDbf(path: string, fileName: string): LegacyDbf {
 async function importRawLegacyDbfs(client: PoolClient, S: string, files: LegacyDbf[]): Promise<number> {
   let imported = 0;
   for (const file of files) {
+    const classification = classifyLegacyFile(file.fileName);
     const record = await client.query<{ id: string }>(
       `INSERT INTO ${S}.legacy_import_file
-         (file_name, file_path, file_hash, file_size_bytes, total_records, active_records, deleted_records, imported_records, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+         (file_name, file_path, file_hash, file_size_bytes, total_records, active_records, deleted_records, imported_records, status, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
        ON CONFLICT (source_system, file_name)
        DO UPDATE SET file_path = EXCLUDED.file_path, file_hash = EXCLUDED.file_hash,
          file_size_bytes = EXCLUDED.file_size_bytes, total_records = EXCLUDED.total_records,
          active_records = EXCLUDED.active_records, deleted_records = EXCLUDED.deleted_records,
-         imported_records = EXCLUDED.imported_records, metadata = EXCLUDED.metadata,
+         imported_records = EXCLUDED.imported_records, status = EXCLUDED.status, metadata = EXCLUDED.metadata,
          imported_at = now(), updated_at = now(), version = ${S}.legacy_import_file.version + 1
        RETURNING id::text AS id`,
       [
@@ -520,7 +684,13 @@ async function importRawLegacyDbfs(client: PoolClient, S: string, files: LegacyD
         file.activeRecords,
         file.deletedRecords,
         file.rows.length,
-        JSON.stringify({ fields: file.fields }),
+        classification.status,
+        JSON.stringify({
+          fields: file.fields,
+          projectedTable: classification.projectedTable ?? null,
+          projectionClass: classification.projectionClass,
+          projectionNote: classification.note,
+        }),
       ],
     );
     const fileId = record.rows[0].id;
@@ -546,6 +716,14 @@ async function importRawLegacyDbfs(client: PoolClient, S: string, files: LegacyD
     }
   }
   return imported;
+}
+
+function classifyLegacyFile(fileName: string): LegacyFileClass {
+  return LEGACY_FILE_CLASSIFICATION[fileName.toUpperCase()] ?? {
+    status: 'RAW_VAULT_ONLY',
+    projectionClass: 'historical',
+    note: 'File legacy disimpan utuh di raw vault dan belum diproyeksikan ke tabel operasional.',
+  };
 }
 
 async function importSalespeople(client: PoolClient, S: string, rows: Array<Record<string, unknown>>): Promise<Map<string, string>> {
@@ -977,30 +1155,16 @@ async function importJournalRows(client: PoolClient, S: string, rows: Array<Reco
 }
 
 async function markProjectedFiles(client: PoolClient, S: string): Promise<void> {
-  const projections = [
-    ['STOK.DBF', 'product'],
-    ['CUSTOMER.DBF', 'customer'],
-    ['SUPPLIER.DBF', 'supplier'],
-    ['JUAL.DBF', 'sales_order'],
-    ['BELI.DBF', 'purchase_order'],
-    ['batchno.dbf', 'inventory_lot'],
-    ['Tran_Piut.DBF', 'legacy_receivable_ledger'],
-    ['PIUTSEMEN.DBF', 'legacy_receivable_ledger'],
-    ['Tran_Hut.DBF', 'legacy_payable_ledger'],
-    ['SALES.DBF', 'legacy_salesperson_map'],
-    ['account.dbf', 'chart_of_account'],
-    ['masterjl.dbf', 'legacy_price_history'],
-    ['masterbl.DBF', 'legacy_price_history'],
-    ['dataopn.dbf', 'legacy_stock_opname'],
-  ] as const;
-  for (const [fileName, tableName] of projections) {
+  const projections = Object.entries(LEGACY_FILE_CLASSIFICATION)
+    .filter(([, info]) => info.status === 'PROJECTED' && info.projectedTable);
+  for (const [fileName, info] of projections) {
     await client.query(
-      `UPDATE ${S}.legacy_import_record
+        `UPDATE ${S}.legacy_import_record
           SET projection_status = 'PROJECTED',
               projected_table = $2,
               projection_note = 'Projected during CMN legacy import V2.'
-        WHERE file_name = $1 AND is_deleted = FALSE`,
-      [fileName, tableName],
+        WHERE upper(file_name) = $1 AND is_deleted = FALSE`,
+      [fileName, info.projectedTable],
     );
   }
 }

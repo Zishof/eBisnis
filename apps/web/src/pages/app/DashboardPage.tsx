@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Boxes, ClipboardList, Database, Megaphone, PackageCheck, ReceiptText, TrendingUp, UsersRound } from 'lucide-react';
+import { AlertTriangle, Boxes, ClipboardList, Database, Megaphone, PackageCheck, ReceiptText, ShieldCheck, TrendingUp, UsersRound } from 'lucide-react';
 import { api, formatMoney, formatNumber } from '../../lib/api';
 import { PageHeader, StatusBadge, LoadingState, Code } from '../../components/ui';
 import { useAuth } from '../../app/auth-context';
@@ -72,11 +72,24 @@ interface LegacyImportReconciliation {
   };
   files: Array<{
     file_name: string;
+    status: string;
     total_records: number;
     active_records: number;
     deleted_records: number;
     raw_records: number;
     projected_records: number;
+    raw_only_records: number;
+    field_count: number;
+    projected_table: string | null;
+    projection_class: string | null;
+    projection_note: string | null;
+  }>;
+  statusSummary: Array<{
+    status: string;
+    files: number;
+    active_records: number;
+    deleted_records: number;
+    raw_records: number;
     raw_only_records: number;
   }>;
   salesMap: Array<{ legacy_code: string; legacy_name: string; mapped_username: string | null; mapped_name: string | null }>;
@@ -219,11 +232,12 @@ export function DashboardPage() {
             </div>
             <Code>{formatNumber(legacyImport.data.totals.files)} file DBF</Code>
           </div>
-          <div className="grid gap-3 md:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-5">
             <MiniMetric label="PO legacy" value={formatNumber(legacyImport.data.totals.purchase_orders)} tone="neutral" />
             <MiniMetric label="Piutang legacy" value={formatMoney(legacyImport.data.totals.receivable_amount)} tone="neutral" />
             <MiniMetric label="Hutang legacy" value={formatMoney(legacyImport.data.totals.payable_amount)} tone="neutral" />
             <MiniMetric label="Riwayat harga" value={formatNumber(legacyImport.data.totals.price_history_rows)} tone="neutral" />
+            <MiniMetric label="Raw-only audit" value={formatNumber(legacyImport.data.files.reduce((sum, file) => sum + file.raw_only_records, 0))} tone="neutral" />
           </div>
           <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.8fr]">
             <div className="overflow-x-auto">
@@ -231,18 +245,29 @@ export function DashboardPage() {
                 <thead className="text-left text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="py-2 pe-3">File</th>
+                    <th className="py-2 pe-3">Status</th>
                     <th className="py-2 pe-3 text-end">Aktif</th>
                     <th className="py-2 pe-3 text-end">Terhapus</th>
+                    <th className="py-2 pe-3 text-end">Kolom</th>
                     <th className="py-2 pe-3 text-end">Raw</th>
                     <th className="py-2 text-end">Raw-only</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {legacyImport.data.files.slice(0, 10).map((file) => (
+                  {legacyImport.data.files.slice(0, 14).map((file) => (
                     <tr key={file.file_name} className="border-t border-slate-100 dark:border-slate-800">
-                      <td className="py-2 pe-3 font-medium">{file.file_name}</td>
+                      <td className="py-2 pe-3">
+                        <div className="font-medium">{file.file_name}</div>
+                        <p className="mt-0.5 max-w-[300px] truncate text-xs text-slate-500 dark:text-slate-400">
+                          {file.projection_note ?? file.projected_table ?? 'Raw vault'}
+                        </p>
+                      </td>
+                      <td className="py-2 pe-3">
+                        <StatusBadge status={legacyStatusLabel(file.status)} tone={legacyStatusTone(file.status)} />
+                      </td>
                       <td className="py-2 pe-3 text-end">{formatNumber(file.active_records)}</td>
                       <td className="py-2 pe-3 text-end">{formatNumber(file.deleted_records)}</td>
+                      <td className="py-2 pe-3 text-end">{formatNumber(file.field_count)}</td>
                       <td className="py-2 pe-3 text-end">{formatNumber(file.raw_records)}</td>
                       <td className="py-2 text-end">{formatNumber(file.raw_only_records)}</td>
                     </tr>
@@ -251,7 +276,25 @@ export function DashboardPage() {
               </table>
             </div>
             <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-800">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Mapping sales</h3>
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+                <ShieldCheck className="h-4 w-4" aria-hidden />
+                Kualitas impor
+              </h3>
+              <div className="mt-3 grid gap-2">
+                {legacyImport.data.statusSummary.map((row) => (
+                  <div key={row.status} className="rounded-lg bg-white p-3 text-sm dark:bg-slate-900">
+                    <div className="flex items-center justify-between gap-3">
+                      <StatusBadge status={legacyStatusLabel(row.status)} tone={legacyStatusTone(row.status)} />
+                      <span className="font-semibold">{formatNumber(row.files)} file</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {formatNumber(row.active_records)} aktif, {formatNumber(row.raw_only_records)} raw-only
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="mt-5 text-sm font-semibold text-slate-900 dark:text-white">Mapping sales</h3>
               <ul className="mt-3 space-y-2">
                 {legacyImport.data.salesMap.map((row) => (
                   <li key={row.legacy_code} className="flex items-center justify-between gap-3 text-sm">
@@ -413,6 +456,26 @@ export function DashboardPage() {
       </div>
     </>
   );
+}
+
+function legacyStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    PROJECTED: 'Masuk ERP',
+    RAW_VAULT_ONLY: 'Raw vault',
+    DUPLICATE_SUMMARY: 'Ringkasan',
+    BROKEN_ARCHIVE: 'Arsip rusak',
+    RUNTIME_ARTIFACT: 'Runtime',
+    SECURITY_ARCHIVE: 'Arsip user',
+  };
+  return labels[status] ?? status;
+}
+
+function legacyStatusTone(status: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
+  if (status === 'PROJECTED') return 'success';
+  if (status === 'BROKEN_ARCHIVE') return 'danger';
+  if (status === 'DUPLICATE_SUMMARY' || status === 'SECURITY_ARCHIVE') return 'warning';
+  if (status === 'RUNTIME_ARTIFACT') return 'neutral';
+  return 'info';
 }
 
 function ProgressRow({

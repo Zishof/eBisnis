@@ -1445,13 +1445,33 @@ export class ErpController {
   ) {
     const ctx = context(user, meta);
     const S = `"${ctx.schemaName}"`;
-    const [files, totals, salesMap] = await Promise.all([
+    const [files, totals, salesMap, statusSummary] = await Promise.all([
       this.inventoryQuery(
         ctx,
-        `SELECT file_name, total_records, active_records, deleted_records, imported_records,
-                raw_records, projected_records, raw_only_records, imported_at::text
-           FROM ${S}.legacy_import_reconciliation
-          ORDER BY file_name`,
+        `SELECT f.file_name, f.status, f.total_records, f.active_records, f.deleted_records, f.imported_records,
+                COUNT(r.id)::int AS raw_records,
+                COUNT(r.id) FILTER (WHERE r.projection_status <> 'RAW_ONLY')::int AS projected_records,
+                COUNT(r.id) FILTER (WHERE r.projection_status = 'RAW_ONLY')::int AS raw_only_records,
+                COALESCE(jsonb_array_length(f.metadata->'fields'), 0)::int AS field_count,
+                f.metadata->>'projectedTable' AS projected_table,
+                f.metadata->>'projectionClass' AS projection_class,
+                f.metadata->>'projectionNote' AS projection_note,
+                f.imported_at::text
+           FROM ${S}.legacy_import_file f
+           LEFT JOIN ${S}.legacy_import_record r ON r.import_file_id = f.id
+          GROUP BY f.id, f.file_name, f.status, f.total_records, f.active_records, f.deleted_records,
+                   f.imported_records, f.metadata, f.imported_at
+          ORDER BY
+            CASE f.status
+              WHEN 'PROJECTED' THEN 1
+              WHEN 'RAW_VAULT_ONLY' THEN 2
+              WHEN 'DUPLICATE_SUMMARY' THEN 3
+              WHEN 'SECURITY_ARCHIVE' THEN 4
+              WHEN 'BROKEN_ARCHIVE' THEN 5
+              WHEN 'RUNTIME_ARTIFACT' THEN 6
+              ELSE 7
+            END,
+            f.file_name`,
       ),
       this.inventoryQuery(
         ctx,
@@ -1475,8 +1495,26 @@ export class ErpController {
           WHERE lsm.is_active
           ORDER BY legacy_name`,
       ),
+      this.inventoryQuery(
+        ctx,
+        `SELECT f.status,
+                count(*)::int AS files,
+                COALESCE(sum(f.active_records), 0)::int AS active_records,
+                COALESCE(sum(f.deleted_records), 0)::int AS deleted_records,
+                COALESCE(sum(raw.raw_records), 0)::int AS raw_records,
+                COALESCE(sum(raw.raw_only_records), 0)::int AS raw_only_records
+           FROM ${S}.legacy_import_file f
+           LEFT JOIN LATERAL (
+             SELECT count(*)::int AS raw_records,
+                    count(*) FILTER (WHERE r.projection_status = 'RAW_ONLY')::int AS raw_only_records
+               FROM ${S}.legacy_import_record r
+              WHERE r.import_file_id = f.id
+           ) raw ON TRUE
+          GROUP BY f.status
+          ORDER BY f.status`,
+      ),
     ]);
-    return { files, totals: totals[0] ?? {}, salesMap };
+    return { files, totals: totals[0] ?? {}, salesMap, statusSummary };
   }
 
   @Get('inventory/legacy/receivables')

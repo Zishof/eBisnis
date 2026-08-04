@@ -37,6 +37,8 @@ import {
 } from './accounting/cooperative-events.catalog';
 
 describe('katalog peristiwa akuntansi koperasi', () => {
+  const requiredMappings = COOPERATIVE_EVENT_CATALOG.requiredMappings ?? {};
+
   it('setiap peristiwa berawalan COOPERATIVE_', () => {
     for (const e of COOPERATIVE_EVENTS) {
       expect(e.startsWith(COOPERATIVE_EVENT_CATALOG.prefix)).toBe(true);
@@ -58,7 +60,7 @@ describe('katalog peristiwa akuntansi koperasi', () => {
 
   it('setiap peristiwa punya kode pemetaan akun', () => {
     for (const e of COOPERATIVE_EVENTS) {
-      expect(COOPERATIVE_EVENT_CATALOG.requiredMappings[e].length).toBeGreaterThan(0);
+      expect(requiredMappings[e]?.length).toBeGreaterThan(0);
     }
   });
 
@@ -103,14 +105,13 @@ describe('katalog peristiwa akuntansi koperasi', () => {
 
   it('simpanan pokok dan wajib dipetakan ke akun EKUITAS', () => {
     for (const e of PERISTIWA_EKUITAS) {
-      const peta = COOPERATIVE_EVENT_CATALOG.requiredMappings[e];
+      const peta = requiredMappings[e] ?? [];
       expect(peta.some((m) => m.includes('EQUITY'))).toBe(true);
     }
   });
 
   it('simpanan sukarela dipetakan ke akun KEWAJIBAN, bukan ekuitas', () => {
-    const peta =
-      COOPERATIVE_EVENT_CATALOG.requiredMappings.COOPERATIVE_VOLUNTARY_SAVING_DEPOSIT;
+    const peta = requiredMappings.COOPERATIVE_VOLUNTARY_SAVING_DEPOSIT ?? [];
     expect(peta.some((m) => m.includes('LIABILITY'))).toBe(true);
     expect(peta.some((m) => m.includes('EQUITY'))).toBe(false);
   });
@@ -120,7 +121,7 @@ describe('katalog peristiwa akuntansi koperasi', () => {
      * Penjualan di unit toko sudah dijurnal mesin POS lewat POS_SALE. Yang
      * dijurnal di sini hanya perpindahan dari kewajiban dompet ke kas.
      */
-    const peta = COOPERATIVE_EVENT_CATALOG.requiredMappings.COOPERATIVE_WALLET_PAYMENT;
+    const peta = requiredMappings.COOPERATIVE_WALLET_PAYMENT ?? [];
     expect(peta).toEqual(['MEMBER_WALLET_LIABILITY', 'CASH']);
     expect(peta.some((m) => m.includes('REVENUE') || m.includes('SALES'))).toBe(false);
   });

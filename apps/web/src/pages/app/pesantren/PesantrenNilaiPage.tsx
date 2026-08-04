@@ -200,6 +200,8 @@ export function PesantrenNilaiPage() {
     { key: 'jenjang', header: 'Jenjang', render: (row) => row.jenjang ? <StatusBadge status={row.jenjang} /> : '-' },
   ];
 
+  const pilihTahunInput = (value: string) => setTahunAjaranId(value);
+  const pilihTahunRapor = (value: string) => setFilterRapor({ ...filterRapor, tahunAjaranId: value });
   const pakaiTahunAktif = () => {
     if (!tahunAktif) return;
     setTahunAjaranId(tahunAktif.id);
