@@ -93,27 +93,6 @@ export function SitusUnitPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
-      <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="container-page flex min-h-16 items-center justify-between gap-4 py-3">
-          <Link to="/santri/pondok" className="flex min-w-0 items-center gap-3">
-            {profil.logo_url ? (
-              <img src={profil.logo_url} alt="" className="h-10 w-10 rounded-full ring-1 ring-slate-200" />
-            ) : (
-              <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
-                <GraduationCap className="h-5 w-5" aria-hidden />
-              </span>
-            )}
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-slate-950">{profil.nama_tampilan ?? unit.name}</p>
-              <p className="text-xs text-slate-500">Situs unit pendidikan</p>
-            </div>
-          </Link>
-          <Link to="/santri/masuk" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
-            Masuk
-          </Link>
-        </div>
-      </header>
-
       <section className="relative overflow-hidden border-b border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-sky-50">
         {profil.hero_image_url && (
           <>
