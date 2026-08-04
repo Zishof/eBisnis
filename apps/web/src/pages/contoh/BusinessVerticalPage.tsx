@@ -9,7 +9,6 @@ import {
   FileText,
   Globe2,
   Mail,
-  PackageCheck,
   Presentation,
   Smartphone,
   Sparkles,
@@ -42,7 +41,6 @@ export function BusinessVerticalPage() {
   const vertical = businessVerticalByCode(params.vertical) ?? businessVerticalFromHost() ?? fallbackVertical;
   const tenantName = businessTenantNameFromHost();
   const isTenantProfile = Boolean(tenantName);
-  const displayName = tenantName ?? vertical.title;
   const heroHeadline = isTenantProfile
     ? `${tenantName}: profil ${vertical.category.toLowerCase()} yang siap melayani pelanggan.`
     : vertical.headline;
@@ -65,29 +63,6 @@ export function BusinessVerticalPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
-        <div className="container-page flex h-16 items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2 font-black">
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-teal-700 text-sm text-white">eB</span>
-            <span>{displayName}</span>
-          </Link>
-          <nav className="hidden items-center gap-1 md:flex">
-            {(isTenantProfile ? ['Profil', 'Katalog', 'Cara Pesan', 'Download'] : ['Workflow', 'Fitur', 'Data Demo', 'Dokumen']).map((item) => (
-              <a key={item} href={`#${item.replace(/\s+/g, '-')}`} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-teal-50 hover:text-teal-800 dark:text-slate-300 dark:hover:bg-slate-900">
-                {item}
-              </a>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
-            <Link to="/masuk" className="btn-outline hidden sm:inline-flex">Masuk</Link>
-            <Link to="/demo" className="btn-primary bg-teal-700 hover:bg-teal-800">
-              Demo
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          </div>
-        </div>
-      </header>
-
       <main>
         <section className="overflow-hidden border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
           <div className="container-page grid gap-10 py-10 lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:py-14">
@@ -300,29 +275,6 @@ export function BusinessVerticalPage() {
           </div>
         </section>
       </main>
-
-      <footer className="border-t border-slate-200 bg-slate-950 py-10 text-white dark:border-slate-800">
-        <div className="container-page flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="font-black">{displayName}</p>
-            <p className="mt-1 text-sm text-slate-400">Platform SaaS POS, inventory, CRM, dan dashboard bisnis per jenis usaha.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/app" className="btn-outline border-white/20 bg-white/10 text-white hover:bg-white/15">
-              <Smartphone className="h-4 w-4" aria-hidden />
-              Aplikasi
-            </Link>
-            <Link to="/update/ebisnis-pos.apk" className="btn-outline border-white/20 bg-white/10 text-white hover:bg-white/15">
-              <Download className="h-4 w-4" aria-hidden />
-              APK
-            </Link>
-            <Link to="/update/ebisnis-pos.exe" className="btn-outline border-white/20 bg-white/10 text-white hover:bg-white/15">
-              <PackageCheck className="h-4 w-4" aria-hidden />
-              EXE
-            </Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

@@ -30,7 +30,7 @@ describe('business vertical hosts', () => {
     expect(businessVerticalRootRedirectFor('tukang-cukur-joko-barbershop.ebisnis.id', '/')).toBe('/contoh-usaha/barbershop');
     expect(businessTenantNameFromHost('cantik-salon.ebisnis.id')).toBe('Cantik');
     expect(businessVerticalRootRedirectFor('cantik-salon.ebisnis.id', '/')).toBe('/contoh-usaha/salon');
-    expect(businessTenantNameFromHost('cmnmedika-inventory.ebisnis.id')).toBe('Cmnmedika');
+    expect(businessTenantNameFromHost('cmnmedika-inventory.ebisnis.id')).toBe('Caruban Medika Nusantara');
     expect(businessVerticalRootRedirectFor('cmnmedika-inventory.ebisnis.id', '/')).toBe('/contoh-usaha/inventory');
     expect(businessVerticalRootRedirectFor('tukang-cukur-joko-barbershop.ebisnis.id', '/masuk')).toBeNull();
   });

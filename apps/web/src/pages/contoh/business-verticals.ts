@@ -334,6 +334,9 @@ function cleanHost(hostname: string): string {
 }
 
 const EBISNIS_SUFFIXES = ['.ebisnis.id', '.ebinis.id', '.ebisinis.id'];
+const TENANT_DISPLAY_NAMES: Record<string, string> = {
+  cmnmedika: 'Caruban Medika Nusantara',
+};
 
 function businessSubdomain(hostname: string): string | null {
   const host = cleanHost(hostname);
@@ -368,6 +371,8 @@ export function businessTenantNameFromHost(hostname: string = window.location.ho
   const alias = vertical.aliases.find((item) => subdomain === item || subdomain.endsWith(`-${item}`));
   if (!alias || subdomain === alias) return null;
   const slug = subdomain.slice(0, -`-${alias}`.length);
+  const mappedName = TENANT_DISPLAY_NAMES[slug];
+  if (mappedName) return mappedName;
   return slug
     .split('-')
     .filter(Boolean)
