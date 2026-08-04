@@ -49,8 +49,17 @@ describe('host publik eMedik', () => {
     expect(emedikPublicBrandFor('emedik.id')?.homeUrl).toBe('https://emedik.id');
     expect(emedikPublicBrandFor('demo.emedik.id')?.name).toBe('eMedik.id');
     expect(emedikPublicBrandFor('demo.emedik.id')?.homeUrl).toBe('https://emedik.id');
+    expect(emedikPublicBrandFor('demo.emedik.id')?.headerItems.map((item) => item.url)).toContain(
+      'https://emedik.id/#Solusi',
+    );
+    expect(emedikPublicBrandFor('demo.emedik.id')?.headerItems.map((item) => item.url)).toContain(
+      'https://emedik.id/#Dokumen',
+    );
     expect(emedikPublicBrandFor('apotik.emedik.id')?.name).toBe('Apotik eMedik');
     expect(emedikPublicBrandFor('apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
+    expect(emedikPublicBrandFor('apotik.emedik.id')?.headerItems.map((item) => item.url)).toContain(
+      'https://apotik.emedik.id/#POS-Apotik',
+    );
     expect(emedikPublicBrandFor('demo-apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
     expect(emedikPublicBrandFor('sehatjaya-apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
     expect(emedikPublicBrandFor('ebisnis.id')).toBeNull();

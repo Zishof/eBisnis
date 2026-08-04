@@ -88,10 +88,10 @@ export function emedikPublicBrandFor(
         'Landing dan akses apotik eMedik untuk pelayanan farmasi, stok obat, resep, pembelian, dan penjualan obat yang terhubung dengan operasional fasilitas kesehatan.',
       headerItems: [
         { labelKey: 'apotik.home', label: 'Beranda', url: 'https://apotik.emedik.id', sortOrder: 1 },
-        { labelKey: 'apotik.features', label: 'Farmasi', url: 'https://apotik.emedik.id/#fitur', sortOrder: 2 },
-        { labelKey: 'apotik.documents', label: 'Dokumen', url: 'https://apotik.emedik.id/#dokumen', sortOrder: 3 },
-        { labelKey: 'apotik.proposal', label: 'Proposal', url: 'https://apotik.emedik.id/proposal', sortOrder: 4 },
-        { labelKey: 'apotik.contact', label: 'Kontak', url: 'https://apotik.emedik.id/kontak', sortOrder: 5 },
+        { labelKey: 'apotik.features', label: 'Farmasi', url: 'https://apotik.emedik.id/#Farmasi', sortOrder: 2 },
+        { labelKey: 'apotik.pos', label: 'POS Apotik', url: 'https://apotik.emedik.id/#POS-Apotik', sortOrder: 3 },
+        { labelKey: 'apotik.documents', label: 'Dokumen', url: 'https://apotik.emedik.id/#Dokumen', sortOrder: 4 },
+        { labelKey: 'apotik.proposal', label: 'Proposal', url: 'https://apotik.emedik.id/proposal', sortOrder: 5 },
       ],
       footer: [
         {
@@ -144,10 +144,10 @@ export function emedikPublicBrandFor(
         'Sistem operasional terpadu untuk rumah sakit, klinik, puskesmas, posyandu, dan apotik: mulai dari pendaftaran, pelayanan klinis, farmasi, billing, hingga laporan.',
       headerItems: [
         { labelKey: 'emedik.home', label: 'Beranda', url: 'https://emedik.id', sortOrder: 1 },
-        { labelKey: 'emedik.solutions', label: 'Solusi', url: 'https://emedik.id/#solusi', sortOrder: 2 },
-        { labelKey: 'emedik.modules', label: 'Modul', url: 'https://emedik.id/#modul', sortOrder: 3 },
-        { labelKey: 'emedik.documents', label: 'Dokumen', url: 'https://emedik.id/#dokumen', sortOrder: 4 },
-        { labelKey: 'emedik.contact', label: 'Kontak', url: 'https://emedik.id/kontak', sortOrder: 5 },
+        { labelKey: 'emedik.solutions', label: 'Solusi', url: 'https://emedik.id/#Solusi', sortOrder: 2 },
+        { labelKey: 'emedik.flow', label: 'Alur', url: 'https://emedik.id/#Alur', sortOrder: 3 },
+        { labelKey: 'emedik.security', label: 'Keamanan', url: 'https://emedik.id/#Keamanan', sortOrder: 4 },
+        { labelKey: 'emedik.documents', label: 'Dokumen', url: 'https://emedik.id/#Dokumen', sortOrder: 5 },
       ],
       footer: [
         {

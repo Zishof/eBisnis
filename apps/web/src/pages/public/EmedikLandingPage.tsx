@@ -38,6 +38,7 @@ const photos = {
 
 const facilityTypes = [
   {
+    id: 'rumah-sakit',
     icon: Hospital,
     title: 'Rumah sakit',
     body: 'Rawat jalan, rawat inap, IGD, operasi, ICU, penunjang, klaim, dan rekam medis.',
@@ -45,6 +46,7 @@ const facilityTypes = [
     alt: 'Koridor rumah sakit modern dengan tempat tidur pasien',
   },
   {
+    id: 'klinik',
     icon: Stethoscope,
     title: 'Klinik',
     body: 'Pendaftaran cepat, jadwal dokter, SOAP, resep, billing, dan antrean pasien harian.',
@@ -52,6 +54,7 @@ const facilityTypes = [
     alt: 'Dokter menggunakan tablet saat konsultasi klinik',
   },
   {
+    id: 'puskesmas',
     icon: Building2,
     title: 'Puskesmas',
     body: 'UKP, UKM, keluarga, imunisasi, kunjungan rumah, indikator program, dan jejaring layanan.',
@@ -59,6 +62,7 @@ const facilityTypes = [
     alt: 'Tenaga kesehatan melayani pasien komunitas',
   },
   {
+    id: 'posyandu',
     icon: UsersRound,
     title: 'Posyandu',
     body: 'Kader, meja layanan, KMS digital, tumbuh kembang, ibu hamil, lansia, dan rujukan.',
@@ -277,6 +281,7 @@ export function EmedikLandingPage() {
                 const Icon = item.icon;
                 return (
                   <article
+                    id={item.id}
                     key={item.title}
                     className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-lg"
                   >
