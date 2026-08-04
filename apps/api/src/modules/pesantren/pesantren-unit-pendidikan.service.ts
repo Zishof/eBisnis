@@ -38,6 +38,8 @@ export interface BarisUnitPendidikan {
   santri_subdomain: string | null;
   custom_domain: string | null;
   domain_status: string;
+  logo_url: string | null;
+  hero_image_url: string | null;
   welcome_title: string | null;
   welcome_body: string | null;
   created_at: string;
@@ -46,7 +48,7 @@ export interface BarisUnitPendidikan {
 
 const KOLOM_UNIT = `id::text, code, name, jenis, sort_order, is_active,
   website_enabled, public_slug, santri_subdomain, custom_domain, domain_status,
-  welcome_title, welcome_body, created_at::text, updated_at::text`;
+  logo_url, hero_image_url, welcome_title, welcome_body, created_at::text, updated_at::text`;
 
 @Injectable()
 export class PesantrenUnitPendidikanService {
@@ -104,9 +106,9 @@ export class PesantrenUnitPendidikanService {
         schemaName,
         `INSERT INTO ${S}.pesantren_unit_pendidikan
            (code, name, jenis, sort_order, is_active, website_enabled, public_slug,
-            santri_subdomain, custom_domain, domain_status, welcome_title, welcome_body,
+            santri_subdomain, custom_domain, domain_status, logo_url, hero_image_url, welcome_title, welcome_body,
             created_by, updated_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $15)
          RETURNING ${KOLOM_UNIT}`,
         [
           payload.code,
@@ -119,6 +121,8 @@ export class PesantrenUnitPendidikanService {
           payload.santriSubdomain ?? null,
           payload.customDomain ?? null,
           payload.customDomain || payload.santriSubdomain ? 'PENDING' : 'NONE',
+          payload.logoUrl ?? null,
+          payload.heroImageUrl ?? null,
           payload.welcomeTitle ?? null,
           payload.welcomeBody ?? null,
           actorUserId,
@@ -183,12 +187,14 @@ export class PesantrenUnitPendidikanService {
                   THEN 'PENDING'
                   ELSE domain_status
                 END,
-                welcome_title = $11,
-                welcome_body = $12,
+                logo_url = $11,
+                hero_image_url = $12,
+                welcome_title = $13,
+                welcome_body = $14,
                 updated_at = now(),
-                updated_by = $13,
+                updated_by = $15,
                 deactivated_at = CASE WHEN $6 = FALSE AND is_active = TRUE THEN now() ELSE deactivated_at END,
-                deactivated_by = CASE WHEN $6 = FALSE AND is_active = TRUE THEN $13 ELSE deactivated_by END,
+                deactivated_by = CASE WHEN $6 = FALSE AND is_active = TRUE THEN $15 ELSE deactivated_by END,
                 version = version + 1
           WHERE id = $1 AND deleted_at IS NULL
           RETURNING ${KOLOM_UNIT}`,
@@ -203,6 +209,8 @@ export class PesantrenUnitPendidikanService {
           payload.publicSlug ?? null,
           payload.santriSubdomain ?? null,
           payload.customDomain ?? null,
+          payload.logoUrl ?? null,
+          payload.heroImageUrl ?? null,
           payload.welcomeTitle ?? null,
           payload.welcomeBody ?? null,
           actorUserId,
@@ -346,6 +354,8 @@ function normalisasi(masukan: MasukanUnitPendidikan): MasukanUnitPendidikan {
     publicSlug: kosongJadiNull(masukan.publicSlug)?.toLowerCase() ?? slugDefault,
     santriSubdomain: kosongJadiNull(masukan.santriSubdomain)?.toLowerCase() ?? slugDefault,
     customDomain: normalisasiDomain(masukan.customDomain),
+    logoUrl: kosongJadiNull(masukan.logoUrl),
+    heroImageUrl: kosongJadiNull(masukan.heroImageUrl),
     welcomeTitle: kosongJadiNull(masukan.welcomeTitle),
     welcomeBody: kosongJadiNull(masukan.welcomeBody),
   };

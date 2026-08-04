@@ -67,7 +67,7 @@ export class PesantrenPublicService {
     const unitPendidikan = await this.tenantDb.query(
       S,
       `SELECT id::text, code, name, jenis, website_enabled, public_slug,
-              santri_subdomain, custom_domain, welcome_title
+              santri_subdomain, custom_domain, logo_url, hero_image_url, welcome_title
          FROM "${S}".pesantren_unit_pendidikan
         WHERE is_active = TRUE AND deleted_at IS NULL
         ORDER BY sort_order ASC, name ASC`,
@@ -93,7 +93,7 @@ export class PesantrenPublicService {
     const unit = await this.tenantDb.queryOne<Record<string, unknown>>(
       S,
       `SELECT id::text, code, name, jenis, website_enabled, public_slug,
-              santri_subdomain, custom_domain, domain_status, welcome_title, welcome_body
+              santri_subdomain, custom_domain, domain_status, logo_url, hero_image_url, welcome_title, welcome_body
          FROM "${S}".pesantren_unit_pendidikan
         WHERE is_active = TRUE
           AND deleted_at IS NULL

@@ -57,6 +57,12 @@ class SimpanUnitPendidikanDto {
   @ApiPropertyOptional({ example: 'mi.raudlatululum.sch.id' }) @IsOptional() @IsString()
   customDomain?: string;
 
+  @ApiPropertyOptional({ example: 'https://example.sch.id/logo-mi.png' }) @IsOptional() @IsString()
+  logoUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.sch.id/kegiatan-belajar.jpg' }) @IsOptional() @IsString()
+  heroImageUrl?: string;
+
   @ApiPropertyOptional({ example: 'Selamat datang di MI Raudlatul Ulum' }) @IsOptional() @IsString()
   welcomeTitle?: string;
 
