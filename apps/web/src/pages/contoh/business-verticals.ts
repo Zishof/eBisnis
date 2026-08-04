@@ -333,6 +333,17 @@ function cleanHost(hostname: string): string {
   return hostname.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
 }
 
+const EBISNIS_SUFFIXES = ['.ebisnis.id', '.ebinis.id', '.ebisinis.id'];
+
+function businessSubdomain(hostname: string): string | null {
+  const host = cleanHost(hostname);
+  const suffix = EBISNIS_SUFFIXES.find((item) => host.endsWith(item));
+  if (!suffix) return null;
+  const subdomain = host.slice(0, -suffix.length);
+  if (!subdomain || subdomain.includes('.')) return null;
+  return subdomain;
+}
+
 export function businessVerticalByCode(code: string | undefined): BusinessVertical | null {
   if (!code) return null;
   const normalized = code.toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -340,10 +351,8 @@ export function businessVerticalByCode(code: string | undefined): BusinessVertic
 }
 
 export function businessVerticalFromHost(hostname: string = window.location.hostname): BusinessVertical | null {
-  const host = cleanHost(hostname);
-  if (!host.endsWith('.ebisnis.id')) return null;
-  const subdomain = host.slice(0, -'.ebisnis.id'.length);
-  if (!subdomain || subdomain.includes('.')) return null;
+  const subdomain = businessSubdomain(hostname);
+  if (!subdomain) return null;
 
   for (const vertical of ALL_BUSINESS_VERTICALS) {
     if (vertical.aliases.includes(subdomain)) return vertical;
@@ -353,10 +362,9 @@ export function businessVerticalFromHost(hostname: string = window.location.host
 }
 
 export function businessTenantNameFromHost(hostname: string = window.location.hostname): string | null {
-  const host = cleanHost(hostname);
-  const vertical = businessVerticalFromHost(host);
-  if (!vertical || !host.endsWith('.ebisnis.id')) return null;
-  const subdomain = host.slice(0, -'.ebisnis.id'.length);
+  const subdomain = businessSubdomain(hostname);
+  const vertical = businessVerticalFromHost(hostname);
+  if (!subdomain || !vertical) return null;
   const alias = vertical.aliases.find((item) => subdomain === item || subdomain.endsWith(`-${item}`));
   if (!alias || subdomain === alias) return null;
   const slug = subdomain.slice(0, -`-${alias}`.length);

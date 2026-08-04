@@ -28,5 +28,5 @@ export function salonRootRedirectFor(
 ): string | null {
   if (!isSalonDemoHost(hostname)) return null;
   const path = pathname.replace(/\/+$/, '') || '/';
-  return path === '/' || path === '/a' || path === '/ebisnis/a' ? '/contoh/salon' : null;
+  return path === '/' || path === '/a' || path === '/ebisnis/a' ? '/contoh-usaha/salon' : null;
 }

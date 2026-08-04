@@ -31,7 +31,7 @@ export function inventoryRootRedirectFor(
 ): string | null {
   if (!isInventoryHost(hostname)) return null;
   const path = pathname.replace(/\/+$/, '') || '/';
-  return path === '/' || path === '/a' || path === '/ebisnis/a' ? '/inventory' : null;
+  return path === '/' || path === '/a' || path === '/ebisnis/a' ? '/contoh-usaha/inventory' : null;
 }
 
 export function inventoryTenantLabelFromHost(hostname: string = window.location.hostname): string {
