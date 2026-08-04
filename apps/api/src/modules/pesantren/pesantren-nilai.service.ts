@@ -57,9 +57,31 @@ export interface BarisNilai {
   nilai_angka: string;
 }
 
+export interface BarisTahunAjaran {
+  id: string;
+  code: string;
+  name: string;
+  tanggal_mulai: string;
+  tanggal_selesai: string;
+  status: string;
+}
+
 @Injectable()
 export class PesantrenNilaiService {
   constructor(private readonly tenantDb: TenantConnectionService) {}
+
+  async daftarTahunAjaran(schemaName: string): Promise<BarisTahunAjaran[]> {
+    const S = `"${schemaName}"`;
+    return this.tenantDb.query<BarisTahunAjaran>(
+      schemaName,
+      `SELECT id::text, code, name, tanggal_mulai::text, tanggal_selesai::text, status
+         FROM ${S}.pesantren_tahun_ajaran
+        WHERE deleted_at IS NULL
+        ORDER BY CASE status WHEN 'ACTIVE' THEN 0 WHEN 'DRAFT' THEN 1 ELSE 2 END,
+                 tanggal_mulai DESC,
+                 code DESC`,
+    );
+  }
 
   // --- Mata pelajaran -------------------------------------------------------
 

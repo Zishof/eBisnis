@@ -12,6 +12,7 @@ interface JadwalRow extends Record<string, unknown> {
   hari: string;
   waktu_mulai: string;
   waktu_selesai: string;
+  pengajar_user_id: string | null;
   ruangan: string | null;
 }
 
@@ -35,6 +36,7 @@ export function PesantrenJadwalPage() {
   const queryClient = useQueryClient();
   const [hari, setHari] = useState('');
   const [membuat, setMembuat] = useState(false);
+  const [draggingId, setDraggingId] = useState('');
   const [form, setForm] = useState({
     rombonganId: '',
     mataPelajaranId: '',
@@ -82,6 +84,28 @@ export function PesantrenJadwalPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal membatalkan jadwal.'), 'error'),
   });
 
+  const pindahHari = useMutation({
+    mutationFn: async ({ jadwalAsal, hariTujuan }: { jadwalAsal: JadwalRow; hariTujuan: string }) => {
+      await api.post<JadwalRow>('/pesantren/kurikulum/jadwal', {
+        rombonganId: jadwalAsal.rombongan_id,
+        mataPelajaranId: jadwalAsal.mata_pelajaran_id,
+        hari: hariTujuan,
+        waktuMulai: jadwalAsal.waktu_mulai,
+        waktuSelesai: jadwalAsal.waktu_selesai,
+        pengajarUserId: jadwalAsal.pengajar_user_id ?? undefined,
+        ruangan: jadwalAsal.ruangan ?? undefined,
+      });
+      await api.delete<JadwalRow>(`/pesantren/kurikulum/jadwal/${jadwalAsal.id}`);
+      return hariTujuan;
+    },
+    onSuccess: (hariTujuan) => {
+      toast.push(`Jadwal dipindahkan ke ${hariTujuan}.`, 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-jadwal'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal memindahkan jadwal.'), 'error'),
+    onSettled: () => setDraggingId(''),
+  });
+
   const namaRombongan = new Map((rombongan.data?.items ?? []).map((item) => [item.id, `${item.tingkat} ${item.nama}`]));
   const namaMapel = new Map((mapel.data ?? []).map((item) => [item.id, item.nama]));
   const jadwalPerHari = HARI.map((item) => ({
@@ -90,6 +114,18 @@ export function PesantrenJadwalPage() {
       .filter((row) => row.hari === item)
       .sort((a, b) => a.waktu_mulai.localeCompare(b.waktu_mulai)),
   }));
+  const jadwalById = new Map((jadwal.data ?? []).map((item) => [item.id, item]));
+
+  const dropJadwalKeHari = (event: React.DragEvent<HTMLDivElement>, hariTujuan: string) => {
+    event.preventDefault();
+    const jadwalId = event.dataTransfer.getData('text/plain') || draggingId;
+    const jadwalAsal = jadwalById.get(jadwalId);
+    if (!jadwalAsal || jadwalAsal.hari === hariTujuan || pindahHari.isPending) {
+      setDraggingId('');
+      return;
+    }
+    pindahHari.mutate({ jadwalAsal, hariTujuan });
+  };
 
   const columns: Array<GridColumn<JadwalRow>> = [
     { key: 'hari', header: 'Hari', render: (row) => <StatusBadge status={row.hari} /> },
@@ -141,7 +177,7 @@ export function PesantrenJadwalPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold text-slate-900 dark:text-white">Timetable Visual</h2>
-            <p className="mt-1 text-xs text-slate-500">Ringkasan jadwal per hari untuk membaca benturan dan kepadatan kelas lebih cepat.</p>
+            <p className="mt-1 text-xs text-slate-500">Tarik kartu jadwal ke hari lain untuk memindahkan sesi; bentrok jam tetap ditolak sistem.</p>
           </div>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
             {(jadwal.data ?? []).length} sesi
@@ -149,7 +185,16 @@ export function PesantrenJadwalPage() {
         </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-7">
           {jadwalPerHari.filter((kolom) => !hari || kolom.hari === hari).map((kolom) => (
-            <div key={kolom.hari} className="min-h-32 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
+            <div
+              key={kolom.hari}
+              className={`min-h-32 rounded-xl border p-3 transition ${
+                draggingId
+                  ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-700 dark:bg-emerald-950/30'
+                  : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950'
+              }`}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => dropJadwalKeHari(event, kolom.hari)}
+            >
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{kolom.hari}</p>
               <div className="mt-3 space-y-2">
                 {kolom.items.length === 0 ? (
@@ -158,7 +203,19 @@ export function PesantrenJadwalPage() {
                   </p>
                 ) : (
                   kolom.items.map((item) => (
-                    <div key={item.id} className="rounded-lg border border-emerald-100 bg-white p-3 shadow-sm dark:border-emerald-900/60 dark:bg-slate-900">
+                    <div
+                      key={item.id}
+                      draggable
+                      className={`cursor-grab rounded-lg border border-emerald-100 bg-white p-3 shadow-sm transition active:cursor-grabbing dark:border-emerald-900/60 dark:bg-slate-900 ${
+                        draggingId === item.id ? 'opacity-50 ring-2 ring-emerald-300' : ''
+                      }`}
+                      onDragStart={(event) => {
+                        setDraggingId(item.id);
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/plain', item.id);
+                      }}
+                      onDragEnd={() => setDraggingId('')}
+                    >
                       <p className="font-semibold leading-snug text-slate-900 dark:text-white">
                         {namaMapel.get(item.mata_pelajaran_id) ?? item.mata_pelajaran_id}
                       </p>

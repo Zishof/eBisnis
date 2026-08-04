@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Printer, RefreshCw, Save } from 'lucide-react';
+import { Download, Plus, Printer, RefreshCw, Save } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { DataGrid, PageHeader, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -39,6 +39,15 @@ interface AnggotaRombonganRow {
   nama_lengkap: string | null;
 }
 
+interface TahunAjaranRow {
+  id: string;
+  code: string;
+  name: string;
+  tanggal_mulai: string;
+  tanggal_selesai: string;
+  status: string;
+}
+
 interface RaporRow {
   mata_pelajaran: string;
   komponen: Array<{ nama: string; nilai: number; bobot_persen: number }>;
@@ -59,6 +68,11 @@ export function PesantrenNilaiPage() {
   const [rombonganNilaiId, setRombonganNilaiId] = useState('');
   const [nilaiMassal, setNilaiMassal] = useState<Record<string, string>>({});
   const [filterRapor, setFilterRapor] = useState({ santriId: '', tahunAjaranId: '' });
+
+  const tahunAjaran = useQuery({
+    queryKey: ['pesantren-nilai-tahun-ajaran'],
+    queryFn: () => api.get<TahunAjaranRow[]>('/pesantren/nilai/tahun-ajaran'),
+  });
 
   const mapel = useQuery({
     queryKey: ['pesantren-nilai-mapel'],
@@ -174,6 +188,10 @@ export function PesantrenNilaiPage() {
     : santri.data?.items ?? [];
   const rombonganTerpilih = (rombongan.data?.items ?? []).find((item) => item.id === rombonganNilaiId);
   const santriTerpilih = (santri.data?.items ?? []).find((item) => item.id === filterRapor.santriId);
+  const tahunAktif = tahunAjaran.data?.find((item) => item.status === 'ACTIVE') ?? tahunAjaran.data?.[0];
+  const tahunInput = tahunAjaran.data?.find((item) => item.id === tahunAjaranId);
+  const tahunRapor = tahunAjaran.data?.find((item) => item.id === filterRapor.tahunAjaranId);
+  const ringkasanRapor = hitungRingkasanRapor(rapor.data ?? []);
 
   const columns: Array<GridColumn<MataPelajaranRow>> = [
     { key: 'code', header: 'Kode' },
@@ -182,6 +200,37 @@ export function PesantrenNilaiPage() {
     { key: 'jenjang', header: 'Jenjang', render: (row) => row.jenjang ? <StatusBadge status={row.jenjang} /> : '-' },
   ];
 
+  const pakaiTahunAktif = () => {
+    if (!tahunAktif) return;
+    setTahunAjaranId(tahunAktif.id);
+    setFilterRapor((sebelumnya) => ({ ...sebelumnya, tahunAjaranId: tahunAktif.id }));
+  };
+
+  const unduhCsvRapor = () => {
+    if (!rapor.data?.length || !santriTerpilih) return;
+    const rows = [
+      ['Santri', santriTerpilih.nama_lengkap],
+      ['NIS', santriTerpilih.nis],
+      ['Tahun Ajaran', tahunRapor?.name ?? filterRapor.tahunAjaranId],
+      [],
+      ['Mata Pelajaran', 'Komponen', 'Nilai Akhir', 'Huruf'],
+      ...rapor.data.map((row) => [
+        row.mata_pelajaran,
+        row.komponen.map((komponen) => `${komponen.nama}: ${komponen.nilai} (${komponen.bobot_persen}%)`).join('; '),
+        row.nilai_akhir ?? '',
+        row.huruf_mutu ?? '',
+      ]),
+    ];
+    const csv = rows.map((row) => row.map(formatCsv).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rapor-${santriTerpilih.nis || santriTerpilih.id}-${tahunRapor?.code ?? 'tahun-ajaran'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <PageHeader
@@ -189,10 +238,18 @@ export function PesantrenNilaiPage() {
         description="Kelola mata pelajaran, komponen penilaian, dan input nilai santri."
         breadcrumbs={[{ label: 'Beranda', href: '/app' }, { label: 'Pesantren' }, { label: 'Nilai' }]}
         actions={
-          <button type="button" className="btn-outline" onClick={() => void mapel.refetch()}>
-            <RefreshCw className="h-4 w-4" aria-hidden />
-            Muat Ulang
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-outline" disabled={!tahunAktif} onClick={pakaiTahunAktif}>
+              Tahun Aktif
+            </button>
+            <button type="button" className="btn-outline" onClick={() => {
+              void mapel.refetch();
+              void tahunAjaran.refetch();
+            }}>
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Muat Ulang
+            </button>
+          </div>
         }
       />
 
@@ -259,7 +316,16 @@ export function PesantrenNilaiPage() {
 
           <div className="card p-4">
             <div className="grid gap-3 md:grid-cols-2">
-              <Input label="Tahun ajaran ID *" value={tahunAjaranId} onChange={setTahunAjaranId} />
+              <Field label="Tahun ajaran *">
+                <select className="field-input" value={tahunAjaranId} onChange={(e) => pilihTahunInput(e.target.value)}>
+                  <option value="">Pilih tahun ajaran</option>
+                  {(tahunAjaran.data ?? []).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} {item.status === 'ACTIVE' ? '(aktif)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <Field label="Komponen *">
                 <select className="field-input" value={formNilai.komponenId} onChange={(e) => setFormNilai({ ...formNilai, komponenId: e.target.value })}>
                   <option value="">Pilih komponen</option>
@@ -285,6 +351,11 @@ export function PesantrenNilaiPage() {
                 Simpan Nilai
               </button>
             </div>
+            {tahunInput && (
+              <p className="mt-3 text-xs text-slate-500">
+                Nilai akan dicatat untuk {tahunInput.name}, periode {tahunInput.tanggal_mulai} sampai {tahunInput.tanggal_selesai}.
+              </p>
+            )}
 
             <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -378,14 +449,29 @@ export function PesantrenNilaiPage() {
       ) : (
         <div className="space-y-4">
           <div className="card p-4 print:hidden">
-            <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto]">
+            <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto_auto]">
               <Field label="Santri">
                 <select className="field-input" value={filterRapor.santriId} onChange={(e) => setFilterRapor({ ...filterRapor, santriId: e.target.value })}>
                   <option value="">Pilih santri</option>
                   {(santri.data?.items ?? []).map((item) => <option key={item.id} value={item.id}>{item.nis} - {item.nama_lengkap}</option>)}
                 </select>
               </Field>
-              <Input label="Tahun ajaran ID" value={filterRapor.tahunAjaranId} onChange={(value) => setFilterRapor({ ...filterRapor, tahunAjaranId: value })} />
+              <Field label="Tahun ajaran">
+                <select className="field-input" value={filterRapor.tahunAjaranId} onChange={(e) => pilihTahunRapor(e.target.value)}>
+                  <option value="">Pilih tahun ajaran</option>
+                  {(tahunAjaran.data ?? []).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} {item.status === 'ACTIVE' ? '(aktif)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <div className="flex items-end">
+                <button type="button" className="btn-outline" disabled={!rapor.data?.length} onClick={unduhCsvRapor}>
+                  <Download className="h-4 w-4" aria-hidden />
+                  CSV
+                </button>
+              </div>
               <div className="flex items-end">
                 <button type="button" className="btn-outline" disabled={!rapor.data?.length} onClick={() => window.print()}>
                   <Printer className="h-4 w-4" aria-hidden />
@@ -416,7 +502,9 @@ export function PesantrenNilaiPage() {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tahun ajaran</p>
-                <p className="mt-1 font-semibold text-slate-950 dark:text-white print:text-slate-950">{filterRapor.tahunAjaranId || '-'}</p>
+                <p className="mt-1 font-semibold text-slate-950 dark:text-white print:text-slate-950">
+                  {tahunRapor?.name ?? (filterRapor.tahunAjaranId || '-')}
+                </p>
               </div>
             </div>
             {!filterRapor.santriId || !filterRapor.tahunAjaranId ? (
@@ -428,8 +516,14 @@ export function PesantrenNilaiPage() {
             ) : !rapor.data?.length ? (
               <div className="p-6 text-sm text-slate-500">Belum ada nilai untuk santri dan tahun ajaran ini.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
+              <>
+                <div className="grid gap-3 border-b border-slate-100 p-4 sm:grid-cols-3 dark:border-slate-800">
+                  <Summary label="Mata pelajaran" value={String(ringkasanRapor.jumlahMapel)} />
+                  <Summary label="Rata-rata" value={ringkasanRapor.rataRata === null ? '-' : ringkasanRapor.rataRata.toFixed(2)} />
+                  <Summary label="Predikat dominan" value={ringkasanRapor.predikatDominan ?? '-'} />
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
                   <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900/70">
                     <tr>
                       <th className="px-4 py-3 text-left">Mata Pelajaran</th>
@@ -452,8 +546,9 @@ export function PesantrenNilaiPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
+                  </table>
+                </div>
+              </>
             )}
             {rapor.data?.length ? (
               <div className="grid gap-8 border-t border-slate-100 bg-white p-6 text-center text-sm dark:border-slate-800 dark:bg-slate-950 print:grid-cols-3">
@@ -497,4 +592,29 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+function Summary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-xl font-bold text-slate-950 dark:text-white">{value}</p>
+    </div>
+  );
+}
+
+function hitungRingkasanRapor(rows: RaporRow[]) {
+  const nilai = rows.map((row) => row.nilai_akhir).filter((value): value is number => value !== null);
+  const rataRata = nilai.length ? nilai.reduce((total, value) => total + value, 0) / nilai.length : null;
+  const sebaran = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.huruf_mutu) continue;
+    sebaran.set(row.huruf_mutu, (sebaran.get(row.huruf_mutu) ?? 0) + 1);
+  }
+  const predikatDominan = [...sebaran.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  return { jumlahMapel: rows.length, rataRata, predikatDominan };
+}
+
+function formatCsv(value: unknown) {
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }

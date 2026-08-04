@@ -42,7 +42,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 | Presensi santri | Operasional dasar | Presensi massal, presensi per tanggal/jenis, integrasi pilihan jadwal | Relasi fisik `jadwal_id`/`piket_id`, rekap absensi formal lengkap, dan perangkat absensi belum penuh |
 | Diniyah/tahfiz/dakwah | Operasional dasar | Kitab, halaqah, anggota, setoran tahfiz, modul diniyah/tahfiz, kajian publik, materi URL, rekaman URL, gambar, dan publish ke website | Sanad/ustadz pengampu, sertifikat/syahadah, dan arsip dakwah tingkat lanjut belum penuh |
 | Nilai/rapor | Sebagian selesai | Komponen nilai, skala huruf, entry nilai satuan, input nilai massal per rombongan dan komponen, endpoint rapor berbobot, template cetak/PDF browser dasar | Leger, ranking, kenaikan kelas/promosi, impor Excel, dan template rapor spesifik per yayasan/jenjang belum penuh |
-| Jadwal | Sebagian selesai | Jadwal pelajaran dengan validasi bentrok dasar dan timetable visual per hari | Drag-drop langsung pada kalender, copy jadwal mingguan, substitusi guru, kalender ujian, dan ekspor belum penuh |
+| Jadwal | Sebagian selesai | Jadwal pelajaran dengan validasi bentrok dasar, timetable visual per hari, dan drag-to-move antarhari yang tetap melewati validasi bentrok backend | Copy jadwal mingguan, substitusi guru, kalender ujian, ekspor, dan drag-resize jam belum penuh |
 | Buku penghubung | Sebagian selesai | Catatan santri, visibilitas wali/internal, status tindak lanjut, notifikasi wali | Thread balasan dua arah, lampiran, template komunikasi, dan SLA tindak lanjut belum penuh |
 | Pembinaan santri | Sebagian selesai | Pelanggaran, prestasi, ekstrakurikuler | Katalog hukuman/poin, workflow pembinaan berjenjang, penghargaan/apresiasi terpisah, anggota/jabatan/partisipasi ekskul belum penuh |
 | Keuangan santri | Operasional dasar | Tagihan, dompet santri, top-up, transaksi kantin/POS, saldo, batas harian | Payment gateway, rekonsiliasi, posting akuntansi legacy piutang/diskon/deposit lengkap, invoice wali, dan settlement belum penuh |
@@ -64,7 +64,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 ### P1 - eSchool Inti dari AIS
 
 1. Template rapor cetak dasar sudah tersedia; fase berikutnya adalah template resmi spesifik per yayasan/jenjang dan kop digital.
-2. Drag-drop langsung pada timetable jadwal pelajaran.
+2. Timetable sudah mendukung drag-to-move antarhari; fase berikutnya drag-resize jam, copy mingguan, dan substitusi guru.
 3. Builder PSB sudah punya field berurutan dan preview; fase berikutnya tinggal komponen drag gesture penuh.
 4. Input nilai massal sudah tersedia per rombongan dan komponen; fase berikutnya impor Excel dan validasi nilai lintas komponen.
 5. Promosi/kenaikan kelas dan histori akademik.
@@ -114,9 +114,10 @@ Batch berikut sudah diterapkan di repo aktif:
 - Input nilai massal per komponen ditambahkan agar guru dapat mengisi banyak santri dalam satu tabel dan menyimpannya sebagai batch.
 - Input nilai massal kini bisa difilter per rombongan/kelas, sehingga guru tidak perlu memuat seluruh santri aktif saat mengisi satu kelas.
 - Rapor santri dipoles menjadi template cetak/PDF browser dasar dengan header resmi, identitas santri, tabel nilai, dan area tanda tangan wali kelas, orang tua/wali, serta kepala satuan pendidikan.
+- Timetable jadwal pelajaran kini mendukung drag-to-move antarhari: kartu jadwal bisa ditarik ke kolom hari lain, sistem membuat sesi baru lalu membatalkan sesi lama, dan validasi bentrok tetap ditangani backend.
 
 Yang masih belum penuh setelah batch ini:
 
 - Media manager generik lintas portal masih belum dibuat; yang sudah tersedia sekarang khusus pesantren pondok/unit.
 - Crop/editor gambar, bulk upload, dan drag-drop ordering visual belum penuh.
-- Drag gesture penuh untuk timetable/PSB, template rapor spesifik per yayasan/jenjang, dan builder PSB tingkat lanjut masih perlu fase berikutnya.
+- Drag-resize jam timetable, drag gesture penuh PSB, template rapor spesifik per yayasan/jenjang, dan builder PSB tingkat lanjut masih perlu fase berikutnya.
