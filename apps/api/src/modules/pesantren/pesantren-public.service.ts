@@ -17,6 +17,7 @@ import { TenantFileBlobService, BerkasBlob } from '../../infrastructure/files/te
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { KategoriGambarProfil, KODE_BERKAS_GAMBAR_PROFIL } from './pesantren-profil';
 import { KategoriGambarUnitPendidikan, kodeBerkasGambarUnit } from './pesantren-unit-pendidikan';
+import { kodeBerkasMediaPesantren } from './pesantren-media';
 import { PesantrenPsbService, BarisPendaftar } from './pesantren-psb.service';
 import { MasukanPendaftar } from './pesantren-psb';
 import { PSB_APPLICANT_TOKEN_TYPE, PsbApplicantTokenPayload } from './psb-applicant-auth.guard';
@@ -74,9 +75,10 @@ export class PesantrenPublicService {
         ORDER BY sort_order ASC, name ASC`,
     );
 
+    const media = await this.mediaPublik(S, null);
     const currentUnit = await this.unitDariHost(S, konteks.host);
 
-    return { profil, berita, unitPendidikan, currentUnit };
+    return { profil, berita, unitPendidikan, media, currentUnit };
   }
 
   async unit(host: string | undefined, slug: string) {
@@ -124,7 +126,9 @@ export class PesantrenPublicService {
       [unit.id],
     );
 
-    return { profil, unit, gelombang };
+    const media = await this.mediaPublik(S, unit.id as string);
+
+    return { profil, unit, gelombang, media };
   }
 
   async beritaSatu(host: string | undefined, id: string) {
@@ -241,6 +245,32 @@ export class PesantrenPublicService {
     }
 
     const berkas = await this.fileBlob.ambilByCode(S, kodeBerkasGambarUnit(unitId, kategori));
+    if (!berkas) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
+    }
+    return berkas;
+  }
+
+  async mediaGambar(host: string | undefined, id: string): Promise<BerkasBlob> {
+    const konteks = await this.resolver.resolve(host, VERTIKAL);
+    const S = konteks.schemaName;
+
+    const media = await this.tenantDb.queryOne<{ id: string; file_code: string | null }>(
+      S,
+      `SELECT m.id::text, m.file_code
+         FROM "${S}".pesantren_media m
+         JOIN "${S}".pesantren_website_setting s ON s.singleton = TRUE
+        WHERE m.id = $1
+          AND m.deleted_at IS NULL
+          AND m.is_published = TRUE
+          AND s.is_published = TRUE`,
+      [id],
+    );
+    if (!media) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
+    }
+
+    const berkas = await this.fileBlob.ambilByCode(S, media.file_code || kodeBerkasMediaPesantren(id));
     if (!berkas) {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Gambar tidak ditemukan.');
     }
@@ -377,6 +407,24 @@ export class PesantrenPublicService {
     return this.tenantDb.query(
       S,
       `SELECT code, nama FROM "${S}".pesantren_agama WHERE is_active = TRUE ORDER BY sort_order ASC`,
+    );
+  }
+
+  private mediaPublik(schemaName: string, unitPendidikanId: string | null) {
+    const kondisiUnit = unitPendidikanId ? 'm.unit_pendidikan_id = $1' : 'm.unit_pendidikan_id IS NULL';
+    const params = unitPendidikanId ? [unitPendidikanId] : [];
+    return this.tenantDb.query(
+      schemaName,
+      `SELECT m.id::text, m.unit_pendidikan_id::text, u.name AS unit_pendidikan_nama,
+              m.kategori, m.judul, m.deskripsi, m.image_url, m.alt_text, m.attribution
+         FROM "${schemaName}".pesantren_media m
+         LEFT JOIN "${schemaName}".pesantren_unit_pendidikan u ON u.id = m.unit_pendidikan_id
+        WHERE m.deleted_at IS NULL
+          AND m.is_published = TRUE
+          AND ${kondisiUnit}
+        ORDER BY m.sort_order ASC, m.created_at DESC
+        LIMIT 12`,
+      params,
     );
   }
 }
