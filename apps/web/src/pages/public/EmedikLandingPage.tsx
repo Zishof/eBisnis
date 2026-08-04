@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowRight,
   BadgeCheck,
+  BedDouble,
   Building2,
   CalendarCheck,
   CheckCircle2,
@@ -12,34 +13,57 @@ import {
   HeartPulse,
   Hospital,
   LockKeyhole,
+  Microscope,
   Pill,
   Presentation,
   ShieldCheck,
   Sparkles,
   Stethoscope,
+  Syringe,
   UsersRound,
 } from 'lucide-react';
+
+const photos = {
+  hero:
+    'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1600&q=85',
+  hospital:
+    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=900&q=82',
+  clinic:
+    'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=900&q=82',
+  community:
+    'https://images.unsplash.com/photo-1576765974257-b414b9ea005a?auto=format&fit=crop&w=900&q=82',
+  lab:
+    'https://images.unsplash.com/photo-1581093458791-9d42e8f80f6a?auto=format&fit=crop&w=900&q=82',
+};
 
 const facilityTypes = [
   {
     icon: Hospital,
     title: 'Rumah sakit',
     body: 'Rawat jalan, rawat inap, IGD, operasi, ICU, penunjang, klaim, dan rekam medis.',
+    image: photos.hospital,
+    alt: 'Koridor rumah sakit modern dengan tempat tidur pasien',
   },
   {
     icon: Stethoscope,
     title: 'Klinik',
     body: 'Pendaftaran cepat, jadwal dokter, SOAP, resep, billing, dan antrean pasien harian.',
+    image: photos.clinic,
+    alt: 'Dokter menggunakan tablet saat konsultasi klinik',
   },
   {
     icon: Building2,
     title: 'Puskesmas',
     body: 'UKP, UKM, keluarga, imunisasi, kunjungan rumah, indikator program, dan jejaring layanan.',
+    image: photos.community,
+    alt: 'Tenaga kesehatan melayani pasien komunitas',
   },
   {
     icon: UsersRound,
     title: 'Posyandu',
     body: 'Kader, meja layanan, KMS digital, tumbuh kembang, ibu hamil, lansia, dan rujukan.',
+    image: photos.lab,
+    alt: 'Tim layanan kesehatan menyiapkan pemeriksaan',
   },
 ];
 
@@ -87,6 +111,20 @@ const securityControls = [
   ['Audit klinis', 'Jejak baca dan tulis pasien tetap dapat ditelusuri.'],
 ];
 
+const successStories = [
+  [Activity, 'Antrean lebih terkendali', 'Loket, klinisi, farmasi, dan kasir membaca status yang sama.'],
+  [UsersRound, 'Pasien ganda terdeteksi', 'Identitas lintas kunjungan ditelaah sebelum digabungkan.'],
+  [Pill, 'Obat lebih aman', 'Resep, telaah, dispensing, dan pemberian memakai pagar keselamatan.'],
+  [Sparkles, 'Demo tidak menipu', 'Data contoh terlihat jelas dan dapat dibersihkan tanpa menghapus jejak produksi.'],
+];
+
+const medicalSignals = [
+  [BedDouble, 'Rawat inap dan bed management'],
+  [Microscope, 'Lab, radiologi, dan hasil kritis'],
+  [Syringe, 'Imunisasi dan layanan komunitas'],
+  [HeartPulse, 'IGD, operasi, ICU, dan telaah darurat'],
+];
+
 export const offerDocuments = [
   {
     icon: FileText,
@@ -120,19 +158,19 @@ export function EmedikLandingPage() {
       <LandingHeader brand="eMedik.id" links={['Solusi', 'Alur', 'Keamanan', 'Dokumen', 'Demo']} />
 
       <main>
-        <section className="border-b border-slate-200 bg-white">
-          <div className="container-page grid gap-10 py-10 sm:py-14 lg:grid-cols-[0.96fr_1.04fr] lg:items-center lg:py-16">
-            <div>
+        <section className="overflow-hidden border-b border-slate-200 bg-white">
+          <div className="container-page grid gap-10 py-8 sm:py-12 lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:py-14">
+            <div className="relative z-10">
               <p className="section-eyebrow bg-teal-50 text-teal-800">
                 Sistem Rumah Sakit, Klinik, Puskesmas, dan Posyandu
               </p>
-              <h1 className="max-w-4xl text-4xl font-black leading-[1.05] text-slate-950 sm:text-5xl lg:text-6xl">
-                Operasional kesehatan dalam satu alur yang aman.
+              <h1 className="max-w-4xl text-4xl font-black leading-[1.04] text-slate-950 sm:text-5xl lg:text-6xl">
+                Satu rekam perjalanan pasien, dari loket sampai layanan selesai.
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-                eMedik.id menyatukan pendaftaran, rekam medis, penunjang, farmasi,
-                billing, klaim, dan portal pasien tanpa mengorbankan kontrol akses
-                klinis.
+              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-700 sm:text-lg">
+                eMedik.id menyatukan pendaftaran, rekam medis, farmasi, penunjang,
+                billing, klaim, dan portal pasien dengan kontrol akses klinis yang
+                tetap mudah dipakai oleh tim harian.
               </p>
 
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -147,7 +185,7 @@ export function EmedikLandingPage() {
 
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
                 {trustSignals.map((item) => (
-                  <p key={item} className="flex items-start gap-2 text-sm leading-6 text-slate-600">
+                  <p key={item} className="flex items-start gap-2 text-sm leading-6 text-slate-700">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
                     {item}
                   </p>
@@ -155,59 +193,64 @@ export function EmedikLandingPage() {
               </div>
             </div>
 
-            <div className="lg:ps-4">
-              <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-950 shadow-2xl">
-                <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-teal-500 text-slate-950">
-                      <HeartPulse className="h-4 w-4" aria-hidden />
-                    </span>
-                    Command center fasilitas
-                  </div>
-                  <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-200">
-                    Live demo
-                  </span>
-                </div>
-
-                <div className="grid gap-3 p-4 sm:grid-cols-3">
-                  {[
-                    ['128', 'antrean hari ini'],
-                    ['37', 'resep ditelaah'],
-                    ['4', 'akses darurat'],
-                  ].map(([value, label]) => (
-                    <div key={label} className="rounded-lg bg-white/10 p-4 ring-1 ring-white/10">
-                      <p className="text-2xl font-black text-white">{value}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-300">{label}</p>
+            <div className="relative">
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950 shadow-2xl">
+                <div className="relative min-h-[23rem] sm:min-h-[30rem]">
+                  <img
+                    src={photos.hero}
+                    alt="Tim rumah sakit menyiapkan layanan pasien di ruang perawatan"
+                    className="absolute inset-0 h-full w-full object-cover opacity-80"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-slate-950/10" />
+                  <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
+                    <div className="rounded-xl bg-white/95 p-4 text-slate-950 shadow-xl ring-1 ring-white/40 backdrop-blur sm:p-5">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wide text-teal-700">
+                            Command center fasilitas
+                          </p>
+                          <h2 className="mt-1 text-2xl font-black">Status pasien lintas unit</h2>
+                        </div>
+                        <span className="inline-flex w-fit rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                          Live demo
+                        </span>
+                      </div>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        {[
+                          ['128', 'antrean hari ini'],
+                          ['37', 'resep ditelaah'],
+                          ['4', 'akses darurat'],
+                        ].map(([value, label]) => (
+                          <div key={label} className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
+                            <p className="text-2xl font-black text-slate-950">{value}</p>
+                            <p className="mt-1 text-xs leading-5 text-slate-600">{label}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 grid gap-2 sm:grid-cols-5">
+                        {['Check-in', 'Triase', 'Dokter', 'Farmasi', 'Billing'].map((step, index) => (
+                          <div key={step} className="rounded-lg bg-teal-50 px-3 py-2 text-center text-xs font-bold text-teal-900">
+                            {index + 1}. {step}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-                </div>
-
-                <div className="grid gap-3 px-4 pb-4 lg:grid-cols-[0.9fr_1.1fr]">
-                  <div className="rounded-lg bg-white p-4 text-slate-950">
-                    <p className="text-xs font-bold uppercase tracking-wide text-teal-700">
-                      Alur pasien
-                    </p>
-                    <ol className="mt-4 space-y-3">
-                      {['Check-in', 'Triase', 'Dokter', 'Farmasi', 'Billing'].map((step, index) => (
-                        <li key={step} className="flex items-center gap-3">
-                          <span className="grid h-7 w-7 place-items-center rounded-full bg-teal-50 text-xs font-black text-teal-800">
-                            {index + 1}
-                          </span>
-                          <span className="text-sm font-semibold">{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-
-                  <div className="rounded-lg bg-teal-400 p-4 text-slate-950">
-                    <p className="text-sm font-bold">Portal tenant</p>
-                    <p className="mt-1 break-all font-mono text-base sm:text-lg">mitrasehat.emedik.id</p>
-                    <p className="mt-3 text-sm leading-6">
-                      Profil fasilitas, dokter, jadwal, layanan, pendaftaran online,
-                      antrean, hasil yang boleh diakses, resep, dan edukasi pasien.
-                    </p>
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {medicalSignals.map(([Icon, label]) => {
+                  const IconComponent = Icon as typeof BedDouble;
+                  return (
+                    <div key={label as string} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                      <span className="grid h-10 w-10 place-items-center rounded-lg bg-cyan-50 text-cyan-700">
+                        <IconComponent className="h-5 w-5" aria-hidden />
+                      </span>
+                      <span className="text-sm font-bold text-slate-800">{label as string}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -215,14 +258,14 @@ export function EmedikLandingPage() {
 
         <section id="Solusi" className="bg-slate-50 py-14 sm:py-16">
           <div className="container-page">
-            <div className="grid gap-8 lg:grid-cols-[0.78fr_1.22fr] lg:items-end">
+            <div className="grid gap-6 lg:grid-cols-[0.78fr_1.22fr] lg:items-end">
               <div>
                 <p className="section-eyebrow bg-white text-teal-800">Satu vertical kesehatan</p>
                 <h2 className="section-heading text-slate-950">
                   Dibangun untuk fasilitas yang ritmenya berbeda.
                 </h2>
               </div>
-              <p className="section-lead mt-0">
+              <p className="max-w-3xl text-base leading-8 text-slate-700">
                 Rumah sakit butuh koordinasi lintas unit, klinik butuh cepat,
                 puskesmas butuh program komunitas, dan posyandu butuh alur kader
                 yang sederhana. Semuanya memakai fondasi data pasien yang sama.
@@ -235,11 +278,19 @@ export function EmedikLandingPage() {
                 return (
                   <article
                     key={item.title}
-                    className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
+                    className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-lg"
                   >
-                    <Icon className="h-6 w-6 text-teal-700" aria-hidden />
-                    <h3 className="mt-4 font-bold text-slate-950">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
+                    <div className="relative h-44 overflow-hidden">
+                      <img src={item.image} alt={item.alt} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 to-transparent" />
+                      <span className="absolute bottom-3 left-3 grid h-10 w-10 place-items-center rounded-lg bg-white text-teal-700 shadow">
+                        <Icon className="h-5 w-5" aria-hidden />
+                      </span>
+                    </div>
+                    <div className="p-5">
+                      <h3 className="font-bold text-slate-950">{item.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
+                    </div>
                   </article>
                 );
               })}
@@ -254,7 +305,7 @@ export function EmedikLandingPage() {
               <h2 className="section-heading text-slate-950">
                 Dari pasien datang sampai tagihan selesai.
               </h2>
-              <p className="section-lead">
+              <p className="mt-3 max-w-3xl text-base leading-8 text-slate-700">
                 Informasi penting dinaikkan ke permukaan, aksi berbahaya diberi
                 pagar, dan setiap perpindahan status meninggalkan jejak.
               </p>
@@ -264,7 +315,7 @@ export function EmedikLandingPage() {
               {workflow.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <article key={item.title} className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+                  <article key={item.title} className="rounded-xl border border-slate-200 bg-slate-50 p-5">
                     <Icon className="h-6 w-6 text-teal-700" aria-hidden />
                     <h3 className="mt-4 font-bold text-slate-950">{item.title}</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
@@ -275,7 +326,7 @@ export function EmedikLandingPage() {
 
             <ol className="mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {implementationSteps.map(([number, title, body]) => (
-                <li key={number} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <li key={number} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <span className="font-mono text-xs font-black text-teal-700">{number}</span>
                   <p className="mt-2 font-bold text-slate-950">{title}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
@@ -301,7 +352,7 @@ export function EmedikLandingPage() {
 
             <div className="grid gap-3 sm:grid-cols-2">
               {securityControls.map(([title, body]) => (
-                <article key={title} className="rounded-lg bg-white/10 p-5 ring-1 ring-white/10">
+                <article key={title} className="rounded-xl bg-white/10 p-5 ring-1 ring-white/10">
                   <LockKeyhole className="h-5 w-5 text-teal-200" aria-hidden />
                   <h3 className="mt-4 font-bold text-white">{title}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-300">{body}</p>
@@ -318,24 +369,18 @@ export function EmedikLandingPage() {
               <h2 className="section-heading text-slate-950">
                 Dibuat untuk mengurangi kerja ulang, bukan menambah layar.
               </h2>
-              <p className="section-lead">
-                Landing ini menonjolkan cerita sukses yang paling sering terjadi
-                di lapangan: antrean lebih terbaca, data pasien tidak ganda,
-                resep tidak lepas dari telaah, dan pimpinan mendapat laporan yang
-                dapat dipercaya.
+              <p className="mt-3 max-w-3xl text-base leading-8 text-slate-700">
+                Pengalaman terbaik di fasilitas kesehatan biasanya sederhana:
+                status antrean terbaca, identitas pasien tidak ganda, resep tidak
+                lepas dari telaah, dan pimpinan mendapat laporan yang dapat dipercaya.
               </p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              {[
-                [Activity, 'Antrean lebih terkendali', 'Loket, klinisi, farmasi, dan kasir membaca status yang sama.'],
-                [UsersRound, 'Pasien ganda terdeteksi', 'Identitas lintas kunjungan ditelaah sebelum digabungkan.'],
-                [Pill, 'Obat lebih aman', 'Resep, telaah, dispensing, dan pemberian memakai pagar keselamatan.'],
-                [Sparkles, 'Demo tidak menipu', 'Data contoh terlihat jelas dan dapat dibersihkan tanpa menghapus jejak produksi.'],
-              ].map(([Icon, title, body]) => {
+              {successStories.map(([Icon, title, body]) => {
                 const IconComponent = Icon as typeof Activity;
                 return (
-                  <article key={title as string} className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+                  <article key={title as string} className="rounded-xl border border-slate-200 bg-slate-50 p-5">
                     <IconComponent className="h-6 w-6 text-cyan-700" aria-hidden />
                     <h3 className="mt-4 font-bold text-slate-950">{title as string}</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">{body as string}</p>
@@ -377,6 +422,17 @@ export function LandingHeader({ brand, links }: { brand: string; links: string[]
           Masuk
         </Link>
       </div>
+      <nav className="container-page flex gap-2 overflow-x-auto pb-3 md:hidden" aria-label="Navigasi landing mobile">
+        {links.map((link) => (
+          <a
+            key={link}
+            href={`#${link.replace(/\s+/g, '-')}`}
+            className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700"
+          >
+            {link}
+          </a>
+        ))}
+      </nav>
     </header>
   );
 }
@@ -415,7 +471,7 @@ export function OfferDocumentSection({ tone }: { tone: 'teal' | 'emerald' }) {
         <div className="max-w-3xl">
           <p className={`section-eyebrow ${accent}`}>Dokumen kerja sama</p>
           <h2 className="section-heading text-slate-950">Bahan resmi untuk evaluasi dan approval.</h2>
-          <p className="section-lead">
+          <p className="mt-3 max-w-3xl text-base leading-8 text-slate-700">
             Empat dokumen ini tersedia langsung dari landing page supaya calon
             fasilitas dapat membaca proposal, penawaran, presentasi, dan draft
             PKS tanpa masuk ke dashboard.
@@ -428,7 +484,7 @@ export function OfferDocumentSection({ tone }: { tone: 'teal' | 'emerald' }) {
               <Link
                 key={doc.href}
                 to={doc.href}
-                className="group rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
               >
                 <Icon className="h-5 w-5 text-slate-500" aria-hidden />
                 <h3 className="mt-4 font-bold text-slate-950">{doc.title}</h3>
