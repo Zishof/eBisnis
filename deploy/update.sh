@@ -313,7 +313,7 @@ printf '%s
 ' "$NEW" > "$DEPLOY_STAMP"
 
 # ---------------------------------------------------------------------------
-log "7/9  Sandbox demo ePesantren"
+log "7/10  Sandbox demo ePesantren"
 # ---------------------------------------------------------------------------
 # Mendaftarkan ponpes_demo (bila belum ada) lewat alur publik yang sama
 # dengan pendaftar asli, lalu menyemai data contoh besar TEPAT SEKALI --
@@ -327,7 +327,7 @@ APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:
   || warn "Penyiapan sandbox demo ePesantren gagal — periksa manual bila perlu."
 
 # ---------------------------------------------------------------------------
-log "8/9  Pelanggan pertama: Raudlatul Ulum"
+log "8/10  Pelanggan pertama: Raudlatul Ulum"
 # ---------------------------------------------------------------------------
 # Mendaftarkan raudlatul-ulum.santri.info (bila belum ada) lewat alur publik
 # yang sama dengan pendaftar asli, lalu menyiapkan profil situs, unit
@@ -340,7 +340,17 @@ APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:
   || warn "Penyiapan tenant Raudlatul Ulum gagal — periksa manual bila perlu."
 
 # ---------------------------------------------------------------------------
-log "9/9  Apache"
+log "9/10  Pelanggan inventory: Caruban Medika Nusantara"
+# ---------------------------------------------------------------------------
+# Membuat schema `cmnmedika_inventory`, akun pemilik/sales/admin, domain
+# cmnmedika-inventory.ebisnis.id, serta impor DBF legacy bila foldernya tersedia.
+# Kegagalan di sini tidak menggagalkan deploy utama.
+APP_DIR="$APP_DIR" APP_USER="$APP_USER" \
+  bash "$APP_DIR/deploy/onboard-cmn-inventory.sh" \
+  || warn "Penyiapan tenant Caruban Medika Nusantara gagal -- periksa manual bila perlu."
+
+# ---------------------------------------------------------------------------
+log "10/10  Apache"
 # ---------------------------------------------------------------------------
 POS_UPDATE_DIR=/opt/ebisnis/updates/pos
 install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$POS_UPDATE_DIR"

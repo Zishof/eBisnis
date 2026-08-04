@@ -122,7 +122,7 @@ function PublicLayoutEBisnis({
       ? {
           logoText: null,
           name: 'eBisnis Inventory',
-          homeUrl: 'https://demo-inventory.ebisnis.id',
+          homeUrl: 'https://inventory.ebisnis.id',
           description:
             'Aplikasi inventory terintegrasi untuk sales obat, gudang, pembelian, piutang, hutang, dan monitoring pemilik usaha.',
         }
@@ -161,9 +161,9 @@ function PublicLayoutEBisnis({
               code: 'INVENTORY',
               title: 'Inventory',
               items: [
-                { label: 'Landing inventory', url: 'https://demo-inventory.ebisnis.id' },
-                { label: 'Masuk demo', url: 'https://demo-inventory.ebisnis.id/masuk' },
-                { label: 'Dashboard', url: 'https://demo-inventory.ebisnis.id/app' },
+                { label: 'Landing inventory', url: 'https://inventory.ebisnis.id' },
+                { label: 'Demo bersama', url: 'https://demo-inventory.ebisnis.id' },
+                { label: 'CMN Medika', url: 'https://cmnmedika-inventory.ebisnis.id' },
               ],
             },
             {
@@ -189,10 +189,10 @@ function PublicLayoutEBisnis({
         ? emedikBrand.headerItems
         : inventoryHost
           ? [
-              { labelKey: 'inventory.home', label: 'Website', url: 'https://demo-inventory.ebisnis.id', sortOrder: 1 },
-              { labelKey: 'inventory.flow', label: 'Alur Sales', url: 'https://demo-inventory.ebisnis.id/inventory#alur', sortOrder: 2 },
-              { labelKey: 'inventory.dashboard', label: 'Dashboard', url: 'https://demo-inventory.ebisnis.id/inventory#dashboard', sortOrder: 3 },
-              { labelKey: 'inventory.download', label: 'Download', url: 'https://demo-inventory.ebisnis.id/inventory#download', sortOrder: 4 },
+              { labelKey: 'inventory.home', label: 'Website', url: 'https://inventory.ebisnis.id', sortOrder: 1 },
+              { labelKey: 'inventory.flow', label: 'Alur Sales', url: 'https://inventory.ebisnis.id/inventory#alur', sortOrder: 2 },
+              { labelKey: 'inventory.dashboard', label: 'Dashboard', url: 'https://inventory.ebisnis.id/inventory#dashboard', sortOrder: 3 },
+              { labelKey: 'inventory.download', label: 'Download', url: 'https://inventory.ebisnis.id/inventory#download', sortOrder: 4 },
             ]
       : site?.navigation.find((nav) => nav.location === 'HEADER')?.items ?? [
       { labelKey: 'nav.home', label: t('nav.home'), url: '/', sortOrder: 1 },
@@ -309,7 +309,7 @@ function PublicLayoutEBisnis({
                   {salonHost ? 'Masuk' : t('nav.login')}
                 </Link>
                 <Link
-                  to={salonHost ? 'https://salon.ebisnis.id' : inventoryHost ? 'https://demo-inventory.ebisnis.id/inventory#download' : '/daftar'}
+                  to={salonHost ? 'https://salon.ebisnis.id' : inventoryHost ? 'https://inventory.ebisnis.id/inventory#download' : '/daftar'}
                   className="btn-primary hidden sm:inline-flex"
                 >
                   {salonHost ? 'Website Salon' : inventoryHost ? 'Download' : emedikBrand ? emedikBrand.registerCtaLabel : t('nav.register')}
@@ -347,7 +347,7 @@ function PublicLayoutEBisnis({
                   {salonHost ? 'Masuk' : t('nav.login')}
                 </Link>
                 <Link
-                  to={salonHost ? 'https://salon.ebisnis.id' : inventoryHost ? 'https://demo-inventory.ebisnis.id/inventory#download' : '/daftar'}
+                  to={salonHost ? 'https://salon.ebisnis.id' : inventoryHost ? 'https://inventory.ebisnis.id/inventory#download' : '/daftar'}
                   className="btn-primary flex-1"
                   onClick={() => setMenuOpen(false)}
                 >

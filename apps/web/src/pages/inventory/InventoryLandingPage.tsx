@@ -16,7 +16,7 @@ import {
   ShieldCheck,
   Smartphone,
 } from 'lucide-react';
-import { inventoryTenantLabelFromHost } from './inventory-host';
+import { inventoryTenantLabelFromHost, isCmnInventoryHost } from './inventory-host';
 
 const photos = {
   hero: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1600&q=82',
@@ -58,6 +58,15 @@ const personaAccounts = [
     body: 'Monitor omzet, laba kotor, perputaran stok, aging piutang, hutang supplier, top sales, dan tren produk.',
   },
 ];
+
+const cmnAccounts = [
+  ['Pemilik', 'muklis', 'muklis123!!'],
+  ['Sales Masrukin', 'masrukin', 'masrukin123!!'],
+  ['Sales Tohirin', 'tohirin', 'tohirin123!!'],
+  ['Sales Nofal', 'nofal', 'nofal123!!'],
+  ['Sales Agung', 'agung', 'agung123!!'],
+  ['Admin', 'cmnmedika', 'cmnmedika123!!'],
+] as const;
 
 const flows = [
   {
@@ -110,6 +119,7 @@ const downloads = [
 
 export function InventoryLandingPage() {
   const tenantName = inventoryTenantLabelFromHost();
+  const cmnHost = isCmnInventoryHost();
 
   return (
     <div className="bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
@@ -129,8 +139,8 @@ export function InventoryLandingPage() {
               dan desktop Windows.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link to="/masuk?produk=inventory&role=sales" className="btn-primary px-5 py-3">
-                Masuk demo inventory
+              <Link to={cmnHost ? '/masuk?produk=inventory&role=PEMILIK_USAHA' : '/masuk?produk=inventory&role=SALES_OBAT'} className="btn-primary px-5 py-3">
+                {cmnHost ? 'Masuk CMN Medika' : 'Masuk demo inventory'}
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
               <a href="#download" className="btn-outline px-5 py-3">
@@ -249,6 +259,23 @@ export function InventoryLandingPage() {
             );
           })}
         </div>
+        {cmnHost && (
+          <div className="mt-7 rounded-xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/40">
+            <h3 className="font-bold text-emerald-950 dark:text-emerald-100">
+              Akun awal Caruban Medika Nusantara
+            </h3>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {cmnAccounts.map(([label, username, password]) => (
+                <div key={username} className="rounded-lg bg-white p-3 text-sm shadow-sm dark:bg-slate-900">
+                  <p className="font-semibold">{label}</p>
+                  <p className="mt-1 font-mono text-xs text-slate-600 dark:text-slate-300">
+                    {username} / {password}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       <section id="download" className="border-t border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">

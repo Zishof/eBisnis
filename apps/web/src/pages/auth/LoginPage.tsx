@@ -7,7 +7,7 @@ import { useAuth, useErrorMessage } from '../../app/auth-context';
 import { berandaSesudahMasuk } from '../../app/beranda-sesudah-masuk';
 import { isSantriHost, isSantriPortalHost, slugPondokDariHost } from '../../verticals/pesantren/santri-host';
 import { isSalonDemoHost } from '../contoh/salon-host';
-import { isInventoryHost } from '../inventory/inventory-host';
+import { isCmnInventoryHost, isInventoryHost } from '../inventory/inventory-host';
 import { emedikPublicBrandFor } from '../public/emedik-host';
 
 interface LoginForm {
@@ -69,6 +69,57 @@ const AKUN_INVENTORY_DEMO = [
   },
 ];
 
+const AKUN_CMN_INVENTORY = [
+  {
+    label: 'Pemilik',
+    roleCode: 'PEMILIK_USAHA',
+    username: 'muklis',
+    password: 'muklis123!!',
+    description: 'Dashboard owner, laba, piutang, stok, performa sales, dan laporan investor.',
+    icon: Landmark,
+  },
+  {
+    label: 'Sales Masrukin',
+    roleCode: 'SALES_MASRUKIN',
+    username: 'masrukin',
+    password: 'masrukin123!!',
+    description: 'Entry order, kunjungan customer, cek stok obat, dan laporan penjualan pribadi.',
+    icon: Route,
+  },
+  {
+    label: 'Sales Tohirin',
+    roleCode: 'SALES_TOHIRIN',
+    username: 'tohirin',
+    password: 'tohirin123!!',
+    description: 'Entry order, kunjungan customer, cek stok obat, dan laporan penjualan pribadi.',
+    icon: Route,
+  },
+  {
+    label: 'Sales Nofal',
+    roleCode: 'SALES_NOFAL',
+    username: 'nofal',
+    password: 'nofal123!!',
+    description: 'Entry order, kunjungan customer, cek stok obat, dan laporan penjualan pribadi.',
+    icon: Route,
+  },
+  {
+    label: 'Sales Agung',
+    roleCode: 'SALES_AGUNG',
+    username: 'agung',
+    password: 'agung123!!',
+    description: 'Entry order, kunjungan customer, cek stok obat, dan laporan penjualan pribadi.',
+    icon: Route,
+  },
+  {
+    label: 'Admin',
+    roleCode: 'ADMIN_TENANT',
+    username: 'cmnmedika',
+    password: 'cmnmedika123!!',
+    description: 'Konfigurasi tenant, master data, impor, user, dan operasional inventory.',
+    icon: ClipboardList,
+  },
+];
+
 export function LoginPage() {
   const { t } = useTranslation();
   const { login, loginDemo } = useAuth();
@@ -84,7 +135,9 @@ export function LoginPage() {
   const santri = isSantriHost();
   const salon = isSalonDemoHost();
   const inventory = isInventoryHost();
+  const cmnInventory = isCmnInventoryHost();
   const emedikBrand = emedikPublicBrandFor();
+  const akunInventory = cmnInventory ? AKUN_CMN_INVENTORY : AKUN_INVENTORY_DEMO;
   /*
    * Portal umum santri.info (apex/www) menawarkan demo dan pendaftaran pondok
    * BARU -- ajakan yang wajar bagi pengunjung yang belum jadi pelanggan.
@@ -105,10 +158,10 @@ export function LoginPage() {
 
   const pilihAkunInventory = useCallback((roleCode: string) => {
     const akun =
-      AKUN_INVENTORY_DEMO.find((item) => item.roleCode === roleCode) ?? AKUN_INVENTORY_DEMO[0];
+      akunInventory.find((item) => item.roleCode === roleCode) ?? akunInventory[0];
     setValue('username', akun.username, { shouldDirty: true, shouldValidate: true });
     setValue('password', akun.password, { shouldDirty: true, shouldValidate: true });
-  }, [setValue]);
+  }, [akunInventory, setValue]);
 
   useEffect(() => {
     if (!salon && !inventory) return;
@@ -143,7 +196,7 @@ export function LoginPage() {
       return;
     }
     if (inventory) {
-      pilihAkunInventory('SALES_OBAT');
+      pilihAkunInventory(cmnInventory ? 'PEMILIK_USAHA' : 'SALES_OBAT');
       setError(null);
       return;
     }
@@ -176,7 +229,9 @@ export function LoginPage() {
                 : salon
                   ? 'Masuk ke Salon Cantik Demo'
                   : inventory
-                    ? 'Masuk ke Demo Inventory Obat'
+                    ? cmnInventory
+                      ? 'Masuk ke CMN Medika Inventory'
+                      : 'Masuk ke Demo Inventory Obat'
                   : emedikBrand
                     ? emedikBrand.loginTitle
                     : t('auth.loginTitle')}
@@ -187,7 +242,9 @@ export function LoginPage() {
               : salon
                 ? 'Gunakan akun pelanggan, manajemen salon, atau pemilik salon untuk mencoba demo.'
                 : inventory
-                  ? 'Gunakan akun sales, manajemen inventory, atau pemilik untuk mencoba alur inventory obat.'
+                  ? cmnInventory
+                    ? 'Gunakan akun Muklis, sales, atau admin CMN Medika.'
+                    : 'Gunakan akun sales, manajemen inventory, atau pemilik untuk mencoba alur inventory obat.'
                 : emedikBrand
                   ? emedikBrand.loginSubtitle
               : t('auth.loginSubtitle')}
@@ -309,7 +366,7 @@ export function LoginPage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Pilih persona demo inventory
               </p>
-              {AKUN_INVENTORY_DEMO.map((akun) => {
+              {akunInventory.map((akun) => {
                 const Icon = akun.icon;
                 return (
                   <button

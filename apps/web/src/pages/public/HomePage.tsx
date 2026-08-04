@@ -206,7 +206,7 @@ const CONTOH_USAHA = [
   {
     label: 'Inventory Obat',
     detail: 'Sales, batch, expiry, piutang',
-    href: 'https://demo-inventory.ebisnis.id',
+    href: 'https://inventory.ebisnis.id',
     icon: PackageSearch,
     status: 'Siap dicoba',
     imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=900&q=80',
