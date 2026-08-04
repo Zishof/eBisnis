@@ -118,11 +118,13 @@ export class PosUpdateController {
   download(@Param('file') file: string, @Res({ passthrough: true }) res: Response) {
     const safe = basename(file);
     if (safe !== file || !FILE_PATTERN.test(file)) {
+      this.noStore(res);
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas pembaruan tidak ditemukan.');
     }
 
     const path = this.updateFilePath(safe);
     if (!path) {
+      this.noStore(res);
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas pembaruan tidak ditemukan.');
     }
 
@@ -135,11 +137,13 @@ export class PosUpdateController {
   downloadInventoryVersioned(@Param('file') file: string, @Res({ passthrough: true }) res: Response) {
     const safe = basename(file);
     if (safe !== file || !INVENTORY_FILE_PATTERN.test(file)) {
+      this.noStore(res);
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas pembaruan inventory tidak ditemukan.');
     }
 
     const path = this.updateFilePath(safe);
     if (!path) {
+      this.noStore(res);
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas pembaruan inventory tidak ditemukan.');
     }
 
@@ -174,12 +178,10 @@ export class PosUpdateController {
       return this.streamFile(explicitApk, aliasName, res, 'latest');
     }
 
-    const apk = this.assets('pos')
-      .filter((asset) => asset.platform === 'android')
-      .sort((a, b) => compareVersion(a.version, b.version))
-      .at(-1);
+    const apk = this.latestAsset('pos', 'android');
 
     if (!apk) {
+      this.noStore(res);
       throw AppError.notFound(
         ErrorCodes.NOT_FOUND,
         'APK pelanggan belum tersedia. Unggah berkas .apk ke folder pembaruan POS atau GitHub Release.',
@@ -202,15 +204,13 @@ export class PosUpdateController {
     }
 
     if (product && platform) {
-      const asset = this.assets(product)
-        .filter((candidate) => candidate.platform === platform)
-        .sort((a, b) => compareVersion(a.version, b.version))
-        .at(-1);
+      const asset = this.latestAsset(product, platform);
       if (asset) {
         return this.streamFile(asset.path, aliasName, res, 'latest');
       }
     }
 
+    this.noStore(res);
     throw AppError.notFound(
       ErrorCodes.NOT_FOUND,
       `${message} Unggah berkas ${aliasName} ke folder pembaruan POS atau GitHub Release.`,
@@ -229,13 +229,28 @@ export class PosUpdateController {
     return path;
   }
 
+  private latestAsset(product: UpdateProduct, platform: PlatformAsset): PosAsset | undefined {
+    return this.assets(product)
+      .filter((candidate) => candidate.platform === platform)
+      .sort((a, b) => compareVersion(a.version, b.version))
+      .at(-1);
+  }
+
+  private noStore(res: Response): void {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      Pragma: 'no-cache',
+      Expires: '0',
+    });
+  }
+
   private streamFile(path: string, filename: string, res: Response, cacheMode: 'immutable' | 'latest') {
     const ext = filename.endsWith('.apk') ? 'apk' : 'exe';
     res.set({
       'Content-Type':
         ext === 'apk' ? 'application/vnd.android.package-archive' : 'application/vnd.microsoft.portable-executable',
       'Content-Disposition': `attachment; filename="${filename}"`,
-      'Cache-Control': cacheMode === 'immutable' ? 'public, max-age=31536000, immutable' : 'no-cache',
+      'Cache-Control': cacheMode === 'immutable' ? 'public, max-age=31536000, immutable' : 'no-cache, must-revalidate',
     });
     return rawResponse(new StreamableFile(createReadStream(path)));
   }

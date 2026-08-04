@@ -455,6 +455,26 @@ else
   warn "POS_RELEASE_GITHUB_TOKEN belum ada; salin .exe/.apk manual ke $POS_UPDATE_DIR."
 fi
 
+latest_inventory_apk=$(
+  find "$POS_UPDATE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*.apk' \
+    | sort -V \
+    | tail -1
+)
+if [[ -n "$latest_inventory_apk" ]]; then
+  install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_apk" \
+    "$POS_UPDATE_DIR/ebisnis-inventory-sales.apk"
+fi
+
+latest_inventory_exe=$(
+  find "$POS_UPDATE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*-windows.exe' \
+    | sort -V \
+    | tail -1
+)
+if [[ -n "$latest_inventory_exe" ]]; then
+  install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_exe" \
+    "$POS_UPDATE_DIR/ebisnis-inventory-sales.exe"
+fi
+
 install -m 644 "$APP_DIR/deploy/apache/ebisnis-app.inc" /etc/apache2/conf-available/ebisnis-app.inc
 install -m 644 "$APP_DIR/deploy/apache/ebisnis.conf"    /etc/apache2/sites-available/ebisnis.conf
 apache2ctl configtest && systemctl reload apache2
