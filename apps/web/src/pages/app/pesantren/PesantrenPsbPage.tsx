@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, CheckCircle2, Plus, Trash2, XCircle } from 'lucide-react';
+import { ArrowDown, ArrowUp, CheckCircle2, GripVertical, Plus, Trash2, XCircle } from 'lucide-react';
 import { api, formatDate, formatMoney } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -99,6 +99,7 @@ export function PesantrenPsbPage() {
   const [membuatGelombang, setMembuatGelombang] = useState(false);
   const [formGelombang, setFormGelombang] = useState(FORM_GELOMBANG_KOSONG);
   const [fieldTambahan, setFieldTambahan] = useState<FieldTambahan[]>([]);
+  const [fieldYangDitarik, setFieldYangDitarik] = useState<number | null>(null);
 
   const gelombang = useQuery({
     queryKey: ['pesantren-psb-gelombang', pageGelombang, statusGelombang],
@@ -232,12 +233,15 @@ export function PesantrenPsbPage() {
   }
 
   function pindahFieldTambahan(index: number, arah: -1 | 1) {
+    pindahFieldTambahanKeIndex(index, index + arah);
+  }
+
+  function pindahFieldTambahanKeIndex(indexAsal: number, indexTujuan: number) {
     setFieldTambahan((items) => {
-      const tujuan = index + arah;
-      if (tujuan < 0 || tujuan >= items.length) return items;
+      if (indexTujuan < 0 || indexTujuan >= items.length || indexAsal === indexTujuan) return items;
       const salinan = [...items];
-      const [dipindah] = salinan.splice(index, 1);
-      salinan.splice(tujuan, 0, dipindah);
+      const [dipindah] = salinan.splice(indexAsal, 1);
+      salinan.splice(indexTujuan, 0, dipindah);
       return salinan;
     });
     setFormGelombang((sebelumnya) => (sebelumnya.formSchema ? { ...sebelumnya, formSchema: '' } : sebelumnya));
@@ -397,12 +401,12 @@ export function PesantrenPsbPage() {
                   <div>
                     <h3 className="font-semibold text-slate-900 dark:text-white">Builder field tambahan</h3>
                     <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Tambahkan pertanyaan khusus gelombang tanpa menulis JSON manual.
+                      Tambahkan pertanyaan khusus gelombang tanpa menulis JSON manual. Tarik pegangan field untuk mengubah urutan, atau pakai tombol naik/turun.
                     </p>
                   </div>
                   <button
                     type="button"
-                    className="btn-outline px-3 py-2 text-xs"
+                    className="btn-outline min-h-11 px-3 py-2 text-xs"
                     onClick={() => setFieldTambahan((items) => [...items, { ...FIELD_TAMBAHAN_KOSONG }])}
                   >
                     <Plus className="h-4 w-4" aria-hidden />
@@ -416,8 +420,38 @@ export function PesantrenPsbPage() {
                     </p>
                   ) : (
                     fieldTambahan.map((field, index) => (
-                      <div key={index} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
-                        <div className="grid gap-3 md:grid-cols-[1fr_1fr_130px_auto]">
+                      <div
+                        key={index}
+                        className={`rounded-lg border bg-white p-3 transition dark:bg-slate-950 ${
+                          fieldYangDitarik === index
+                            ? 'border-emerald-300 opacity-60 ring-2 ring-emerald-200 dark:border-emerald-700 dark:ring-emerald-900'
+                            : 'border-slate-200 dark:border-slate-800'
+                        }`}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const asal = Number(event.dataTransfer.getData('text/plain'));
+                          if (Number.isInteger(asal)) {
+                            pindahFieldTambahanKeIndex(asal, index);
+                          }
+                          setFieldYangDitarik(null);
+                        }}
+                      >
+                        <div className="grid gap-3 md:grid-cols-[44px_1fr_1fr_130px_auto]">
+                          <button
+                            type="button"
+                            draggable
+                            className="btn-outline min-h-11 cursor-grab px-2 active:cursor-grabbing"
+                            aria-label={`Tarik field ${field.label || index + 1} untuk mengubah urutan`}
+                            onDragStart={(event) => {
+                              setFieldYangDitarik(index);
+                              event.dataTransfer.effectAllowed = 'move';
+                              event.dataTransfer.setData('text/plain', String(index));
+                            }}
+                            onDragEnd={() => setFieldYangDitarik(null)}
+                          >
+                            <GripVertical className="h-4 w-4" aria-hidden />
+                          </button>
                           <input
                             className="field-input"
                             placeholder="namaField"
@@ -442,15 +476,15 @@ export function PesantrenPsbPage() {
                             <option value="select">Pilihan</option>
                           </select>
                           <div className="flex gap-1">
-                            <button type="button" className="btn-outline px-2" aria-label="Naikkan field" disabled={index === 0} onClick={() => pindahFieldTambahan(index, -1)}>
+                            <button type="button" className="btn-outline min-h-11 px-2" aria-label="Naikkan field" disabled={index === 0} onClick={() => pindahFieldTambahan(index, -1)}>
                               <ArrowUp className="h-4 w-4" aria-hidden />
                             </button>
-                            <button type="button" className="btn-outline px-2" aria-label="Turunkan field" disabled={index === fieldTambahan.length - 1} onClick={() => pindahFieldTambahan(index, 1)}>
+                            <button type="button" className="btn-outline min-h-11 px-2" aria-label="Turunkan field" disabled={index === fieldTambahan.length - 1} onClick={() => pindahFieldTambahan(index, 1)}>
                               <ArrowDown className="h-4 w-4" aria-hidden />
                             </button>
                             <button
                               type="button"
-                              className="btn-outline px-2"
+                              className="btn-outline min-h-11 px-2"
                               aria-label="Hapus field"
                               onClick={() => setFieldTambahan((items) => items.filter((_, i) => i !== index))}
                             >
@@ -458,7 +492,7 @@ export function PesantrenPsbPage() {
                             </button>
                           </div>
                         </div>
-                        <label className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                        <label className="mt-3 flex min-h-11 items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
                           <input
                             type="checkbox"
                             checked={field.required}
