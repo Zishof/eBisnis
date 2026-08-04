@@ -59,6 +59,7 @@ import { BackorderPage } from '../pages/app/BackorderPage';
 import { InternalTransferPage } from '../pages/app/InternalTransferPage';
 import { StockAlertsPage, StockMovementsPage } from '../pages/app/InventoryLedgerPage';
 import { JournalEntriesPage } from '../pages/app/JournalEntriesPage';
+import { SalesOrdersPage, SalesReportsPage } from '../pages/app/SalesPages';
 import { SampleDataPage } from '../pages/app/SampleDataPage';
 import { SubscriptionPage } from '../pages/app/SubscriptionPage';
 import { NotificationsPage } from '../pages/app/NotificationsPage';
@@ -533,6 +534,8 @@ export function App() {
           <Route path="stock-tree" element={<StockTreePage />} />
           <Route path="stock-movements" element={<StockMovementsPage />} />
           <Route path="stock-alerts" element={<StockAlertsPage />} />
+          <Route path="sales/orders" element={<SalesOrdersPage />} />
+          <Route path="sales/reports" element={<SalesReportsPage />} />
           <Route path="pos" element={<Navigate to="/app/pos/kasir" replace />} />
           <Route path="pos/kasir" element={<PosPage />} />
           <Route path="pos/apotik" element={<PharmacyPosPage />} />

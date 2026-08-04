@@ -1263,6 +1263,82 @@ export class ErpController {
     return this.inventory.listStockAlerts(context(user, meta), status ?? 'OPEN');
   }
 
+  @Get('sales/orders')
+  @Permissions('SALES_ORDER.READ')
+  @ApiOperation({ summary: 'Daftar pesanan penjualan dan pipeline sales' })
+  async listSalesOrders(
+    @Query() query: BaseQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const search = query.search?.trim() || null;
+    return this.inventoryQuery(
+      ctx,
+      `SELECT so.id::text, so.order_number, so.order_date::text, so.delivery_date::text,
+              so.channel, so.currency_code, so.subtotal::text, so.discount_total::text,
+              so.tax_total::text, so.grand_total::text, so.status,
+              COALESCE(c.name, 'Pelanggan umum') AS customer_name,
+              COALESCE(us.name, us.username_snapshot, 'Tanpa sales') AS sales_name,
+              count(sol.id)::int AS line_count,
+              COALESCE(sum(sol.ordered_qty), 0)::text AS ordered_qty,
+              COALESCE(sum(sol.delivered_qty), 0)::text AS delivered_qty
+         FROM ${S}.sales_order so
+         LEFT JOIN ${S}.customer c ON c.id = so.customer_id
+         LEFT JOIN ${S}.user_subject us ON us.id = so.created_by
+         LEFT JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
+        WHERE ($1::text IS NULL
+           OR so.order_number ILIKE '%' || $1 || '%'
+           OR so.channel ILIKE '%' || $1 || '%'
+           OR so.status ILIKE '%' || $1 || '%'
+           OR c.name ILIKE '%' || $1 || '%'
+           OR us.name ILIKE '%' || $1 || '%'
+           OR us.username_snapshot ILIKE '%' || $1 || '%')
+        GROUP BY so.id, c.name, us.name, us.username_snapshot
+        ORDER BY so.order_date DESC, so.created_at DESC
+        LIMIT ${query.pageSize} OFFSET ${query.skip}`,
+      [search],
+    );
+  }
+
+  @Get('sales/orders/:id')
+  @Permissions('SALES_ORDER.READ')
+  @ApiOperation({ summary: 'Detail pesanan penjualan' })
+  async getSalesOrder(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const header = await this.inventoryQuery(
+      ctx,
+      `SELECT so.*, so.id::text AS id,
+              COALESCE(c.name, 'Pelanggan umum') AS customer_name,
+              COALESCE(us.name, us.username_snapshot, 'Tanpa sales') AS sales_name
+         FROM ${S}.sales_order so
+         LEFT JOIN ${S}.customer c ON c.id = so.customer_id
+         LEFT JOIN ${S}.user_subject us ON us.id = so.created_by
+        WHERE so.id = $1`,
+      [id],
+    );
+    if (!header.length) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Pesanan penjualan tidak ditemukan.');
+    const lines = await this.inventoryQuery(
+      ctx,
+      `SELECT sol.id::text, sol.line_no, sol.ordered_qty::text, sol.delivered_qty::text,
+              sol.unit_price::text, sol.discount_amount::text, sol.tax_amount::text,
+              sol.line_total::text, p.code AS product_code, p.name AS product_name, u.code AS uom_code
+         FROM ${S}.sales_order_line sol
+         JOIN ${S}.product p ON p.id = sol.product_id
+         JOIN ${S}.uom u ON u.id = sol.uom_id
+        WHERE sol.sales_order_id = $1
+        ORDER BY sol.line_no`,
+      [id],
+    );
+    return { ...header[0], lines };
+  }
+
   @Get('inventory/sales-dashboard')
   @Permissions('SALES.READ')
   @ApiOperation({ summary: 'Dashboard sales dan inventory untuk pemilik, admin, dan sales lapangan' })
