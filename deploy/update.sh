@@ -355,10 +355,10 @@ log "10/10  Apache"
 POS_UPDATE_DIR=/opt/ebisnis/updates/pos
 install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$POS_UPDATE_DIR"
 
-# Asset POS Flutter boleh hidup publik di server, sementara repository tetap
-# private. Bila token server tersedia, tarik asset dari GitHub Release private
-# ke folder publik ini. Token TIDAK pernah dikirim ke klien POS; klien hanya
-# membaca https://ebisnis.id/update/pos/latest.
+# Asset POS/Inventory Flutter boleh hidup publik di server, sementara repository
+# tetap private. Bila token server tersedia, tarik asset dari GitHub Release
+# private ke folder publik ini. Token TIDAK pernah dikirim ke klien; klien hanya
+# membaca https://ebisnis.id/update/...
 POS_RELEASE_TOKEN=$(
   { grep -E '^(POS_RELEASE_GITHUB_TOKEN|GITHUB_TOKEN)=' "$ENV_FILE" || true; } \
     | head -1 \
@@ -377,10 +377,12 @@ if [[ -n "$POS_RELEASE_TOKEN" ]]; then
       node - "$RELEASES_JSON" "$ASSETS_LIST" <<'NODE'
 const fs = require('fs');
 const releases = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-const release = releases.find((r) => !r.draft && !r.prerelease && String(r.tag_name || '').startsWith('pos-v'));
 const lines = [];
-for (const asset of release?.assets || []) {
-  if (/\.(exe|apk)$/i.test(asset.name)) lines.push(`${asset.name}\t${asset.url}`);
+for (const prefix of ['pos-v', 'inventory-v']) {
+  const release = releases.find((r) => !r.draft && !r.prerelease && String(r.tag_name || '').startsWith(prefix));
+  for (const asset of release?.assets || []) {
+    if (/\.(exe|apk)$/i.test(asset.name)) lines.push(`${asset.name}\t${asset.url}`);
+  }
 }
 fs.writeFileSync(process.argv[3], lines.join('\n'));
 NODE
@@ -397,15 +399,15 @@ NODE
           chmod 644 "$POS_UPDATE_DIR/$nama"
         else
           rm -f "$tmp"
-          warn "Gagal mengunduh asset POS $nama dari GitHub Release."
+          warn "Gagal mengunduh asset pembaruan $nama dari GitHub Release."
         fi
       done < "$ASSETS_LIST"
     else
-      warn "Gagal membaca GitHub Release POS. Asset lama di $POS_UPDATE_DIR tetap dipakai."
+      warn "Gagal membaca GitHub Release pembaruan. Asset lama di $POS_UPDATE_DIR tetap dipakai."
     fi
     rm -f "$RELEASES_JSON" "$ASSETS_LIST"
   else
-    warn "curl atau node tidak tersedia; asset POS tidak ditarik otomatis."
+    warn "curl atau node tidak tersedia; asset pembaruan tidak ditarik otomatis."
   fi
 else
   warn "POS_RELEASE_GITHUB_TOKEN belum ada; salin .exe/.apk manual ke $POS_UPDATE_DIR."
