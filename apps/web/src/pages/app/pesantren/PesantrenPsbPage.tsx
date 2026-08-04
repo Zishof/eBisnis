@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Plus, Trash2, XCircle } from 'lucide-react';
+import { ArrowDown, ArrowUp, CheckCircle2, Plus, Trash2, XCircle } from 'lucide-react';
 import { api, formatDate, formatMoney } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -60,6 +60,14 @@ const FIELD_TAMBAHAN_KOSONG: FieldTambahan = {
   type: 'text',
   required: false,
   options: '',
+};
+
+const LABEL_TIPE_FIELD: Record<FieldTambahan['type'], string> = {
+  text: 'Teks singkat',
+  textarea: 'Paragraf',
+  number: 'Angka',
+  date: 'Tanggal',
+  select: 'Pilihan',
 };
 
 function fieldTambahanKeSchema(fields: FieldTambahan[]) {
@@ -216,6 +224,24 @@ export function PesantrenPsbPage() {
 
   const totalGelombang = gelombang.data?.total ?? 0;
   const totalPendaftar = pendaftar.data?.total ?? 0;
+  const schemaPreview = fieldTambahanKeSchema(fieldTambahan);
+
+  function ubahFieldTambahan(index: number, patch: Partial<FieldTambahan>) {
+    setFieldTambahan((items) => items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+    setFormGelombang((sebelumnya) => (sebelumnya.formSchema ? { ...sebelumnya, formSchema: '' } : sebelumnya));
+  }
+
+  function pindahFieldTambahan(index: number, arah: -1 | 1) {
+    setFieldTambahan((items) => {
+      const tujuan = index + arah;
+      if (tujuan < 0 || tujuan >= items.length) return items;
+      const salinan = [...items];
+      const [dipindah] = salinan.splice(index, 1);
+      salinan.splice(tujuan, 0, dipindah);
+      return salinan;
+    });
+    setFormGelombang((sebelumnya) => (sebelumnya.formSchema ? { ...sebelumnya, formSchema: '' } : sebelumnya));
+  }
 
   return (
     <>
@@ -332,7 +358,7 @@ export function PesantrenPsbPage() {
 
       {membuatGelombang && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="card w-full max-w-xl p-6">
+          <div className="card max-h-[88vh] w-full max-w-5xl overflow-y-auto p-6">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Buat Gelombang PSB</h2>
             <div className="mt-4 space-y-3">
               <Field label="Tahun ajaran ID *">
@@ -365,6 +391,7 @@ export function PesantrenPsbPage() {
                   <input type="number" min="0" className="field-input" value={formGelombang.biayaPendaftaran} onChange={(e) => setFormGelombang({ ...formGelombang, biayaPendaftaran: e.target.value })} />
                 </Field>
               </div>
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -395,26 +422,18 @@ export function PesantrenPsbPage() {
                             className="field-input"
                             placeholder="namaField"
                             value={field.name}
-                            onChange={(e) =>
-                              setFieldTambahan((items) => items.map((item, i) => (i === index ? { ...item, name: e.target.value } : item)))
-                            }
+                            onChange={(e) => ubahFieldTambahan(index, { name: e.target.value })}
                           />
                           <input
                             className="field-input"
                             placeholder="Label pertanyaan"
                             value={field.label}
-                            onChange={(e) =>
-                              setFieldTambahan((items) => items.map((item, i) => (i === index ? { ...item, label: e.target.value } : item)))
-                            }
+                            onChange={(e) => ubahFieldTambahan(index, { label: e.target.value })}
                           />
                           <select
                             className="field-input"
                             value={field.type}
-                            onChange={(e) =>
-                              setFieldTambahan((items) =>
-                                items.map((item, i) => (i === index ? { ...item, type: e.target.value as FieldTambahan['type'] } : item)),
-                              )
-                            }
+                            onChange={(e) => ubahFieldTambahan(index, { type: e.target.value as FieldTambahan['type'] })}
                           >
                             <option value="text">Teks</option>
                             <option value="textarea">Paragraf</option>
@@ -422,22 +441,28 @@ export function PesantrenPsbPage() {
                             <option value="date">Tanggal</option>
                             <option value="select">Pilihan</option>
                           </select>
-                          <button
-                            type="button"
-                            className="btn-outline px-2"
-                            aria-label="Hapus field"
-                            onClick={() => setFieldTambahan((items) => items.filter((_, i) => i !== index))}
-                          >
-                            <Trash2 className="h-4 w-4" aria-hidden />
-                          </button>
+                          <div className="flex gap-1">
+                            <button type="button" className="btn-outline px-2" aria-label="Naikkan field" disabled={index === 0} onClick={() => pindahFieldTambahan(index, -1)}>
+                              <ArrowUp className="h-4 w-4" aria-hidden />
+                            </button>
+                            <button type="button" className="btn-outline px-2" aria-label="Turunkan field" disabled={index === fieldTambahan.length - 1} onClick={() => pindahFieldTambahan(index, 1)}>
+                              <ArrowDown className="h-4 w-4" aria-hidden />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-outline px-2"
+                              aria-label="Hapus field"
+                              onClick={() => setFieldTambahan((items) => items.filter((_, i) => i !== index))}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden />
+                            </button>
+                          </div>
                         </div>
                         <label className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
                           <input
                             type="checkbox"
                             checked={field.required}
-                            onChange={(e) =>
-                              setFieldTambahan((items) => items.map((item, i) => (i === index ? { ...item, required: e.target.checked } : item)))
-                            }
+                            onChange={(e) => ubahFieldTambahan(index, { required: e.target.checked })}
                           />
                           Wajib diisi
                         </label>
@@ -446,15 +471,46 @@ export function PesantrenPsbPage() {
                             className="field-input mt-3 min-h-20 text-xs"
                             placeholder="Satu pilihan per baris"
                             value={field.options}
-                            onChange={(e) =>
-                              setFieldTambahan((items) => items.map((item, i) => (i === index ? { ...item, options: e.target.value } : item)))
-                            }
+                            onChange={(e) => ubahFieldTambahan(index, { options: e.target.value })}
                           />
                         )}
                       </div>
                     ))
                   )}
                 </div>
+              </div>
+              <aside className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                <h3 className="font-semibold text-slate-900 dark:text-white">Preview formulir publik</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Urutan di sini sama dengan yang akan dibaca calon santri saat mendaftar.
+                </p>
+                <div className="mt-4 space-y-3">
+                  {schemaPreview.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-slate-300 px-3 py-4 text-sm text-slate-500 dark:border-slate-700">
+                      Belum ada field tambahan.
+                    </p>
+                  ) : (
+                    schemaPreview.map((field) => (
+                      <div key={field.name} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-slate-900 dark:text-white">{field.label}</p>
+                          {field.required && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">Wajib</span>}
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">{LABEL_TIPE_FIELD[field.type as FieldTambahan['type']] ?? field.type}</p>
+                        {field.type === 'select' && Array.isArray(field.options) && field.options.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {field.options.map((opsi) => (
+                              <span key={opsi} className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                                {opsi}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </aside>
               </div>
               <Field label="Field formulir tambahan (JSON array, opsional untuk impor lanjutan)">
                 <textarea

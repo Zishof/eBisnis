@@ -43,6 +43,7 @@ export function PesantrenNilaiPage() {
   const [formMapel, setFormMapel] = useState({ code: '', nama: '', kelompok: '', jenjang: '' });
   const [formKomponen, setFormKomponen] = useState({ kode: '', nama: '', bobotPersen: '0' });
   const [formNilai, setFormNilai] = useState({ santriId: '', komponenId: '', nilaiAngka: '', catatan: '' });
+  const [nilaiMassal, setNilaiMassal] = useState<Record<string, string>>({});
   const [filterRapor, setFilterRapor] = useState({ santriId: '', tahunAjaranId: '' });
 
   const mapel = useQuery({
@@ -112,6 +113,31 @@ export function PesantrenNilaiPage() {
       setFormNilai({ santriId: '', komponenId: formNilai.komponenId, nilaiAngka: '', catatan: '' });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan nilai.'), 'error'),
+  });
+
+  const simpanNilaiMassal = useMutation({
+    mutationFn: async () => {
+      const baris = Object.entries(nilaiMassal)
+        .map(([santriId, nilai]) => ({ santriId, nilai: nilai.trim() }))
+        .filter((row) => row.nilai !== '');
+      await Promise.all(
+        baris.map((row) =>
+          api.post('/pesantren/nilai', {
+            santriId: row.santriId,
+            komponenId: formNilai.komponenId,
+            tahunAjaranId,
+            nilaiAngka: Number(row.nilai),
+          }),
+        ),
+      );
+      return baris.length;
+    },
+    onSuccess: (jumlah) => {
+      toast.push(`${jumlah} nilai santri tersimpan.`, 'success');
+      setNilaiMassal({});
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-nilai-rapor'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan nilai massal.'), 'error'),
   });
 
   const columns: Array<GridColumn<MataPelajaranRow>> = [
@@ -223,6 +249,64 @@ export function PesantrenNilaiPage() {
                 <Save className="h-4 w-4" aria-hidden />
                 Simpan Nilai
               </button>
+            </div>
+
+            <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">Input massal per kelas/komponen</h3>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Pilih tahun ajaran dan komponen di atas, lalu isi nilai santri yang perlu disimpan.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  disabled={
+                    !tahunAjaranId ||
+                    !formNilai.komponenId ||
+                    Object.values(nilaiMassal).every((nilai) => !nilai.trim()) ||
+                    simpanNilaiMassal.isPending
+                  }
+                  onClick={() => simpanNilaiMassal.mutate()}
+                >
+                  <Save className="h-4 w-4" aria-hidden />
+                  Simpan Massal
+                </button>
+              </div>
+              <div className="mt-4 max-h-[420px] overflow-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
+                  <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Santri</th>
+                      <th className="w-32 px-3 py-2 text-right">Nilai</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
+                    {(santri.data?.items ?? []).map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-3 py-2">
+                          <p className="font-semibold text-slate-900 dark:text-white">{item.nama_lengkap}</p>
+                          <p className="text-xs text-slate-500">{item.nis}</p>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            className="field-input text-right"
+                            value={nilaiMassal[item.id] ?? ''}
+                            onChange={(e) => setNilaiMassal((nilai) => ({ ...nilai, [item.id]: e.target.value }))}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(santri.data?.items ?? []).length === 0 && (
+                  <p className="bg-white p-4 text-sm text-slate-500 dark:bg-slate-950">Belum ada santri aktif untuk diisi nilainya.</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

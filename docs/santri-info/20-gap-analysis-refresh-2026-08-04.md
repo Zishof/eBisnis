@@ -36,13 +36,13 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 | Website unit sekolah | Sebagian besar selesai | Unit pendidikan punya website sendiri, subdomain/custom domain field, logo/hero URL, upload logo/hero langsung dari admin, galeri/program/kegiatan per unit, kartu unit dari halaman pondok bisa menuju alamat unit | Custom domain `*.sch.id` masih perlu verifikasi DNS/ownership dan automation ops; gallery belum punya drag-drop ordering visual |
 | Cloudflare/subdomain | Sebagian selesai | Wildcard DNS `*.santri.info` cukup untuk subdomain dinamis di aplikasi; setting subdomain unit ada di CRUD unit pendidikan | Cloudflare API automation untuk membuat/mengubah record custom belum diaktifkan; perlu token, zone id, audit log, retry, dan validasi konflik |
 | Master eSchool | Sebagian besar selesai | Unit pendidikan, guru/ustadz, santri, wali, kartu, rombongan, kurikulum, mapel, jadwal | Field biodata AIS yang sangat rinci belum semua menjadi kolom typed; beberapa masih perlu metadata/ekstensi |
-| PSB/PPDB | Operasional dasar | Gelombang, unit tujuan, portal pendaftar, login/status, schema tambahan berbasis JSON | Builder drag-drop form, verifikasi multi-step AIS, jadwal ujian/interview detail, dan cetak/rekap lanjutan belum penuh |
+| PSB/PPDB | Operasional dasar | Gelombang, unit tujuan, portal pendaftar, login/status, builder field tambahan dengan urutan/preview, schema tambahan berbasis JSON | Verifikasi multi-step AIS, jadwal ujian/interview detail, dan cetak/rekap lanjutan belum penuh |
 | Asrama | Operasional dasar | Asrama, kamar, penempatan santri | Locking kapasitas dan laporan asrama legacy belum lengkap; mutasi kamar historis perlu diperdalam |
 | Keluar-masuk santri | Operasional dasar | Perizinan, lampiran, disposisi, izin aktif, gerbang, scan kartu/RFID keyboard-wedge, log keluar/masuk, app Flutter security gate dasar | Fingerprint ditunda; kunjungan tamu, paket kiriman, transport/penjemput, dan dashboard security detail belum penuh |
 | Presensi santri | Operasional dasar | Presensi massal, presensi per tanggal/jenis, integrasi pilihan jadwal | Relasi fisik `jadwal_id`/`piket_id`, rekap absensi formal lengkap, dan perangkat absensi belum penuh |
 | Diniyah/tahfiz/dakwah | Operasional dasar | Kitab, halaqah, anggota, setoran tahfiz, modul diniyah/tahfiz | Kalender kajian/dakwah publik, materi/arsip kajian, sanad/ustadz pengampu, sertifikat/syahadah belum penuh |
-| Nilai/rapor | Sebagian selesai | Komponen nilai, skala huruf, entry nilai, endpoint rapor berbobot | Entry nilai per kelas lebih cepat, rapor PDF, template rapor, leger, ranking, kenaikan kelas/promosi belum penuh |
-| Jadwal | Sebagian selesai | Jadwal pelajaran dengan validasi bentrok dasar | Timetable drag-drop, copy jadwal mingguan, substitusi guru, kalender ujian, dan ekspor belum penuh |
+| Nilai/rapor | Sebagian selesai | Komponen nilai, skala huruf, entry nilai satuan, input nilai massal per komponen, endpoint rapor berbobot, cetak/simpan PDF lewat browser | Template rapor resmi per jenjang, leger, ranking, kenaikan kelas/promosi belum penuh |
+| Jadwal | Sebagian selesai | Jadwal pelajaran dengan validasi bentrok dasar dan timetable visual per hari | Drag-drop langsung pada kalender, copy jadwal mingguan, substitusi guru, kalender ujian, dan ekspor belum penuh |
 | Buku penghubung | Sebagian selesai | Catatan santri, visibilitas wali/internal, status tindak lanjut, notifikasi wali | Thread balasan dua arah, lampiran, template komunikasi, dan SLA tindak lanjut belum penuh |
 | Pembinaan santri | Sebagian selesai | Pelanggaran, prestasi, ekstrakurikuler | Katalog hukuman/poin, workflow pembinaan berjenjang, penghargaan/apresiasi terpisah, anggota/jabatan/partisipasi ekskul belum penuh |
 | Keuangan santri | Operasional dasar | Tagihan, dompet santri, top-up, transaksi kantin/POS, saldo, batas harian | Payment gateway, rekonsiliasi, posting akuntansi legacy piutang/diskon/deposit lengkap, invoice wali, dan settlement belum penuh |
@@ -58,15 +58,15 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 1. Media manager pondok/unit sudah tersedia untuk galeri, program, fasilitas, kegiatan, dan prestasi.
 2. Admin sudah dapat menambah media, mengisi URL gambar atau upload berkas, alt text, sumber/atribusi, urutan tampil, dan status publish.
 3. Gallery/program unggulan sudah tampil di situs pondok dan situs unit sekolah.
-4. Tambahkan upload gambar berita dari admin; saat ini berita masih mengisi `gambarUrl` manual.
+4. Upload gambar berita dari admin sudah tersedia; URL manual tetap ada untuk sumber luar.
 5. Fase berikutnya: crop/editor gambar, bulk upload, drag-drop ordering visual, dan page/menu builder.
 
 ### P1 - eSchool Inti dari AIS
 
-1. Rapor PDF dan template cetak resmi.
-2. Timetable visual drag-drop untuk jadwal pelajaran.
-3. Builder drag-drop PSB agar admin tidak perlu menulis JSON schema.
-4. Entry nilai per kelas/rombongan yang lebih cepat.
+1. Template rapor cetak resmi per jenjang.
+2. Drag-drop langsung pada timetable jadwal pelajaran.
+3. Builder PSB sudah punya field berurutan dan preview; fase berikutnya tinggal komponen drag gesture penuh.
+4. Input nilai massal sudah tersedia per komponen; fase berikutnya penyaringan kelas/rombongan dan impor Excel.
 5. Promosi/kenaikan kelas dan histori akademik.
 
 ### P1 - Pesantren Operasional
@@ -97,7 +97,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 
 ## Kesimpulan
 
-Yang paling perlu dikerjakan berikutnya adalah upload gambar berita + penyempurnaan CMS media, lalu rapor PDF, timetable drag-drop, dan PSB form builder. Ini memberi dampak paling besar ke tampilan publik pesantren/sekolah sekaligus menutup gap AIS yang masih paling terasa oleh pengguna harian.
+Yang paling perlu dikerjakan berikutnya adalah penyempurnaan CMS media, template rapor resmi, drag gesture timetable, dan PSB form builder tingkat lanjut. Ini memberi dampak paling besar ke tampilan publik pesantren/sekolah sekaligus menutup gap AIS yang masih paling terasa oleh pengguna harian.
 
 ## Update Implementasi 2026-08-04
 
@@ -110,9 +110,11 @@ Batch berikut sudah diterapkan di repo aktif:
 - Vault impor legacy CMN ditambahkan agar seluruh DBF inventory lama tersimpan sebagai raw audit terlebih dahulu sebelum projection operasional dilengkapi bertahap.
 - Media manager pesantren ditambahkan: admin dapat membuat media pondok/unit, mengunggah gambar manual, mengisi alt text/atribusi/urutan/status publish, dan media tampil di situs pondok maupun situs unit pendidikan.
 - Aplikasi Flutter inventory sales terpisah dari POS kasir lewat `APP_PRODUCT=inventory`, dengan login demo CMN, dashboard sales, order terbaru, rekonsiliasi legacy, dan risiko batch/stok.
+- Builder field tambahan PSB dipoles dengan pengurutan naik/turun dan preview formulir publik, sehingga admin tidak perlu menebak JSON untuk kebutuhan umum.
+- Input nilai massal per komponen ditambahkan agar guru dapat mengisi banyak santri dalam satu tabel dan menyimpannya sebagai batch.
 
 Yang masih belum penuh setelah batch ini:
 
 - Media manager generik lintas portal masih belum dibuat; yang sudah tersedia sekarang khusus pesantren pondok/unit.
-- Upload gambar berita, crop/editor gambar, bulk upload, dan drag-drop ordering visual belum penuh.
-- Timetable visual drag-drop, template rapor resmi per jenjang, dan builder PSB drag-drop tingkat lanjut masih perlu fase berikutnya.
+- Crop/editor gambar, bulk upload, dan drag-drop ordering visual belum penuh.
+- Drag gesture penuh untuk timetable/PSB, template rapor resmi per jenjang, dan builder PSB tingkat lanjut masih perlu fase berikutnya.
