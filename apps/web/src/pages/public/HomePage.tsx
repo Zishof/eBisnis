@@ -109,6 +109,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: ShoppingBag,
     status: 'Siap dicoba',
+    imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Pemilik UMKM melayani pembeli di toko kecil',
   },
   {
     label: 'Barbershop',
@@ -116,6 +118,8 @@ const CONTOH_USAHA = [
     href: '/contoh/salon',
     icon: Scissors,
     status: 'Siap dicoba',
+    imageUrl: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Kursi dan alat barbershop profesional',
   },
   {
     label: 'Salon',
@@ -123,6 +127,8 @@ const CONTOH_USAHA = [
     href: '/contoh/salon',
     icon: Sparkles,
     status: 'Siap dicoba',
+    imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Aktivitas salon kecantikan modern',
   },
   {
     label: 'Cuci Mobil',
@@ -130,6 +136,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Car,
     status: 'Berikutnya',
+    imageUrl: 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Mobil sedang dicuci di layanan car wash',
   },
   {
     label: 'Laundry',
@@ -137,6 +145,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: WashingMachine,
     status: 'Berikutnya',
+    imageUrl: 'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Mesin laundry dan pakaian bersih',
   },
   {
     label: 'Rental Kendaraan',
@@ -144,6 +154,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Truck,
     status: 'Berikutnya',
+    imageUrl: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Kendaraan rental siap digunakan pelanggan',
   },
   {
     label: 'Rental Sepeda',
@@ -151,6 +163,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Bike,
     status: 'Berikutnya',
+    imageUrl: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Deretan sepeda untuk disewakan',
   },
   {
     label: 'Bengkel Motor',
@@ -158,6 +172,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Wrench,
     status: 'Berikutnya',
+    imageUrl: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Motor sedang diperiksa di bengkel',
   },
   {
     label: 'Bengkel Mobil',
@@ -165,6 +181,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Hammer,
     status: 'Berikutnya',
+    imageUrl: 'https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Mekanik memeriksa mobil di bengkel',
   },
   {
     label: 'Bengkel Sepeda',
@@ -172,6 +190,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Bike,
     status: 'Berikutnya',
+    imageUrl: 'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Sepeda di area servis bengkel',
   },
   {
     label: 'Apotek',
@@ -179,6 +199,8 @@ const CONTOH_USAHA = [
     href: 'https://emedik.id',
     icon: Pill,
     status: 'Berikutnya',
+    imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Rak obat dan layanan apotek',
   },
   {
     label: 'Kuliner',
@@ -186,6 +208,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Utensils,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Dapur restoran menyiapkan pesanan',
   },
   {
     label: 'Kafe',
@@ -193,6 +217,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Coffee,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Area kafe dengan meja dan barista',
   },
   {
     label: 'Fashion',
@@ -200,6 +226,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Shirt,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Rak pakaian butik fashion',
   },
   {
     label: 'Toko Kelontong',
@@ -207,6 +235,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: ShoppingBag,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Rak produk toko kelontong',
   },
   {
     label: 'Fitness & Spa',
@@ -214,6 +244,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Dumbbell,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Area fitness dan layanan kebugaran',
   },
   {
     label: 'Pertanian Olahan',
@@ -221,6 +253,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Sprout,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Produk pertanian dan hasil panen',
   },
   {
     label: 'Jasa Umum',
@@ -228,6 +262,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: BriefcaseBusiness,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Tim jasa mengelola pekerjaan operasional',
   },
   {
     label: 'Katering',
@@ -235,6 +271,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Utensils,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Paket makanan katering siap dikirim',
   },
   {
     label: 'Online Shop',
@@ -242,6 +280,8 @@ const CONTOH_USAHA = [
     href: '/belanja',
     icon: ShoppingBag,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Pengemasan pesanan online shop',
   },
   {
     label: 'Kosmetik & Skincare',
@@ -249,6 +289,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Sparkles,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Produk kosmetik dan skincare tersusun rapi',
   },
   {
     label: 'Minimarket',
@@ -256,6 +298,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: ShoppingBag,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Lorong minimarket dengan rak produk',
   },
   {
     label: 'Kerajinan',
@@ -263,6 +307,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Hammer,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Proses produksi kerajinan tangan',
   },
   {
     label: 'Agribisnis',
@@ -270,6 +316,8 @@ const CONTOH_USAHA = [
     href: '/demo',
     icon: Sprout,
     status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Aktivitas agribisnis di lahan pertanian',
   },
 ];
 
@@ -722,9 +770,17 @@ function ContohUsahaGrid() {
         </div>
         <div className="rounded-xl border border-brand-100 bg-brand-50 p-4 dark:border-brand-900 dark:bg-brand-950/30">
           <div className="flex items-start gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-700 text-white">
-              <IconUtama className="h-5 w-5" aria-hidden />
-            </span>
+            <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-lg bg-slate-200 dark:bg-slate-800">
+              <img
+                src={usahaUtama.imageUrl}
+                alt={usahaUtama.imageAlt}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+              <span className="absolute left-2 top-2 grid h-8 w-8 place-items-center rounded-lg bg-white/90 text-brand-700 shadow-sm dark:bg-slate-950/90">
+                <IconUtama className="h-4 w-4" aria-hidden />
+              </span>
+            </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
                 Rekomendasi dibuka dulu
@@ -738,6 +794,9 @@ function ContohUsahaGrid() {
                 Buka contoh
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </TautanContohUsaha>
+              <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                Visual default dapat diganti dari media/CMS admin saat katalog contoh dibuat editable.
+              </p>
             </div>
           </div>
         </div>
@@ -769,35 +828,47 @@ function ContohUsahaGrid() {
             <article
               key={`${item.label}-${item.detail}`}
               className={clsx(
-                'group flex min-h-40 flex-col rounded-xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md',
+                'group flex min-h-64 flex-col overflow-hidden rounded-xl border transition hover:-translate-y-0.5 hover:shadow-md',
                 siap
                   ? 'border-brand-200 bg-brand-50/70 hover:border-brand-400 dark:border-brand-900 dark:bg-brand-950/30'
                   : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900',
               )}
             >
-              <TautanContohUsaha href={item.href} className="flex flex-1 items-start gap-3">
-                <span
-                  className={clsx(
-                    'grid h-10 w-10 shrink-0 place-items-center rounded-lg',
-                    siap
-                      ? 'bg-brand-700 text-white'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-                  )}
-                >
-                  <Icon className="h-5 w-5" aria-hidden />
+              <TautanContohUsaha href={item.href} className="flex flex-1 flex-col">
+                <span className="relative block aspect-[16/10] overflow-hidden bg-slate-200 dark:bg-slate-800">
+                  <img
+                    src={item.imageUrl}
+                    alt={item.imageAlt}
+                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <span className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/70 to-transparent" />
+                  <span
+                    className={clsx(
+                      'absolute left-3 top-3 grid h-10 w-10 shrink-0 place-items-center rounded-lg shadow-sm',
+                      siap
+                        ? 'bg-brand-700 text-white'
+                        : 'bg-white/90 text-slate-700 dark:bg-slate-950/90 dark:text-slate-200',
+                    )}
+                  >
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </span>
+                  <span
+                    className={clsx(
+                      'absolute bottom-3 left-3 rounded-full px-2.5 py-1 text-[10px] font-semibold shadow-sm',
+                      siap
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-white/90 text-slate-600 dark:bg-slate-950/90 dark:text-slate-200',
+                    )}
+                  >
+                    {item.status}
+                  </span>
                 </span>
-                <span className="min-w-0">
-                  <span className="flex items-center gap-2">
+                <span className="flex flex-1 flex-col p-4">
+                  <span className="flex items-start justify-between gap-2">
                     <span className="truncate font-semibold text-slate-900 dark:text-white">{item.label}</span>
-                    <span
-                      className={clsx(
-                        'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                        siap
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
-                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300',
-                      )}
-                    >
-                      {item.status}
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                      CMS-ready
                     </span>
                   </span>
                   <span className="mt-1 block text-sm leading-5 text-slate-600 dark:text-slate-300">
@@ -805,7 +876,7 @@ function ContohUsahaGrid() {
                   </span>
                 </span>
               </TautanContohUsaha>
-              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
+              <div className="grid grid-cols-2 gap-2 border-t border-slate-200 p-3 dark:border-slate-800">
                 {DOKUMEN_DEMO.map((dokumen) => {
                   const DokumenIcon = dokumen.icon;
                   return (
