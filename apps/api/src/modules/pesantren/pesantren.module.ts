@@ -56,6 +56,8 @@ import { PesantrenProfilController } from './pesantren-profil.controller';
 import { PesantrenProfilService } from './pesantren-profil.service';
 import { PesantrenBeritaController } from './pesantren-berita.controller';
 import { PesantrenBeritaService } from './pesantren-berita.service';
+import { PesantrenMediaController } from './pesantren-media.controller';
+import { PesantrenMediaService } from './pesantren-media.service';
 import { PesantrenPublicController } from './pesantren-public.controller';
 import { PesantrenPublicService } from './pesantren-public.service';
 import { PesantrenUnitPendidikanController } from './pesantren-unit-pendidikan.controller';
@@ -101,6 +103,7 @@ import { NotificationModule } from '../notification/notification.module';
     PesantrenBukuPenghubungController,
     PesantrenProfilController,
     PesantrenBeritaController,
+    PesantrenMediaController,
     PesantrenPublicController,
     PesantrenUnitPendidikanController,
   ],
@@ -133,6 +136,7 @@ import { NotificationModule } from '../notification/notification.module';
     PesantrenBukuPenghubungService,
     PesantrenProfilService,
     PesantrenBeritaService,
+    PesantrenMediaService,
     PesantrenPublicService,
     PesantrenUnitPendidikanService,
   ],

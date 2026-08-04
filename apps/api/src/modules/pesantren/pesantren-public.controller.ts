@@ -132,6 +132,24 @@ export class PesantrenPublicController {
     return rawResponse(new StreamableFile(berkas.buffer));
   }
 
+  /** Gambar galeri/program yang dikelola pengurus dari profil situs. */
+  @Public()
+  @Get('media/:id')
+  @ApiOperation({ summary: 'Gambar galeri atau program situs pondok/unit' })
+  async mediaGambar(
+    @Headers('host') host: string,
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const berkas = await this.situs.mediaGambar(host, id);
+    res.set({
+      'Content-Type': berkas.mimeType,
+      'Content-Disposition': `inline; filename="${berkas.namaFile}"`,
+      'Cache-Control': 'public, max-age=300',
+    });
+    return rawResponse(new StreamableFile(berkas.buffer));
+  }
+
   /** Daftar agama untuk combobox formulir -- lihat `PesantrenPublicService.daftarAgama`. */
   @Public()
   @Get('agama')
