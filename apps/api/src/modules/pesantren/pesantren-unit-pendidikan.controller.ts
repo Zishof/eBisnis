@@ -1,11 +1,15 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiParam, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { IsBoolean, IsIn, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
-import { JENIS_UNIT_PENDIDIKAN } from './pesantren-unit-pendidikan';
+import { JENIS_UNIT_PENDIDIKAN, KATEGORI_GAMBAR_UNIT_PENDIDIKAN, KategoriGambarUnitPendidikan } from './pesantren-unit-pendidikan';
 import { PesantrenUnitPendidikanService } from './pesantren-unit-pendidikan.service';
+
+const MIME_GAMBAR_SAH = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const UKURAN_MAKSIMUM_BYTES = 5 * 1024 * 1024;
 
 function schemaWajib(user: AuthenticatedUser): string {
   if (!user.schemaName) {
@@ -110,6 +114,43 @@ export class PesantrenUnitPendidikanController {
   @ApiOperation({ summary: 'Mengubah unit pendidikan' })
   ubah(@Param('id') id: string, @Body() dto: SimpanUnitPendidikanDto, @CurrentUser() user: AuthenticatedUser) {
     return this.unitPendidikan.ubah(schemaWajib(user), tenantWajib(user), id, dto, user.userId);
+  }
+
+  @Permissions('EPESANTREN_UNIT_PENDIDIKAN.UPDATE')
+  @Post(':id/gambar/:kategori')
+  @ApiParam({ name: 'kategori', enum: KATEGORI_GAMBAR_UNIT_PENDIDIKAN })
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Mengunggah logo atau foto hero unit pendidikan' })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: UKURAN_MAKSIMUM_BYTES } }))
+  unggahGambar(
+    @Param('id') id: string,
+    @Param('kategori') kategori: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const kategoriUpper = kategori.toUpperCase();
+    if (!KATEGORI_GAMBAR_UNIT_PENDIDIKAN.includes(kategoriUpper as KategoriGambarUnitPendidikan)) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        `Kategori gambar tidak dikenali. Pilih salah satu: ${KATEGORI_GAMBAR_UNIT_PENDIDIKAN.join(', ')}.`,
+      );
+    }
+    if (!file) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Berkas gambar wajib disertakan.');
+    }
+    if (!MIME_GAMBAR_SAH.has(file.mimetype)) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Jenis berkas tidak didukung. Gunakan JPEG, PNG, atau WEBP.',
+      );
+    }
+    return this.unitPendidikan.unggahGambar(
+      schemaWajib(user),
+      id,
+      kategoriUpper as KategoriGambarUnitPendidikan,
+      { filename: file.originalname, mimeType: file.mimetype, buffer: file.buffer },
+      user.userId,
+    );
   }
 
   @Permissions('EPESANTREN_UNIT_PENDIDIKAN.UPDATE')

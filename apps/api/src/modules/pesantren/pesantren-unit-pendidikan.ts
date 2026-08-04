@@ -6,6 +6,17 @@
 export const JENIS_UNIT_PENDIDIKAN = ['SEKOLAH_FORMAL', 'DINIYAH', 'TAHFIZ', 'LAINNYA'] as const;
 export type JenisUnitPendidikan = (typeof JENIS_UNIT_PENDIDIKAN)[number];
 
+export const KATEGORI_GAMBAR_UNIT_PENDIDIKAN = ['LOGO', 'HERO'] as const;
+export type KategoriGambarUnitPendidikan = (typeof KATEGORI_GAMBAR_UNIT_PENDIDIKAN)[number];
+
+export function kodeBerkasGambarUnit(unitId: string, kategori: KategoriGambarUnitPendidikan): string {
+  return `PESANTREN_UNIT_${unitId}_${kategori}`;
+}
+
+export function lintasanGambarUnit(unitId: string, kategori: KategoriGambarUnitPendidikan): string {
+  return `/api/v1/pesantren/public/unit-gambar/${unitId}/${kategori.toLowerCase()}`;
+}
+
 export interface Galat {
   field: string;
   code: string;
