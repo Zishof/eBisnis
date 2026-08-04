@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, GraduationCap, Globe2, Mail, MapPin, Phone } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, GraduationCap, Globe2, Images, Mail, MapPin, Phone } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
 import { usePondokFavicon } from './use-pondok-favicon';
 import { usePondokSeo } from './use-pondok-seo';
@@ -41,10 +41,21 @@ interface GelombangUnit {
   status: string;
 }
 
+interface MediaPublik {
+  id: string;
+  kategori: string;
+  judul: string;
+  deskripsi: string | null;
+  image_url: string | null;
+  alt_text: string | null;
+  attribution: string | null;
+}
+
 interface IsiUnit {
   profil: ProfilUnit;
   unit: UnitPublik;
   gelombang: GelombangUnit[];
+  media: MediaPublik[];
 }
 
 const LABEL_JENIS_UNIT: Record<string, string> = {
@@ -90,7 +101,7 @@ export function SitusUnitPage() {
   if (isLoading) return <div className="flex min-h-screen items-center justify-center text-slate-500">Memuat unit...</div>;
   if (isError || !data) return <UnitTidakDitemukan />;
 
-  const { profil, unit, gelombang } = data;
+  const { profil, unit, gelombang, media } = data;
   const alamatDigital = unit.custom_domain || (unit.santri_subdomain ? `${unit.santri_subdomain}.santri.info` : null);
   const logoUrl = unit.logo_url || profil.logo_url;
   const heroUrl = unit.hero_image_url || profil.hero_image_url;
@@ -186,6 +197,44 @@ export function SitusUnitPage() {
             {profil.kontak_whatsapp && <ContactCard icon={<Phone className="h-5 w-5" aria-hidden />} label="WhatsApp" value={profil.kontak_whatsapp} />}
             {profil.kontak_email && <ContactCard icon={<Mail className="h-5 w-5" aria-hidden />} label="Email" value={profil.kontak_email} />}
             {profil.alamat_publik && <ContactCard icon={<MapPin className="h-5 w-5" aria-hidden />} label="Alamat" value={profil.alamat_publik} />}
+          </section>
+        )}
+
+        {media.length > 0 && (
+          <section>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-emerald-700">
+                  <Images className="h-4 w-4" aria-hidden />
+                  Galeri Unit
+                </p>
+                <h2 className="mt-2 text-2xl font-bold text-slate-950">Program, Kegiatan, dan Fasilitas</h2>
+              </div>
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                {media.length} foto
+              </span>
+            </div>
+            <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {media.map((item) => (
+                <article key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="h-44 bg-emerald-50">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.alt_text ?? item.judul} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="grid h-full w-full place-items-center text-emerald-700">
+                        <GraduationCap className="h-10 w-10" aria-hidden />
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-5">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700">{item.kategori}</p>
+                    <h3 className="mt-2 font-bold text-slate-950">{item.judul}</h3>
+                    {item.deskripsi && <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">{item.deskripsi}</p>}
+                    {item.attribution && <p className="mt-3 text-[11px] text-slate-400">{item.attribution}</p>}
+                  </div>
+                </article>
+              ))}
+            </div>
           </section>
         )}
 

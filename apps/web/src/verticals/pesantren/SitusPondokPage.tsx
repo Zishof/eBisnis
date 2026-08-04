@@ -22,7 +22,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, BookOpen, Building2, CheckCircle2, ExternalLink, GraduationCap, Mail, MapPin, Newspaper, Phone } from 'lucide-react';
+import { ArrowRight, BookOpen, Building2, CheckCircle2, ExternalLink, GraduationCap, Images, Mail, MapPin, Newspaper, Phone } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
 import { usePondokFavicon } from './use-pondok-favicon';
 import { usePondokSeo } from './use-pondok-seo';
@@ -73,10 +73,23 @@ interface UnitPendidikan {
   welcome_title: string | null;
 }
 
+interface MediaPublik {
+  id: string;
+  unit_pendidikan_id: string | null;
+  unit_pendidikan_nama?: string | null;
+  kategori: string;
+  judul: string;
+  deskripsi: string | null;
+  image_url: string | null;
+  alt_text: string | null;
+  attribution: string | null;
+}
+
 interface IsiSitus {
   profil: Profil;
   berita: Berita[];
   unitPendidikan: UnitPendidikan[];
+  media: MediaPublik[];
   currentUnit?: { public_slug: string | null } | null;
 }
 
@@ -193,7 +206,7 @@ export function SitusPondokPage() {
     return <SitusBelumDisiapkan />;
   }
 
-  const { profil, berita, unitPendidikan } = data;
+  const { profil, berita, unitPendidikan, media } = data;
   const tema = temaDari(profil.theme_code);
   const beritaUtama = berita.slice(0, 3);
 
@@ -417,6 +430,48 @@ export function SitusPondokPage() {
                   </Link>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {/* --- Galeri dan program ------------------------------------------ */}
+        {media.length > 0 && (
+          <section>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className={`flex items-center gap-2 text-xl font-bold ${tema.aksen}`}>
+                  <Images className="h-5 w-5" aria-hidden />
+                  Galeri dan Program
+                </h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Potret kegiatan, fasilitas, dan program unggulan pondok.
+                </p>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${tema.badge}`}>
+                {media.length} foto
+              </span>
+            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {media.map((item, index) => (
+                <article
+                  key={item.id}
+                  className={index === 0 ? 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:col-span-2 md:row-span-2 dark:border-slate-800 dark:bg-slate-900' : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'}
+                >
+                  <div className={index === 0 ? 'h-64 bg-emerald-50 dark:bg-slate-950' : 'h-40 bg-emerald-50 dark:bg-slate-950'}>
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.alt_text ?? item.judul} className="h-full w-full object-cover" />
+                    ) : (
+                      <VisualPendidikan className="h-full w-full text-emerald-700/70 dark:text-emerald-300/70" />
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <p className={`text-xs font-semibold uppercase tracking-wide ${tema.aksen}`}>{item.kategori}</p>
+                    <h3 className="mt-1 font-bold text-slate-950 dark:text-white">{item.judul}</h3>
+                    {item.deskripsi && <p className="mt-2 line-clamp-3 text-sm text-slate-600 dark:text-slate-400">{item.deskripsi}</p>}
+                    {item.attribution && <p className="mt-3 text-[11px] text-slate-400">{item.attribution}</p>}
+                  </div>
+                </article>
+              ))}
             </div>
           </section>
         )}
