@@ -4,17 +4,22 @@ import {
   BarChart3,
   Boxes,
   CalendarClock,
+  Camera,
   CheckCircle2,
+  ClipboardCheck,
   ClipboardList,
   Download,
   FileSpreadsheet,
+  MapPin,
   Landmark,
   PackageSearch,
   Pill,
   ReceiptText,
   Route,
+  Settings2,
   ShieldCheck,
   Smartphone,
+  WalletCards,
 } from 'lucide-react';
 import { inventoryTenantLabelFromHost, isCmnInventoryHost } from './inventory-host';
 
@@ -24,6 +29,10 @@ const photos = {
     'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=82',
   sales: 'https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?auto=format&fit=crop&w=1200&q=82',
   owner: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=82',
+  route:
+    'https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1200&q=82',
+  pharmacy:
+    'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=82',
 };
 
 const legacyMetrics = [
@@ -100,6 +109,54 @@ const dashboards = [
   ['Investor view', 'Ringkasan modal barang, omzet, laba, arus kas, dan bagi hasil.'],
 ];
 
+const dailyWorkflow = [
+  {
+    icon: MapPin,
+    title: 'Rute dan kunjungan sales',
+    body: 'Sales membuka daftar customer prioritas, melihat histori order, piutang, titik kunjungan, dan target harian sebelum berangkat.',
+  },
+  {
+    icon: PackageSearch,
+    title: 'Katalog obat dan stok tersedia',
+    body: 'Produk ditampilkan dengan harga, batch, expiry, stok gudang, stok sales, dan catatan substitusi agar order tidak salah barang.',
+  },
+  {
+    icon: ClipboardCheck,
+    title: 'Order, validasi, dan invoice',
+    body: 'Draft order masuk ke admin untuk validasi stok dan limit piutang, lalu menjadi invoice yang dapat dipantau pemilik.',
+  },
+  {
+    icon: WalletCards,
+    title: 'Tagihan dan pembayaran',
+    body: 'Pembayaran tunai, transfer, tempo, retur, dan aging piutang menjadi satu jejak audit per customer dan per sales.',
+  },
+];
+
+const readinessChecks = [
+  ['Schema tenant sendiri', 'cmnmedika_inventory', 'Data CMN tidak bercampur dengan tenant lain.'],
+  ['Akun kerja awal', '6 akun', 'Pemilik, admin, dan empat sales sudah didefinisikan untuk uji.'],
+  ['Data legacy', '222.944+ baris', 'DBF lama dipetakan ke produk, transaksi, pembelian, piutang, hutang, dan harga.'],
+  ['Dashboard', 'Owner-ready', 'KPI, sales ranking, customer ranking, expiry risk, dan rekonsiliasi impor.'],
+];
+
+const editableAssets = [
+  {
+    icon: Camera,
+    title: 'Gambar hero dan kartu industri',
+    body: 'Admin dapat mengganti foto obat, gudang, sales, armada, atau aktivitas toko agar sesuai brand tenant.',
+  },
+  {
+    icon: Settings2,
+    title: 'Teks promosi dan CTA',
+    body: 'Headline, pengumuman, tombol download, dan konten landing disiapkan sebagai konten yang bisa dibawa ke CMS.',
+  },
+  {
+    icon: FileSpreadsheet,
+    title: 'Template impor dan ekspor',
+    body: 'Format master barang, customer, supplier, harga, batch, dan transaksi diarahkan mengikuti data lapangan tenant.',
+  },
+];
+
 const downloads = [
   {
     icon: Smartphone,
@@ -124,7 +181,7 @@ export function InventoryLandingPage() {
   return (
     <div className="bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
       <section className="relative overflow-hidden border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-        <div className="container-page grid gap-10 py-12 lg:grid-cols-[minmax(0,1fr)_520px] lg:items-center lg:py-16">
+        <div className="container-page grid gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:items-center lg:py-16">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
               <Pill className="h-3.5 w-3.5" aria-hidden />
@@ -145,6 +202,9 @@ export function InventoryLandingPage() {
               </Link>
               <a href="#download" className="btn-outline px-5 py-3">
                 Download aplikasi
+              </a>
+              <a href="#kesiapan" className="btn-outline px-5 py-3">
+                Cek kesiapan data
               </a>
             </div>
             <dl className="mt-8 grid gap-3 sm:grid-cols-3">
@@ -196,7 +256,49 @@ export function InventoryLandingPage() {
         </div>
       </section>
 
-      <section id="dashboard" className="border-y border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">
+      <section className="border-y border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">
+        <div className="container-page">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950 shadow-sm dark:border-slate-800">
+              <img
+                src={photos.route}
+                alt="Sales lapangan meninjau customer dan order"
+                className="h-64 w-full object-cover opacity-90 sm:h-80"
+              />
+              <div className="grid grid-cols-2 gap-3 p-4">
+                <div className="rounded-lg bg-white/10 p-3 text-white">
+                  <p className="text-xs text-slate-300">Siklus kerja</p>
+                  <p className="mt-1 text-lg font-black">Kunjungan - Order - Tagih</p>
+                </div>
+                <div className="rounded-lg bg-white/10 p-3 text-white">
+                  <p className="text-xs text-slate-300">Kontrol pemilik</p>
+                  <p className="mt-1 text-lg font-black">Real-time audit</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="section-eyebrow">Alur kerja sales obat</p>
+              <h2 className="text-3xl font-black text-slate-950 dark:text-white">
+                Dibuat mengikuti ritme lapangan: sales cepat entry, admin tetap bisa mengontrol, pemilik melihat hasil.
+              </h2>
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                {dailyWorkflow.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <article key={item.title} className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950">
+                      <Icon className="h-6 w-6 text-emerald-700 dark:text-emerald-300" aria-hidden />
+                      <h3 className="mt-4 font-bold">{item.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.body}</p>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="dashboard" className="py-12">
         <div className="container-page grid gap-8 lg:grid-cols-[420px_minmax(0,1fr)] lg:items-center">
           <div>
             <p className="section-eyebrow">Dashboard real lapangan</p>
@@ -220,6 +322,35 @@ export function InventoryLandingPage() {
                 <h3 className="mt-3 font-bold">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{body}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="kesiapan" className="border-y border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">
+        <div className="container-page grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)] lg:items-start">
+          <div>
+            <p className="section-eyebrow">Kesiapan CMN</p>
+            <h2 className="text-3xl font-black text-slate-950 dark:text-white">
+              Caruban Medika Nusantara ditampilkan lengkap, nama perusahaan tidak disingkat.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
+              Domain tetap ringkas sebagai <strong>cmnmedika-inventory.ebisnis.id</strong>, tetapi seluruh identitas
+              publik dan dashboard memakai nama lengkap Caruban Medika Nusantara.
+            </p>
+            <img
+              src={photos.pharmacy}
+              alt="Layanan farmasi dan obat-obatan Caruban Medika Nusantara"
+              className="mt-6 h-52 w-full rounded-xl object-cover"
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {readinessChecks.map(([title, value, body]) => (
+              <article key={title} className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950">
+                <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{title}</p>
+                <p className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{value}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{body}</p>
+              </article>
             ))}
           </div>
         </div>
@@ -316,6 +447,35 @@ export function InventoryLandingPage() {
       </section>
 
       <section className="container-page py-12">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+          <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
+            <div>
+              <p className="section-eyebrow">Editable oleh admin</p>
+              <h2 className="text-3xl font-black text-slate-950 dark:text-white">
+                Visual dan konten tenant tidak dikunci di kode.
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
+                Best practice landing SaaS yang saya pakai di sini: pesan utama spesifik, CTA jelas, visual nyata,
+                bukti data, dan konten yang bisa diperbarui admin tanpa deploy ulang.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {editableAssets.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <article key={item.title} className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950">
+                    <Icon className="h-6 w-6 text-emerald-700 dark:text-emerald-300" aria-hidden />
+                    <h3 className="mt-4 font-bold">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.body}</p>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-page pb-12">
         <div className="grid gap-5 md:grid-cols-3">
           {[
             [PackageSearch, 'Migrasi DBF lama', 'STOK, JUAL, BELI, CUSTOMER, SUPPLIER, SALES, batch, piutang, dan hutang dipetakan sebagai data awal.'],
