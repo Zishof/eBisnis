@@ -638,7 +638,7 @@ async function markImport(ctx: Awaited<ReturnType<typeof createSeedContext>>, sc
      ON CONFLICT (scope_type, COALESCE(scope_id, '00000000-0000-0000-0000-000000000000'::uuid), code)
      WHERE deleted_at IS NULL
      DO UPDATE SET value_json = EXCLUDED.value_json, updated_at = now(), version = "${schemaName}".app_setting.version + 1`,
-    [JSON.stringify(value)],
+    [legacyJson(value)],
   );
 }
 
@@ -708,7 +708,7 @@ function readDbf(path: string, fileName: string): LegacyDbf {
     if (isDeleted) deletedRecords += 1;
     const row: Record<string, unknown> = {};
     for (const field of fields) {
-      const raw = buf.subarray(base + field.offset, base + field.offset + field.length).toString('latin1').trim();
+      const raw = cleanLegacyString(buf.subarray(base + field.offset, base + field.offset + field.length).toString('latin1'));
       row[field.name] = field.type === 'N' || field.type === 'F' ? Number(raw || 0) : raw;
     }
     rows.push({ rowNumber: i + 1, isDeleted, data: row });
@@ -751,7 +751,7 @@ async function importRawLegacyDbfs(client: PoolClient, S: string, files: LegacyD
         file.deletedRecords,
         file.rows.length,
         classification.status,
-        JSON.stringify({
+        legacyJson({
           fields: file.fields,
           projectedTable: classification.projectedTable ?? null,
           projectionClass: classification.projectionClass,
@@ -764,9 +764,10 @@ async function importRawLegacyDbfs(client: PoolClient, S: string, files: LegacyD
       const params: unknown[] = [];
       const values = chunk.map((row, index) => {
         const base = index * 7;
-        const rowHash = createHash('sha256').update(JSON.stringify(row.data)).digest('hex');
-        const key = legacyKey(file.fileName, row.data);
-        params.push(fileId, file.fileName, row.rowNumber, row.isDeleted, key, JSON.stringify(row.data), rowHash);
+        const normalized = sanitizeLegacyJson(row.data) as Record<string, unknown>;
+        const rowHash = createHash('sha256').update(legacyJson(normalized)).digest('hex');
+        const key = legacyKey(file.fileName, normalized);
+        params.push(fileId, file.fileName, row.rowNumber, row.isDeleted, key, legacyJson(normalized), rowHash);
         return `($${base + 1}::uuid, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}::jsonb, $${base + 7})`;
       });
       await client.query(
@@ -804,7 +805,7 @@ async function syncLegacyAuditMetadata(client: PoolClient, S: string): Promise<v
       [
         fileName,
         info.status,
-        JSON.stringify({
+        legacyJson({
           projectedTable: info.projectedTable ?? null,
           projectionClass: info.projectionClass,
           projectionNote: info.note,
@@ -862,7 +863,7 @@ async function importSalespeople(client: PoolClient, S: string, rows: Array<Reco
        DO UPDATE SET legacy_name = EXCLUDED.legacy_name, user_subject_id = EXCLUDED.user_subject_id,
          mapped_username = EXCLUDED.mapped_username, metadata = EXCLUDED.metadata,
          updated_at = now(), version = ${S}.legacy_salesperson_map.version + 1`,
-      [legacyCode, legacyName, subjectId, username, JSON.stringify(row)],
+      [legacyCode, legacyName, subjectId, username, legacyJson(row)],
     );
     if (subjectId) map.set(legacyCode, subjectId);
   }
@@ -897,7 +898,7 @@ async function upsertProduct(client: PoolClient, S: string, input: Record<string
     await client.query(
       `UPDATE ${S}.product SET name = $2, standard_cost = $3, default_sale_price = $4, metadata = $5::jsonb, updated_at = now(), version = version + 1
        WHERE id = $1::uuid`,
-      [found, input.name, input.cost, input.price, JSON.stringify(input.metadata)],
+      [found, input.name, input.cost, input.price, legacyJson(input.metadata)],
     );
     return found;
   }
@@ -906,7 +907,7 @@ async function upsertProduct(client: PoolClient, S: string, input: Record<string
        (category_id, base_uom_id, code, sku, name, tracking_type, standard_cost, default_sale_price, metadata)
      VALUES ($1::uuid, $2::uuid, $3, $3, $4, 'LOT_EXPIRY', $5, $6, $7::jsonb)
      RETURNING id::text AS id`,
-    [input.categoryId, input.uomId, input.code, input.name, input.cost, input.price, JSON.stringify(input.metadata)],
+    [input.categoryId, input.uomId, input.code, input.name, input.cost, input.price, legacyJson(input.metadata)],
   );
   return inserted.rows[0].id;
 }
@@ -917,7 +918,7 @@ async function upsertCustomer(client: PoolClient, S: string, code: string, name:
      VALUES ($1, $2, 'BUSINESS', 0, $3::jsonb)
      ON CONFLICT (code) WHERE deleted_at IS NULL
      DO UPDATE SET name = EXCLUDED.name, metadata = EXCLUDED.metadata, updated_at = now(), version = ${S}.customer.version + 1`,
-    [code, name, JSON.stringify(metadata)],
+    [code, name, legacyJson(metadata)],
   );
 }
 
@@ -927,7 +928,7 @@ async function upsertSupplier(client: PoolClient, S: string, code: string, name:
      VALUES ($1, $2, $3::jsonb)
      ON CONFLICT (code) WHERE deleted_at IS NULL
      DO UPDATE SET name = EXCLUDED.name, metadata = EXCLUDED.metadata, updated_at = now(), version = ${S}.supplier.version + 1`,
-    [code, name, JSON.stringify(metadata)],
+    [code, name, legacyJson(metadata)],
   );
 }
 
@@ -1133,7 +1134,7 @@ async function importReceivableLedger(
         text(data.NAMABANK) || null,
         dateOrNull(data.TANGGALBG),
         text(data.NORETUR) || null,
-        JSON.stringify(data),
+        legacyJson(data),
       ],
     );
     count += 1;
@@ -1166,7 +1167,7 @@ async function importPayableLedger(client: PoolClient, S: string, rows: LegacyRo
         text(data.NOMERBG) || null,
         text(data.NAMABANK) || null,
         dateOrNull(data.TANGGALBG),
-        JSON.stringify(data),
+        legacyJson(data),
       ],
     );
     count += 1;
@@ -1205,7 +1206,7 @@ async function importPriceHistory(
         productId,
         dateOrNull(data.TANGGAL),
         partyType === 'CUSTOMER' ? number(data.HARGAJUAL) : number(data.HARGABELI),
-        JSON.stringify(data),
+        legacyJson(data),
       ],
     );
     count += 1;
@@ -1225,7 +1226,7 @@ async function importStockOpname(client: PoolClient, S: string, rows: LegacyRow[
          (source_file, legacy_row_number, product_id, opname_date, system_qty, physical_qty, unit_cost, variance_qty, metadata)
        VALUES ('dataopn.dbf', $1, $2::uuid, $3::date, $4, $5, $6, $7, $8::jsonb)
        ON CONFLICT (source_file, legacy_row_number) DO NOTHING`,
-      [row.rowNumber, productId, dateOrNull(data.TANGGAL), systemQty, physicalQty, number(data.HARGABELI), physicalQty - systemQty, JSON.stringify(data)],
+      [row.rowNumber, productId, dateOrNull(data.TANGGAL), systemQty, physicalQty, number(data.HARGABELI), physicalQty - systemQty, legacyJson(data)],
     );
     count += 1;
   }
@@ -1244,7 +1245,7 @@ async function importAccounts(client: PoolClient, S: string, rows: Array<Record<
        VALUES ($1::uuid, $2, $3, 'DEBIT', $4::jsonb)
        ON CONFLICT (code) WHERE deleted_at IS NULL
        DO UPDATE SET name = EXCLUDED.name, metadata = EXCLUDED.metadata, updated_at = now(), version = ${S}.chart_of_account.version + 1`,
-      [typeId, code, name, JSON.stringify(row)],
+      [typeId, code, name, legacyJson(row)],
     );
     count += 1;
   }
@@ -1277,8 +1278,34 @@ async function scalar<T = string>(client: PoolClient, sql: string, params: unkno
   return (result.rows[0] ? Object.values(result.rows[0])[0] : null) as T | null;
 }
 
+function legacyJson(value: unknown): string {
+  return JSON.stringify(sanitizeLegacyJson(value));
+}
+
+function sanitizeLegacyJson(value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string') return cleanLegacyString(value);
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'bigint') return value.toString();
+  if (Array.isArray(value)) return value.map((item) => sanitizeLegacyJson(item));
+  if (typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+        cleanLegacyString(key),
+        sanitizeLegacyJson(item),
+      ]),
+    );
+  }
+  return String(value);
+}
+
+function cleanLegacyString(value: string): string {
+  return value.replace(/\u0000/g, '').replace(/[\uD800-\uDFFF]/g, '').trim();
+}
+
 function text(value: unknown): string {
-  return String(value ?? '').trim();
+  return cleanLegacyString(String(value ?? ''));
 }
 
 function number(value: unknown): number {
@@ -1344,7 +1371,7 @@ function legacyKey(fileName: string, row: Record<string, unknown>): string {
   if (file.includes('CUSTOMER')) return text(row.KODECUST);
   if (file.includes('SUPPLIER')) return text(row.KODESUPPL);
   if (file.includes('SALES')) return text(row.KODESALES);
-  return createHash('sha1').update(JSON.stringify(row)).digest('hex');
+  return createHash('sha1').update(legacyJson(row)).digest('hex');
 }
 
 function chunks<T>(rows: T[], size: number): T[][] {
