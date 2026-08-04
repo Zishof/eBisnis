@@ -157,6 +157,7 @@ class InventoryHomePage extends StatefulWidget {
 
 class _InventoryHomePageState extends State<InventoryHomePage> {
   late Future<InventorySnapshot> _snapshot = widget.client.snapshot();
+  int _tab = 0;
 
   void _refresh() {
     setState(() => _snapshot = widget.client.snapshot());
@@ -165,6 +166,19 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: (value) => setState(() => _tab = value),
+        destinations: const [
+          NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
+          NavigationDestination(
+              icon: Icon(Icons.add_shopping_cart_outlined),
+              label: 'Order Baru'),
+          NavigationDestination(
+              icon: Icon(Icons.analytics_outlined), label: 'Laporan'),
+        ],
+      ),
       body: SafeArea(
         child: FutureBuilder<InventorySnapshot>(
           future: _snapshot,
@@ -214,77 +228,82 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                     padding: const EdgeInsets.all(16),
                     sliver: SliverList.list(
                       children: [
-                        _KpiGrid(snapshot: data!),
-                        const SizedBox(height: 16),
-                        _SectionCard(
-                          title: 'Performa sales',
-                          icon: Icons.groups_outlined,
-                          child: Column(
-                            children: data.topSales
-                                .map((row) => _ProgressLine(
-                                      label: row.name,
-                                      note: '${row.orders} order',
-                                      value: rupiah(row.revenue),
-                                      current: row.revenue,
-                                      max: data.topSalesMax,
-                                    ))
-                                .toList(),
+                        if (_tab == 0) ...[
+                          _KpiGrid(snapshot: data!),
+                          const SizedBox(height: 16),
+                          _SectionCard(
+                            title: 'Performa sales',
+                            icon: Icons.groups_outlined,
+                            child: Column(
+                              children: data.topSales
+                                  .map((row) => _ProgressLine(
+                                        label: row.name,
+                                        note: '${row.orders} order',
+                                        value: rupiah(row.revenue),
+                                        current: row.revenue,
+                                        max: data.topSalesMax,
+                                      ))
+                                  .toList(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        _SectionCard(
-                          title: 'Order terbaru',
-                          icon: Icons.receipt_long_outlined,
-                          child: Column(
-                            children: data.orders
-                                .map((order) => ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      title: Text(order.number),
-                                      subtitle: Text(
-                                          '${order.customer} • ${order.sales}'),
-                                      trailing: Text(
-                                        rupiah(order.total),
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w800),
-                                      ),
-                                    ))
-                                .toList(),
+                          const SizedBox(height: 16),
+                          _SectionCard(
+                            title: 'Order terbaru',
+                            icon: Icons.receipt_long_outlined,
+                            child: Column(
+                              children: data.orders
+                                  .map((order) => ListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        title: Text(order.number),
+                                        subtitle: Text(
+                                            '${order.customer} - ${order.sales}'),
+                                        trailing: Text(
+                                          rupiah(order.total),
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w800),
+                                        ),
+                                      ))
+                                  .toList(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        _SectionCard(
-                          title: 'Rekonsiliasi legacy',
-                          icon: Icons.storage_outlined,
-                          child: Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: [
-                              _Pill('Raw rows', angka(data.rawRecords)),
-                              _Pill('Piutang', rupiah(data.receivableAmount)),
-                              _Pill('Hutang', rupiah(data.payableAmount)),
-                              _Pill('PO legacy', angka(data.purchaseOrders)),
-                              _Pill('Riwayat harga', angka(data.priceRows)),
-                            ],
+                          const SizedBox(height: 16),
+                          _SectionCard(
+                            title: 'Rekonsiliasi legacy',
+                            icon: Icons.storage_outlined,
+                            child: Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                _Pill('Raw rows', angka(data.rawRecords)),
+                                _Pill('Piutang', rupiah(data.receivableAmount)),
+                                _Pill('Hutang', rupiah(data.payableAmount)),
+                                _Pill('PO legacy', angka(data.purchaseOrders)),
+                                _Pill('Riwayat harga', angka(data.priceRows)),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        _SectionCard(
-                          title: 'Risiko batch dan stok',
-                          icon: Icons.warning_amber_outlined,
-                          child: Column(
-                            children: data.expiringLots
-                                .map((lot) => ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      leading:
-                                          const Icon(Icons.medication_outlined),
-                                      title: Text(lot.productName),
-                                      subtitle: Text(
-                                          '${lot.productCode} • batch ${lot.lotNumber}'),
-                                      trailing: Text(lot.expiryDate),
-                                    ))
-                                .toList(),
+                          const SizedBox(height: 16),
+                          _SectionCard(
+                            title: 'Risiko batch dan stok',
+                            icon: Icons.warning_amber_outlined,
+                            child: Column(
+                              children: data.expiringLots
+                                  .map((lot) => ListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        leading: const Icon(
+                                            Icons.medication_outlined),
+                                        title: Text(lot.productName),
+                                        subtitle: Text(
+                                            '${lot.productCode} - batch ${lot.lotNumber}'),
+                                        trailing: Text(lot.expiryDate),
+                                      ))
+                                  .toList(),
+                            ),
                           ),
-                        ),
+                        ] else if (_tab == 1)
+                          _SalesOrderDraftPage(persona: widget.persona)
+                        else
+                          _InventoryReportPage(snapshot: data!),
                       ],
                     ),
                   ),
@@ -292,6 +311,276 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _SalesOrderDraftPage extends StatefulWidget {
+  const _SalesOrderDraftPage({required this.persona});
+  final PersonaInventory persona;
+
+  @override
+  State<_SalesOrderDraftPage> createState() => _SalesOrderDraftPageState();
+}
+
+class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
+  String _customer = demoInventoryCustomers.first;
+  final Map<String, int> _qty = {};
+  String? _savedMessage;
+
+  double get _total => demoInventoryProducts.fold(
+        0,
+        (sum, product) => sum + (_qty[product.code] ?? 0) * product.price,
+      );
+
+  int get _lineCount => _qty.values.where((value) => value > 0).length;
+
+  void _setQty(String code, int value) {
+    setState(() {
+      if (value <= 0) {
+        _qty.remove(code);
+      } else {
+        _qty[code] = value;
+      }
+      _savedMessage = null;
+    });
+  }
+
+  void _saveDraft() {
+    if (_lineCount == 0) return;
+    setState(() {
+      _savedMessage =
+          'Draft order ${DateTime.now().millisecondsSinceEpoch.toString().substring(7)} tersimpan lokal untuk $_customer.';
+      _qty.clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final wide = box.maxWidth >= 880;
+        final form = _SectionCard(
+          title: 'Order Baru Sales',
+          icon: Icons.add_shopping_cart_outlined,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DropdownButtonFormField<String>(
+                value: _customer,
+                decoration: const InputDecoration(labelText: 'Customer'),
+                items: demoInventoryCustomers
+                    .map((name) =>
+                        DropdownMenuItem(value: name, child: Text(name)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => _customer = value);
+                },
+              ),
+              const SizedBox(height: 12),
+              Text('Sales: ${widget.persona.label}',
+                  style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 12),
+              ...demoInventoryProducts.map((product) => _ProductQtyTile(
+                    product: product,
+                    qty: _qty[product.code] ?? 0,
+                    onChanged: (value) => _setQty(product.code, value),
+                  )),
+            ],
+          ),
+        );
+        final summary = _SectionCard(
+          title: 'Ringkasan Keranjang',
+          icon: Icons.receipt_long_outlined,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SummaryLine('Customer', _customer),
+              _SummaryLine('Item', '$_lineCount baris'),
+              _SummaryLine('Total', rupiah(_total), strong: true),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: _lineCount == 0 ? null : _saveDraft,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Simpan Draft Lokal'),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Draft lokal ini untuk uji alur sales. Saat endpoint create order aktif, tombol ini akan mengirim order ke server.',
+                style: TextStyle(color: Color(0xFF64748B), height: 1.45),
+              ),
+              if (_savedMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _savedMessage!,
+                  style: const TextStyle(
+                      color: Color(0xFF047857), fontWeight: FontWeight.w800),
+                ),
+              ],
+            ],
+          ),
+        );
+        if (!wide) {
+          return Column(children: [form, const SizedBox(height: 16), summary]);
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 3, child: form),
+            const SizedBox(width: 16),
+            Expanded(flex: 2, child: summary),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _InventoryReportPage extends StatelessWidget {
+  const _InventoryReportPage({required this.snapshot});
+  final InventorySnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _SectionCard(
+          title: 'Laporan Pemilik',
+          icon: Icons.analytics_outlined,
+          child: Column(
+            children: [
+              _SummaryLine('Omzet bulan ini', rupiah(snapshot.revenueMonth),
+                  strong: true),
+              _SummaryLine('Order bulan ini', angka(snapshot.ordersMonth)),
+              _SummaryLine('Piutang legacy', rupiah(snapshot.receivableAmount)),
+              _SummaryLine('Hutang legacy', rupiah(snapshot.payableAmount)),
+              _SummaryLine('Stok tersedia', angka(snapshot.availableQty)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _SectionCard(
+          title: 'Kontribusi Sales',
+          icon: Icons.groups_outlined,
+          child: Column(
+            children: snapshot.topSales
+                .map((row) => _ProgressLine(
+                      label: row.name,
+                      note: '${row.orders} order',
+                      value: rupiah(row.revenue),
+                      current: row.revenue,
+                      max: snapshot.topSalesMax,
+                    ))
+                .toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class InventoryProductDemo {
+  const InventoryProductDemo(this.code, this.name, this.price, this.stock);
+  final String code;
+  final String name;
+  final double price;
+  final int stock;
+}
+
+const demoInventoryCustomers = [
+  'Apotek Sehat Waras',
+  'Klinik Barokah',
+  'Toko Obat Sumber Urip',
+  'Praktik dr. Lestari',
+];
+
+const demoInventoryProducts = [
+  InventoryProductDemo('OBT-0241', 'Amoxicillin 500 mg', 18500, 128),
+  InventoryProductDemo('OBT-0187', 'Paracetamol 500 mg', 7200, 420),
+  InventoryProductDemo('OBT-0310', 'Cefixime 100 mg', 34500, 84),
+  InventoryProductDemo('OBT-0074', 'Cetirizine 10 mg', 9800, 210),
+  InventoryProductDemo('ALK-0042', 'Masker medis 50 pcs', 32500, 96),
+];
+
+class _ProductQtyTile extends StatelessWidget {
+  const _ProductQtyTile({
+    required this.product,
+    required this.qty,
+    required this.onChanged,
+  });
+
+  final InventoryProductDemo product;
+  final int qty;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: const Color(0xFFF8FAFC),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(product.name,
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  Text('${product.code} - stok ${angka(product.stock)}'),
+                  Text(rupiah(product.price),
+                      style: const TextStyle(color: Color(0xFF0F766E))),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Kurangi',
+              onPressed: qty == 0 ? null : () => onChanged(qty - 1),
+              icon: const Icon(Icons.remove_circle_outline),
+            ),
+            SizedBox(
+              width: 38,
+              child: Text(
+                '$qty',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Tambah',
+              onPressed: qty >= product.stock ? null : () => onChanged(qty + 1),
+              icon: const Icon(Icons.add_circle_outline),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryLine extends StatelessWidget {
+  const _SummaryLine(this.label, this.value, {this.strong = false});
+  final String label;
+  final String value;
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        children: [
+          Expanded(child: Text(label)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
+              fontSize: strong ? 18 : null,
+            ),
+          ),
+        ],
       ),
     );
   }

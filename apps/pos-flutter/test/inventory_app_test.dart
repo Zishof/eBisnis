@@ -23,4 +23,32 @@ void main() {
 
     expect(find.text('agung'), findsOneWidget);
   });
+
+  testWidgets('sales dapat membuat draft order inventory', (tester) async {
+    await tester.pumpWidget(const AplikasiInventory());
+
+    await tester.tap(find.text('Masrukin'));
+    await tester.pump();
+    await tester.tap(find.text('Masuk'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Order Baru'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Order Baru Sales'), findsOneWidget);
+    expect(find.text('Amoxicillin 500 mg'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Tambah').first);
+    await tester.pump();
+
+    expect(find.text('1 baris'), findsOneWidget);
+    expect(find.text('Rp 18.500'), findsWidgets);
+
+    await tester.ensureVisible(find.text('Simpan Draft Lokal'));
+    await tester.pump();
+    await tester.tap(find.text('Simpan Draft Lokal'));
+    await tester.pump();
+
+    expect(find.textContaining('tersimpan lokal'), findsOneWidget);
+  });
 }
