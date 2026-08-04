@@ -41,7 +41,12 @@ const USERS: Array<{
   { username: 'tohirin', password: 'tohirin123!!', displayName: 'Tohirin', roleCode: 'SALES' },
   { username: 'nofal', password: 'nofal123!!', displayName: 'Nofal', roleCode: 'SALES' },
   { username: 'agung', password: 'agung123!!', displayName: 'Agung', roleCode: 'SALES' },
-  { username: 'cmnmedika', password: 'cmnmedika123!!', displayName: 'Admin CMN Medika', roleCode: 'ADMIN_TENANT' },
+  {
+    username: 'cmnmedika',
+    password: 'cmnmedika123!!',
+    displayName: 'Admin Caruban Medika Nusantara',
+    roleCode: 'ADMIN_TENANT',
+  },
 ] as const;
 
 const LEGACY_DIR_CANDIDATES = [
