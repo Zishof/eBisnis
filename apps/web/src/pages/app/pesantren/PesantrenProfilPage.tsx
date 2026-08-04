@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image, Save, Upload } from 'lucide-react';
+import { Image, Plus, Save, Trash2, Upload } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { PageHeader, StatusBadge, useToast } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -27,6 +27,25 @@ interface ProfilSitus {
   map_embed_url: string | null;
   instagram_url: string | null;
   meta_description: string | null;
+}
+
+interface UnitRingkas {
+  id: string;
+  name: string;
+}
+
+interface MediaPesantren {
+  id: string;
+  unit_pendidikan_id: string | null;
+  unit_pendidikan_nama?: string | null;
+  kategori: string;
+  judul: string;
+  deskripsi: string | null;
+  image_url: string | null;
+  alt_text: string | null;
+  attribution: string | null;
+  sort_order: number;
+  is_published: boolean;
 }
 
 const TEMA = [
@@ -61,7 +80,22 @@ const FORM_KOSONG = {
   metaDescription: '',
 };
 
+const FORM_MEDIA_KOSONG = {
+  unitPendidikanId: '',
+  kategori: 'GALERI',
+  judul: '',
+  deskripsi: '',
+  imageUrl: '',
+  altText: '',
+  attribution: '',
+  sortOrder: '0',
+  isPublished: true,
+};
+
+const KATEGORI_MEDIA = ['GALERI', 'PROGRAM', 'FASILITAS', 'KEGIATAN', 'PRESTASI'];
+
 type FormState = typeof FORM_KOSONG;
+type FormMediaState = typeof FORM_MEDIA_KOSONG;
 
 function isiForm(data: ProfilSitus): FormState {
   return {
@@ -120,10 +154,21 @@ export function PesantrenProfilPage() {
   const toMessage = useErrorMessage();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(FORM_KOSONG);
+  const [formMedia, setFormMedia] = useState<FormMediaState>(FORM_MEDIA_KOSONG);
 
   const profil = useQuery({
     queryKey: ['pesantren-profil'],
     queryFn: () => api.get<ProfilSitus>('/pesantren/profil'),
+  });
+
+  const unitPendidikan = useQuery({
+    queryKey: ['pesantren-unit-pendidikan-ringkas'],
+    queryFn: () => api.get<UnitRingkas[]>('/pesantren/unit-pendidikan?aktif=true'),
+  });
+
+  const media = useQuery({
+    queryKey: ['pesantren-media'],
+    queryFn: () => api.get<MediaPesantren[]>('/pesantren/media'),
   });
 
   useEffect(() => {
@@ -154,6 +199,72 @@ export function PesantrenProfilPage() {
       void queryClient.invalidateQueries({ queryKey: ['pesantren-public-site'] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mengunggah gambar.'), 'error'),
+  });
+
+  const simpanMedia = useMutation({
+    mutationFn: () =>
+      api.post<MediaPesantren>('/pesantren/media', {
+        unitPendidikanId: formMedia.unitPendidikanId || undefined,
+        kategori: formMedia.kategori,
+        judul: formMedia.judul.trim(),
+        deskripsi: formMedia.deskripsi.trim() || undefined,
+        imageUrl: formMedia.imageUrl.trim() || undefined,
+        altText: formMedia.altText.trim() || undefined,
+        attribution: formMedia.attribution.trim() || undefined,
+        sortOrder: Number(formMedia.sortOrder || 0),
+        isPublished: formMedia.isPublished,
+      }),
+    onSuccess: () => {
+      toast.push('Media galeri berhasil ditambahkan.', 'success');
+      setFormMedia(FORM_MEDIA_KOSONG);
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-media'] });
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-public-site'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan media.'), 'error'),
+  });
+
+  const unggahMedia = useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const body = new FormData();
+      body.append('file', file);
+      return api.post<MediaPesantren>(`/pesantren/media/${id}/gambar`, body);
+    },
+    onSuccess: () => {
+      toast.push('Gambar media berhasil diunggah.', 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-media'] });
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-public-site'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mengunggah gambar media.'), 'error'),
+  });
+
+  const ubahMedia = useMutation({
+    mutationFn: (item: MediaPesantren) =>
+      api.patch<MediaPesantren>(`/pesantren/media/${item.id}`, {
+        unitPendidikanId: item.unit_pendidikan_id,
+        kategori: item.kategori,
+        judul: item.judul,
+        deskripsi: item.deskripsi,
+        imageUrl: item.image_url,
+        altText: item.alt_text,
+        attribution: item.attribution,
+        sortOrder: item.sort_order,
+        isPublished: !item.is_published,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-media'] });
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-public-site'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mengubah status media.'), 'error'),
+  });
+
+  const hapusMedia = useMutation({
+    mutationFn: (id: string) => api.delete(`/pesantren/media/${id}`),
+    onSuccess: () => {
+      toast.push('Media galeri dihapus.', 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-media'] });
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-public-site'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menghapus media.'), 'error'),
   });
 
   return (
@@ -321,6 +432,147 @@ export function PesantrenProfilPage() {
           </div>
         </div>
       </div>
+
+      <section className="card mt-4 p-5">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-800">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">Galeri, Program, dan Fasilitas</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Gambar ini tampil di situs pondok atau halaman unit pendidikan. Admin dapat mengganti manual kapan saja.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!formMedia.judul.trim() || simpanMedia.isPending}
+            onClick={() => simpanMedia.mutate()}
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Tambah media
+          </button>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(280px,360px)_1fr]">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+            <div className="space-y-3">
+              <Field label="Tampil pada">
+                <select
+                  className="field-input"
+                  value={formMedia.unitPendidikanId}
+                  onChange={(e) => setFormMedia({ ...formMedia, unitPendidikanId: e.target.value })}
+                >
+                  <option value="">Situs pondok utama</option>
+                  {(unitPendidikan.data ?? []).map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Kategori">
+                <select
+                  className="field-input"
+                  value={formMedia.kategori}
+                  onChange={(e) => setFormMedia({ ...formMedia, kategori: e.target.value })}
+                >
+                  {KATEGORI_MEDIA.map((kategori) => (
+                    <option key={kategori} value={kategori}>
+                      {kategori}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Judul *">
+                <input className="field-input" value={formMedia.judul} onChange={(e) => setFormMedia({ ...formMedia, judul: e.target.value })} />
+              </Field>
+              <Field label="Deskripsi">
+                <textarea className="field-input min-h-20" value={formMedia.deskripsi} onChange={(e) => setFormMedia({ ...formMedia, deskripsi: e.target.value })} />
+              </Field>
+              <Field label="URL gambar">
+                <input className="field-input" value={formMedia.imageUrl} onChange={(e) => setFormMedia({ ...formMedia, imageUrl: e.target.value })} />
+              </Field>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Alt text">
+                  <input className="field-input" value={formMedia.altText} onChange={(e) => setFormMedia({ ...formMedia, altText: e.target.value })} />
+                </Field>
+                <Field label="Urutan">
+                  <input type="number" className="field-input" value={formMedia.sortOrder} onChange={(e) => setFormMedia({ ...formMedia, sortOrder: e.target.value })} />
+                </Field>
+              </div>
+              <Field label="Atribusi">
+                <input className="field-input" value={formMedia.attribution} onChange={(e) => setFormMedia({ ...formMedia, attribution: e.target.value })} />
+              </Field>
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={formMedia.isPublished}
+                  onChange={(e) => setFormMedia({ ...formMedia, isPublished: e.target.checked })}
+                />
+                Tampilkan di situs publik
+              </label>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {media.isLoading ? (
+              <p className="text-sm text-slate-500">Memuat media...</p>
+            ) : (media.data ?? []).length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700">
+                Belum ada galeri. Tambahkan foto kegiatan, fasilitas, prestasi, atau program unggulan.
+              </div>
+            ) : (
+              (media.data ?? []).map((item) => (
+                <article key={item.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                  <div className="relative h-40 bg-slate-100 dark:bg-slate-900">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.alt_text ?? item.judul} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="grid h-full w-full place-items-center text-slate-300">
+                        <Image className="h-8 w-8" aria-hidden />
+                      </span>
+                    )}
+                    <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+                      <StatusBadge status={item.kategori} />
+                      <StatusBadge status={item.is_published ? 'TERBIT' : 'DRAFT'} />
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">{item.judul}</h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {item.unit_pendidikan_nama ?? 'Situs pondok utama'}
+                    </p>
+                    {item.deskripsi && <p className="mt-2 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{item.deskripsi}</p>}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-200">
+                        <Upload className="h-4 w-4" aria-hidden />
+                        Upload
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="sr-only"
+                          disabled={unggahMedia.isPending}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) unggahMedia.mutate({ id: item.id, file });
+                            e.currentTarget.value = '';
+                          }}
+                        />
+                      </label>
+                      <button type="button" className="btn-outline px-3 py-2 text-xs" onClick={() => ubahMedia.mutate(item)}>
+                        {item.is_published ? 'Jadikan draft' : 'Terbitkan'}
+                      </button>
+                      <button type="button" className="btn-outline px-3 py-2 text-xs text-red-700" onClick={() => hapusMedia.mutate(item.id)}>
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                        Hapus
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
     </>
   );
 }

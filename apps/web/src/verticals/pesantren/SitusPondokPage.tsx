@@ -73,10 +73,21 @@ interface UnitPendidikan {
   welcome_title: string | null;
 }
 
+interface MediaPublik {
+  id: string;
+  kategori: string;
+  judul: string;
+  deskripsi: string | null;
+  image_url: string | null;
+  alt_text: string | null;
+  attribution: string | null;
+}
+
 interface IsiSitus {
   profil: Profil;
   berita: Berita[];
   unitPendidikan: UnitPendidikan[];
+  media?: MediaPublik[];
   currentUnit?: { public_slug: string | null } | null;
 }
 
@@ -194,6 +205,7 @@ export function SitusPondokPage() {
   }
 
   const { profil, berita, unitPendidikan } = data;
+  const media = data.media ?? [];
   const tema = temaDari(profil.theme_code);
   const beritaUtama = berita.slice(0, 3);
 
@@ -417,6 +429,41 @@ export function SitusPondokPage() {
                   </Link>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {/* --- Galeri/program ----------------------------------------------- */}
+        {media.length > 0 && (
+          <section>
+            <h2 className={`text-xl font-bold ${tema.aksen}`}>Galeri dan Program</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Foto kegiatan, fasilitas, prestasi, dan program unggulan yang dipilih pengurus.
+            </p>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {media.map((item) => (
+                <article key={item.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <div className="h-44 overflow-hidden bg-emerald-50 dark:bg-slate-950">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.alt_text ?? item.judul} className="h-full w-full object-cover" />
+                    ) : (
+                      <VisualPendidikan className="h-full w-full text-emerald-700/70 dark:text-emerald-300/70" />
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${tema.badge}`}>
+                      {item.kategori}
+                    </span>
+                    <h3 className="mt-3 font-semibold text-slate-900 dark:text-white">{item.judul}</h3>
+                    {item.deskripsi && (
+                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                        {item.deskripsi}
+                      </p>
+                    )}
+                    {item.attribution && <p className="mt-3 text-xs text-slate-400">{item.attribution}</p>}
+                  </div>
+                </article>
+              ))}
             </div>
           </section>
         )}

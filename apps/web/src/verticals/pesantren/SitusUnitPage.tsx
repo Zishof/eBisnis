@@ -41,10 +41,21 @@ interface GelombangUnit {
   status: string;
 }
 
+interface MediaPublik {
+  id: string;
+  kategori: string;
+  judul: string;
+  deskripsi: string | null;
+  image_url: string | null;
+  alt_text: string | null;
+  attribution: string | null;
+}
+
 interface IsiUnit {
   profil: ProfilUnit;
   unit: UnitPublik;
   gelombang: GelombangUnit[];
+  media?: MediaPublik[];
 }
 
 const LABEL_JENIS_UNIT: Record<string, string> = {
@@ -91,6 +102,7 @@ export function SitusUnitPage() {
   if (isError || !data) return <UnitTidakDitemukan />;
 
   const { profil, unit, gelombang } = data;
+  const media = data.media ?? [];
   const alamatDigital = unit.custom_domain || (unit.santri_subdomain ? `${unit.santri_subdomain}.santri.info` : null);
   const logoUrl = unit.logo_url || profil.logo_url;
   const heroUrl = unit.hero_image_url || profil.hero_image_url;
@@ -179,6 +191,40 @@ export function SitusUnitPage() {
             </dl>
           </aside>
         </section>
+
+        {media.length > 0 && (
+          <section>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-widest text-emerald-700">Program dan Galeri</p>
+                <h2 className="mt-2 text-2xl font-bold text-slate-950">Kegiatan Unggulan {unit.name}</h2>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {media.map((item) => (
+                <article key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="h-44 bg-emerald-50">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.alt_text ?? item.judul} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="grid h-full w-full place-items-center text-emerald-700">
+                        <GraduationCap className="h-10 w-10" aria-hidden />
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-5">
+                    <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                      {item.kategori}
+                    </span>
+                    <h3 className="mt-3 font-bold text-slate-950">{item.judul}</h3>
+                    {item.deskripsi && <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">{item.deskripsi}</p>}
+                    {item.attribution && <p className="mt-3 text-xs text-slate-400">{item.attribution}</p>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {(profil.kontak_telepon || profil.kontak_whatsapp || profil.kontak_email || profil.alamat_publik) && (
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
