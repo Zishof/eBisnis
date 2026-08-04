@@ -158,6 +158,89 @@ export class TenantMigrationService {
     `);
   }
 
+  private async hasTenantTable(schemaName: string, tableName: string): Promise<boolean> {
+    const rows = await this.tenantDb.queryAdmin<{ exists: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1
+           FROM information_schema.tables
+          WHERE table_schema = $1 AND table_name = $2
+       ) AS exists`,
+      [schemaName, tableName],
+    );
+    return rows[0]?.exists === true;
+  }
+
+  private async markMigrationSucceeded(
+    definition: TenantMigrationDefinition,
+    schemaName: string,
+    checksum: string,
+    durationMs: number,
+    tenantId: string | null | undefined,
+  ): Promise<void> {
+    await this.tenantDb.executeAdmin(
+      `INSERT INTO "${schemaName}".schema_migration (version, name, checksum, duration_ms)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (version) DO NOTHING`,
+      [definition.version, definition.name, checksum, durationMs],
+    );
+
+    const catalog = await this.prisma.schemaMigrationCatalog.findUnique({
+      where: { version: definition.version },
+      select: { id: true },
+    });
+
+    /*
+     * `upsert`, bukan `create`.
+     *
+     * Kuncinya unik pada `(schema_name, migration_version)`, dan percobaan
+     * yang gagal sudah menempatkan baris `FAILED` di sana. Dengan `create`,
+     * penjalanan ulang yang BERHASIL menabrak kunci itu dan melempar galat -
+     * sesudah seluruh DDL-nya terlanjur diterapkan. Hasilnya keadaan yang
+     * paling menyesatkan yang mungkin terjadi pada migrasi: basis datanya
+     * sudah berubah, tetapi pembukuannya mengatakan migrasinya gagal.
+     *
+     * Baris riwayat menjawab "bagaimana akhirnya migrasi ini pada skema ini",
+     * bukan "berapa kali ia dicoba". Percobaan yang gagal tetap tercatat pada
+     * `audit_schema_migration`, yang memang append-only.
+     */
+    await this.prisma.tenantSchemaMigrationHistory.upsert({
+      where: {
+        schemaName_migrationVersion: {
+          schemaName,
+          migrationVersion: definition.version,
+        },
+      },
+      create: {
+        tenantId: tenantId ?? null,
+        schemaName,
+        migrationVersion: definition.version,
+        catalogId: catalog?.id ?? null,
+        checksum,
+        durationMs,
+        status: 'SUCCEEDED',
+      },
+      update: {
+        tenantId: tenantId ?? null,
+        catalogId: catalog?.id ?? null,
+        checksum,
+        durationMs,
+        status: 'SUCCEEDED',
+        errorMessage: null,
+        appliedAt: new Date(),
+      },
+    });
+
+    await this.prisma.auditSchemaMigration.create({
+      data: {
+        schemaName,
+        migrationVersion: definition.version,
+        checksum,
+        status: 'SUCCEEDED',
+        durationMs,
+      },
+    });
+  }
+
   /** Sinkronkan katalog canonical ke platform.schema_migration_catalog. */
   async syncCatalog(): Promise<void> {
     for (const definition of this.getManifest().migrations) {
@@ -259,6 +342,31 @@ export class TenantMigrationService {
         .replace(/\{\{AUDIT_SCHEMA\}\}/g, auditSchemaName);
 
       const startedAt = Date.now();
+      if (
+        definition.version === 'V044' &&
+        !(await this.hasTenantTable(schemaName, 'pesantren_unit_pendidikan'))
+      ) {
+        const durationMs = Date.now() - startedAt;
+        await this.markMigrationSucceeded(
+          definition,
+          schemaName,
+          checksum,
+          durationMs,
+          options.tenantId,
+        );
+        results.push({
+          version: definition.version,
+          name: definition.name,
+          checksum,
+          durationMs,
+          skipped: true,
+        });
+        this.logger.log(
+          `Migration ${definition.version} dilewati pada ${schemaName}: tabel pesantren_unit_pendidikan tidak ada.`,
+        );
+        continue;
+      }
+
       try {
         if (definition.version === 'V043') {
           await this.preparePosPharmacyMenuPrerequisites(schemaName);
@@ -290,68 +398,13 @@ export class TenantMigrationService {
 
       const durationMs = Date.now() - startedAt;
 
-      await this.tenantDb.executeAdmin(
-        `INSERT INTO "${schemaName}".schema_migration (version, name, checksum, duration_ms)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (version) DO NOTHING`,
-        [definition.version, definition.name, checksum, durationMs],
+      await this.markMigrationSucceeded(
+        definition,
+        schemaName,
+        checksum,
+        durationMs,
+        options.tenantId,
       );
-
-      const catalog = await this.prisma.schemaMigrationCatalog.findUnique({
-        where: { version: definition.version },
-        select: { id: true },
-      });
-
-      /*
-       * `upsert`, bukan `create`.
-       *
-       * Kuncinya unik pada `(schema_name, migration_version)`, dan percobaan
-       * yang gagal sudah menempatkan baris `FAILED` di sana. Dengan `create`,
-       * penjalanan ulang yang BERHASIL menabrak kunci itu dan melempar galat —
-       * sesudah seluruh DDL-nya terlanjur diterapkan. Hasilnya keadaan yang
-       * paling menyesatkan yang mungkin terjadi pada migrasi: basis datanya
-       * sudah berubah, tetapi pembukuannya mengatakan migrasinya gagal.
-       *
-       * Baris riwayat menjawab "bagaimana akhirnya migrasi ini pada skema ini",
-       * bukan "berapa kali ia dicoba". Percobaan yang gagal tetap tercatat pada
-       * `audit_schema_migration`, yang memang append-only.
-       */
-      await this.prisma.tenantSchemaMigrationHistory.upsert({
-        where: {
-          schemaName_migrationVersion: {
-            schemaName,
-            migrationVersion: definition.version,
-          },
-        },
-        create: {
-          tenantId: options.tenantId ?? null,
-          schemaName,
-          migrationVersion: definition.version,
-          catalogId: catalog?.id ?? null,
-          checksum,
-          durationMs,
-          status: 'SUCCEEDED',
-        },
-        update: {
-          tenantId: options.tenantId ?? null,
-          catalogId: catalog?.id ?? null,
-          checksum,
-          durationMs,
-          status: 'SUCCEEDED',
-          errorMessage: null,
-          appliedAt: new Date(),
-        },
-      });
-
-      await this.prisma.auditSchemaMigration.create({
-        data: {
-          schemaName,
-          migrationVersion: definition.version,
-          checksum,
-          status: 'SUCCEEDED',
-          durationMs,
-        },
-      });
 
       results.push({
         version: definition.version,

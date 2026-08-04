@@ -75,6 +75,18 @@ describe('katalog tanpa modul tidak berubah sama sekali', () => {
     ]);
   });
 
+  it('menolak entri inti yang tidak punya version atau sequence', () => {
+    const rusak = {
+      schemaVersion: 1,
+      migrations: [
+        { version: 'V001', sequence: 1, file: 'a.sql', name: 'a', description: '' },
+        { file: 'b.sql', name: 'b', description: '' },
+      ],
+    } as CoreManifest;
+
+    expect(() => gabungkanKatalog(rusak, [])).toThrow(/version, sequence/);
+  });
+
   it('katalog kosong tidak meledak', () => {
     expect(gabungkanKatalog({ schemaVersion: 1, migrations: [] }, []).migrations).toEqual([]);
   });

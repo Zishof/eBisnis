@@ -79,6 +79,35 @@ export const CORE_MODULE = 'core';
 
 export class MigrationCatalogError extends Error {}
 
+function pastikanMigrasiIntiValid(
+  definition: Partial<TenantMigrationDefinition>,
+  index: number,
+): asserts definition is TenantMigrationDefinition {
+  const kurang: string[] = [];
+  const version = definition.version;
+  if (!version) kurang.push('version');
+  if (typeof definition.sequence !== 'number') kurang.push('sequence');
+  if (!definition.file) kurang.push('file');
+  if (!definition.name) kurang.push('name');
+
+  if (kurang.length > 0) {
+    throw new MigrationCatalogError(
+      `Manifest inti pada indeks ${index} tidak lengkap: ${kurang.join(', ')} wajib diisi. ` +
+        'Katalog tidak dimuat supaya migrasi tidak menulis version NULL ke schema tenant.',
+    );
+  }
+  if (!version) {
+    throw new MigrationCatalogError(`Manifest inti pada indeks ${index} tidak punya version.`);
+  }
+
+  if (version.length > MAX_MIGRATION_ID_LENGTH) {
+    throw new MigrationCatalogError(
+      `Id migrasi inti "${version}" panjangnya ${version.length} aksara, ` +
+        `melebihi batas ${MAX_MIGRATION_ID_LENGTH}.`,
+    );
+  }
+}
+
 /**
  * Menyusun urutan modul menurut `dependsOn`.
  *
@@ -150,6 +179,7 @@ export function gabungkanKatalog(
   core: CoreManifest,
   modules: ModuleManifest[],
 ): HasilGabung {
+  core.migrations.forEach(pastikanMigrasiIntiValid);
   const inti = [...core.migrations].sort((a, b) => a.sequence - b.sequence);
 
   const terpakai = new Map<string, string>();
