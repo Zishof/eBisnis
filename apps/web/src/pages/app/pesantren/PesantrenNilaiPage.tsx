@@ -101,10 +101,14 @@ export function PesantrenNilaiPage() {
     queryFn: () => api.get<AnggotaRombonganRow[]>(`/pesantren/rombongan/${rombonganNilaiId}/anggota`),
   });
 
+  const tahunAktif = tahunAjaran.data?.find((item) => item.status === 'ACTIVE') ?? tahunAjaran.data?.[0];
+  const selectedTahunInputId = tahunAjaranId || tahunAktif?.id || '';
+  const selectedTahunRaporId = filterRapor.tahunAjaranId || tahunAktif?.id || '';
+
   const rapor = useQuery({
-    queryKey: ['pesantren-nilai-rapor', filterRapor.santriId, filterRapor.tahunAjaranId],
-    enabled: Boolean(filterRapor.santriId && filterRapor.tahunAjaranId),
-    queryFn: () => api.get<RaporRow[]>(`/pesantren/nilai/rapor/${filterRapor.santriId}/${filterRapor.tahunAjaranId}`),
+    queryKey: ['pesantren-nilai-rapor', filterRapor.santriId, selectedTahunRaporId],
+    enabled: Boolean(filterRapor.santriId && selectedTahunRaporId),
+    queryFn: () => api.get<RaporRow[]>(`/pesantren/nilai/rapor/${filterRapor.santriId}/${selectedTahunRaporId}`),
   });
 
   const tambahMapel = useMutation({
@@ -143,7 +147,7 @@ export function PesantrenNilaiPage() {
       api.post('/pesantren/nilai', {
         santriId: formNilai.santriId,
         komponenId: formNilai.komponenId,
-        tahunAjaranId,
+        tahunAjaranId: selectedTahunInputId,
         nilaiAngka: Number(formNilai.nilaiAngka),
         catatan: formNilai.catatan.trim() || undefined,
       }),
@@ -164,7 +168,7 @@ export function PesantrenNilaiPage() {
           api.post('/pesantren/nilai', {
             santriId: row.santriId,
             komponenId: formNilai.komponenId,
-            tahunAjaranId,
+            tahunAjaranId: selectedTahunInputId,
             nilaiAngka: Number(row.nilai),
           }),
         ),
@@ -188,9 +192,8 @@ export function PesantrenNilaiPage() {
     : santri.data?.items ?? [];
   const rombonganTerpilih = (rombongan.data?.items ?? []).find((item) => item.id === rombonganNilaiId);
   const santriTerpilih = (santri.data?.items ?? []).find((item) => item.id === filterRapor.santriId);
-  const tahunAktif = tahunAjaran.data?.find((item) => item.status === 'ACTIVE') ?? tahunAjaran.data?.[0];
-  const tahunInput = tahunAjaran.data?.find((item) => item.id === tahunAjaranId);
-  const tahunRapor = tahunAjaran.data?.find((item) => item.id === filterRapor.tahunAjaranId);
+  const tahunInput = tahunAjaran.data?.find((item) => item.id === selectedTahunInputId);
+  const tahunRapor = tahunAjaran.data?.find((item) => item.id === selectedTahunRaporId);
   const ringkasanRapor = hitungRingkasanRapor(rapor.data ?? []);
 
   const columns: Array<GridColumn<MataPelajaranRow>> = [
@@ -213,7 +216,7 @@ export function PesantrenNilaiPage() {
     const rows = [
       ['Santri', santriTerpilih.nama_lengkap],
       ['NIS', santriTerpilih.nis],
-      ['Tahun Ajaran', tahunRapor?.name ?? filterRapor.tahunAjaranId],
+      ['Tahun Ajaran', tahunRapor?.name ?? selectedTahunRaporId],
       [],
       ['Mata Pelajaran', 'Komponen', 'Nilai Akhir', 'Huruf'],
       ...rapor.data.map((row) => [
@@ -255,10 +258,10 @@ export function PesantrenNilaiPage() {
         }
       />
 
-      <div className="mb-4 flex gap-2">
-        <button type="button" className={tab === 'mapel' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('mapel')}>Mata Pelajaran</button>
-        <button type="button" className={tab === 'input' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('input')}>Input Nilai</button>
-        <button type="button" className={tab === 'rapor' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('rapor')}>Rapor</button>
+      <div className="mb-4 grid gap-2 rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:grid-cols-3">
+        <TabButton active={tab === 'mapel'} title="Mata Pelajaran" description={`${mapel.data?.length ?? 0} mapel`} onClick={() => setTab('mapel')} />
+        <TabButton active={tab === 'input'} title="Input Nilai" description={tahunInput ? `TA ${tahunInput.code}` : 'Pilih tahun'} onClick={() => setTab('input')} />
+        <TabButton active={tab === 'rapor'} title="Rapor" description={filterRapor.santriId ? 'Siap cetak' : 'Pilih santri'} onClick={() => setTab('rapor')} />
       </div>
 
       {tab === 'mapel' ? (
@@ -319,7 +322,7 @@ export function PesantrenNilaiPage() {
           <div className="card p-4">
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Tahun ajaran *">
-                <select className="field-input" value={tahunAjaranId} onChange={(e) => pilihTahunInput(e.target.value)}>
+                <select className="field-input" value={selectedTahunInputId} onChange={(e) => pilihTahunInput(e.target.value)}>
                   <option value="">Pilih tahun ajaran</option>
                   {(tahunAjaran.data ?? []).map((item) => (
                     <option key={item.id} value={item.id}>
@@ -348,7 +351,7 @@ export function PesantrenNilaiPage() {
               </div>
             </div>
             <div className="mt-4 flex justify-end">
-              <button type="button" className="btn-primary" disabled={!tahunAjaranId || !formNilai.santriId || !formNilai.komponenId || !formNilai.nilaiAngka || simpanNilai.isPending} onClick={() => simpanNilai.mutate()}>
+              <button type="button" className="btn-primary" disabled={!selectedTahunInputId || !formNilai.santriId || !formNilai.komponenId || !formNilai.nilaiAngka || simpanNilai.isPending} onClick={() => simpanNilai.mutate()}>
                 <Save className="h-4 w-4" aria-hidden />
                 Simpan Nilai
               </button>
@@ -371,7 +374,7 @@ export function PesantrenNilaiPage() {
                   type="button"
                   className="btn-outline"
                   disabled={
-                    !tahunAjaranId ||
+                    !selectedTahunInputId ||
                     !formNilai.komponenId ||
                     !santriMassal.length ||
                     Object.values(nilaiMassal).every((nilai) => !nilai.trim()) ||
@@ -459,7 +462,7 @@ export function PesantrenNilaiPage() {
                 </select>
               </Field>
               <Field label="Tahun ajaran">
-                <select className="field-input" value={filterRapor.tahunAjaranId} onChange={(e) => pilihTahunRapor(e.target.value)}>
+                <select className="field-input" value={selectedTahunRaporId} onChange={(e) => pilihTahunRapor(e.target.value)}>
                   <option value="">Pilih tahun ajaran</option>
                   {(tahunAjaran.data ?? []).map((item) => (
                     <option key={item.id} value={item.id}>
@@ -505,11 +508,11 @@ export function PesantrenNilaiPage() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tahun ajaran</p>
                 <p className="mt-1 font-semibold text-slate-950 dark:text-white print:text-slate-950">
-                  {tahunRapor?.name ?? (filterRapor.tahunAjaranId || '-')}
+                  {tahunRapor?.name ?? (selectedTahunRaporId || '-')}
                 </p>
               </div>
             </div>
-            {!filterRapor.santriId || !filterRapor.tahunAjaranId ? (
+            {!filterRapor.santriId || !selectedTahunRaporId ? (
               <div className="p-6 text-sm text-slate-500">Pilih santri dan tahun ajaran untuk menampilkan rapor.</div>
             ) : rapor.isLoading ? (
               <div className="p-6 text-sm text-slate-500">Memuat rapor...</div>
@@ -593,6 +596,33 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label className="field-label">{label}</label>
       {children}
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  title,
+  description,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`min-h-16 rounded-lg px-4 py-3 text-left transition ${
+        active
+          ? 'bg-emerald-700 text-white shadow-sm'
+          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white'
+      }`}
+      onClick={onClick}
+    >
+      <span className="block text-sm font-semibold">{title}</span>
+      <span className={`mt-1 block text-xs ${active ? 'text-emerald-50' : 'text-slate-500'}`}>{description}</span>
+    </button>
   );
 }
 

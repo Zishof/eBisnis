@@ -41,7 +41,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 | Keluar-masuk santri | Operasional dasar | Perizinan, ringkasan status izin, lampiran, disposisi, izin aktif, gerbang, scan kartu/RFID keyboard-wedge, log keluar/masuk, tamu, paket kiriman, penjemput, app Flutter security gate dasar | Fingerprint ditunda; transport/perjalanan detail dan dashboard security detail belum penuh |
 | Presensi santri | Operasional dasar | Presensi massal, presensi per tanggal/jenis, integrasi pilihan jadwal | Relasi fisik `jadwal_id`/`piket_id`, rekap absensi formal lengkap, dan perangkat absensi belum penuh |
 | Diniyah/tahfiz/dakwah | Operasional dasar | Kitab, halaqah, anggota, setoran tahfiz, modul diniyah/tahfiz, kajian publik, materi URL, rekaman URL, gambar, dan publish ke website | Sanad/ustadz pengampu, sertifikat/syahadah, dan arsip dakwah tingkat lanjut belum penuh |
-| Nilai/rapor | Sebagian selesai | Komponen nilai, skala huruf, entry nilai satuan, input nilai massal per rombongan dan komponen, endpoint rapor berbobot, template cetak/PDF browser dasar | Leger, ranking, kenaikan kelas/promosi, impor Excel, dan template rapor spesifik per yayasan/jenjang belum penuh |
+| Nilai/rapor | Sebagian selesai | Komponen nilai, skala huruf, entry nilai satuan, input nilai massal per rombongan dan komponen, default tahun ajaran aktif, endpoint rapor berbobot, template cetak/PDF browser dasar | Leger, ranking, kenaikan kelas/promosi, impor Excel, dan template rapor spesifik per yayasan/jenjang belum penuh |
 | Jadwal | Sebagian selesai | Jadwal pelajaran dengan validasi bentrok dasar, timetable visual per hari, dan drag-to-move antarhari yang tetap melewati validasi bentrok backend | Copy jadwal mingguan, substitusi guru, kalender ujian, ekspor, dan drag-resize jam belum penuh |
 | Buku penghubung | Sebagian selesai | Catatan santri, visibilitas wali/internal, status tindak lanjut, notifikasi wali | Thread balasan dua arah, lampiran, template komunikasi, dan SLA tindak lanjut belum penuh |
 | Pembinaan santri | Sebagian besar selesai | Katalog pelanggaran berpoin, catatan pelanggaran, hukuman/pembinaan, status selesai hukuman, prestasi kompetisi, penghargaan/apresiasi internal, ekstrakurikuler/organisasi, anggota, jabatan, keluar anggota, dan nilai partisipasi | Workflow pembinaan berjenjang lintas musyrif/wali kelas, surat panggilan resmi, dashboard poin, dan cetak rekap pembinaan belum penuh |
@@ -120,6 +120,7 @@ Batch berikut sudah diterapkan di repo aktif:
 - Kelas dan kurikulum eSchool dipoles: tahun ajaran kini dipilih dari daftar aktif/tersedia, tabel menampilkan nama tahun ajaran, dan form tambah rombongan/kurikulum lebih responsif di mobile.
 - PSB dan laporan dipoles: pembuatan gelombang memakai pilihan tahun ajaran/unit dari data sistem, tabel gelombang menampilkan nama tahun ajaran dan unit, serta filter laporan tidak lagi meminta ID teknis.
 - Perizinan keluar-masuk dipoles: halaman kini menampilkan ringkasan status izin cepat dan modal pengajuan lebih ramah mobile dengan konteks SOP jenis izin.
+- Nilai dan rapor dipoles: tab dibuat sebagai segment card responsif, tahun ajaran aktif otomatis menjadi default input/rapor, dan ekspor rapor memakai tahun yang sama dengan tampilan.
 
 Yang masih belum penuh setelah batch ini:
 
