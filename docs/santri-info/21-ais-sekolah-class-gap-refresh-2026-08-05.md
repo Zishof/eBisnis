@@ -13,7 +13,7 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 | Yayasan, sekolah, unit, jenis sekolah | `YayasanAction`, `SekolahAction`, `JenisSekolahAction`, `PenjurusanSekolahAction` | Sebagian besar selesai melalui profil pondok, unit pendidikan, domain/subdomain unit, website unit | Detail penjurusan/major formal per jenjang belum menjadi master typed penuh |
 | Santri, wali, biodata, alumni, BK | `SiswaAction`, `BiodataSiswaAction`, `SiswaWaliAction`, `AlumniSiswaAction`, `SiswaBkAction` | Sebagian besar selesai: santri, wali, Dapodik, portal wali, status aktif/keluar | Riwayat alumni/BK sebagai workflow khusus masih perlu pendalaman |
 | Referensi biodata keluarga | `PekerjaanOrtuSiswaAction`, `PendidikanOrangTuaSiswaAction`, `PenghasilanOrangTuaSiswaAction`, `KebutuhanKhususSiswaAction`, `AlatTransportasiSiswaAction`, `JenisTinggalSiswaAction` | Sebagian selesai: kolom Dapodik sudah tersedia, agama sudah referensi | Master referensi formal untuk pilihan Dapodik belum seluruhnya menjadi tabel CRUD |
-| PSB/PPDB | `CalonSiswaAction`, `GelombangPendaftaranPsbAction`, `PaketPsbAction`, `KelompokPendaftaranPsbAction`, `KelasSiswaPSBAction`, `RuangPSBAction`, `JadwalUjianPSBAction`, `JadwalPertemuanPSBAction`, `InterviewCalonSiswaAction`, `UjianPSBAction`, `VerifikasiKelengkapanCalonSiswaAction`, `PPDB*.java` | Operasional dasar: gelombang, portal daftar/login, schema tambahan JSON, unit tujuan, daftar ulang | Builder PSB drag-drop, jadwal ujian/interview detail, ruang ujian, skor ujian, dan verifikasi multi-parameter belum penuh |
+| PSB/PPDB | `CalonSiswaAction`, `GelombangPendaftaranPsbAction`, `PaketPsbAction`, `KelompokPendaftaranPsbAction`, `KelasSiswaPSBAction`, `RuangPSBAction`, `JadwalUjianPSBAction`, `JadwalPertemuanPSBAction`, `InterviewCalonSiswaAction`, `UjianPSBAction`, `VerifikasiKelengkapanCalonSiswaAction`, `PPDB*.java` | Ditingkatkan: gelombang, portal daftar/login, schema tambahan JSON, unit tujuan, daftar ulang, agenda jadwal seleksi lintas pendaftar, ruang/lokasi, penguji, nilai, catatan hasil | Builder PSB drag-drop lebih lanjut, verifikasi multi-parameter, paket biaya/ujian khusus, kartu peserta/cetak jadwal belum penuh |
 | Kelas, kurikulum, mapel, jadwal | `KelasSiswaAction`, `KurikulumSekolahAction`, `MatapelajaranAction`, `SubMatapelajaranAction`, `KelompokMatapelajaranAction`, `JadwalPelajaranAction`, `JamPelajaranAction`, `PertemuanJadwalPelajaranAction`, `MasaJadwalPelajaranAction`, `TimetableJadwalPelajaranWindow` | Sebagian selesai: rombongan, kurikulum, mapel, jadwal dengan validasi bentrok | Timetable visual drag-drop, copy jadwal, substitusi guru, pertemuan belajar detail, dan ekspor jadwal belum penuh |
 | Guru dan penugasan | `GuruAction`, `JenisGuruAction`, `JenisSKGuruAction`, `GuruMengajarAction`, `PenugasanGuruMengajarAction`, `AbsenGuruPiketAction` | Sebagian besar selesai: master guru, penugasan, absensi guru, piket | SK guru, jenis guru typed, evaluasi guru, dan dokumen penugasan cetak belum penuh |
 | Presensi santri | `AbsensiAction`, `AbsenPiketAction`, `AbsensiSiswaHelper` | Operasional dasar: presensi massal, jenis presensi, integrasi jadwal | FK fisik jadwal/piket dan rekap presensi formal belum penuh |
@@ -29,7 +29,7 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 
 ## Modul yang Paling Belum Ada
 
-1. **PSB lanjutan:** interview, ruang/jadwal ujian, skor ujian, verifikasi parameter, dan builder formulir visual.
+1. **PSB lanjutan:** verifikasi parameter, kartu peserta/cetak jadwal, paket ujian/biaya khusus, dan builder formulir visual tingkat lanjut.
 2. **Timetable visual:** drag-drop jadwal, copy minggu, substitusi pengajar, ekspor jadwal.
 3. **Rapor resmi:** template PDF per jenjang, leger, ranking, kenaikan kelas/promosi.
 4. **Posting akuntansi sekolah:** piutang, cicilan, deposit, denda, dibayar di muka, diskon.
@@ -42,6 +42,7 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 - Buku penghubung diperluas dengan jenis `AKTIVITAS_HARIAN` dan `MATERI_HARIAN`.
 - UI buku penghubung menjadi `Buku Penghubung dan Aktivitas Harian`, dengan metrik aktivitas/materi, header form yang lebih jelas, dan default input untuk catatan harian.
 - Migrasi tenant baru disiapkan agar constraint database menerima jenis baru.
+- PSB diperluas dengan agenda `Jadwal Seleksi` lintas pendaftar: filter tanggal/jenis/status, metrik agenda, ruang/lokasi, penguji, nilai, catatan hasil, dan aksi cepat selesai/tidak hadir.
 
 ## Prinsip UI/UX yang Dipakai
 

@@ -48,6 +48,17 @@ class DaftarPendaftarQuery extends HalamanQuery {
   cari?: string;
 }
 
+class DaftarJadwalQuery extends HalamanQuery {
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  tanggal?: string;
+
+  @ApiPropertyOptional({ enum: JENIS_JADWAL }) @IsOptional() @IsIn(JENIS_JADWAL as unknown as string[])
+  jenis?: string;
+
+  @ApiPropertyOptional({ enum: STATUS_JADWAL }) @IsOptional() @IsIn(STATUS_JADWAL as unknown as string[])
+  status?: string;
+}
+
 function halamanOpsi(q: HalamanQuery) {
   return {
     halaman: q.halaman && q.halaman > 0 ? q.halaman : 1,
@@ -316,6 +327,18 @@ export class PesantrenPsbPendaftarController {
       gelombangId: query.gelombangId,
       status: query.status,
       cari: query.cari,
+      ...halamanOpsi(query),
+    });
+  }
+
+  @Permissions('EPESANTREN_PSB.READ')
+  @Get('jadwal')
+  @ApiOperation({ summary: 'Agenda jadwal ujian/wawancara PSB lintas pendaftar' })
+  daftarAgendaJadwal(@Query() query: DaftarJadwalQuery, @CurrentUser() user: AuthenticatedUser) {
+    return this.psb.daftarAgendaJadwal(schemaWajib(user), {
+      tanggal: query.tanggal,
+      jenis: query.jenis,
+      status: query.status,
       ...halamanOpsi(query),
     });
   }

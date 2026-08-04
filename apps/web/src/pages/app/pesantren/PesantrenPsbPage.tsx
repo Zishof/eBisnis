@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Plus, Trash2, XCircle } from 'lucide-react';
+import { CalendarClock, CheckCircle2, ClipboardCheck, MapPin, Plus, Trash2, UserRound, XCircle } from 'lucide-react';
 import { api, formatDate, formatMoney } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -31,6 +31,25 @@ interface PendaftarRow extends Record<string, unknown> {
   unit_pendidikan_tujuan_id: string | null;
   status: string;
   created_at: string;
+}
+
+interface JadwalRow extends Record<string, unknown> {
+  id: string;
+  pendaftar_id: string;
+  jenis: string;
+  tanggal: string;
+  waktu_mulai: string | null;
+  waktu_selesai: string | null;
+  lokasi: string | null;
+  penguji: string | null;
+  status: string;
+  nilai: string | null;
+  catatan_hasil: string | null;
+  nomor_pendaftaran: string;
+  nama_lengkap: string;
+  status_pendaftar: string;
+  gelombang_nama: string;
+  unit_pendidikan_nama: string | null;
 }
 
 interface TahunAjaranRow {
@@ -95,12 +114,17 @@ export function PesantrenPsbPage() {
   const toast = useToast();
   const toMessage = useErrorMessage();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<'gelombang' | 'pendaftar'>('gelombang');
+  const [tab, setTab] = useState<'gelombang' | 'pendaftar' | 'jadwal'>('gelombang');
   const [pageGelombang, setPageGelombang] = useState(1);
   const [pagePendaftar, setPagePendaftar] = useState(1);
+  const [pageJadwal, setPageJadwal] = useState(1);
   const [statusGelombang, setStatusGelombang] = useState('');
   const [statusPendaftar, setStatusPendaftar] = useState('');
+  const [statusJadwal, setStatusJadwal] = useState('');
+  const [jenisJadwal, setJenisJadwal] = useState('');
+  const [tanggalJadwal, setTanggalJadwal] = useState('');
   const [cariPendaftar, setCariPendaftar] = useState('');
+  const [hasilJadwal, setHasilJadwal] = useState<Record<string, { nilai: string; catatanHasil: string }>>({});
   const [membuatGelombang, setMembuatGelombang] = useState(false);
   const [formGelombang, setFormGelombang] = useState(FORM_GELOMBANG_KOSONG);
   const [fieldTambahan, setFieldTambahan] = useState<FieldTambahan[]>([]);
@@ -131,6 +155,17 @@ export function PesantrenPsbPage() {
       if (statusPendaftar) params.set('status', statusPendaftar);
       if (cariPendaftar) params.set('cari', cariPendaftar);
       return api.get<{ items: PendaftarRow[]; total: number }>(`/pesantren/psb/pendaftar?${params.toString()}`);
+    },
+  });
+
+  const jadwal = useQuery({
+    queryKey: ['pesantren-psb-jadwal', pageJadwal, tanggalJadwal, jenisJadwal, statusJadwal],
+    queryFn: () => {
+      const params = new URLSearchParams({ halaman: String(pageJadwal), ukuranHalaman: String(PAGE_SIZE) });
+      if (tanggalJadwal) params.set('tanggal', tanggalJadwal);
+      if (jenisJadwal) params.set('jenis', jenisJadwal);
+      if (statusJadwal) params.set('status', statusJadwal);
+      return api.get<{ items: JadwalRow[]; total: number }>(`/pesantren/psb/pendaftar/jadwal?${params.toString()}`);
     },
   });
 
@@ -181,6 +216,23 @@ export function PesantrenPsbPage() {
       void queryClient.invalidateQueries({ queryKey: ['pesantren-psb-pendaftar'] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal memperbarui pendaftar.'), 'error'),
+  });
+
+  const catatHasilJadwal = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'SELESAI' | 'TIDAK_HADIR' | 'DIBATALKAN' }) => {
+      const hasil = hasilJadwal[id] ?? { nilai: '', catatanHasil: '' };
+      return api.post<JadwalRow>(`/pesantren/psb/pendaftar/jadwal/${id}/hasil`, {
+        status,
+        nilai: hasil.nilai ? Number(hasil.nilai) : undefined,
+        catatanHasil: hasil.catatanHasil.trim() || undefined,
+      });
+    },
+    onSuccess: () => {
+      toast.push('Hasil jadwal PSB tercatat.', 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-psb-jadwal'] });
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-psb-pendaftar'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mencatat hasil jadwal.'), 'error'),
   });
 
   const tahunAktif = tahunAjaran.data?.find((item) => item.status === 'ACTIVE') ?? tahunAjaran.data?.[0];
@@ -245,6 +297,66 @@ export function PesantrenPsbPage() {
 
   const totalGelombang = gelombang.data?.total ?? 0;
   const totalPendaftar = pendaftar.data?.total ?? 0;
+  const totalJadwal = jadwal.data?.total ?? 0;
+  const jadwalHariIni = (jadwal.data?.items ?? []).filter((item) => item.tanggal === new Date().toISOString().slice(0, 10)).length;
+  const jadwalBelumSelesai = (jadwal.data?.items ?? []).filter((item) => item.status === 'DIJADWALKAN').length;
+
+  const jadwalColumns: Array<GridColumn<JadwalRow>> = [
+    {
+      key: 'tanggal',
+      header: 'Waktu',
+      render: (row) => (
+        <div>
+          <p className="font-semibold text-slate-900 dark:text-white">{formatDate(row.tanggal)}</p>
+          <p className="text-xs text-slate-500">{[row.waktu_mulai, row.waktu_selesai].filter(Boolean).join(' - ') || 'Jam belum diisi'}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'nama_lengkap',
+      header: 'Pendaftar',
+      render: (row) => (
+        <div>
+          <p className="font-semibold text-slate-900 dark:text-white">{row.nama_lengkap}</p>
+          <p className="text-xs text-slate-500">{row.nomor_pendaftaran}</p>
+        </div>
+      ),
+    },
+    { key: 'jenis', header: 'Jenis', render: (row) => <StatusBadge status={row.jenis} /> },
+    { key: 'lokasi', header: 'Ruang/Lokasi', render: (row) => row.lokasi ?? '-' },
+    { key: 'penguji', header: 'Penguji', render: (row) => row.penguji ?? '-' },
+    { key: 'unit_pendidikan_nama', header: 'Unit', render: (row) => row.unit_pendidikan_nama ?? 'Lintas unit' },
+    { key: 'status', header: 'Status', render: (row) => <StatusBadge status={row.status} /> },
+    {
+      key: 'nilai',
+      header: 'Hasil',
+      render: (row) => (
+        <div className="min-w-[220px] space-y-2">
+          <div className="grid grid-cols-[72px_1fr] gap-2">
+            <input
+              className="field-input h-9 px-2 py-1 text-xs"
+              type="number"
+              min="0"
+              max="100"
+              placeholder="Nilai"
+              value={hasilJadwal[row.id]?.nilai ?? row.nilai ?? ''}
+              onChange={(event) => setHasilJadwal((current) => ({ ...current, [row.id]: { ...(current[row.id] ?? { catatanHasil: row.catatan_hasil ?? '' }), nilai: event.target.value } }))}
+            />
+            <input
+              className="field-input h-9 px-2 py-1 text-xs"
+              placeholder="Catatan"
+              value={hasilJadwal[row.id]?.catatanHasil ?? row.catatan_hasil ?? ''}
+              onChange={(event) => setHasilJadwal((current) => ({ ...current, [row.id]: { ...(current[row.id] ?? { nilai: row.nilai ?? '' }), catatanHasil: event.target.value } }))}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <StatusAction label="Selesai" onClick={() => catatHasilJadwal.mutate({ id: row.id, status: 'SELESAI' })} />
+            <StatusAction label="Tidak hadir" onClick={() => catatHasilJadwal.mutate({ id: row.id, status: 'TIDAK_HADIR' })} />
+          </div>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <>
@@ -262,12 +374,15 @@ export function PesantrenPsbPage() {
         }
       />
 
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         <button type="button" className={tab === 'gelombang' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('gelombang')}>
           Gelombang
         </button>
         <button type="button" className={tab === 'pendaftar' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('pendaftar')}>
           Pendaftar
+        </button>
+        <button type="button" className={tab === 'jadwal' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('jadwal')}>
+          Jadwal Seleksi
         </button>
       </div>
 
@@ -305,7 +420,7 @@ export function PesantrenPsbPage() {
           />
           <Pagination page={pageGelombang} totalPages={Math.max(1, Math.ceil(totalGelombang / PAGE_SIZE))} total={totalGelombang} onChange={setPageGelombang} />
         </>
-      ) : (
+      ) : tab === 'pendaftar' ? (
         <>
           <div className="card mb-4 p-4">
             <div className="flex flex-wrap items-end gap-3">
@@ -356,6 +471,80 @@ export function PesantrenPsbPage() {
             emptyTitle="Belum ada pendaftar."
           />
           <Pagination page={pagePendaftar} totalPages={Math.max(1, Math.ceil(totalPendaftar / PAGE_SIZE))} total={totalPendaftar} onChange={setPagePendaftar} />
+        </>
+      ) : (
+        <>
+          <div className="mb-4 grid gap-3 md:grid-cols-4">
+            <PsbMetric icon={<CalendarClock className="h-4 w-4" aria-hidden />} label="Agenda halaman ini" value={jadwal.data?.items.length ?? 0} />
+            <PsbMetric icon={<ClipboardCheck className="h-4 w-4" aria-hidden />} label="Belum selesai" value={jadwalBelumSelesai} />
+            <PsbMetric icon={<MapPin className="h-4 w-4" aria-hidden />} label="Jadwal hari ini" value={jadwalHariIni} />
+            <PsbMetric icon={<UserRound className="h-4 w-4" aria-hidden />} label="Total agenda" value={totalJadwal} />
+          </div>
+          <div className="card mb-4 p-4">
+            <div className="grid gap-3 md:grid-cols-[180px_180px_180px_auto]">
+              <Field label="Tanggal">
+                <input
+                  type="date"
+                  className="field-input"
+                  value={tanggalJadwal}
+                  onChange={(event) => {
+                    setTanggalJadwal(event.target.value);
+                    setPageJadwal(1);
+                  }}
+                />
+              </Field>
+              <Field label="Jenis seleksi">
+                <select
+                  className="field-input"
+                  value={jenisJadwal}
+                  onChange={(event) => {
+                    setJenisJadwal(event.target.value);
+                    setPageJadwal(1);
+                  }}
+                >
+                  <option value="">Semua</option>
+                  {['UJIAN_TULIS', 'TES_BACA_QURAN', 'WAWANCARA', 'TES_KESEHATAN', 'LAINNYA'].map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </Field>
+              <Field label="Status jadwal">
+                <select
+                  className="field-input"
+                  value={statusJadwal}
+                  onChange={(event) => {
+                    setStatusJadwal(event.target.value);
+                    setPageJadwal(1);
+                  }}
+                >
+                  <option value="">Semua</option>
+                  {['DIJADWALKAN', 'SELESAI', 'TIDAK_HADIR', 'DIBATALKAN'].map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </Field>
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  className="btn-outline w-full justify-center"
+                  onClick={() => {
+                    setTanggalJadwal('');
+                    setJenisJadwal('');
+                    setStatusJadwal('');
+                    setPageJadwal(1);
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+          <DataGrid
+            columns={jadwalColumns}
+            rows={jadwal.data?.items ?? []}
+            loading={jadwal.isLoading}
+            error={jadwal.isError ? toMessage(jadwal.error, (_key, fallback) => fallback ?? 'Gagal memuat jadwal PSB.') : undefined}
+            rowKey={(row) => row.id}
+            onRetry={() => void jadwal.refetch()}
+            emptyTitle="Belum ada jadwal seleksi."
+          />
+          <Pagination page={pageJadwal} totalPages={Math.max(1, Math.ceil(totalJadwal / PAGE_SIZE))} total={totalJadwal} onChange={setPageJadwal} />
         </>
       )}
 
@@ -516,6 +705,18 @@ export function PesantrenPsbPage() {
         </div>
       )}
     </>
+  );
+}
+
+function PsbMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  return (
+    <div className="card flex items-center gap-3 p-4">
+      <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{icon}</span>
+      <span>
+        <p className="text-sm text-slate-500">{label}</p>
+        <p className="text-xl font-semibold text-slate-900 dark:text-white">{value}</p>
+      </span>
+    </div>
   );
 }
 

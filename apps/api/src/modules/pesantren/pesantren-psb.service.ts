@@ -135,6 +135,19 @@ export interface BarisJadwal {
 const KOLOM_JADWAL = `id::text, pendaftar_id::text, jenis, tanggal::text, waktu_mulai::text,
   waktu_selesai::text, lokasi, penguji, status, nilai::text, catatan_hasil, created_at::text`;
 
+export interface BarisAgendaJadwal extends BarisJadwal {
+  nomor_pendaftaran: string;
+  nama_lengkap: string;
+  status_pendaftar: string;
+  gelombang_nama: string;
+  unit_pendidikan_nama: string | null;
+}
+
+const KOLOM_AGENDA_JADWAL = `j.id::text, j.pendaftar_id::text, j.jenis, j.tanggal::text, j.waktu_mulai::text,
+  j.waktu_selesai::text, j.lokasi, j.penguji, j.status, j.nilai::text, j.catatan_hasil, j.created_at::text,
+  p.nomor_pendaftaran, p.nama_lengkap, p.status AS status_pendaftar, g.nama AS gelombang_nama,
+  u.name AS unit_pendidikan_nama`;
+
 @Injectable()
 export class PesantrenPsbService {
   constructor(
@@ -798,6 +811,55 @@ export class PesantrenPsbService {
   }
 
   // --- Jadwal ------------------------------------------------------------
+
+  async daftarAgendaJadwal(
+    schemaName: string,
+    opsi: { tanggal?: string; jenis?: string; status?: string; halaman: number; ukuranHalaman: number },
+  ): Promise<{ items: BarisAgendaJadwal[]; total: number }> {
+    const S = `"${schemaName}"`;
+    const kondisi: string[] = ['j.deleted_at IS NULL', 'p.deleted_at IS NULL'];
+    const params: unknown[] = [];
+
+    if (opsi.tanggal) {
+      params.push(opsi.tanggal);
+      kondisi.push(`j.tanggal = $${params.length}`);
+    }
+    if (opsi.jenis) {
+      params.push(opsi.jenis);
+      kondisi.push(`j.jenis = $${params.length}`);
+    }
+    if (opsi.status) {
+      params.push(opsi.status);
+      kondisi.push(`j.status = $${params.length}`);
+    }
+
+    const where = kondisi.join(' AND ');
+    const totalRows = await this.tenantDb.query<{ total: string }>(
+      schemaName,
+      `SELECT COUNT(*)::text AS total
+         FROM ${S}.pesantren_psb_jadwal j
+         JOIN ${S}.pesantren_psb_pendaftar p ON p.id = j.pendaftar_id
+        WHERE ${where}`,
+      params,
+    );
+
+    const offset = (opsi.halaman - 1) * opsi.ukuranHalaman;
+    params.push(opsi.ukuranHalaman, offset);
+    const items = await this.tenantDb.query<BarisAgendaJadwal>(
+      schemaName,
+      `SELECT ${KOLOM_AGENDA_JADWAL}
+         FROM ${S}.pesantren_psb_jadwal j
+         JOIN ${S}.pesantren_psb_pendaftar p ON p.id = j.pendaftar_id
+         JOIN ${S}.pesantren_psb_gelombang g ON g.id = p.gelombang_id
+         LEFT JOIN ${S}.pesantren_unit_pendidikan u ON u.id = p.unit_pendidikan_tujuan_id
+        WHERE ${where}
+        ORDER BY j.tanggal ASC, j.waktu_mulai ASC NULLS LAST, p.nama_lengkap ASC
+        LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params,
+    );
+
+    return { items, total: Number(totalRows[0]?.total ?? 0) };
+  }
 
   async daftarJadwal(schemaName: string, pendaftarId: string): Promise<BarisJadwal[]> {
     const S = `"${schemaName}"`;
