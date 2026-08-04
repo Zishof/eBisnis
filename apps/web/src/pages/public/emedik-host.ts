@@ -14,6 +14,38 @@ function normalizedHost(hostname: string): string {
   return hostname.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
 }
 
+function titleCaseSlug(slug: string): string {
+  return slug
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function publicBaseFor(hostname: string, rootHost: string): { host: string; url: string; tenantName: string | null } {
+  const host = normalizedHost(hostname);
+  if (host === `www.${rootHost}`) return { host: rootHost, url: `https://${rootHost}`, tenantName: null };
+  if (host === rootHost) return { host, url: `https://${host}`, tenantName: null };
+  return { host, url: `https://${host}`, tenantName: null };
+}
+
+function emedikTenantName(hostname: string): string | null {
+  const host = normalizedHost(hostname);
+  if (EMEDIK_ROOT_HOSTS.includes(host) || isApotikHost(host)) return null;
+  if (!host.endsWith(EMEDIK_TENANT_SUFFIX)) return null;
+  const subdomain = host.slice(0, -EMEDIK_TENANT_SUFFIX.length);
+  if (subdomain === 'demo') return 'Demo eMedik';
+  return `${titleCaseSlug(subdomain)} eMedik`;
+}
+
+function apotikTenantName(hostname: string): string | null {
+  const host = normalizedHost(hostname);
+  if (APOTIK_ROOT_HOSTS.includes(host)) return null;
+  if (host === DEMO_APOTIK_HOST) return 'Demo Apotik eMedik';
+  if (!host.endsWith('-apotik.emedik.id')) return null;
+  return `${titleCaseSlug(host.slice(0, -'-apotik.emedik.id'.length))} Apotik`;
+}
+
 export interface EmedikPublicBrand {
   kind: 'emedik' | 'apotik';
   logoText: string;
@@ -79,38 +111,40 @@ export function emedikPublicBrandFor(
   hostname: string = window.location.hostname,
 ): EmedikPublicBrand | null {
   if (isApotikHost(hostname)) {
+    const base = publicBaseFor(hostname, 'apotik.emedik.id');
+    const tenantName = apotikTenantName(hostname);
     return {
       kind: 'apotik',
       logoText: 'Rx',
-      name: 'Apotik eMedik',
-      homeUrl: 'https://apotik.emedik.id',
+      name: tenantName ?? 'Apotik eMedik',
+      homeUrl: base.url,
       description:
         'Landing dan akses apotik eMedik untuk pelayanan farmasi, stok obat, resep, pembelian, dan penjualan obat yang terhubung dengan operasional fasilitas kesehatan.',
       headerItems: [
-        { labelKey: 'apotik.home', label: 'Beranda', url: 'https://apotik.emedik.id', sortOrder: 1 },
-        { labelKey: 'apotik.features', label: 'Farmasi', url: 'https://apotik.emedik.id/#Farmasi', sortOrder: 2 },
-        { labelKey: 'apotik.pos', label: 'POS Apotik', url: 'https://apotik.emedik.id/#POS-Apotik', sortOrder: 3 },
-        { labelKey: 'apotik.documents', label: 'Dokumen', url: 'https://apotik.emedik.id/#Dokumen', sortOrder: 4 },
-        { labelKey: 'apotik.proposal', label: 'Proposal', url: 'https://apotik.emedik.id/proposal', sortOrder: 5 },
+        { labelKey: 'apotik.home', label: 'Beranda', url: base.url, sortOrder: 1 },
+        { labelKey: 'apotik.features', label: 'Farmasi', url: `${base.url}/#Farmasi`, sortOrder: 2 },
+        { labelKey: 'apotik.pos', label: 'POS Apotik', url: `${base.url}/#POS-Apotik`, sortOrder: 3 },
+        { labelKey: 'apotik.documents', label: 'Dokumen', url: `${base.url}/#Dokumen`, sortOrder: 4 },
+        { labelKey: 'apotik.proposal', label: 'Proposal', url: `${base.url}/proposal`, sortOrder: 5 },
       ],
       footer: [
         {
           code: 'APOTIK',
           title: 'Apotik',
           items: [
-            { label: 'Landing apotik', url: 'https://apotik.emedik.id' },
+            { label: 'Landing apotik', url: base.url },
             { label: 'Demo apotik', url: 'https://demo-apotik.emedik.id' },
-            { label: 'Masuk apotik', url: 'https://apotik.emedik.id/masuk' },
+            { label: 'Masuk apotik', url: `${base.url}/masuk` },
           ],
         },
         {
           code: 'DOKUMEN',
           title: 'Dokumen',
           items: [
-            { label: 'Proposal Penawaran', url: 'https://apotik.emedik.id/proposal' },
-            { label: 'Surat Penawaran', url: 'https://apotik.emedik.id/penawaran' },
-            { label: 'Presentasi', url: 'https://apotik.emedik.id/presentasi' },
-            { label: 'Draft PKS', url: 'https://apotik.emedik.id/pks' },
+            { label: 'Proposal Penawaran', url: `${base.url}/proposal` },
+            { label: 'Surat Penawaran', url: `${base.url}/penawaran` },
+            { label: 'Presentasi', url: `${base.url}/presentasi` },
+            { label: 'Draft PKS', url: `${base.url}/pks` },
           ],
         },
       ],
@@ -135,39 +169,41 @@ export function emedikPublicBrandFor(
   }
 
   if (isEmedikHost(hostname)) {
+    const base = publicBaseFor(hostname, 'emedik.id');
+    const tenantName = emedikTenantName(hostname);
     return {
       kind: 'emedik',
       logoText: 'eM',
-      name: 'eMedik.id',
-      homeUrl: 'https://emedik.id',
+      name: tenantName ?? 'eMedik.id',
+      homeUrl: base.url,
       description:
         'Sistem operasional terpadu untuk rumah sakit, klinik, puskesmas, posyandu, dan apotik: mulai dari pendaftaran, pelayanan klinis, farmasi, billing, hingga laporan.',
       headerItems: [
-        { labelKey: 'emedik.home', label: 'Beranda', url: 'https://emedik.id', sortOrder: 1 },
-        { labelKey: 'emedik.solutions', label: 'Solusi', url: 'https://emedik.id/#Solusi', sortOrder: 2 },
-        { labelKey: 'emedik.flow', label: 'Alur', url: 'https://emedik.id/#Alur', sortOrder: 3 },
-        { labelKey: 'emedik.security', label: 'Keamanan', url: 'https://emedik.id/#Keamanan', sortOrder: 4 },
-        { labelKey: 'emedik.documents', label: 'Dokumen', url: 'https://emedik.id/#Dokumen', sortOrder: 5 },
+        { labelKey: 'emedik.home', label: 'Beranda', url: base.url, sortOrder: 1 },
+        { labelKey: 'emedik.solutions', label: 'Solusi', url: `${base.url}/#Solusi`, sortOrder: 2 },
+        { labelKey: 'emedik.flow', label: 'Alur', url: `${base.url}/#Alur`, sortOrder: 3 },
+        { labelKey: 'emedik.security', label: 'Keamanan', url: `${base.url}/#Keamanan`, sortOrder: 4 },
+        { labelKey: 'emedik.documents', label: 'Dokumen', url: `${base.url}/#Dokumen`, sortOrder: 5 },
       ],
       footer: [
         {
           code: 'EMEDIK',
           title: 'eMedik',
           items: [
-            { label: 'Rumah Sakit', url: 'https://emedik.id/#rumah-sakit' },
-            { label: 'Klinik', url: 'https://emedik.id/#klinik' },
-            { label: 'Puskesmas', url: 'https://emedik.id/#puskesmas' },
-            { label: 'Posyandu', url: 'https://emedik.id/#posyandu' },
+            { label: 'Rumah Sakit', url: `${base.url}/#rumah-sakit` },
+            { label: 'Klinik', url: `${base.url}/#klinik` },
+            { label: 'Puskesmas', url: `${base.url}/#puskesmas` },
+            { label: 'Posyandu', url: `${base.url}/#posyandu` },
           ],
         },
         {
           code: 'DOKUMEN',
           title: 'Dokumen',
           items: [
-            { label: 'Proposal Penawaran', url: 'https://emedik.id/proposal' },
-            { label: 'Surat Penawaran', url: 'https://emedik.id/penawaran' },
-            { label: 'Presentasi', url: 'https://emedik.id/presentasi' },
-            { label: 'Draft PKS', url: 'https://emedik.id/pks' },
+            { label: 'Proposal Penawaran', url: `${base.url}/proposal` },
+            { label: 'Surat Penawaran', url: `${base.url}/penawaran` },
+            { label: 'Presentasi', url: `${base.url}/presentasi` },
+            { label: 'Draft PKS', url: `${base.url}/pks` },
           ],
         },
       ],

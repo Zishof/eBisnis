@@ -239,6 +239,9 @@ const HealthMasterDataPage = lazy(() =>
 const HealthOperationalReadinessPage = lazy(() =>
   import('../verticals/health/OperationalReadinessPage').then((m) => ({ default: m.OperationalReadinessPage })),
 );
+const HealthOperationalModulePage = lazy(() =>
+  import('../verticals/health/HealthOperationalModulePage').then((m) => ({ default: m.HealthOperationalModulePage })),
+);
 const HealthFeePolicyPage = lazy(() =>
   import('../verticals/health/FeePolicyPage').then((m) => ({ default: m.FeePolicyPage })),
 );
@@ -613,6 +616,7 @@ export function App() {
             setiap pembacaan.
           */}
           <Route path="emedik" element={<PurposeProvider><Outlet /></PurposeProvider>}>
+            <Route index element={<HealthOperationalModulePage />} />
             <Route path="fasilitas" element={<HealthFacilityPage />} />
             <Route path="unit" element={<HealthFacilityPage />} />
             <Route path="pemberi-layanan" element={<HealthFacilityPage />} />
@@ -691,6 +695,7 @@ export function App() {
             <Route path="waterfall" element={<HealthOperationalReadinessPage mode="investor" />} />
             <Route path="zona-data" element={<HealthOperationalReadinessPage mode="security" />} />
             <Route path="penjaga-ai" element={<HealthOperationalReadinessPage mode="ai" />} />
+            <Route path="*" element={<HealthOperationalModulePage />} />
           </Route>
 
           <Route path="pesantren/unit-pendidikan" element={<PesantrenUnitPendidikanPage />} />

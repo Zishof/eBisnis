@@ -49,21 +49,23 @@ describe('host publik eMedik', () => {
   it('memberi brand publik sesuai host tanpa kembali ke eBisnis', () => {
     expect(emedikPublicBrandFor('emedik.id')?.name).toBe('eMedik.id');
     expect(emedikPublicBrandFor('emedik.id')?.homeUrl).toBe('https://emedik.id');
-    expect(emedikPublicBrandFor('demo.emedik.id')?.name).toBe('eMedik.id');
-    expect(emedikPublicBrandFor('demo.emedik.id')?.homeUrl).toBe('https://emedik.id');
+    expect(emedikPublicBrandFor('demo.emedik.id')?.name).toBe('Demo eMedik');
+    expect(emedikPublicBrandFor('demo.emedik.id')?.homeUrl).toBe('https://demo.emedik.id');
     expect(emedikPublicBrandFor('demo.emedik.id')?.headerItems.map((item) => item.url)).toContain(
-      'https://emedik.id/#Solusi',
+      'https://demo.emedik.id/#Solusi',
     );
     expect(emedikPublicBrandFor('demo.emedik.id')?.headerItems.map((item) => item.url)).toContain(
-      'https://emedik.id/#Dokumen',
+      'https://demo.emedik.id/#Dokumen',
     );
     expect(emedikPublicBrandFor('apotik.emedik.id')?.name).toBe('Apotik eMedik');
     expect(emedikPublicBrandFor('apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
     expect(emedikPublicBrandFor('apotik.emedik.id')?.headerItems.map((item) => item.url)).toContain(
       'https://apotik.emedik.id/#POS-Apotik',
     );
-    expect(emedikPublicBrandFor('demo-apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
-    expect(emedikPublicBrandFor('sehatjaya-apotik.emedik.id')?.homeUrl).toBe('https://apotik.emedik.id');
+    expect(emedikPublicBrandFor('demo-apotik.emedik.id')?.name).toBe('Demo Apotik eMedik');
+    expect(emedikPublicBrandFor('demo-apotik.emedik.id')?.homeUrl).toBe('https://demo-apotik.emedik.id');
+    expect(emedikPublicBrandFor('sehatjaya-apotik.emedik.id')?.name).toBe('Sehatjaya Apotik');
+    expect(emedikPublicBrandFor('sehatjaya-apotik.emedik.id')?.homeUrl).toBe('https://sehatjaya-apotik.emedik.id');
     expect(emedikPublicBrandFor('ebisnis.id')).toBeNull();
   });
 
@@ -72,16 +74,16 @@ describe('host publik eMedik', () => {
     const apotikDocs = emedikPublicBrandFor('demo-apotik.emedik.id')?.footer.find((section) => section.code === 'DOKUMEN')?.items;
 
     expect(emedikDocs?.map((item) => item.url)).toEqual([
-      'https://emedik.id/proposal',
-      'https://emedik.id/penawaran',
-      'https://emedik.id/presentasi',
-      'https://emedik.id/pks',
+      'https://demo.emedik.id/proposal',
+      'https://demo.emedik.id/penawaran',
+      'https://demo.emedik.id/presentasi',
+      'https://demo.emedik.id/pks',
     ]);
     expect(apotikDocs?.map((item) => item.url)).toEqual([
-      'https://apotik.emedik.id/proposal',
-      'https://apotik.emedik.id/penawaran',
-      'https://apotik.emedik.id/presentasi',
-      'https://apotik.emedik.id/pks',
+      'https://demo-apotik.emedik.id/proposal',
+      'https://demo-apotik.emedik.id/penawaran',
+      'https://demo-apotik.emedik.id/presentasi',
+      'https://demo-apotik.emedik.id/pks',
     ]);
     expect([...(emedikDocs ?? []), ...(apotikDocs ?? [])].some((item) => item.url.includes('ebisnis.id'))).toBe(false);
   });
