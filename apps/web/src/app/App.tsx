@@ -213,6 +213,9 @@ const HealthDeviceAdapterPage = lazy(() =>
 // Layar kasir dimuat terpisah: berkasnya besar dan hanya dipakai peran kasir,
 // sementara pengguna lain tidak perlu ikut menunggunya diunduh.
 const PosPage = lazy(() => import('../pages/pos/PosPage').then((m) => ({ default: m.PosPage })));
+const PharmacyPosPage = lazy(() =>
+  import('../pages/pos/PharmacyPosPage').then((m) => ({ default: m.PharmacyPosPage })),
+);
 const PosReportPage = lazy(() =>
   import('../pages/pos/PosReportPage').then((m) => ({ default: m.PosReportPage })),
 );
@@ -525,6 +528,8 @@ export function App() {
           <Route path="stock-alerts" element={<StockAlertsPage />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="pos/kasir" element={<PosPage />} />
+          <Route path="pos/apotik" element={<PharmacyPosPage />} />
+          <Route path="apotik/pos" element={<PharmacyPosPage />} />
           <Route path="pos/laporan" element={<PosReportPage />} />
           <Route path="pos/aturan-diskon" element={<PosPromotionPage />} />
           <Route path="portal-pelanggan" element={<PortalPelangganAdminPage />} />

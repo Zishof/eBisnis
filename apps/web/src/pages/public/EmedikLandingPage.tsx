@@ -366,7 +366,7 @@ export function LandingHeader({ brand, links }: { brand: string; links: string[]
           {links.map((link) => (
             <a
               key={link}
-              href={`#${link}`}
+              href={`#${link.replace(/\s+/g, '-')}`}
               className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
             >
               {link}

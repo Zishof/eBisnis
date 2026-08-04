@@ -297,6 +297,13 @@
       "description": "Mencabut seluruh is_coming_soon dari menu tenant lama karena web sudah menyediakan halaman kerja demo untuk route aplikasi yang belum memiliki layar transaksi penuh. Sidebar tidak perlu lagi menampilkan label Coming Soon."
     },
     {
+      "version": "V043",
+      "sequence": 43,
+      "file": "V043__pos_pharmacy_menu.sql",
+      "name": "POS Apotik sebagai kasir terpisah",
+      "description": "Menambahkan menu POS_PHARMACY pada modul POS dengan route /app/apotik/pos. Engine transaksi, pembayaran, shift, dan stok tetap memakai POS yang sama, tetapi UI dipisah karena apotik membawa resep dokter, racikan, batch-expiry, high-alert, dan obat terkendali yang tidak boleh tenggelam dalam POS retail umum."
+    },
+    {
       "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

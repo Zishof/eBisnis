@@ -5,6 +5,29 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## W-6B - Apotik landing dan POS Apotik
+
+### Ditambahkan
+
+- **`ApotikLandingPage`** dirapikan menjadi landing farmasi yang lebih visual:
+  foto apoteker, rak obat, dan area racikan; narasi diperluas ke resep dokter,
+  dispensing, racikan, produksi farmasi, batch-expiry, high-alert, dan obat
+  terkendali.
+- **`PharmacyPosPage`** sebagai POS Apotik terpisah pada `/app/apotik/pos` dan
+  alias `/app/pos/apotik`. Layar ini memakai engine POS yang sama untuk sale,
+  item, pembayaran, shift, dan stok, tetapi memberi konteks farmasi: nomor resep,
+  mode OTC/resep/racikan/produksi, tautan resep, tautan BOM, dan guardrail obat.
+- **`POS_PHARMACY`** ditambahkan ke menu POS lewat seed dan migrasi `V043`.
+
+### Keputusan
+
+POS Apotik dipisah dari POS penjualan biasa pada UI/route/menu, tetapi tidak
+memecah engine transaksi. Alasannya: kasir retail mengejar kecepatan scan dan
+bayar; apotik harus menahan risiko klinis seperti resep belum ditelaah, racikan
+tanpa bahan/takaran, batch kedaluwarsa, substitusi, dan obat terkendali.
+
+---
+
 ## W-6A - eMAR pemberian obat
 
 Layar pertama dari prioritas W-6 membuka menu klinis yang paling dekat dengan
