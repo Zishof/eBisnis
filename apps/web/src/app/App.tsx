@@ -14,6 +14,7 @@ import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
 import { isSalonDemoHost, salonRootRedirectFor } from '../pages/contoh/salon-host';
 import { pelangganRootRedirectFor } from '../pages/pelanggan/pelanggan-host';
+import { inventoryRootRedirectFor } from '../pages/inventory/inventory-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
 import { isSantriPortalHost, slugPondokDariHost } from '../verticals/pesantren/santri-host';
 import { PondokChrome } from '../verticals/pesantren/PondokChrome';
@@ -233,6 +234,9 @@ const PortalPelangganAdminPage = lazy(() =>
     default: m.PortalPelangganAdminPage,
   })),
 );
+const InventoryLandingPage = lazy(() =>
+  import('../pages/inventory/InventoryLandingPage').then((m) => ({ default: m.InventoryLandingPage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -336,6 +340,8 @@ function AkarMenurutHost() {
   if (salonRedirect) return <Navigate to={salonRedirect} replace />;
   const pelangganRedirect = pelangganRootRedirectFor();
   if (pelangganRedirect) return <Navigate to={pelangganRedirect} replace />;
+  const inventoryRedirect = inventoryRootRedirectFor();
+  if (inventoryRedirect) return <Navigate to={inventoryRedirect} replace />;
   if (isMarketplaceHost()) return <Navigate to="/belanja" replace />;
   if (isCooperativeHost()) return <Navigate to="/ekoperasi/situs" replace />;
   /*
@@ -394,6 +400,7 @@ export function App() {
           <Route path="/daftar" element={<RegisterPage />} />
           <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
+          <Route path="/inventory" element={<InventoryLandingPage />} />
           <Route path="/a/*" element={<AkarMenurutHost />} />
           <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />
         </Route>

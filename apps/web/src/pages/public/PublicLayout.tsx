@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, Menu, Moon, Scissors, Sun, X } from 'lucide-react';
+import { Globe, Menu, Moon, PackageSearch, Scissors, Sun, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { api } from '../../lib/api';
 import { SUPPORTED_LOCALES } from '../../i18n';
@@ -11,6 +11,7 @@ import { useAuth } from '../../app/auth-context';
 import { slugPondokDariHost } from '../../verticals/pesantren/santri-host';
 import { PondokChrome } from '../../verticals/pesantren/PondokChrome';
 import { isSalonDemoHost } from '../contoh/salon-host';
+import { isInventoryHost } from '../inventory/inventory-host';
 import { emedikPublicBrandFor } from './emedik-host';
 
 export interface SiteConfig {
@@ -100,6 +101,7 @@ function PublicLayoutEBisnis({
   const [langOpen, setLangOpen] = useState(false);
   const location = useLocation();
   const salonHost = isSalonDemoHost();
+  const inventoryHost = isInventoryHost();
   const emedikBrand = emedikPublicBrandFor();
   const brand = salonHost
     ? {
@@ -115,6 +117,14 @@ function PublicLayoutEBisnis({
           name: emedikBrand.name,
           homeUrl: emedikBrand.homeUrl,
           description: emedikBrand.description,
+        }
+    : inventoryHost
+      ? {
+          logoText: null,
+          name: 'eBisnis Inventory',
+          homeUrl: 'https://demo-inventory.ebisnis.id',
+          description:
+            'Aplikasi inventory terintegrasi untuk sales obat, gudang, pembelian, piutang, hutang, dan monitoring pemilik usaha.',
         }
     : {
         logoText: 'eB',
@@ -145,6 +155,26 @@ function PublicLayoutEBisnis({
       ]
     : emedikBrand
       ? emedikBrand.footer
+      : inventoryHost
+        ? [
+            {
+              code: 'INVENTORY',
+              title: 'Inventory',
+              items: [
+                { label: 'Landing inventory', url: 'https://demo-inventory.ebisnis.id' },
+                { label: 'Masuk demo', url: 'https://demo-inventory.ebisnis.id/masuk' },
+                { label: 'Dashboard', url: 'https://demo-inventory.ebisnis.id/app' },
+              ],
+            },
+            {
+              code: 'DOWNLOAD',
+              title: 'Download',
+              items: [
+                { label: 'APK Sales Android', url: 'https://demo-inventory.ebisnis.id/update/ebisnis-inventory-sales.apk' },
+                { label: 'EXE Desktop Windows', url: 'https://demo-inventory.ebisnis.id/update/ebisnis-inventory-sales.exe' },
+              ],
+            },
+          ]
       : site?.footer ?? [];
 
   const headerItems =
@@ -157,6 +187,13 @@ function PublicLayoutEBisnis({
         ]
       : emedikBrand
         ? emedikBrand.headerItems
+        : inventoryHost
+          ? [
+              { labelKey: 'inventory.home', label: 'Website', url: 'https://demo-inventory.ebisnis.id', sortOrder: 1 },
+              { labelKey: 'inventory.flow', label: 'Alur Sales', url: 'https://demo-inventory.ebisnis.id/inventory#alur', sortOrder: 2 },
+              { labelKey: 'inventory.dashboard', label: 'Dashboard', url: 'https://demo-inventory.ebisnis.id/inventory#dashboard', sortOrder: 3 },
+              { labelKey: 'inventory.download', label: 'Download', url: 'https://demo-inventory.ebisnis.id/inventory#download', sortOrder: 4 },
+            ]
       : site?.navigation.find((nav) => nav.location === 'HEADER')?.items ?? [
       { labelKey: 'nav.home', label: t('nav.home'), url: '/', sortOrder: 1 },
       { labelKey: 'nav.pricing', label: t('nav.pricing'), url: '/harga', sortOrder: 2 },
@@ -182,7 +219,13 @@ function PublicLayoutEBisnis({
         <div className="container-page flex h-16 items-center justify-between gap-4">
           <Link to={brand.homeUrl} className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-700 text-sm font-black text-white">
-              {salonHost ? <Scissors className="h-4 w-4" aria-hidden /> : brand.logoText}
+              {salonHost ? (
+                <Scissors className="h-4 w-4" aria-hidden />
+              ) : inventoryHost ? (
+                <PackageSearch className="h-4 w-4" aria-hidden />
+              ) : (
+                brand.logoText
+              )}
             </span>
             <span className="hidden sm:inline">{brand.name}</span>
           </Link>
@@ -266,10 +309,10 @@ function PublicLayoutEBisnis({
                   {salonHost ? 'Masuk' : t('nav.login')}
                 </Link>
                 <Link
-                  to={salonHost ? 'https://salon.ebisnis.id' : '/daftar'}
+                  to={salonHost ? 'https://salon.ebisnis.id' : inventoryHost ? 'https://demo-inventory.ebisnis.id/inventory#download' : '/daftar'}
                   className="btn-primary hidden sm:inline-flex"
                 >
-                  {salonHost ? 'Website Salon' : emedikBrand ? emedikBrand.registerCtaLabel : t('nav.register')}
+                  {salonHost ? 'Website Salon' : inventoryHost ? 'Download' : emedikBrand ? emedikBrand.registerCtaLabel : t('nav.register')}
                 </Link>
               </>
             )}
@@ -304,11 +347,11 @@ function PublicLayoutEBisnis({
                   {salonHost ? 'Masuk' : t('nav.login')}
                 </Link>
                 <Link
-                  to={salonHost ? 'https://salon.ebisnis.id' : '/daftar'}
+                  to={salonHost ? 'https://salon.ebisnis.id' : inventoryHost ? 'https://demo-inventory.ebisnis.id/inventory#download' : '/daftar'}
                   className="btn-primary flex-1"
                   onClick={() => setMenuOpen(false)}
                 >
-                  {salonHost ? 'Website Salon' : emedikBrand ? emedikBrand.registerCtaLabel : t('nav.register')}
+                  {salonHost ? 'Website Salon' : inventoryHost ? 'Download' : emedikBrand ? emedikBrand.registerCtaLabel : t('nav.register')}
                 </Link>
               </div>
             </div>
@@ -326,7 +369,13 @@ function PublicLayoutEBisnis({
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
                 <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-700 text-sm font-black text-white">
-                  {salonHost ? <Scissors className="h-4 w-4" aria-hidden /> : brand.logoText}
+                  {salonHost ? (
+                    <Scissors className="h-4 w-4" aria-hidden />
+                  ) : inventoryHost ? (
+                    <PackageSearch className="h-4 w-4" aria-hidden />
+                  ) : (
+                    brand.logoText
+                  )}
                 </span>
                 {brand.name}
               </div>

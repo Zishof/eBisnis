@@ -67,6 +67,20 @@ export class PosUpdateController {
   }
 
   @Public()
+  @Get('ebisnis-inventory-sales.apk')
+  @ApiOperation({ summary: 'Unduh APK sales inventory demo' })
+  downloadInventorySalesApk(@Res({ passthrough: true }) res: Response) {
+    return this.downloadExplicitApp('ebisnis-inventory-sales.apk', res, 'APK inventory sales belum tersedia.');
+  }
+
+  @Public()
+  @Get('ebisnis-inventory-sales.exe')
+  @ApiOperation({ summary: 'Unduh EXE sales inventory demo' })
+  downloadInventorySalesExe(@Res({ passthrough: true }) res: Response) {
+    return this.downloadExplicitApp('ebisnis-inventory-sales.exe', res, 'EXE inventory sales belum tersedia.');
+  }
+
+  @Public()
   @Get('pos/:file')
   @ApiOperation({ summary: 'Unduh installer POS Flutter' })
   download(@Param('file') file: string, @Res({ passthrough: true }) res: Response) {
@@ -122,6 +136,18 @@ export class PosUpdateController {
     }
 
     return this.streamFile(apk.path, aliasName, res, 'latest');
+  }
+
+  private downloadExplicitApp(aliasName: string, res: Response, message: string) {
+    const explicit = this.updateFilePath(aliasName);
+    if (explicit) {
+      return this.streamFile(explicit, aliasName, res, 'latest');
+    }
+
+    throw AppError.notFound(
+      ErrorCodes.NOT_FOUND,
+      `${message} Unggah berkas ${aliasName} ke folder pembaruan POS atau GitHub Release.`,
+    );
   }
 
   private updateFilePath(file: string): string | null {

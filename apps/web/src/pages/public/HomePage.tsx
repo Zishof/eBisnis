@@ -16,6 +16,7 @@ import {
   Dumbbell,
   Hammer,
   Mail,
+  PackageSearch,
   Pill,
   Presentation,
   Scissors,
@@ -203,6 +204,15 @@ const CONTOH_USAHA = [
     imageAlt: 'Rak obat dan layanan apotek',
   },
   {
+    label: 'Inventory Obat',
+    detail: 'Sales, batch, expiry, piutang',
+    href: 'https://demo-inventory.ebisnis.id',
+    icon: PackageSearch,
+    status: 'Siap dicoba',
+    imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Rak obat dan pengelolaan inventory farmasi',
+  },
+  {
     label: 'Kuliner',
     detail: 'Restoran, warung, katering',
     href: '/demo',
@@ -337,6 +347,7 @@ const UNIT_USAHA_HERO = [
   'Bengkel Motor',
   'Bengkel Mobil',
   'Apotek',
+  'Inventory Obat',
 ] as const;
 
 export function HomePage() {

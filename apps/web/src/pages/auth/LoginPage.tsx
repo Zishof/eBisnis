@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
-import { Crown, Eye, EyeOff, UserRound, Users } from 'lucide-react';
+import { ClipboardList, Crown, Eye, EyeOff, Landmark, Route, UserRound, Users } from 'lucide-react';
 import { useAuth, useErrorMessage } from '../../app/auth-context';
 import { berandaSesudahMasuk } from '../../app/beranda-sesudah-masuk';
 import { isSantriHost, isSantriPortalHost, slugPondokDariHost } from '../../verticals/pesantren/santri-host';
 import { isSalonDemoHost } from '../contoh/salon-host';
+import { isInventoryHost } from '../inventory/inventory-host';
 import { emedikPublicBrandFor } from '../public/emedik-host';
 
 interface LoginForm {
@@ -41,6 +42,33 @@ const AKUN_SALON_DEMO = [
   },
 ];
 
+const AKUN_INVENTORY_DEMO = [
+  {
+    label: 'Sales Obat',
+    roleCode: 'SALES_OBAT',
+    username: 'sales.inventory',
+    password: 'InventoryDemo#2026',
+    description: 'Entry order lapangan, cek stok per batch, invoice, dan status piutang customer.',
+    icon: Route,
+  },
+  {
+    label: 'Manajemen Inventory',
+    roleCode: 'MANAJEMEN_INVENTORY',
+    username: 'manajemen.inventory',
+    password: 'InventoryDemo#2026',
+    description: 'Kelola barang, supplier, pembelian, batch, expired date, stok opname, dan harga.',
+    icon: ClipboardList,
+  },
+  {
+    label: 'Pemilik / Investor',
+    roleCode: 'PEMILIK_INVESTOR',
+    username: 'pemilik.inventory',
+    password: 'InventoryDemo#2026',
+    description: 'Monitor omzet, laba, aging piutang, hutang supplier, top sales, dan arus stok.',
+    icon: Landmark,
+  },
+];
+
 export function LoginPage() {
   const { t } = useTranslation();
   const { login, loginDemo } = useAuth();
@@ -55,6 +83,7 @@ export function LoginPage() {
   const { register, handleSubmit, formState, setValue } = useForm<LoginForm>();
   const santri = isSantriHost();
   const salon = isSalonDemoHost();
+  const inventory = isInventoryHost();
   const emedikBrand = emedikPublicBrandFor();
   /*
    * Portal umum santri.info (apex/www) menawarkan demo dan pendaftaran pondok
@@ -68,17 +97,26 @@ export function LoginPage() {
   const portalUmum = isSantriPortalHost();
   const slugPondok = slugPondokDariHost();
 
-  const pilihAkunSalon = (roleCode: string) => {
+  const pilihAkunSalon = useCallback((roleCode: string) => {
     const akun = AKUN_SALON_DEMO.find((item) => item.roleCode === roleCode) ?? AKUN_SALON_DEMO[0];
     setValue('username', akun.username, { shouldDirty: true, shouldValidate: true });
     setValue('password', akun.password, { shouldDirty: true, shouldValidate: true });
-  };
+  }, [setValue]);
+
+  const pilihAkunInventory = useCallback((roleCode: string) => {
+    const akun =
+      AKUN_INVENTORY_DEMO.find((item) => item.roleCode === roleCode) ?? AKUN_INVENTORY_DEMO[0];
+    setValue('username', akun.username, { shouldDirty: true, shouldValidate: true });
+    setValue('password', akun.password, { shouldDirty: true, shouldValidate: true });
+  }, [setValue]);
 
   useEffect(() => {
-    if (!salon) return;
+    if (!salon && !inventory) return;
     const role = searchParams.get('role');
-    if (role) pilihAkunSalon(role);
-  }, [salon, searchParams]);
+    if (!role) return;
+    if (salon) pilihAkunSalon(role);
+    if (inventory) pilihAkunInventory(role);
+  }, [inventory, pilihAkunInventory, pilihAkunSalon, salon, searchParams]);
 
   const onSubmit = handleSubmit(async (values) => {
     setError(null);
@@ -101,6 +139,11 @@ export function LoginPage() {
   const startDemo = async () => {
     if (salon) {
       pilihAkunSalon('PELAPOR_TIKET');
+      setError(null);
+      return;
+    }
+    if (inventory) {
+      pilihAkunInventory('SALES_OBAT');
       setError(null);
       return;
     }
@@ -132,6 +175,8 @@ export function LoginPage() {
                 ? 'Masuk ke santri.info'
                 : salon
                   ? 'Masuk ke Salon Cantik Demo'
+                  : inventory
+                    ? 'Masuk ke Demo Inventory Obat'
                   : emedikBrand
                     ? emedikBrand.loginTitle
                     : t('auth.loginTitle')}
@@ -141,6 +186,8 @@ export function LoginPage() {
               ? 'Gunakan akun pengurus, ustadz/ustadzah, atau wali santri yang terdaftar.'
               : salon
                 ? 'Gunakan akun pelanggan, manajemen salon, atau pemilik salon untuk mencoba demo.'
+                : inventory
+                  ? 'Gunakan akun sales, manajemen inventory, atau pemilik untuk mencoba alur inventory obat.'
                 : emedikBrand
                   ? emedikBrand.loginSubtitle
               : t('auth.loginSubtitle')}
@@ -216,6 +263,8 @@ export function LoginPage() {
                   ? 'Coba Demo Pesantren'
                   : salon
                     ? 'Isi akun pelanggan salon'
+                    : inventory
+                      ? 'Isi akun sales inventory'
                     : emedikBrand
                       ? emedikBrand.demoLabel
                       : t('nav.demo')}
@@ -236,6 +285,38 @@ export function LoginPage() {
                     type="button"
                     className="group flex w-full items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-brand-300 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-700 dark:hover:bg-brand-950/30"
                     onClick={() => pilihAkunSalon(akun.roleCode)}
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-100 text-brand-800 group-hover:bg-brand-700 group-hover:text-white dark:bg-brand-950 dark:text-brand-200">
+                      <Icon className="h-5 w-5" aria-hidden />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-semibold text-slate-900 dark:text-white">{akun.label}</span>
+                      <span className="mt-0.5 block text-xs leading-5 text-slate-600 dark:text-slate-300">
+                        {akun.description}
+                      </span>
+                      <span className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        {akun.username} / {akun.password}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {inventory && (
+            <div className="mt-6 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Pilih persona demo inventory
+              </p>
+              {AKUN_INVENTORY_DEMO.map((akun) => {
+                const Icon = akun.icon;
+                return (
+                  <button
+                    key={akun.roleCode}
+                    type="button"
+                    className="group flex w-full items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-brand-300 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-700 dark:hover:bg-brand-950/30"
+                    onClick={() => pilihAkunInventory(akun.roleCode)}
                   >
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-100 text-brand-800 group-hover:bg-brand-700 group-hover:text-white dark:bg-brand-950 dark:text-brand-200">
                       <Icon className="h-5 w-5" aria-hidden />
