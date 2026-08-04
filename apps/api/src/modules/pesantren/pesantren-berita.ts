@@ -21,6 +21,14 @@ export interface MasukanBerita {
   tanggalTerbit?: string | null;
 }
 
+export function kodeBerkasGambarBerita(id: string): string {
+  return `BERITA_${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+}
+
+export function lintasanGambarBerita(id: string): string {
+  return `/api/v1/pesantren/public/berita-gambar/${kodeBerkasGambarBerita(id)}`;
+}
+
 export function validasiBerita(masukan: MasukanBerita): Galat[] {
   const galat: Galat[] = [];
 

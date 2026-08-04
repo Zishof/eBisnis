@@ -42,8 +42,17 @@ interface Gelombang {
   tanggal_tutup: string;
   biaya_pendaftaran: string;
   status: string;
+  form_schema: unknown[];
   unit_pendidikan_id: string | null;
   unit_pendidikan_nama: string | null;
+}
+
+interface FieldTambahan {
+  name: string;
+  label: string;
+  type: 'text' | 'textarea' | 'number' | 'date' | 'select';
+  required: boolean;
+  options: string[];
 }
 
 interface UnitPendidikan {
@@ -124,6 +133,7 @@ export function PsbPendaftaranPage() {
   const [form, setForm] = useState<FormPendaftaran>(AWAL);
   const [error, setError] = useState<string | null>(null);
   const [nomorPendaftaran, setNomorPendaftaran] = useState<string | null>(null);
+  const [jawabanTambahan, setJawabanTambahan] = useState<Record<string, string>>({});
 
   const { data: situs } = useQuery({
     queryKey: ['pesantren', 'situs-publik', 'psb'],
@@ -168,6 +178,9 @@ export function PsbPendaftaranPage() {
           email: bersihkanTeks(form.email),
           ayah: bersihkanOrangTua(form.ayah),
           ibu: bersihkanOrangTua(form.ibu),
+          jawabanTambahan: Object.fromEntries(
+            Object.entries(jawabanTambahan).filter(([, value]) => value.trim() !== ''),
+          ),
         },
       }),
     onSuccess: (hasil) => setNomorPendaftaran(hasil.nomor_pendaftaran),
@@ -184,6 +197,7 @@ export function PsbPendaftaranPage() {
   };
 
   const namaPondok = situs?.profil.nama_tampilan;
+  const fieldTambahan = normalisasiFieldTambahan(gelombang?.form_schema);
 
   if (nomorPendaftaran) {
     return (
@@ -363,10 +377,86 @@ export function PsbPendaftaranPage() {
           </div>
         </fieldset>
 
+        {fieldTambahan.length > 0 && (
+          <fieldset className="space-y-4">
+            <legend className="text-sm font-semibold text-slate-900 dark:text-white">Pertanyaan Tambahan</legend>
+            {fieldTambahan.map((field) => (
+              <FieldTambahanInput
+                key={field.name}
+                field={field}
+                value={jawabanTambahan[field.name] ?? ''}
+                onChange={(value) => setJawabanTambahan((items) => ({ ...items, [field.name]: value }))}
+              />
+            ))}
+          </fieldset>
+        )}
+
         <button type="submit" className="btn-primary w-full" disabled={daftar.isPending}>
           {daftar.isPending ? 'Mengirim…' : 'Kirim Pendaftaran'}
         </button>
       </form>
+    </div>
+  );
+}
+
+function normalisasiFieldTambahan(schema: unknown): FieldTambahan[] {
+  if (!Array.isArray(schema)) return [];
+  return schema
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const field = item as Record<string, unknown>;
+      const name = typeof field.name === 'string' ? field.name.trim() : '';
+      const label = typeof field.label === 'string' ? field.label.trim() : '';
+      const type = typeof field.type === 'string' ? field.type : 'text';
+      const options = Array.isArray(field.options)
+        ? field.options.filter((option): option is string => typeof option === 'string' && option.trim() !== '')
+        : [];
+      if (!name || !label) return null;
+      return {
+        name,
+        label,
+        type: ['text', 'textarea', 'number', 'date', 'select'].includes(type) ? (type as FieldTambahan['type']) : 'text',
+        required: field.required === true,
+        options,
+      };
+    })
+    .filter((field): field is FieldTambahan => field !== null);
+}
+
+function FieldTambahanInput({
+  field,
+  value,
+  onChange,
+}: {
+  field: FieldTambahan;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className="field-label">
+        {field.label} {field.required && <span className="text-rose-600">*</span>}
+      </label>
+      {field.type === 'textarea' ? (
+        <textarea className="field-input min-h-24" value={value} required={field.required} onChange={(e) => onChange(e.target.value)} />
+      ) : field.type === 'select' ? (
+        <select className="field-input" value={value} required={field.required} onChange={(e) => onChange(e.target.value)}>
+          <option value="">Pilih...</option>
+          {field.options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type={field.type}
+          className="field-input"
+          value={value}
+          required={field.required}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
     </div>
   );
 }

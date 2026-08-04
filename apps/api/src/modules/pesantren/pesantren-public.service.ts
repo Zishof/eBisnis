@@ -276,7 +276,7 @@ export class PesantrenPublicService {
     return this.tenantDb.query(
       S,
       `SELECT g.id::text, g.kode, g.nama, g.tanggal_buka::text, g.tanggal_tutup::text,
-              g.biaya_pendaftaran::text, g.status,
+              g.biaya_pendaftaran::text, g.status, g.form_schema,
               g.unit_pendidikan_id::text, u.name AS unit_pendidikan_nama
          FROM "${S}".pesantren_psb_gelombang g
          LEFT JOIN "${S}".pesantren_unit_pendidikan u ON u.id = g.unit_pendidikan_id
