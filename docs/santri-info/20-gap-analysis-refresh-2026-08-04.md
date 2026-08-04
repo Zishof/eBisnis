@@ -38,7 +38,7 @@ Yang belum penuh bukan lagi "belum ada modul sama sekali", tetapi lebih banyak b
 | Master eSchool | Sebagian besar selesai | Unit pendidikan, guru/ustadz, santri, wali, kartu, rombongan, kurikulum, mapel, jadwal; kelas/kurikulum memakai pilihan tahun ajaran aktif, bukan input ID manual | Field biodata AIS yang sangat rinci belum semua menjadi kolom typed; beberapa masih perlu metadata/ekstensi |
 | PSB/PPDB | Operasional dasar | Gelombang, unit tujuan, portal pendaftar, login/status, builder field tambahan dengan drag reorder, tombol naik/turun, preview, schema tambahan berbasis JSON, jadwal ujian/wawancara per pendaftar, catat hasil seleksi, pilihan tahun ajaran/unit dari data sistem, dan tabel gelombang tanpa ID mentah | Verifikasi multi-step AIS, cetak kartu/rekap seleksi, dan dashboard panitia lanjutan belum penuh |
 | Asrama | Operasional dasar | Asrama, kamar, penempatan santri | Locking kapasitas dan laporan asrama legacy belum lengkap; mutasi kamar historis perlu diperdalam |
-| Keluar-masuk santri | Operasional dasar | Perizinan, lampiran, disposisi, izin aktif, gerbang, scan kartu/RFID keyboard-wedge, log keluar/masuk, tamu, paket kiriman, penjemput, app Flutter security gate dasar | Fingerprint ditunda; transport/perjalanan detail dan dashboard security detail belum penuh |
+| Keluar-masuk santri | Operasional dasar | Perizinan, ringkasan status izin, lampiran, disposisi, izin aktif, gerbang, scan kartu/RFID keyboard-wedge, log keluar/masuk, tamu, paket kiriman, penjemput, app Flutter security gate dasar | Fingerprint ditunda; transport/perjalanan detail dan dashboard security detail belum penuh |
 | Presensi santri | Operasional dasar | Presensi massal, presensi per tanggal/jenis, integrasi pilihan jadwal | Relasi fisik `jadwal_id`/`piket_id`, rekap absensi formal lengkap, dan perangkat absensi belum penuh |
 | Diniyah/tahfiz/dakwah | Operasional dasar | Kitab, halaqah, anggota, setoran tahfiz, modul diniyah/tahfiz, kajian publik, materi URL, rekaman URL, gambar, dan publish ke website | Sanad/ustadz pengampu, sertifikat/syahadah, dan arsip dakwah tingkat lanjut belum penuh |
 | Nilai/rapor | Sebagian selesai | Komponen nilai, skala huruf, entry nilai satuan, input nilai massal per rombongan dan komponen, endpoint rapor berbobot, template cetak/PDF browser dasar | Leger, ranking, kenaikan kelas/promosi, impor Excel, dan template rapor spesifik per yayasan/jenjang belum penuh |
@@ -119,6 +119,7 @@ Batch berikut sudah diterapkan di repo aktif:
 - Pembinaan santri diperdalam: UI admin sekarang membuka hukuman/pembinaan per pelanggaran, penyelesaian hukuman, penghargaan/apresiasi internal, anggota ekstrakurikuler/organisasi, jabatan, keluar anggota, dan nilai partisipasi.
 - Kelas dan kurikulum eSchool dipoles: tahun ajaran kini dipilih dari daftar aktif/tersedia, tabel menampilkan nama tahun ajaran, dan form tambah rombongan/kurikulum lebih responsif di mobile.
 - PSB dan laporan dipoles: pembuatan gelombang memakai pilihan tahun ajaran/unit dari data sistem, tabel gelombang menampilkan nama tahun ajaran dan unit, serta filter laporan tidak lagi meminta ID teknis.
+- Perizinan keluar-masuk dipoles: halaman kini menampilkan ringkasan status izin cepat dan modal pengajuan lebih ramah mobile dengan konteks SOP jenis izin.
 
 Yang masih belum penuh setelah batch ini:
 

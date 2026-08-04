@@ -197,6 +197,12 @@ export function PesantrenPerizinanPage() {
   ];
 
   const total = izin.data?.total ?? 0;
+  const barisAktif = izin.data?.items ?? [];
+  const ringkasanStatus = [
+    { label: 'Menunggu', value: barisAktif.filter((item) => item.status === 'MENUNGGU').length, tone: 'text-amber-700' },
+    { label: 'Disetujui', value: barisAktif.filter((item) => item.status === 'DISETUJUI').length, tone: 'text-emerald-700' },
+    { label: 'Selesai', value: barisAktif.filter((item) => item.status === 'SELESAI').length, tone: 'text-slate-700' },
+  ];
 
   return (
     <>
@@ -222,12 +228,21 @@ export function PesantrenPerizinanPage() {
         }
       />
 
-      <div className="card mb-4 max-w-xs p-4">
-        <label className="field-label" htmlFor="izin-status">Status</label>
-        <select id="izin-status" className="field-input" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
-          <option value="">Semua</option>
-          {STATUS_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-        </select>
+      <div className="mb-4 grid gap-3 md:grid-cols-[repeat(3,minmax(0,1fr))_minmax(220px,280px)]">
+        {ringkasanStatus.map((item) => (
+          <div key={item.label} className="card p-4">
+            <p className="text-sm text-slate-500">{item.label}</p>
+            <p className={`mt-1 text-2xl font-semibold ${item.tone}`}>{item.value}</p>
+            <p className="mt-1 text-xs text-slate-500">Pada halaman/filter saat ini</p>
+          </div>
+        ))}
+        <div className="card p-4">
+          <label className="field-label" htmlFor="izin-status">Status</label>
+          <select id="izin-status" className="field-input" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+            <option value="">Semua</option>
+            {STATUS_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </div>
       </div>
 
       <DataGrid
@@ -243,8 +258,15 @@ export function PesantrenPerizinanPage() {
 
       {membuat && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="card w-full max-w-2xl p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Ajukan Izin Santri</h2>
+          <div className="card max-h-[88vh] w-full max-w-2xl overflow-y-auto p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700">Izin Keluar-Masuk</p>
+                <h2 className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">Ajukan Izin Santri</h2>
+                <p className="mt-1 text-sm text-slate-500">Isi santri, jadwal, dan alasan. Disposisi mengikuti SOP jenis izin yang dipilih.</p>
+              </div>
+              <StatusBadge status={form.jenis} />
+            </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <Field label="Santri *">
                 <select className="field-input" value={form.santriId} onChange={(e) => setForm({ ...form, santriId: e.target.value })}>
