@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Plus, XCircle } from 'lucide-react';
+import { CheckCircle2, Plus, Trash2, XCircle } from 'lucide-react';
 import { api, formatDate, formatMoney } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -46,6 +46,38 @@ const FORM_GELOMBANG_KOSONG = {
   formSchema: '',
 };
 
+type FieldTambahan = {
+  name: string;
+  label: string;
+  type: 'text' | 'textarea' | 'number' | 'date' | 'select';
+  required: boolean;
+  options: string;
+};
+
+const FIELD_TAMBAHAN_KOSONG: FieldTambahan = {
+  name: '',
+  label: '',
+  type: 'text',
+  required: false,
+  options: '',
+};
+
+function fieldTambahanKeSchema(fields: FieldTambahan[]) {
+  return fields
+    .map((field) => ({
+      name: field.name.trim(),
+      label: field.label.trim(),
+      type: field.type,
+      required: field.required,
+      options: field.options
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    }))
+    .filter((field) => field.name && field.label)
+    .map((field) => (field.type === 'select' ? field : { ...field, options: undefined }));
+}
+
 export function PesantrenPsbPage() {
   const toast = useToast();
   const toMessage = useErrorMessage();
@@ -58,6 +90,7 @@ export function PesantrenPsbPage() {
   const [cariPendaftar, setCariPendaftar] = useState('');
   const [membuatGelombang, setMembuatGelombang] = useState(false);
   const [formGelombang, setFormGelombang] = useState(FORM_GELOMBANG_KOSONG);
+  const [fieldTambahan, setFieldTambahan] = useState<FieldTambahan[]>([]);
 
   const gelombang = useQuery({
     queryKey: ['pesantren-psb-gelombang', pageGelombang, statusGelombang],
@@ -80,7 +113,7 @@ export function PesantrenPsbPage() {
 
   const buatGelombang = useMutation({
     mutationFn: () => {
-      let formSchema: unknown[] = [];
+      let formSchema: unknown[] = fieldTambahanKeSchema(fieldTambahan);
       if (formGelombang.formSchema.trim()) {
         const parsed = JSON.parse(formGelombang.formSchema) as unknown;
         formSchema = Array.isArray(parsed) ? parsed : [];
@@ -101,6 +134,7 @@ export function PesantrenPsbPage() {
       toast.push('Gelombang PSB berhasil dibuat.', 'success');
       setMembuatGelombang(false);
       setFormGelombang(FORM_GELOMBANG_KOSONG);
+      setFieldTambahan([]);
       void queryClient.invalidateQueries({ queryKey: ['pesantren-psb-gelombang'] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal membuat gelombang.'), 'error'),
@@ -331,10 +365,101 @@ export function PesantrenPsbPage() {
                   <input type="number" min="0" className="field-input" value={formGelombang.biayaPendaftaran} onChange={(e) => setFormGelombang({ ...formGelombang, biayaPendaftaran: e.target.value })} />
                 </Field>
               </div>
-              <Field label="Field formulir tambahan (JSON array)">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-white">Builder field tambahan</h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Tambahkan pertanyaan khusus gelombang tanpa menulis JSON manual.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-outline px-3 py-2 text-xs"
+                    onClick={() => setFieldTambahan((items) => [...items, { ...FIELD_TAMBAHAN_KOSONG }])}
+                  >
+                    <Plus className="h-4 w-4" aria-hidden />
+                    Field
+                  </button>
+                </div>
+                <div className="mt-3 space-y-3">
+                  {fieldTambahan.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950">
+                      Belum ada field tambahan. Formulir publik tetap memakai field standar PSB.
+                    </p>
+                  ) : (
+                    fieldTambahan.map((field, index) => (
+                      <div key={index} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
+                        <div className="grid gap-3 md:grid-cols-[1fr_1fr_130px_auto]">
+                          <input
+                            className="field-input"
+                            placeholder="namaField"
+                            value={field.name}
+                            onChange={(e) =>
+                              setFieldTambahan((items) => items.map((item, i) => (i === index ? { ...item, name: e.target.value } : item)))
+                            }
+                          />
+                          <input
+                            className="field-input"
+                            placeholder="Label pertanyaan"
+                            value={field.label}
+                            onChange={(e) =>
+                              setFieldTambahan((items) => items.map((item, i) => (i === index ? { ...item, label: e.target.value } : item)))
+                            }
+                          />
+                          <select
+                            className="field-input"
+                            value={field.type}
+                            onChange={(e) =>
+                              setFieldTambahan((items) =>
+                                items.map((item, i) => (i === index ? { ...item, type: e.target.value as FieldTambahan['type'] } : item)),
+                              )
+                            }
+                          >
+                            <option value="text">Teks</option>
+                            <option value="textarea">Paragraf</option>
+                            <option value="number">Angka</option>
+                            <option value="date">Tanggal</option>
+                            <option value="select">Pilihan</option>
+                          </select>
+                          <button
+                            type="button"
+                            className="btn-outline px-2"
+                            aria-label="Hapus field"
+                            onClick={() => setFieldTambahan((items) => items.filter((_, i) => i !== index))}
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden />
+                          </button>
+                        </div>
+                        <label className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                          <input
+                            type="checkbox"
+                            checked={field.required}
+                            onChange={(e) =>
+                              setFieldTambahan((items) => items.map((item, i) => (i === index ? { ...item, required: e.target.checked } : item)))
+                            }
+                          />
+                          Wajib diisi
+                        </label>
+                        {field.type === 'select' && (
+                          <textarea
+                            className="field-input mt-3 min-h-20 text-xs"
+                            placeholder="Satu pilihan per baris"
+                            value={field.options}
+                            onChange={(e) =>
+                              setFieldTambahan((items) => items.map((item, i) => (i === index ? { ...item, options: e.target.value } : item)))
+                            }
+                          />
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              <Field label="Field formulir tambahan (JSON array, opsional untuk impor lanjutan)">
                 <textarea
                   className="field-input min-h-28 font-mono text-xs"
-                  value={formGelombang.formSchema}
+                  value={formGelombang.formSchema || JSON.stringify(fieldTambahanKeSchema(fieldTambahan), null, 2)}
                   onChange={(e) => setFormGelombang({ ...formGelombang, formSchema: e.target.value })}
                   placeholder='[{"name":"asalSekolah","label":"Asal Sekolah","type":"text","required":true}]'
                 />

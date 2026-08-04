@@ -5,8 +5,9 @@
 
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
+import { TenantFileBlobService } from '../../infrastructure/files/tenant-file-blob.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
-import { MasukanBerita, validasiBerita } from './pesantren-berita';
+import { kodeBerkasGambarBerita, lintasanGambarBerita, MasukanBerita, validasiBerita } from './pesantren-berita';
 
 export interface BarisBerita {
   id: string;
@@ -25,7 +26,10 @@ const KOLOM_BERITA = `id::text, judul, ringkasan, isi_html, gambar_url, sumber_u
 
 @Injectable()
 export class PesantrenBeritaService {
-  constructor(private readonly tenantDb: TenantConnectionService) {}
+  constructor(
+    private readonly tenantDb: TenantConnectionService,
+    private readonly fileBlob: TenantFileBlobService,
+  ) {}
 
   async daftar(
     schemaName: string,
@@ -113,6 +117,41 @@ export class PesantrenBeritaService {
         WHERE id = $1
         RETURNING ${KOLOM_BERITA}`,
       [id, actorUserId],
+    );
+    return rows[0];
+  }
+
+  async unggahGambar(
+    schemaName: string,
+    id: string,
+    berkas: { filename: string; mimeType: string; buffer: Buffer },
+    actorUserId: string,
+  ): Promise<BarisBerita> {
+    const berita = await this.satu(schemaName, id);
+    if (!berita) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berita tidak ditemukan.');
+    }
+
+    await this.fileBlob.simpanTunggal(
+      schemaName,
+      {
+        code: kodeBerkasGambarBerita(id),
+        name: `Sampul berita ${berita.judul}`,
+        filename: berkas.filename,
+        mimeType: berkas.mimeType,
+        buffer: berkas.buffer,
+      },
+      actorUserId,
+    );
+
+    const S = `"${schemaName}"`;
+    const rows = await this.tenantDb.query<BarisBerita>(
+      schemaName,
+      `UPDATE ${S}.pesantren_berita
+          SET gambar_url = $2, updated_at = now(), updated_by = $3, version = version + 1
+        WHERE id = $1 AND deleted_at IS NULL
+        RETURNING ${KOLOM_BERITA}`,
+      [id, lintasanGambarBerita(id), actorUserId],
     );
     return rows[0];
   }

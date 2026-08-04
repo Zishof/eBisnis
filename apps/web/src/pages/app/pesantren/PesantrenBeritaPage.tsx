@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, Plus, Send } from 'lucide-react';
+import { Eye, Image, Plus, Send, Upload } from 'lucide-react';
 import { api, formatDate } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -50,10 +50,11 @@ export function PesantrenBeritaPage() {
         sumberUrl: form.sumberUrl || undefined,
         tanggalTerbit: form.tanggalTerbit || undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (row) => {
       toast.push('Berita berhasil dibuat sebagai draft.', 'success');
       setCreating(false);
       setForm(FORM_KOSONG);
+      setDetail(row);
       void queryClient.invalidateQueries({ queryKey: ['pesantren-berita'] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal membuat berita.'), 'error'),
@@ -67,6 +68,20 @@ export function PesantrenBeritaPage() {
       void queryClient.invalidateQueries({ queryKey: ['pesantren-berita'] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menerbitkan berita.'), 'error'),
+  });
+
+  const unggahGambar = useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const body = new FormData();
+      body.append('file', file);
+      return api.post<BeritaRow>(`/pesantren/berita/${id}/gambar`, body);
+    },
+    onSuccess: (row) => {
+      toast.push('Gambar sampul berita berhasil diunggah.', 'success');
+      setDetail(row);
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-berita'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mengunggah gambar.'), 'error'),
   });
 
   const columns: Array<GridColumn<BeritaRow>> = [
@@ -196,7 +211,40 @@ export function PesantrenBeritaPage() {
               <StatusBadge status={detail.status} />
             </div>
             {detail.ringkasan && <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">{detail.ringkasan}</p>}
-            {detail.gambar_url && <img src={detail.gambar_url} alt="" className="mt-4 max-h-64 w-full rounded-lg object-cover" />}
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="flex gap-3">
+                <div className="h-24 w-36 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-slate-950">
+                  {detail.gambar_url ? (
+                    <img src={detail.gambar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="grid h-full w-full place-items-center text-slate-300">
+                      <Image className="h-7 w-7" aria-hidden />
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-slate-900 dark:text-white">Gambar sampul</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Gambar ini tampil pada kartu kabar pondok dan detail berita publik. Gunakan JPEG, PNG, atau WEBP maksimal 5 MB.
+                  </p>
+                  <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                    <Upload className="h-4 w-4" aria-hidden />
+                    Unggah sampul
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      disabled={unggahGambar.isPending}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) unggahGambar.mutate({ id: detail.id, file });
+                        e.currentTarget.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
             {detail.isi_html && <div className="prose prose-sm mt-4 max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: detail.isi_html }} />}
             <div className="mt-6 flex justify-end gap-2">
               {detail.status !== 'TERBIT' && (

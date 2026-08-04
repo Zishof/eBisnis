@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Clock3, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { DataGrid, PageHeader, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -84,6 +84,12 @@ export function PesantrenJadwalPage() {
 
   const namaRombongan = new Map((rombongan.data?.items ?? []).map((item) => [item.id, `${item.tingkat} ${item.nama}`]));
   const namaMapel = new Map((mapel.data ?? []).map((item) => [item.id, item.nama]));
+  const jadwalPerHari = HARI.map((item) => ({
+    hari: item,
+    items: (jadwal.data ?? [])
+      .filter((row) => row.hari === item)
+      .sort((a, b) => a.waktu_mulai.localeCompare(b.waktu_mulai)),
+  }));
 
   const columns: Array<GridColumn<JadwalRow>> = [
     { key: 'hari', header: 'Hari', render: (row) => <StatusBadge status={row.hari} /> },
@@ -130,6 +136,46 @@ export function PesantrenJadwalPage() {
           {HARI.map((item) => <option key={item} value={item}>{item}</option>)}
         </select>
       </div>
+
+      <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-slate-900 dark:text-white">Timetable Visual</h2>
+            <p className="mt-1 text-xs text-slate-500">Ringkasan jadwal per hari untuk membaca benturan dan kepadatan kelas lebih cepat.</p>
+          </div>
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+            {(jadwal.data ?? []).length} sesi
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-7">
+          {jadwalPerHari.filter((kolom) => !hari || kolom.hari === hari).map((kolom) => (
+            <div key={kolom.hari} className="min-h-32 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{kolom.hari}</p>
+              <div className="mt-3 space-y-2">
+                {kolom.items.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-slate-300 px-3 py-4 text-center text-xs text-slate-400 dark:border-slate-700">
+                    Kosong
+                  </p>
+                ) : (
+                  kolom.items.map((item) => (
+                    <div key={item.id} className="rounded-lg border border-emerald-100 bg-white p-3 shadow-sm dark:border-emerald-900/60 dark:bg-slate-900">
+                      <p className="font-semibold leading-snug text-slate-900 dark:text-white">
+                        {namaMapel.get(item.mata_pelajaran_id) ?? item.mata_pelajaran_id}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">{namaRombongan.get(item.rombongan_id) ?? item.rombongan_id}</p>
+                      <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                        <Clock3 className="h-3.5 w-3.5" aria-hidden />
+                        {item.waktu_mulai} - {item.waktu_selesai}
+                      </p>
+                      {item.ruangan && <p className="mt-1 text-xs text-slate-400">{item.ruangan}</p>}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <DataGrid
         columns={columns}

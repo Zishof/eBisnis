@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, RefreshCw, Save } from 'lucide-react';
+import { Plus, Printer, RefreshCw, Save } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { DataGrid, PageHeader, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -26,16 +26,24 @@ interface SantriRow {
   nama_lengkap: string;
 }
 
+interface RaporRow {
+  mata_pelajaran: string;
+  komponen: Array<{ nama: string; nilai: number; bobot_persen: number }>;
+  nilai_akhir: number | null;
+  huruf_mutu: string | null;
+}
+
 export function PesantrenNilaiPage() {
   const toast = useToast();
   const toMessage = useErrorMessage();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<'mapel' | 'input'>('mapel');
+  const [tab, setTab] = useState<'mapel' | 'input' | 'rapor'>('mapel');
   const [mapelId, setMapelId] = useState('');
   const [tahunAjaranId, setTahunAjaranId] = useState('');
   const [formMapel, setFormMapel] = useState({ code: '', nama: '', kelompok: '', jenjang: '' });
   const [formKomponen, setFormKomponen] = useState({ kode: '', nama: '', bobotPersen: '0' });
   const [formNilai, setFormNilai] = useState({ santriId: '', komponenId: '', nilaiAngka: '', catatan: '' });
+  const [filterRapor, setFilterRapor] = useState({ santriId: '', tahunAjaranId: '' });
 
   const mapel = useQuery({
     queryKey: ['pesantren-nilai-mapel'],
@@ -51,6 +59,12 @@ export function PesantrenNilaiPage() {
   const santri = useQuery({
     queryKey: ['pesantren-nilai-santri'],
     queryFn: () => api.get<{ items: SantriRow[]; total: number }>('/pesantren/santri?status=AKTIF&halaman=1&ukuranHalaman=100'),
+  });
+
+  const rapor = useQuery({
+    queryKey: ['pesantren-nilai-rapor', filterRapor.santriId, filterRapor.tahunAjaranId],
+    enabled: Boolean(filterRapor.santriId && filterRapor.tahunAjaranId),
+    queryFn: () => api.get<RaporRow[]>(`/pesantren/nilai/rapor/${filterRapor.santriId}/${filterRapor.tahunAjaranId}`),
   });
 
   const tambahMapel = useMutation({
@@ -124,6 +138,7 @@ export function PesantrenNilaiPage() {
       <div className="mb-4 flex gap-2">
         <button type="button" className={tab === 'mapel' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('mapel')}>Mata Pelajaran</button>
         <button type="button" className={tab === 'input' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('input')}>Input Nilai</button>
+        <button type="button" className={tab === 'rapor' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('rapor')}>Rapor</button>
       </div>
 
       {tab === 'mapel' ? (
@@ -152,7 +167,7 @@ export function PesantrenNilaiPage() {
             emptyTitle="Belum ada mata pelajaran."
           />
         </>
-      ) : (
+      ) : tab === 'input' ? (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(360px,1.15fr)]">
           <div className="card p-4">
             <Field label="Mata pelajaran">
@@ -210,6 +225,72 @@ export function PesantrenNilaiPage() {
               </button>
             </div>
           </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="card p-4 print:hidden">
+            <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto]">
+              <Field label="Santri">
+                <select className="field-input" value={filterRapor.santriId} onChange={(e) => setFilterRapor({ ...filterRapor, santriId: e.target.value })}>
+                  <option value="">Pilih santri</option>
+                  {(santri.data?.items ?? []).map((item) => <option key={item.id} value={item.id}>{item.nis} - {item.nama_lengkap}</option>)}
+                </select>
+              </Field>
+              <Input label="Tahun ajaran ID" value={filterRapor.tahunAjaranId} onChange={(value) => setFilterRapor({ ...filterRapor, tahunAjaranId: value })} />
+              <div className="flex items-end">
+                <button type="button" className="btn-outline" disabled={!rapor.data?.length} onClick={() => window.print()}>
+                  <Printer className="h-4 w-4" aria-hidden />
+                  Cetak / PDF
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <section className="card overflow-hidden p-0 print:border-0 print:shadow-none">
+            <div className="border-b border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 print:border-slate-300">
+              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700">Rapor Santri</p>
+              <h2 className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">
+                {(santri.data?.items ?? []).find((item) => item.id === filterRapor.santriId)?.nama_lengkap ?? 'Pilih santri'}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">Tahun ajaran: {filterRapor.tahunAjaranId || '-'}</p>
+            </div>
+            {!filterRapor.santriId || !filterRapor.tahunAjaranId ? (
+              <div className="p-6 text-sm text-slate-500">Pilih santri dan tahun ajaran untuk menampilkan rapor.</div>
+            ) : rapor.isLoading ? (
+              <div className="p-6 text-sm text-slate-500">Memuat rapor...</div>
+            ) : rapor.isError ? (
+              <div className="p-6 text-sm text-rose-600">{toMessage(rapor.error, (_key, fallback) => fallback ?? 'Gagal memuat rapor.')}</div>
+            ) : !rapor.data?.length ? (
+              <div className="p-6 text-sm text-slate-500">Belum ada nilai untuk santri dan tahun ajaran ini.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900/70">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Mata Pelajaran</th>
+                      <th className="px-4 py-3 text-left">Komponen</th>
+                      <th className="px-4 py-3 text-right">Nilai Akhir</th>
+                      <th className="px-4 py-3 text-center">Huruf</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
+                    {rapor.data.map((row) => (
+                      <tr key={row.mata_pelajaran}>
+                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">{row.mata_pelajaran}</td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                          {row.komponen.map((komponen) => `${komponen.nama}: ${komponen.nilai} (${komponen.bobot_persen}%)`).join(', ')}
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">{row.nilai_akhir ?? '-'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <StatusBadge status={row.huruf_mutu ?? '-'} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </div>
       )}
     </>
