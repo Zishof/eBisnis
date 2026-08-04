@@ -328,6 +328,17 @@ const FILTER_CONTOH_USAHA = [
   { key: 'umum', label: 'Umum' },
 ] as const;
 
+const UNIT_USAHA_HERO = [
+  'Barbershop',
+  'Salon',
+  'Cuci Mobil',
+  'Laundry',
+  'Rental Kendaraan',
+  'Bengkel Motor',
+  'Bengkel Mobil',
+  'Apotek',
+] as const;
+
 export function HomePage() {
   const { t, i18n } = useTranslation();
   const cmsText = useCmsText();
@@ -383,7 +394,7 @@ export function HomePage() {
         switch (block.type) {
           case 'HERO':
             return (
-              <section key={block.key} className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-b from-brand-50 via-white to-white py-16 sm:py-24 dark:border-slate-800 dark:from-brand-950/40 dark:via-slate-950 dark:to-slate-950">
+              <section key={block.key} className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-b from-brand-50 via-white to-white py-12 sm:py-16 dark:border-slate-800 dark:from-brand-950/40 dark:via-slate-950 dark:to-slate-950">
                 <div className="container-page">
                   <div className="text-center">
                     {(() => {
@@ -407,7 +418,8 @@ export function HomePage() {
                         </p>
                       ) : null;
                     })()}
-                    <div className="mt-8 flex animate-fade-up flex-wrap items-center justify-center gap-3">
+                    <UnitUsahaHeroStrip />
+                    <div className="mt-6 flex animate-fade-up flex-wrap items-center justify-center gap-3">
                       <Link to={hero?.primaryCta?.url ?? '/daftar'} className="btn-primary px-6 py-3 text-base">
                         {cmsText(hero?.primaryCta?.labelKey, hero?.primaryCta?.label) ||
                           t('web.ctaRegister')}
@@ -737,6 +749,51 @@ export function HomePage() {
   );
 }
 
+function UnitUsahaHeroStrip() {
+  const items = UNIT_USAHA_HERO.map((label) => CONTOH_USAHA.find((item) => item.label === label)).filter(
+    (item): item is (typeof CONTOH_USAHA)[number] => Boolean(item),
+  );
+
+  return (
+    <div className="mx-auto mt-8 max-w-5xl animate-fade-up">
+      <div className="mb-3 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <span>Contoh unit usaha</span>
+        <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" aria-hidden />
+        <span>Gambar dapat diganti admin lewat katalog media/CMS</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <TautanContohUsaha
+              key={item.label}
+              href={item.href}
+              className="group relative min-h-28 overflow-hidden rounded-xl border border-white/70 bg-slate-900 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800"
+            >
+              <img
+                src={item.imageUrl}
+                alt={item.imageAlt}
+                className="absolute inset-0 h-full w-full object-cover opacity-70 transition duration-300 group-hover:scale-105 group-hover:opacity-80"
+                loading="lazy"
+              />
+              <span className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/35 to-transparent" />
+              <span className="relative flex min-h-28 flex-col justify-between p-3 text-white">
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/90 text-brand-700 shadow-sm">
+                  <Icon className="h-4 w-4" aria-hidden />
+                </span>
+                <span>
+                  <span className="block font-semibold">{item.label}</span>
+                  <span className="mt-0.5 block text-xs leading-4 text-white/80">{item.detail}</span>
+                </span>
+              </span>
+            </TautanContohUsaha>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ContohUsahaGrid() {
   const [filter, setFilter] = useState<(typeof FILTER_CONTOH_USAHA)[number]['key']>('semua');
   const usahaTerlihat = useMemo(
@@ -754,7 +811,7 @@ function ContohUsahaGrid() {
   const IconUtama = usahaUtama.icon;
 
   return (
-    <div className="mx-auto mt-12 max-w-6xl rounded-2xl border border-slate-200 bg-white/90 p-4 text-start shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 sm:p-5">
+    <div className="mx-auto mt-8 max-w-6xl rounded-2xl border border-slate-200 bg-white/90 p-4 text-start shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 sm:p-5">
       <div className="grid gap-4 px-1 pb-5 lg:grid-cols-[1fr_0.9fr] lg:items-end">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
