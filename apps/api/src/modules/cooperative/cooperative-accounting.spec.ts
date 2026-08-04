@@ -36,6 +36,8 @@ import {
   periksaNilai,
 } from './accounting/cooperative-events.catalog';
 
+const requiredMappings = COOPERATIVE_EVENT_CATALOG.requiredMappings as Record<string, string[]>;
+
 describe('katalog peristiwa akuntansi koperasi', () => {
   const requiredMappings = COOPERATIVE_EVENT_CATALOG.requiredMappings ?? {};
 
