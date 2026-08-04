@@ -340,7 +340,7 @@ function MenuList({
   );
 }
 
-function routeAplikasi(route: string): string {
+export function routeAplikasi(route: string) {
   if (route === '/app/pos' && isApotikHost()) return '/app/apotik/pos';
 
   try {

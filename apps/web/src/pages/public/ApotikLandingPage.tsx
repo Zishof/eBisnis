@@ -113,6 +113,9 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
                   src={photo.scan}
                   alt="Apoteker memindai dan menyiapkan obat di area farmasi"
                   className="h-64 w-full object-cover sm:h-80"
+                  onError={(event) => {
+                    event.currentTarget.style.display = 'none';
+                  }}
                 />
                 <div className="p-5 text-white">
                   <div className="flex items-center justify-between gap-3">
@@ -183,7 +186,14 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
         <section id="POS-Apotik" className="bg-white py-16">
           <div className="container-page grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div className="overflow-hidden rounded-lg">
-              <img src={photo.shelf} alt="Rak obat apotik modern" className="h-full min-h-80 w-full object-cover" />
+              <img
+                src={photo.shelf}
+                alt="Rak obat apotik modern"
+                className="h-full min-h-80 w-full object-cover"
+                onError={(event) => {
+                  event.currentTarget.style.display = 'none';
+                }}
+              />
             </div>
             <div>
               <p className="section-eyebrow bg-emerald-50 text-emerald-800">POS Apotik terpisah</p>
@@ -238,7 +248,14 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
                 })}
               </div>
             </div>
-            <img src={photo.lab} alt="Laboratorium racikan farmasi" className="h-full min-h-96 rounded-lg object-cover shadow-2xl" />
+            <img
+              src={photo.lab}
+              alt="Laboratorium racikan farmasi"
+              className="h-full min-h-96 rounded-lg object-cover shadow-2xl"
+              onError={(event) => {
+                event.currentTarget.style.display = 'none';
+              }}
+            />
           </div>
         </section>
 
