@@ -11,7 +11,8 @@ const TENANT = {
   slug: 'cmnmedika-inventory',
   schema: 'cmnmedika_inventory',
   host: 'cmnmedika-inventory.ebisnis.id',
-  vertical: 'inventory',
+  verticalCode: 'CORE_ERP',
+  siteVertical: 'inventory',
 };
 
 const USERS: Array<{
@@ -47,20 +48,20 @@ async function main(): Promise<void> {
           name: TENANT.name,
           slug: TENANT.slug,
           status: 'PROVISIONING',
-          verticalCode: TENANT.vertical,
+          verticalCode: TENANT.verticalCode,
           localeCode: 'id',
           metadata: {
-            product: 'inventory',
+            product: TENANT.siteVertical,
             publicHost: TENANT.host,
             onboarding: 'cmn-inventory',
           },
         },
       });
       process.stdout.write(`Tenant ${TENANT.name} dibuat.\n`);
-    } else if (tenant.verticalCode !== TENANT.vertical || tenant.name !== TENANT.name) {
+    } else if (tenant.verticalCode !== TENANT.verticalCode || tenant.name !== TENANT.name) {
       tenant = await ctx.prisma.tenant.update({
         where: { id: tenant.id },
-        data: { name: TENANT.name, slug: TENANT.slug, verticalCode: TENANT.vertical },
+        data: { name: TENANT.name, slug: TENANT.slug, verticalCode: TENANT.verticalCode },
       });
     }
 
@@ -95,13 +96,13 @@ async function main(): Promise<void> {
       create: {
         host: TENANT.host,
         tenantId: tenant.id,
-        vertical: TENANT.vertical,
+        vertical: TENANT.siteVertical,
         status: 'ACTIVE',
         verifiedAt: new Date(),
       },
       update: {
         tenantId: tenant.id,
-        vertical: TENANT.vertical,
+        vertical: TENANT.siteVertical,
         status: 'ACTIVE',
         verifiedAt: new Date(),
       },
