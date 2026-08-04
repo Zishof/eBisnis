@@ -1360,6 +1360,49 @@ export class ErpController {
     };
   }
 
+  @Get('inventory/legacy-import-reconciliation')
+  @Permissions('SALES.READ')
+  @ApiOperation({ summary: 'Rekonsiliasi impor legacy inventory CMN per file sumber' })
+  async legacyImportReconciliation(
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const [files, totals, salesMap] = await Promise.all([
+      this.inventoryQuery(
+        ctx,
+        `SELECT file_name, total_records, active_records, deleted_records, imported_records,
+                raw_records, projected_records, raw_only_records, imported_at::text
+           FROM ${S}.legacy_import_reconciliation
+          ORDER BY file_name`,
+      ),
+      this.inventoryQuery(
+        ctx,
+        `SELECT
+           (SELECT count(*)::int FROM ${S}.legacy_import_record) AS raw_records,
+           (SELECT count(*)::int FROM ${S}.legacy_import_file) AS files,
+           (SELECT count(*)::int FROM ${S}.legacy_receivable_ledger) AS receivable_rows,
+           (SELECT COALESCE(sum(amount), 0)::text FROM ${S}.legacy_receivable_ledger) AS receivable_amount,
+           (SELECT count(*)::int FROM ${S}.legacy_payable_ledger) AS payable_rows,
+           (SELECT COALESCE(sum(amount), 0)::text FROM ${S}.legacy_payable_ledger) AS payable_amount,
+           (SELECT count(*)::int FROM ${S}.legacy_price_history) AS price_history_rows,
+           (SELECT count(*)::int FROM ${S}.legacy_stock_opname) AS stock_opname_rows,
+           (SELECT count(*)::int FROM ${S}.purchase_order WHERE source_type = 'CMN_LEGACY_DBF') AS purchase_orders,
+           (SELECT count(*)::int FROM ${S}.supplier_invoice WHERE status = 'APPROVED') AS supplier_invoices`,
+      ),
+      this.inventoryQuery(
+        ctx,
+        `SELECT legacy_code, legacy_name, mapped_username, COALESCE(us.name, us.username_snapshot) AS mapped_name
+           FROM ${S}.legacy_salesperson_map lsm
+           LEFT JOIN ${S}.user_subject us ON us.id = lsm.user_subject_id
+          WHERE lsm.is_active
+          ORDER BY legacy_name`,
+      ),
+    ]);
+    return { files, totals: totals[0] ?? {}, salesMap };
+  }
+
   // --- Internal Transfer ---------------------------------------------------
 
   @Get('internal-transfers')

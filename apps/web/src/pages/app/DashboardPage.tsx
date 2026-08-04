@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Boxes, ClipboardList, Megaphone, PackageCheck, ReceiptText, TrendingUp, UsersRound } from 'lucide-react';
+import { AlertTriangle, Boxes, ClipboardList, Database, Megaphone, PackageCheck, ReceiptText, TrendingUp, UsersRound } from 'lucide-react';
 import { api, formatMoney, formatNumber } from '../../lib/api';
 import { PageHeader, StatusBadge, LoadingState, Code } from '../../components/ui';
 import { useAuth } from '../../app/auth-context';
@@ -57,6 +57,31 @@ interface SalesInventoryDashboard {
   }>;
 }
 
+interface LegacyImportReconciliation {
+  totals: {
+    raw_records?: number;
+    files?: number;
+    receivable_rows?: number;
+    receivable_amount?: string;
+    payable_rows?: number;
+    payable_amount?: string;
+    price_history_rows?: number;
+    stock_opname_rows?: number;
+    purchase_orders?: number;
+    supplier_invoices?: number;
+  };
+  files: Array<{
+    file_name: string;
+    total_records: number;
+    active_records: number;
+    deleted_records: number;
+    raw_records: number;
+    projected_records: number;
+    raw_only_records: number;
+  }>;
+  salesMap: Array<{ legacy_code: string; legacy_name: string; mapped_username: string | null; mapped_name: string | null }>;
+}
+
 export function DashboardPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -80,6 +105,11 @@ export function DashboardPage() {
   const salesDashboard = useQuery({
     queryKey: ['inventory-sales-dashboard'],
     queryFn: () => api.get<SalesInventoryDashboard>('/inventory/sales-dashboard'),
+    retry: false,
+  });
+  const legacyImport = useQuery({
+    queryKey: ['inventory-legacy-import-reconciliation'],
+    queryFn: () => api.get<LegacyImportReconciliation>('/inventory/legacy-import-reconciliation'),
     retry: false,
   });
   const seed = useQuery({
@@ -166,7 +196,74 @@ export function DashboardPage() {
           value="Demo"
           href="/app/portal-pelanggan"
         />
+        {legacyImport.data && (
+          <StatCard
+            icon={<Database className="h-5 w-5" aria-hidden />}
+            label="Baris legacy masuk"
+            value={formatNumber(legacyImport.data.totals.raw_records)}
+          />
+        )}
       </div>
+
+      {legacyImport.data && (
+        <section className="card mt-6 p-5">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
+                <Database className="h-4 w-4" aria-hidden />
+                Rekonsiliasi Legacy Caruban Medika Nusantara
+              </h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Semua DBF lama disimpan sebagai raw vault, lalu diproyeksikan bertahap ke ERP.
+              </p>
+            </div>
+            <Code>{formatNumber(legacyImport.data.totals.files)} file DBF</Code>
+          </div>
+          <div className="grid gap-3 md:grid-cols-4">
+            <MiniMetric label="PO legacy" value={formatNumber(legacyImport.data.totals.purchase_orders)} tone="neutral" />
+            <MiniMetric label="Piutang legacy" value={formatMoney(legacyImport.data.totals.receivable_amount)} tone="neutral" />
+            <MiniMetric label="Hutang legacy" value={formatMoney(legacyImport.data.totals.payable_amount)} tone="neutral" />
+            <MiniMetric label="Riwayat harga" value={formatNumber(legacyImport.data.totals.price_history_rows)} tone="neutral" />
+          </div>
+          <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.8fr]">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="text-left text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  <tr>
+                    <th className="py-2 pe-3">File</th>
+                    <th className="py-2 pe-3 text-end">Aktif</th>
+                    <th className="py-2 pe-3 text-end">Terhapus</th>
+                    <th className="py-2 pe-3 text-end">Raw</th>
+                    <th className="py-2 text-end">Raw-only</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {legacyImport.data.files.slice(0, 10).map((file) => (
+                    <tr key={file.file_name} className="border-t border-slate-100 dark:border-slate-800">
+                      <td className="py-2 pe-3 font-medium">{file.file_name}</td>
+                      <td className="py-2 pe-3 text-end">{formatNumber(file.active_records)}</td>
+                      <td className="py-2 pe-3 text-end">{formatNumber(file.deleted_records)}</td>
+                      <td className="py-2 pe-3 text-end">{formatNumber(file.raw_records)}</td>
+                      <td className="py-2 text-end">{formatNumber(file.raw_only_records)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-800">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Mapping sales</h3>
+              <ul className="mt-3 space-y-2">
+                {legacyImport.data.salesMap.map((row) => (
+                  <li key={row.legacy_code} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="min-w-0 truncate">{row.legacy_name}</span>
+                    <Code>{row.mapped_username ?? 'belum dipetakan'}</Code>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+      )}
 
       {salesDashboard.data && (
         <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -348,9 +445,11 @@ function ProgressRow({
   );
 }
 
-function MiniMetric({ label, value, tone }: { label: string; value: string; tone: 'warning' | 'danger' }) {
+function MiniMetric({ label, value, tone }: { label: string; value: string; tone: 'warning' | 'danger' | 'neutral' }) {
   const toneClass =
-    tone === 'danger'
+    tone === 'neutral'
+      ? 'border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100'
+      : tone === 'danger'
       ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200'
       : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200';
   return (
