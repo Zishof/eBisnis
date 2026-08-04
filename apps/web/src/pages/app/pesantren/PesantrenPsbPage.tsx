@@ -817,9 +817,9 @@ export function PesantrenPsbPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Jadwal seleksi PSB</p>
-                <h2 className="mt-1 text-xl font-bold text-slate-950 dark:text-white">{pendaftarTerpilih.nama_lengkap}</h2>
+                <h2 className="mt-1 text-xl font-bold text-slate-950 dark:text-white">{pendaftarTerpilih?.nama_lengkap}</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  {pendaftarTerpilih.nomor_pendaftaran} · {pendaftarTerpilih.nama_orang_tua ?? 'Orang tua belum diisi'}
+                  {pendaftarTerpilih?.nomor_pendaftaran} · {pendaftarTerpilih?.nama_orang_tua ?? 'Orang tua belum diisi'}
                 </p>
               </div>
               <button type="button" className="btn-outline" onClick={() => setPendaftarTerpilih(null)}>
