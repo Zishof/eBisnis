@@ -59,8 +59,8 @@ class InventoryLoginPage extends StatefulWidget {
 }
 
 class _InventoryLoginPageState extends State<InventoryLoginPage> {
-  final _username = TextEditingController(text: 'muklis');
-  final _password = TextEditingController(text: 'muklis123!!');
+  final _username = TextEditingController();
+  final _password = TextEditingController();
   bool _sibuk = false;
   String? _galat;
 
@@ -109,10 +109,6 @@ class _InventoryLoginPageState extends State<InventoryLoginPage> {
                     busy: _sibuk,
                     error: _galat,
                     onSubmit: _masuk,
-                    onPreset: (p) {
-                      _username.text = p.username;
-                      _password.text = p.password;
-                    },
                   );
                   final hero = const _InventoryHero();
                   if (narrow) {
@@ -175,6 +171,8 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           NavigationDestination(
               icon: Icon(Icons.add_shopping_cart_outlined),
               label: 'Order Baru'),
+          NavigationDestination(
+              icon: Icon(Icons.apps_outlined), label: 'Fitur'),
           NavigationDestination(
               icon: Icon(Icons.analytics_outlined), label: 'Laporan'),
         ],
@@ -302,6 +300,8 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                           ),
                         ] else if (_tab == 1)
                           _SalesOrderDraftPage(persona: widget.persona)
+                        else if (_tab == 2)
+                          const _InventoryFeaturePage()
                         else
                           _InventoryReportPage(snapshot: data!),
                       ],
@@ -476,6 +476,214 @@ class _InventoryReportPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _InventoryFeaturePage extends StatelessWidget {
+  const _InventoryFeaturePage();
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = [
+      (
+        'Master Relasi',
+        'Data pokok dari aplikasi lama dibuat siap kerja untuk distribusi obat.',
+        Icons.hub_outlined,
+        const [
+          _FeatureItem('Supplier', 'Pemasok, tempo bayar, kontak, dan bank.',
+              Icons.local_shipping_outlined),
+          _FeatureItem(
+              'Customer',
+              'Apotek, klinik, toko obat, plafon, wilayah.',
+              Icons.storefront_outlined),
+          _FeatureItem('Sales', 'Masrukin, Tohirin, Nofal, Agung dan target.',
+              Icons.badge_outlined),
+        ],
+      ),
+      (
+        'Obat dan Harga',
+        'Katalog farmasi mengutamakan stok, batch, expiry, dan aturan harga.',
+        Icons.medication_outlined,
+        const [
+          _FeatureItem('Stok Barang', 'SKU, satuan, stok minimum, batch, ED.',
+              Icons.inventory_2_outlined),
+          _FeatureItem('Master Harga',
+              'Harga beli, jual, riwayat harga customer.', Icons.sell_outlined),
+          _FeatureItem(
+              'Re-index Data',
+              'Pemeriksaan indeks dan kualitas import.',
+              Icons.manage_search_outlined),
+        ],
+      ),
+      (
+        'Transaksi',
+        'Alur lapangan dibuat cepat untuk sales, rapi untuk admin, jelas untuk pemilik.',
+        Icons.receipt_long_outlined,
+        const [
+          _FeatureItem('Pembelian', 'PO, penerimaan, supplier invoice, hutang.',
+              Icons.add_business_outlined),
+          _FeatureItem(
+              'Penjualan',
+              'Order sales, invoice, status kirim, piutang.',
+              Icons.point_of_sale_outlined),
+          _FeatureItem('Kas', 'Penerimaan tagihan, setoran, dan rekonsiliasi.',
+              Icons.account_balance_wallet_outlined),
+        ],
+      ),
+      (
+        'Kontrol Pemilik',
+        'Laporan dan proses akhir untuk menjaga data akuntabel.',
+        Icons.admin_panel_settings_outlined,
+        const [
+          _FeatureItem('Laba / Rugi', 'Omzet, HPP, margin, piutang, hutang.',
+              Icons.query_stats_outlined),
+          _FeatureItem('Proses Akhir', 'Tutup hari, audit transaksi, backup.',
+              Icons.task_alt_outlined),
+          _FeatureItem('Ganti Password', 'Keamanan akun per peran pengguna.',
+              Icons.lock_reset_outlined),
+        ],
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionCard(
+          title: 'Peta Fitur Inventory CMN',
+          icon: Icons.apps_outlined,
+          child: const Text(
+            'Fungsi dari aplikasi Inventory Control lama disusun ulang menjadi modul modern, responsif, dan siap tersambung ke web/API eBisnis.',
+            style: TextStyle(color: Color(0xFF475569), height: 1.5),
+          ),
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, box) {
+            final cols = box.maxWidth > 980
+                ? 2
+                : box.maxWidth > 620
+                    ? 2
+                    : 1;
+            return GridView.count(
+              crossAxisCount: cols,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: cols == 1 ? 0.95 : 0.78,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              children: groups
+                  .map((group) => _FeatureGroupCard(
+                        title: group.$1,
+                        subtitle: group.$2,
+                        icon: group.$3,
+                        items: group.$4,
+                      ))
+                  .toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _FeatureGroupCard extends StatelessWidget {
+  const _FeatureGroupCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.items,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<_FeatureItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE6FFFB),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: const Color(0xFF0F766E)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style: const TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w900)),
+                      Text(subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Color(0xFF64748B), height: 1.35)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            ...items.map((item) => _FeatureRow(item: item)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeatureItem {
+  const _FeatureItem(this.title, this.description, this.icon);
+  final String title;
+  final String description;
+  final IconData icon;
+}
+
+class _FeatureRow extends StatelessWidget {
+  const _FeatureRow({required this.item});
+  final _FeatureItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(item.icon, size: 20, color: const Color(0xFF0F766E)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.title,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(item.description,
+                    style: const TextStyle(
+                        color: Color(0xFF64748B), height: 1.35)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -877,42 +1085,112 @@ class _InventoryHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        color: const Color(0xFF0F172A),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.inventory_2_outlined, color: Color(0xFF5EEAD4), size: 44),
-          SizedBox(height: 20),
-          Text(
-            'Sales dan inventory obat dalam satu aplikasi.',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
-                height: 1.08),
-          ),
-          SizedBox(height: 14),
-          Text(
-            'Order sales, stok, batch-expiry, piutang, hutang, pembelian, dan laporan pemilik tersambung ke Caruban Medika Nusantara.',
-            style:
-                TextStyle(color: Color(0xFFCBD5E1), fontSize: 16, height: 1.6),
-          ),
-          SizedBox(height: 24),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _Pill('Owner', 'dashboard'),
-              _Pill('Sales', 'order'),
-              _Pill('Admin', 'rekonsiliasi'),
-            ],
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0F172A), Color(0xFF0F766E)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.18),
+            blurRadius: 32,
+            offset: const Offset(0, 18),
           ),
         ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            ),
+            child: const Icon(Icons.medication_liquid_outlined,
+                color: Color(0xFF5EEAD4), size: 36),
+          ),
+          const SizedBox(height: 22),
+          const Text(
+            'Caruban Medika Nusantara Inventory',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 34,
+              fontWeight: FontWeight.w900,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Aplikasi kerja sales obat: order lapangan, stok, batch-expiry, piutang, hutang, pembelian, dan laporan pemilik dalam satu alur.',
+            style: TextStyle(
+              color: Color(0xFFE2E8F0),
+              fontSize: 16,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _Pill('FEFO', 'batch expiry'),
+              _Pill('Sales', 'order cepat'),
+              _Pill('Owner', 'dashboard'),
+              _Pill('Admin', 'rekonsiliasi'),
+            ],
+          ),
+          const SizedBox(height: 26),
+          const _HeroMetricStrip(),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroMetricStrip extends StatelessWidget {
+  const _HeroMetricStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      ('626', 'SKU obat'),
+      ('4', 'sales aktif'),
+      ('Live', 'API CMN'),
+    ];
+    return Row(
+      children: items
+          .map((item) => Expanded(
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.11),
+                    borderRadius: BorderRadius.circular(16),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.$1,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900)),
+                      Text(item.$2,
+                          style: const TextStyle(
+                              color: Color(0xFFCBD5E1), fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ))
+          .toList(),
     );
   }
 }
@@ -923,7 +1201,6 @@ class _LoginCard extends StatelessWidget {
     required this.password,
     required this.busy,
     required this.onSubmit,
-    required this.onPreset,
     this.error,
   });
 
@@ -932,7 +1209,6 @@ class _LoginCard extends StatelessWidget {
   final bool busy;
   final String? error;
   final VoidCallback onSubmit;
-  final ValueChanged<PersonaInventory> onPreset;
 
   @override
   Widget build(BuildContext context) {
@@ -940,45 +1216,115 @@ class _LoginCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Masuk Inventory CMN',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 6),
-            const Text('Gunakan akun pemilik, admin, atau sales.'),
-            const SizedBox(height: 18),
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE6FFFB),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child:
+                      const Icon(Icons.lock_outline, color: Color(0xFF0F766E)),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Masuk Inventory CMN',
+                          style: TextStyle(
+                              fontSize: 23, fontWeight: FontWeight.w900)),
+                      SizedBox(height: 3),
+                      Text('Gunakan akun resmi yang diberikan admin.'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 22),
             TextField(
-                controller: username,
-                decoration: const InputDecoration(labelText: 'Username')),
+              controller: username,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Username',
+                prefixIcon: Icon(Icons.person_outline),
+                border: OutlineInputBorder(),
+              ),
+            ),
             const SizedBox(height: 12),
             TextField(
-                controller: password,
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true),
+              controller: password,
+              obscureText: true,
+              onSubmitted: (_) => busy ? null : onSubmit(),
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                prefixIcon: Icon(Icons.password_outlined),
+                border: OutlineInputBorder(),
+              ),
+            ),
             if (error != null) ...[
               const SizedBox(height: 12),
-              Text(error!, style: const TextStyle(color: Colors.red)),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFFDA4AF)),
+                ),
+                child: Text(error!,
+                    style: const TextStyle(color: Color(0xFFBE123C))),
+              ),
             ],
             const SizedBox(height: 18),
             FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
               onPressed: busy ? null : onSubmit,
               child: Text(busy ? 'Memeriksa...' : 'Masuk'),
             ),
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: akunInventory
-                  .map((p) => OutlinedButton(
-                        onPressed: () => onPreset(p),
-                        child: Text(p.label),
-                      ))
-                  .toList(),
-            ),
+            const _SecurityNote(),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SecurityNote extends StatelessWidget {
+  const _SecurityNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.verified_user_outlined,
+              size: 20, color: Color(0xFF0F766E)),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Akses dibatasi per peran. Sales hanya melihat order dan performa miliknya, pemilik melihat ringkasan seluruh sales.',
+              style: TextStyle(color: Color(0xFF475569), height: 1.45),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,34 +1,46 @@
 library;
 
 import 'package:ebisnis_pos/inventory/inventory_app.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('aplikasi inventory menampilkan login dan akun demo CMN',
+  testWidgets('aplikasi inventory menampilkan login produksi CMN',
       (tester) async {
     await tester.pumpWidget(const AplikasiInventory());
 
     expect(find.text('Masuk Inventory CMN'), findsOneWidget);
     expect(find.text('Caruban Medika Nusantara'), findsNothing);
-    expect(find.text('Muklis'), findsOneWidget);
-    expect(find.text('Masrukin'), findsOneWidget);
-    expect(find.text('Admin CMN'), findsOneWidget);
+    expect(
+        find.text('Gunakan akun resmi yang diberikan admin.'), findsOneWidget);
+    expect(find.text('Muklis'), findsNothing);
+    expect(find.text('Masrukin'), findsNothing);
+    expect(find.text('Admin CMN'), findsNothing);
   });
 
-  testWidgets('preset akun mengisi username dan password', (tester) async {
+  testWidgets('halaman fitur memuat modul inventory lama', (tester) async {
     await tester.pumpWidget(const AplikasiInventory());
 
-    await tester.tap(find.text('Agung'));
-    await tester.pump();
+    await tester.enterText(find.byType(TextField).at(0), 'agung');
+    await tester.enterText(find.byType(TextField).at(1), 'agung123!!');
+    await tester.tap(find.text('Masuk'));
+    await tester.pumpAndSettle();
 
-    expect(find.text('agung'), findsOneWidget);
+    await tester.tap(find.text('Fitur'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Peta Fitur Inventory CMN'), findsOneWidget);
+    expect(find.text('Supplier'), findsOneWidget);
+    expect(find.text('Customer'), findsOneWidget);
+    expect(find.text('Stok Barang'), findsOneWidget);
+    expect(find.text('Laba / Rugi'), findsOneWidget);
   });
 
   testWidgets('sales dapat membuat draft order inventory', (tester) async {
     await tester.pumpWidget(const AplikasiInventory());
 
-    await tester.tap(find.text('Masrukin'));
-    await tester.pump();
+    await tester.enterText(find.byType(TextField).at(0), 'masrukin');
+    await tester.enterText(find.byType(TextField).at(1), 'masrukin123!!');
     await tester.tap(find.text('Masuk'));
     await tester.pumpAndSettle();
 

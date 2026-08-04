@@ -62,6 +62,11 @@ android {
             applicationId = "id.emedik.pos_apotik"
             resValue "string", "app_name", "POS Apotik eMedik"
         }
+        inventory {
+            dimension "produk"
+            applicationId = "id.ebisnis.inventory_sales"
+            resValue "string", "app_name", "Inventory CMN"
+        }
     }
 
     signingConfigs {
