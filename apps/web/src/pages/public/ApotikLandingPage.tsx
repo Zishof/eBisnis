@@ -14,7 +14,7 @@ import {
   ShieldAlert,
   ShoppingCart,
 } from 'lucide-react';
-import { LandingHeader, LandingCta, OfferDocumentSection } from './EmedikLandingPage';
+import { LandingHeader, LandingCta, LandingImage, OfferDocumentSection } from './EmedikLandingPage';
 
 const photo = {
   scan:
@@ -109,13 +109,12 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
 
             <div className="grid gap-4 lg:grid-cols-[0.72fr_0.28fr]">
               <div className="overflow-hidden rounded-lg border border-emerald-200 bg-slate-950 shadow-2xl">
-                <img
+                <LandingImage
                   src={photo.scan}
                   alt="Apoteker memindai dan menyiapkan obat di area farmasi"
                   className="h-64 w-full object-cover sm:h-80"
-                  onError={(event) => {
-                    event.currentTarget.style.display = 'none';
-                  }}
+                  fallbackLabel="POS Apotik"
+                  tone="emerald"
                 />
                 <div className="p-5 text-white">
                   <div className="flex items-center justify-between gap-3">
@@ -186,13 +185,12 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
         <section id="POS-Apotik" className="bg-white py-16">
           <div className="container-page grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div className="overflow-hidden rounded-lg">
-              <img
+              <LandingImage
                 src={photo.shelf}
                 alt="Rak obat apotik modern"
                 className="h-full min-h-80 w-full object-cover"
-                onError={(event) => {
-                  event.currentTarget.style.display = 'none';
-                }}
+                fallbackLabel="Rak obat"
+                tone="emerald"
               />
             </div>
             <div>
@@ -248,13 +246,12 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
                 })}
               </div>
             </div>
-            <img
+            <LandingImage
               src={photo.lab}
               alt="Laboratorium racikan farmasi"
               className="h-full min-h-96 rounded-lg object-cover shadow-2xl"
-              onError={(event) => {
-                event.currentTarget.style.display = 'none';
-              }}
+              fallbackLabel="Racikan farmasi"
+              tone="emerald"
             />
           </div>
         </section>

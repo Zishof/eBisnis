@@ -15,6 +15,7 @@ import {
   Banknote,
   Barcode,
   Beaker,
+  CheckCircle2,
   ClipboardCheck,
   Factory,
   FileText,
@@ -194,10 +195,32 @@ export function PharmacyPosPage() {
   const baris = keranjang.data?.lines ?? [];
   const daftarProduk = kataKunci.trim().length >= 2 ? cari.data : favorit.data;
   const modeAktif = modeTransaksi.find((m) => m.key === mode)!;
+  const butuhKonteksKlinis = mode !== 'OTC';
+  const konteksKlinisTerisi = !butuhKonteksKlinis || nomorResep.trim().length >= 3;
+  const butuhApproval = baris.some((l) => l.requires_approval && !l.approved_by);
   const siapBayar = useMemo(
-    () => Boolean(saleId) && baris.length > 0 && Number(keranjang.data?.grand_total ?? 0) > 0,
-    [saleId, baris.length, keranjang.data],
+    () =>
+      Boolean(saleId) &&
+      baris.length > 0 &&
+      Number(keranjang.data?.grand_total ?? 0) > 0 &&
+      konteksKlinisTerisi &&
+      !butuhApproval,
+    [saleId, baris.length, keranjang.data, konteksKlinisTerisi, butuhApproval],
   );
+  const safetyChecklist = [
+    {
+      label: butuhKonteksKlinis ? 'Nomor resep/pasien terisi' : 'Mode OTC dipilih',
+      ok: konteksKlinisTerisi,
+    },
+    {
+      label: baris.length > 0 ? `${baris.length} item obat masuk keranjang` : 'Keranjang masih kosong',
+      ok: baris.length > 0,
+    },
+    {
+      label: butuhApproval ? 'Masih ada item butuh approval' : 'Tidak ada approval tertunda',
+      ok: !butuhApproval,
+    },
+  ];
 
   if (konteks.isLoading) return <LoadingState />;
 
@@ -222,6 +245,17 @@ export function PharmacyPosPage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">POS Apotik</p>
             <h1 className="text-lg font-black">Kasir obat, resep, racikan, dan produksi farmasi</h1>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-800 ring-1 ring-emerald-100">
+              POS khusus farmasi
+            </span>
+            <span className="rounded-full bg-cyan-50 px-3 py-1 font-bold text-cyan-800 ring-1 ring-cyan-100">
+              Barcode, batch, expiry
+            </span>
+            <span className="rounded-full bg-amber-50 px-3 py-1 font-bold text-amber-900 ring-1 ring-amber-100">
+              High-alert ditahan
+            </span>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link to="/app/pos/kasir" className="btn-outline px-3 py-2 text-xs">
@@ -279,8 +313,13 @@ export function PharmacyPosPage() {
             value={nomorResep}
             onChange={(e) => setNomorResep(e.target.value)}
             placeholder="mis. RSP-0826-0142"
-            className="field-input"
+            className={butuhKonteksKlinis && !konteksKlinisTerisi ? 'field-input border-amber-400 bg-amber-50' : 'field-input'}
           />
+          {butuhKonteksKlinis && !konteksKlinisTerisi && (
+            <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs leading-5 text-amber-900">
+              Mode {modeAktif.label} perlu konteks resep atau pasien sebelum pembayaran.
+            </p>
+          )}
 
           <div className="mt-4 space-y-2">
             {guardrails.map((g) => (
@@ -451,6 +490,21 @@ export function PharmacyPosPage() {
                 <FileText className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden />
                 {nomorResep.trim() ? `Konteks: ${nomorResep.trim()}` : 'Isi nomor resep/pasien bila transaksi berasal dari resep dokter.'}
               </p>
+            </div>
+            <div className="mt-3 grid gap-2">
+              {safetyChecklist.map((item) => (
+                <p
+                  key={item.label}
+                  className={
+                    item.ok
+                      ? 'flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200'
+                      : 'flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 dark:bg-amber-950/30 dark:text-amber-200'
+                  }
+                >
+                  {item.ok ? <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden /> : <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />}
+                  {item.label}
+                </p>
+              ))}
             </div>
             <dl className="mt-3 space-y-1 text-sm">
               <div className="flex justify-between">

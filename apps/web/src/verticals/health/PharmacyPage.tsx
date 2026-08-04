@@ -14,9 +14,10 @@
  *    benar-benar berbahaya tenggelam di antara pengingat biasa.
  */
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Lock, PackageCheck, ShieldCheck, Siren } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, Clock3, Lock, PackageCheck, ShieldCheck, ShoppingCart, Siren } from 'lucide-react';
 import { EmptyState, PageHeader, useToast } from '../../components/ui';
 import { useErrorMessage } from '../../app/auth-context';
 import {
@@ -75,6 +76,10 @@ export function PharmacyPage() {
     onError: (e) => toast.push(toMessage(e, (k, f) => f ?? k), 'error'),
   });
 
+  const daftarAntrian = antrian.data ?? [];
+  const jumlahTerkendali = daftarAntrian.filter((r) => r.has_controlled).length;
+  const jumlahHighAlert = daftarAntrian.filter((r) => r.has_high_alert).length;
+
   if (!ctx.purpose) return <PurposeSelector />;
 
   return (
@@ -83,6 +88,42 @@ export function PharmacyPage() {
         title="Farmasi"
         description="Telaah resep dan penyerahan obat. Yang meresepkan bukan yang menelaah."
       />
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <InfoFarmasi
+          icon={<Clock3 className="h-5 w-5" aria-hidden />}
+          label="Antrian aktif"
+          value={String(daftarAntrian.length)}
+          detail="refresh otomatis 15 detik"
+        />
+        <InfoFarmasi
+          icon={<Siren className="h-5 w-5" aria-hidden />}
+          label="High-alert"
+          value={String(jumlahHighAlert)}
+          detail="perlu pemeriksaan ganda"
+          tone={jumlahHighAlert > 0 ? 'warning' : 'normal'}
+        />
+        <InfoFarmasi
+          icon={<Lock className="h-5 w-5" aria-hidden />}
+          label="Obat terkendali"
+          value={String(jumlahTerkendali)}
+          detail="ditandai sebelum dibuka"
+          tone={jumlahTerkendali > 0 ? 'danger' : 'normal'}
+        />
+        <Link
+          to="/app/apotik/pos"
+          className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100"
+        >
+          <span>
+            <span className="block text-xs font-semibold uppercase tracking-wide">POS Apotik</span>
+            <span className="mt-1 block text-2xl font-black">Bayar resep</span>
+            <span className="mt-1 block text-xs leading-5 text-emerald-800 dark:text-emerald-200">
+              masuk ke kasir farmasi
+            </span>
+          </span>
+          <ShoppingCart className="h-6 w-6" aria-hidden />
+        </Link>
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,26rem)_1fr]">
         {/* --- Antrian --- */}
@@ -93,14 +134,14 @@ export function PharmacyPage() {
 
           {antrian.isLoading ? (
             <p className="text-sm text-slate-500">Memuat antrian…</p>
-          ) : !antrian.data?.length ? (
+          ) : !daftarAntrian.length ? (
             <EmptyState
               title="Tidak ada resep menunggu"
               description="Resep yang baru ditulis dokter akan muncul di sini dalam beberapa detik."
             />
           ) : (
             <ul className="space-y-2">
-              {antrian.data.map((r) => (
+              {daftarAntrian.map((r) => (
                 <BarisAntrian
                   key={r.id}
                   resep={r}
@@ -127,6 +168,9 @@ export function PharmacyPage() {
             <div className="space-y-5 rounded-xl border border-slate-200 p-5 dark:border-slate-700">
               <header className="flex flex-wrap items-start justify-between gap-3">
                 <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                    Resep dokter
+                  </p>
                   <p className="font-mono text-sm text-slate-500">{resep.data.prescription_number}</p>
                   <h3 className="text-lg font-semibold">{resep.data.patient_name}</h3>
                   <p className="text-sm text-slate-500">
@@ -138,6 +182,21 @@ export function PharmacyPage() {
                   {LABEL_STATUS_RESEP[resep.data.status] ?? resep.data.status}
                 </span>
               </header>
+
+              <div className="grid gap-3 rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900/40 sm:grid-cols-3">
+                <p>
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Item</span>
+                  <span className="font-bold">{resep.data.lines.length} obat</span>
+                </p>
+                <p>
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">High-alert</span>
+                  <span className="font-bold">{resep.data.lines.filter((line) => line.is_high_alert).length}</span>
+                </p>
+                <p>
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Terkendali</span>
+                  <span className="font-bold">{resep.data.lines.filter((line) => line.is_controlled).length}</span>
+                </p>
+              </div>
 
               <ul className="space-y-4">
                 {resep.data.lines.map((b) => (
@@ -345,3 +404,37 @@ export default PharmacyPage;
 
 /** Ikon yang belum terpakai di layar ini tetapi dipakai layar penyerahan. */
 export const IKON_PENYERAHAN = PackageCheck;
+
+function InfoFarmasi({
+  icon,
+  label,
+  value,
+  detail,
+  tone = 'normal',
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+  tone?: 'normal' | 'warning' | 'danger';
+}) {
+  const toneClass =
+    tone === 'danger'
+      ? 'border-rose-200 bg-rose-50 text-rose-950 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-100'
+      : tone === 'warning'
+        ? 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100'
+        : 'border-slate-200 bg-white text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100';
+
+  return (
+    <article className={`flex items-center gap-3 rounded-xl border p-4 shadow-sm ${toneClass}`}>
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white/70 text-emerald-700 dark:bg-slate-950/40 dark:text-emerald-300">
+        {icon}
+      </span>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{label}</p>
+        <p className="text-2xl font-black">{value}</p>
+        <p className="text-xs leading-5 opacity-75">{detail}</p>
+      </div>
+    </article>
+  );
+}

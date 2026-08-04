@@ -100,6 +100,14 @@ export default defineConfig({
   preview: {
     port: 5173,
     strictPort: true,
+    allowedHosts: [
+      'emedik.id',
+      'www.emedik.id',
+      'apotik.emedik.id',
+      'www.apotik.emedik.id',
+      'demo.emedik.id',
+      'demo-apotik.emedik.id',
+    ],
     /*
      * Proxy yang sama seperti server pengembangan.
      *

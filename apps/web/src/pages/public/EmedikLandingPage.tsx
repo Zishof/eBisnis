@@ -129,6 +129,56 @@ const medicalSignals = [
   [HeartPulse, 'IGD, operasi, ICU, dan telaah darurat'],
 ];
 
+function fallbackImageData(label: string, tone: 'teal' | 'emerald' | 'cyan') {
+  const colors = {
+    teal: ['#0f766e', '#155e75', '#f0fdfa'],
+    emerald: ['#047857', '#064e3b', '#ecfdf5'],
+    cyan: ['#0369a1', '#0f766e', '#ecfeff'],
+  }[tone];
+  const safeLabel = label.replace(/[<>&"]/g, '');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+    <defs>
+      <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+        <stop stop-color="${colors[0]}"/>
+        <stop offset="1" stop-color="${colors[1]}"/>
+      </linearGradient>
+    </defs>
+    <rect width="1200" height="800" fill="url(#g)"/>
+    <circle cx="980" cy="120" r="240" fill="${colors[2]}" opacity=".18"/>
+    <circle cx="180" cy="690" r="220" fill="${colors[2]}" opacity=".14"/>
+    <path d="M570 230h120v120h120v120H690v120H570V470H450V350h120z" fill="${colors[2]}" opacity=".82"/>
+    <text x="80" y="700" fill="${colors[2]}" font-family="Arial, sans-serif" font-size="54" font-weight="800">${safeLabel}</text>
+  </svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+export function LandingImage({
+  src,
+  alt,
+  className,
+  fallbackLabel,
+  tone = 'teal',
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  fallbackLabel: string;
+  tone?: 'teal' | 'emerald' | 'cyan';
+}) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      loading="eager"
+      decoding="async"
+      onError={(event) => {
+        event.currentTarget.src = fallbackImageData(fallbackLabel, tone);
+      }}
+    />
+  );
+}
+
 export const offerDocuments = [
   {
     icon: FileText,
@@ -200,13 +250,12 @@ export function EmedikLandingPage() {
             <div className="relative">
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950 shadow-2xl">
                 <div className="relative min-h-[23rem] sm:min-h-[30rem]">
-                  <img
+                  <LandingImage
                     src={photos.hero}
                     alt="Tim rumah sakit menyiapkan layanan pasien di ruang perawatan"
                     className="absolute inset-0 h-full w-full object-cover opacity-80"
-                    onError={(event) => {
-                      event.currentTarget.style.display = 'none';
-                    }}
+                    fallbackLabel="eMedik command center"
+                    tone="cyan"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-slate-950/10" />
                   <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
@@ -289,13 +338,12 @@ export function EmedikLandingPage() {
                     className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-lg"
                   >
                     <div className="relative h-44 overflow-hidden bg-gradient-to-br from-teal-100 via-cyan-50 to-slate-200">
-                      <img
+                      <LandingImage
                         src={item.image}
                         alt={item.alt}
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                        onError={(event) => {
-                          event.currentTarget.style.display = 'none';
-                        }}
+                        fallbackLabel={item.title}
+                        tone="teal"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 to-transparent" />
                       <span className="absolute bottom-3 left-3 grid h-10 w-10 place-items-center rounded-lg bg-white text-teal-700 shadow">
