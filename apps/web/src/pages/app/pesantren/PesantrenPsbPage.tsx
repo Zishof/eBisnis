@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, CheckCircle2, GripVertical, Plus, Trash2, XCircle } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarDays, CheckCircle2, GripVertical, Plus, Save, Trash2, XCircle } from 'lucide-react';
 import { api, formatDate, formatMoney } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -30,6 +30,21 @@ interface PendaftarRow extends Record<string, unknown> {
   no_hp_orang_tua: string | null;
   unit_pendidikan_tujuan_id: string | null;
   status: string;
+  created_at: string;
+}
+
+interface JadwalPsbRow {
+  id: string;
+  pendaftar_id: string;
+  jenis: string;
+  tanggal: string;
+  waktu_mulai: string | null;
+  waktu_selesai: string | null;
+  lokasi: string | null;
+  penguji: string | null;
+  status: string;
+  nilai: string | null;
+  catatan_hasil: string | null;
   created_at: string;
 }
 
@@ -70,6 +85,21 @@ const LABEL_TIPE_FIELD: Record<FieldTambahan['type'], string> = {
   select: 'Pilihan',
 };
 
+const FORM_JADWAL_KOSONG = {
+  jenis: 'UJIAN_TULIS',
+  tanggal: '',
+  waktuMulai: '',
+  waktuSelesai: '',
+  lokasi: '',
+  penguji: '',
+};
+
+const FORM_HASIL_JADWAL_KOSONG = {
+  status: 'SELESAI',
+  nilai: '',
+  catatanHasil: '',
+};
+
 function fieldTambahanKeSchema(fields: FieldTambahan[]) {
   return fields
     .map((field) => ({
@@ -100,6 +130,10 @@ export function PesantrenPsbPage() {
   const [formGelombang, setFormGelombang] = useState(FORM_GELOMBANG_KOSONG);
   const [fieldTambahan, setFieldTambahan] = useState<FieldTambahan[]>([]);
   const [fieldYangDitarik, setFieldYangDitarik] = useState<number | null>(null);
+  const [pendaftarTerpilih, setPendaftarTerpilih] = useState<PendaftarRow | null>(null);
+  const [formJadwal, setFormJadwal] = useState(FORM_JADWAL_KOSONG);
+  const [jadwalHasilId, setJadwalHasilId] = useState('');
+  const [formHasilJadwal, setFormHasilJadwal] = useState(FORM_HASIL_JADWAL_KOSONG);
 
   const gelombang = useQuery({
     queryKey: ['pesantren-psb-gelombang', pageGelombang, statusGelombang],
@@ -118,6 +152,12 @@ export function PesantrenPsbPage() {
       if (cariPendaftar) params.set('cari', cariPendaftar);
       return api.get<{ items: PendaftarRow[]; total: number }>(`/pesantren/psb/pendaftar?${params.toString()}`);
     },
+  });
+
+  const jadwalPendaftar = useQuery({
+    queryKey: ['pesantren-psb-jadwal', pendaftarTerpilih?.id],
+    enabled: Boolean(pendaftarTerpilih?.id),
+    queryFn: () => api.get<JadwalPsbRow[]>(`/pesantren/psb/pendaftar/${pendaftarTerpilih!.id}/jadwal`),
   });
 
   const buatGelombang = useMutation({
@@ -169,6 +209,41 @@ export function PesantrenPsbPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal memperbarui pendaftar.'), 'error'),
   });
 
+  const tambahJadwal = useMutation({
+    mutationFn: () =>
+      api.post<JadwalPsbRow>(`/pesantren/psb/pendaftar/${pendaftarTerpilih!.id}/jadwal`, {
+        jenis: formJadwal.jenis,
+        tanggal: formJadwal.tanggal,
+        waktuMulai: formJadwal.waktuMulai || undefined,
+        waktuSelesai: formJadwal.waktuSelesai || undefined,
+        lokasi: formJadwal.lokasi || undefined,
+        penguji: formJadwal.penguji || undefined,
+      }),
+    onSuccess: () => {
+      toast.push('Jadwal seleksi tersimpan.', 'success');
+      setFormJadwal(FORM_JADWAL_KOSONG);
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-psb-jadwal', pendaftarTerpilih?.id] });
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-psb-pendaftar'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan jadwal.'), 'error'),
+  });
+
+  const simpanHasilJadwal = useMutation({
+    mutationFn: () =>
+      api.post<JadwalPsbRow>(`/pesantren/psb/jadwal/${jadwalHasilId}/hasil`, {
+        status: formHasilJadwal.status,
+        nilai: formHasilJadwal.nilai ? Number(formHasilJadwal.nilai) : undefined,
+        catatanHasil: formHasilJadwal.catatanHasil || undefined,
+      }),
+    onSuccess: () => {
+      toast.push('Hasil seleksi tersimpan.', 'success');
+      setJadwalHasilId('');
+      setFormHasilJadwal(FORM_HASIL_JADWAL_KOSONG);
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-psb-jadwal', pendaftarTerpilih?.id] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan hasil seleksi.'), 'error'),
+  });
+
   const gelombangColumns: Array<GridColumn<GelombangRow>> = [
     { key: 'kode', header: 'Kode' },
     { key: 'nama', header: 'Nama' },
@@ -203,6 +278,19 @@ export function PesantrenPsbPage() {
       header: 'Aksi',
       render: (row) => (
         <div className="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            className="btn-outline px-2 py-1.5 text-xs"
+            onClick={() => {
+              setPendaftarTerpilih(row);
+              setFormJadwal(FORM_JADWAL_KOSONG);
+              setJadwalHasilId('');
+              setFormHasilJadwal(FORM_HASIL_JADWAL_KOSONG);
+            }}
+          >
+            <CalendarDays className="h-4 w-4" aria-hidden />
+            Jadwal
+          </button>
           {row.status === 'TERDAFTAR' && <StatusAction label="Verifikasi" onClick={() => aksiPendaftar.mutate({ id: row.id, aksi: 'verifikasi' })} />}
           {row.status === 'DIJADWALKAN' && (
             <>
@@ -358,6 +446,157 @@ export function PesantrenPsbPage() {
           />
           <Pagination page={pagePendaftar} totalPages={Math.max(1, Math.ceil(totalPendaftar / PAGE_SIZE))} total={totalPendaftar} onChange={setPagePendaftar} />
         </>
+      )}
+
+      {pendaftarTerpilih && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="card max-h-[88vh] w-full max-w-5xl overflow-y-auto p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700">Jadwal Seleksi PSB</p>
+                <h2 className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">{pendaftarTerpilih.nama_lengkap}</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {pendaftarTerpilih.nomor_pendaftaran} - {pendaftarTerpilih.status}
+                </p>
+              </div>
+              <button type="button" className="btn-outline" onClick={() => setPendaftarTerpilih(null)}>
+                Tutup
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+                <div className="border-b border-slate-200 p-4 dark:border-slate-800">
+                  <h3 className="font-semibold text-slate-900 dark:text-white">Riwayat ujian dan wawancara</h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Pendaftar dapat punya lebih dari satu sesi. Status SELESAI menjadi syarat sebelum diluluskan.
+                  </p>
+                </div>
+                {jadwalPendaftar.isLoading ? (
+                  <p className="p-4 text-sm text-slate-500">Memuat jadwal...</p>
+                ) : jadwalPendaftar.isError ? (
+                  <p className="p-4 text-sm text-rose-600">
+                    {toMessage(jadwalPendaftar.error, (_key, fallback) => fallback ?? 'Gagal memuat jadwal.')}
+                  </p>
+                ) : (jadwalPendaftar.data ?? []).length === 0 ? (
+                  <p className="p-4 text-sm text-slate-500">Belum ada jadwal seleksi untuk pendaftar ini.</p>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {(jadwalPendaftar.data ?? []).map((item) => (
+                      <article key={item.id} className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_220px]">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge status={item.jenis} />
+                            <StatusBadge status={item.status} />
+                            {item.nilai && <StatusBadge status={`Nilai ${item.nilai}`} />}
+                          </div>
+                          <h4 className="mt-2 font-semibold text-slate-900 dark:text-white">
+                            {formatDate(item.tanggal)}
+                            {item.waktu_mulai ? `, ${item.waktu_mulai}${item.waktu_selesai ? `-${item.waktu_selesai}` : ''}` : ''}
+                          </h4>
+                          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                            {item.lokasi || 'Lokasi belum diisi'} {item.penguji ? `- ${item.penguji}` : ''}
+                          </p>
+                          {item.catatan_hasil && <p className="mt-2 text-sm text-slate-500">{item.catatan_hasil}</p>}
+                        </div>
+                        <div className="flex items-start justify-end">
+                          <button
+                            type="button"
+                            className="btn-outline text-xs"
+                            onClick={() => {
+                              setJadwalHasilId(item.id);
+                              setFormHasilJadwal({
+                                status: item.status === 'DIJADWALKAN' ? 'SELESAI' : item.status,
+                                nilai: item.nilai ?? '',
+                                catatanHasil: item.catatan_hasil ?? '',
+                              });
+                            }}
+                          >
+                            Catat hasil
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <aside className="space-y-4">
+                <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                  <h3 className="font-semibold text-slate-900 dark:text-white">Tambah jadwal</h3>
+                  <div className="mt-3 space-y-3">
+                    <Field label="Jenis">
+                      <select className="field-input" value={formJadwal.jenis} onChange={(e) => setFormJadwal({ ...formJadwal, jenis: e.target.value })}>
+                        <option value="UJIAN_TULIS">Ujian tulis</option>
+                        <option value="TES_BACA_QURAN">Tes baca Quran</option>
+                        <option value="WAWANCARA">Wawancara</option>
+                        <option value="TES_KESEHATAN">Tes kesehatan</option>
+                        <option value="LAINNYA">Lainnya</option>
+                      </select>
+                    </Field>
+                    <Field label="Tanggal *">
+                      <input type="date" className="field-input" value={formJadwal.tanggal} onChange={(e) => setFormJadwal({ ...formJadwal, tanggal: e.target.value })} />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Mulai">
+                        <input type="time" className="field-input" value={formJadwal.waktuMulai} onChange={(e) => setFormJadwal({ ...formJadwal, waktuMulai: e.target.value })} />
+                      </Field>
+                      <Field label="Selesai">
+                        <input type="time" className="field-input" value={formJadwal.waktuSelesai} onChange={(e) => setFormJadwal({ ...formJadwal, waktuSelesai: e.target.value })} />
+                      </Field>
+                    </div>
+                    <Field label="Lokasi">
+                      <input className="field-input" value={formJadwal.lokasi} onChange={(e) => setFormJadwal({ ...formJadwal, lokasi: e.target.value })} />
+                    </Field>
+                    <Field label="Penguji">
+                      <input className="field-input" value={formJadwal.penguji} onChange={(e) => setFormJadwal({ ...formJadwal, penguji: e.target.value })} />
+                    </Field>
+                    <button
+                      type="button"
+                      className="btn-primary w-full"
+                      disabled={!formJadwal.tanggal || tambahJadwal.isPending}
+                      onClick={() => tambahJadwal.mutate()}
+                    >
+                      <Plus className="h-4 w-4" aria-hidden />
+                      Simpan Jadwal
+                    </button>
+                  </div>
+                </section>
+
+                {jadwalHasilId && (
+                  <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">Catat hasil seleksi</h3>
+                    <div className="mt-3 space-y-3">
+                      <Field label="Status hasil">
+                        <select className="field-input" value={formHasilJadwal.status} onChange={(e) => setFormHasilJadwal({ ...formHasilJadwal, status: e.target.value })}>
+                          <option value="DIJADWALKAN">Dijadwalkan</option>
+                          <option value="SELESAI">Selesai</option>
+                          <option value="TIDAK_HADIR">Tidak hadir</option>
+                          <option value="DIBATALKAN">Dibatalkan</option>
+                        </select>
+                      </Field>
+                      <Field label="Nilai">
+                        <input type="number" min="0" max="100" className="field-input" value={formHasilJadwal.nilai} onChange={(e) => setFormHasilJadwal({ ...formHasilJadwal, nilai: e.target.value })} />
+                      </Field>
+                      <Field label="Catatan hasil">
+                        <textarea className="field-input min-h-24" value={formHasilJadwal.catatanHasil} onChange={(e) => setFormHasilJadwal({ ...formHasilJadwal, catatanHasil: e.target.value })} />
+                      </Field>
+                      <div className="flex gap-2">
+                        <button type="button" className="btn-outline flex-1" onClick={() => setJadwalHasilId('')}>
+                          Batal
+                        </button>
+                        <button type="button" className="btn-primary flex-1" disabled={simpanHasilJadwal.isPending} onClick={() => simpanHasilJadwal.mutate()}>
+                          <Save className="h-4 w-4" aria-hidden />
+                          Simpan
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                )}
+              </aside>
+            </div>
+          </div>
+        </div>
       )}
 
       {membuatGelombang && (
@@ -568,6 +807,146 @@ export function PesantrenPsbPage() {
                 Simpan
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {false && pendaftarTerpilih && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="card max-h-[88vh] w-full max-w-5xl overflow-y-auto p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Jadwal seleksi PSB</p>
+                <h2 className="mt-1 text-xl font-bold text-slate-950 dark:text-white">{pendaftarTerpilih.nama_lengkap}</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {pendaftarTerpilih.nomor_pendaftaran} · {pendaftarTerpilih.nama_orang_tua ?? 'Orang tua belum diisi'}
+                </p>
+              </div>
+              <button type="button" className="btn-outline" onClick={() => setPendaftarTerpilih(null)}>
+                Tutup
+              </button>
+            </div>
+
+            <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-emerald-700" aria-hidden />
+                <h3 className="font-semibold text-slate-900 dark:text-white">Tambah jadwal ujian/wawancara</h3>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                <Field label="Jenis">
+                  <select className="field-input" value={formJadwal.jenis} onChange={(e) => setFormJadwal({ ...formJadwal, jenis: e.target.value })}>
+                    <option value="UJIAN_TULIS">Ujian tulis</option>
+                    <option value="TES_BACA_QURAN">Tes baca Quran</option>
+                    <option value="WAWANCARA">Wawancara</option>
+                    <option value="TES_KESEHATAN">Tes kesehatan</option>
+                    <option value="LAINNYA">Lainnya</option>
+                  </select>
+                </Field>
+                <Field label="Tanggal *">
+                  <input type="date" className="field-input" value={formJadwal.tanggal} onChange={(e) => setFormJadwal({ ...formJadwal, tanggal: e.target.value })} />
+                </Field>
+                <Field label="Lokasi">
+                  <input className="field-input" value={formJadwal.lokasi} onChange={(e) => setFormJadwal({ ...formJadwal, lokasi: e.target.value })} />
+                </Field>
+                <Field label="Mulai">
+                  <input type="time" className="field-input" value={formJadwal.waktuMulai} onChange={(e) => setFormJadwal({ ...formJadwal, waktuMulai: e.target.value })} />
+                </Field>
+                <Field label="Selesai">
+                  <input type="time" className="field-input" value={formJadwal.waktuSelesai} onChange={(e) => setFormJadwal({ ...formJadwal, waktuSelesai: e.target.value })} />
+                </Field>
+                <Field label="Penguji">
+                  <input className="field-input" value={formJadwal.penguji} onChange={(e) => setFormJadwal({ ...formJadwal, penguji: e.target.value })} />
+                </Field>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={!formJadwal.tanggal || tambahJadwal.isPending}
+                  onClick={() => tambahJadwal.mutate()}
+                >
+                  <Save className="h-4 w-4" aria-hidden />
+                  Simpan jadwal
+                </button>
+              </div>
+            </section>
+
+            <section className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                <h3 className="font-semibold text-slate-900 dark:text-white">Riwayat jadwal</h3>
+                <div className="mt-3 space-y-3">
+                  {jadwalPendaftar.isLoading ? (
+                    <p className="text-sm text-slate-500">Memuat jadwal...</p>
+                  ) : (jadwalPendaftar.data ?? []).length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-slate-300 px-3 py-4 text-sm text-slate-500 dark:border-slate-700">
+                      Belum ada jadwal seleksi.
+                    </p>
+                  ) : (
+                    (jadwalPendaftar.data ?? []).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`w-full rounded-lg border p-3 text-left transition ${
+                          jadwalHasilId === item.id
+                            ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30'
+                            : 'border-slate-200 bg-white hover:border-emerald-200 dark:border-slate-800 dark:bg-slate-950'
+                        }`}
+                        onClick={() => {
+                          setJadwalHasilId(item.id);
+                          setFormHasilJadwal({
+                            status: item.status === 'DIJADWALKAN' ? 'SELESAI' : item.status,
+                            nilai: item.nilai ?? '',
+                            catatanHasil: item.catatan_hasil ?? '',
+                          });
+                        }}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="font-semibold text-slate-900 dark:text-white">{item.jenis}</p>
+                          <StatusBadge status={item.status} />
+                        </div>
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                          {formatDate(item.tanggal)}
+                          {item.waktu_mulai ? `, ${item.waktu_mulai}${item.waktu_selesai ? `-${item.waktu_selesai}` : ''}` : ''}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {[item.lokasi, item.penguji].filter(Boolean).join(' · ') || 'Lokasi dan penguji belum diisi'}
+                        </p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <aside className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+                <h3 className="font-semibold text-slate-900 dark:text-white">Catat hasil</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Pilih satu jadwal di kiri, lalu simpan hasil ujian atau wawancara.
+                </p>
+                <div className="mt-4 space-y-3">
+                  <Field label="Status">
+                    <select className="field-input" value={formHasilJadwal.status} onChange={(e) => setFormHasilJadwal({ ...formHasilJadwal, status: e.target.value })}>
+                      <option value="SELESAI">Selesai</option>
+                      <option value="TIDAK_HADIR">Tidak hadir</option>
+                      <option value="DIBATALKAN">Dibatalkan</option>
+                    </select>
+                  </Field>
+                  <Field label="Nilai">
+                    <input type="number" min="0" max="100" className="field-input" value={formHasilJadwal.nilai} onChange={(e) => setFormHasilJadwal({ ...formHasilJadwal, nilai: e.target.value })} />
+                  </Field>
+                  <Field label="Catatan hasil">
+                    <textarea className="field-input min-h-28" value={formHasilJadwal.catatanHasil} onChange={(e) => setFormHasilJadwal({ ...formHasilJadwal, catatanHasil: e.target.value })} />
+                  </Field>
+                </div>
+                <button
+                  type="button"
+                  className="btn-primary mt-4 w-full"
+                  disabled={!jadwalHasilId || simpanHasilJadwal.isPending}
+                  onClick={() => simpanHasilJadwal.mutate()}
+                >
+                  Simpan hasil
+                </button>
+              </aside>
+            </section>
           </div>
         </div>
       )}
