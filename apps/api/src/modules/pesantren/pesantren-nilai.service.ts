@@ -53,6 +53,22 @@ export interface BarisNilaiRapor {
   huruf_mutu: string | null;
 }
 
+export interface BarisLegerRapor {
+  santri_id: string;
+  nis: string | null;
+  nama_lengkap: string;
+  rombongan_id: string | null;
+  rombongan: string | null;
+  jumlah_mapel: number;
+  rata_rata: number | null;
+  predikat_dominan: string | null;
+  status_rapor: 'FINAL' | 'DRAFT';
+  peringkat: number | null;
+  verification_code: string | null;
+  checksum: string | null;
+  finalized_at: string | null;
+}
+
 export interface BarisRaporFinalisasi {
   id: string;
   santri_id: string;
@@ -369,6 +385,58 @@ export class PesantrenNilaiService {
     });
   }
 
+  async legerRapor(schemaName: string, tahunAjaranId: string, rombonganId?: string | null): Promise<BarisLegerRapor[]> {
+    const S = `"${schemaName}"`;
+    const rows = await this.tenantDb.query<{
+      santri_id: string;
+      nis: string | null;
+      nama_lengkap: string;
+      rombongan_id: string | null;
+      rombongan: string | null;
+    }>(
+      schemaName,
+      `SELECT DISTINCT s.id::text AS santri_id, s.nis, s.nama_lengkap,
+              r.id::text AS rombongan_id,
+              CASE WHEN r.id IS NULL THEN NULL ELSE concat_ws(' - ', r.tingkat, r.nama) END AS rombongan
+         FROM ${S}.pesantren_santri s
+         LEFT JOIN ${S}.pesantren_anggota_rombongan ar
+           ON ar.santri_id = s.id
+          AND ar.deleted_at IS NULL
+          AND ar.status = 'AKTIF'
+         LEFT JOIN ${S}.pesantren_rombongan r
+           ON r.id = ar.rombongan_id
+          AND r.deleted_at IS NULL
+        WHERE s.deleted_at IS NULL
+          AND s.status = 'AKTIF'
+          AND ($1::uuid IS NULL OR r.id = $1::uuid)
+        ORDER BY s.nama_lengkap ASC`,
+      [rombonganId || null],
+    );
+
+    const leger: BarisLegerRapor[] = [];
+    for (const row of rows) {
+      const final = await this.finalisasiAktif(schemaName, row.santri_id, tahunAjaranId);
+      const snapshot = final?.snapshot ?? await this.rapor(schemaName, row.santri_id, tahunAjaranId);
+      const summary = hitungRingkasanRapor(snapshot);
+      leger.push({
+        santri_id: row.santri_id,
+        nis: row.nis,
+        nama_lengkap: row.nama_lengkap,
+        rombongan_id: row.rombongan_id,
+        rombongan: row.rombongan,
+        jumlah_mapel: summary.jumlahMapel,
+        rata_rata: summary.rataRata,
+        predikat_dominan: summary.predikatDominan,
+        status_rapor: final ? 'FINAL' : 'DRAFT',
+        peringkat: null,
+        verification_code: final?.verification_code ?? null,
+        checksum: final?.checksum ?? null,
+        finalized_at: final?.finalized_at ?? null,
+      });
+    }
+    return beriPeringkatLeger(leger);
+  }
+
   async finalisasiAktif(schemaName: string, santriId: string, tahunAjaranId: string): Promise<BarisRaporFinalisasi | null> {
     const S = `"${schemaName}"`;
     const row = await this.tenantDb.queryOne<BarisRaporFinalisasi>(
@@ -496,6 +564,30 @@ export class PesantrenNilaiService {
 function bersihkan(nilai?: string | null): string | null {
   const bersih = (nilai ?? '').trim();
   return bersih ? bersih : null;
+}
+
+function beriPeringkatLeger(rows: BarisLegerRapor[]): BarisLegerRapor[] {
+  const terurut = [...rows].sort((a, b) => {
+    const nilaiA = a.rata_rata ?? -1;
+    const nilaiB = b.rata_rata ?? -1;
+    return nilaiB - nilaiA || a.nama_lengkap.localeCompare(b.nama_lengkap) || (a.nis ?? '').localeCompare(b.nis ?? '');
+  });
+  let peringkat = 0;
+  let posisi = 0;
+  let nilaiSebelumnya: number | null | undefined;
+  for (const row of terurut) {
+    posisi += 1;
+    if (row.rata_rata === null) {
+      row.peringkat = null;
+      continue;
+    }
+    if (row.rata_rata !== nilaiSebelumnya) {
+      peringkat = posisi;
+      nilaiSebelumnya = row.rata_rata;
+    }
+    row.peringkat = peringkat;
+  }
+  return terurut;
 }
 
 function isUniqueViolation(error: unknown, constraintName: string): boolean {
