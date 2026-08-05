@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-06 - Inventory / Sales 48 Screen Parity, Wave 1
+
+- Completed screens 01-07 for supplier, customer, and field-sales masters on
+  React Web and Flutter Windows/Android from the same tenant API contract.
+- Added lifecycle CRUD, active/inactive state, open/settled balance filters,
+  bank-data masking, audit history, PDF/Excel export, and offline Flutter queue.
+- Added additive tenant migration `V050`, idempotent legacy projections for CMN,
+  API/route/widget tests, and a desktop Flutter visual golden.
+
 ## 2026-08-06 - Inventory / Sales 48 Screen Parity, Wave 0
 
 - Added auditable source, route, API, permission, report, sync, test, and UAT ledgers.

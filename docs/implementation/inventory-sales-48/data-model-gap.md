@@ -17,5 +17,14 @@
 - Audit metadata perangkat/correlation pada seluruh command inventory.
 - Queue attachment checksum untuk foto/berkas offline.
 
+## Gelombang 1 Selesai
+
+- `supplier` dan `customer` diperluas secara additive dengan termin legacy,
+  alamat/wilayah, serta data rekening; customer juga memiliki diskon bawaan.
+- `inventory_salesperson_profile` menjadi master sales lifecycle yang dapat
+  ditautkan ke `user_subject`, tanpa mengganti tabel user atau map legacy.
+- `V050` memproyeksikan `legacy_salesperson_map` secara idempoten dan bootstrap
+  CMN memperbarui master lama tanpa menggandakan record.
+
 Tidak ada tabel legacy yang dihapus. Perubahan schema harus additive, rerunnable,
 dan teruji pada clone tenant sebelum produksi.

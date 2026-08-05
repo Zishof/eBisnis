@@ -53,13 +53,13 @@ export function webRouteForScreen(screen: number): string {
  * permukaan tersebut memiliki alur nyata; daftar/teks fitur saja bukan bukti.
  */
 export const SALES_INVENTORY_PARITY: InventoryParityItem[] = [
-  item(1, 'Data Supplier', 'MASTER', ['/suppliers'], 'OPERATIONAL', 'CONTRACT_ONLY'),
-  item(2, 'Membuka Daftar Supplier', 'MASTER', ['/inventory/master-data'], 'OPERATIONAL', 'CONTRACT_ONLY'),
-  item(3, 'Menutup Daftar Supplier', 'MASTER', ['/inventory/master-data'], 'OPERATIONAL', 'CONTRACT_ONLY'),
-  item(4, 'Data Customer', 'MASTER', ['/customers'], 'OPERATIONAL', 'CONTRACT_ONLY'),
-  item(5, 'Membuka Daftar Customer', 'MASTER', ['/inventory/master-data'], 'OPERATIONAL', 'CONTRACT_ONLY'),
-  item(6, 'Menutup Daftar Customer', 'MASTER', ['/inventory/master-data'], 'OPERATIONAL', 'CONTRACT_ONLY'),
-  item(7, 'Data Sales atau Penjual Keliling', 'MASTER', ['/tenant-admin/users', '/inventory/sales-dashboard'], 'OPERATIONAL', 'CONTRACT_ONLY'),
+  item(1, 'Data Supplier', 'MASTER', ['/suppliers'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(2, 'Membuka Daftar Supplier', 'MASTER', ['/suppliers', '/inventory/party-master-balances/suppliers'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(3, 'Menutup Daftar Supplier', 'MASTER', ['/suppliers', '/inventory/party-master-balances/suppliers'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(4, 'Data Customer', 'MASTER', ['/customers'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(5, 'Membuka Daftar Customer', 'MASTER', ['/customers', '/inventory/party-master-balances/customers'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(6, 'Menutup Daftar Customer', 'MASTER', ['/customers', '/inventory/party-master-balances/customers'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(7, 'Data Sales atau Penjual Keliling', 'MASTER', ['/salespeople', '/inventory/party-master-balances/salespeople'], 'OPERATIONAL', 'OPERATIONAL'),
   item(8, 'Data Stok Barang', 'STOCK_PRICE', ['/stock/balances', '/inventory/mobile-catalog'], 'OPERATIONAL', 'READ_ONLY'),
   item(9, 'Laporan Opname Stok', 'STOCK_PRICE', ['/stock-opnames', '/inventory/legacy/stock-opname'], 'OPERATIONAL', 'CONTRACT_ONLY'),
   item(10, 'Mencetak Laporan Opname Stok', 'STOCK_PRICE', ['/reports/stock-opname/snapshot'], 'READ_ONLY', 'CONTRACT_ONLY'),

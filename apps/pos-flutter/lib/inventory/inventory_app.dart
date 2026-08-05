@@ -307,6 +307,8 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                         if (_tab == 0) ...[
                           _KpiGrid(snapshot: data!),
                           const SizedBox(height: 16),
+                          _PartyMasterLauncher(client: widget.client),
+                          const SizedBox(height: 16),
                           _SectionCard(
                             title: 'Performa sales',
                             icon: Icons.groups_outlined,
@@ -769,6 +771,500 @@ class _InventoryOperationsPage extends StatefulWidget {
       _InventoryOperationsPageState();
 }
 
+class _PartyMasterLauncher extends StatelessWidget {
+  const _PartyMasterLauncher({required this.client});
+  final InventoryApiClient client;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Master Relasi',
+      icon: Icons.hub_outlined,
+      child: LayoutBuilder(builder: (context, box) {
+        final width =
+            box.maxWidth < 560 ? box.maxWidth : (box.maxWidth - 20) / 3;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _masterButton(context, width, 'suppliers', 'Pemasok',
+                Icons.local_shipping_outlined),
+            _masterButton(context, width, 'customers', 'Pelanggan',
+                Icons.storefront_outlined),
+            _masterButton(
+                context, width, 'salespeople', 'Sales', Icons.badge_outlined),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _masterButton(BuildContext context, double width, String kind,
+      String label, IconData icon) {
+    return SizedBox(
+      width: width,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        ),
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) =>
+              InventoryPartyMasterPage(client: client, initialKind: kind),
+        )),
+        icon: Icon(icon),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+      ),
+    );
+  }
+}
+
+class InventoryPartyMasterPage extends StatefulWidget {
+  const InventoryPartyMasterPage({
+    super.key,
+    required this.client,
+    this.initialKind = 'suppliers',
+  });
+
+  final InventoryApiClient client;
+  final String initialKind;
+
+  @override
+  State<InventoryPartyMasterPage> createState() =>
+      _InventoryPartyMasterPageState();
+}
+
+class _InventoryPartyMasterPageState extends State<InventoryPartyMasterPage> {
+  late String _kind = widget.initialKind;
+  late Future<List<InventoryPartyRecord>> _records = _load();
+  final _search = TextEditingController();
+  final Map<String, TextEditingController> _fields = {};
+  InventoryPartyRecord? _selected;
+  bool _editing = false;
+  bool _creating = false;
+  bool _busy = false;
+  bool _showBank = false;
+  String _statusFilter = 'ALL';
+
+  List<PartyField> get _definitions => partyFields[_kind]!;
+  String get _title => partyLabels[_kind]!;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    for (final controller in _fields.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<List<InventoryPartyRecord>> _load() =>
+      widget.client.partyMasters(_kind);
+
+  void _reload() {
+    setState(() {
+      _selected = null;
+      _editing = false;
+      _creating = false;
+      _records = _load();
+    });
+  }
+
+  void _select(InventoryPartyRecord record) {
+    if ((_editing || _creating) && !_confirmDiscard()) return;
+    _setSelected(record);
+  }
+
+  void _setSelected(InventoryPartyRecord record) {
+    for (final definition in _definitions) {
+      (_fields[definition.key] ??= TextEditingController()).text =
+          (record.values[definition.key] ?? '').toString();
+    }
+    setState(() {
+      _selected = record;
+      _editing = false;
+      _creating = false;
+    });
+  }
+
+  bool _confirmDiscard() {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Simpan atau batalkan perubahan sebelum berpindah data.'),
+    ));
+    return false;
+  }
+
+  void _create() {
+    if (_editing && !_confirmDiscard()) return;
+    for (final definition in _definitions) {
+      (_fields[definition.key] ??= TextEditingController()).clear();
+    }
+    setState(() {
+      _selected = null;
+      _editing = true;
+      _creating = true;
+    });
+  }
+
+  void _cancel() {
+    if (_selected != null) {
+      _setSelected(_selected!);
+    } else {
+      setState(() {
+        _editing = false;
+        _creating = false;
+      });
+    }
+  }
+
+  Future<void> _save() async {
+    final code = _fields['code']?.text.trim() ?? '';
+    final name = _fields['name']?.text.trim() ?? '';
+    final limit = partyCodeLimits[_kind]!;
+    if (code.isEmpty || name.isEmpty || code.length > limit) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content:
+            Text('Kode dan nama wajib diisi; kode maksimum $limit karakter.'),
+      ));
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final payload = <String, Object?>{};
+      for (final definition in _definitions) {
+        final value = _fields[definition.key]?.text.trim() ?? '';
+        payload[definition.key] = definition.numeric
+            ? (double.tryParse(value) ?? 0)
+            : (value.isEmpty ? null : value);
+      }
+      final result = await widget.client.saveParty(
+        kind: _kind,
+        id: _creating ? null : _selected?.id,
+        version: _creating ? null : _selected?.version,
+        payload: payload,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result.queued
+            ? 'Disimpan di perangkat dan akan dikirim saat tersambung.'
+            : 'Data berhasil disimpan.'),
+      ));
+      _reload();
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _toggleActive() async {
+    final selected = _selected;
+    if (selected == null) return;
+    setState(() => _busy = true);
+    try {
+      await widget.client.toggleParty(_kind, selected);
+      if (mounted) _reload();
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_editing && !_creating,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmDiscard();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Master $_title'),
+          actions: [
+            IconButton(
+                onPressed: _reload,
+                tooltip: 'Muat ulang',
+                icon: const Icon(Icons.refresh)),
+            IconButton(
+                onPressed: _create,
+                tooltip: 'Tambah data',
+                icon: const Icon(Icons.add)),
+          ],
+        ),
+        body: SafeArea(
+          child: FutureBuilder<List<InventoryPartyRecord>>(
+            future: _records,
+            builder: (context, state) {
+              if (state.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state.hasError) {
+                return _ErrorPanel(
+                    message: state.error.toString(), onRetry: _reload);
+              }
+              final records = state.data ?? const [];
+              final query = _search.text.toLowerCase();
+              final visible = records.where((record) {
+                final matchesSearch = query.isEmpty ||
+                    record.code.toLowerCase().contains(query) ||
+                    record.name.toLowerCase().contains(query) ||
+                    record.subtitle.toLowerCase().contains(query);
+                final matchesStatus = _statusFilter == 'ALL' ||
+                    (_statusFilter == 'ACTIVE' && record.active) ||
+                    (_statusFilter == 'BALANCE' && record.balance > 0) ||
+                    (_statusFilter == 'SETTLED' && record.balance <= 0);
+                return matchesSearch && matchesStatus;
+              }).toList();
+              return LayoutBuilder(builder: (context, box) {
+                final wide = box.maxWidth >= 900;
+                final list = _masterList(visible);
+                final detail = _masterDetail();
+                if (!wide) {
+                  return ListView(
+                    padding: const EdgeInsets.all(12),
+                    children:
+                        _selected != null || _creating ? [detail] : [list],
+                  );
+                }
+                return Row(children: [
+                  SizedBox(width: 390, child: list),
+                  const VerticalDivider(width: 1),
+                  Expanded(
+                      child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(18), child: detail)),
+                ]);
+              });
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _masterList(List<InventoryPartyRecord> records) {
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(children: [
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                    value: 'suppliers',
+                    label: Text('Pemasok'),
+                    icon: Icon(Icons.local_shipping_outlined)),
+                ButtonSegment(
+                    value: 'customers',
+                    label: Text('Pelanggan'),
+                    icon: Icon(Icons.storefront_outlined)),
+                ButtonSegment(
+                    value: 'salespeople',
+                    label: Text('Sales'),
+                    icon: Icon(Icons.badge_outlined)),
+              ],
+              selected: {_kind},
+              showSelectedIcon: false,
+              onSelectionChanged: (value) {
+                if (_editing && !_confirmDiscard()) return;
+                setState(() {
+                  _kind = value.first;
+                  _selected = null;
+                  _records = _load();
+                });
+              },
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _search,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  labelText: 'Cari kode, nama, atau wilayah',
+                  border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 8),
+            Wrap(spacing: 6, children: [
+              for (final item in const [
+                ('ALL', 'Semua'),
+                ('ACTIVE', 'Aktif'),
+                ('BALANCE', 'Ada saldo'),
+                ('SETTLED', 'Lunas')
+              ])
+                FilterChip(
+                    label: Text(item.$2),
+                    selected: _statusFilter == item.$1,
+                    onSelected: (_) => setState(() => _statusFilter = item.$1)),
+            ]),
+          ]),
+        ),
+        const Divider(height: 1),
+        if (records.isEmpty)
+          const Padding(
+              padding: EdgeInsets.all(32), child: Text('Data tidak ditemukan.'))
+        else
+          ...records.take(100).map((record) => ListTile(
+                selected: record.id == _selected?.id,
+                onTap: () => _select(record),
+                title: Text(record.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text(
+                    '${record.code} · ${record.subtitle}\n${rupiah(record.balance)}',
+                    maxLines: 2),
+                isThreeLine: true,
+                trailing: Icon(
+                    record.active ? Icons.check_circle : Icons.pause_circle,
+                    color: record.active
+                        ? const Color(0xFF059669)
+                        : const Color(0xFFD97706)),
+              )),
+      ]),
+    );
+  }
+
+  Widget _masterDetail() {
+    if (_selected == null && !_creating) {
+      return const Card(
+          child: Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(child: Text('Pilih data untuk melihat rincian.'))));
+    }
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (MediaQuery.sizeOf(context).width < 900)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _editing || _creating
+                    ? () => _confirmDiscard()
+                    : () => setState(() => _selected = null),
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Kembali ke daftar'),
+              ),
+            ),
+          Row(children: [
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(
+                      _creating
+                          ? 'DATA BARU'
+                          : 'DETAIL ${_title.toUpperCase()}',
+                      style: const TextStyle(
+                          color: Color(0xFF0F766E),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text(_creating ? 'Tambah $_title' : _selected!.name,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w900)),
+                ])),
+            if (!_creating)
+              Chip(label: Text(_selected!.active ? 'Aktif' : 'Nonaktif')),
+          ]),
+          if (!_creating) ...[
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              _Pill('Saldo', rupiah(_selected!.balance)),
+              _Pill('Dokumen', angka(_selected!.documentCount)),
+              if (_kind == 'salespeople')
+                _Pill('Pelanggan', angka(_selected!.customerCount)),
+            ]),
+          ],
+          const SizedBox(height: 16),
+          LayoutBuilder(builder: (context, box) {
+            final fieldWidth =
+                box.maxWidth < 620 ? box.maxWidth : (box.maxWidth - 12) / 2;
+            return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: _definitions.map((field) {
+                  final controller =
+                      _fields[field.key] ??= TextEditingController();
+                  final hide = field.sensitive && !_showBank && !_editing;
+                  return SizedBox(
+                      width: field.multiline ? box.maxWidth : fieldWidth,
+                      child: TextField(
+                        controller: controller,
+                        enabled: _editing,
+                        obscureText: hide,
+                        keyboardType: field.numeric
+                            ? const TextInputType.numberWithOptions(
+                                decimal: true)
+                            : TextInputType.text,
+                        maxLines: hide ? 1 : (field.multiline ? 3 : 1),
+                        maxLength:
+                            field.key == 'code' ? partyCodeLimits[_kind] : null,
+                        decoration: InputDecoration(
+                            labelText: field.label,
+                            border: const OutlineInputBorder(),
+                            counterText: ''),
+                      ));
+                }).toList());
+          }),
+          if (_definitions.any((field) => field.sensitive))
+            Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _showBank = !_showBank),
+                  icon: Icon(_showBank
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined),
+                  label: Text(_showBank
+                      ? 'Sembunyikan data bank'
+                      : 'Tampilkan data bank'),
+                )),
+          const SizedBox(height: 14),
+          Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (!_creating && !_editing)
+                  OutlinedButton.icon(
+                      onPressed: _busy ? null : _toggleActive,
+                      icon: const Icon(Icons.power_settings_new),
+                      label:
+                          Text(_selected!.active ? 'Nonaktifkan' : 'Aktifkan')),
+                if (_editing)
+                  OutlinedButton.icon(
+                      onPressed: _busy ? null : _cancel,
+                      icon: const Icon(Icons.close),
+                      label: const Text('Batal')),
+                if (_editing)
+                  FilledButton.icon(
+                      onPressed: _busy ? null : _save,
+                      icon: const Icon(Icons.save_outlined),
+                      label: Text(_busy ? 'Menyimpan...' : 'Simpan')),
+                if (!_editing)
+                  FilledButton.icon(
+                      onPressed: () => setState(() => _editing = true),
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Ubah data')),
+              ]),
+        ]),
+      ),
+    );
+  }
+}
+
 class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
   late Future<InventoryOperationsData> _data = _load();
   int _segment = 0;
@@ -870,6 +1366,8 @@ class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _PartyMasterLauncher(client: widget.client),
+            const SizedBox(height: 12),
             _SectionCard(
               title: 'Operasional Lapangan',
               icon: Icons.sync_alt_outlined,
@@ -1503,7 +2001,9 @@ class InventoryCatalog {
     if (value.isEmpty) return '';
     final parsed = Uri.tryParse(value);
     if (parsed?.hasScheme == true) return value;
-    return baseUrl.resolve(value.startsWith('/') ? value.substring(1) : value).toString();
+    return baseUrl
+        .resolve(value.startsWith('/') ? value.substring(1) : value)
+        .toString();
   }
 }
 
@@ -1691,6 +2191,88 @@ class InventoryApiClient {
     return InventoryParityContract.fromApi(data);
   }
 
+  Future<List<InventoryPartyRecord>> partyMasters(String kind) async {
+    if (!partyLabels.containsKey(kind)) {
+      throw const InventoryApiException('Jenis master tidak dikenal.');
+    }
+    final cacheKey = 'party-master-$kind';
+    try {
+      final values = await Future.wait([
+        _request<List<Object?>>(
+          'GET',
+          '/$kind?page=1&pageSize=100&includeInactive=true&sortBy=name',
+        ),
+        _request<List<Object?>>(
+          'GET',
+          '/inventory/party-master-balances/$kind',
+        ),
+      ]);
+      await _localDatabase?.putCache(cacheKey, {
+        'rows': values[0],
+        'balances': values[1],
+      });
+      return InventoryPartyRecord.fromApiLists(values[0], values[1]);
+    } on Object {
+      final cached = await _localDatabase?.getCache(cacheKey);
+      if (cached == null) rethrow;
+      return InventoryPartyRecord.fromApiLists(
+        (cached['rows'] as List?) ?? const [],
+        (cached['balances'] as List?) ?? const [],
+      );
+    }
+  }
+
+  Future<PartySaveResult> saveParty({
+    required String kind,
+    required String? id,
+    required int? version,
+    required Map<String, Object?> payload,
+  }) async {
+    final database = _localDatabase;
+    final deviceId = await database?.getOrCreateDeviceId() ?? tenantCode;
+    final eventId =
+        '${deviceId}_MASTER_${DateTime.now().microsecondsSinceEpoch}';
+    final method = id == null ? 'POST' : 'PATCH';
+    final path = id == null ? '/$kind' : '/$kind/$id';
+    final body = <String, Object?>{
+      ...payload,
+      if (version != null) 'version': version,
+    };
+    await database?.enqueue(
+      eventId: eventId,
+      method: method,
+      path: path,
+      payload: body,
+    );
+    try {
+      final row = await _request<Map<String, Object?>>(
+        method,
+        path,
+        body: body,
+      );
+      await database?.markCompleted(eventId);
+      return PartySaveResult(row: row, queued: false);
+    } on SocketException catch (error) {
+      final item = await _outboxItem(eventId);
+      if (item != null) await database?.markFailed(item, error);
+      return const PartySaveResult(row: {}, queued: true);
+    } on TimeoutException catch (error) {
+      final item = await _outboxItem(eventId);
+      if (item != null) await database?.markFailed(item, error);
+      return const PartySaveResult(row: {}, queued: true);
+    }
+  }
+
+  Future<void> toggleParty(String kind, InventoryPartyRecord record) async {
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/$kind/${record.id}/${record.active ? 'deactivate' : 'activate'}',
+      body: record.active
+          ? {'reason': 'Dinonaktifkan dari aplikasi Inventory'}
+          : null,
+    );
+  }
+
   Future<InventoryOperationsData> operations(
       {required bool includePayables}) async {
     if (_token == null) {
@@ -1790,7 +2372,9 @@ class InventoryApiClient {
       return InventoryCatalog.fromApi(data, baseUrl: baseUrl);
     } on Object {
       final cached = await _localDatabase?.getCache('mobile-catalog');
-      if (cached != null) return InventoryCatalog.fromApi(cached, baseUrl: baseUrl);
+      if (cached != null) {
+        return InventoryCatalog.fromApi(cached, baseUrl: baseUrl);
+      }
       rethrow;
     }
   }
@@ -1892,7 +2476,8 @@ class InventoryApiClient {
           );
           final events = (delta['events'] as List?) ?? const [];
           refreshCatalog = refreshCatalog || events.isNotEmpty;
-          cursor = int.tryParse((delta['nextCursor'] ?? cursor).toString()) ?? cursor;
+          cursor = int.tryParse((delta['nextCursor'] ?? cursor).toString()) ??
+              cursor;
           hasMore = delta['hasMore'] == true;
           pages += 1;
         }
@@ -1906,11 +2491,13 @@ class InventoryApiClient {
           'customers': bootstrap['customers'] ?? const [],
           'products': bootstrap['products'] ?? const [],
         });
-        cursor = int.tryParse((bootstrap['cursor'] ?? cursor).toString()) ?? cursor;
+        cursor =
+            int.tryParse((bootstrap['cursor'] ?? cursor).toString()) ?? cursor;
       }
       await database.recordSync(deviceId, cursor: cursor);
     } on Object catch (error) {
-      await database.recordSync(deviceId, cursor: cursor, error: error.toString());
+      await database.recordSync(deviceId,
+          cursor: cursor, error: error.toString());
     }
     return InventorySyncResult(sent, pendingCount);
   }
@@ -1996,6 +2583,141 @@ const akunInventory = [
   PersonaInventory(username: 'agung', label: 'Agung', role: 'Sales'),
   PersonaInventory(username: 'cmnmedika', label: 'Admin CMN', role: 'Admin'),
 ];
+
+const partyLabels = <String, String>{
+  'suppliers': 'Pemasok',
+  'customers': 'Pelanggan',
+  'salespeople': 'Sales',
+};
+
+const partyCodeLimits = <String, int>{
+  'suppliers': 3,
+  'customers': 5,
+  'salespeople': 2,
+};
+
+class PartyField {
+  const PartyField(
+    this.key,
+    this.label, {
+    this.numeric = false,
+    this.multiline = false,
+    this.sensitive = false,
+  });
+
+  final String key;
+  final String label;
+  final bool numeric;
+  final bool multiline;
+  final bool sensitive;
+}
+
+const partyFields = <String, List<PartyField>>{
+  'suppliers': [
+    PartyField('code', 'Kode pemasok'),
+    PartyField('name', 'Nama pemasok'),
+    PartyField('legacy_payment_days', 'Termin pembayaran (hari)',
+        numeric: true),
+    PartyField('contact_person', 'Kontak utama'),
+    PartyField('address_text', 'Alamat', multiline: true),
+    PartyField('region_name', 'Wilayah'),
+    PartyField('phone', 'Nomor telepon'),
+    PartyField('email', 'Email'),
+    PartyField('bank_account_number', 'Nomor rekening', sensitive: true),
+    PartyField('bank_account_name', 'Nama pemilik rekening', sensitive: true),
+    PartyField('bank_name', 'Bank', sensitive: true),
+    PartyField('bank_address', 'Alamat bank', multiline: true, sensitive: true),
+  ],
+  'customers': [
+    PartyField('code', 'Kode pelanggan'),
+    PartyField('name', 'Nama pelanggan'),
+    PartyField('legacy_payment_days', 'Termin pembayaran (hari)',
+        numeric: true),
+    PartyField('default_discount_percent', 'Diskon bawaan (%)', numeric: true),
+    PartyField('credit_limit', 'Batas kredit', numeric: true),
+    PartyField('address_text', 'Alamat', multiline: true),
+    PartyField('region_name', 'Wilayah/rute'),
+    PartyField('phone', 'Nomor telepon'),
+    PartyField('email', 'Email'),
+    PartyField('bank_account_number', 'Nomor rekening', sensitive: true),
+    PartyField('bank_account_name', 'Nama pemilik rekening', sensitive: true),
+    PartyField('bank_name', 'Bank', sensitive: true),
+    PartyField('bank_address', 'Alamat bank', multiline: true, sensitive: true),
+  ],
+  'salespeople': [
+    PartyField('code', 'Kode sales'),
+    PartyField('name', 'Nama sales'),
+    PartyField('account_number', 'Nomor perkiraan'),
+    PartyField('territory', 'Wilayah/rute'),
+    PartyField('monthly_target', 'Target bulanan', numeric: true),
+    PartyField('phone', 'Nomor telepon'),
+    PartyField('email', 'Email'),
+    PartyField('description', 'Catatan penugasan', multiline: true),
+  ],
+};
+
+class InventoryPartyRecord {
+  const InventoryPartyRecord({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.active,
+    required this.version,
+    required this.balance,
+    required this.documentCount,
+    required this.customerCount,
+    required this.values,
+  });
+
+  static List<InventoryPartyRecord> fromApiLists(
+      List<Object?> rows, List<Object?> balances) {
+    final metrics = <String, Map<String, Object?>>{
+      for (final row in balances.whereType<Map<String, Object?>>())
+        (row['id'] ?? '').toString(): row,
+    };
+    return rows
+        .whereType<Map<String, Object?>>()
+        .map((row) {
+          final id = (row['id'] ?? '').toString();
+          final metric = metrics[id] ?? const <String, Object?>{};
+          return InventoryPartyRecord(
+            id: id,
+            code: (row['code'] ?? '').toString(),
+            name: (row['name'] ?? '').toString(),
+            active: row['is_active'] != false,
+            version: int.tryParse((row['version'] ?? 1).toString()) ?? 1,
+            balance: toDouble(metric['balance']),
+            documentCount:
+                int.tryParse((metric['document_count'] ?? 0).toString()) ?? 0,
+            customerCount:
+                int.tryParse((metric['customer_count'] ?? 0).toString()) ?? 0,
+            values: row,
+          );
+        })
+        .where((row) => row.id.isNotEmpty)
+        .toList();
+  }
+
+  final String id;
+  final String code;
+  final String name;
+  final bool active;
+  final int version;
+  final double balance;
+  final int documentCount;
+  final int customerCount;
+  final Map<String, Object?> values;
+
+  String get subtitle =>
+      (values['region_name'] ?? values['territory'] ?? 'Wilayah belum diisi')
+          .toString();
+}
+
+class PartySaveResult {
+  const PartySaveResult({required this.row, required this.queued});
+  final Map<String, Object?> row;
+  final bool queued;
+}
 
 class InventoryOperationsData {
   const InventoryOperationsData({

@@ -404,6 +404,24 @@ export class SalesInventoryOperationsController {
     return { summary: paritySummary(), items: SALES_INVENTORY_PARITY };
   }
 
+  @Get('inventory/party-master-balances/:kind')
+  @Permissions('SALES.READ')
+  @ApiOperation({ summary: 'Saldo dan beban kerja master pemasok, pelanggan, atau sales' })
+  async partyMasterBalances(
+    @Param('kind') kind: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const S = quotedSchema(user);
+    const sql = partyMasterBalanceSql(kind, S);
+    if (!sql) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Jenis master harus suppliers, customers, atau salespeople.',
+      );
+    }
+    return this.tenantDb.query<Record<string, unknown>>(schemaOf(user), sql);
+  }
+
   @Get('inventory/price-books')
   @Permissions('CATALOG_PRICE_BOOK.READ')
   async listInventoryPriceBooks(@CurrentUser() user: AuthenticatedUser) {
@@ -1665,6 +1683,38 @@ export class SalesInventoryOperationsController {
     if (!row) throw AppError.forbidden(ErrorCodes.FORBIDDEN, 'Akun tidak terhubung ke subject tenant.');
     return row.id;
   }
+}
+
+export function partyMasterBalanceSql(kind: string, S: string): string | null {
+  if (kind === 'suppliers') {
+    return `SELECT s.id::text,
+                   COALESCE(sum(CASE WHEN NOT COALESCE(l.is_settled, FALSE) THEN l.amount ELSE 0 END), 0)::text AS balance,
+                   count(l.id)::int AS document_count
+              FROM ${S}.supplier s
+              LEFT JOIN ${S}.legacy_payable_ledger l ON l.supplier_id = s.id
+             WHERE s.deleted_at IS NULL
+             GROUP BY s.id`;
+  }
+  if (kind === 'customers') {
+    return `SELECT c.id::text,
+                   COALESCE(sum(CASE WHEN NOT COALESCE(l.is_settled, FALSE) THEN l.amount ELSE 0 END), 0)::text AS balance,
+                   count(l.id)::int AS document_count
+              FROM ${S}.customer c
+              LEFT JOIN ${S}.legacy_receivable_ledger l ON l.customer_id = c.id
+             WHERE c.deleted_at IS NULL
+             GROUP BY c.id`;
+  }
+  if (kind === 'salespeople') {
+    return `SELECT sp.id::text,
+                   COALESCE(sum(CASE WHEN NOT COALESCE(l.is_settled, FALSE) THEN l.amount ELSE 0 END), 0)::text AS balance,
+                   count(DISTINCT l.customer_id)::int AS customer_count,
+                   count(l.id)::int AS document_count
+              FROM ${S}.inventory_salesperson_profile sp
+              LEFT JOIN ${S}.legacy_receivable_ledger l ON l.salesperson_id = sp.user_subject_id
+             WHERE sp.deleted_at IS NULL
+             GROUP BY sp.id`;
+  }
+  return null;
 }
 
 function schemaOf(user: AuthenticatedUser): string {

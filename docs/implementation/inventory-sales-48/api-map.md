@@ -2,6 +2,10 @@
 
 API yang sudah menjadi fondasi:
 
+- `GET/POST/PATCH /suppliers`, `/customers`, `/salespeople`
+- `POST /:master/:id/activate`, `POST /:master/:id/deactivate`,
+  `GET /:master/:id/audit`
+- `GET /inventory/party-master-balances/:kind`
 - `/inventory/master-data`, `/inventory/balances`, `/inventory/mobile-catalog`
 - `/inventory/legacy/receivables`, `/inventory/legacy/payables`
 - `/inventory/legacy/price-history`, `/inventory/legacy/stock-opname`

@@ -10,6 +10,11 @@
 | Finance | `JOURNAL`, `ACCOUNT`, `FISCAL_PERIOD`, `PROFIT_LOSS` | `READ`, `CREATE`, `POST`, `REVERSE`, `CLOSE`, `REOPEN`, `EXPORT`, `PRINT` |
 | Sync | `DEVICE`, `CONFLICT` | `READ`, `REGISTER`, `PULL`, `RESOLVE` |
 
+Gelombang 1 memakai resource lifecycle `SUPPLIER`, `CUSTOMER`, dan
+`SALESPERSON`. Ringkasan saldo membutuhkan `SALES.READ`; audit tetap dibatasi
+oleh izin audit master terkait. Data bank disamarkan pada UI baca dan baru
+ditampilkan atas tindakan pengguna.
+
 Backend menegakkan izin; frontend hanya mencerminkan hasil evaluasi dan selalu
 menampilkan alasan saat tindakan disabled. Nomor rekening, margin, HPP, laba,
 serta data investor tunduk pada field-level authorization dan data scope.
