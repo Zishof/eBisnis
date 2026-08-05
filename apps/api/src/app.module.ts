@@ -36,6 +36,8 @@ import { SuratModule } from './modules/surat/surat.module';
 import { CooperativeModule } from './modules/cooperative/cooperative.module';
 // Vertikal ePesantren (santri.info), sama sekecilnya dan alasan yang sama.
 import { PesantrenModule } from './modules/pesantren/pesantren.module';
+// Vertikal education/eSchool/eCampus: katalog gap dan endpoint DAPODIK.
+import { EducationModule } from './modules/education/education.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { AiModule } from './modules/ai/ai.module';
 import { InventoryPublicModule } from './modules/inventory-public/inventory-public.module';
@@ -93,6 +95,7 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
     SuratModule,
     CooperativeModule,
     PesantrenModule,
+    EducationModule,
     NotificationModule,
     AiModule,
     InventoryPublicModule,

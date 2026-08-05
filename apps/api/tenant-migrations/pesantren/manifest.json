@@ -221,6 +221,36 @@
       "file": "20260804T030000__pesantren__kajian_dakwah.sql",
       "name": "Jadwal kajian dan arsip dakwah",
       "description": "Menambah pesantren_kajian_dakwah untuk kalender kajian, materi, rekaman audio/video, gambar publikasi, dan status publish/arsip pada situs pondok."
+    },
+    {
+      "id": "20260805T010000__pesantren__buku_penghubung_aktivitas_harian",
+      "file": "20260805T010000__pesantren__buku_penghubung_aktivitas_harian.sql",
+      "name": "Aktivitas dan materi harian di buku penghubung",
+      "description": "Memperluas jenis pesantren_buku_penghubung dengan AKTIVITAS_HARIAN dan MATERI_HARIAN untuk menutup pola AIS AktiftasHarianSiswa, DaftarAktifitasHarianSiswa, DashboardAktifitasHarianSiswa, JenisAktiftasHarianDefault, dan JenisMateriHarianDefault tanpa membuat menu skeleton baru."
+    },
+    {
+      "id": "20260805T020000__pesantren__referensi_dapodik",
+      "file": "20260805T020000__pesantren__referensi_dapodik.sql",
+      "name": "Referensi biodata Dapodik/AIS",
+      "description": "Menambah pesantren_referensi_dapodik untuk master pekerjaan, pendidikan, penghasilan, transportasi, jenis tinggal, dan kebutuhan khusus. Ini menutup gugus AIS PekerjaanOrtuSiswaAction, PendidikanOrangTuaSiswaAction, PenghasilanOrangTuaSiswaAction, AlatTransportasiSiswaAction, JenisTinggalSiswaAction, dan KebutuhanKhususSiswaAction sebagai dataset impor/ekspor Dapodik tanpa memaksa FK pada data lama."
+    },
+    {
+      "id": "20260805T030000__pesantren__psb_jalur_masuk",
+      "file": "20260805T030000__pesantren__psb_jalur_masuk.sql",
+      "name": "Jalur masuk PSB",
+      "description": "Menambah jalur_masuk pada pesantren_psb_pendaftar untuk menutup pola AIS RekapJalurMasukMultiTahunPsb tanpa mengubah alur status PSB yang sudah berjalan."
+    },
+    {
+      "id": "20260806T010000__pesantren__dapodik_import_batch",
+      "file": "20260806T010000__pesantren__dapodik_import_batch.sql",
+      "name": "Log batch import DAPODIK dan rollback aman",
+      "description": "Menambah pesantren_dapodik_import_batch dan pesantren_dapodik_import_row agar import final DAPODIK punya jejak batch, detail baris, status error, serta rollback aman untuk baris yang dibuat oleh batch."
+    },
+    {
+      "id": "20260806T020000__pesantren__dapodik_import_audit_final",
+      "file": "20260806T020000__pesantren__dapodik_import_audit_final.sql",
+      "name": "Audit final import DAPODIK dan rollback UPDATE",
+      "description": "Menambah metadata file sumber, snapshot before/after, dan diff per field pada baris import DAPODIK sehingga rollback final dapat membalik CREATE maupun UPDATE secara terukur."
     }
   ]
 }
