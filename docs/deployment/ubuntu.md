@@ -313,6 +313,33 @@ server atau setelah build yang terputus:
 sudo bash /opt/ebisnis/app/deploy/update.sh --force
 ```
 
+### Import legacy CMN saat deploy
+
+Step pelanggan inventory Caruban Medika Nusantara membuat tenant, schema, akun
+awal, dan data dasar secara sinkron. Impor DBF legacy yang besar dijalankan di
+background secara default agar proses build/deploy tidak menunggu ratusan ribu
+baris selesai diproses.
+
+Pantau proses import background:
+
+```bash
+sudo tail -f /var/log/ebisnis/cmn-legacy-import-*.log
+```
+
+Kunci `flock` dipakai agar import yang sama tidak berjalan dobel jika
+`update.sh` dipanggil berulang. Jika ingin perilaku lama yang menunggu import
+selesai sebelum deploy lanjut:
+
+```bash
+sudo CMN_LEGACY_IMPORT_ASYNC=0 bash /opt/ebisnis/app/deploy/update.sh --force
+```
+
+Jika sewaktu-waktu import legacy harus dilewati penuh:
+
+```bash
+sudo CMN_SKIP_LEGACY_IMPORT=1 bash /opt/ebisnis/app/deploy/update.sh --force
+```
+
 ### Migration platform dan tenant
 
 Skrip menerapkan keduanya. Perbedaannya perlu diketahui saat mendiagnosis:
