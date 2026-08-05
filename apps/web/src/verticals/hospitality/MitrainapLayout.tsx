@@ -45,12 +45,53 @@ function useTautanEkosistem() {
   });
 }
 
+const JUDUL_PORTAL = 'MitraInap.id — PMS dan Operasional Hotel Terintegrasi';
+const DESKRIPSI_PORTAL =
+  'Property management system, booking engine langsung, front office, housekeeping, dan folio untuk hotel, homestay, dan properti sewa.';
+
+/**
+ * `document.title` + meta description/OG/canonical/JSON-LD untuk PORTAL
+ * mitrainap.id sendiri (bukan situs tenant/properti perorangan -- itu
+ * mengikuti pola `usePondokSeo`, dengan data dinamis per penyewa, menyusul
+ * MI-3 begitu situs properti benar-benar bisa dibuat). Konten di sini statis
+ * karena portal ini satu-satunya, bukan per-penyewa.
+ */
 function useJudulMitrainap() {
   useEffect(() => {
     const sebelumnya = document.title;
-    document.title = 'MitraInap.id — PMS dan Operasional Hotel Terintegrasi';
+    document.title = JUDUL_PORTAL;
+
+    const url = window.location.origin + '/mitrainap';
+    const meta = document.createElement('meta');
+    meta.setAttribute('name', 'description');
+    meta.setAttribute('content', DESKRIPSI_PORTAL);
+    meta.dataset.mitrainapSeo = 'true';
+    document.head.appendChild(meta);
+
+    const canonical = document.createElement('link');
+    canonical.setAttribute('rel', 'canonical');
+    canonical.setAttribute('href', url);
+    canonical.dataset.mitrainapSeo = 'true';
+    document.head.appendChild(canonical);
+
+    const jsonLd = document.createElement('script');
+    jsonLd.type = 'application/ld+json';
+    jsonLd.dataset.mitrainapSeo = 'true';
+    jsonLd.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'MitraInap.id',
+      applicationCategory: 'BusinessApplication',
+      description: DESKRIPSI_PORTAL,
+      url,
+    });
+    document.head.appendChild(jsonLd);
+
     return () => {
       document.title = sebelumnya;
+      meta.remove();
+      canonical.remove();
+      jsonLd.remove();
     };
   }, []);
 }
@@ -81,6 +122,21 @@ export function MitrainapLayout() {
             </span>
             <span>MitraInap.id</span>
           </Link>
+
+          <nav className="hidden items-center gap-1 sm:flex">
+            <Link
+              to="/mitrainap/solusi"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
+            >
+              Solusi
+            </Link>
+            <Link
+              to="/mitrainap/faq"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
+            >
+              FAQ
+            </Link>
+          </nav>
 
           <div className="flex items-center gap-2">
             <Link to="/mitrainap/masuk" className="hidden px-3 py-2 text-sm font-medium sm:inline-block">
@@ -133,6 +189,12 @@ export function MitrainapLayout() {
           )}
 
           <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-200 pt-6 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            <Link to="/mitrainap/solusi" className="hover:text-violet-700 dark:hover:text-violet-400">
+              Solusi
+            </Link>
+            <Link to="/mitrainap/faq" className="hover:text-violet-700 dark:hover:text-violet-400">
+              FAQ
+            </Link>
             <Link to="/kontak" className="hover:text-violet-700 dark:hover:text-violet-400">
               Kontak
             </Link>
