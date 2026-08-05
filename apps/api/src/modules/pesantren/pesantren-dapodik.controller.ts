@@ -26,6 +26,7 @@ const DATASET = [
   'ref-jenis-tinggal',
   'ref-kebutuhan-khusus',
 ] as const;
+const REFERENSI_KATEGORI = ['PEKERJAAN', 'PENDIDIKAN', 'PENGHASILAN', 'TRANSPORTASI', 'JENIS_TINGGAL', 'KEBUTUHAN_KHUSUS'] as const;
 
 function schemaWajib(user: AuthenticatedUser): string {
   if (!user.schemaName) {
@@ -38,6 +39,12 @@ class DatasetParam {
   @ApiProperty({ enum: DATASET })
   @IsIn(DATASET as unknown as string[])
   dataset!: (typeof DATASET)[number];
+}
+
+class ReferensiParam {
+  @ApiProperty({ enum: REFERENSI_KATEGORI })
+  @IsIn(REFERENSI_KATEGORI as unknown as string[])
+  kategori!: (typeof REFERENSI_KATEGORI)[number];
 }
 
 class ImporDapodikDto {
@@ -74,6 +81,13 @@ export class PesantrenDapodikController {
   @ApiOperation({ summary: 'Dataset Dapodik yang didukung ePesantren' })
   daftarDataset() {
     return this.dapodik.daftarDataset();
+  }
+
+  @Permissions('EPESANTREN_DAPODIK.READ')
+  @Get('referensi/:kategori')
+  @ApiOperation({ summary: 'Referensi Dapodik aktif untuk form harian' })
+  referensi(@Param() param: ReferensiParam, @CurrentUser() user: AuthenticatedUser) {
+    return this.dapodik.referensi(schemaWajib(user), param.kategori);
   }
 
   @Permissions('EPESANTREN_DAPODIK.EXPORT')

@@ -48,6 +48,12 @@ export interface ImportResult {
   errors: Array<{ row: number; message: string }>;
 }
 
+export interface ReferensiDapodikRow {
+  code: string;
+  nama: string;
+  sort_order: number;
+}
+
 const DATASETS: DatasetDef[] = [
   {
     code: 'unit-pendidikan',
@@ -243,6 +249,7 @@ const REFERENSI_KATEGORI: Partial<Record<DatasetCode, string>> = {
   'ref-jenis-tinggal': 'JENIS_TINGGAL',
   'ref-kebutuhan-khusus': 'KEBUTUHAN_KHUSUS',
 };
+const KATEGORI_REFERENSI = new Set(Object.values(REFERENSI_KATEGORI));
 const DATASET_ALIASES: Partial<Record<DatasetCode, Partial<Record<string, string[]>>>> = {
   'unit-pendidikan': {
     code: ['kode', 'kode sekolah', 'kode unit', 'npsn'],
@@ -357,6 +364,22 @@ export class PesantrenDapodikService {
 
   template(dataset: DatasetCode): string {
     return toCsv([this.def(dataset).columns.reduce<Record<string, string>>((row, column) => ({ ...row, [column]: '' }), {})], this.def(dataset).columns);
+  }
+
+  async referensi(schemaName: string, kategori: string): Promise<ReferensiDapodikRow[]> {
+    const normalized = kategori.toUpperCase();
+    if (!KATEGORI_REFERENSI.has(normalized)) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, `Kategori referensi Dapodik "${kategori}" belum didukung.`);
+    }
+    const S = `"${schemaName}"`;
+    return this.tenantDb.query(
+      schemaName,
+      `SELECT code, nama, sort_order
+         FROM ${S}.pesantren_referensi_dapodik
+        WHERE kategori = $1 AND is_active = true AND deleted_at IS NULL
+        ORDER BY sort_order ASC, nama ASC`,
+      [normalized],
+    );
   }
 
   async ekspor(schemaName: string, dataset: DatasetCode): Promise<{ filename: string; mimeType: string; content: string; columns: string[] }> {

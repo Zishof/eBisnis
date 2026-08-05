@@ -32,6 +32,16 @@ interface OrangTuaForm {
   penghasilan: string;
 }
 
+interface ReferensiDapodikRow {
+  code: string;
+  nama: string;
+}
+
+interface Pilihan {
+  value: string;
+  label: string;
+}
+
 const JENIS_KELAMIN = ['L', 'P'];
 const STATUS_TINGGAL = ['MUKIM', 'NONMUKIM'];
 const AGAMA = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Khonghucu', 'Lainnya'];
@@ -40,6 +50,7 @@ const KEBUTUHAN_KHUSUS = [
 ];
 const ALAT_TRANSPORTASI = ['JALAN_KAKI', 'SEPEDA', 'SEPEDA_MOTOR', 'ANGKUTAN_UMUM', 'MOBIL_ANTAR_JEMPUT', 'PERAHU', 'LAINNYA'];
 const PENDIDIKAN_TERAKHIR = ['TIDAK_SEKOLAH', 'SD', 'SMP', 'SMA', 'D1_D3', 'S1', 'S2', 'S3'];
+const PEKERJAAN_ORANG_TUA = ['TIDAK_BEKERJA', 'PETANI', 'NELAYAN', 'BURUH', 'PEDAGANG', 'WIRASWASTA', 'KARYAWAN_SWASTA', 'PNS_TNI_POLRI', 'GURU', 'LAINNYA'];
 const RENTANG_PENGHASILAN = [
   'TIDAK_BERPENGHASILAN', 'KURANG_500RB', '500RB_1JT', '1JT_2JT', '2JT_5JT', '5JT_20JT', 'LEBIH_20JT',
 ];
@@ -133,6 +144,17 @@ function bangunPayload(form: FormState): Record<string, unknown> {
   };
 }
 
+function labelReferensi(value: string): string {
+  return value.replace(/_/g, ' ');
+}
+
+function pilihanReferensi(rows: ReferensiDapodikRow[] | undefined, fallback: string[]): Pilihan[] {
+  if (rows?.length) {
+    return rows.map((row) => ({ value: row.code, label: row.nama }));
+  }
+  return fallback.map((value) => ({ value, label: labelReferensi(value) }));
+}
+
 /**
  * Data Santri (EP-A) -- List + pendaftaran santri baru lewat
  * `POST /pesantren/santri` yang sudah ada. Tidak ada endpoint UPDATE pada
@@ -170,6 +192,32 @@ export function PesantrenSantriPage() {
     },
   });
 
+  const refKebutuhanKhusus = useQuery({
+    queryKey: ['pesantren-dapodik-referensi', 'KEBUTUHAN_KHUSUS'],
+    queryFn: () => api.get<ReferensiDapodikRow[]>('/pesantren/dapodik/referensi/KEBUTUHAN_KHUSUS'),
+    staleTime: 5 * 60 * 1000,
+  });
+  const refTransportasi = useQuery({
+    queryKey: ['pesantren-dapodik-referensi', 'TRANSPORTASI'],
+    queryFn: () => api.get<ReferensiDapodikRow[]>('/pesantren/dapodik/referensi/TRANSPORTASI'),
+    staleTime: 5 * 60 * 1000,
+  });
+  const refPendidikan = useQuery({
+    queryKey: ['pesantren-dapodik-referensi', 'PENDIDIKAN'],
+    queryFn: () => api.get<ReferensiDapodikRow[]>('/pesantren/dapodik/referensi/PENDIDIKAN'),
+    staleTime: 5 * 60 * 1000,
+  });
+  const refPekerjaan = useQuery({
+    queryKey: ['pesantren-dapodik-referensi', 'PEKERJAAN'],
+    queryFn: () => api.get<ReferensiDapodikRow[]>('/pesantren/dapodik/referensi/PEKERJAAN'),
+    staleTime: 5 * 60 * 1000,
+  });
+  const refPenghasilan = useQuery({
+    queryKey: ['pesantren-dapodik-referensi', 'PENGHASILAN'],
+    queryFn: () => api.get<ReferensiDapodikRow[]>('/pesantren/dapodik/referensi/PENGHASILAN'),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const create = useMutation({
     mutationFn: (payload: Record<string, unknown>) => api.post('/pesantren/santri', payload),
     onSuccess: () => {
@@ -183,7 +231,7 @@ export function PesantrenSantriPage() {
 
   const columns: Array<GridColumn<SantriRow>> = [
     { key: 'nis', header: 'NIS' },
-    { key: 'nisn', header: 'NISN', render: (row) => row.nisn ?? '—' },
+    { key: 'nisn', header: 'NISN', render: (row) => row.nisn ?? '-' },
     { key: 'nama_lengkap', header: 'Nama Lengkap' },
     {
       key: 'jenis_kelamin',
@@ -201,6 +249,11 @@ export function PesantrenSantriPage() {
 
   const total = list.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pilihanKebutuhanKhusus = pilihanReferensi(refKebutuhanKhusus.data, KEBUTUHAN_KHUSUS);
+  const pilihanTransportasi = pilihanReferensi(refTransportasi.data, ALAT_TRANSPORTASI);
+  const pilihanPendidikan = pilihanReferensi(refPendidikan.data, PENDIDIKAN_TERAKHIR);
+  const pilihanPekerjaan = pilihanReferensi(refPekerjaan.data, PEKERJAAN_ORANG_TUA);
+  const pilihanPenghasilan = pilihanReferensi(refPenghasilan.data, RENTANG_PENGHASILAN);
 
   return (
     <>
@@ -276,7 +329,7 @@ export function PesantrenSantriPage() {
             </p>
 
             <SeksiForm judul="Identitas Pokok">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 <Field label="NIS *">
                   <input className="field-input" value={form.nis} onChange={(e) => setForm({ ...form, nis: e.target.value })} />
                 </Field>
@@ -287,7 +340,7 @@ export function PesantrenSantriPage() {
               <Field label="Nama Lengkap *">
                 <input className="field-input" value={form.namaLengkap} onChange={(e) => setForm({ ...form, namaLengkap: e.target.value })} />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Jenis Kelamin *">
                   <select className="field-input" value={form.jenisKelamin} onChange={(e) => setForm({ ...form, jenisKelamin: e.target.value })}>
                     {JENIS_KELAMIN.map((j) => <option key={j} value={j}>{j === 'L' ? 'Laki-laki' : 'Perempuan'}</option>)}
@@ -299,7 +352,7 @@ export function PesantrenSantriPage() {
                   </select>
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Tempat Lahir">
                   <input className="field-input" value={form.tempatLahir} onChange={(e) => setForm({ ...form, tempatLahir: e.target.value })} />
                 </Field>
@@ -307,7 +360,7 @@ export function PesantrenSantriPage() {
                   <input type="date" className="field-input" value={form.tanggalLahir} onChange={(e) => setForm({ ...form, tanggalLahir: e.target.value })} />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 <Field label="NIK (16 digit)">
                   <input className="field-input" value={form.nik} onChange={(e) => setForm({ ...form, nik: e.target.value })} />
                 </Field>
@@ -318,10 +371,10 @@ export function PesantrenSantriPage() {
               <Field label="NIPD (nomor induk lokal pondok)">
                 <input className="field-input" value={form.nipd} onChange={(e) => setForm({ ...form, nipd: e.target.value })} />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Agama">
                   <select className="field-input" value={form.agama} onChange={(e) => setForm({ ...form, agama: e.target.value })}>
-                    <option value="">— Pilih —</option>
+                    <option value="">- Pilih -</option>
                     {AGAMA.map((a) => <option key={a} value={a}>{a}</option>)}
                   </select>
                 </Field>
@@ -329,10 +382,10 @@ export function PesantrenSantriPage() {
                   <input className="field-input" value={form.kewarganegaraan} onChange={(e) => setForm({ ...form, kewarganegaraan: e.target.value })} />
                 </Field>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-3 md:grid-cols-3">
                 <Field label="Kebutuhan Khusus">
                   <select className="field-input" value={form.kebutuhanKhusus} onChange={(e) => setForm({ ...form, kebutuhanKhusus: e.target.value })}>
-                    {KEBUTUHAN_KHUSUS.map((k) => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
+                    {pilihanKebutuhanKhusus.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                   </select>
                 </Field>
                 <Field label="Anak ke-">
@@ -348,18 +401,18 @@ export function PesantrenSantriPage() {
             </SeksiForm>
 
             <SeksiForm judul="Kontak dan Transportasi">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Alat Transportasi">
                   <select className="field-input" value={form.alatTransportasi} onChange={(e) => setForm({ ...form, alatTransportasi: e.target.value })}>
-                    <option value="">— Pilih —</option>
-                    {ALAT_TRANSPORTASI.map((a) => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
+                    <option value="">- Pilih -</option>
+                    {pilihanTransportasi.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                   </select>
                 </Field>
                 <Field label="Jarak Tempat Tinggal (km)">
                   <input type="number" step="0.1" min="0" className="field-input" value={form.jarakTempatTinggalKm} onChange={(e) => setForm({ ...form, jarakTempatTinggalKm: e.target.value })} />
                 </Field>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-3 md:grid-cols-3">
                 <Field label="Telepon">
                   <input className="field-input" value={form.telepon} onChange={(e) => setForm({ ...form, telepon: e.target.value })} />
                 </Field>
@@ -373,7 +426,7 @@ export function PesantrenSantriPage() {
             </SeksiForm>
 
             <SeksiForm judul="Program Bantuan">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={form.penerimaKip} onChange={(e) => setForm({ ...form, penerimaKip: e.target.checked })} />
                   Penerima KIP
@@ -391,9 +444,30 @@ export function PesantrenSantriPage() {
               </div>
             </SeksiForm>
 
-            <SeksiOrangTua judul="Data Ayah Kandung" data={form.ayah} onChange={(field, value) => setOrangTua('ayah', field, value)} />
-            <SeksiOrangTua judul="Data Ibu Kandung" data={form.ibu} onChange={(field, value) => setOrangTua('ibu', field, value)} />
-            <SeksiOrangTua judul="Data Wali (bila bukan ayah/ibu kandung)" data={form.wali} onChange={(field, value) => setOrangTua('wali', field, value)} />
+            <SeksiOrangTua
+              judul="Data Ayah Kandung"
+              data={form.ayah}
+              pilihanPendidikan={pilihanPendidikan}
+              pilihanPekerjaan={pilihanPekerjaan}
+              pilihanPenghasilan={pilihanPenghasilan}
+              onChange={(field, value) => setOrangTua('ayah', field, value)}
+            />
+            <SeksiOrangTua
+              judul="Data Ibu Kandung"
+              data={form.ibu}
+              pilihanPendidikan={pilihanPendidikan}
+              pilihanPekerjaan={pilihanPekerjaan}
+              pilihanPenghasilan={pilihanPenghasilan}
+              onChange={(field, value) => setOrangTua('ibu', field, value)}
+            />
+            <SeksiOrangTua
+              judul="Data Wali (bila bukan ayah/ibu kandung)"
+              data={form.wali}
+              pilihanPendidikan={pilihanPendidikan}
+              pilihanPekerjaan={pilihanPekerjaan}
+              pilihanPenghasilan={pilihanPenghasilan}
+              onChange={(field, value) => setOrangTua('wali', field, value)}
+            />
 
             <div className="mt-6 flex justify-end gap-2">
               <button
@@ -443,15 +517,21 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function SeksiOrangTua({
   judul,
   data,
+  pilihanPendidikan,
+  pilihanPekerjaan,
+  pilihanPenghasilan,
   onChange,
 }: {
   judul: string;
   data: OrangTuaForm;
+  pilihanPendidikan: Pilihan[];
+  pilihanPekerjaan: Pilihan[];
+  pilihanPenghasilan: Pilihan[];
   onChange: (field: keyof OrangTuaForm, value: string) => void;
 }) {
   return (
     <SeksiForm judul={judul}>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 md:grid-cols-2">
         <Field label="Nama">
           <input className="field-input" value={data.nama} onChange={(e) => onChange('nama', e.target.value)} />
         </Field>
@@ -459,24 +539,27 @@ function SeksiOrangTua({
           <input className="field-input" value={data.nik} onChange={(e) => onChange('nik', e.target.value)} />
         </Field>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid gap-3 md:grid-cols-3">
         <Field label="Tahun Lahir">
           <input type="number" className="field-input" value={data.tahunLahir} onChange={(e) => onChange('tahunLahir', e.target.value)} />
         </Field>
         <Field label="Pendidikan">
           <select className="field-input" value={data.pendidikan} onChange={(e) => onChange('pendidikan', e.target.value)}>
-            <option value="">— Pilih —</option>
-            {PENDIDIKAN_TERAKHIR.map((p) => <option key={p} value={p}>{p.replace(/_/g, ' ')}</option>)}
+            <option value="">- Pilih -</option>
+            {pilihanPendidikan.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
         </Field>
         <Field label="Pekerjaan">
-          <input className="field-input" value={data.pekerjaan} onChange={(e) => onChange('pekerjaan', e.target.value)} />
+          <select className="field-input" value={data.pekerjaan} onChange={(e) => onChange('pekerjaan', e.target.value)}>
+            <option value="">- Pilih -</option>
+            {pilihanPekerjaan.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
         </Field>
       </div>
       <Field label="Penghasilan">
         <select className="field-input" value={data.penghasilan} onChange={(e) => onChange('penghasilan', e.target.value)}>
-          <option value="">— Pilih —</option>
-          {RENTANG_PENGHASILAN.map((p) => <option key={p} value={p}>{p.replace(/_/g, ' ')}</option>)}
+          <option value="">- Pilih -</option>
+          {pilihanPenghasilan.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
       </Field>
     </SeksiForm>
