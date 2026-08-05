@@ -57,6 +57,13 @@ export interface BarisNilai {
   nilai_angka: string;
 }
 
+export interface BarisGradebook {
+  santri_id: string;
+  nis: string;
+  nama_lengkap: string;
+  nilai: Record<string, string | null>;
+}
+
 export interface BarisTahunAjaran {
   id: string;
   code: string;
@@ -275,6 +282,90 @@ export class PesantrenNilaiService {
       [masukan.santriId, masukan.komponenId, masukan.tahunAjaranId, masukan.nilaiAngka, bersihkan(masukan.catatan), createdBy],
     );
     return rows[0];
+  }
+
+  async gradebook(
+    schemaName: string,
+    opsi: { rombonganId: string; mataPelajaranId: string; tahunAjaranId: string },
+  ): Promise<{ komponen: BarisKomponenNilai[]; rows: BarisGradebook[] }> {
+    const S = `"${schemaName}"`;
+    const komponen = await this.daftarKomponen(schemaName, opsi.mataPelajaranId);
+    const rows = await this.tenantDb.query<{
+      santri_id: string;
+      nis: string;
+      nama_lengkap: string;
+      komponen_id: string | null;
+      nilai_angka: string | null;
+    }>(
+      schemaName,
+      `SELECT s.id::text AS santri_id, s.nis, s.nama_lengkap,
+              n.komponen_id::text, n.nilai_angka::text
+         FROM ${S}.pesantren_rombongan_anggota ra
+         JOIN ${S}.pesantren_santri s ON s.id = ra.santri_id
+         LEFT JOIN ${S}.pesantren_nilai n
+           ON n.santri_id = s.id
+          AND n.tahun_ajaran_id = $2
+          AND n.deleted_at IS NULL
+          AND n.komponen_id IN (
+            SELECT id FROM ${S}.pesantren_komponen_nilai
+             WHERE mata_pelajaran_id = $3 AND deleted_at IS NULL
+          )
+        WHERE ra.rombongan_id = $1
+          AND ra.tahun_ajaran_id = $2
+          AND ra.status = 'AKTIF'
+          AND ra.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+        ORDER BY s.nama_lengkap ASC`,
+      [opsi.rombonganId, opsi.tahunAjaranId, opsi.mataPelajaranId],
+    );
+
+    const bySantri = new Map<string, BarisGradebook>();
+    for (const row of rows) {
+      if (!bySantri.has(row.santri_id)) {
+        bySantri.set(row.santri_id, {
+          santri_id: row.santri_id,
+          nis: row.nis,
+          nama_lengkap: row.nama_lengkap,
+          nilai: Object.fromEntries(komponen.map((item) => [item.id, null])),
+        });
+      }
+      if (row.komponen_id) {
+        bySantri.get(row.santri_id)!.nilai[row.komponen_id] = row.nilai_angka;
+      }
+    }
+
+    return { komponen, rows: [...bySantri.values()] };
+  }
+
+  async catatNilaiMassal(
+    schemaName: string,
+    masukan: {
+      tahunAjaranId: string;
+      nilai: Array<{ santriId: string; komponenId: string; nilaiAngka?: number | null; catatan?: string }>;
+    },
+    createdBy: string,
+  ): Promise<{ tersimpan: number; dilewati: number }> {
+    let tersimpan = 0;
+    let dilewati = 0;
+    for (const item of masukan.nilai) {
+      if (item.nilaiAngka === null || item.nilaiAngka === undefined || Number.isNaN(item.nilaiAngka)) {
+        dilewati += 1;
+        continue;
+      }
+      await this.catatNilai(
+        schemaName,
+        {
+          santriId: item.santriId,
+          komponenId: item.komponenId,
+          tahunAjaranId: masukan.tahunAjaranId,
+          nilaiAngka: item.nilaiAngka,
+          catatan: item.catatan,
+        },
+        createdBy,
+      );
+      tersimpan += 1;
+    }
+    return { tersimpan, dilewati };
   }
 
   /**

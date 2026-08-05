@@ -3,9 +3,10 @@
  * `pesantren-santri.controller.ts`.
  */
 
-import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsArray, IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { PesantrenNilaiService } from './pesantren-nilai.service';
 import { JENJANG_MAPEL } from './pesantren-nilai';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
@@ -91,6 +92,41 @@ class CatatNilaiDto {
   catatan?: string;
 }
 
+class GradebookQuery {
+  @ApiProperty() @IsString()
+  rombonganId!: string;
+
+  @ApiProperty() @IsString()
+  mataPelajaranId!: string;
+
+  @ApiProperty() @IsString()
+  tahunAjaranId!: string;
+}
+
+class NilaiMassalItemDto {
+  @ApiProperty() @IsString()
+  santriId!: string;
+
+  @ApiProperty() @IsString()
+  komponenId!: string;
+
+  @ApiProperty({ example: 85, nullable: true })
+  @IsOptional() @IsNumber() @Min(0) @Max(100)
+  nilaiAngka?: number | null;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500)
+  catatan?: string;
+}
+
+class CatatNilaiMassalDto {
+  @ApiProperty() @IsString()
+  tahunAjaranId!: string;
+
+  @ApiProperty({ type: [NilaiMassalItemDto] })
+  @IsArray() @ValidateNested({ each: true }) @Type(() => NilaiMassalItemDto)
+  nilai!: NilaiMassalItemDto[];
+}
+
 @ApiTags('pesantren')
 @ApiBearerAuth('access-token')
 @Controller('pesantren/nilai')
@@ -163,6 +199,21 @@ export class PesantrenNilaiController {
   @ApiOperation({ summary: 'Mencatat atau memperbaiki nilai satu santri pada satu komponen' })
   catatNilai(@Body() dto: CatatNilaiDto, @CurrentUser() user: AuthenticatedUser) {
     return this.nilai.catatNilai(schemaWajib(user), dto, user.userId);
+  }
+
+  @Permissions('EPESANTREN_NILAI.READ')
+  @Get('gradebook')
+  @ApiOperation({ summary: 'Tabel nilai massal per rombongan, mata pelajaran, dan tahun ajaran' })
+  gradebook(@Query() query: GradebookQuery, @CurrentUser() user: AuthenticatedUser) {
+    return this.nilai.gradebook(schemaWajib(user), query);
+  }
+
+  @Permissions('EPESANTREN_NILAI.CREATE')
+  @Post('massal')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Menyimpan nilai massal dari tabel gradebook' })
+  catatNilaiMassal(@Body() dto: CatatNilaiMassalDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.nilai.catatNilaiMassal(schemaWajib(user), dto, user.userId);
   }
 
   @Permissions('EPESANTREN_NILAI.READ')
