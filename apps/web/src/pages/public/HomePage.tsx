@@ -1211,6 +1211,12 @@ function ContohUsahaGrid() {
                   <span className="mt-1 block text-sm leading-5 text-slate-600 dark:text-slate-300">
                     {item.detail}
                   </span>
+                  <span className="mt-auto pt-4">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-3 py-2 text-xs font-bold text-white shadow-sm transition group-hover:bg-brand-800">
+                      Buka website
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                    </span>
+                  </span>
                 </span>
               </TautanContohUsaha>
               <div className="grid grid-cols-2 gap-2 border-t border-slate-200 p-3 dark:border-slate-800">
