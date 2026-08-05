@@ -64,6 +64,8 @@ import { PesantrenPublicController } from './pesantren-public.controller';
 import { PesantrenPublicService } from './pesantren-public.service';
 import { PesantrenUnitPendidikanController } from './pesantren-unit-pendidikan.controller';
 import { PesantrenUnitPendidikanService } from './pesantren-unit-pendidikan.service';
+import { PesantrenDapodikController } from './pesantren-dapodik.controller';
+import { PesantrenDapodikService } from './pesantren-dapodik.service';
 import { NotificationModule } from '../notification/notification.module';
 
 @Module({
@@ -109,6 +111,7 @@ import { NotificationModule } from '../notification/notification.module';
     PesantrenMediaController,
     PesantrenPublicController,
     PesantrenUnitPendidikanController,
+    PesantrenDapodikController,
   ],
   providers: [
     PesantrenSantriService,
@@ -143,6 +146,7 @@ import { NotificationModule } from '../notification/notification.module';
     PesantrenMediaService,
     PesantrenPublicService,
     PesantrenUnitPendidikanService,
+    PesantrenDapodikService,
   ],
 })
 export class PesantrenModule implements OnModuleInit {
