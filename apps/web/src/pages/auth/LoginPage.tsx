@@ -9,6 +9,7 @@ import { isSantriHost, isSantriPortalHost, slugPondokDariHost } from '../../vert
 import { isSalonDemoHost } from '../contoh/salon-host';
 import { isCmnInventoryHost, isInventoryHost } from '../inventory/inventory-host';
 import { emedikPublicBrandFor } from '../public/emedik-host';
+import { isMitrainapPortalHost } from '../../verticals/hospitality/mitrainap-host';
 
 interface LoginForm {
   username: string;
@@ -131,6 +132,7 @@ export function LoginPage() {
   const inventory = isInventoryHost();
   const cmnInventory = isCmnInventoryHost();
   const emedikBrand = emedikPublicBrandFor();
+  const mitrainap = isMitrainapPortalHost();
   const akunInventory = cmnInventory ? AKUN_CMN_INVENTORY : AKUN_INVENTORY_DEMO;
   /*
    * Portal umum santri.info (apex/www) menawarkan demo dan pendaftaran pondok
@@ -233,7 +235,9 @@ export function LoginPage() {
                       : 'Masuk ke Demo Sales & Inventory'
                   : emedikBrand
                     ? emedikBrand.loginTitle
-                    : t('auth.loginTitle')}
+                    : mitrainap
+                      ? 'Masuk ke MitraInap.id'
+                      : t('auth.loginTitle')}
           </h1>
           <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
             {santri
@@ -246,6 +250,8 @@ export function LoginPage() {
                     : 'Gunakan akun sales lapangan, manajemen inventory, atau pemilik untuk mencoba alur distribusi barang.'
                 : emedikBrand
                   ? emedikBrand.loginSubtitle
+                  : mitrainap
+                    ? 'Gunakan akun staf properti yang terdaftar.'
               : t('auth.loginSubtitle')}
           </p>
 
