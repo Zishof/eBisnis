@@ -35,6 +35,7 @@ import { useSiteConfig } from './PublicLayout';
 import { LoadingState, ErrorState } from '../../components/ui';
 import { PackageCards, usePackages } from './PricingPage';
 import { BerandaRinci } from './BerandaRinci';
+import { tautanWebsiteContohUsaha } from './business-unit-links';
 
 interface CmsBlock {
   key: string;
@@ -103,7 +104,7 @@ const DOKUMEN_DEMO = [
   { label: 'PKS', href: '/pks', icon: FileSignature },
 ];
 
-const CONTOH_USAHA = [
+export const CONTOH_USAHA = [
   {
     label: 'Demo',
     detail: 'Pedagang UMKM',
@@ -400,6 +401,258 @@ const CONTOH_USAHA = [
     status: 'Umum',
     imageUrl: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=900&q=80',
     imageAlt: 'Aktivitas agribisnis di lahan pertanian',
+  },
+  {
+    label: 'Restoran',
+    detail: 'Reservasi meja, dapur, waiter, invoice',
+    href: '/demo',
+    icon: Utensils,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Ruang restoran dengan meja pelanggan',
+  },
+  {
+    label: 'Warteg',
+    detail: 'Menu harian, lauk cepat saji, kasir',
+    href: '/demo',
+    icon: Utensils,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Sajian makanan rumahan untuk warung makan',
+  },
+  {
+    label: 'Cuci Motor',
+    detail: 'Paket cuci motor, antrean, member',
+    href: '/demo',
+    icon: Bike,
+    status: 'Berikutnya',
+    imageUrl: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Motor di area layanan cuci dan perawatan',
+  },
+  {
+    label: 'Toko Pertanian',
+    detail: 'Pupuk, benih, alat tani, stok musiman',
+    href: '/demo',
+    icon: Sprout,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1523741543316-beb7fc7023d8?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Perlengkapan pertanian dan tanaman',
+  },
+  {
+    label: 'Fitnes',
+    detail: 'Membership, kelas, trainer, check-in',
+    href: '/demo',
+    icon: Dumbbell,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Area gym dengan alat latihan',
+  },
+  {
+    label: 'Spa',
+    detail: 'Booking treatment, terapis, paket member',
+    href: '/demo',
+    icon: Sparkles,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Ruang spa dan perawatan relaksasi',
+  },
+  {
+    label: 'Fotokopi dan Print',
+    detail: 'Print, jilid, desain, pembayaran cepat',
+    href: '/demo',
+    icon: FileText,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Mesin cetak dan dokumen di layanan fotokopi',
+  },
+  {
+    label: 'Frozen Food',
+    detail: 'Stok freezer, batch, reseller, delivery',
+    href: '/demo',
+    icon: PackageSearch,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1605493725784-3f928522e481?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Produk makanan beku dalam kemasan',
+  },
+  {
+    label: 'Toko ATK',
+    detail: 'Alat tulis, grosir sekolah, invoice',
+    href: '/demo',
+    icon: FileText,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Peralatan kantor dan alat tulis',
+  },
+  {
+    label: 'Toko HP dan Aksesoris',
+    detail: 'IMEI, garansi, cicilan, servis ringan',
+    href: '/demo',
+    icon: PackageSearch,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Ponsel dan aksesori toko elektronik',
+  },
+  {
+    label: 'Pet Shop',
+    detail: 'Pakan, grooming, vaksin, membership',
+    href: '/demo',
+    icon: ShoppingBag,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Produk pet shop dan layanan perawatan hewan',
+  },
+  {
+    label: 'Cuci Sepatu',
+    detail: 'Laundry sepatu, repair, pickup order',
+    href: '/demo',
+    icon: WashingMachine,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Sepatu bersih untuk layanan cuci sepatu',
+  },
+  {
+    label: 'Depot Air Minum',
+    detail: 'Galon, langganan, armada, retur',
+    href: '/demo',
+    icon: Truck,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Galon air minum dan distribusi depot',
+  },
+  {
+    label: 'Travel dan Tour',
+    detail: 'Paket wisata, jadwal, deposit, voucher',
+    href: '/demo',
+    icon: Truck,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Perjalanan wisata dan layanan travel',
+  },
+  {
+    label: 'Homestay dan Penginapan',
+    detail: 'Kamar, booking, check-in, housekeeping',
+    href: '/demo',
+    icon: BriefcaseBusiness,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Kamar penginapan siap disewa',
+  },
+  {
+    label: 'Kursus dan Bimbel',
+    detail: 'Kelas, jadwal, tutor, tagihan bulanan',
+    href: '/demo',
+    icon: Presentation,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Kelas kursus dan kegiatan belajar',
+  },
+  {
+    label: 'Daycare dan PAUD',
+    detail: 'Absensi anak, paket bulanan, laporan orang tua',
+    href: '/demo',
+    icon: Star,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Ruang belajar anak untuk daycare dan PAUD',
+  },
+  {
+    label: 'Bakery dan Toko Roti',
+    detail: 'Produksi harian, pre-order, batch',
+    href: '/demo',
+    icon: ShoppingBag,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Roti dan pastry di toko bakery',
+  },
+  {
+    label: 'Toko Alat Kesehatan',
+    detail: 'Alkes, stok serial, garansi, distribusi',
+    href: '/demo',
+    icon: Pill,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1583912267550-d44c9f5f6113?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Alat kesehatan dan perlengkapan medis',
+  },
+  {
+    label: 'Toko Buku',
+    detail: 'ISBN, penerbit, konsinyasi, stok rak',
+    href: '/demo',
+    icon: FileText,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Rak buku di toko buku',
+  },
+  {
+    label: 'Florist dan Toko Bunga',
+    detail: 'Bouquet, pesanan acara, delivery',
+    href: '/demo',
+    icon: Sprout,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Rangkaian bunga untuk florist',
+  },
+  {
+    label: 'Konveksi dan Jahit',
+    detail: 'Ukuran, produksi, bahan, termin',
+    href: '/demo',
+    icon: Shirt,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Proses jahit dan produksi konveksi',
+  },
+  {
+    label: 'Furniture dan Mebel',
+    detail: 'Pesanan custom, bahan, produksi, delivery',
+    href: '/demo',
+    icon: Hammer,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Produk furniture dan mebel',
+  },
+  {
+    label: 'Toko Mainan',
+    detail: 'Kategori usia, stok musiman, promo',
+    href: '/demo',
+    icon: Star,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1558060370-d644479cb6f7?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Produk mainan anak di toko',
+  },
+  {
+    label: 'Baby Shop',
+    detail: 'Produk bayi, ukuran, member, bundling',
+    href: '/demo',
+    icon: ShoppingBag,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Produk perlengkapan bayi',
+  },
+  {
+    label: 'Studio Foto dan Fotografi',
+    detail: 'Booking studio, paket foto, cetak',
+    href: '/demo',
+    icon: Presentation,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Peralatan fotografi dan studio foto',
+  },
+  {
+    label: 'Wedding Organizer',
+    detail: 'Paket nikah, vendor, timeline, termin',
+    href: '/demo',
+    icon: BriefcaseBusiness,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Dekorasi acara pernikahan',
+  },
+  {
+    label: 'Toko Emas dan Perhiasan',
+    detail: 'Harga harian, sertifikat, stok varian',
+    href: '/demo',
+    icon: Sparkles,
+    status: 'Umum',
+    imageUrl: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Perhiasan emas di etalase toko',
   },
 ];
 
@@ -850,7 +1103,7 @@ function UnitUsahaHeroStrip() {
           return (
             <TautanContohUsaha
               key={item.label}
-              href={item.href}
+              href={tautanWebsiteContohUsaha(item)}
               className="group relative min-h-28 overflow-hidden rounded-xl border border-white/70 bg-slate-900 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800"
             >
               <img
@@ -928,7 +1181,7 @@ function ContohUsahaGrid() {
               <p className="mt-1 font-bold text-slate-950 dark:text-white">{usahaUtama.label}</p>
               <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">{usahaUtama.detail}</p>
               <TautanContohUsaha
-                href={usahaUtama.href}
+                href={tautanWebsiteContohUsaha(usahaUtama)}
                 className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-800"
               >
                 Buka contoh
@@ -974,7 +1227,7 @@ function ContohUsahaGrid() {
                   : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900',
               )}
             >
-              <TautanContohUsaha href={item.href} className="flex flex-1 flex-col">
+              <TautanContohUsaha href={tautanWebsiteContohUsaha(item)} className="flex flex-1 flex-col">
                 <span className="relative block aspect-[16/10] overflow-hidden bg-slate-200 dark:bg-slate-800">
                   <img
                     src={item.imageUrl}
@@ -1013,6 +1266,10 @@ function ContohUsahaGrid() {
                   </span>
                   <span className="mt-1 block text-sm leading-5 text-slate-600 dark:text-slate-300">
                     {item.detail}
+                  </span>
+                  <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white transition group-hover:bg-brand-800">
+                    Buka website
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                   </span>
                 </span>
               </TautanContohUsaha>

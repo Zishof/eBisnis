@@ -2,8 +2,10 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { PublicLayout } from '../pages/public/PublicLayout';
 import { HomePage } from '../pages/public/HomePage';
+import { BusinessUnitLandingPage } from '../pages/public/BusinessUnitLandingPage';
 import { EmedikLandingPage } from '../pages/public/EmedikLandingPage';
 import { ApotikLandingPage } from '../pages/public/ApotikLandingPage';
+import { isBusinessUnitHost } from '../pages/public/business-unit-links';
 import { rootExperienceFor } from '../pages/public/emedik-host';
 import { isEducationPublicHost } from '../verticals/education/education-host';
 import { CmsPage } from '../pages/public/CmsPage';
@@ -378,6 +380,7 @@ function AkarMenurutHost() {
    */
   if (isSantriPortalHost()) return <Navigate to="/santri" replace />;
   if (slugPondokDariHost()) return <Navigate to="/santri/pondok" replace />;
+  if (isBusinessUnitHost()) return <BusinessUnitLandingPage />;
   return <HomePage />;
 }
 

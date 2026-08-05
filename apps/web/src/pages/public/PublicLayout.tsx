@@ -14,6 +14,7 @@ import { isSalonDemoHost } from '../contoh/salon-host';
 import { isInventoryHost } from '../inventory/inventory-host';
 import { emedikPublicBrandFor } from './emedik-host';
 import { educationPublicBrandFor } from '../../verticals/education/education-host';
+import { businessTenantLabelFromHost, businessUnitLabelFromHost, isBusinessUnitHost } from './business-unit-links';
 
 export interface SiteConfig {
   code: string;
@@ -103,6 +104,9 @@ function PublicLayoutEBisnis({
   const location = useLocation();
   const salonHost = isSalonDemoHost();
   const inventoryHost = isInventoryHost();
+  const businessUnitHost = isBusinessUnitHost();
+  const businessUnitLabel = businessUnitLabelFromHost();
+  const businessTenantLabel = businessTenantLabelFromHost();
   const emedikBrand = emedikPublicBrandFor();
   const educationBrand = educationPublicBrandFor();
   const brand = salonHost
@@ -134,6 +138,13 @@ function PublicLayoutEBisnis({
           homeUrl: 'https://inventory.ebisnis.id',
           description:
             'Aplikasi inventory terintegrasi untuk sales obat, gudang, pembelian, piutang, hutang, dan monitoring pemilik usaha.',
+        }
+    : businessUnitHost
+      ? {
+          logoText: 'eB',
+          name: businessTenantLabel ?? businessUnitLabel ?? 'Unit Usaha eBisnis',
+          homeUrl: '/',
+          description: `Website ${businessUnitLabel ?? 'unit usaha'} eBisnis yang siap disesuaikan untuk profil tenant, katalog, promo, dan operasional.`,
         }
     : {
         logoText: 'eB',
@@ -186,6 +197,27 @@ function PublicLayoutEBisnis({
               ],
             },
           ]
+      : businessUnitHost
+        ? [
+            {
+              code: 'UNIT',
+              title: businessUnitLabel ?? 'Unit Usaha',
+              items: [
+                { label: 'Website', url: '/' },
+                { label: 'Katalog', url: '/#katalog' },
+                { label: 'Masuk aplikasi', url: '/masuk' },
+              ],
+            },
+            {
+              code: 'DOKUMEN',
+              title: 'Dokumen',
+              items: [
+                { label: 'Proposal Penawaran', url: `/proposal?jenis=${encodeURIComponent(businessUnitLabel ?? 'Unit Usaha')}` },
+                { label: 'Surat Penawaran', url: `/penawaran?jenis=${encodeURIComponent(businessUnitLabel ?? 'Unit Usaha')}` },
+                { label: 'Draft PKS', url: `/pks?jenis=${encodeURIComponent(businessUnitLabel ?? 'Unit Usaha')}` },
+              ],
+            },
+          ]
       : site?.footer ?? [];
 
   const headerItems =
@@ -206,6 +238,13 @@ function PublicLayoutEBisnis({
               { labelKey: 'inventory.flow', label: 'Alur Sales', url: 'https://inventory.ebisnis.id/inventory#alur', sortOrder: 2 },
               { labelKey: 'inventory.dashboard', label: 'Dashboard', url: 'https://inventory.ebisnis.id/inventory#dashboard', sortOrder: 3 },
               { labelKey: 'inventory.download', label: 'Download', url: 'https://inventory.ebisnis.id/inventory#download', sortOrder: 4 },
+            ]
+        : businessUnitHost
+          ? [
+              { labelKey: 'unit.website', label: 'Website', url: '/', sortOrder: 1 },
+              { labelKey: 'unit.catalog', label: 'Katalog', url: '/#katalog', sortOrder: 2 },
+              { labelKey: 'unit.howto', label: 'Cara Pesan', url: '/#katalog', sortOrder: 3 },
+              { labelKey: 'unit.download', label: 'Download', url: '/masuk', sortOrder: 4 },
             ]
       : site?.navigation.find((nav) => nav.location === 'HEADER')?.items ?? [
       { labelKey: 'nav.home', label: t('nav.home'), url: '/', sortOrder: 1 },
