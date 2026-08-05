@@ -46,9 +46,17 @@ describe('ApotikLandingPage', () => {
       'href',
       '/update/pos-apotik-windows.exe',
     );
+    expect(screen.getByRole('link', { name: /Unduh installer Windows/i })).toHaveAttribute(
+      'download',
+      'emedik-pos-apotik-windows.exe',
+    );
     expect(screen.getByRole('link', { name: /Unduh APK Android/i })).toHaveAttribute(
       'href',
       '/update/pos-apotik-android.apk',
+    );
+    expect(screen.getByRole('link', { name: /Unduh APK Android/i })).toHaveAttribute(
+      'download',
+      'emedik-pos-apotik-android.apk',
     );
     expect(screen.queryByText('Katalog produk tenant')).not.toBeInTheDocument();
   });

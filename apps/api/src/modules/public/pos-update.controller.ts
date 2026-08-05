@@ -321,7 +321,7 @@ export class PosUpdateController {
       this.noStore(res);
       throw AppError.notFound(ErrorCodes.NOT_FOUND, message);
     }
-    return this.streamFile(asset.path, aliasName, res, 'latest');
+    return this.streamFile(asset.path, asset.name, res, 'latest');
   }
 
   private updateFilePath(file: string): string | null {
@@ -353,10 +353,12 @@ export class PosUpdateController {
 
   private streamFile(path: string, filename: string, res: Response, cacheMode: 'immutable' | 'latest') {
     const ext = filename.endsWith('.apk') ? 'apk' : 'exe';
+    const size = statSync(path).size;
     res.set({
       'Content-Type':
         ext === 'apk' ? 'application/vnd.android.package-archive' : 'application/vnd.microsoft.portable-executable',
       'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': String(size),
       'Cache-Control': cacheMode === 'immutable' ? 'public, max-age=31536000, immutable' : 'no-cache, must-revalidate',
     });
     return rawResponse(new StreamableFile(createReadStream(path)));

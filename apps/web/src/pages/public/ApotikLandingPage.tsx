@@ -443,6 +443,7 @@ function PublicAppDownloadSection() {
       body: 'Pemasang lengkap untuk komputer kasir Windows. Shortcut, pembaruan, dan uninstaller disiapkan otomatis.',
       action: 'Unduh installer Windows',
       href: aplikasiApotik.windows,
+      downloadName: 'emedik-pos-apotik-windows.exe',
       note: 'Format .exe',
     },
     {
@@ -452,6 +453,7 @@ function PublicAppDownloadSection() {
       body: 'Aplikasi kasir farmasi untuk tablet atau ponsel Android dengan akun dan katalog tenant yang sama.',
       action: 'Unduh APK Android',
       href: aplikasiApotik.android,
+      downloadName: 'emedik-pos-apotik-android.apk',
       note: 'Format .apk',
     },
   ];
@@ -484,7 +486,11 @@ function PublicAppDownloadSection() {
                 <p className="mt-5 text-xs font-black uppercase tracking-wide text-emerald-700">{platform.eyebrow}</p>
                 <h3 className="mt-2 text-2xl font-black text-slate-950">{platform.title}</h3>
                 <p className="mt-3 flex-1 text-sm leading-7 text-slate-600">{platform.body}</p>
-                <a href={platform.href} className="btn-primary mt-6 bg-emerald-700 px-5 py-3 hover:bg-emerald-800">
+                <a
+                  href={platform.href}
+                  download={platform.downloadName}
+                  className="btn-primary mt-6 bg-emerald-700 px-5 py-3 hover:bg-emerald-800"
+                >
                   <Download className="h-4 w-4" aria-hidden />
                   {platform.action}
                 </a>
