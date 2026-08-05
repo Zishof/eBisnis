@@ -4,8 +4,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:excel/excel.dart' hide Border;
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import 'inventory_local_database.dart';
 
@@ -231,7 +235,11 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           NavigationDestination(
               icon: Icon(Icons.payments_outlined), label: 'Operasional'),
           NavigationDestination(
+              icon: Icon(Icons.inventory_2_outlined), label: 'Stok & Harga'),
+          NavigationDestination(
               icon: Icon(Icons.fact_check_outlined), label: 'Paritas'),
+          NavigationDestination(
+              icon: Icon(Icons.account_balance_outlined), label: 'Keuangan'),
           NavigationDestination(
               icon: Icon(Icons.analytics_outlined), label: 'Laporan'),
           NavigationDestination(
@@ -243,7 +251,7 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           future: _snapshot,
           builder: (context, state) {
             final data = state.data;
-            final needsSnapshot = _tab == 0 || _tab == 4;
+            final needsSnapshot = _tab == 0 || _tab == 6;
             return CustomScrollView(
               slivers: [
                 SliverAppBar.large(
@@ -306,6 +314,8 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                       children: [
                         if (_tab == 0) ...[
                           _KpiGrid(snapshot: data!),
+                          const SizedBox(height: 16),
+                          _PartyMasterLauncher(client: widget.client),
                           const SizedBox(height: 16),
                           _SectionCard(
                             title: 'Performa sales',
@@ -386,13 +396,17 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                             initialCatalog: widget.initialCatalog,
                           )
                         else if (_tab == 2)
-                          _InventoryOperationsPage(
+                          InventoryOperationsPage(
                             client: widget.client,
                             persona: widget.persona,
                           )
                         else if (_tab == 3)
-                          _InventoryFeaturePage(contract: _parity)
+                          InventoryStockPricingPage(client: widget.client)
                         else if (_tab == 4)
+                          _InventoryFeaturePage(contract: _parity)
+                        else if (_tab == 5)
+                          InventoryFinancePage(client: widget.client)
+                        else if (_tab == 6)
                           _InventoryReportPage(snapshot: data!)
                         else
                           const _InventoryManualPage(),
@@ -755,8 +769,9 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
   }
 }
 
-class _InventoryOperationsPage extends StatefulWidget {
-  const _InventoryOperationsPage({
+class InventoryOperationsPage extends StatefulWidget {
+  const InventoryOperationsPage({
+    super.key,
     required this.client,
     required this.persona,
   });
@@ -765,20 +780,1158 @@ class _InventoryOperationsPage extends StatefulWidget {
   final PersonaInventory persona;
 
   @override
-  State<_InventoryOperationsPage> createState() =>
+  State<InventoryOperationsPage> createState() =>
       _InventoryOperationsPageState();
 }
 
-class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
+class _PartyMasterLauncher extends StatelessWidget {
+  const _PartyMasterLauncher({required this.client});
+  final InventoryApiClient client;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Master Relasi',
+      icon: Icons.hub_outlined,
+      child: LayoutBuilder(builder: (context, box) {
+        final width =
+            box.maxWidth < 560 ? box.maxWidth : (box.maxWidth - 20) / 3;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _masterButton(context, width, 'suppliers', 'Pemasok',
+                Icons.local_shipping_outlined),
+            _masterButton(context, width, 'customers', 'Pelanggan',
+                Icons.storefront_outlined),
+            _masterButton(
+                context, width, 'salespeople', 'Sales', Icons.badge_outlined),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _masterButton(BuildContext context, double width, String kind,
+      String label, IconData icon) {
+    return SizedBox(
+      width: width,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        ),
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) =>
+              InventoryPartyMasterPage(client: client, initialKind: kind),
+        )),
+        icon: Icon(icon),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+      ),
+    );
+  }
+}
+
+class InventoryPartyMasterPage extends StatefulWidget {
+  const InventoryPartyMasterPage({
+    super.key,
+    required this.client,
+    this.initialKind = 'suppliers',
+  });
+
+  final InventoryApiClient client;
+  final String initialKind;
+
+  @override
+  State<InventoryPartyMasterPage> createState() =>
+      _InventoryPartyMasterPageState();
+}
+
+class _InventoryPartyMasterPageState extends State<InventoryPartyMasterPage> {
+  late String _kind = widget.initialKind;
+  late Future<List<InventoryPartyRecord>> _records = _load();
+  final _search = TextEditingController();
+  final Map<String, TextEditingController> _fields = {};
+  InventoryPartyRecord? _selected;
+  bool _editing = false;
+  bool _creating = false;
+  bool _busy = false;
+  bool _showBank = false;
+  String _statusFilter = 'ALL';
+
+  List<PartyField> get _definitions => partyFields[_kind]!;
+  String get _title => partyLabels[_kind]!;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    for (final controller in _fields.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<List<InventoryPartyRecord>> _load() =>
+      widget.client.partyMasters(_kind);
+
+  void _reload() {
+    setState(() {
+      _selected = null;
+      _editing = false;
+      _creating = false;
+      _records = _load();
+    });
+  }
+
+  void _select(InventoryPartyRecord record) {
+    if ((_editing || _creating) && !_confirmDiscard()) return;
+    _setSelected(record);
+  }
+
+  void _setSelected(InventoryPartyRecord record) {
+    for (final definition in _definitions) {
+      (_fields[definition.key] ??= TextEditingController()).text =
+          (record.values[definition.key] ?? '').toString();
+    }
+    setState(() {
+      _selected = record;
+      _editing = false;
+      _creating = false;
+    });
+  }
+
+  bool _confirmDiscard() {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Simpan atau batalkan perubahan sebelum berpindah data.'),
+    ));
+    return false;
+  }
+
+  void _create() {
+    if (_editing && !_confirmDiscard()) return;
+    for (final definition in _definitions) {
+      (_fields[definition.key] ??= TextEditingController()).clear();
+    }
+    setState(() {
+      _selected = null;
+      _editing = true;
+      _creating = true;
+    });
+  }
+
+  void _cancel() {
+    if (_selected != null) {
+      _setSelected(_selected!);
+    } else {
+      setState(() {
+        _editing = false;
+        _creating = false;
+      });
+    }
+  }
+
+  Future<void> _save() async {
+    final code = _fields['code']?.text.trim() ?? '';
+    final name = _fields['name']?.text.trim() ?? '';
+    final limit = partyCodeLimits[_kind]!;
+    if (code.isEmpty || name.isEmpty || code.length > limit) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content:
+            Text('Kode dan nama wajib diisi; kode maksimum $limit karakter.'),
+      ));
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final payload = <String, Object?>{};
+      for (final definition in _definitions) {
+        final value = _fields[definition.key]?.text.trim() ?? '';
+        payload[definition.key] = definition.numeric
+            ? (double.tryParse(value) ?? 0)
+            : (value.isEmpty ? null : value);
+      }
+      final result = await widget.client.saveParty(
+        kind: _kind,
+        id: _creating ? null : _selected?.id,
+        version: _creating ? null : _selected?.version,
+        payload: payload,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result.queued
+            ? 'Disimpan di perangkat dan akan dikirim saat tersambung.'
+            : 'Data berhasil disimpan.'),
+      ));
+      _reload();
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _toggleActive() async {
+    final selected = _selected;
+    if (selected == null) return;
+    setState(() => _busy = true);
+    try {
+      await widget.client.toggleParty(_kind, selected);
+      if (mounted) _reload();
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_editing && !_creating,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmDiscard();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Master $_title'),
+          actions: [
+            IconButton(
+                onPressed: _reload,
+                tooltip: 'Muat ulang',
+                icon: const Icon(Icons.refresh)),
+            IconButton(
+                onPressed: _create,
+                tooltip: 'Tambah data',
+                icon: const Icon(Icons.add)),
+          ],
+        ),
+        body: SafeArea(
+          child: FutureBuilder<List<InventoryPartyRecord>>(
+            future: _records,
+            builder: (context, state) {
+              if (state.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state.hasError) {
+                return _ErrorPanel(
+                    message: state.error.toString(), onRetry: _reload);
+              }
+              final records = state.data ?? const [];
+              final query = _search.text.toLowerCase();
+              final visible = records.where((record) {
+                final matchesSearch = query.isEmpty ||
+                    record.code.toLowerCase().contains(query) ||
+                    record.name.toLowerCase().contains(query) ||
+                    record.subtitle.toLowerCase().contains(query);
+                final matchesStatus = _statusFilter == 'ALL' ||
+                    (_statusFilter == 'ACTIVE' && record.active) ||
+                    (_statusFilter == 'BALANCE' && record.balance > 0) ||
+                    (_statusFilter == 'SETTLED' && record.balance <= 0);
+                return matchesSearch && matchesStatus;
+              }).toList();
+              return LayoutBuilder(builder: (context, box) {
+                final wide = box.maxWidth >= 900;
+                final list = _masterList(visible);
+                final detail = _masterDetail();
+                if (!wide) {
+                  return ListView(
+                    padding: const EdgeInsets.all(12),
+                    children:
+                        _selected != null || _creating ? [detail] : [list],
+                  );
+                }
+                return Row(children: [
+                  SizedBox(width: 390, child: list),
+                  const VerticalDivider(width: 1),
+                  Expanded(
+                      child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(18), child: detail)),
+                ]);
+              });
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _masterList(List<InventoryPartyRecord> records) {
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(children: [
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                    value: 'suppliers',
+                    label: Text('Pemasok'),
+                    icon: Icon(Icons.local_shipping_outlined)),
+                ButtonSegment(
+                    value: 'customers',
+                    label: Text('Pelanggan'),
+                    icon: Icon(Icons.storefront_outlined)),
+                ButtonSegment(
+                    value: 'salespeople',
+                    label: Text('Sales'),
+                    icon: Icon(Icons.badge_outlined)),
+              ],
+              selected: {_kind},
+              showSelectedIcon: false,
+              onSelectionChanged: (value) {
+                if (_editing && !_confirmDiscard()) return;
+                setState(() {
+                  _kind = value.first;
+                  _selected = null;
+                  _records = _load();
+                });
+              },
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _search,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  labelText: 'Cari kode, nama, atau wilayah',
+                  border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 8),
+            Wrap(spacing: 6, children: [
+              for (final item in const [
+                ('ALL', 'Semua'),
+                ('ACTIVE', 'Aktif'),
+                ('BALANCE', 'Ada saldo'),
+                ('SETTLED', 'Lunas')
+              ])
+                FilterChip(
+                    label: Text(item.$2),
+                    selected: _statusFilter == item.$1,
+                    onSelected: (_) => setState(() => _statusFilter = item.$1)),
+            ]),
+          ]),
+        ),
+        const Divider(height: 1),
+        if (records.isEmpty)
+          const Padding(
+              padding: EdgeInsets.all(32), child: Text('Data tidak ditemukan.'))
+        else
+          ...records.take(100).map((record) => ListTile(
+                selected: record.id == _selected?.id,
+                onTap: () => _select(record),
+                title: Text(record.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text(
+                    '${record.code} · ${record.subtitle}\n${rupiah(record.balance)}',
+                    maxLines: 2),
+                isThreeLine: true,
+                trailing: Icon(
+                    record.active ? Icons.check_circle : Icons.pause_circle,
+                    color: record.active
+                        ? const Color(0xFF059669)
+                        : const Color(0xFFD97706)),
+              )),
+      ]),
+    );
+  }
+
+  Widget _masterDetail() {
+    if (_selected == null && !_creating) {
+      return const Card(
+          child: Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(child: Text('Pilih data untuk melihat rincian.'))));
+    }
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (MediaQuery.sizeOf(context).width < 900)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _editing || _creating
+                    ? () => _confirmDiscard()
+                    : () => setState(() => _selected = null),
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Kembali ke daftar'),
+              ),
+            ),
+          Row(children: [
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(
+                      _creating
+                          ? 'DATA BARU'
+                          : 'DETAIL ${_title.toUpperCase()}',
+                      style: const TextStyle(
+                          color: Color(0xFF0F766E),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text(_creating ? 'Tambah $_title' : _selected!.name,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w900)),
+                ])),
+            if (!_creating)
+              Chip(label: Text(_selected!.active ? 'Aktif' : 'Nonaktif')),
+          ]),
+          if (!_creating) ...[
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              _Pill('Saldo', rupiah(_selected!.balance)),
+              _Pill('Dokumen', angka(_selected!.documentCount)),
+              if (_kind == 'salespeople')
+                _Pill('Pelanggan', angka(_selected!.customerCount)),
+            ]),
+          ],
+          const SizedBox(height: 16),
+          LayoutBuilder(builder: (context, box) {
+            final fieldWidth =
+                box.maxWidth < 620 ? box.maxWidth : (box.maxWidth - 12) / 2;
+            return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: _definitions.map((field) {
+                  final controller =
+                      _fields[field.key] ??= TextEditingController();
+                  final hide = field.sensitive && !_showBank && !_editing;
+                  return SizedBox(
+                      width: field.multiline ? box.maxWidth : fieldWidth,
+                      child: TextField(
+                        controller: controller,
+                        enabled: _editing,
+                        obscureText: hide,
+                        keyboardType: field.numeric
+                            ? const TextInputType.numberWithOptions(
+                                decimal: true)
+                            : TextInputType.text,
+                        maxLines: hide ? 1 : (field.multiline ? 3 : 1),
+                        maxLength:
+                            field.key == 'code' ? partyCodeLimits[_kind] : null,
+                        decoration: InputDecoration(
+                            labelText: field.label,
+                            border: const OutlineInputBorder(),
+                            counterText: ''),
+                      ));
+                }).toList());
+          }),
+          if (_definitions.any((field) => field.sensitive))
+            Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _showBank = !_showBank),
+                  icon: Icon(_showBank
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined),
+                  label: Text(_showBank
+                      ? 'Sembunyikan data bank'
+                      : 'Tampilkan data bank'),
+                )),
+          const SizedBox(height: 14),
+          Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (!_creating && !_editing)
+                  OutlinedButton.icon(
+                      onPressed: _busy ? null : _toggleActive,
+                      icon: const Icon(Icons.power_settings_new),
+                      label:
+                          Text(_selected!.active ? 'Nonaktifkan' : 'Aktifkan')),
+                if (_editing)
+                  OutlinedButton.icon(
+                      onPressed: _busy ? null : _cancel,
+                      icon: const Icon(Icons.close),
+                      label: const Text('Batal')),
+                if (_editing)
+                  FilledButton.icon(
+                      onPressed: _busy ? null : _save,
+                      icon: const Icon(Icons.save_outlined),
+                      label: Text(_busy ? 'Menyimpan...' : 'Simpan')),
+                if (!_editing)
+                  FilledButton.icon(
+                      onPressed: () => setState(() => _editing = true),
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Ubah data')),
+              ]),
+        ]),
+      ),
+    );
+  }
+}
+
+class InventoryStockPricingPage extends StatefulWidget {
+  const InventoryStockPricingPage({super.key, required this.client});
+
+  final InventoryApiClient client;
+
+  @override
+  State<InventoryStockPricingPage> createState() =>
+      _InventoryStockPricingPageState();
+}
+
+class _InventoryStockPricingPageState extends State<InventoryStockPricingPage> {
+  late Future<InventoryStockPricingData> _data = widget.client.stockPricing();
+  final _search = TextEditingController();
+  String _mode = 'STOCK';
+  String? _message;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _reload() => setState(() => _data = widget.client.stockPricing());
+
+  Future<void> _export(List<List<Object?>> rows, String name) async {
+    if (rows.isEmpty) return;
+    final workbook = Excel.createExcel();
+    final sheetName = workbook.getDefaultSheet()!;
+    final sheet = workbook[sheetName];
+    for (final row in rows) {
+      sheet.appendRow(row
+          .map((value) => switch (value) {
+                int v => IntCellValue(v),
+                double v => DoubleCellValue(v),
+                _ => TextCellValue(value?.toString() ?? ''),
+              })
+          .toList());
+    }
+    final location = await getSaveLocation(
+      suggestedName: '$name.xlsx',
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'Excel', extensions: ['xlsx'])
+      ],
+    );
+    if (location == null) return;
+    final bytes = workbook.encode() ?? const <int>[];
+    await XFile.fromData(Uint8List.fromList(bytes),
+            name: '$name.xlsx',
+            mimeType:
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        .saveTo(location.path);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Excel disimpan di ${location.path}')));
+    }
+  }
+
+  Future<void> _exportPdf(
+      List<String> headers, List<List<Object?>> rows, String name) async {
+    if (rows.isEmpty) return;
+    final document = pw.Document();
+    document.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4.landscape,
+      margin: const pw.EdgeInsets.all(28),
+      header: (_) => pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 12),
+        child: pw.Text(name.replaceAll('-', ' ').toUpperCase(),
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+      ),
+      build: (_) => [
+        pw.TableHelper.fromTextArray(
+          headers: headers,
+          data: rows
+              .map((row) => row.map((cell) => cell?.toString() ?? '').toList())
+              .toList(),
+          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          cellStyle: const pw.TextStyle(fontSize: 8),
+          cellPadding: const pw.EdgeInsets.all(4),
+        ),
+      ],
+      footer: (context) => pw.Align(
+        alignment: pw.Alignment.centerRight,
+        child: pw.Text(
+            'Halaman ${context.pageNumber} dari ${context.pagesCount}',
+            style: const pw.TextStyle(fontSize: 8)),
+      ),
+    ));
+    final location = await getSaveLocation(
+      suggestedName: '$name.pdf',
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'PDF', extensions: ['pdf'])
+      ],
+    );
+    if (location == null) return;
+    final bytes = await document.save();
+    await XFile.fromData(bytes, name: '$name.pdf', mimeType: 'application/pdf')
+        .saveTo(location.path);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF disimpan di ${location.path}')));
+    }
+  }
+
+  Future<void> _opnameCommand(InventoryStockOpname session) async {
+    final next = switch (session.status) {
+      'DRAFT' => 'freeze',
+      'COUNTED' => 'approve',
+      'APPROVED' => 'post',
+      _ => null,
+    };
+    if (next == null) return;
+    setState(() => _busy = true);
+    try {
+      await widget.client.stockOpnameCommand(session.id, next);
+      setState(() => _message = 'Sesi ${session.number} berhasil diproses.');
+      _reload();
+    } on Object catch (error) {
+      setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _countOpname(InventoryStockOpname session) async {
+    setState(() => _busy = true);
+    try {
+      final lines = await widget.client.stockOpnameLines(session.id);
+      if (!mounted) return;
+      final controllers = <String, TextEditingController>{
+        for (final line in lines)
+          line.id: TextEditingController(
+              text: line.physicalQty == null ? '' : angka(line.physicalQty!)),
+      };
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('Hitung fisik ${session.number}'),
+          content: SizedBox(
+            width: 680,
+            child: lines.isEmpty
+                ? const Text('Belum ada baris stok pada sesi ini.')
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: lines.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final line = lines[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(line.name,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800)),
+                                Text(
+                                  '${line.code} | Batch ${line.lot ?? '-'} | Kedaluwarsa ${line.expiry ?? '-'}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 110,
+                            child: Text('Sistem ${angka(line.systemQty)}',
+                                textAlign: TextAlign.end),
+                          ),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 120,
+                            child: TextField(
+                              controller: controllers[line.id],
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              decoration: const InputDecoration(
+                                  labelText: 'Fisik', isDense: true),
+                            ),
+                          ),
+                        ]),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: lines.isEmpty
+                    ? null
+                    : () => Navigator.pop(dialogContext, true),
+                child: const Text('Simpan hitungan')),
+          ],
+        ),
+      );
+      if (accepted != true) return;
+      final payload = <Map<String, Object?>>[];
+      for (final line in lines) {
+        final value = controllers[line.id]?.text.trim() ?? '';
+        if (value.isEmpty) continue;
+        final quantity = double.tryParse(value.replaceAll(',', '.'));
+        if (quantity == null || quantity < 0) {
+          throw const InventoryApiException(
+              'Jumlah fisik harus berupa angka nol atau lebih.');
+        }
+        payload.add({'lineId': line.id, 'physicalQty': quantity});
+      }
+      if (payload.isEmpty) {
+        throw const InventoryApiException(
+            'Isi minimal satu hasil hitung fisik.');
+      }
+      await widget.client.countStockOpname(session.id, payload);
+      if (mounted) {
+        setState(() => _message =
+            'Hitungan fisik ${session.number} tersimpan dan dapat ditinjau.');
+        _reload();
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _createOpname(InventoryStockPricingData data) async {
+    if (data.warehouses.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await widget.client.createStockOpname(data.warehouses.first.id);
+      setState(() => _message = 'Sesi opname baru berhasil dibuat.');
+      _reload();
+    } on Object catch (error) {
+      setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _createPriceBook(InventoryStockPricingData data) async {
+    if (data.products.isEmpty) return;
+    final code = TextEditingController();
+    final name = TextEditingController();
+    final price = TextEditingController();
+    String productId = data.products.first.id;
+    String scopeType = 'TENANT';
+    String? scopeId;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(builder: (context, update) {
+        return AlertDialog(
+          title: const Text('Buku harga baru'),
+          content: SizedBox(
+            width: 520,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(
+                  controller: code,
+                  decoration: const InputDecoration(labelText: 'Kode')),
+              TextField(
+                  controller: name,
+                  decoration:
+                      const InputDecoration(labelText: 'Nama buku harga')),
+              DropdownButtonFormField<String>(
+                value: scopeType,
+                decoration: const InputDecoration(labelText: 'Lingkup harga'),
+                items: const [
+                  DropdownMenuItem(value: 'TENANT', child: Text('Umum tenant')),
+                  DropdownMenuItem(
+                      value: 'CUSTOMER', child: Text('Khusus customer')),
+                  DropdownMenuItem(
+                      value: 'SUPPLIER', child: Text('Harga beli supplier')),
+                ],
+                onChanged: (value) => update(() {
+                  scopeType = value ?? 'TENANT';
+                  scopeId = null;
+                }),
+              ),
+              if (scopeType != 'TENANT')
+                DropdownButtonFormField<String>(
+                  value: scopeId,
+                  decoration: InputDecoration(
+                      labelText: scopeType == 'CUSTOMER'
+                          ? 'Customer tujuan'
+                          : 'Supplier tujuan'),
+                  items: (scopeType == 'CUSTOMER'
+                          ? data.customers
+                          : data.suppliers)
+                      .map((row) => DropdownMenuItem(
+                          value: row.id,
+                          child: Text('${row.code} - ${row.name}')))
+                      .toList(),
+                  onChanged: (value) => update(() => scopeId = value),
+                ),
+              DropdownButtonFormField<String>(
+                value: productId,
+                decoration: const InputDecoration(labelText: 'Produk'),
+                items: data.products
+                    .take(500)
+                    .map((row) => DropdownMenuItem(
+                        value: row.id,
+                        child: Text('${row.code} - ${row.name}')))
+                    .toList(),
+                onChanged: (value) =>
+                    update(() => productId = value ?? productId),
+              ),
+              TextField(
+                controller: price,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Harga'),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Ajukan')),
+          ],
+        );
+      }),
+    );
+    if (accepted != true) return;
+    setState(() => _busy = true);
+    try {
+      await widget.client.createPriceBook(
+        code: code.text.trim(),
+        name: name.text.trim(),
+        scopeType: scopeType,
+        scopeId: scopeId,
+        productId: productId,
+        price: double.tryParse(price.text) ?? -1,
+      );
+      setState(() => _message = 'Buku harga dibuat dan diajukan.');
+      _reload();
+    } on Object catch (error) {
+      setState(() => _message = error.toString());
+    } finally {
+      code.dispose();
+      name.dispose();
+      price.dispose();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<InventoryStockPricingData>(
+      future: _data,
+      builder: (context, state) {
+        if (state.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state.hasError || state.data == null) {
+          return _ErrorPanel(message: state.error.toString(), onRetry: _reload);
+        }
+        final data = state.data!;
+        final needle = _search.text.trim().toLowerCase();
+        return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SectionCard(
+                title: 'Persediaan, Opname, dan Harga',
+                icon: Icons.inventory_2_outlined,
+                child: Column(children: [
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                          value: 'STOCK',
+                          label: Text('Stok'),
+                          icon: Icon(Icons.inventory_outlined)),
+                      ButtonSegment(
+                          value: 'OPNAME',
+                          label: Text('Opname'),
+                          icon: Icon(Icons.fact_check_outlined)),
+                      ButtonSegment(
+                          value: 'PRICE',
+                          label: Text('Harga'),
+                          icon: Icon(Icons.sell_outlined)),
+                    ],
+                    selected: {_mode},
+                    onSelectionChanged: (value) =>
+                        setState(() => _mode = value.first),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _search,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      labelText: 'Cari kode, produk, batch, pihak, atau sesi',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (_message != null) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(_message!,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700))),
+                  ],
+                ]),
+              ),
+              const SizedBox(height: 12),
+              if (_mode == 'STOCK') _stockView(data, needle),
+              if (_mode == 'OPNAME') _opnameView(data, needle),
+              if (_mode == 'PRICE') _priceView(data, needle),
+            ]);
+      },
+    );
+  }
+
+  Widget _stockView(InventoryStockPricingData data, String needle) {
+    final rows = data.products
+        .where((row) =>
+            needle.isEmpty ||
+            row.code.toLowerCase().contains(needle) ||
+            row.name.toLowerCase().contains(needle))
+        .toList();
+    return _SectionCard(
+      title: '${rows.length} produk',
+      icon: Icons.warehouse_outlined,
+      child: Column(children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: Wrap(spacing: 8, children: [
+            OutlinedButton.icon(
+                onPressed: () => _export([
+                      ['Kode', 'Nama', 'Satuan', 'Stok', 'Harga jual'],
+                      ...rows.map((row) =>
+                          [row.code, row.name, row.uom, row.stock, row.price]),
+                    ], 'stok-inventory'),
+                icon: const Icon(Icons.table_view_outlined),
+                label: const Text('Excel')),
+            FilledButton.tonalIcon(
+                onPressed: () => _exportPdf(
+                    ['Kode', 'Nama', 'Satuan', 'Stok', 'Harga jual'],
+                    rows
+                        .map((row) => [
+                              row.code,
+                              row.name,
+                              row.uom,
+                              angka(row.stock),
+                              rupiah(row.price)
+                            ])
+                        .toList(),
+                    'laporan-stok-inventory'),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('PDF')),
+          ]),
+        ),
+        ...rows.take(200).map((row) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading:
+                  const CircleAvatar(child: Icon(Icons.medication_outlined)),
+              title: Text(row.name,
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text('${row.code} | ${row.uom} | ${rupiah(row.price)}'),
+              trailing: Chip(label: Text('Stok ${angka(row.stock)}')),
+            )),
+      ]),
+    );
+  }
+
+  Widget _opnameView(InventoryStockPricingData data, String needle) {
+    final rows = data.opnames
+        .where((row) =>
+            needle.isEmpty ||
+            row.number.toLowerCase().contains(needle) ||
+            row.warehouse.toLowerCase().contains(needle))
+        .toList();
+    return _SectionCard(
+      title: 'Sesi stock opname',
+      icon: Icons.fact_check_outlined,
+      child: Column(children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: Wrap(spacing: 8, runSpacing: 8, children: [
+            FilledButton.icon(
+                onPressed: _busy || data.warehouses.isEmpty
+                    ? null
+                    : () => _createOpname(data),
+                icon: const Icon(Icons.add),
+                label: const Text('Sesi baru')),
+            FilledButton.tonalIcon(
+                onPressed: rows.isEmpty
+                    ? null
+                    : () => _exportPdf(
+                        ['Nomor', 'Gudang', 'Status', 'Dihitung', 'Selisih'],
+                        rows
+                            .map((row) => [
+                                  row.number,
+                                  row.warehouse,
+                                  row.status,
+                                  '${row.counted}/${row.lines}',
+                                  rupiah(row.varianceValue)
+                                ])
+                            .toList(),
+                        'laporan-stock-opname'),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('Laporan PDF')),
+          ]),
+        ),
+        ...rows.map((row) => Card(
+              child: ListTile(
+                onTap: _busy || !['FROZEN', 'COUNTED'].contains(row.status)
+                    ? null
+                    : () => _countOpname(row),
+                title: Text(row.number,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text(
+                    '${row.warehouse} | ${row.counted}/${row.lines} dihitung | Selisih ${rupiah(row.varianceValue)}${[
+                  'FROZEN',
+                  'COUNTED'
+                ].contains(row.status) ? ' | Ketuk untuk isi fisik' : ''}'),
+                leading: const Icon(Icons.inventory_2_outlined),
+                trailing: FilledButton.tonal(
+                  onPressed: _busy ||
+                          !['DRAFT', 'COUNTED', 'APPROVED'].contains(row.status)
+                      ? null
+                      : () => _opnameCommand(row),
+                  child: Text(switch (row.status) {
+                    'DRAFT' => 'Bekukan',
+                    'COUNTED' => 'Setujui',
+                    'APPROVED' => 'Posting',
+                    _ => row.status,
+                  }),
+                ),
+              ),
+            )),
+      ]),
+    );
+  }
+
+  Widget _priceView(InventoryStockPricingData data, String needle) {
+    final prices = data.prices
+        .where((row) =>
+            needle.isEmpty ||
+            row.productName.toLowerCase().contains(needle) ||
+            row.partyName.toLowerCase().contains(needle))
+        .toList();
+    return Column(children: [
+      _SectionCard(
+        title: 'Buku harga dan persetujuan',
+        icon: Icons.approval_outlined,
+        child: Column(children: [
+          Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                  onPressed: _busy ? null : () => _createPriceBook(data),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Buku harga'))),
+          ...data.priceBooks.take(50).map((row) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('${row.code} - ${row.name}',
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text('${row.scope} | ${row.itemCount} item'),
+                trailing: Chip(label: Text(row.status)),
+              )),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      _SectionCard(
+        title: 'Riwayat harga per pihak',
+        icon: Icons.history_outlined,
+        child: Column(children: [
+          Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(spacing: 8, children: [
+                OutlinedButton.icon(
+                    onPressed: () => _export([
+                          [
+                            'Jenis',
+                            'Pihak',
+                            'Kode',
+                            'Produk',
+                            'Tanggal',
+                            'Harga'
+                          ],
+                          ...prices.map((row) => [
+                                row.partyType,
+                                row.partyName,
+                                row.productCode,
+                                row.productName,
+                                row.date,
+                                row.price
+                              ]),
+                        ], 'riwayat-harga'),
+                    icon: const Icon(Icons.table_view_outlined),
+                    label: const Text('Excel')),
+                FilledButton.tonalIcon(
+                    onPressed: prices.isEmpty
+                        ? null
+                        : () => _exportPdf(
+                                [
+                                  'Jenis',
+                                  'Pihak',
+                                  'Kode',
+                                  'Produk',
+                                  'Tanggal',
+                                  'Harga'
+                                ],
+                                prices
+                                    .map((row) => [
+                                          row.partyType,
+                                          row.partyName,
+                                          row.productCode,
+                                          row.productName,
+                                          row.date,
+                                          rupiah(row.price)
+                                        ])
+                                    .toList(),
+                                'laporan-riwayat-harga'),
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('PDF'))
+              ])),
+          ...prices.take(200).map((row) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(row.productName,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle:
+                    Text('${row.partyType} | ${row.partyName} | ${row.date}'),
+                trailing: Text(rupiah(row.price),
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+              )),
+        ]),
+      ),
+    ]);
+  }
+}
+
+class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
   late Future<InventoryOperationsData> _data = _load();
   int _segment = 0;
   String? _message;
   String? _busyId;
+  bool _includeSettled = false;
+  bool _includeReceivableSettled = false;
 
   bool get _canSeePayables => widget.persona.role != 'Sales';
 
-  Future<InventoryOperationsData> _load() =>
-      widget.client.operations(includePayables: _canSeePayables);
+  Future<InventoryOperationsData> _load() => widget.client.operations(
+        includePayables: _canSeePayables,
+        includeSettled: _includeSettled,
+        includeReceivableSettled: _includeReceivableSettled,
+      );
 
   void _refresh() {
     setState(() {
@@ -838,6 +1991,435 @@ class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
     }
   }
 
+  Future<void> _createPurchaseOrder(InventoryOperationsData data) async {
+    if (data.suppliers.isEmpty ||
+        data.products.isEmpty ||
+        data.warehouses.isEmpty) {
+      setState(() => _message =
+          'Supplier, produk, dan gudang harus tersedia sebelum membuat PO.');
+      return;
+    }
+    String supplierId = data.suppliers.first.id;
+    String warehouseId = data.warehouses.first.id;
+    String productId = data.products.first.id;
+    final quantity = TextEditingController(text: '1');
+    final price = TextEditingController(
+        text: data.products.first.price.round().toString());
+    final expected = TextEditingController(
+        text: DateTime.now()
+            .add(const Duration(days: 7))
+            .toIso8601String()
+            .substring(0, 10));
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(builder: (context, update) {
+        return AlertDialog(
+          title: const Text('Purchase order baru'),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                DropdownButtonFormField<String>(
+                    value: supplierId,
+                    decoration: const InputDecoration(labelText: 'Supplier'),
+                    items: data.suppliers
+                        .map((row) => DropdownMenuItem(
+                            value: row.id,
+                            child: Text('${row.code} - ${row.name}')))
+                        .toList(),
+                    onChanged: (value) =>
+                        update(() => supplierId = value ?? supplierId)),
+                DropdownButtonFormField<String>(
+                    value: warehouseId,
+                    decoration: const InputDecoration(labelText: 'Gudang'),
+                    items: data.warehouses
+                        .map((row) => DropdownMenuItem(
+                            value: row.id,
+                            child: Text('${row.code} - ${row.name}')))
+                        .toList(),
+                    onChanged: (value) =>
+                        update(() => warehouseId = value ?? warehouseId)),
+                DropdownButtonFormField<String>(
+                    value: productId,
+                    decoration: const InputDecoration(labelText: 'Produk'),
+                    items: data.products
+                        .take(1000)
+                        .map((row) => DropdownMenuItem(
+                            value: row.id,
+                            child: Text('${row.code} - ${row.name}')))
+                        .toList(),
+                    onChanged: (value) => update(() {
+                          productId = value ?? productId;
+                          final product = data.products
+                              .firstWhere((row) => row.id == productId);
+                          price.text = product.price.round().toString();
+                        })),
+                Row(children: [
+                  Expanded(
+                    child: TextField(
+                        controller: quantity,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: const InputDecoration(labelText: 'Jumlah')),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                        controller: price,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration:
+                            const InputDecoration(labelText: 'Harga satuan')),
+                  ),
+                ]),
+                TextField(
+                    controller: expected,
+                    decoration:
+                        const InputDecoration(labelText: 'Tanggal diharapkan')),
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Simpan PO')),
+          ],
+        );
+      }),
+    );
+    if (accepted != true) return;
+    setState(() => _busyId = 'NEW-PO');
+    try {
+      final product = data.products.firstWhere((row) => row.id == productId);
+      final number = await widget.client.createPurchaseOrder(
+        supplierId: supplierId,
+        warehouseId: warehouseId,
+        product: product,
+        quantity: double.tryParse(quantity.text.replaceAll(',', '.')) ?? 0,
+        unitPrice: double.tryParse(price.text.replaceAll(',', '.')) ?? -1,
+        expectedDate: expected.text.trim(),
+      );
+      if (mounted) {
+        setState(() => _message = 'Purchase order $number berhasil dibuat.');
+        _refresh();
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      quantity.dispose();
+      price.dispose();
+      expected.dispose();
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _purchaseCommand(PurchaseOrderSummary order) async {
+    final action = switch (order.status) {
+      'DRAFT' => 'submit',
+      'SUBMITTED' => 'approve',
+      'APPROVED' => 'send',
+      _ => null,
+    };
+    if (action == null) return;
+    setState(() => _busyId = order.id);
+    try {
+      await widget.client.transitionPurchaseOrder(order.id, action);
+      if (mounted) {
+        setState(() => _message = '${order.number} berhasil diproses.');
+        _refresh();
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _receivePurchase(PurchaseOrderSummary order) async {
+    final batch = TextEditingController();
+    final expiry = TextEditingController();
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Terima ${order.number}'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(
+              controller: batch,
+              decoration: const InputDecoration(labelText: 'Nomor batch')),
+          TextField(
+              controller: expiry,
+              decoration: const InputDecoration(
+                  labelText: 'Tanggal kedaluwarsa (YYYY-MM-DD)')),
+        ]),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Buat penerimaan')),
+        ],
+      ),
+    );
+    if (accepted != true) return;
+    setState(() => _busyId = order.id);
+    try {
+      final number = await widget.client
+          .receivePurchaseOrder(order, batch.text.trim(), expiry.text.trim());
+      if (mounted) {
+        setState(() => _message =
+            'Penerimaan $number dibuat. Pemeriksaan dan posting mengikuti pemisahan tugas.');
+        _refresh();
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      batch.dispose();
+      expiry.dispose();
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _purchasePdf(InventoryOperationsData data, String kind) async {
+    final document = pw.Document();
+    final title = switch (kind) {
+      'PAYMENT' => 'Register Pembayaran Hutang',
+      'AGING' => 'Analisis Umur Hutang',
+      _ => 'Laporan Pembelian per Periode',
+    };
+    final headers = switch (kind) {
+      'PAYMENT' => [
+          'Nomor',
+          'Tanggal',
+          'Supplier',
+          'Metode',
+          'Jumlah',
+          'Status'
+        ],
+      'AGING' => ['Faktur', 'Supplier', 'Bucket', 'Saldo'],
+      _ => ['PO', 'Tanggal', 'Supplier', 'Status', 'Total'],
+    };
+    final rows = switch (kind) {
+      'PAYMENT' => data.apPayments
+          .map((row) => [
+                row.number,
+                row.date,
+                row.supplierName,
+                row.method,
+                rupiah(row.total),
+                row.status
+              ])
+          .toList(),
+      'AGING' => data.payables
+          .map((row) => [
+                row.invoiceNumber,
+                row.partyName,
+                row.agingBucket,
+                rupiah(row.amount)
+              ])
+          .toList(),
+      _ => data.purchaseOrders
+          .map((row) => [
+                row.number,
+                row.date,
+                row.supplierName,
+                row.status,
+                rupiah(row.total)
+              ])
+          .toList(),
+    };
+    document.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4.landscape,
+      build: (_) => [
+        pw.Header(level: 0, text: title),
+        pw.TableHelper.fromTextArray(headers: headers, data: rows)
+      ],
+      footer: (context) => pw.Align(
+          alignment: pw.Alignment.centerRight,
+          child:
+              pw.Text('Halaman ${context.pageNumber}/${context.pagesCount}')),
+    ));
+    final name = 'inventory-${kind.toLowerCase()}';
+    final location = await getSaveLocation(
+      suggestedName: '$name.pdf',
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'PDF', extensions: ['pdf'])
+      ],
+    );
+    if (location == null) return;
+    await XFile.fromData(await document.save(),
+            name: '$name.pdf', mimeType: 'application/pdf')
+        .saveTo(location.path);
+  }
+
+  Future<void> _purchaseInvoicePdf(PurchaseOrderSummary order) async {
+    setState(() {
+      _busyId = order.id;
+      _message = null;
+    });
+    try {
+      final detail = await widget.client.purchaseOrderDetail(order.id);
+      final lines = ((detail['lines'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((row) => Map<String, Object?>.from(row))
+          .toList();
+      final document = pw.Document();
+      document.addPage(pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (_) => [
+          pw.Header(level: 0, text: 'Faktur Pembelian Barang'),
+          pw.Text('Nomor: ${order.number}'),
+          pw.Text('Supplier: ${order.supplierName}'),
+          pw.Text('Tanggal: ${order.date}'),
+          pw.Text('Status: ${order.status}'),
+          pw.SizedBox(height: 14),
+          pw.TableHelper.fromTextArray(
+            headers: const [
+              'Kode',
+              'Nama barang',
+              'Jumlah',
+              'Satuan',
+              'Harga',
+              'Diskon',
+              'Pajak',
+              'Total'
+            ],
+            data: lines
+                .map((line) => [
+                      (line['product_code'] ?? '-').toString(),
+                      (line['product_name'] ?? '-').toString(),
+                      angka(toDouble(line['ordered_qty'])),
+                      (line['uom_code'] ?? '-').toString(),
+                      rupiah(toDouble(line['unit_price'])),
+                      rupiah(toDouble(line['discount_amount'])),
+                      rupiah(toDouble(line['tax_amount'])),
+                      rupiah(toDouble(line['line_total'])),
+                    ])
+                .toList(),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text('Grand total: ${rupiah(order.total)}',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+        footer: (context) => pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child:
+                pw.Text('Halaman ${context.pageNumber}/${context.pagesCount}')),
+      ));
+      final safeNumber =
+          order.number.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+      final name = 'faktur-pembelian-$safeNumber.pdf';
+      final location = await getSaveLocation(
+        suggestedName: name,
+        acceptedTypeGroups: const [
+          XTypeGroup(label: 'PDF', extensions: ['pdf'])
+        ],
+      );
+      if (location != null) {
+        await XFile.fromData(await document.save(),
+                name: name, mimeType: 'application/pdf')
+            .saveTo(location.path);
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _receivablePdf(InventoryOperationsData data, String kind) async {
+    final document = pw.Document();
+    final title = switch (kind) {
+      'RECEIPT' => 'Register Penerimaan Piutang',
+      'AGING_SALES' => 'Analisis Piutang per Sales',
+      'NOTES' => 'Serah-terima Nota Sales',
+      'OUTSTANDING' => 'Piutang Belum Lunas',
+      _ => 'Analisis Piutang per Customer',
+    };
+    final headers = switch (kind) {
+      'RECEIPT' => [
+          'Nomor',
+          'Tanggal',
+          'Customer',
+          'Metode',
+          'Jumlah',
+          'Status'
+        ],
+      'NOTES' => ['Nomor', 'Sales', 'Jumlah nota', 'Saldo', 'Status'],
+      'AGING_SALES' => ['Sales', 'Faktur', 'Customer', 'Bucket', 'Saldo'],
+      _ => ['Customer', 'Faktur', 'Sales', 'Bucket', 'Saldo'],
+    };
+    final rows = switch (kind) {
+      'RECEIPT' => data.arReceipts
+          .map((row) => [
+                row.number,
+                row.date,
+                row.customerName,
+                row.method,
+                rupiah(row.total),
+                row.status
+              ])
+          .toList(),
+      'NOTES' => data.handovers
+          .map((row) => [
+                row.number,
+                row.salesperson,
+                angka(row.invoiceCount),
+                rupiah(row.amount),
+                row.status
+              ])
+          .toList(),
+      'AGING_SALES' => data.receivables
+          .where((row) => !row.isSettled)
+          .map((row) => [
+                row.salesName,
+                row.invoiceNumber,
+                row.partyName,
+                row.agingBucket,
+                rupiah(row.amount)
+              ])
+          .toList(),
+      _ => data.receivables
+          .where((row) => !row.isSettled)
+          .map((row) => [
+                row.partyName,
+                row.invoiceNumber,
+                row.salesName,
+                row.agingBucket,
+                rupiah(row.amount)
+              ])
+          .toList(),
+    };
+    document.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4.landscape,
+      build: (_) => [
+        pw.Header(level: 0, text: title),
+        pw.TableHelper.fromTextArray(headers: headers, data: rows),
+      ],
+      footer: (context) => pw.Align(
+          alignment: pw.Alignment.centerRight,
+          child:
+              pw.Text('Halaman ${context.pageNumber}/${context.pagesCount}')),
+    ));
+    final name = 'inventory-ar-${kind.toLowerCase()}.pdf';
+    final location = await getSaveLocation(
+      suggestedName: name,
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'PDF', extensions: ['pdf'])
+      ],
+    );
+    if (location == null) return;
+    await XFile.fromData(await document.save(),
+            name: name, mimeType: 'application/pdf')
+        .saveTo(location.path);
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<InventoryOperationsData>(
@@ -865,11 +2447,18 @@ class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
               value: 2,
               icon: Icon(Icons.assignment_ind_outlined),
               label: Text('Nota')),
+          if (_canSeePayables)
+            const ButtonSegment(
+                value: 3,
+                icon: Icon(Icons.shopping_cart_checkout_outlined),
+                label: Text('Pembelian')),
         ];
         if (!_canSeePayables && _segment == 1) _segment = 0;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _PartyMasterLauncher(client: widget.client),
+            const SizedBox(height: 12),
             _SectionCard(
               title: 'Operasional Lapangan',
               icon: Icons.sync_alt_outlined,
@@ -887,6 +2476,34 @@ class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
                     onSelectionChanged: (value) =>
                         setState(() => _segment = value.first),
                   ),
+                  if (_canSeePayables && _segment == 1) ...[
+                    const SizedBox(height: 10),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Tampilkan hutang yang sudah lunas'),
+                      value: _includeSettled,
+                      onChanged: (value) {
+                        setState(() {
+                          _includeSettled = value;
+                          _data = _load();
+                        });
+                      },
+                    ),
+                  ],
+                  if (_segment == 0) ...[
+                    const SizedBox(height: 10),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Tampilkan piutang yang sudah lunas'),
+                      value: _includeReceivableSettled,
+                      onChanged: (value) {
+                        setState(() {
+                          _includeReceivableSettled = value;
+                          _data = _load();
+                        });
+                      },
+                    ),
+                  ],
                   if (_message != null) ...[
                     const SizedBox(height: 12),
                     Text(_message!,
@@ -897,27 +2514,63 @@ class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
             ),
             const SizedBox(height: 12),
             if (_segment == 0)
-              _SettlementList(
-                title: 'Piutang Belum Lunas',
-                documents: data.receivables,
-                busyId: _busyId,
-                primaryLabel: 'Terima penuh',
-                onPrimary: _settle,
-                onSecondary: _carry,
-              )
+              Column(children: [
+                _SettlementList(
+                  title: _includeReceivableSettled
+                      ? 'Piutang Customer - Semua Status'
+                      : 'Piutang Customer - Belum Lunas',
+                  documents: data.receivables,
+                  busyId: _busyId,
+                  primaryLabel: 'Terima penuh',
+                  onPrimary: _settle,
+                  onSecondary: _carry,
+                ),
+                const SizedBox(height: 12),
+                _ReceivableReportActions(
+                  onReceipts: () => _receivablePdf(data, 'RECEIPT'),
+                  onCustomerAging: () => _receivablePdf(data, 'AGING_CUSTOMER'),
+                  onSalesAging: () => _receivablePdf(data, 'AGING_SALES'),
+                  onOutstanding: () => _receivablePdf(data, 'OUTSTANDING'),
+                  onNotes: () => _receivablePdf(data, 'NOTES'),
+                ),
+                const SizedBox(height: 12),
+                _ArReceiptHistoryList(receipts: data.arReceipts),
+              ])
             else if (_segment == 1)
-              _SettlementList(
-                title: 'Hutang Belum Lunas',
-                documents: data.payables,
-                busyId: _busyId,
-                primaryLabel: 'Bayar penuh',
-                onPrimary: _settle,
-              )
-            else
+              Column(children: [
+                _SettlementList(
+                  title: _includeSettled
+                      ? 'Hutang Supplier - Semua Status'
+                      : 'Hutang Supplier - Belum Lunas',
+                  documents: data.payables,
+                  busyId: _busyId,
+                  primaryLabel: 'Bayar penuh',
+                  onPrimary: _settle,
+                ),
+                const SizedBox(height: 12),
+                _PurchaseReportActions(
+                    onPayments: () => _purchasePdf(data, 'PAYMENT'),
+                    onAging: () => _purchasePdf(data, 'AGING'),
+                    onPurchases: () => _purchasePdf(data, 'PURCHASE')),
+                const SizedBox(height: 12),
+                _ApPaymentHistoryList(payments: data.apPayments),
+              ])
+            else if (_segment == 2)
               _HandoverList(
                 handovers: data.handovers,
                 busyId: _busyId,
                 onReturnAndClose: _returnAndClose,
+                onReport: () => _receivablePdf(data, 'NOTES'),
+              )
+            else
+              _PurchaseList(
+                data: data,
+                busyId: _busyId,
+                onCreate: () => _createPurchaseOrder(data),
+                onCommand: _purchaseCommand,
+                onReceive: _receivePurchase,
+                onInvoice: _purchaseInvoicePdf,
+                onReport: () => _purchasePdf(data, 'PURCHASE'),
               ),
           ],
         );
@@ -953,6 +2606,7 @@ class _SettlementList extends StatelessWidget {
           : Column(
               children: documents.take(100).map((document) {
                 final busy = busyId == document.id;
+                final settled = document.isSettled || document.amount <= 0;
                 return Container(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: const BoxDecoration(
@@ -981,17 +2635,20 @@ class _SettlementList extends StatelessWidget {
                       Wrap(
                         spacing: 6,
                         children: [
-                          if (onSecondary != null)
+                          if (settled) const Chip(label: Text('Lunas')),
+                          if (!settled && onSecondary != null)
                             OutlinedButton(
                               onPressed: busy || document.salespersonId == null
                                   ? null
                                   : () => onSecondary!(document),
                               child: const Text('Bawa nota'),
                             ),
-                          FilledButton(
-                            onPressed: busy ? null : () => onPrimary(document),
-                            child: Text(busy ? 'Memproses...' : primaryLabel),
-                          ),
+                          if (!settled)
+                            FilledButton(
+                              onPressed:
+                                  busy ? null : () => onPrimary(document),
+                              child: Text(busy ? 'Memproses...' : primaryLabel),
+                            ),
                         ],
                       ),
                     ],
@@ -1003,44 +2660,792 @@ class _SettlementList extends StatelessWidget {
   }
 }
 
+class _ReceivableReportActions extends StatelessWidget {
+  const _ReceivableReportActions({
+    required this.onReceipts,
+    required this.onCustomerAging,
+    required this.onSalesAging,
+    required this.onOutstanding,
+    required this.onNotes,
+  });
+
+  final VoidCallback onReceipts;
+  final VoidCallback onCustomerAging;
+  final VoidCallback onSalesAging;
+  final VoidCallback onOutstanding;
+  final VoidCallback onNotes;
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'Laporan Piutang dan Nota Sales',
+        icon: Icons.picture_as_pdf_outlined,
+        child: Wrap(spacing: 8, runSpacing: 8, children: [
+          OutlinedButton.icon(
+              onPressed: onReceipts,
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: const Text('Penerimaan PDF')),
+          OutlinedButton.icon(
+              onPressed: onCustomerAging,
+              icon: const Icon(Icons.storefront_outlined),
+              label: const Text('Aging customer')),
+          OutlinedButton.icon(
+              onPressed: onSalesAging,
+              icon: const Icon(Icons.badge_outlined),
+              label: const Text('Aging sales')),
+          FilledButton.tonalIcon(
+              onPressed: onOutstanding,
+              icon: const Icon(Icons.account_balance_wallet_outlined),
+              label: const Text('Piutang PDF')),
+          FilledButton.tonalIcon(
+              onPressed: onNotes,
+              icon: const Icon(Icons.assignment_ind_outlined),
+              label: const Text('Nota sales PDF')),
+        ]),
+      );
+}
+
+class _ArReceiptHistoryList extends StatelessWidget {
+  const _ArReceiptHistoryList({required this.receipts});
+
+  final List<ArReceiptSummary> receipts;
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'Riwayat Penerimaan Piutang',
+        icon: Icons.history_outlined,
+        child: receipts.isEmpty
+            ? const Text('Belum ada penerimaan piutang.')
+            : Column(
+                children: receipts
+                    .take(200)
+                    .map((receipt) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const CircleAvatar(
+                              child: Icon(Icons.payments_outlined)),
+                          title: Text(
+                              '${receipt.number} - ${receipt.customerName}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w800)),
+                          subtitle: Text(
+                              '${receipt.date} | ${receipt.method} | ${receipt.status}'),
+                          trailing: Text(rupiah(receipt.total),
+                              style: const TextStyle(
+                                  color: Color(0xFF0F766E),
+                                  fontWeight: FontWeight.w900)),
+                        ))
+                    .toList(),
+              ),
+      );
+}
+
+class _PurchaseReportActions extends StatelessWidget {
+  const _PurchaseReportActions({
+    required this.onPayments,
+    required this.onAging,
+    required this.onPurchases,
+  });
+
+  final VoidCallback onPayments;
+  final VoidCallback onAging;
+  final VoidCallback onPurchases;
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'Dokumen Pembelian dan Hutang',
+        icon: Icons.picture_as_pdf_outlined,
+        child: Wrap(spacing: 8, runSpacing: 8, children: [
+          OutlinedButton.icon(
+              onPressed: onPayments,
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: const Text('Pembayaran PDF')),
+          OutlinedButton.icon(
+              onPressed: onAging,
+              icon: const Icon(Icons.timelapse_outlined),
+              label: const Text('Aging hutang PDF')),
+          FilledButton.tonalIcon(
+              onPressed: onPurchases,
+              icon: const Icon(Icons.assessment_outlined),
+              label: const Text('Pembelian PDF')),
+        ]),
+      );
+}
+
+class _ApPaymentHistoryList extends StatelessWidget {
+  const _ApPaymentHistoryList({required this.payments});
+
+  final List<ApPaymentSummary> payments;
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'Riwayat Pembayaran Hutang',
+        icon: Icons.history_outlined,
+        child: payments.isEmpty
+            ? const Text('Belum ada pembayaran hutang.')
+            : Column(
+                children: payments
+                    .take(200)
+                    .map((payment) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const CircleAvatar(
+                              child: Icon(Icons.payments_outlined)),
+                          title: Text(
+                              '${payment.number} - ${payment.supplierName}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w800)),
+                          subtitle: Text(
+                              '${payment.date} | ${payment.method} | ${payment.status}'),
+                          trailing: Text(rupiah(payment.total),
+                              style: const TextStyle(
+                                  color: Color(0xFF0F766E),
+                                  fontWeight: FontWeight.w900)),
+                        ))
+                    .toList(),
+              ),
+      );
+}
+
+class _PurchaseList extends StatelessWidget {
+  const _PurchaseList({
+    required this.data,
+    required this.busyId,
+    required this.onCreate,
+    required this.onCommand,
+    required this.onReceive,
+    required this.onInvoice,
+    required this.onReport,
+  });
+
+  final InventoryOperationsData data;
+  final String? busyId;
+  final VoidCallback onCreate;
+  final ValueChanged<PurchaseOrderSummary> onCommand;
+  final ValueChanged<PurchaseOrderSummary> onReceive;
+  final ValueChanged<PurchaseOrderSummary> onInvoice;
+  final VoidCallback onReport;
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'Purchase Order dan Penerimaan',
+        icon: Icons.shopping_cart_checkout_outlined,
+        child: Column(children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(spacing: 8, runSpacing: 8, children: [
+              OutlinedButton.icon(
+                  onPressed: onReport,
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  label: const Text('Laporan PDF')),
+              FilledButton.icon(
+                  onPressed: busyId == 'NEW-PO' ? null : onCreate,
+                  icon: const Icon(Icons.add),
+                  label: const Text('PO baru')),
+            ]),
+          ),
+          if (data.purchaseOrders.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('Belum ada purchase order.'),
+            )
+          else
+            ...data.purchaseOrders.take(200).map((order) {
+              final busy = busyId == order.id;
+              final action = switch (order.status) {
+                'DRAFT' => 'Ajukan',
+                'SUBMITTED' => 'Setujui',
+                'APPROVED' => 'Kirim',
+                _ => null,
+              };
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading:
+                    const CircleAvatar(child: Icon(Icons.inventory_2_outlined)),
+                title: Text('${order.number} - ${order.supplierName}',
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text(
+                    '${order.date} | ${order.status} | ${rupiah(order.total)}'),
+                trailing: Wrap(spacing: 6, children: [
+                  IconButton(
+                    tooltip: 'Cetak faktur pembelian',
+                    onPressed: busy ? null : () => onInvoice(order),
+                    icon: const Icon(Icons.print_outlined),
+                  ),
+                  if (action != null)
+                    FilledButton.tonal(
+                        onPressed: busy ? null : () => onCommand(order),
+                        child: Text(action)),
+                  if (order.status == 'SENT')
+                    FilledButton(
+                        onPressed: busy ? null : () => onReceive(order),
+                        child: const Text('Terima')),
+                ]),
+              );
+            }),
+        ]),
+      );
+}
+
 class _HandoverList extends StatelessWidget {
   const _HandoverList(
       {required this.handovers,
       required this.busyId,
-      required this.onReturnAndClose});
+      required this.onReturnAndClose,
+      required this.onReport});
   final List<HandoverSummary> handovers;
   final String? busyId;
   final ValueChanged<HandoverSummary> onReturnAndClose;
+  final VoidCallback onReport;
 
   @override
   Widget build(BuildContext context) {
     return _SectionCard(
       title: 'Serah-terima Nota Sales',
       icon: Icons.assignment_turned_in_outlined,
-      child: handovers.isEmpty
-          ? const Text('Belum ada serah-terima nota.')
-          : Column(
-              children: handovers
-                  .map((row) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(row.number,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w800)),
-                        subtitle: Text(
-                            '${row.salesperson} - ${row.invoiceCount} nota - ${row.status}'),
-                        trailing: row.status == 'HANDED_OVER'
-                            ? FilledButton.tonal(
-                                onPressed: busyId == row.id
-                                    ? null
-                                    : () => onReturnAndClose(row),
-                                child: const Text('Kembali & tutup'),
-                              )
-                            : Text(rupiah(row.amount)),
-                      ))
-                  .toList(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: onReport,
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Cetak nota sales'),
             ),
+          ),
+          if (handovers.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text('Belum ada serah-terima nota.'),
+            )
+          else
+            ...handovers.map((row) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(row.number,
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: Text(
+                      '${row.salesperson} - ${row.invoiceCount} nota - ${row.status}'),
+                  trailing: row.status == 'HANDED_OVER'
+                      ? FilledButton.tonal(
+                          onPressed: busyId == row.id
+                              ? null
+                              : () => onReturnAndClose(row),
+                          child: const Text('Kembali & tutup'),
+                        )
+                      : Text(rupiah(row.amount)),
+                )),
+        ],
+      ),
     );
   }
+}
+
+class InventoryFinancePage extends StatefulWidget {
+  const InventoryFinancePage({super.key, required this.client});
+
+  final InventoryApiClient client;
+
+  @override
+  State<InventoryFinancePage> createState() => _InventoryFinancePageState();
+}
+
+class _InventoryFinancePageState extends State<InventoryFinancePage> {
+  late Future<InventoryFinanceData> _workspace =
+      widget.client.financeWorkspace();
+  String _mode = 'journal';
+  bool _busy = false;
+  String? _message;
+  InventoryFinancialReport? _report;
+  DateTime _asOf = DateTime.now();
+
+  void _refresh() {
+    setState(() => _workspace = widget.client.financeWorkspace());
+  }
+
+  Future<void> _command(Future<void> Function() action, String success) async {
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      await action();
+      if (!mounted) return;
+      setState(() => _message = success);
+      _refresh();
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _newAccount() async {
+    final code = TextEditingController();
+    final name = TextEditingController();
+    var category = 'ASSET';
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(builder: (context, setDialog) {
+        return AlertDialog(
+          title: const Text('Perkiraan baru'),
+          content: SizedBox(
+            width: 460,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(
+                  controller: code,
+                  decoration: const InputDecoration(labelText: 'Kode akun')),
+              TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Nama akun')),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: category,
+                decoration: const InputDecoration(labelText: 'Kelompok akun'),
+                items: const [
+                  DropdownMenuItem(value: 'ASSET', child: Text('Aset')),
+                  DropdownMenuItem(
+                      value: 'LIABILITY', child: Text('Kewajiban')),
+                  DropdownMenuItem(value: 'EQUITY', child: Text('Modal')),
+                  DropdownMenuItem(value: 'REVENUE', child: Text('Pendapatan')),
+                  DropdownMenuItem(value: 'EXPENSE', child: Text('Biaya')),
+                ],
+                onChanged: (value) => setDialog(() => category = value!),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Simpan')),
+          ],
+        );
+      }),
+    );
+    if (accepted != true) return;
+    final normal =
+        const ['ASSET', 'EXPENSE'].contains(category) ? 'DEBIT' : 'CREDIT';
+    await _command(
+      () => widget.client.createFinanceAccount(
+        code: code.text.trim(),
+        name: name.text.trim(),
+        category: category,
+        normalBalance: normal,
+      ),
+      'Perkiraan ${code.text.trim()} berhasil dibuat.',
+    );
+  }
+
+  Future<void> _newJournal(InventoryFinanceData data) async {
+    final openPeriods =
+        data.periods.where((row) => row.status == 'OPEN').toList();
+    final postingAccounts =
+        data.accounts.where((row) => row.allowPosting).toList();
+    if (openPeriods.isEmpty || postingAccounts.length < 2) {
+      setState(() => _message =
+          'Diperlukan satu periode terbuka dan minimal dua akun posting.');
+      return;
+    }
+    final description = TextEditingController();
+    final amount = TextEditingController();
+    var periodId = openPeriods.first.id;
+    var debitId = postingAccounts.first.id;
+    var creditId = postingAccounts[1].id;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(builder: (context, setDialog) {
+        return AlertDialog(
+          title: const Text('Jurnal kas baru'),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+              DropdownButtonFormField<String>(
+                value: periodId,
+                decoration: const InputDecoration(labelText: 'Periode terbuka'),
+                items: openPeriods
+                    .map((row) => DropdownMenuItem(
+                        value: row.id,
+                        child: Text('${row.code} - ${row.name}')))
+                    .toList(),
+                onChanged: (value) => setDialog(() => periodId = value!),
+              ),
+              TextField(
+                  controller: description,
+                  decoration:
+                      const InputDecoration(labelText: 'Uraian transaksi')),
+              TextField(
+                  controller: amount,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Nominal')),
+              DropdownButtonFormField<String>(
+                value: debitId,
+                decoration: const InputDecoration(labelText: 'Akun debit'),
+                items: postingAccounts
+                    .map((row) => DropdownMenuItem(
+                        value: row.id,
+                        child: Text('${row.code} - ${row.name}')))
+                    .toList(),
+                onChanged: (value) => setDialog(() => debitId = value!),
+              ),
+              DropdownButtonFormField<String>(
+                value: creditId,
+                decoration: const InputDecoration(labelText: 'Akun kredit'),
+                items: postingAccounts
+                    .map((row) => DropdownMenuItem(
+                        value: row.id,
+                        child: Text('${row.code} - ${row.name}')))
+                    .toList(),
+                onChanged: (value) => setDialog(() => creditId = value!),
+              ),
+            ])),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Buat draft')),
+          ],
+        );
+      }),
+    );
+    if (accepted != true) return;
+    await _command(
+      () => widget.client.createJournal(
+        periodId: periodId,
+        description: description.text.trim(),
+        amount: double.tryParse(amount.text.replaceAll(',', '.')) ?? 0,
+        debitAccountId: debitId,
+        creditAccountId: creditId,
+      ),
+      'Draft jurnal berhasil dibuat dan siap diperiksa.',
+    );
+  }
+
+  Future<void> _loadReport(String code) async {
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final value = await widget.client.financeReport(code, _asOf);
+      if (mounted) setState(() => _report = value);
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _exportReport() async {
+    final report = _report;
+    if (report == null) return;
+    setState(() => _busy = true);
+    try {
+      final snapshotId = await widget.client
+          .snapshotFinanceReport(report.reportCode, report.asOfDate);
+      final keys = report.rows.isEmpty
+          ? <String>[]
+          : report.rows.first.keys.take(7).toList();
+      final pdf = pw.Document();
+      pdf.addPage(pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(28),
+        header: (_) => pw
+            .Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          pw.Text('Caruban Medika Nusantara',
+              style:
+                  pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+          pw.Text(report.title,
+              style:
+                  pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Text('Posisi ${report.asOfDate} | Snapshot $snapshotId'),
+          pw.SizedBox(height: 8),
+        ]),
+        build: (_) => [
+          if (keys.isNotEmpty)
+            pw.TableHelper.fromTextArray(
+              headers: keys.map(financeLabel).toList(),
+              data: report.rows
+                  .map((row) =>
+                      keys.map((key) => row[key]?.toString() ?? '').toList())
+                  .toList(),
+              headerDecoration:
+                  const pw.BoxDecoration(color: PdfColors.grey300),
+              headerStyle:
+                  pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+              cellStyle: const pw.TextStyle(fontSize: 7),
+            )
+          else
+            pw.Text('Tidak ada transaksi pada periode ini.'),
+          pw.SizedBox(height: 12),
+          pw.Text('Total: ${rupiah(report.total)}',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        ],
+      ));
+      final name = '${report.reportCode}-${report.asOfDate}.pdf';
+      await XFile.fromData(await pdf.save(),
+              name: name, mimeType: 'application/pdf')
+          .saveTo(name);
+      await widget.client.logFinancePrint(snapshotId, name);
+      if (mounted) {
+        setState(() =>
+            _message = 'PDF $name tersimpan dan jejak cetaknya tercatat.');
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<InventoryFinanceData>(
+      future: _workspace,
+      builder: (context, state) {
+        if (state.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state.hasError) {
+          return _ErrorPanel(
+              message: state.error.toString(), onRetry: _refresh);
+        }
+        final data = state.data!;
+        return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Keuangan dan Akuntansi',
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w900)),
+              const Text(
+                  'Jurnal berimbang, bagan akun, laba rugi, dan penutupan periode dengan jejak audit.'),
+              const SizedBox(height: 14),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                        value: 'journal',
+                        icon: Icon(Icons.menu_book_outlined),
+                        label: Text('Jurnal')),
+                    ButtonSegment(
+                        value: 'account',
+                        icon: Icon(Icons.account_tree_outlined),
+                        label: Text('Perkiraan')),
+                    ButtonSegment(
+                        value: 'profit',
+                        icon: Icon(Icons.trending_up),
+                        label: Text('Laba/Rugi')),
+                    ButtonSegment(
+                        value: 'period',
+                        icon: Icon(Icons.event_available_outlined),
+                        label: Text('Periode')),
+                  ],
+                  selected: {_mode},
+                  onSelectionChanged: (value) =>
+                      setState(() => _mode = value.first),
+                ),
+              ),
+              if (_message != null)
+                Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(_message!,
+                        style: const TextStyle(fontWeight: FontWeight.w700))),
+              const SizedBox(height: 14),
+              if (_mode == 'journal') _journalView(data),
+              if (_mode == 'account') _accountView(data),
+              if (_mode == 'profit') _profitView(),
+              if (_mode == 'period') _periodView(data),
+            ]);
+      },
+    );
+  }
+
+  Widget _journalView(InventoryFinanceData data) => _SectionCard(
+        title: 'Kas dan jurnal harian',
+        icon: Icons.receipt_long_outlined,
+        action: FilledButton.icon(
+            onPressed: _busy ? null : () => _newJournal(data),
+            icon: const Icon(Icons.add),
+            label: const Text('Jurnal baru')),
+        child: Column(children: [
+          if (data.journals.isEmpty)
+            const ListTile(title: Text('Belum ada jurnal.')),
+          ...data.journals.map((row) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                    child: Text(row.status == 'POSTED' ? 'P' : 'D')),
+                title: Text(row.number,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text(
+                    '${row.date} - ${row.description}\nDebit ${rupiah(row.debit)} | Kredit ${rupiah(row.credit)}'),
+                isThreeLine: true,
+                trailing: Wrap(spacing: 6, children: [
+                  if (row.status == 'DRAFT')
+                    IconButton(
+                        tooltip: 'Posting jurnal',
+                        onPressed: _busy
+                            ? null
+                            : () => _command(
+                                () => widget.client.postJournal(row.id),
+                                'Jurnal ${row.number} diposting.'),
+                        icon: const Icon(Icons.check_circle_outline)),
+                  if (row.status == 'POSTED')
+                    IconButton(
+                        tooltip: 'Balik jurnal',
+                        onPressed: _busy
+                            ? null
+                            : () => _command(
+                                () => widget.client.reverseJournal(row.id),
+                                'Jurnal pembalik ${row.number} dibuat.'),
+                        icon: const Icon(Icons.undo)),
+                ]),
+              )),
+        ]),
+      );
+
+  Widget _accountView(InventoryFinanceData data) => _SectionCard(
+        title: 'Daftar nomor perkiraan',
+        icon: Icons.account_tree_outlined,
+        action: FilledButton.icon(
+            onPressed: _busy ? null : _newAccount,
+            icon: const Icon(Icons.add),
+            label: const Text('Perkiraan baru')),
+        child: Column(
+            children: data.accounts
+                .map((row) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading:
+                          const Icon(Icons.account_balance_wallet_outlined),
+                      title: Text('${row.code} - ${row.name}',
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                      subtitle: Text(
+                          '${financeLabel(row.category)} | saldo normal ${financeLabel(row.normalBalance)}'),
+                      trailing: row.allowPosting
+                          ? const Chip(label: Text('Posting'))
+                          : const Chip(label: Text('Header')),
+                    ))
+                .toList()),
+      );
+
+  Widget _profitView() {
+    final report = _report;
+    return _SectionCard(
+      title: 'Laporan laba dan rugi',
+      icon: Icons.query_stats_outlined,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () async {
+                          final value = await showDatePicker(
+                              context: context,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                              initialDate: _asOf);
+                          if (value != null) setState(() => _asOf = value);
+                        },
+                  icon: const Icon(Icons.calendar_month),
+                  label: Text(_asOf.toIso8601String().substring(0, 10))),
+              FilledButton.tonal(
+                  onPressed: _busy ? null : () => _loadReport('gross-profit'),
+                  child: const Text('Laba kotor')),
+              FilledButton.tonal(
+                  onPressed: _busy ? null : () => _loadReport('profit-loss'),
+                  child: const Text('Laba rugi akuntansi')),
+              FilledButton.icon(
+                  onPressed: _busy || report == null ? null : _exportReport,
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  label: const Text('Cetak PDF')),
+            ]),
+        if (report != null) ...[
+          const SizedBox(height: 16),
+          Text(report.title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+              '${angka(report.rows.length)} baris | Total ${rupiah(report.total)}'),
+          const Divider(),
+          ...report.rows.take(100).map((row) => ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text((row['product_name'] ??
+                        row['name'] ??
+                        row['order_number'] ??
+                        '-')
+                    .toString()),
+                subtitle: Text((row['product_code'] ??
+                        row['code'] ??
+                        row['account_type'] ??
+                        '')
+                    .toString()),
+                trailing: Text(rupiah(toDouble(row[report.totalKey])),
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+              )),
+        ],
+      ]),
+    );
+  }
+
+  Widget _periodView(InventoryFinanceData data) => Column(children: [
+        _SectionCard(
+          title: 'Periode fiskal',
+          icon: Icons.event_available_outlined,
+          child: Column(
+              children: data.periods
+                  .map((row) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('${row.code} - ${row.name}',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
+                        subtitle: Text('${row.startDate} s.d. ${row.endDate}'),
+                        trailing: FilledButton.tonal(
+                          onPressed: _busy
+                              ? null
+                              : () => _command(
+                                    () => widget.client.changeFiscalPeriod(
+                                        row.id,
+                                        close: row.status == 'OPEN'),
+                                    row.status == 'OPEN'
+                                        ? 'Validasi penutupan periode selesai.'
+                                        : 'Periode dibuka kembali.',
+                                  ),
+                          child: Text(
+                              row.status == 'OPEN' ? 'Tutup' : 'Buka kembali'),
+                        ),
+                      ))
+                  .toList()),
+        ),
+        const SizedBox(height: 12),
+        _SectionCard(
+          title: 'Riwayat proses akhir',
+          icon: Icons.history,
+          child: Column(
+              children: data.closeRuns
+                  .map((row) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('${row.number} - ${row.periodCode}',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
+                        subtitle: Text(row.startedAt),
+                        trailing: Chip(label: Text(row.status)),
+                      ))
+                  .toList()),
+        ),
+      ]);
 }
 
 class _InventoryReportPage extends StatelessWidget {
@@ -1503,7 +3908,9 @@ class InventoryCatalog {
     if (value.isEmpty) return '';
     final parsed = Uri.tryParse(value);
     if (parsed?.hasScheme == true) return value;
-    return baseUrl.resolve(value.startsWith('/') ? value.substring(1) : value).toString();
+    return baseUrl
+        .resolve(value.startsWith('/') ? value.substring(1) : value)
+        .toString();
   }
 }
 
@@ -1691,22 +4098,448 @@ class InventoryApiClient {
     return InventoryParityContract.fromApi(data);
   }
 
+  Future<InventoryFinanceData> financeWorkspace() async {
+    final data = await _request<Map<String, Object?>>(
+        'GET', '/inventory/finance-workspace');
+    return InventoryFinanceData.fromApi(data);
+  }
+
+  Future<void> createFinanceAccount({
+    required String code,
+    required String name,
+    required String category,
+    required String normalBalance,
+  }) async {
+    if (code.isEmpty || name.isEmpty) {
+      throw const InventoryApiException('Kode dan nama perkiraan wajib diisi.');
+    }
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/inventory/chart-accounts',
+      body: {
+        'code': code,
+        'name': name,
+        'category': category,
+        'normalBalance': normalBalance,
+        'description': 'Dibuat dari Flutter Inventory',
+      },
+    );
+  }
+
+  Future<void> createJournal({
+    required String periodId,
+    required String description,
+    required double amount,
+    required String debitAccountId,
+    required String creditAccountId,
+  }) async {
+    if (description.isEmpty ||
+        amount <= 0 ||
+        debitAccountId == creditAccountId) {
+      throw const InventoryApiException(
+          'Uraian, nominal positif, dan dua akun berbeda wajib diisi.');
+    }
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/inventory/journals',
+      headers: {
+        'Idempotency-Key': 'JRN_${DateTime.now().microsecondsSinceEpoch}'
+      },
+      body: {
+        'fiscalPeriodId': periodId,
+        'journalDate': DateTime.now().toIso8601String().substring(0, 10),
+        'description': description,
+        'lines': [
+          {
+            'accountId': debitAccountId,
+            'debit': amount,
+            'credit': 0,
+            'description': description
+          },
+          {
+            'accountId': creditAccountId,
+            'debit': 0,
+            'credit': amount,
+            'description': description
+          },
+        ],
+      },
+    );
+  }
+
+  Future<void> postJournal(String id) async {
+    await _request<Map<String, Object?>>(
+        'POST', '/inventory/journals/$id/post');
+  }
+
+  Future<void> reverseJournal(String id) async {
+    await _request<Map<String, Object?>>(
+        'POST', '/inventory/journals/$id/reverse',
+        body: {'note': 'Pembalikan dari Flutter Inventory'});
+  }
+
+  Future<void> changeFiscalPeriod(String id, {required bool close}) async {
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/inventory/fiscal-periods/$id/${close ? 'close' : 'reopen'}',
+      body: {
+        'note': close
+            ? 'Proses akhir dari Flutter Inventory'
+            : 'Dibuka kembali dari Flutter Inventory'
+      },
+    );
+  }
+
+  Future<InventoryFinancialReport> financeReport(
+      String code, DateTime asOf) async {
+    final data = await _request<Map<String, Object?>>(
+      'POST',
+      '/reports/$code/preview',
+      body: {
+        'asOfDate': asOf.toIso8601String().substring(0, 10),
+        'filters': {}
+      },
+    );
+    return InventoryFinancialReport.fromApi(data);
+  }
+
+  Future<String> snapshotFinanceReport(String code, String asOfDate) async {
+    final data = await _request<Map<String, Object?>>(
+      'POST',
+      '/reports/$code/snapshot',
+      body: {'asOfDate': asOfDate, 'filters': {}},
+    );
+    return (data['id'] ?? '').toString();
+  }
+
+  Future<void> logFinancePrint(String snapshotId, String documentNumber) async {
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/report-snapshots/$snapshotId/print-log',
+      body: {'format': 'PDF', 'documentNumber': documentNumber},
+    );
+  }
+
+  Future<InventoryStockPricingData> stockPricing() async {
+    final values = await Future.wait([
+      _request<Map<String, Object?>>('GET', '/inventory/mobile-catalog'),
+      _request<List<Object?>>(
+          'GET', '/inventory/legacy/price-history?pageSize=1000'),
+      _request<Map<String, Object?>>('GET', '/stock-opnames'),
+      _request<List<Object?>>('GET', '/inventory/price-books'),
+      _request<Map<String, Object?>>('GET', '/inventory/master-data'),
+    ]);
+    return InventoryStockPricingData.fromApi(
+      values[0] as Map<String, Object?>,
+      values[1] as List<Object?>,
+      values[2] as Map<String, Object?>,
+      values[3] as List<Object?>,
+      values[4] as Map<String, Object?>,
+    );
+  }
+
+  Future<void> createStockOpname(String warehouseId) async {
+    await _request<Map<String, Object?>>('POST', '/stock-opnames', body: {
+      'warehouseId': warehouseId,
+      'opnameDate': DateTime.now().toIso8601String().substring(0, 10),
+      'note': 'Dibuat dari Flutter Inventory',
+    });
+  }
+
+  Future<void> stockOpnameCommand(String id, String command) async {
+    if (!const ['freeze', 'approve', 'post'].contains(command)) {
+      throw const InventoryApiException('Perintah opname tidak dikenal.');
+    }
+    await _request<Map<String, Object?>>('POST', '/stock-opnames/$id/$command');
+  }
+
+  Future<List<InventoryStockOpnameLine>> stockOpnameLines(String id) async {
+    final detail =
+        await _request<Map<String, Object?>>('GET', '/stock-opnames/$id');
+    return ((detail['lines'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((row) =>
+            InventoryStockOpnameLine.fromApi(Map<String, Object?>.from(row)))
+        .toList(growable: false);
+  }
+
+  Future<void> countStockOpname(
+      String id, List<Map<String, Object?>> lines) async {
+    if (lines.isEmpty) {
+      throw const InventoryApiException('Isi minimal satu hasil hitung fisik.');
+    }
+    await _request<Map<String, Object?>>('PATCH', '/stock-opnames/$id',
+        body: {'lines': lines});
+  }
+
+  Future<void> createPriceBook({
+    required String code,
+    required String name,
+    required String scopeType,
+    String? scopeId,
+    required String productId,
+    required double price,
+  }) async {
+    if (code.isEmpty ||
+        name.isEmpty ||
+        !const ['TENANT', 'CUSTOMER', 'SUPPLIER'].contains(scopeType) ||
+        (scopeType != 'TENANT' && (scopeId == null || scopeId.isEmpty)) ||
+        productId.isEmpty ||
+        price < 0) {
+      throw const InventoryApiException(
+          'Kode, nama, produk, dan harga wajib valid.');
+    }
+    final created = await _request<Map<String, Object?>>(
+      'POST',
+      '/inventory/price-books',
+      body: {
+        'code': code,
+        'name': name,
+        'scopeType': scopeType,
+        if (scopeType != 'TENANT') 'scopeId': scopeId,
+        'lines': [
+          {'productId': productId, 'minimumQty': 1, 'price': price}
+        ],
+      },
+    );
+    await _request<Map<String, Object?>>(
+      'PATCH',
+      '/inventory/price-books/${created['id']}/status',
+      body: {'status': 'SUBMITTED', 'note': 'Diajukan dari Flutter Inventory'},
+    );
+  }
+
+  Future<List<InventoryPartyRecord>> partyMasters(String kind) async {
+    if (!partyLabels.containsKey(kind)) {
+      throw const InventoryApiException('Jenis master tidak dikenal.');
+    }
+    final cacheKey = 'party-master-$kind';
+    try {
+      final values = await Future.wait([
+        _request<List<Object?>>(
+          'GET',
+          '/$kind?page=1&pageSize=100&includeInactive=true&sortBy=name',
+        ),
+        _request<List<Object?>>(
+          'GET',
+          '/inventory/party-master-balances/$kind',
+        ),
+      ]);
+      await _localDatabase?.putCache(cacheKey, {
+        'rows': values[0],
+        'balances': values[1],
+      });
+      return InventoryPartyRecord.fromApiLists(values[0], values[1]);
+    } on Object {
+      final cached = await _localDatabase?.getCache(cacheKey);
+      if (cached == null) rethrow;
+      return InventoryPartyRecord.fromApiLists(
+        (cached['rows'] as List?) ?? const [],
+        (cached['balances'] as List?) ?? const [],
+      );
+    }
+  }
+
+  Future<PartySaveResult> saveParty({
+    required String kind,
+    required String? id,
+    required int? version,
+    required Map<String, Object?> payload,
+  }) async {
+    final database = _localDatabase;
+    final deviceId = await database?.getOrCreateDeviceId() ?? tenantCode;
+    final eventId =
+        '${deviceId}_MASTER_${DateTime.now().microsecondsSinceEpoch}';
+    final method = id == null ? 'POST' : 'PATCH';
+    final path = id == null ? '/$kind' : '/$kind/$id';
+    final body = <String, Object?>{
+      ...payload,
+      if (version != null) 'version': version,
+    };
+    await database?.enqueue(
+      eventId: eventId,
+      method: method,
+      path: path,
+      payload: body,
+    );
+    try {
+      final row = await _request<Map<String, Object?>>(
+        method,
+        path,
+        body: body,
+      );
+      await database?.markCompleted(eventId);
+      return PartySaveResult(row: row, queued: false);
+    } on SocketException catch (error) {
+      final item = await _outboxItem(eventId);
+      if (item != null) await database?.markFailed(item, error);
+      return const PartySaveResult(row: {}, queued: true);
+    } on TimeoutException catch (error) {
+      final item = await _outboxItem(eventId);
+      if (item != null) await database?.markFailed(item, error);
+      return const PartySaveResult(row: {}, queued: true);
+    }
+  }
+
+  Future<void> toggleParty(String kind, InventoryPartyRecord record) async {
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/$kind/${record.id}/${record.active ? 'deactivate' : 'activate'}',
+      body: record.active
+          ? {'reason': 'Dinonaktifkan dari aplikasi Inventory'}
+          : null,
+    );
+  }
+
   Future<InventoryOperationsData> operations(
-      {required bool includePayables}) async {
+      {required bool includePayables,
+      bool includeSettled = false,
+      bool includeReceivableSettled = false}) async {
     if (_token == null) {
       throw const InventoryApiException('Silakan masuk kembali.');
     }
-    final receivableFuture = _request<List<Object?>>(
-        'GET', '/inventory/legacy/receivables?pageSize=200');
+    final receivableFuture = _request<List<Object?>>('GET',
+        '/inventory/legacy/receivables?pageSize=1000&includeSettled=$includeReceivableSettled');
+    final receiptFuture = _request<List<Object?>>('GET', '/ar/receipts');
     final handoverFuture =
         _request<List<Object?>>('GET', '/sales-note-handovers');
     final payableFuture = includePayables
-        ? _request<List<Object?>>(
-            'GET', '/inventory/legacy/payables?pageSize=200')
+        ? _request<List<Object?>>('GET',
+            '/inventory/legacy/payables?pageSize=1000&includeSettled=$includeSettled')
         : Future.value(<Object?>[]);
-    final values =
-        await Future.wait([receivableFuture, payableFuture, handoverFuture]);
-    return InventoryOperationsData.fromApi(values[0], values[1], values[2]);
+    final purchaseFuture = includePayables
+        ? _request<List<Object?>>('GET', '/purchase-orders?pageSize=500')
+        : Future.value(<Object?>[]);
+    final paymentFuture = includePayables
+        ? _request<List<Object?>>('GET', '/ap/payments')
+        : Future.value(<Object?>[]);
+    final masterFuture = includePayables
+        ? _request<Map<String, Object?>>('GET', '/inventory/master-data')
+        : Future.value(<String, Object?>{});
+    final catalogFuture = includePayables
+        ? _request<Map<String, Object?>>('GET', '/inventory/mobile-catalog')
+        : Future.value(<String, Object?>{});
+    final opnameFuture = includePayables
+        ? _request<Map<String, Object?>>('GET', '/stock-opnames')
+        : Future.value(<String, Object?>{});
+    final values = await Future.wait([
+      receivableFuture,
+      payableFuture,
+      handoverFuture,
+      purchaseFuture,
+      paymentFuture,
+      masterFuture,
+      catalogFuture,
+      opnameFuture,
+      receiptFuture,
+    ]);
+    return InventoryOperationsData.fromApi(
+      values[0] as List<Object?>,
+      values[1] as List<Object?>,
+      values[2] as List<Object?>,
+      values[3] as List<Object?>,
+      values[4] as List<Object?>,
+      values[5] as Map<String, Object?>,
+      values[6] as Map<String, Object?>,
+      values[7] as Map<String, Object?>,
+      baseUrl,
+      values[8] as List<Object?>,
+    );
+  }
+
+  Future<String> createPurchaseOrder({
+    required String supplierId,
+    required String warehouseId,
+    required InventoryProductDemo product,
+    required double quantity,
+    required double unitPrice,
+    String? expectedDate,
+  }) async {
+    if (supplierId.isEmpty ||
+        warehouseId.isEmpty ||
+        product.id.isEmpty ||
+        product.uomId.isEmpty ||
+        quantity <= 0 ||
+        unitPrice < 0) {
+      throw const InventoryApiException('Data purchase order belum lengkap.');
+    }
+    final created = await _request<Map<String, Object?>>(
+      'POST',
+      '/purchase-orders',
+      headers: {
+        'Idempotency-Key':
+            'PO_${DateTime.now().microsecondsSinceEpoch}_${product.id}'
+      },
+      body: {
+        'supplierId': supplierId,
+        'warehouseId': warehouseId,
+        if (expectedDate != null && expectedDate.isNotEmpty)
+          'expectedDate': expectedDate,
+        'note': 'Dibuat dari Flutter Inventory',
+        'lines': [
+          {
+            'productId': product.id,
+            'uomId': product.uomId,
+            'orderedQty': quantity,
+            'unitPrice': unitPrice,
+          }
+        ],
+      },
+    );
+    return (created['purchase_order_number'] ??
+            created['purchaseOrderNumber'] ??
+            created['id'] ??
+            '-')
+        .toString();
+  }
+
+  Future<void> transitionPurchaseOrder(String id, String action) async {
+    if (!const ['submit', 'approve', 'send'].contains(action)) {
+      throw const InventoryApiException('Transisi purchase order tidak valid.');
+    }
+    await _request<Map<String, Object?>>(
+        'POST', '/purchase-orders/$id/$action');
+  }
+
+  Future<Map<String, Object?>> purchaseOrderDetail(String id) =>
+      _request<Map<String, Object?>>('GET', '/purchase-orders/$id');
+
+  Future<String> receivePurchaseOrder(
+      PurchaseOrderSummary order, String batch, String expiry) async {
+    final detail = await purchaseOrderDetail(order.id);
+    final lines = ((detail['lines'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((raw) => Map<String, Object?>.from(raw))
+        .toList();
+    if (lines.isEmpty) {
+      throw const InventoryApiException('Purchase order tidak memiliki item.');
+    }
+    final created = await _request<Map<String, Object?>>(
+      'POST',
+      '/goods-receipts',
+      headers: {
+        'Idempotency-Key':
+            'GR_${DateTime.now().microsecondsSinceEpoch}_${order.id}'
+      },
+      body: {
+        'purchaseOrderId': order.id,
+        'supplierDoNumber': 'MOBILE-${DateTime.now().millisecondsSinceEpoch}',
+        'note': 'Penerimaan dari Flutter Inventory',
+        'lines': lines
+            .map((line) => {
+                  'purchaseOrderLineId': (line['id'] ?? '').toString(),
+                  'receivedQty': toDouble(line['ordered_qty']),
+                  if (batch.isNotEmpty) 'batchNumber': batch,
+                  if (expiry.isNotEmpty) 'expiryDate': expiry,
+                })
+            .toList(),
+      },
+    );
+    return (created['receipt_number'] ??
+            created['receiptNumber'] ??
+            created['id'] ??
+            '-')
+        .toString();
   }
 
   Future<String> settle(SettlementDocument document) async {
@@ -1790,7 +4623,9 @@ class InventoryApiClient {
       return InventoryCatalog.fromApi(data, baseUrl: baseUrl);
     } on Object {
       final cached = await _localDatabase?.getCache('mobile-catalog');
-      if (cached != null) return InventoryCatalog.fromApi(cached, baseUrl: baseUrl);
+      if (cached != null) {
+        return InventoryCatalog.fromApi(cached, baseUrl: baseUrl);
+      }
       rethrow;
     }
   }
@@ -1892,7 +4727,8 @@ class InventoryApiClient {
           );
           final events = (delta['events'] as List?) ?? const [];
           refreshCatalog = refreshCatalog || events.isNotEmpty;
-          cursor = int.tryParse((delta['nextCursor'] ?? cursor).toString()) ?? cursor;
+          cursor = int.tryParse((delta['nextCursor'] ?? cursor).toString()) ??
+              cursor;
           hasMore = delta['hasMore'] == true;
           pages += 1;
         }
@@ -1906,11 +4742,13 @@ class InventoryApiClient {
           'customers': bootstrap['customers'] ?? const [],
           'products': bootstrap['products'] ?? const [],
         });
-        cursor = int.tryParse((bootstrap['cursor'] ?? cursor).toString()) ?? cursor;
+        cursor =
+            int.tryParse((bootstrap['cursor'] ?? cursor).toString()) ?? cursor;
       }
       await database.recordSync(deviceId, cursor: cursor);
     } on Object catch (error) {
-      await database.recordSync(deviceId, cursor: cursor, error: error.toString());
+      await database.recordSync(deviceId,
+          cursor: cursor, error: error.toString());
     }
     return InventorySyncResult(sent, pendingCount);
   }
@@ -1997,18 +4835,529 @@ const akunInventory = [
   PersonaInventory(username: 'cmnmedika', label: 'Admin CMN', role: 'Admin'),
 ];
 
+const partyLabels = <String, String>{
+  'suppliers': 'Pemasok',
+  'customers': 'Pelanggan',
+  'salespeople': 'Sales',
+};
+
+const partyCodeLimits = <String, int>{
+  'suppliers': 3,
+  'customers': 5,
+  'salespeople': 2,
+};
+
+class PartyField {
+  const PartyField(
+    this.key,
+    this.label, {
+    this.numeric = false,
+    this.multiline = false,
+    this.sensitive = false,
+  });
+
+  final String key;
+  final String label;
+  final bool numeric;
+  final bool multiline;
+  final bool sensitive;
+}
+
+const partyFields = <String, List<PartyField>>{
+  'suppliers': [
+    PartyField('code', 'Kode pemasok'),
+    PartyField('name', 'Nama pemasok'),
+    PartyField('legacy_payment_days', 'Termin pembayaran (hari)',
+        numeric: true),
+    PartyField('contact_person', 'Kontak utama'),
+    PartyField('address_text', 'Alamat', multiline: true),
+    PartyField('region_name', 'Wilayah'),
+    PartyField('phone', 'Nomor telepon'),
+    PartyField('email', 'Email'),
+    PartyField('bank_account_number', 'Nomor rekening', sensitive: true),
+    PartyField('bank_account_name', 'Nama pemilik rekening', sensitive: true),
+    PartyField('bank_name', 'Bank', sensitive: true),
+    PartyField('bank_address', 'Alamat bank', multiline: true, sensitive: true),
+  ],
+  'customers': [
+    PartyField('code', 'Kode pelanggan'),
+    PartyField('name', 'Nama pelanggan'),
+    PartyField('legacy_payment_days', 'Termin pembayaran (hari)',
+        numeric: true),
+    PartyField('default_discount_percent', 'Diskon bawaan (%)', numeric: true),
+    PartyField('credit_limit', 'Batas kredit', numeric: true),
+    PartyField('address_text', 'Alamat', multiline: true),
+    PartyField('region_name', 'Wilayah/rute'),
+    PartyField('phone', 'Nomor telepon'),
+    PartyField('email', 'Email'),
+    PartyField('bank_account_number', 'Nomor rekening', sensitive: true),
+    PartyField('bank_account_name', 'Nama pemilik rekening', sensitive: true),
+    PartyField('bank_name', 'Bank', sensitive: true),
+    PartyField('bank_address', 'Alamat bank', multiline: true, sensitive: true),
+  ],
+  'salespeople': [
+    PartyField('code', 'Kode sales'),
+    PartyField('name', 'Nama sales'),
+    PartyField('account_number', 'Nomor perkiraan'),
+    PartyField('territory', 'Wilayah/rute'),
+    PartyField('monthly_target', 'Target bulanan', numeric: true),
+    PartyField('phone', 'Nomor telepon'),
+    PartyField('email', 'Email'),
+    PartyField('description', 'Catatan penugasan', multiline: true),
+  ],
+};
+
+class InventoryFinanceData {
+  const InventoryFinanceData({
+    required this.accounts,
+    required this.periods,
+    required this.journals,
+    required this.closeRuns,
+  });
+
+  factory InventoryFinanceData.fromApi(Map<String, Object?> data) =>
+      InventoryFinanceData(
+        accounts: ((data['accounts'] as List?) ?? const [])
+            .whereType<Map<String, Object?>>()
+            .map(FinanceAccount.fromApi)
+            .toList(),
+        periods: ((data['periods'] as List?) ?? const [])
+            .whereType<Map<String, Object?>>()
+            .map(FinancePeriod.fromApi)
+            .toList(),
+        journals: ((data['journals'] as List?) ?? const [])
+            .whereType<Map<String, Object?>>()
+            .map(FinanceJournal.fromApi)
+            .toList(),
+        closeRuns: ((data['closeRuns'] as List?) ?? const [])
+            .whereType<Map<String, Object?>>()
+            .map(FinanceCloseRun.fromApi)
+            .toList(),
+      );
+
+  final List<FinanceAccount> accounts;
+  final List<FinancePeriod> periods;
+  final List<FinanceJournal> journals;
+  final List<FinanceCloseRun> closeRuns;
+}
+
+class FinanceAccount {
+  const FinanceAccount(this.id, this.code, this.name, this.category,
+      this.normalBalance, this.allowPosting);
+
+  factory FinanceAccount.fromApi(Map<String, Object?> row) => FinanceAccount(
+        (row['id'] ?? '').toString(),
+        (row['code'] ?? '').toString(),
+        (row['name'] ?? '').toString(),
+        (row['account_type'] ?? 'ASSET').toString(),
+        (row['normal_balance'] ?? 'DEBIT').toString(),
+        row['allow_posting'] != false,
+      );
+
+  final String id;
+  final String code;
+  final String name;
+  final String category;
+  final String normalBalance;
+  final bool allowPosting;
+}
+
+class FinancePeriod {
+  const FinancePeriod(
+      this.id, this.code, this.name, this.startDate, this.endDate, this.status);
+
+  factory FinancePeriod.fromApi(Map<String, Object?> row) => FinancePeriod(
+        (row['id'] ?? '').toString(),
+        (row['code'] ?? '').toString(),
+        (row['name'] ?? '').toString(),
+        (row['start_date'] ?? '').toString(),
+        (row['end_date'] ?? '').toString(),
+        (row['status'] ?? '').toString(),
+      );
+
+  final String id;
+  final String code;
+  final String name;
+  final String startDate;
+  final String endDate;
+  final String status;
+}
+
+class FinanceJournal {
+  const FinanceJournal(this.id, this.number, this.date, this.description,
+      this.status, this.debit, this.credit);
+
+  factory FinanceJournal.fromApi(Map<String, Object?> row) => FinanceJournal(
+        (row['id'] ?? '').toString(),
+        (row['journal_number'] ?? '').toString(),
+        (row['journal_date'] ?? '').toString(),
+        (row['description'] ?? '').toString(),
+        (row['status'] ?? '').toString(),
+        toDouble(row['total_debit']),
+        toDouble(row['total_credit']),
+      );
+
+  final String id;
+  final String number;
+  final String date;
+  final String description;
+  final String status;
+  final double debit;
+  final double credit;
+}
+
+class FinanceCloseRun {
+  const FinanceCloseRun(
+      this.number, this.periodCode, this.status, this.startedAt);
+
+  factory FinanceCloseRun.fromApi(Map<String, Object?> row) => FinanceCloseRun(
+        (row['run_number'] ?? '').toString(),
+        (row['period_code'] ?? '').toString(),
+        (row['status'] ?? '').toString(),
+        (row['started_at'] ?? '').toString(),
+      );
+
+  final String number;
+  final String periodCode;
+  final String status;
+  final String startedAt;
+}
+
+class InventoryFinancialReport {
+  const InventoryFinancialReport({
+    required this.reportCode,
+    required this.title,
+    required this.asOfDate,
+    required this.totalKey,
+    required this.total,
+    required this.rows,
+  });
+
+  factory InventoryFinancialReport.fromApi(Map<String, Object?> data) {
+    final totals = data['totals'] as Map<String, Object?>? ?? const {};
+    final key = totals.keys.isEmpty ? 'balance' : totals.keys.first;
+    return InventoryFinancialReport(
+      reportCode: (data['reportCode'] ?? '').toString(),
+      title: (data['title'] ?? '').toString(),
+      asOfDate: (data['asOfDate'] ?? '').toString(),
+      totalKey: key,
+      total: toDouble(totals[key]),
+      rows: ((data['rows'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .toList(),
+    );
+  }
+
+  final String reportCode;
+  final String title;
+  final String asOfDate;
+  final String totalKey;
+  final double total;
+  final List<Map<String, Object?>> rows;
+}
+
+class InventoryStockPricingData {
+  const InventoryStockPricingData({
+    required this.products,
+    required this.prices,
+    required this.warehouses,
+    required this.opnames,
+    required this.priceBooks,
+    required this.customers,
+    required this.suppliers,
+  });
+
+  factory InventoryStockPricingData.fromApi(
+    Map<String, Object?> catalog,
+    List<Object?> prices,
+    Map<String, Object?> opname,
+    List<Object?> books,
+    Map<String, Object?> masters,
+  ) {
+    return InventoryStockPricingData(
+      products: ((catalog['products'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map(InventoryStockProduct.fromApi)
+          .where((row) => row.id.isNotEmpty)
+          .toList(),
+      prices: prices
+          .whereType<Map<String, Object?>>()
+          .map(InventoryPriceHistory.fromApi)
+          .toList(),
+      warehouses: ((opname['warehouses'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => InventoryWarehouse(
+                (row['id'] ?? '').toString(),
+                (row['code'] ?? '').toString(),
+                (row['name'] ?? '').toString(),
+              ))
+          .toList(),
+      opnames: ((opname['sessions'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map(InventoryStockOpname.fromApi)
+          .toList(),
+      priceBooks: books
+          .whereType<Map<String, Object?>>()
+          .map(InventoryPriceBookSummary.fromApi)
+          .toList(),
+      customers: ((masters['customers'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map(InventoryPriceParty.fromApi)
+          .toList(),
+      suppliers: ((masters['suppliers'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map(InventoryPriceParty.fromApi)
+          .toList(),
+    );
+  }
+
+  final List<InventoryStockProduct> products;
+  final List<InventoryPriceHistory> prices;
+  final List<InventoryWarehouse> warehouses;
+  final List<InventoryStockOpname> opnames;
+  final List<InventoryPriceBookSummary> priceBooks;
+  final List<InventoryPriceParty> customers;
+  final List<InventoryPriceParty> suppliers;
+}
+
+class InventoryPriceParty {
+  const InventoryPriceParty(this.id, this.code, this.name);
+
+  factory InventoryPriceParty.fromApi(Map<String, Object?> row) =>
+      InventoryPriceParty(
+        (row['id'] ?? '').toString(),
+        (row['code'] ?? '').toString(),
+        (row['name'] ?? '').toString(),
+      );
+
+  final String id;
+  final String code;
+  final String name;
+}
+
+class InventoryStockProduct {
+  const InventoryStockProduct(
+      this.id, this.code, this.name, this.uom, this.stock, this.price);
+
+  factory InventoryStockProduct.fromApi(Map<String, Object?> row) =>
+      InventoryStockProduct(
+        (row['id'] ?? '').toString(),
+        (row['code'] ?? '').toString(),
+        (row['name'] ?? '').toString(),
+        (row['uom_code'] ?? row['uom'] ?? 'PCS').toString(),
+        toInt(row['available_qty']),
+        toDouble(row['price']),
+      );
+
+  final String id;
+  final String code;
+  final String name;
+  final String uom;
+  final int stock;
+  final double price;
+}
+
+class InventoryWarehouse {
+  const InventoryWarehouse(this.id, this.code, this.name);
+  final String id;
+  final String code;
+  final String name;
+}
+
+class InventoryStockOpname {
+  const InventoryStockOpname({
+    required this.id,
+    required this.number,
+    required this.status,
+    required this.warehouse,
+    required this.lines,
+    required this.counted,
+    required this.varianceValue,
+  });
+
+  factory InventoryStockOpname.fromApi(Map<String, Object?> row) =>
+      InventoryStockOpname(
+        id: (row['id'] ?? '').toString(),
+        number: (row['opname_number'] ?? '-').toString(),
+        status: (row['status'] ?? '-').toString(),
+        warehouse: (row['warehouse_name'] ?? '-').toString(),
+        lines: toInt(row['line_count']),
+        counted: toInt(row['counted_count']),
+        varianceValue: toDouble(row['variance_value']),
+      );
+
+  final String id;
+  final String number;
+  final String status;
+  final String warehouse;
+  final int lines;
+  final int counted;
+  final double varianceValue;
+}
+
+class InventoryStockOpnameLine {
+  const InventoryStockOpnameLine({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.lot,
+    required this.expiry,
+    required this.systemQty,
+    required this.physicalQty,
+  });
+
+  factory InventoryStockOpnameLine.fromApi(Map<String, Object?> row) =>
+      InventoryStockOpnameLine(
+        id: (row['id'] ?? '').toString(),
+        code: (row['product_code'] ?? '-').toString(),
+        name: (row['product_name'] ?? '-').toString(),
+        lot: nullableText(row['lot_number']),
+        expiry: nullableText(row['expiry_date']),
+        systemQty: toDouble(row['system_qty']),
+        physicalQty:
+            row['physical_qty'] == null ? null : toDouble(row['physical_qty']),
+      );
+
+  final String id;
+  final String code;
+  final String name;
+  final String? lot;
+  final String? expiry;
+  final double systemQty;
+  final double? physicalQty;
+}
+
+class InventoryPriceHistory {
+  const InventoryPriceHistory(this.partyType, this.partyName, this.productCode,
+      this.productName, this.date, this.price);
+
+  factory InventoryPriceHistory.fromApi(Map<String, Object?> row) =>
+      InventoryPriceHistory(
+        (row['party_type'] ?? '-').toString(),
+        (row['party_name'] ?? '-').toString(),
+        (row['product_code'] ?? '-').toString(),
+        (row['product_name'] ?? '-').toString(),
+        (row['effective_date'] ?? '-').toString(),
+        toDouble(row['price']),
+      );
+
+  final String partyType;
+  final String partyName;
+  final String productCode;
+  final String productName;
+  final String date;
+  final double price;
+}
+
+class InventoryPriceBookSummary {
+  const InventoryPriceBookSummary(
+      this.code, this.name, this.scope, this.status, this.itemCount);
+
+  factory InventoryPriceBookSummary.fromApi(Map<String, Object?> row) =>
+      InventoryPriceBookSummary(
+        (row['code'] ?? '-').toString(),
+        (row['name'] ?? '-').toString(),
+        (row['scope_type'] ?? '-').toString(),
+        (row['approval_status'] ?? '-').toString(),
+        toInt(row['item_count']),
+      );
+
+  final String code;
+  final String name;
+  final String scope;
+  final String status;
+  final int itemCount;
+}
+
+class InventoryPartyRecord {
+  const InventoryPartyRecord({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.active,
+    required this.version,
+    required this.balance,
+    required this.documentCount,
+    required this.customerCount,
+    required this.values,
+  });
+
+  static List<InventoryPartyRecord> fromApiLists(
+      List<Object?> rows, List<Object?> balances) {
+    final metrics = <String, Map<String, Object?>>{
+      for (final row in balances.whereType<Map<String, Object?>>())
+        (row['id'] ?? '').toString(): row,
+    };
+    return rows
+        .whereType<Map<String, Object?>>()
+        .map((row) {
+          final id = (row['id'] ?? '').toString();
+          final metric = metrics[id] ?? const <String, Object?>{};
+          return InventoryPartyRecord(
+            id: id,
+            code: (row['code'] ?? '').toString(),
+            name: (row['name'] ?? '').toString(),
+            active: row['is_active'] != false,
+            version: int.tryParse((row['version'] ?? 1).toString()) ?? 1,
+            balance: toDouble(metric['balance']),
+            documentCount:
+                int.tryParse((metric['document_count'] ?? 0).toString()) ?? 0,
+            customerCount:
+                int.tryParse((metric['customer_count'] ?? 0).toString()) ?? 0,
+            values: row,
+          );
+        })
+        .where((row) => row.id.isNotEmpty)
+        .toList();
+  }
+
+  final String id;
+  final String code;
+  final String name;
+  final bool active;
+  final int version;
+  final double balance;
+  final int documentCount;
+  final int customerCount;
+  final Map<String, Object?> values;
+
+  String get subtitle =>
+      (values['region_name'] ?? values['territory'] ?? 'Wilayah belum diisi')
+          .toString();
+}
+
+class PartySaveResult {
+  const PartySaveResult({required this.row, required this.queued});
+  final Map<String, Object?> row;
+  final bool queued;
+}
+
 class InventoryOperationsData {
   const InventoryOperationsData({
     required this.receivables,
     required this.payables,
     required this.handovers,
+    required this.purchaseOrders,
+    required this.apPayments,
+    required this.suppliers,
+    required this.products,
+    required this.warehouses,
+    this.arReceipts = const [],
   });
 
   factory InventoryOperationsData.fromApi(
     List<Object?> receivables,
     List<Object?> payables,
-    List<Object?> handovers,
-  ) {
+    List<Object?> handovers, [
+    List<Object?> purchaseOrders = const [],
+    List<Object?> apPayments = const [],
+    Map<String, Object?> masters = const {},
+    Map<String, Object?> catalog = const {},
+    Map<String, Object?> opname = const {},
+    Uri? baseUrl,
+    List<Object?> arReceipts = const [],
+  ]) {
+    final catalogBaseUrl = baseUrl ?? Uri.parse('http://localhost');
     return InventoryOperationsData(
       receivables: receivables
           .whereType<Map<String, Object?>>()
@@ -2025,12 +5374,108 @@ class InventoryOperationsData {
           .map(HandoverSummary.fromApi)
           .where((row) => row.id.isNotEmpty)
           .toList(),
+      purchaseOrders: purchaseOrders
+          .whereType<Map<String, Object?>>()
+          .map(PurchaseOrderSummary.fromApi)
+          .where((row) => row.id.isNotEmpty)
+          .toList(),
+      apPayments: apPayments
+          .whereType<Map<String, Object?>>()
+          .map(ApPaymentSummary.fromApi)
+          .toList(),
+      suppliers: ((masters['suppliers'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map(InventoryPriceParty.fromApi)
+          .toList(),
+      products:
+          InventoryCatalog.fromApi(catalog, baseUrl: catalogBaseUrl).products,
+      warehouses: ((opname['warehouses'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => InventoryWarehouse((row['id'] ?? '').toString(),
+              (row['code'] ?? '').toString(), (row['name'] ?? '').toString()))
+          .toList(),
+      arReceipts: arReceipts
+          .whereType<Map<String, Object?>>()
+          .map(ArReceiptSummary.fromApi)
+          .toList(),
     );
   }
 
   final List<SettlementDocument> receivables;
   final List<SettlementDocument> payables;
   final List<HandoverSummary> handovers;
+  final List<PurchaseOrderSummary> purchaseOrders;
+  final List<ApPaymentSummary> apPayments;
+  final List<InventoryPriceParty> suppliers;
+  final List<InventoryProductDemo> products;
+  final List<InventoryWarehouse> warehouses;
+  final List<ArReceiptSummary> arReceipts;
+}
+
+class PurchaseOrderSummary {
+  const PurchaseOrderSummary(this.id, this.number, this.status, this.date,
+      this.supplierName, this.total);
+
+  factory PurchaseOrderSummary.fromApi(Map<String, Object?> row) =>
+      PurchaseOrderSummary(
+        (row['id'] ?? '').toString(),
+        (row['purchase_order_number'] ?? '-').toString(),
+        (row['status'] ?? '-').toString(),
+        (row['order_date'] ?? '-').toString(),
+        (row['supplier_name'] ?? '-').toString(),
+        toDouble(row['grand_total']),
+      );
+
+  final String id;
+  final String number;
+  final String status;
+  final String date;
+  final String supplierName;
+  final double total;
+}
+
+class ApPaymentSummary {
+  const ApPaymentSummary(this.number, this.date, this.supplierName, this.method,
+      this.total, this.status);
+
+  factory ApPaymentSummary.fromApi(Map<String, Object?> row) =>
+      ApPaymentSummary(
+        (row['payment_number'] ?? '-').toString(),
+        (row['payment_date'] ?? '-').toString(),
+        (row['supplier_name'] ?? '-').toString(),
+        (row['method'] ?? '-').toString(),
+        toDouble(row['total_amount']),
+        (row['status'] ?? '-').toString(),
+      );
+
+  final String number;
+  final String date;
+  final String supplierName;
+  final String method;
+  final double total;
+  final String status;
+}
+
+class ArReceiptSummary {
+  const ArReceiptSummary(this.number, this.date, this.customerName, this.method,
+      this.total, this.status);
+
+  factory ArReceiptSummary.fromApi(Map<String, Object?> row) =>
+      ArReceiptSummary(
+        (row['receipt_number'] ?? '-').toString(),
+        (row['receipt_date'] ?? '-').toString(),
+        (row['customer_name'] ?? '-').toString(),
+        (row['method'] ?? '-').toString(),
+        toDouble(row['total_amount']),
+        (row['status'] ?? '-').toString(),
+      );
+
+  final String number;
+  final String date;
+  final String customerName;
+  final String method;
+  final double total;
+  final String status;
 }
 
 class SettlementDocument {
@@ -2043,6 +5488,8 @@ class SettlementDocument {
     required this.amount,
     required this.agingBucket,
     this.salespersonId,
+    this.salesName = '-',
+    this.isSettled = false,
   });
 
   factory SettlementDocument.fromApi(
@@ -2061,6 +5508,8 @@ class SettlementDocument {
       amount: toDouble(row['amount']),
       agingBucket: (row['aging_bucket'] ?? '-').toString(),
       salespersonId: row['salesperson_id']?.toString(),
+      salesName: (row['sales_name'] ?? '-').toString(),
+      isSettled: row['is_settled'] == true,
     );
   }
 
@@ -2072,6 +5521,8 @@ class SettlementDocument {
   final double amount;
   final String agingBucket;
   final String? salespersonId;
+  final String salesName;
+  final bool isSettled;
 }
 
 class HandoverSummary {
@@ -2610,10 +6061,14 @@ class _KpiCard extends StatelessWidget {
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard(
-      {required this.title, required this.icon, required this.child});
+      {required this.title,
+      required this.icon,
+      required this.child,
+      this.action});
   final String title;
   final IconData icon;
   final Widget child;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -2628,9 +6083,12 @@ class _SectionCard extends StatelessWidget {
               children: [
                 Icon(icon, color: const Color(0xFF0F766E)),
                 const SizedBox(width: 8),
-                Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900, fontSize: 18)),
+                Expanded(
+                  child: Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900, fontSize: 18)),
+                ),
+                if (action != null) action!,
               ],
             ),
             const SizedBox(height: 12),
@@ -2754,4 +6212,32 @@ double toDouble(Object? value) {
   return double.tryParse((value ?? '0').toString()) ?? 0;
 }
 
+String? nullableText(Object? value) {
+  final text = value?.toString().trim() ?? '';
+  return text.isEmpty ? null : text;
+}
+
 int toInt(Object? value) => toDouble(value).round();
+
+String financeLabel(String value) =>
+    const {
+      'ASSET': 'Aset',
+      'LIABILITY': 'Kewajiban',
+      'EQUITY': 'Modal',
+      'REVENUE': 'Pendapatan',
+      'EXPENSE': 'Biaya',
+      'DEBIT': 'Debit',
+      'CREDIT': 'Kredit',
+      'product_code': 'Kode produk',
+      'product_name': 'Nama produk',
+      'order_number': 'Nomor order',
+      'order_date': 'Tanggal',
+      'revenue': 'Omzet',
+      'cogs': 'HPP',
+      'gross_profit': 'Laba kotor',
+      'code': 'Kode',
+      'name': 'Nama akun',
+      'account_type': 'Kelompok',
+      'balance': 'Saldo',
+    }[value] ??
+    value.replaceAll('_', ' ');

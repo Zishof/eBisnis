@@ -67,6 +67,7 @@ import { InternalTransferPage } from '../pages/app/InternalTransferPage';
 import { StockAlertsPage, StockMovementsPage } from '../pages/app/InventoryLedgerPage';
 import { JournalEntriesPage } from '../pages/app/JournalEntriesPage';
 import { InventoryControlPage } from '../pages/app/InventoryControlPage';
+import { InventoryPartyMasterPage } from '../pages/app/InventoryPartyMasterPage';
 import { SalesOrdersPage, SalesReportsPage } from '../pages/app/SalesPages';
 import { SampleDataPage } from '../pages/app/SampleDataPage';
 import { SubscriptionPage } from '../pages/app/SubscriptionPage';
@@ -632,6 +633,21 @@ export function App() {
           <Route path="chart-of-accounts" element={<MasterListPage resource="chart-of-accounts" />} />
           <Route path="journal-entries" element={<JournalEntriesPage />} />
           <Route path="inventory-control" element={<InventoryControlPage />} />
+            <Route path="master/suppliers" element={<InventoryPartyMasterPage kind="suppliers" />} />
+            <Route path="master/customers" element={<InventoryPartyMasterPage kind="customers" />} />
+            <Route path="master/salespeople" element={<InventoryPartyMasterPage kind="salespeople" />} />
+          <Route path="inventory/stock" element={<InventoryControlPage />} />
+          <Route path="inventory/stock-opnames" element={<InventoryControlPage />} />
+          <Route path="inventory/pricing" element={<InventoryControlPage />} />
+          <Route path="purchasing/invoices" element={<InventoryControlPage />} />
+          <Route path="purchasing/payables" element={<InventoryControlPage />} />
+          <Route path="purchasing/reports" element={<InventoryControlPage />} />
+          <Route path="sales/invoices" element={<InventoryControlPage />} />
+          <Route path="sales/receivables" element={<InventoryControlPage />} />
+          <Route path="sales/note-custody" element={<InventoryControlPage />} />
+          <Route path="sales/receivable-reports" element={<InventoryControlPage />} />
+          <Route path="finance/journals" element={<InventoryControlPage />} />
+          <Route path="finance/profit-loss" element={<InventoryControlPage />} />
           <Route path="roles" element={<MasterListPage resource="roles" />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="role-permissions" element={<RolePermissionsPage />} />

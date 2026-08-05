@@ -142,7 +142,9 @@ export const MASTER_RESOURCES: MasterResourceDefinition[] = [
     writableFields: [
       'code', 'name', 'description', 'supplier_number', 'supplier_group_id', 'payment_term_id',
       'tax_number', 'contact_person', 'phone', 'email', 'currency_code', 'lead_time_days',
-      'rating', 'is_blacklisted', 'blacklist_reason', 'sort_order',
+      'rating', 'is_blacklisted', 'blacklist_reason', 'legacy_payment_days', 'address_text',
+      'region_name', 'bank_account_number', 'bank_account_name', 'bank_name', 'bank_address',
+      'sort_order',
     ],
     foreignKeys: { supplier_group_id: 'supplier_group', payment_term_id: 'payment_term' },
     references: [
@@ -163,7 +165,9 @@ export const MASTER_RESOURCES: MasterResourceDefinition[] = [
     sortableFields: ['code', 'name', 'created_at'],
     writableFields: [
       'code', 'name', 'description', 'customer_number', 'customer_group_id', 'payment_term_id',
-      'customer_type', 'tax_number', 'phone', 'email', 'credit_limit', 'sort_order',
+      'customer_type', 'tax_number', 'phone', 'email', 'credit_limit', 'legacy_payment_days',
+      'address_text', 'region_name', 'default_discount_percent', 'bank_account_number',
+      'bank_account_name', 'bank_name', 'bank_address', 'sort_order',
     ],
     foreignKeys: { customer_group_id: 'customer_group', payment_term_id: 'payment_term' },
     references: [
@@ -171,6 +175,23 @@ export const MASTER_RESOURCES: MasterResourceDefinition[] = [
       { table: 'sales_order', column: 'customer_id', isTransactional: true, label: 'Pesanan penjualan' },
     ],
     hardDeletePolicy: 'PURGE_SAMPLE_ONLY',
+    supportsPurge: true,
+    defaultSort: 'name',
+  }),
+  define({
+    resourceCode: 'salespeople',
+    label: 'Sales',
+    table: 'inventory_salesperson_profile',
+    menuCode: 'SALES',
+    searchableFields: ['code', 'name', 'account_number', 'territory', 'phone', 'email'],
+    sortableFields: ['code', 'name', 'territory', 'monthly_target', 'created_at', 'updated_at'],
+    writableFields: [
+      'code', 'name', 'description', 'user_subject_id', 'account_number', 'territory',
+      'monthly_target', 'phone', 'email', 'sort_order',
+    ],
+    foreignKeys: { user_subject_id: 'user_subject' },
+    references: [],
+    hardDeletePolicy: 'PURGE_IF_UNREFERENCED',
     supportsPurge: true,
     defaultSort: 'name',
   }),

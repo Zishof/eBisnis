@@ -1,5 +1,57 @@
 # Changelog
 
+## 2026-08-06 - Inventory parity wave 5
+
+- Memperbaiki relasi tipe akun pada workspace keuangan tenant.
+- Menambahkan pembuatan perkiraan, jurnal berimbang, posting, dan pembalikan pada Flutter.
+- Menambahkan laporan laba kotor dan laba rugi berbasis snapshot beserta audit cetak.
+- Menambahkan tutup/buka kembali periode yang non-destruktif dan tervalidasi.
+- Menaikkan seluruh 48 layar legacy menjadi operasional pada React Web dan Flutter.
+
+## 2026-08-06 - Inventory parity wave 4
+
+- Melengkapi order sales offline-first dengan workspace piutang terbuka dan lunas.
+- Menambahkan riwayat penerimaan piutang serta aging per customer dan sales.
+- Menambahkan PDF penerimaan, aging, piutang belum lunas, dan nota sales.
+- Menyamakan siklus serah-terima, pengembalian, dan penutupan nota Web/Flutter.
+- Menaikkan layar legacy 30-42 menjadi operasional pada React Web dan Flutter.
+
+## 2026-08-06 - Inventory parity wave 3
+
+- Menambahkan alur Flutter purchase order dari pembuatan, pengajuan, persetujuan,
+  pengiriman, hingga penerimaan dengan batch dan tanggal kedaluwarsa.
+- Menambahkan daftar hutang terbuka/lunas, pembayaran hutang idempoten, riwayat
+  pembayaran, dan analisis umur hutang.
+- Menambahkan PDF register pembayaran, aging hutang, faktur detail pembelian,
+  dan laporan pembelian.
+- Menaikkan layar legacy 20-29 menjadi operasional pada React Web dan Flutter.
+
+## 2026-08-06 - Inventory parity wave 2
+
+- Menambahkan workspace Flutter responsif untuk stok, stock opname, dan harga.
+- Menyamakan siklus opname Web/Flutter: bekukan, hitung fisik, setujui, dan posting.
+- Menambahkan ekspor XLSX serta laporan PDF stok, opname, dan riwayat harga.
+- Menambahkan buku harga umum, harga beli supplier, dan harga jual customer dengan
+  pengajuan persetujuan.
+- Menaikkan layar legacy 08-19 menjadi operasional berdasarkan tes dan bukti visual.
+
+## 2026-08-06 - Inventory / Sales 48 Screen Parity, Wave 1
+
+- Completed screens 01-07 for supplier, customer, and field-sales masters on
+  React Web and Flutter Windows/Android from the same tenant API contract.
+- Added lifecycle CRUD, active/inactive state, open/settled balance filters,
+  bank-data masking, audit history, PDF/Excel export, and offline Flutter queue.
+- Added additive tenant migration `V050`, idempotent legacy projections for CMN,
+  API/route/widget tests, and a desktop Flutter visual golden.
+
+## 2026-08-06 - Inventory / Sales 48 Screen Parity, Wave 0
+
+- Added auditable source, route, API, permission, report, sync, test, and UAT ledgers.
+- Added explicit Web routes for all 48 legacy screen contracts while preserving
+  `/app/inventory-control` as a compatibility route.
+- Made the backend parity contract return the canonical route for each screen.
+- Added route contract tests for backend and Web.
+
 Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),

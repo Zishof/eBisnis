@@ -1077,6 +1077,19 @@ async function importSalespeople(client: PoolClient, S: string, rows: Array<Reco
          updated_at = now(), version = ${S}.legacy_salesperson_map.version + 1`,
       [legacyCode, legacyName, subjectId, username, legacyJson(row)],
     );
+    await client.query(
+      `INSERT INTO ${S}.inventory_salesperson_profile
+         (user_subject_id, code, name, account_number, territory, phone, metadata, is_active)
+       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::jsonb, TRUE)
+       ON CONFLICT (code) WHERE deleted_at IS NULL
+       DO UPDATE SET user_subject_id = COALESCE(EXCLUDED.user_subject_id, ${S}.inventory_salesperson_profile.user_subject_id),
+         name = EXCLUDED.name, account_number = COALESCE(EXCLUDED.account_number, ${S}.inventory_salesperson_profile.account_number),
+         territory = COALESCE(EXCLUDED.territory, ${S}.inventory_salesperson_profile.territory),
+         phone = COALESCE(EXCLUDED.phone, ${S}.inventory_salesperson_profile.phone),
+         updated_at = now(), version = ${S}.inventory_salesperson_profile.version + 1`,
+      [subjectId, legacyCode, legacyName, text(row.NOPERKIRAAN) || text(row.PERKIRAAN) || null,
+        text(row.WILAYAH) || null, text(row.NOTELP) || text(row.TELEPON) || null, legacyJson(row)],
+    );
     if (subjectId) map.set(legacyCode, subjectId);
   }
   for (const row of fallbackSales.rows) {
@@ -1125,22 +1138,43 @@ async function upsertProduct(client: PoolClient, S: string, input: Record<string
 }
 
 async function upsertCustomer(client: PoolClient, S: string, code: string, name: string, metadata: unknown) {
+  const row = metadata as Record<string, unknown>;
   await client.query(
-    `INSERT INTO ${S}.customer (code, name, customer_type, credit_limit, metadata)
-     VALUES ($1, $2, 'BUSINESS', 0, $3::jsonb)
+    `INSERT INTO ${S}.customer
+       (code, name, customer_type, credit_limit, legacy_payment_days, default_discount_percent,
+        address_text, region_name, phone, bank_account_number, bank_account_name, bank_name, bank_address, metadata)
+     VALUES ($1, $2, 'BUSINESS', 0, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)
      ON CONFLICT (code) WHERE deleted_at IS NULL
-     DO UPDATE SET name = EXCLUDED.name, metadata = EXCLUDED.metadata, updated_at = now(), version = ${S}.customer.version + 1`,
-    [code, name, legacyJson(metadata)],
+     DO UPDATE SET name = EXCLUDED.name, legacy_payment_days = EXCLUDED.legacy_payment_days,
+       default_discount_percent = EXCLUDED.default_discount_percent,
+       address_text = EXCLUDED.address_text, region_name = EXCLUDED.region_name, phone = EXCLUDED.phone,
+       bank_account_number = EXCLUDED.bank_account_number, bank_account_name = EXCLUDED.bank_account_name,
+       bank_name = EXCLUDED.bank_name, bank_address = EXCLUDED.bank_address,
+       metadata = EXCLUDED.metadata, updated_at = now(), version = ${S}.customer.version + 1`,
+    [code, name, number(row.SYARATBAYAR ?? row.SYARAT ?? row.TEMPO), number(row.DISCOUNT ?? row.DISKON),
+      text(row.ALAMAT) || null, text(row.WILAYAH) || null, text(row.NOTELP ?? row.TELEPON) || null,
+      text(row.NOREK ?? row.NOREKENING) || null, text(row.ATASNAMA) || null,
+      text(row.BANK) || null, text(row.ALAMATBANK) || null, legacyJson(metadata)],
   );
 }
 
 async function upsertSupplier(client: PoolClient, S: string, code: string, name: string, metadata: unknown) {
+  const row = metadata as Record<string, unknown>;
   await client.query(
-    `INSERT INTO ${S}.supplier (code, name, metadata)
-     VALUES ($1, $2, $3::jsonb)
+    `INSERT INTO ${S}.supplier
+       (code, name, legacy_payment_days, address_text, region_name, phone,
+        bank_account_number, bank_account_name, bank_name, bank_address, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
      ON CONFLICT (code) WHERE deleted_at IS NULL
-     DO UPDATE SET name = EXCLUDED.name, metadata = EXCLUDED.metadata, updated_at = now(), version = ${S}.supplier.version + 1`,
-    [code, name, legacyJson(metadata)],
+     DO UPDATE SET name = EXCLUDED.name, legacy_payment_days = EXCLUDED.legacy_payment_days,
+       address_text = EXCLUDED.address_text, region_name = EXCLUDED.region_name, phone = EXCLUDED.phone,
+       bank_account_number = EXCLUDED.bank_account_number, bank_account_name = EXCLUDED.bank_account_name,
+       bank_name = EXCLUDED.bank_name, bank_address = EXCLUDED.bank_address,
+       metadata = EXCLUDED.metadata, updated_at = now(), version = ${S}.supplier.version + 1`,
+    [code, name, number(row.SYARATBAYAR ?? row.SYARAT ?? row.TEMPO), text(row.ALAMAT) || null,
+      text(row.WILAYAH) || null, text(row.NOTELP ?? row.TELEPON) || null,
+      text(row.NOREK ?? row.NOREKENING) || null, text(row.ATASNAMA) || null,
+      text(row.BANK) || null, text(row.ALAMATBANK) || null, legacyJson(metadata)],
   );
 }
 

@@ -1,6 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Banknote,
   BarChart3,
@@ -25,18 +25,9 @@ import {
 import { api, formatDate, formatMoney, formatNumber } from '../../lib/api';
 import { downloadExcel, downloadPdf, type ExportColumn } from '../../lib/export-table';
 import { Code, DataGrid, PageHeader, StatusBadge, type GridColumn } from '../../components/ui';
+import { inventoryRouteContext, inventoryTabRoutes, type InventoryTabKey } from './inventory-route-context';
 
-type TabKey =
-  | 'suppliers'
-  | 'customers'
-  | 'sales'
-  | 'stock'
-  | 'prices'
-  | 'purchases'
-  | 'salesOrders'
-  | 'cash'
-  | 'profit'
-  | 'periodClose';
+type TabKey = InventoryTabKey;
 
 type MasterRow = Record<string, unknown> & {
   id: string;
@@ -184,6 +175,15 @@ type FinanceWorkspace = {
   closeRuns: Array<{ id: string; run_number: string; status: string; validation_result: Record<string, number>; period_code: string }>;
 };
 
+type InventoryFinancialReport = {
+  reportCode: string;
+  title: string;
+  asOfDate: string;
+  rowCount: number;
+  totals: Record<string, string>;
+  rows: Array<Record<string, unknown>>;
+};
+
 type StockOpnameWorkspace = {
   warehouses: Array<{ id: string; code: string; name: string }>;
   sessions: Array<{
@@ -237,10 +237,18 @@ const parityGroups = [
 
 export function InventoryControlPage() {
   const queryClient = useQueryClient();
-  const [active, setActive] = useState<TabKey>('stock');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const routeContext = useMemo(
+    () => inventoryRouteContext(location.pathname, location.search),
+    [location.pathname, location.search],
+  );
+  const [active, setActive] = useState<TabKey>(routeContext.tab);
   const [search, setSearch] = useState('');
   const [includeSettled, setIncludeSettled] = useState(false);
   const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
+
+  useEffect(() => setActive(routeContext.tab), [routeContext.tab]);
 
   const dashboard = useQuery({
     queryKey: ['inventory-control-dashboard'],
@@ -331,9 +339,9 @@ export function InventoryControlPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Inventory Control CMN"
-        description="Seluruh fungsi aplikasi Inventory lama disusun ulang menjadi workspace modern: cepat dicari, bisa diekspor, responsif, dan siap audit."
-        breadcrumbs={[{ label: 'Dashboard', href: '/app' }, { label: 'Inventory Control' }]}
+        title={routeContext.title}
+        description={`Layar ${routeContext.screenRange} dari kontrak transisi Inventory & Sales. Data, command, audit, laporan, dan sinkronisasi memakai layanan tenant yang sama.`}
+        breadcrumbs={[{ label: 'Dashboard', href: '/app' }, { label: 'Inventory & Sales', href: '/app/inventory-control' }, { label: routeContext.title }]}
         actions={
           <>
             <a href="/panduan/inventory-sales" target="_blank" rel="noreferrer" className="btn-secondary">
@@ -398,7 +406,10 @@ export function InventoryControlPage() {
             <button
               key={tab.key}
               type="button"
-              onClick={() => setActive(tab.key)}
+              onClick={() => {
+                setActive(tab.key);
+                void navigate(inventoryTabRoutes[tab.key]);
+              }}
               className={`rounded-xl border p-3 text-left transition ${
                 active === tab.key
                   ? 'border-brand-500 bg-brand-50 text-brand-900 shadow-sm dark:bg-brand-950/40 dark:text-brand-100'
@@ -483,6 +494,8 @@ export function InventoryControlPage() {
             onChanged={() => void queryClient.invalidateQueries({ queryKey: ['inventory-finance-workspace'] })}
           />
         )}
+
+        {active === 'profit' && <FinancialReportPanel asOf={asOf} />}
 
         <DataGrid
           columns={view.columns}
@@ -758,6 +771,59 @@ function FinanceWorkflowPanel({ mode, data, onChanged }: { mode: 'cash' | 'perio
           {data.periods.slice(0, 12).map((period) => <div key={period.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"><div><p className="text-sm font-black">{period.code}</p><p className="text-xs text-slate-500">{formatDate(period.start_date)} - {formatDate(period.end_date)} - {period.status}</p></div><button type="button" className={period.status === 'OPEN' ? 'btn-primary' : 'btn-secondary'} disabled={periodCommand.isPending} onClick={() => periodCommand.mutate({ id: period.id, action: period.status === 'OPEN' ? 'close' : 'reopen' })}>{period.status === 'OPEN' ? 'Tutup' : 'Buka kembali'}</button></div>)}
         </div>
       </>}
+      {message && <p className="mt-3 text-sm font-bold">{message}</p>}
+    </div>
+  );
+}
+
+function FinancialReportPanel({ asOf }: { asOf: string }) {
+  const [report, setReport] = useState<InventoryFinancialReport>();
+  const [message, setMessage] = useState('');
+  const preview = useMutation({
+    mutationFn: (code: 'gross-profit' | 'profit-loss') =>
+      api.post<InventoryFinancialReport>(`/reports/${code}/preview`, { asOfDate: asOf, filters: {} }),
+    onSuccess: (value) => { setReport(value); setMessage(''); },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+  const print = useMutation({
+    mutationFn: async () => {
+      if (!report) throw new Error('Tampilkan laporan terlebih dahulu.');
+      const snapshot = await api.post<{ id: string }>(`/reports/${report.reportCode}/snapshot`, {
+        asOfDate: report.asOfDate, filters: {},
+      });
+      const keys = Object.keys(report.rows[0] ?? {}).slice(0, 8);
+      const columns = keys.map((key) => ({ key, label: key.replaceAll('_', ' ') })) as ExportColumn<Record<string, unknown>>[];
+      const filename = `${report.reportCode}-${report.asOfDate}`;
+      downloadPdf(filename, report.title, columns, report.rows);
+      await api.post(`/report-snapshots/${snapshot.id}/print-log`, {
+        format: 'PDF', documentNumber: `${filename}.pdf`,
+      });
+      return snapshot.id;
+    },
+    onSuccess: (snapshotId) => setMessage(`PDF dibuat dari snapshot ${snapshotId}; jejak cetak sudah dicatat.`),
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+  const total = report ? Object.values(report.totals)[0] ?? '0' : '0';
+
+  return (
+    <div className="mb-4 rounded-xl border border-brand-200 bg-brand-50/50 p-4 dark:border-brand-900 dark:bg-brand-950/20">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h3 className="text-sm font-black text-slate-900 dark:text-white">Laporan keuangan dari snapshot server</h3>
+          <p className="text-xs text-slate-500">Posisi {formatDate(asOf)}; angka PDF sama dengan pratinjau dan tersimpan pada audit cetak.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-secondary" disabled={preview.isPending} onClick={() => preview.mutate('gross-profit')}>Laba kotor</button>
+          <button type="button" className="btn-secondary" disabled={preview.isPending} onClick={() => preview.mutate('profit-loss')}>Laba rugi akuntansi</button>
+          <button type="button" className="btn-primary" disabled={!report || print.isPending} onClick={() => print.mutate()}><Printer className="h-4 w-4" />Cetak snapshot</button>
+        </div>
+      </div>
+      {report && (
+        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+          <div><p className="font-black">{report.title}</p><p className="text-xs text-slate-500">{formatNumber(report.rowCount)} baris tervalidasi</p></div>
+          <div className="rounded-lg bg-white px-4 py-2 text-right dark:bg-slate-900"><p className="text-xs text-slate-500">Total</p><p className="text-lg font-black">{formatMoney(total)}</p></div>
+        </div>
+      )}
       {message && <p className="mt-3 text-sm font-bold">{message}</p>}
     </div>
   );
