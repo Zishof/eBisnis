@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Database, Download, FileCheck2, FileSpreadsheet, UploadCloud } from 'lucide-react';
+import { CheckCircle2, Database, Download, FileCheck2, FileSpreadsheet, Search, UploadCloud } from 'lucide-react';
 import { useErrorMessage } from '../../../app/auth-context';
 import { PageHeader, StatusBadge, useToast } from '../../../components/ui';
 import { api } from '../../../lib/api';
@@ -36,6 +36,7 @@ export function PesantrenDapodikPage() {
   const [datasetCode, setDatasetCode] = useState('santri');
   const [content, setContent] = useState('');
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [datasetSearch, setDatasetSearch] = useState('');
 
   const datasets = useQuery({
     queryKey: ['pesantren-dapodik-datasets'],
@@ -45,6 +46,22 @@ export function PesantrenDapodikPage() {
     () => datasets.data?.find((item) => item.code === datasetCode) ?? datasets.data?.[0],
     [datasets.data, datasetCode],
   );
+  const filteredDatasets = useMemo(() => {
+    const term = datasetSearch.trim().toLowerCase();
+    if (!term) return datasets.data ?? [];
+    return (datasets.data ?? []).filter((item) =>
+      [item.code, item.name, item.description, ...item.columns].some((value) => value.toLowerCase().includes(term)),
+    );
+  }, [datasets.data, datasetSearch]);
+  const datasetStats = useMemo(() => {
+    const list = datasets.data ?? [];
+    return {
+      total: list.length,
+      wajib: active?.required.length ?? 0,
+      kolom: active?.columns.length ?? 0,
+      referensi: list.filter((item) => item.code.startsWith('ref-')).length,
+    };
+  }, [active, datasets.data]);
 
   const template = useMutation({
     mutationFn: () => api.get<CsvPayload>(`/pesantren/dapodik/${datasetCode}/template`),
@@ -92,7 +109,14 @@ export function PesantrenDapodikPage() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric label="Dataset" value={datasetStats.total} />
+        <Metric label="Referensi" value={datasetStats.referensi} />
+        <Metric label="Kolom Aktif" value={datasetStats.kolom} />
+        <Metric label="Wajib" value={datasetStats.wajib} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[380px_minmax(0,1fr)]">
         <aside className="space-y-4">
           <div className="card p-4">
             <div className="mb-3 flex items-center gap-2">
@@ -104,8 +128,17 @@ export function PesantrenDapodikPage() {
                 <p className="text-xs text-slate-500">Pilih data yang akan ditukar.</p>
               </div>
             </div>
+            <div className="relative mb-3">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+              <input
+                className="field-input pl-9"
+                value={datasetSearch}
+                onChange={(event) => setDatasetSearch(event.target.value)}
+                placeholder="Cari santri, guru, nilai, penghasilan..."
+              />
+            </div>
             <div className="space-y-2">
-              {(datasets.data ?? []).map((item) => (
+              {filteredDatasets.map((item) => (
                 <button
                   type="button"
                   key={item.code}
@@ -123,12 +156,20 @@ export function PesantrenDapodikPage() {
                   <span className="mt-1 line-clamp-2 block text-xs text-slate-500">{item.description}</span>
                 </button>
               ))}
+              {filteredDatasets.length === 0 && (
+                <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+                  Dataset tidak ditemukan.
+                </div>
+              )}
             </div>
           </div>
 
           {active && (
             <div className="card p-4">
-              <p className="text-sm font-semibold text-slate-900">Kolom wajib</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Dataset Aktif</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-950">{active.name}</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">{active.description}</p>
+              <p className="mt-4 text-sm font-semibold text-slate-900">Kolom wajib</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {active.required.map((column) => <StatusBadge key={column} status={column} />)}
               </div>

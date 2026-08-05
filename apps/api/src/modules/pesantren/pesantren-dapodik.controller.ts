@@ -18,6 +18,12 @@ const DATASET = [
   'jadwal',
   'komponen-nilai',
   'nilai',
+  'ref-pekerjaan',
+  'ref-pendidikan',
+  'ref-penghasilan',
+  'ref-transportasi',
+  'ref-jenis-tinggal',
+  'ref-kebutuhan-khusus',
 ] as const;
 
 function schemaWajib(user: AuthenticatedUser): string {

@@ -227,6 +227,12 @@
       "file": "20260805T010000__pesantren__buku_penghubung_aktivitas_harian.sql",
       "name": "Aktivitas dan materi harian di buku penghubung",
       "description": "Memperluas jenis pesantren_buku_penghubung dengan AKTIVITAS_HARIAN dan MATERI_HARIAN untuk menutup pola AIS AktiftasHarianSiswa, DaftarAktifitasHarianSiswa, DashboardAktifitasHarianSiswa, JenisAktiftasHarianDefault, dan JenisMateriHarianDefault tanpa membuat menu skeleton baru."
+    },
+    {
+      "id": "20260805T020000__pesantren__referensi_dapodik",
+      "file": "20260805T020000__pesantren__referensi_dapodik.sql",
+      "name": "Referensi biodata Dapodik/AIS",
+      "description": "Menambah pesantren_referensi_dapodik untuk master pekerjaan, pendidikan, penghasilan, transportasi, jenis tinggal, dan kebutuhan khusus. Ini menutup gugus AIS PekerjaanOrtuSiswaAction, PendidikanOrangTuaSiswaAction, PenghasilanOrangTuaSiswaAction, AlatTransportasiSiswaAction, JenisTinggalSiswaAction, dan KebutuhanKhususSiswaAction sebagai dataset impor/ekspor Dapodik tanpa memaksa FK pada data lama."
     }
   ]
 }

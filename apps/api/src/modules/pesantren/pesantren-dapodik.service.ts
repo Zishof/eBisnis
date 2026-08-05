@@ -13,7 +13,13 @@ export type DatasetCode =
   | 'kurikulum'
   | 'jadwal'
   | 'komponen-nilai'
-  | 'nilai';
+  | 'nilai'
+  | 'ref-pekerjaan'
+  | 'ref-pendidikan'
+  | 'ref-penghasilan'
+  | 'ref-transportasi'
+  | 'ref-jenis-tinggal'
+  | 'ref-kebutuhan-khusus';
 
 export interface DatasetDef {
   code: DatasetCode;
@@ -163,8 +169,58 @@ const DATASETS: DatasetDef[] = [
     required: ['nis', 'mata_pelajaran_code', 'komponen_kode', 'tahun_ajaran_code', 'nilai_angka'],
     columns: ['nis', 'mata_pelajaran_code', 'komponen_kode', 'tahun_ajaran_code', 'nilai_angka', 'catatan'],
   },
+  {
+    code: 'ref-pekerjaan',
+    name: 'Referensi Pekerjaan',
+    description: 'Master pilihan pekerjaan ayah, ibu, dan wali untuk biodata Dapodik.',
+    required: ['code', 'nama'],
+    columns: ['code', 'nama', 'sort_order', 'is_active'],
+  },
+  {
+    code: 'ref-pendidikan',
+    name: 'Referensi Pendidikan',
+    description: 'Master pilihan pendidikan terakhir ayah, ibu, dan wali.',
+    required: ['code', 'nama'],
+    columns: ['code', 'nama', 'sort_order', 'is_active'],
+  },
+  {
+    code: 'ref-penghasilan',
+    name: 'Referensi Penghasilan',
+    description: 'Master rentang penghasilan orang tua/wali.',
+    required: ['code', 'nama'],
+    columns: ['code', 'nama', 'sort_order', 'is_active'],
+  },
+  {
+    code: 'ref-transportasi',
+    name: 'Referensi Transportasi',
+    description: 'Master pilihan alat transportasi peserta didik.',
+    required: ['code', 'nama'],
+    columns: ['code', 'nama', 'sort_order', 'is_active'],
+  },
+  {
+    code: 'ref-jenis-tinggal',
+    name: 'Referensi Jenis Tinggal',
+    description: 'Master jenis tempat tinggal peserta didik, termasuk mukim/asrama.',
+    required: ['code', 'nama'],
+    columns: ['code', 'nama', 'sort_order', 'is_active'],
+  },
+  {
+    code: 'ref-kebutuhan-khusus',
+    name: 'Referensi Kebutuhan Khusus',
+    description: 'Master kebutuhan khusus peserta didik dan keluarga.',
+    required: ['code', 'nama'],
+    columns: ['code', 'nama', 'sort_order', 'is_active'],
+  },
 ];
-const BOOLEAN_COLUMNS = new Set(['penerima_kip', 'penerima_kks']);
+const BOOLEAN_COLUMNS = new Set(['penerima_kip', 'penerima_kks', 'is_active']);
+const REFERENSI_KATEGORI: Partial<Record<DatasetCode, string>> = {
+  'ref-pekerjaan': 'PEKERJAAN',
+  'ref-pendidikan': 'PENDIDIKAN',
+  'ref-penghasilan': 'PENGHASILAN',
+  'ref-transportasi': 'TRANSPORTASI',
+  'ref-jenis-tinggal': 'JENIS_TINGGAL',
+  'ref-kebutuhan-khusus': 'KEBUTUHAN_KHUSUS',
+};
 
 @Injectable()
 export class PesantrenDapodikService {
@@ -253,6 +309,13 @@ export class PesantrenDapodikService {
         return this.tenantDb.query(schemaName, `SELECT mp.code AS mata_pelajaran_code, k.kode, k.nama, k.bobot_persen::text FROM ${S}.pesantren_komponen_nilai k JOIN ${S}.pesantren_mata_pelajaran mp ON mp.id = k.mata_pelajaran_id WHERE k.deleted_at IS NULL ORDER BY mp.code ASC, k.kode ASC`);
       case 'nilai':
         return this.tenantDb.query(schemaName, `SELECT s.nis, mp.code AS mata_pelajaran_code, k.kode AS komponen_kode, ta.code AS tahun_ajaran_code, n.nilai_angka::text, n.catatan FROM ${S}.pesantren_nilai n JOIN ${S}.pesantren_santri s ON s.id = n.santri_id JOIN ${S}.pesantren_komponen_nilai k ON k.id = n.komponen_id JOIN ${S}.pesantren_mata_pelajaran mp ON mp.id = k.mata_pelajaran_id JOIN ${S}.pesantren_tahun_ajaran ta ON ta.id = n.tahun_ajaran_id WHERE n.deleted_at IS NULL ORDER BY n.updated_at DESC`);
+      case 'ref-pekerjaan':
+      case 'ref-pendidikan':
+      case 'ref-penghasilan':
+      case 'ref-transportasi':
+      case 'ref-jenis-tinggal':
+      case 'ref-kebutuhan-khusus':
+        return this.rowsReferensi(schemaName, dataset);
     }
   }
 
@@ -294,7 +357,43 @@ export class PesantrenDapodikService {
         return upsertSimple(this.tenantDb, schemaName, S, 'pesantren_komponen_nilai', ['mata_pelajaran_id', 'kode'], ['mata_pelajaran_id', 'kode', 'nama', 'bobot_persen'], await this.resolveKomponen(schemaName, row), actorUserId);
       case 'nilai':
         return upsertSimple(this.tenantDb, schemaName, S, 'pesantren_nilai', ['santri_id', 'komponen_id', 'tahun_ajaran_id'], ['santri_id', 'komponen_id', 'tahun_ajaran_id', 'nilai_angka', 'catatan'], await this.resolveNilai(schemaName, row), actorUserId);
+      case 'ref-pekerjaan':
+      case 'ref-pendidikan':
+      case 'ref-penghasilan':
+      case 'ref-transportasi':
+      case 'ref-jenis-tinggal':
+      case 'ref-kebutuhan-khusus':
+        return upsertSimple(
+          this.tenantDb,
+          schemaName,
+          S,
+          'pesantren_referensi_dapodik',
+          ['kategori', 'code'],
+          ['kategori', 'code', 'nama', 'sort_order', 'is_active'],
+          withDefaults({ ...row, kategori: this.kategoriReferensi(dataset) }, { sort_order: '0', is_active: 'true' }),
+          actorUserId,
+        );
     }
+  }
+
+  private async rowsReferensi(schemaName: string, dataset: DatasetCode): Promise<Record<string, unknown>[]> {
+    const S = `"${schemaName}"`;
+    return this.tenantDb.query(
+      schemaName,
+      `SELECT code, nama, sort_order, is_active
+         FROM ${S}.pesantren_referensi_dapodik
+        WHERE kategori = $1 AND deleted_at IS NULL
+        ORDER BY sort_order ASC, nama ASC`,
+      [this.kategoriReferensi(dataset)],
+    );
+  }
+
+  private kategoriReferensi(dataset: DatasetCode): string {
+    const kategori = REFERENSI_KATEGORI[dataset];
+    if (!kategori) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, `Dataset "${dataset}" bukan referensi Dapodik.`);
+    }
+    return kategori;
   }
 
   private async resolveRombongan(schemaName: string, row: Record<string, string>): Promise<Record<string, string>> {

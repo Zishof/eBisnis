@@ -12,8 +12,8 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 | --- | --- | --- | --- |
 | Yayasan, sekolah, unit, jenis sekolah | `YayasanAction`, `SekolahAction`, `JenisSekolahAction`, `PenjurusanSekolahAction` | Sebagian besar selesai melalui profil pondok, unit pendidikan, domain/subdomain unit, website unit | Detail penjurusan/major formal per jenjang belum menjadi master typed penuh |
 | Santri, wali, biodata, alumni, BK | `SiswaAction`, `BiodataSiswaAction`, `SiswaWaliAction`, `AlumniSiswaAction`, `SiswaBkAction` | Sebagian besar selesai: santri, wali, Dapodik, portal wali, status aktif/keluar | Riwayat alumni/BK sebagai workflow khusus masih perlu pendalaman |
-| Referensi biodata keluarga | `PekerjaanOrtuSiswaAction`, `PendidikanOrangTuaSiswaAction`, `PenghasilanOrangTuaSiswaAction`, `KebutuhanKhususSiswaAction`, `AlatTransportasiSiswaAction`, `JenisTinggalSiswaAction` | Sebagian selesai: kolom Dapodik sudah tersedia, agama sudah referensi | Master referensi formal untuk pilihan Dapodik belum seluruhnya menjadi tabel CRUD |
-| Impor/ekspor Dapodik | Pola AIS memakai banyak helper Excel/POI pada modul sekolah | Dilengkapi batch ini: menu `Impor Data Dapodik` untuk unit pendidikan, tahun ajaran, santri, guru, mata pelajaran, rombongan, anggota rombel, kurikulum, jadwal, komponen nilai, dan nilai; tersedia template CSV, ekspor CSV, validasi dry-run, dan impor final | Mapper alias untuk variasi file Dapodik asli dari sekolah perlu diperkaya setelah ada contoh file produksi |
+| Referensi biodata keluarga | `PekerjaanOrtuSiswaAction`, `PendidikanOrangTuaSiswaAction`, `PenghasilanOrangTuaSiswaAction`, `KebutuhanKhususSiswaAction`, `AlatTransportasiSiswaAction`, `JenisTinggalSiswaAction` | Ditingkatkan: kolom Dapodik tersedia, agama tersedia sebagai referensi, dan master pekerjaan/pendidikan/penghasilan/transportasi/jenis tinggal/kebutuhan khusus tersedia sebagai dataset impor-ekspor | Pengaitan combobox langsung pada seluruh form santri/PSB masih bisa diperdalam setelah pilihan final pondok dipakai |
+| Impor/ekspor Dapodik | Pola AIS memakai banyak helper Excel/POI pada modul sekolah | Dilengkapi batch ini: menu `Impor Data Dapodik` untuk unit pendidikan, tahun ajaran, santri, guru, mata pelajaran, rombongan, anggota rombel, kurikulum, jadwal, komponen nilai, nilai, dan enam referensi biodata; tersedia template CSV, ekspor CSV, validasi dry-run, dan impor final | Mapper alias untuk variasi file Dapodik asli dari sekolah perlu diperkaya setelah ada contoh file produksi |
 | PSB/PPDB | `CalonSiswaAction`, `GelombangPendaftaranPsbAction`, `PaketPsbAction`, `KelompokPendaftaranPsbAction`, `KelasSiswaPSBAction`, `RuangPSBAction`, `JadwalUjianPSBAction`, `JadwalPertemuanPSBAction`, `InterviewCalonSiswaAction`, `UjianPSBAction`, `VerifikasiKelengkapanCalonSiswaAction`, `PPDB*.java` | Ditingkatkan: gelombang, portal daftar/login, schema tambahan JSON, unit tujuan, daftar ulang, agenda jadwal seleksi lintas pendaftar, ruang/lokasi, penguji, nilai, catatan hasil | Builder PSB drag-drop lebih lanjut, verifikasi multi-parameter, paket biaya/ujian khusus, kartu peserta/cetak jadwal belum penuh |
 | Kelas, kurikulum, mapel, jadwal | `KelasSiswaAction`, `KurikulumSekolahAction`, `MatapelajaranAction`, `SubMatapelajaranAction`, `KelompokMatapelajaranAction`, `JadwalPelajaranAction`, `JamPelajaranAction`, `PertemuanJadwalPelajaranAction`, `MasaJadwalPelajaranAction`, `TimetableJadwalPelajaranWindow` | Ditingkatkan: rombongan, kurikulum, mapel, jadwal dengan validasi bentrok, timetable visual per hari, filter rombongan, metrik kepadatan, dan cetak browser | Drag-drop/copy jadwal, substitusi guru, pertemuan belajar detail, dan ekspor Excel jadwal belum penuh |
 | Guru dan penugasan | `GuruAction`, `JenisGuruAction`, `JenisSKGuruAction`, `GuruMengajarAction`, `PenugasanGuruMengajarAction`, `AbsenGuruPiketAction` | Sebagian besar selesai: master guru, penugasan, absensi guru, piket | SK guru, jenis guru typed, evaluasi guru, dan dokumen penugasan cetak belum penuh |
@@ -34,9 +34,9 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 2. **Timetable lanjutan:** drag-drop jadwal, copy minggu, substitusi pengajar, ekspor Excel jadwal.
 3. **Rapor resmi:** template PDF per jenjang, leger, ranking, kenaikan kelas/promosi.
 4. **Posting akuntansi sekolah:** piutang, cicilan, deposit, denda, dibayar di muka, diskon.
-5. **Master referensi Dapodik/AIS:** pekerjaan, pendidikan, penghasilan, transportasi, tinggal, kebutuhan khusus sebagai CRUD referensi.
-6. **Dashboard AIS spesifik:** registrasi multi-tahun, asal sekolah, status santri, aktivitas harian, dan keuangan siswa.
-7. **Workflow BK/pembinaan:** poin, eskalasi, surat panggilan, apresiasi, penghargaan, dan tindak lanjut berjenjang.
+5. **Dashboard AIS spesifik:** registrasi multi-tahun, asal sekolah, status santri, aktivitas harian, dan keuangan siswa.
+6. **Workflow BK/pembinaan:** poin, eskalasi, surat panggilan, apresiasi, penghargaan, dan tindak lanjut berjenjang.
+7. **Form binding referensi Dapodik:** combobox referensi pekerjaan/pendidikan/penghasilan/transportasi/jenis tinggal/kebutuhan khusus pada semua form santri/PSB.
 
 ## Batch Implementasi 2026-08-05
 
@@ -47,6 +47,8 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 - Jadwal pelajaran dipoles: enum hari UI diselaraskan dengan backend (`MINGGU`), ditambah filter rombongan, metrik timetable, grid responsif per hari, dan tombol cetak browser.
 - Pusat Dapodik ditambahkan: template CSV, ekspor CSV, validasi dry-run, dan impor final untuk unit pendidikan, tahun ajaran, santri, guru, mata pelajaran, rombongan, anggota rombel, kurikulum, jadwal, komponen nilai, dan nilai. Template lanjutan memakai kode alami (`nis`, `unit_pendidikan_code`, `tahun_ajaran_code`, `mata_pelajaran_code`, `komponen_kode`) supaya admin tidak perlu mengisi UUID internal.
 - Nilai kelas ditambahkan: endpoint gradebook per rombongan, mata pelajaran, dan tahun ajaran; UI `Nilai Kelas` dengan tabel responsif, input massal per komponen, simpan massal, dan ekspor CSV.
+- Referensi biodata Dapodik ditambahkan: tabel `pesantren_referensi_dapodik`, seed awal, serta dataset impor/ekspor untuk pekerjaan, pendidikan, penghasilan, transportasi, jenis tinggal, dan kebutuhan khusus.
+- UI pusat Dapodik dirapikan dengan pencarian dataset dan metrik cakupan agar dataset besar tetap mudah dipindai di desktop maupun mobile.
 
 ## Prinsip UI/UX yang Dipakai
 
