@@ -22,10 +22,11 @@ git push origin pos-v1.2.0
 ```
 
 Aplikasi memeriksa pembaruan sendiri saat dibuka dan setiap enam jam, dan dapat
-diperiksa kapan saja lewat tombol **Cek pembaruan** di bilah atas. Ia
-memberitahu, lalu berhenti di situ — tidak mengunduh dan tidak memasang apa pun.
-Mengganti berkas aplikasi kasir di tengah hari kerja adalah tindakan yang harus
-dipilih manusia, pada saat yang ia pilih sendiri.
+diperiksa kapan saja lewat tombol **Cek pembaruan** di bilah atas. Ketika versi
+baru tersedia, dialog otomatis tampil satu kali untuk versi tersebut dalam satu
+sesi. Tombol **Unduh sekarang** membuka APK atau installer Windows di browser
+sistem; pembaruan biasa dapat ditunda, sedangkan rilis bertanda `[WAJIB]` tidak
+dapat ditutup dengan mengetuk area di luar dialog.
 
 ## Menjalankannya di mesin kasir
 

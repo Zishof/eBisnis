@@ -159,10 +159,9 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
      * dibiarkan menyala berhari-hari, dan cukup jarang untuk tidak menjadi
      * beban pada jaringan gerai.
      *
-     * Ia TIDAK PERNAH membuka dialog. Yang dilakukannya hanya menyalakan tanda
-     * pada tombol di bilah atas; dialognya hanya terbuka ketika kasir
-     * menekannya sendiri. Jendela yang muncul sendiri di atas layar kasir akan
-     * ditutup dengan tekanan tombol yang sedang dituju jari.
+     * Layar mengumumkan versi baru satu kali per versi dalam satu sesi. Kasir
+     * tetap dapat menunda pembaruan biasa agar transaksi yang sedang berjalan
+     * tidak terputus.
      */
     unawaited(_pembaruan.periksa());
     _jadwalPembaruan = Timer.periodic(

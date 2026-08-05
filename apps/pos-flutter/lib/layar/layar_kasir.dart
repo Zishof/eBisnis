@@ -19,8 +19,11 @@
 /// tombol mode yang harus diingat kasir.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../aturan/harga_luring.dart';
 import '../aturan/koneksi.dart';
@@ -101,6 +104,8 @@ class _LayarKasirState extends State<LayarKasir> {
   String _menu = 'kasir';
   List<ProdukLokal>? _produkUnggahan;
   final List<RiwayatPembayaranKasir> _riwayatPembayaran = [];
+  String? _versiPembaruanDitampilkan;
+  bool _dialogPembaruanTerbuka = false;
 
   bool get _apotik => widget.mode == ModeKasir.apotik;
 
@@ -120,13 +125,26 @@ class _LayarKasirState extends State<LayarKasir> {
   @override
   void initState() {
     super.initState();
+    widget.pembaruan?.addListener(_pembaruanBerubah);
     _perbaruiPelanggan();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _fokusPindai.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fokusPindai.requestFocus();
+      _pembaruanBerubah();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant LayarKasir oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pembaruan == widget.pembaruan) return;
+    oldWidget.pembaruan?.removeListener(_pembaruanBerubah);
+    widget.pembaruan?.addListener(_pembaruanBerubah);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pembaruanBerubah());
   }
 
   @override
   void dispose() {
+    widget.pembaruan?.removeListener(_pembaruanBerubah);
     _pindai.dispose();
     _catatan.dispose();
     _nomorResep.dispose();
@@ -453,6 +471,27 @@ class _LayarKasirState extends State<LayarKasir> {
 
   // --- Pembaruan ------------------------------------------------------------
 
+  void _pembaruanBerubah() {
+    final pengelola = widget.pembaruan;
+    final hasil = pengelola?.hasil;
+    if (!mounted ||
+        pengelola == null ||
+        pengelola.sedangMemeriksa ||
+        hasil == null ||
+        hasil.keadaan != KeadaanPembaruan.tersedia ||
+        _dialogPembaruanTerbuka) {
+      return;
+    }
+    final rilis = hasil.rilis;
+    if (rilis == null || _versiPembaruanDitampilkan == rilis.versi) return;
+
+    _versiPembaruanDitampilkan = rilis.versi;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _dialogPembaruanTerbuka) return;
+      unawaited(_tampilkanDialogPembaruan(hasil, otomatis: true));
+    });
+  }
+
   Future<void> _cekPembaruan() async {
     final p = widget.pembaruan;
     if (p == null) return;
@@ -463,12 +502,33 @@ class _LayarKasirState extends State<LayarKasir> {
     final h = p.hasil;
     if (h == null) return;
 
+    if (h.rilis case final rilis?) {
+      _versiPembaruanDitampilkan = rilis.versi;
+    }
+    await _tampilkanDialogPembaruan(h, otomatis: false);
+    _kembalikanFokus();
+  }
+
+  Future<void> _tampilkanDialogPembaruan(
+    HasilPeriksaPembaruan h, {
+    required bool otomatis,
+  }) async {
+    if (!mounted || _dialogPembaruanTerbuka) return;
+    _dialogPembaruanTerbuka = true;
+    final tersedia = h.keadaan == KeadaanPembaruan.tersedia;
     await showDialog<void>(
       context: context,
+      barrierDismissible: !h.wajib,
       builder: (c) => AlertDialog(
-        key: const Key('dialog-pembaruan'),
+        key: Key(otomatis ? 'dialog-pembaruan-otomatis' : 'dialog-pembaruan'),
+        icon: Icon(
+          h.wajib ? Icons.warning_amber_rounded : Icons.system_update_alt,
+          color: h.wajib ? Warna.merah : Warna.utama,
+          size: 34,
+        ),
         title: Text(switch (h.keadaan) {
-          KeadaanPembaruan.tersedia => 'Pembaruan tersedia',
+          KeadaanPembaruan.tersedia =>
+            h.wajib ? 'Pembaruan wajib tersedia' : 'Pembaruan POS tersedia',
           KeadaanPembaruan.mutakhir => 'Sudah versi terbaru',
           KeadaanPembaruan.lebihBaru => 'Versi ini lebih baru',
           KeadaanPembaruan.gagalDiperiksa => 'Tidak dapat diperiksa',
@@ -493,14 +553,6 @@ class _LayarKasirState extends State<LayarKasir> {
               ],
               if (h.rilis case final rilis?) ...[
                 const SizedBox(height: 14),
-                /*
-                 * Tautannya ditampilkan dan disalin, bukan dijalankan.
-                 *
-                 * Klien ini sengaja tidak mengunduh dan tidak memasang apa pun
-                 * sendiri: mengganti berkas aplikasi kasir di tengah hari kerja
-                 * adalah tindakan yang harus dipilih manusia, pada saat yang ia
-                 * pilih sendiri -- dan gerai umumnya memperbarui sesudah tutup.
-                 */
                 const Text('Tautan unduhan',
                     style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
@@ -518,17 +570,44 @@ class _LayarKasirState extends State<LayarKasir> {
             TextButton(
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: rilis.jalurUnduh));
-                if (c.mounted) Navigator.pop(c);
-                _kabar('Tautan unduhan disalin. Pasang sesudah gerai tutup.');
+                _kabar('Tautan unduhan disalin.');
               },
               child: const Text('Salin tautan'),
             ),
-          FilledButton(
-              onPressed: () => Navigator.pop(c), child: const Text('Tutup')),
+          if (!h.wajib)
+            TextButton(
+              key: const Key('tombol-tunda-pembaruan'),
+              onPressed: () => Navigator.pop(c),
+              child: Text(tersedia ? 'Ingatkan nanti' : 'Tutup'),
+            ),
+          if (tersedia && h.rilis != null)
+            FilledButton.icon(
+              key: const Key('tombol-unduh-pembaruan'),
+              onPressed: () async {
+                final uri = Uri.tryParse(h.rilis!.jalurUnduh);
+                final terbuka = uri != null &&
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                if (!terbuka) {
+                  await Clipboard.setData(
+                      ClipboardData(text: h.rilis!.jalurUnduh));
+                  _kabar('Browser tidak dapat dibuka. Tautan unduhan disalin.',
+                      galat: true);
+                  return;
+                }
+                if (c.mounted) Navigator.pop(c);
+              },
+              icon: const Icon(Icons.download_outlined),
+              label: const Text('Unduh sekarang'),
+            )
+          else if (h.wajib)
+            FilledButton(
+              onPressed: () => Navigator.pop(c),
+              child: const Text('Tutup'),
+            ),
         ],
       ),
     );
-    _kembalikanFokus();
+    _dialogPembaruanTerbuka = false;
   }
 
   // --- Perangkat ------------------------------------------------------------

@@ -537,6 +537,34 @@ void main() {
   });
 
   group('cek pembaruan', () {
+    testWidgets('versi baru diumumkan otomatis sekali per sesi',
+        (tester) async {
+      final p = PengelolaPembaruan(
+        sumber: SumberPembaruanPalsu(
+          const RilisTersedia(
+              versi: '9.9.9', jalurUnduh: 'https://contoh/pos.exe'),
+        ),
+        versiBerjalan: '1.0.0',
+      );
+      addTearDown(p.dispose);
+      await p.periksa();
+
+      await pasang(tester, pembaruan: p);
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(const Key('dialog-pembaruan-otomatis')), findsOneWidget);
+      expect(find.text('Pembaruan POS tersedia'), findsOneWidget);
+      expect(find.byKey(const Key('tombol-unduh-pembaruan')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('tombol-tunda-pembaruan')));
+      await tester.pumpAndSettle();
+      await p.periksa();
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('dialog-pembaruan-otomatis')), findsNothing);
+    });
+
     testWidgets('menekan tombol memeriksa dan menampilkan hasilnya',
         (tester) async {
       final p = PengelolaPembaruan(
@@ -553,10 +581,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('dialog-pembaruan')), findsOneWidget);
-      expect(find.text('Pembaruan tersedia'), findsWidgets);
-      // Tautannya ditampilkan, bukan dijalankan: mengganti berkas aplikasi kasir
-      // di tengah hari kerja adalah tindakan yang harus dipilih manusia.
+      expect(find.text('Pembaruan POS tersedia'), findsWidgets);
       expect(find.byKey(const Key('tautan-unduh')), findsOneWidget);
+      expect(find.byKey(const Key('tombol-unduh-pembaruan')), findsOneWidget);
     });
 
     testWidgets('sumber yang gagal TIDAK dilaporkan sebagai sudah terbaru',
