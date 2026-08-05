@@ -8,7 +8,7 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { rawResponse } from '../../common/interceptors/response-envelope.interceptor';
 
 type PlatformAsset = 'windows' | 'android';
-type UpdateProduct = 'pos' | 'inventory' | 'apotik';
+export type UpdateProduct = 'pos' | 'inventory' | 'apotik';
 
 interface PosAsset {
   name: string;
@@ -20,9 +20,29 @@ interface PosAsset {
 }
 
 const UPDATE_DIR = process.env.POS_UPDATE_DIR || '/opt/ebisnis/updates/pos';
-const FILE_PATTERN = /^ebisnis-pos-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)(?:-windows)?\.(exe|apk)$/;
-const INVENTORY_FILE_PATTERN = /^ebisnis-inventory-sales-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)(?:-windows)?\.(exe|apk)$/;
-const APOTIK_FILE_PATTERN = /^emedik-pos-apotik-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)(?:-windows)?\.(exe|apk)$/;
+const VERSION_PART = String.raw`(\d+\.\d+\.\d+(?:-(?!windows(?:\.|$))[0-9A-Za-z.]+)?)`;
+const FILE_PATTERN = new RegExp(`^ebisnis-pos-${VERSION_PART}(?:-windows)?\\.(exe|apk)$`);
+const INVENTORY_FILE_PATTERN = new RegExp(
+  `^ebisnis-inventory-sales-${VERSION_PART}(?:-windows)?\\.(exe|apk)$`,
+);
+const APOTIK_FILE_PATTERN = new RegExp(
+  `^emedik-pos-apotik-${VERSION_PART}(?:-windows)?\\.(exe|apk)$`,
+);
+
+export function parseUpdateAssetFilename(product: UpdateProduct, name: string) {
+  const pattern =
+    product === 'inventory'
+      ? INVENTORY_FILE_PATTERN
+      : product === 'apotik'
+        ? APOTIK_FILE_PATTERN
+        : FILE_PATTERN;
+  const match = pattern.exec(name);
+  if (!match) return null;
+  return {
+    version: match[1],
+    platform: (match[2] === 'apk' ? 'android' : 'windows') as PlatformAsset,
+  };
+}
 
 @ApiTags('public')
 @Controller('update')
@@ -225,16 +245,10 @@ export class PosUpdateController {
 
   private assets(product: UpdateProduct): PosAsset[] {
     if (!existsSync(UPDATE_DIR)) return [];
-    const pattern =
-      product === 'inventory'
-        ? INVENTORY_FILE_PATTERN
-        : product === 'apotik'
-          ? APOTIK_FILE_PATTERN
-          : FILE_PATTERN;
     return readdirSync(UPDATE_DIR)
       .map((name) => {
-        const match = pattern.exec(name);
-        if (!match) return null;
+        const parsed = parseUpdateAssetFilename(product, name);
+        if (!parsed) return null;
         const path = join(UPDATE_DIR, name);
         const stat = statSync(path);
         if (!stat.isFile()) return null;
@@ -242,8 +256,8 @@ export class PosUpdateController {
           name,
           path,
           size: stat.size,
-          platform: match[2] === 'apk' ? 'android' : 'windows',
-          version: match[1],
+          platform: parsed.platform,
+          version: parsed.version,
           product,
         } satisfies PosAsset;
       })
