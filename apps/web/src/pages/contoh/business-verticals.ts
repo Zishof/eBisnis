@@ -43,7 +43,18 @@ export type BusinessVerticalCode =
   | 'travel'
   | 'homestay'
   | 'kursus'
-  | 'daycare';
+  | 'daycare'
+  | 'bakery'
+  | 'alatkesehatan'
+  | 'tokobuku'
+  | 'florist'
+  | 'konveksi'
+  | 'furniture'
+  | 'tokomainan'
+  | 'babyshop'
+  | 'fotografi'
+  | 'weddingorganizer'
+  | 'tokoemas';
 
 export interface BusinessVertical {
   code: BusinessVerticalCode;
@@ -312,6 +323,17 @@ const EXTRA_VERTICALS: BusinessVertical[] = [
   simpleVertical('homestay', ['homestay', 'penginapan'], 'Homestay dan Penginapan', 'Booking kamar, kalender inap, housekeeping, deposit, channel order, dan laporan okupansi', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1400&q=82'),
   simpleVertical('kursus', ['kursus', 'les', 'bimbel'], 'Kursus dan Bimbel', 'Kelas, jadwal tutor, tagihan siswa, presensi, materi, dan laporan perkembangan', 'https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1400&q=82'),
   simpleVertical('daycare', ['daycare', 'paud', 'penitipananak'], 'Daycare dan PAUD', 'Pendaftaran anak, jadwal penitipan, catatan harian, tagihan, dan komunikasi orang tua', 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('bakery', ['bakery', 'toko-roti', 'tokoroti'], 'Bakery dan Toko Roti', 'Produksi roti harian, pre-order, batch, expiry, reseller, dan paket hampers', 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('alatkesehatan', ['alatkesehatan', 'alkes', 'alat-kesehatan'], 'Toko Alat Kesehatan', 'Alkes, serial number, garansi, rental alat, stok batch, dan pelanggan klinik', 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('tokobuku', ['tokobuku', 'toko-buku', 'bookstore'], 'Toko Buku', 'ISBN, kategori buku, ATK, preorder, reseller sekolah, dan stok rak', 'https://images.unsplash.com/photo-1526243741027-444d633d7365?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('florist', ['florist', 'bungaflorist', 'toko-bunga'], 'Florist dan Toko Bunga', 'Katalog rangkaian, pre-order, pengiriman, kartu ucapan, dan stok bunga segar', 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('konveksi', ['konveksi', 'tailor', 'jahit'], 'Konveksi dan Jahit', 'Order produksi, ukuran, bahan, cutting, finishing, termin, dan margin pesanan', 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('furniture', ['furniture', 'meubel', 'mebel'], 'Furniture dan Mebel', 'Katalog produk, order custom, bahan, produksi, pengiriman, dan termin proyek', 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('tokomainan', ['tokomainan', 'toko-mainan'], 'Toko Mainan', 'Barcode, kategori usia, bundling, stok rak, promo musiman, dan reseller', 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('babyshop', ['babyshop', 'baby-shop', 'perlengkapanbayi'], 'Baby Shop', 'Perlengkapan bayi, size, warna, membership keluarga, dan stok expiry', 'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('fotografi', ['fotografi', 'photo-studio', 'studiofoto'], 'Studio Foto dan Fotografi', 'Booking sesi, paket cetak, retouch, album, pembayaran termin, dan arsip pelanggan', 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('weddingorganizer', ['weddingorganizer', 'wedding-organizer', 'wo'], 'Wedding Organizer', 'Paket acara, vendor, rundown, termin, tugas tim, dan laporan margin event', 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('tokoemas', ['tokoemas', 'toko-emas'], 'Toko Emas dan Perhiasan', 'Kadar, berat, sertifikat, buyback, stok etalase, dan laporan margin per item', 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=1400&q=82'),
 ];
 
 export const ALL_BUSINESS_VERTICALS = [...BUSINESS_VERTICALS, ...EXTRA_VERTICALS];
