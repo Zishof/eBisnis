@@ -103,7 +103,7 @@ const DOKUMEN_DEMO = [
   { label: 'PKS', href: '/pks', icon: FileSignature },
 ];
 
-const DOMAIN_CONTOH_USAHA: Record<string, string> = {
+export const DOMAIN_CONTOH_USAHA: Record<string, string> = {
   Demo: 'demo.ebisnis.id',
   Barbershop: 'barbershop.ebisnis.id',
   Salon: 'salon.ebisnis.id',
@@ -167,7 +167,7 @@ const DOMAIN_CONTOH_USAHA: Record<string, string> = {
   'Toko Emas dan Perhiasan': 'tokoemas.ebisnis.id',
 };
 
-const CONTOH_USAHA = [
+export const CONTOH_USAHA = [
   {
     label: 'Demo',
     detail: 'Pedagang UMKM',
@@ -1352,7 +1352,7 @@ function ContohUsahaGrid() {
   );
 }
 
-function tautanWebsiteContohUsaha(item: (typeof CONTOH_USAHA)[number]): string {
+export function tautanWebsiteContohUsaha(item: (typeof CONTOH_USAHA)[number]): string {
   const domain = DOMAIN_CONTOH_USAHA[item.label];
   return domain ? `https://${domain}` : item.href;
 }
