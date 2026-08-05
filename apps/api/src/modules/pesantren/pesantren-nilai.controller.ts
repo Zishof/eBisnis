@@ -208,6 +208,18 @@ export class PesantrenNilaiController {
   }
 
   @Permissions('EPESANTREN_NILAI.READ')
+  @Get('leger/:tahunAjaranId/nasional')
+  @ApiOperation({ summary: 'Leger nilai detail per mapel untuk format nasional DAPODIK/EMIS' })
+  legerNasional(
+    @Param('tahunAjaranId') tahunAjaranId: string,
+    @Query('standar') standar: 'DAPODIK' | 'EMIS' | undefined,
+    @Query('rombonganId') rombonganId: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.nilai.legerNasional(schemaWajib(user), tahunAjaranId, standar === 'EMIS' ? 'EMIS' : 'DAPODIK', rombonganId);
+  }
+
+  @Permissions('EPESANTREN_NILAI.READ')
   @Get('rapor/:santriId/:tahunAjaranId/finalisasi')
   @ApiOperation({ summary: 'Status finalisasi rapor aktif satu santri/tahun ajaran' })
   finalisasiAktif(
