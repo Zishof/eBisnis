@@ -7,7 +7,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 class AplikasiInventory extends StatefulWidget {
-  const AplikasiInventory({super.key});
+  const AplikasiInventory({
+    super.key,
+    this.initialPersona,
+    this.initialCatalog,
+  });
+
+  final PersonaInventory? initialPersona;
+  final InventoryCatalog? initialCatalog;
 
   @override
   State<AplikasiInventory> createState() => _AplikasiInventoryState();
@@ -16,6 +23,12 @@ class AplikasiInventory extends StatefulWidget {
 class _AplikasiInventoryState extends State<AplikasiInventory> {
   final _client = InventoryApiClient.fromEnvironment();
   PersonaInventory? _persona;
+
+  @override
+  void initState() {
+    super.initState();
+    _persona = widget.initialPersona;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +51,7 @@ class _AplikasiInventoryState extends State<AplikasiInventory> {
           : InventoryHomePage(
               client: _client,
               persona: _persona!,
+              initialCatalog: widget.initialCatalog,
               onKeluar: () => setState(() => _persona = null),
             ),
     );
@@ -141,11 +155,13 @@ class InventoryHomePage extends StatefulWidget {
     required this.client,
     required this.persona,
     required this.onKeluar,
+    this.initialCatalog,
   });
 
   final InventoryApiClient client;
   final PersonaInventory persona;
   final VoidCallback onKeluar;
+  final InventoryCatalog? initialCatalog;
 
   @override
   State<InventoryHomePage> createState() => _InventoryHomePageState();
@@ -273,6 +289,9 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                               runSpacing: 10,
                               children: [
                                 _Pill('Raw rows', angka(data.rawRecords)),
+                                _Pill('HPP bulan', rupiah(data.cogsMonth)),
+                                _Pill('Laba kotor',
+                                    rupiah(data.grossProfitMonth)),
                                 _Pill('Piutang', rupiah(data.receivableAmount)),
                                 _Pill('Hutang', rupiah(data.payableAmount)),
                                 _Pill('PO legacy', angka(data.purchaseOrders)),
@@ -299,7 +318,11 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                             ),
                           ),
                         ] else if (_tab == 1)
-                          _SalesOrderDraftPage(persona: widget.persona)
+                          _SalesOrderDraftPage(
+                            persona: widget.persona,
+                            client: widget.client,
+                            initialCatalog: widget.initialCatalog,
+                          )
                         else if (_tab == 2)
                           const _InventoryFeaturePage()
                         else
@@ -317,19 +340,35 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
 }
 
 class _SalesOrderDraftPage extends StatefulWidget {
-  const _SalesOrderDraftPage({required this.persona});
+  const _SalesOrderDraftPage({
+    required this.persona,
+    required this.client,
+    this.initialCatalog,
+  });
   final PersonaInventory persona;
+  final InventoryApiClient client;
+  final InventoryCatalog? initialCatalog;
 
   @override
   State<_SalesOrderDraftPage> createState() => _SalesOrderDraftPageState();
 }
 
 class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
-  String _customer = demoInventoryCustomers.first;
+  late Future<InventoryCatalog> _catalog;
+  String? _customerId;
   final Map<String, int> _qty = {};
   String? _savedMessage;
+  bool _saving = false;
 
-  double get _total => demoInventoryProducts.fold(
+  @override
+  void initState() {
+    super.initState();
+    _catalog = widget.initialCatalog == null
+        ? widget.client.catalog()
+        : Future.value(widget.initialCatalog!);
+  }
+
+  double _total(List<InventoryProductDemo> products) => products.fold(
         0,
         (sum, product) => sum + (_qty[product.code] ?? 0) * product.price,
       );
@@ -347,17 +386,60 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
     });
   }
 
-  void _saveDraft() {
-    if (_lineCount == 0) return;
+  Future<void> _saveOrder(InventoryCatalog catalog) async {
+    if (_lineCount == 0 || _customerId == null) return;
     setState(() {
-      _savedMessage =
-          'Draft order ${DateTime.now().millisecondsSinceEpoch.toString().substring(7)} tersimpan lokal untuk $_customer.';
-      _qty.clear();
+      _saving = true;
+      _savedMessage = null;
     });
+    try {
+      final order = await widget.client.createOrder(
+        customerId: _customerId!,
+        lines: catalog.products
+            .where((product) => (_qty[product.code] ?? 0) > 0)
+            .map((product) => {
+                  'productId': product.id,
+                  'uomId': product.uomId,
+                  'qty': _qty[product.code],
+                })
+            .toList(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _savedMessage = 'Order ${order['order_number']} berhasil dikirim.';
+        _qty.clear();
+      });
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() => _savedMessage = 'Order belum terkirim: $error');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<InventoryCatalog>(
+      future: _catalog,
+      builder: (context, state) {
+        if (state.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state.hasError || state.data == null) {
+          return _ErrorPanel(
+            message: state.error.toString(),
+            onRetry: () => setState(() => _catalog = widget.client.catalog()),
+          );
+        }
+        final catalog = state.data!;
+        _customerId ??=
+            catalog.customers.isEmpty ? null : catalog.customers.first.id;
+        return _buildOrder(context, catalog);
+      },
+    );
+  }
+
+  Widget _buildOrder(BuildContext context, InventoryCatalog catalog) {
     return LayoutBuilder(
       builder: (context, box) {
         final wide = box.maxWidth >= 880;
@@ -368,21 +450,21 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<String>(
-                value: _customer,
+                value: _customerId,
                 decoration: const InputDecoration(labelText: 'Customer'),
-                items: demoInventoryCustomers
-                    .map((name) =>
-                        DropdownMenuItem(value: name, child: Text(name)))
+                items: catalog.customers
+                    .map((customer) => DropdownMenuItem(
+                        value: customer.id, child: Text(customer.name)))
                     .toList(),
                 onChanged: (value) {
-                  if (value != null) setState(() => _customer = value);
+                  if (value != null) setState(() => _customerId = value);
                 },
               ),
               const SizedBox(height: 12),
               Text('Sales: ${widget.persona.label}',
                   style: Theme.of(context).textTheme.labelLarge),
               const SizedBox(height: 12),
-              ...demoInventoryProducts.map((product) => _ProductQtyTile(
+              ...catalog.products.take(100).map((product) => _ProductQtyTile(
                     product: product,
                     qty: _qty[product.code] ?? 0,
                     onChanged: (value) => _setQty(product.code, value),
@@ -396,18 +478,23 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _SummaryLine('Customer', _customer),
+              _SummaryLine('Customer', _customerName(catalog.customers)),
               _SummaryLine('Item', '$_lineCount baris'),
-              _SummaryLine('Total', rupiah(_total), strong: true),
+              _SummaryLine('Total', rupiah(_total(catalog.products)),
+                  strong: true),
               const SizedBox(height: 12),
               FilledButton.icon(
-                onPressed: _lineCount == 0 ? null : _saveDraft,
-                icon: const Icon(Icons.save_outlined),
-                label: const Text('Simpan Draft Lokal'),
+                onPressed: _lineCount == 0 || _customerId == null || _saving
+                    ? null
+                    : () => _saveOrder(catalog),
+                icon: Icon(_saving
+                    ? Icons.sync_outlined
+                    : Icons.cloud_upload_outlined),
+                label: Text(_saving ? 'Mengirim...' : 'Kirim Order'),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Draft lokal ini untuk uji alur sales. Saat endpoint create order aktif, tombol ini akan mengirim order ke server.',
+                'Setiap kiriman memakai event id unik. Pengiriman ulang tidak membuat order ganda.',
                 style: TextStyle(color: Color(0xFF64748B), height: 1.45),
               ),
               if (_savedMessage != null) ...[
@@ -435,6 +522,13 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
       },
     );
   }
+
+  String _customerName(List<InventoryCustomer> customers) {
+    for (final customer in customers) {
+      if (customer.id == _customerId) return customer.name;
+    }
+    return '-';
+  }
 }
 
 class _InventoryReportPage extends StatelessWidget {
@@ -451,6 +545,9 @@ class _InventoryReportPage extends StatelessWidget {
           child: Column(
             children: [
               _SummaryLine('Omzet bulan ini', rupiah(snapshot.revenueMonth),
+                  strong: true),
+              _SummaryLine('HPP bulan ini', rupiah(snapshot.cogsMonth)),
+              _SummaryLine('Laba kotor', rupiah(snapshot.grossProfitMonth),
                   strong: true),
               _SummaryLine('Order bulan ini', angka(snapshot.ordersMonth)),
               _SummaryLine('Piutang legacy', rupiah(snapshot.receivableAmount)),
@@ -487,61 +584,146 @@ class _InventoryFeaturePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final groups = [
       (
-        'Master Relasi',
-        'Data pokok dari aplikasi lama dibuat siap kerja untuk distribusi obat.',
+        'Master relasi (8 layar)',
+        'Supplier, customer, sales, termasuk daftar aktif dan lunas.',
         Icons.hub_outlined,
         const [
-          _FeatureItem('Supplier', 'Pemasok, tempo bayar, kontak, dan bank.',
+          _FeatureItem('Data supplier', 'Identitas, tempo, bank, dan kontak.',
               Icons.local_shipping_outlined),
+          _FeatureItem('Supplier terbuka', 'Saldo dan dokumen belum lunas.',
+              Icons.pending_actions_outlined),
           _FeatureItem(
-              'Customer',
-              'Apotek, klinik, toko obat, plafon, wilayah.',
+              'Supplier lunas',
+              'Arsip transaksi yang sudah diselesaikan.',
+              Icons.task_alt_outlined),
+          _FeatureItem('Data customer', 'Wilayah, tempo, kontak, dan plafon.',
               Icons.storefront_outlined),
-          _FeatureItem('Sales', 'Masrukin, Tohirin, Nofal, Agung dan target.',
+          _FeatureItem('Customer terbuka', 'Piutang aktif dan jatuh tempo.',
+              Icons.account_balance_wallet_outlined),
+          _FeatureItem('Customer lunas', 'Riwayat pembayaran customer.',
+              Icons.verified_outlined),
+          _FeatureItem('Data sales', 'Akun, wilayah, dan mapping sales.',
               Icons.badge_outlined),
+          _FeatureItem('Daftar sales', 'Kinerja dan status akun lapangan.',
+              Icons.groups_outlined),
         ],
       ),
       (
-        'Obat dan Harga',
-        'Katalog farmasi mengutamakan stok, batch, expiry, dan aturan harga.',
+        'Stok dan harga (11 layar)',
+        'Katalog obat, opname, harga jual/beli, cetak, dan ekspor.',
         Icons.medication_outlined,
         const [
-          _FeatureItem('Stok Barang', 'SKU, satuan, stok minimum, batch, ED.',
+          _FeatureItem('Daftar stok', 'Awal, masuk, keluar, akhir, batch, ED.',
               Icons.inventory_2_outlined),
-          _FeatureItem('Master Harga',
-              'Harga beli, jual, riwayat harga customer.', Icons.sell_outlined),
+          _FeatureItem('Laporan opname', 'Stok sistem, fisik, selisih, nilai.',
+              Icons.fact_check_outlined),
+          _FeatureItem('Cetak opname', 'Bukti pemeriksaan stok fisik.',
+              Icons.print_outlined),
+          _FeatureItem('Analisis harga', 'Harga beli, jual, dan margin nyata.',
+              Icons.query_stats_outlined),
+          _FeatureItem('Pilih harga', 'Filter stok ada, nol, dan semua.',
+              Icons.filter_alt_outlined),
+          _FeatureItem('Cetak harga jual', 'Daftar harga tunai dan kredit.',
+              Icons.print_outlined),
+          _FeatureItem('Ekspor harga/stok', 'Excel untuk pemeriksaan lapangan.',
+              Icons.file_download_outlined),
+          _FeatureItem('Cetak stok', 'Laporan nilai dan jumlah stok.',
+              Icons.print_outlined),
+          _FeatureItem('Pratinjau stok', 'Preview sebelum cetak/PDF.',
+              Icons.preview_outlined),
           _FeatureItem(
-              'Re-index Data',
-              'Pemeriksaan indeks dan kualitas import.',
-              Icons.manage_search_outlined),
+              'Master harga', 'Riwayat harga per mitra.', Icons.sell_outlined),
+          _FeatureItem('Harga khusus mitra', 'Harga customer dan supplier.',
+              Icons.price_check_outlined),
         ],
       ),
       (
-        'Transaksi',
-        'Alur lapangan dibuat cepat untuk sales, rapi untuk admin, jelas untuk pemilik.',
-        Icons.receipt_long_outlined,
+        'Pembelian dan hutang (10 layar)',
+        'Pembelian, hutang supplier, pembayaran, aging, dan laporan.',
+        Icons.add_business_outlined,
         const [
-          _FeatureItem('Pembelian', 'PO, penerimaan, supplier invoice, hutang.',
-              Icons.add_business_outlined),
           _FeatureItem(
-              'Penjualan',
-              'Order sales, invoice, status kirim, piutang.',
-              Icons.point_of_sale_outlined),
-          _FeatureItem('Kas', 'Penerimaan tagihan, setoran, dan rekonsiliasi.',
-              Icons.account_balance_wallet_outlined),
+              'Transaksi pembelian',
+              'Faktur, batch, ED, diskon, dan total.',
+              Icons.shopping_cart_checkout_outlined),
+          _FeatureItem('Daftar hutang', 'Dokumen hutang menurut supplier.',
+              Icons.account_balance_outlined),
+          _FeatureItem('Hutang supplier', 'Rincian faktur dan jatuh tempo.',
+              Icons.receipt_long_outlined),
+          _FeatureItem('Hutang lunas', 'Tampilkan arsip yang diselesaikan.',
+              Icons.task_alt_outlined),
+          _FeatureItem('Pembayaran hutang', 'Tunai, giro, transfer, retur.',
+              Icons.payments_outlined),
+          _FeatureItem('Riwayat pembayaran', 'Jejak pembayaran per faktur.',
+              Icons.history_outlined),
+          _FeatureItem('Cetak pembayaran', 'Bukti pembayaran supplier.',
+              Icons.print_outlined),
+          _FeatureItem(
+              'Aging hutang',
+              'Belum jatuh tempo hingga lebih 90 hari.',
+              Icons.timelapse_outlined),
+          _FeatureItem('Cetak faktur beli', 'Dokumen pembelian terkontrol.',
+              Icons.print_outlined),
+          _FeatureItem('Laporan periode', 'Rekap per supplier dan barang.',
+              Icons.assessment_outlined),
         ],
       ),
       (
-        'Kontrol Pemilik',
-        'Laporan dan proses akhir untuk menjaga data akuntabel.',
+        'Penjualan dan piutang (13 layar)',
+        'Order sales, piutang, penerimaan, nota dibawa, dan laporan.',
+        Icons.point_of_sale_outlined,
+        const [
+          _FeatureItem(
+              'Transaksi penjualan',
+              'Customer, produk, harga, dan faktur.',
+              Icons.shopping_bag_outlined),
+          _FeatureItem('Daftar piutang', 'Dokumen piutang customer.',
+              Icons.wallet_outlined),
+          _FeatureItem('Piutang customer', 'Rincian faktur dan saldo.',
+              Icons.receipt_long_outlined),
+          _FeatureItem('Piutang lunas', 'Arsip transaksi selesai.',
+              Icons.task_alt_outlined),
+          _FeatureItem('Penerimaan piutang', 'Tunai, giro, transfer, retur.',
+              Icons.payments_outlined),
+          _FeatureItem('Riwayat penerimaan', 'Jejak penerimaan per faktur.',
+              Icons.history_outlined),
+          _FeatureItem('Cetak penerimaan', 'Bukti penerimaan customer.',
+              Icons.print_outlined),
+          _FeatureItem('Analisis customer', 'Aging dan prioritas penagihan.',
+              Icons.person_search_outlined),
+          _FeatureItem('Analisis sales',
+              'Piutang dan kolektibilitas per sales.', Icons.groups_outlined),
+          _FeatureItem('Sales bawa nota', 'Serah-terima nota untuk ditagih.',
+              Icons.assignment_ind_outlined),
+          _FeatureItem('Cetak serah-terima', 'Daftar nota yang dibawa sales.',
+              Icons.print_outlined),
+          _FeatureItem('Laporan piutang', 'Rekap piutang dan penerimaan.',
+              Icons.assessment_outlined),
+          _FeatureItem('Cetak laporan', 'PDF/print dengan jejak cetak.',
+              Icons.print_outlined),
+        ],
+      ),
+      (
+        'Keuangan dan periode (6 layar)',
+        'Jurnal, akun, laba kotor nyata, laporan, dan tutup periode.',
         Icons.admin_panel_settings_outlined,
         const [
-          _FeatureItem('Laba / Rugi', 'Omzet, HPP, margin, piutang, hutang.',
+          _FeatureItem('Kas dan jurnal', 'Jurnal harian debit/kredit.',
+              Icons.account_balance_wallet_outlined),
+          _FeatureItem('Akun perkiraan', 'COA 1xx sampai 6xx.',
+              Icons.account_tree_outlined),
+          _FeatureItem('Laba/rugi', 'Omzet, HPP snapshot, dan laba kotor.',
               Icons.query_stats_outlined),
-          _FeatureItem('Proses Akhir', 'Tutup hari, audit transaksi, backup.',
-              Icons.task_alt_outlined),
-          _FeatureItem('Ganti Password', 'Keamanan akun per peran pengguna.',
-              Icons.lock_reset_outlined),
+          _FeatureItem('Cetak laba kotor', 'Rincian barang, customer, sales.',
+              Icons.print_outlined),
+          _FeatureItem(
+              'Laporan laba/rugi',
+              'Analisis periode tanpa margin rekaan.',
+              Icons.analytics_outlined),
+          _FeatureItem(
+              'Proses akhir periode',
+              'Snapshot, backup, approval, audit.',
+              Icons.event_available_outlined),
         ],
       ),
     ];
@@ -558,31 +740,15 @@ class _InventoryFeaturePage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        LayoutBuilder(
-          builder: (context, box) {
-            final cols = box.maxWidth > 980
-                ? 2
-                : box.maxWidth > 620
-                    ? 2
-                    : 1;
-            return GridView.count(
-              crossAxisCount: cols,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: cols == 1 ? 0.95 : 0.78,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              children: groups
-                  .map((group) => _FeatureGroupCard(
-                        title: group.$1,
-                        subtitle: group.$2,
-                        icon: group.$3,
-                        items: group.$4,
-                      ))
-                  .toList(),
-            );
-          },
-        ),
+        ...groups.map((group) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _FeatureGroupCard(
+                title: group.$1,
+                subtitle: group.$2,
+                icon: group.$3,
+                items: group.$4,
+              ),
+            )),
       ],
     );
   }
@@ -606,45 +772,15 @@ class _FeatureGroupCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE6FFFB),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(icon, color: const Color(0xFF0F766E)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: const TextStyle(
-                              fontSize: 17, fontWeight: FontWeight.w900)),
-                      Text(subtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Color(0xFF64748B), height: 1.35)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            ...items.map((item) => _FeatureRow(item: item)),
-          ],
-        ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: ExpansionTile(
+        leading: Icon(icon, color: const Color(0xFF0F766E)),
+        title: Text(title,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+        subtitle: Text(subtitle,
+            style: const TextStyle(color: Color(0xFF64748B), height: 1.35)),
+        childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+        children: items.map((item) => _FeatureRow(item: item)).toList(),
       ),
     );
   }
@@ -689,27 +825,58 @@ class _FeatureRow extends StatelessWidget {
 }
 
 class InventoryProductDemo {
-  const InventoryProductDemo(this.code, this.name, this.price, this.stock);
+  const InventoryProductDemo({
+    required this.id,
+    required this.uomId,
+    required this.code,
+    required this.name,
+    required this.price,
+    required this.stock,
+  });
+  final String id;
+  final String uomId;
   final String code;
   final String name;
   final double price;
   final int stock;
 }
 
-const demoInventoryCustomers = [
-  'Apotek Sehat Waras',
-  'Klinik Barokah',
-  'Toko Obat Sumber Urip',
-  'Praktik dr. Lestari',
-];
+class InventoryCustomer {
+  const InventoryCustomer(this.id, this.code, this.name);
+  final String id;
+  final String code;
+  final String name;
+}
 
-const demoInventoryProducts = [
-  InventoryProductDemo('OBT-0241', 'Amoxicillin 500 mg', 18500, 128),
-  InventoryProductDemo('OBT-0187', 'Paracetamol 500 mg', 7200, 420),
-  InventoryProductDemo('OBT-0310', 'Cefixime 100 mg', 34500, 84),
-  InventoryProductDemo('OBT-0074', 'Cetirizine 10 mg', 9800, 210),
-  InventoryProductDemo('ALK-0042', 'Masker medis 50 pcs', 32500, 96),
-];
+class InventoryCatalog {
+  const InventoryCatalog({required this.customers, required this.products});
+  final List<InventoryCustomer> customers;
+  final List<InventoryProductDemo> products;
+
+  factory InventoryCatalog.fromApi(Map<String, Object?> data) {
+    return InventoryCatalog(
+      customers: ((data['customers'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => InventoryCustomer(
+                (row['id'] ?? '').toString(),
+                (row['code'] ?? '').toString(),
+                (row['name'] ?? '').toString(),
+              ))
+          .toList(),
+      products: ((data['products'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => InventoryProductDemo(
+                id: (row['id'] ?? '').toString(),
+                uomId: (row['uom_id'] ?? '').toString(),
+                code: (row['code'] ?? '').toString(),
+                name: (row['name'] ?? '').toString(),
+                price: toDouble(row['price']),
+                stock: toInt(row['available_qty']),
+              ))
+          .toList(),
+    );
+  }
+}
 
 class _ProductQtyTile extends StatelessWidget {
   const _ProductQtyTile({
@@ -823,31 +990,28 @@ class InventoryApiClient {
     required String username,
     required String password,
   }) async {
-    final preset = akunInventory.firstWhere(
-      (p) => p.username == username && p.password == password,
+    final data = await _request<Map<String, Object?>>(
+      'POST',
+      '/auth/login',
+      body: {
+        'username': username,
+        'password': password,
+        'tenantCode': tenantCode
+      },
+      withoutToken: true,
+    );
+    _token = data['accessToken'] as String?;
+    if (_token == null || _token!.isEmpty) {
+      throw const InventoryApiException('Token login tidak diterima.');
+    }
+    return akunInventory.firstWhere(
+      (p) => p.username == username,
       orElse: () => PersonaInventory(
         username: username,
-        password: password,
         label: username,
         role: 'Sales',
       ),
     );
-    try {
-      final data = await _request<Map<String, Object?>>(
-        'POST',
-        '/auth/login',
-        body: {
-          'username': username,
-          'password': password,
-          'tenantCode': tenantCode
-        },
-        withoutToken: true,
-      );
-      _token = data['accessToken'] as String?;
-      return preset;
-    } on Object {
-      return preset;
-    }
   }
 
   Future<InventorySnapshot> snapshot() async {
@@ -857,6 +1021,32 @@ class InventoryApiClient {
     final reconciliation = await _request<Map<String, Object?>>(
         'GET', '/inventory/legacy-import-reconciliation');
     return InventorySnapshot.fromApi(dashboard, reconciliation);
+  }
+
+  Future<InventoryCatalog> catalog() async {
+    if (_token == null) {
+      throw const InventoryApiException('Silakan masuk kembali.');
+    }
+    final data = await _request<Map<String, Object?>>(
+        'GET', '/inventory/mobile-catalog');
+    return InventoryCatalog.fromApi(data);
+  }
+
+  Future<Map<String, Object?>> createOrder({
+    required String customerId,
+    required List<Map<String, Object?>> lines,
+  }) {
+    final eventId =
+        '${tenantCode}_${DateTime.now().microsecondsSinceEpoch}_${lines.length}';
+    return _request<Map<String, Object?>>(
+      'POST',
+      '/inventory/mobile-orders',
+      body: {
+        'deviceEventId': eventId,
+        'customerId': customerId,
+        'lines': lines,
+      },
+    );
   }
 
   Future<T> _request<T extends Object?>(
@@ -903,48 +1093,30 @@ class InventoryApiException implements Exception {
 class PersonaInventory {
   const PersonaInventory({
     required this.username,
-    required this.password,
     required this.label,
     required this.role,
   });
 
   final String username;
-  final String password;
   final String label;
   final String role;
 }
 
 const akunInventory = [
-  PersonaInventory(
-      username: 'muklis',
-      password: 'muklis123!!',
-      label: 'Muklis',
-      role: 'Pemilik'),
-  PersonaInventory(
-      username: 'masrukin',
-      password: 'masrukin123!!',
-      label: 'Masrukin',
-      role: 'Sales'),
-  PersonaInventory(
-      username: 'tohirin',
-      password: 'tohirin123!!',
-      label: 'Tohirin',
-      role: 'Sales'),
-  PersonaInventory(
-      username: 'nofal', password: 'nofal123!!', label: 'Nofal', role: 'Sales'),
-  PersonaInventory(
-      username: 'agung', password: 'agung123!!', label: 'Agung', role: 'Sales'),
-  PersonaInventory(
-      username: 'cmnmedika',
-      password: 'cmnmedika123!!',
-      label: 'Admin CMN',
-      role: 'Admin'),
+  PersonaInventory(username: 'muklis', label: 'Muklis', role: 'Pemilik'),
+  PersonaInventory(username: 'masrukin', label: 'Masrukin', role: 'Sales'),
+  PersonaInventory(username: 'tohirin', label: 'Tohirin', role: 'Sales'),
+  PersonaInventory(username: 'nofal', label: 'Nofal', role: 'Sales'),
+  PersonaInventory(username: 'agung', label: 'Agung', role: 'Sales'),
+  PersonaInventory(username: 'cmnmedika', label: 'Admin CMN', role: 'Admin'),
 ];
 
 class InventorySnapshot {
   const InventorySnapshot({
     required this.revenueToday,
     required this.revenueMonth,
+    required this.cogsMonth,
+    required this.grossProfitMonth,
     required this.ordersMonth,
     required this.products,
     required this.customers,
@@ -962,6 +1134,8 @@ class InventorySnapshot {
   factory InventorySnapshot.demo() => const InventorySnapshot(
         revenueToday: 16850000,
         revenueMonth: 238475000,
+        cogsMonth: 196425000,
+        grossProfitMonth: 42050000,
         ordersMonth: 428,
         products: 626,
         customers: 334,
@@ -998,6 +1172,8 @@ class InventorySnapshot {
     return InventorySnapshot(
       revenueToday: toDouble(summary['revenue_today']),
       revenueMonth: toDouble(summary['revenue_month']),
+      cogsMonth: toDouble(summary['cogs_month']),
+      grossProfitMonth: toDouble(summary['gross_profit_month']),
       ordersMonth: toInt(summary['orders_month']),
       products: toInt(summary['products']),
       customers: toInt(summary['customers']),
@@ -1038,6 +1214,8 @@ class InventorySnapshot {
 
   final double revenueToday;
   final double revenueMonth;
+  final double cogsMonth;
+  final double grossProfitMonth;
   final int ordersMonth;
   final int products;
   final int customers;
@@ -1343,6 +1521,7 @@ class _KpiGrid extends StatelessWidget {
         Icons.payments_outlined
       ),
       ('Omzet bulan ini', rupiah(snapshot.revenueMonth), Icons.trending_up),
+      ('Laba kotor', rupiah(snapshot.grossProfitMonth), Icons.query_stats),
       (
         'Order bulan ini',
         angka(snapshot.ordersMonth),

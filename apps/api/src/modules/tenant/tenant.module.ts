@@ -11,16 +11,18 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -53,6 +55,79 @@ class DeleteReasonDto {
   @IsNotEmpty()
   @MaxLength(500)
   reason!: string;
+}
+
+class MobileSalesOrderLineDto {
+  @ApiProperty()
+  @IsUUID()
+  productId!: string;
+
+  @ApiProperty()
+  @IsUUID()
+  uomId!: string;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.000001)
+  qty!: number;
+}
+
+class CreateMobileSalesOrderDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(160)
+  deviceEventId!: string;
+
+  @ApiProperty()
+  @IsUUID()
+  customerId!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  deliveryDate?: string;
+
+  @ApiProperty({ type: [MobileSalesOrderLineDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MobileSalesOrderLineDto)
+  lines!: MobileSalesOrderLineDto[];
+}
+
+class InventoryLegacyQueryDto {
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @ApiPropertyOptional({ default: 200, maximum: 1000 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(1000)
+  pageSize = 200;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  search?: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true' || value === '1')
+  @IsBoolean()
+  includeSettled = false;
+
+  get skip(): number {
+    return (this.page - 1) * this.pageSize;
+  }
 }
 
 class RequestOrderLineDto {
@@ -1360,6 +1435,16 @@ export class ErpController {
              (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE order_date = CURRENT_DATE) AS revenue_today,
              (SELECT count(*)::int FROM ${S}.sales_order WHERE order_date >= date_trunc('month', CURRENT_DATE)::date) AS orders_month,
              (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE order_date >= date_trunc('month', CURRENT_DATE)::date) AS revenue_month,
+             (SELECT COALESCE(sum(sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost)), 0)::text
+                FROM ${S}.sales_order_line sol
+                JOIN ${S}.sales_order so ON so.id = sol.sales_order_id
+                JOIN ${S}.product p ON p.id = sol.product_id
+               WHERE so.order_date >= date_trunc('month', CURRENT_DATE)::date) AS cogs_month,
+             (SELECT COALESCE(sum(sol.line_total - (sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost))), 0)::text
+                FROM ${S}.sales_order_line sol
+                JOIN ${S}.sales_order so ON so.id = sol.sales_order_id
+                JOIN ${S}.product p ON p.id = sol.product_id
+               WHERE so.order_date >= date_trunc('month', CURRENT_DATE)::date) AS gross_profit_month,
              (SELECT COALESCE(sum(on_hand_qty), 0)::text FROM ${S}.stock_balance) AS on_hand_qty,
              (SELECT COALESCE(sum(available_qty), 0)::text FROM ${S}.stock_balance) AS available_qty,
              (SELECT count(*)::int FROM ${S}.inventory_lot WHERE expiry_date < CURRENT_DATE AND deleted_at IS NULL) AS expired_lots,
@@ -1368,20 +1453,26 @@ export class ErpController {
         this.inventoryQuery(
           ctx,
           `SELECT COALESCE(us.name, us.username_snapshot, 'Tanpa sales') AS sales_name,
-                  count(so.id)::int AS orders,
-                  COALESCE(sum(so.grand_total), 0)::text AS revenue
+                  count(DISTINCT so.id)::int AS orders,
+                  COALESCE(sum(sol.line_total), 0)::text AS revenue,
+                  COALESCE(sum(sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost)), 0)::text AS cogs,
+                  COALESCE(sum(sol.line_total - (sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost))), 0)::text AS gross_profit
              FROM ${S}.sales_order so
+             JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
+             JOIN ${S}.product p ON p.id = sol.product_id
              LEFT JOIN ${S}.user_subject us ON us.id = so.created_by
             WHERE so.order_date >= date_trunc('month', CURRENT_DATE)::date
             GROUP BY us.name, us.username_snapshot
-            ORDER BY COALESCE(sum(so.grand_total), 0) DESC
+            ORDER BY COALESCE(sum(sol.line_total), 0) DESC
             LIMIT 8`,
         ),
         this.inventoryQuery(
           ctx,
           `SELECT p.code AS product_code, p.name AS product_name,
                   COALESCE(sum(sol.ordered_qty), 0)::text AS qty,
-                  COALESCE(sum(sol.line_total), 0)::text AS revenue
+                  COALESCE(sum(sol.line_total), 0)::text AS revenue,
+                  COALESCE(sum(sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost)), 0)::text AS cogs,
+                  COALESCE(sum(sol.line_total - (sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost))), 0)::text AS gross_profit
              FROM ${S}.sales_order_line sol
              JOIN ${S}.sales_order so ON so.id = sol.sales_order_id
              JOIN ${S}.product p ON p.id = sol.product_id
@@ -1433,6 +1524,230 @@ export class ErpController {
       topCustomers,
       expiringLots,
       recentOrders,
+    };
+  }
+
+  @Get('inventory/mobile-catalog')
+  @Permissions('SALES_ORDER.READ')
+  @ApiOperation({ summary: 'Katalog ringkas customer dan produk untuk klien Flutter sales' })
+  async mobileInventoryCatalog(
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const [customers, products] = await Promise.all([
+      this.inventoryQuery(
+        ctx,
+        `SELECT id::text, code, name
+           FROM ${S}.customer
+          WHERE deleted_at IS NULL AND is_active
+          ORDER BY name
+          LIMIT 1000`,
+      ),
+      this.inventoryQuery(
+        ctx,
+        `SELECT p.id::text, p.code, p.name, p.base_uom_id::text AS uom_id,
+                p.default_sale_price::text AS price,
+                COALESCE(sum(sb.available_qty), 0)::text AS available_qty
+           FROM ${S}.product p
+           LEFT JOIN ${S}.stock_balance sb ON sb.product_id = p.id
+          WHERE p.deleted_at IS NULL AND p.is_active AND p.is_sellable
+          GROUP BY p.id
+          ORDER BY p.name
+          LIMIT 1000`,
+      ),
+    ]);
+    return { customers, products };
+  }
+
+  @Get('inventory/master-data')
+  @Permissions('SALES.READ')
+  @ApiOperation({ summary: 'Master produk, customer, dan supplier lengkap untuk workspace Inventory web' })
+  async inventoryMasterData(
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const [products, customers, suppliers] = await Promise.all([
+      this.inventoryQuery(
+        ctx,
+        `SELECT id::text, code, name, is_active, metadata
+           FROM ${S}.product
+          WHERE deleted_at IS NULL
+          ORDER BY name
+          LIMIT 1000`,
+      ),
+      this.inventoryQuery(
+        ctx,
+        `SELECT id::text, code, name, is_active, metadata
+           FROM ${S}.customer
+          WHERE deleted_at IS NULL
+          ORDER BY name
+          LIMIT 1000`,
+      ),
+      this.inventoryQuery(
+        ctx,
+        `SELECT id::text, code, name, is_active, metadata
+           FROM ${S}.supplier
+          WHERE deleted_at IS NULL
+          ORDER BY name
+          LIMIT 1000`,
+      ),
+    ]);
+    return { products, customers, suppliers };
+  }
+
+  @Post('inventory/mobile-orders')
+  @Permissions('SALES_ORDER.CREATE')
+  @BlockDemo()
+  @HttpCode(201)
+  @ApiOperation({ summary: 'Kirim order sales Flutter secara idempoten' })
+  async createMobileInventoryOrder(
+    @Body() body: CreateMobileSalesOrderDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    if (!body.lines.length) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Order harus memiliki minimal satu barang.');
+    }
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    return this.tenantDb.transaction(ctx.schemaName, async (client) => {
+      const existing = await client.query<{ id: string; order_number: string }>(
+        `SELECT id::text, order_number FROM ${S}.sales_order WHERE source_event_id = $1`,
+        [body.deviceEventId],
+      );
+      if (existing.rowCount) return { ...existing.rows[0], idempotent: true };
+      const customer = await client.query<{ id: string }>(
+        `SELECT id::text FROM ${S}.customer WHERE id = $1::uuid AND deleted_at IS NULL AND is_active`,
+        [body.customerId],
+      );
+      if (!customer.rowCount) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Customer tidak ditemukan atau tidak aktif.');
+      const productIds = Array.from(new Set(body.lines.map((line) => line.productId)));
+      const products = await client.query<{ id: string; standard_cost: string; default_sale_price: string }>(
+        `SELECT id::text, standard_cost::text, default_sale_price::text
+           FROM ${S}.product
+          WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL AND is_active AND is_sellable`,
+        [productIds],
+      );
+      const productMap = new Map(products.rows.map((row) => [row.id, row]));
+      if (productMap.size !== productIds.length) {
+        throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Satu atau lebih produk tidak tersedia untuk dijual.');
+      }
+      const subtotal = body.lines.reduce((sum, line) => sum + line.qty * Number(productMap.get(line.productId)?.default_sale_price ?? 0), 0);
+      const orderNumber = `MOB-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${body.deviceEventId.replace(/[^a-zA-Z0-9]/g, '').slice(-16)}`.slice(0, 48);
+      const outlet = await client.query<{ id: string }>(`SELECT id::text FROM ${S}.outlet WHERE deleted_at IS NULL ORDER BY created_at LIMIT 1`);
+      const order = await client.query<{ id: string; order_number: string }>(
+        `INSERT INTO ${S}.sales_order
+           (customer_id, outlet_id, order_number, order_date, delivery_date, channel, subtotal, grand_total, status, created_by, source_event_id)
+         VALUES ($1::uuid, $2::uuid, $3, CURRENT_DATE, $4::date, 'FIELD_SALES', $5, $5, 'CONFIRMED', $6::uuid, $7)
+         RETURNING id::text, order_number`,
+        [body.customerId, outlet.rows[0]?.id ?? null, orderNumber, body.deliveryDate ?? null, subtotal, ctx.userId, body.deviceEventId],
+      );
+      for (const [index, line] of body.lines.entries()) {
+        const product = productMap.get(line.productId)!;
+        const price = Number(product.default_sale_price);
+        await client.query(
+          `INSERT INTO ${S}.sales_order_line
+             (sales_order_id, product_id, uom_id, line_no, ordered_qty, unit_price, line_total, legacy_unit_cost)
+           VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8)`,
+          [order.rows[0].id, line.productId, line.uomId, index + 1, line.qty, price, line.qty * price, Number(product.standard_cost)],
+        );
+      }
+      return { ...order.rows[0], idempotent: false, subtotal: subtotal.toString() };
+    });
+  }
+
+  @Get('inventory/parity-summary')
+  @Permissions('SALES.READ')
+  @ApiOperation({ summary: 'Ringkasan paritas 48 layar, laba kotor nyata, dan aging piutang/hutang' })
+  async salesInventoryParitySummary(
+    @Query('asOf') asOf: string | undefined,
+    @Query('includeSettled') includeSettledRaw: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const asOfDate = asOf && /^\d{4}-\d{2}-\d{2}$/.test(asOf)
+      ? asOf
+      : new Date().toISOString().slice(0, 10);
+    const includeSettled = includeSettledRaw === 'true' || includeSettledRaw === '1';
+    const agingSql = (table: 'legacy_receivable_ledger' | 'legacy_payable_ledger') => `
+      SELECT
+        count(*)::int AS documents,
+        COALESCE(sum(amount), 0)::text AS total,
+        COALESCE(sum(amount) FILTER (WHERE is_settled), 0)::text AS settled,
+        COALESCE(sum(amount) FILTER (WHERE NOT is_settled AND COALESCE(due_date, transaction_date, $1::date) >= $1::date), 0)::text AS not_due,
+        COALESCE(sum(amount) FILTER (WHERE NOT is_settled AND $1::date - COALESCE(due_date, transaction_date, $1::date) BETWEEN 1 AND 30), 0)::text AS bucket_1_30,
+        COALESCE(sum(amount) FILTER (WHERE NOT is_settled AND $1::date - COALESCE(due_date, transaction_date, $1::date) BETWEEN 31 AND 60), 0)::text AS bucket_31_60,
+        COALESCE(sum(amount) FILTER (WHERE NOT is_settled AND $1::date - COALESCE(due_date, transaction_date, $1::date) BETWEEN 61 AND 90), 0)::text AS bucket_61_90,
+        COALESCE(sum(amount) FILTER (WHERE NOT is_settled AND $1::date - COALESCE(due_date, transaction_date, $1::date) > 90), 0)::text AS bucket_over_90
+      FROM ${S}.${table}
+      WHERE ($2::boolean OR NOT is_settled)`;
+    const [receivables, payables, profitBySales, profitByProduct, parityEvidence] = await Promise.all([
+      this.inventoryQuery(ctx, agingSql('legacy_receivable_ledger'), [asOfDate, includeSettled]),
+      this.inventoryQuery(ctx, agingSql('legacy_payable_ledger'), [asOfDate, includeSettled]),
+      this.inventoryQuery(
+        ctx,
+        `SELECT COALESCE(us.name, us.username_snapshot, 'Tanpa sales') AS sales_name,
+                count(DISTINCT so.id)::int AS invoices,
+                COALESCE(sum(sol.line_total), 0)::text AS revenue,
+                COALESCE(sum(sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost)), 0)::text AS cogs,
+                COALESCE(sum(sol.line_total - sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost)), 0)::text AS gross_profit
+           FROM ${S}.sales_order so
+           JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
+           JOIN ${S}.product p ON p.id = sol.product_id
+           LEFT JOIN ${S}.user_subject us ON us.id = so.created_by
+          WHERE so.order_date <= COALESCE($1::date, CURRENT_DATE)
+          GROUP BY us.name, us.username_snapshot
+          ORDER BY sum(sol.line_total) DESC`,
+        [asOfDate],
+      ),
+      this.inventoryQuery(
+        ctx,
+        `SELECT p.code AS product_code, p.name AS product_name,
+                COALESCE(sum(sol.ordered_qty), 0)::text AS qty,
+                COALESCE(sum(sol.line_total), 0)::text AS revenue,
+                COALESCE(sum(sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost)), 0)::text AS cogs,
+                COALESCE(sum(sol.line_total - sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost)), 0)::text AS gross_profit
+           FROM ${S}.sales_order so
+           JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
+           JOIN ${S}.product p ON p.id = sol.product_id
+          WHERE so.order_date <= COALESCE($1::date, CURRENT_DATE)
+          GROUP BY p.code, p.name
+          ORDER BY sum(sol.line_total) DESC
+          LIMIT 1000`,
+        [asOfDate],
+      ),
+      this.inventoryQuery(
+        ctx,
+        `SELECT
+           (SELECT count(*)::int FROM ${S}.product WHERE deleted_at IS NULL) AS products,
+           (SELECT count(*)::int FROM ${S}.customer WHERE deleted_at IS NULL) AS customers,
+           (SELECT count(*)::int FROM ${S}.supplier WHERE deleted_at IS NULL) AS suppliers,
+           (SELECT count(*)::int FROM ${S}.sales_order) AS sales_orders,
+           (SELECT count(*)::int FROM ${S}.purchase_order WHERE source_type = 'CMN_LEGACY_DBF') AS purchase_orders,
+           (SELECT count(*)::int FROM ${S}.legacy_import_record) AS raw_records,
+           (SELECT count(*)::int FROM ${S}.legacy_receivable_ledger WHERE source_deleted) AS settled_receivable_rows,
+           (SELECT count(*)::int FROM ${S}.legacy_payable_ledger WHERE source_deleted) AS settled_payable_rows,
+           (SELECT count(*)::int FROM ${S}.legacy_price_history) AS price_history_rows,
+           (SELECT count(*)::int FROM ${S}.legacy_stock_opname) AS stock_opname_rows,
+           (SELECT count(*)::int FROM ${S}.sales_note_handover) AS note_handovers,
+           (SELECT count(*)::int FROM ${S}.inventory_report_snapshot) AS report_snapshots`,
+      ),
+    ]);
+    return {
+      asOf: asOfDate,
+      includeSettled,
+      receivables: receivables[0] ?? {},
+      payables: payables[0] ?? {},
+      profitBySales,
+      profitByProduct,
+      evidence: parityEvidence[0] ?? {},
+      parity: { screens: 48, mapped: 48, requiresBusinessUat: ['Sales Bawa Nota', 'Proses Akhir Periode'] },
     };
   }
 
@@ -1521,7 +1836,7 @@ export class ErpController {
   @Permissions('SALES.READ')
   @ApiOperation({ summary: 'Piutang legacy CMN dari Tran_Piut dan PIUTSEMEN' })
   async legacyReceivables(
-    @Query() query: BaseQueryDto,
+    @Query() query: InventoryLegacyQueryDto,
     @CurrentUser() user: AuthenticatedUser,
     @RequestContext() meta: RequestMeta,
   ) {
@@ -1532,20 +1847,29 @@ export class ErpController {
       ctx,
       `SELECT lr.id::text, lr.source_file, lr.legacy_invoice_number, lr.transaction_date::text,
               lr.due_date::text, lr.paid_at::text, lr.amount::text, lr.payment_note,
-              lr.giro_number, lr.bank_name, lr.return_number,
+              lr.giro_number, lr.bank_name, lr.return_number, lr.is_settled, lr.source_deleted, lr.status,
+              CASE
+                WHEN lr.is_settled THEN 'LUNAS'
+                WHEN lr.due_date IS NULL OR lr.due_date >= CURRENT_DATE THEN 'BELUM JATUH TEMPO'
+                WHEN CURRENT_DATE - lr.due_date <= 30 THEN '1-30'
+                WHEN CURRENT_DATE - lr.due_date <= 60 THEN '31-60'
+                WHEN CURRENT_DATE - lr.due_date <= 90 THEN '61-90'
+                ELSE '>90'
+              END AS aging_bucket,
               COALESCE(c.name, lr.metadata->>'KODECUST', 'Pelanggan tidak dikenal') AS customer_name,
               COALESCE(us.name, us.username_snapshot, lr.metadata->>'KODESALES', 'Tanpa sales') AS sales_name
          FROM ${S}.legacy_receivable_ledger lr
          LEFT JOIN ${S}.customer c ON c.id = lr.customer_id
          LEFT JOIN ${S}.user_subject us ON us.id = lr.salesperson_id
-        WHERE ($1::text IS NULL
+        WHERE ($2::boolean OR NOT lr.is_settled)
+          AND ($1::text IS NULL
            OR lr.legacy_invoice_number ILIKE '%' || $1 || '%'
            OR c.name ILIKE '%' || $1 || '%'
            OR us.name ILIKE '%' || $1 || '%'
            OR lr.bank_name ILIKE '%' || $1 || '%')
         ORDER BY lr.due_date DESC NULLS LAST, lr.transaction_date DESC NULLS LAST
         LIMIT ${query.pageSize} OFFSET ${query.skip}`,
-      [search],
+      [search, query.includeSettled],
     );
   }
 
@@ -1553,7 +1877,7 @@ export class ErpController {
   @Permissions('PURCHASE_ORDER.READ')
   @ApiOperation({ summary: 'Hutang legacy CMN dari Tran_Hut' })
   async legacyPayables(
-    @Query() query: BaseQueryDto,
+    @Query() query: InventoryLegacyQueryDto,
     @CurrentUser() user: AuthenticatedUser,
     @RequestContext() meta: RequestMeta,
   ) {
@@ -1564,17 +1888,26 @@ export class ErpController {
       ctx,
       `SELECT lp.id::text, lp.source_file, lp.legacy_invoice_number, lp.transaction_date::text,
               lp.due_date::text, lp.paid_at::text, lp.amount::text, lp.payment_note,
-              lp.giro_number, lp.bank_name,
+              lp.giro_number, lp.bank_name, lp.is_settled, lp.source_deleted, lp.status,
+              CASE
+                WHEN lp.is_settled THEN 'LUNAS'
+                WHEN lp.due_date IS NULL OR lp.due_date >= CURRENT_DATE THEN 'BELUM JATUH TEMPO'
+                WHEN CURRENT_DATE - lp.due_date <= 30 THEN '1-30'
+                WHEN CURRENT_DATE - lp.due_date <= 60 THEN '31-60'
+                WHEN CURRENT_DATE - lp.due_date <= 90 THEN '61-90'
+                ELSE '>90'
+              END AS aging_bucket,
               COALESCE(s.name, lp.metadata->>'KODESUPPL', 'Supplier tidak dikenal') AS supplier_name
          FROM ${S}.legacy_payable_ledger lp
          LEFT JOIN ${S}.supplier s ON s.id = lp.supplier_id
-        WHERE ($1::text IS NULL
+        WHERE ($2::boolean OR NOT lp.is_settled)
+          AND ($1::text IS NULL
            OR lp.legacy_invoice_number ILIKE '%' || $1 || '%'
            OR s.name ILIKE '%' || $1 || '%'
            OR lp.bank_name ILIKE '%' || $1 || '%')
         ORDER BY lp.due_date DESC NULLS LAST, lp.transaction_date DESC NULLS LAST
         LIMIT ${query.pageSize} OFFSET ${query.skip}`,
-      [search],
+      [search, query.includeSettled],
     );
   }
 
@@ -1582,7 +1915,7 @@ export class ErpController {
   @Permissions('SALES.READ')
   @ApiOperation({ summary: 'Riwayat harga jual dan beli legacy CMN' })
   async legacyPriceHistory(
-    @Query() query: BaseQueryDto,
+    @Query() query: InventoryLegacyQueryDto,
     @CurrentUser() user: AuthenticatedUser,
     @RequestContext() meta: RequestMeta,
   ) {
@@ -1613,7 +1946,7 @@ export class ErpController {
   @Permissions('INVENTORY_STOCK_COUNT.READ')
   @ApiOperation({ summary: 'Stock opname legacy CMN dari dataopn' })
   async legacyStockOpname(
-    @Query() query: BaseQueryDto,
+    @Query() query: InventoryLegacyQueryDto,
     @CurrentUser() user: AuthenticatedUser,
     @RequestContext() meta: RequestMeta,
   ) {

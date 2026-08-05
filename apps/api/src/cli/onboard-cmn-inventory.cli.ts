@@ -614,9 +614,11 @@ async function importLegacyDataIfPresent(
   const purchases = activeRows(byName.get('BELI.DBF'));
   const batch = activeRows(byName.get('BATCHNO.DBF'));
   const salespeople = activeRows(byName.get('SALES.DBF'));
-  const receivables = activeLegacyRows(byName.get('TRAN_PIUT.DBF'));
-  const cementReceivables = activeLegacyRows(byName.get('PIUTSEMEN.DBF'));
-  const payables = activeLegacyRows(byName.get('TRAN_HUT.DBF'));
+  // Baris DBF yang ditandai deleted adalah bukti pelunasan pada aplikasi lama.
+  // Ia wajib ikut proyeksi agar tombol "Lunas Muncul" tidak kehilangan sejarah.
+  const receivables = allLegacyRows(byName.get('TRAN_PIUT.DBF'));
+  const cementReceivables = allLegacyRows(byName.get('PIUTSEMEN.DBF'));
+  const payables = allLegacyRows(byName.get('TRAN_HUT.DBF'));
   const customerPrices = activeLegacyRows(byName.get('MASTERJL.DBF'));
   const supplierPrices = activeLegacyRows(byName.get('MASTERBL.DBF'));
   const stockOpname = activeLegacyRows(byName.get('DATAOPN.DBF'));
@@ -650,7 +652,15 @@ async function importLegacyDataIfPresent(
         metadata: row,
       });
       if (warehouseId) {
-        await upsertStock(client, S, warehouseId, productId, null, number(row.AWAL) + number(row.MASUK) - number(row.KELUAR), number(row.HARGABELI));
+        await upsertStock(
+          client,
+          S,
+          warehouseId,
+          productId,
+          null,
+          number(row.AWAL) + number(row.MASUK) - Math.abs(number(row.KELUAR)),
+          number(row.HARGABELI),
+        );
       }
       productCount += 1;
     }
@@ -804,6 +814,10 @@ function activeLegacyRows(file: LegacyDbf | undefined): LegacyRow[] {
   return file?.rows.filter((row) => !row.isDeleted) ?? [];
 }
 
+function allLegacyRows(file: LegacyDbf | undefined): LegacyRow[] {
+  return file?.rows ?? [];
+}
+
 function expectedLegacyImportCounts(byName: Map<string, LegacyDbf>): LegacyImportCounts {
   const stok = activeRows(byName.get('STOK.DBF'));
   const customers = activeRows(byName.get('CUSTOMER.DBF'));
@@ -823,8 +837,8 @@ function expectedLegacyImportCounts(byName: Map<string, LegacyDbf>): LegacyImpor
       return invoice ? `${dateOrNull(row.TANGGAL) ?? 'legacy'}:${text(row.KODESUPPL)}:${invoice}` : null;
     }),
     rawRecords: Array.from(byName.values()).reduce((sum, file) => sum + file.rows.length, 0),
-    receivables: activeLegacyRows(byName.get('TRAN_PIUT.DBF')).length + activeLegacyRows(byName.get('PIUTSEMEN.DBF')).length,
-    payables: activeLegacyRows(byName.get('TRAN_HUT.DBF')).length,
+    receivables: allLegacyRows(byName.get('TRAN_PIUT.DBF')).length + allLegacyRows(byName.get('PIUTSEMEN.DBF')).length,
+    payables: allLegacyRows(byName.get('TRAN_HUT.DBF')).length,
   };
 }
 
@@ -1166,31 +1180,37 @@ async function importSales(
     const first = lines[0];
     const orderNumber = `CMN-${key}`.slice(0, 48);
     const existing = await scalar<string>(client, `SELECT id::text FROM ${S}.sales_order WHERE order_number = $1`, [orderNumber]);
-    if (existing) continue;
     const subtotal = lines.reduce((sum, row) => sum + number(row.JUMLAH) * number(row.HARGAJUAL), 0);
     const customerId = await scalar<string>(client, `SELECT id::text FROM ${S}.customer WHERE code = $1 AND deleted_at IS NULL`, [text(first.KODECUST)]);
     const salesUserId = salesMap.get(text(first.KODESALES)) ?? (fallbackSalesUserIds.length ? fallbackSalesUserIds[count % fallbackSalesUserIds.length] : null);
-    const inserted = await client.query<{ id: string }>(
+    const orderId = existing ?? (await client.query<{ id: string }>(
       `INSERT INTO ${S}.sales_order (customer_id, outlet_id, order_number, order_date, channel, subtotal, grand_total, status, created_by)
        VALUES ($1::uuid, $2::uuid, $3, COALESCE($4::date, CURRENT_DATE), 'FIELD_SALES', $5, $5, 'CONFIRMED', $6::uuid)
        RETURNING id::text AS id`,
       [customerId, outletId, orderNumber, dateOrNull(first.TANGGAL), subtotal, salesUserId],
-    );
+    )).rows[0].id;
     let lineNo = 1;
     for (const row of lines) {
       const productId = await scalar<string>(client, `SELECT id::text FROM ${S}.product WHERE code = $1 AND deleted_at IS NULL`, [text(row.KODEBRG)]);
       if (!productId) continue;
       const qty = number(row.JUMLAH);
       const price = number(row.HARGAJUAL);
+      const unitCost = number(row.HARGABELI);
       await client.query(
-        `INSERT INTO ${S}.sales_order_line (sales_order_id, product_id, uom_id, line_no, ordered_qty, unit_price, line_total)
-         VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7)
-         ON CONFLICT (sales_order_id, line_no) DO NOTHING`,
-        [inserted.rows[0].id, productId, uomId, lineNo, qty, price, qty * price],
+        `INSERT INTO ${S}.sales_order_line
+           (sales_order_id, product_id, uom_id, line_no, ordered_qty, unit_price, line_total, legacy_unit_cost)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8)
+         ON CONFLICT (sales_order_id, line_no) DO UPDATE
+           SET product_id = EXCLUDED.product_id,
+               ordered_qty = EXCLUDED.ordered_qty,
+               unit_price = EXCLUDED.unit_price,
+               line_total = EXCLUDED.line_total,
+               legacy_unit_cost = EXCLUDED.legacy_unit_cost`,
+        [orderId, productId, uomId, lineNo, qty, price, qty * price, unitCost],
       );
       lineNo += 1;
     }
-    count += 1;
+    if (!existing) count += 1;
   }
   return count;
 }
@@ -1296,9 +1316,16 @@ async function importReceivableLedger(
     await client.query(
       `INSERT INTO ${S}.legacy_receivable_ledger
          (source_file, legacy_row_number, legacy_invoice_number, customer_id, salesperson_id, transaction_date, due_date, paid_at,
-          amount, payment_note, giro_number, bank_name, giro_date, return_number, metadata)
-       VALUES ($1, $2, $3, $4::uuid, $5::uuid, $6::date, $7::date, $8::date, $9, $10, $11, $12, $13::date, $14, $15::jsonb)
-       ON CONFLICT (source_file, legacy_row_number) DO NOTHING`,
+          amount, payment_note, giro_number, bank_name, giro_date, return_number, source_deleted, is_settled, status, metadata)
+       VALUES ($1, $2, $3, $4::uuid, $5::uuid, $6::date, $7::date, $8::date, $9, $10, $11, $12, $13::date, $14,
+               $15, $15, CASE WHEN $15 THEN 'SETTLED' ELSE 'OPEN' END, $16::jsonb)
+       ON CONFLICT (source_file, legacy_row_number) DO UPDATE
+         SET source_deleted = EXCLUDED.source_deleted,
+             is_settled = EXCLUDED.is_settled,
+             status = EXCLUDED.status,
+             paid_at = EXCLUDED.paid_at,
+             payment_note = EXCLUDED.payment_note,
+             metadata = EXCLUDED.metadata`,
       [
         sourceFile,
         row.rowNumber,
@@ -1314,6 +1341,7 @@ async function importReceivableLedger(
         text(data.NAMABANK) || null,
         dateOrNull(data.TANGGALBG),
         text(data.NORETUR) || null,
+        row.isDeleted,
         legacyJson(data),
       ],
     );
@@ -1332,9 +1360,16 @@ async function importPayableLedger(client: PoolClient, S: string, rows: LegacyRo
     await client.query(
       `INSERT INTO ${S}.legacy_payable_ledger
          (source_file, legacy_row_number, legacy_invoice_number, supplier_id, transaction_date, due_date, paid_at,
-          amount, payment_note, giro_number, bank_name, giro_date, metadata)
-       VALUES ('Tran_Hut.DBF', $1, $2, $3::uuid, $4::date, $5::date, $6::date, $7, $8, $9, $10, $11::date, $12::jsonb)
-       ON CONFLICT (source_file, legacy_row_number) DO NOTHING`,
+          amount, payment_note, giro_number, bank_name, giro_date, source_deleted, is_settled, status, metadata)
+       VALUES ('Tran_Hut.DBF', $1, $2, $3::uuid, $4::date, $5::date, $6::date, $7, $8, $9, $10, $11::date,
+               $12, $12, CASE WHEN $12 THEN 'SETTLED' ELSE 'OPEN' END, $13::jsonb)
+       ON CONFLICT (source_file, legacy_row_number) DO UPDATE
+         SET source_deleted = EXCLUDED.source_deleted,
+             is_settled = EXCLUDED.is_settled,
+             status = EXCLUDED.status,
+             paid_at = EXCLUDED.paid_at,
+             payment_note = EXCLUDED.payment_note,
+             metadata = EXCLUDED.metadata`,
       [
         row.rowNumber,
         invoice,
@@ -1347,6 +1382,7 @@ async function importPayableLedger(client: PoolClient, S: string, rows: LegacyRo
         text(data.NOMERBG) || null,
         text(data.NAMABANK) || null,
         dateOrNull(data.TANGGALBG),
+        row.isDeleted,
         legacyJson(data),
       ],
     );

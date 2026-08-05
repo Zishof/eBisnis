@@ -17,7 +17,7 @@ import {
   UsersRound,
   WalletCards,
 } from 'lucide-react';
-import { api, apiRequestPaged, formatDate, formatMoney, formatNumber } from '../../lib/api';
+import { api, formatDate, formatMoney, formatNumber } from '../../lib/api';
 import { downloadExcel, downloadPdf, type ExportColumn } from '../../lib/export-table';
 import { Code, DataGrid, PageHeader, StatusBadge, type GridColumn } from '../../components/ui';
 
@@ -48,12 +48,14 @@ type DashboardData = {
     suppliers?: number;
     orders_month?: number;
     revenue_month?: string;
+    cogs_month?: string;
+    gross_profit_month?: string;
     on_hand_qty?: string;
     expiring_lots?: number;
     expired_lots?: number;
   };
-  topSales: Array<{ sales_name: string; orders: number; revenue: string }>;
-  topProducts: Array<{ product_code: string; product_name: string; qty: string; revenue: string }>;
+  topSales: Array<{ sales_name: string; orders: number; revenue: string; cogs: string; gross_profit: string }>;
+  topProducts: Array<{ product_code: string; product_name: string; qty: string; revenue: string; cogs: string; gross_profit: string }>;
   recentOrders: Array<Record<string, unknown>>;
 };
 
@@ -70,6 +72,12 @@ type ReconciliationData = {
   salesMap: Array<{ legacy_code: string; legacy_name: string; mapped_username: string | null; mapped_name: string | null }>;
 };
 
+type InventoryMasterData = {
+  products: MasterRow[];
+  customers: MasterRow[];
+  suppliers: MasterRow[];
+};
+
 type LegacyReceivableRow = Record<string, unknown> & {
   id: string;
   legacy_invoice_number: string;
@@ -80,6 +88,8 @@ type LegacyReceivableRow = Record<string, unknown> & {
   customer_name: string;
   sales_name: string;
   bank_name: string | null;
+  is_settled: boolean;
+  aging_bucket: string;
 };
 
 type LegacyPayableRow = Record<string, unknown> & {
@@ -91,6 +101,19 @@ type LegacyPayableRow = Record<string, unknown> & {
   amount: string;
   supplier_name: string;
   bank_name: string | null;
+  is_settled: boolean;
+  aging_bucket: string;
+};
+
+type ParityData = {
+  asOf: string;
+  includeSettled: boolean;
+  receivables: Record<string, string | number>;
+  payables: Record<string, string | number>;
+  profitBySales: Array<Record<string, unknown>>;
+  profitByProduct: Array<Record<string, unknown>>;
+  evidence: Record<string, string | number>;
+  parity: { screens: number; mapped: number; requiresBusinessUat: string[] };
 };
 
 type LegacyPriceRow = Record<string, unknown> & {
@@ -127,9 +150,19 @@ const tabs: Array<{ key: TabKey; label: string; icon: ReactNode; note: string }>
   { key: 'periodClose', label: 'Proses Akhir', icon: <RefreshCw />, note: 'Backup, re-index, tutup periode aman' },
 ];
 
+const parityGroups = [
+  ['Master relasi', ['Data supplier', 'Daftar supplier terbuka', 'Daftar supplier lunas', 'Data customer', 'Daftar customer terbuka', 'Daftar customer lunas', 'Data sales', 'Daftar sales']],
+  ['Stok dan harga', ['Daftar stok', 'Laporan opname', 'Cetak opname', 'Analisis harga beli/jual', 'Pilih harga', 'Cetak harga jual', 'Ekspor harga/stok', 'Cetak stok', 'Pratinjau stok', 'Master harga', 'Harga supplier/customer']],
+  ['Pembelian dan hutang', ['Transaksi pembelian', 'Daftar hutang', 'Hutang supplier', 'Tampilkan hutang lunas', 'Pembayaran hutang', 'Riwayat pembayaran hutang', 'Cetak pembayaran hutang', 'Aging hutang', 'Cetak faktur pembelian', 'Laporan pembelian periode']],
+  ['Penjualan dan piutang', ['Transaksi penjualan', 'Daftar piutang', 'Piutang customer', 'Tampilkan piutang lunas', 'Penerimaan piutang', 'Riwayat penerimaan', 'Cetak penerimaan', 'Analisis piutang customer', 'Analisis piutang sales', 'Sales bawa nota', 'Cetak serah-terima nota', 'Laporan piutang', 'Cetak laporan piutang']],
+  ['Keuangan dan periode', ['Kas dan jurnal harian', 'Buat akun perkiraan', 'Laba/rugi', 'Cetak laba kotor', 'Laporan laba/rugi', 'Proses akhir periode']],
+] as const;
+
 export function InventoryControlPage() {
   const [active, setActive] = useState<TabKey>('stock');
   const [search, setSearch] = useState('');
+  const [includeSettled, setIncludeSettled] = useState(false);
+  const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
 
   const dashboard = useQuery({
     queryKey: ['inventory-control-dashboard'],
@@ -139,25 +172,21 @@ export function InventoryControlPage() {
     queryKey: ['inventory-control-reconciliation'],
     queryFn: () => api.get<ReconciliationData>('/inventory/legacy-import-reconciliation'),
   });
-  const products = useQuery({
-    queryKey: ['inventory-control-products'],
-    queryFn: () => apiRequestPaged<MasterRow[]>('/products?pageSize=1000&sortBy=name&sortDir=asc'),
+  const parity = useQuery({
+    queryKey: ['inventory-control-parity', asOf, includeSettled],
+    queryFn: () => api.get<ParityData>(`/inventory/parity-summary?asOf=${encodeURIComponent(asOf)}&includeSettled=${includeSettled}`),
   });
-  const suppliers = useQuery({
-    queryKey: ['inventory-control-suppliers'],
-    queryFn: () => apiRequestPaged<MasterRow[]>('/suppliers?pageSize=1000&sortBy=name&sortDir=asc'),
-  });
-  const customers = useQuery({
-    queryKey: ['inventory-control-customers'],
-    queryFn: () => apiRequestPaged<MasterRow[]>('/customers?pageSize=1000&sortBy=name&sortDir=asc'),
+  const masterData = useQuery({
+    queryKey: ['inventory-control-master-data'],
+    queryFn: () => api.get<InventoryMasterData>('/inventory/master-data'),
   });
   const receivables = useQuery({
-    queryKey: ['inventory-control-receivables'],
-    queryFn: () => api.get<LegacyReceivableRow[]>('/inventory/legacy/receivables?pageSize=1000'),
+    queryKey: ['inventory-control-receivables', includeSettled],
+    queryFn: () => api.get<LegacyReceivableRow[]>(`/inventory/legacy/receivables?pageSize=1000&includeSettled=${includeSettled}`),
   });
   const payables = useQuery({
-    queryKey: ['inventory-control-payables'],
-    queryFn: () => api.get<LegacyPayableRow[]>('/inventory/legacy/payables?pageSize=1000'),
+    queryKey: ['inventory-control-payables', includeSettled],
+    queryFn: () => api.get<LegacyPayableRow[]>(`/inventory/legacy/payables?pageSize=1000&includeSettled=${includeSettled}`),
   });
   const prices = useQuery({
     queryKey: ['inventory-control-prices'],
@@ -171,14 +200,15 @@ export function InventoryControlPage() {
   const view = useMemo(() => buildView(active, {
     dashboard: dashboard.data,
     reconciliation: reconciliation.data,
-    products: products.data?.data ?? [],
-    suppliers: suppliers.data?.data ?? [],
-    customers: customers.data?.data ?? [],
+    parity: parity.data,
+    products: masterData.data?.products ?? [],
+    suppliers: masterData.data?.suppliers ?? [],
+    customers: masterData.data?.customers ?? [],
     receivables: receivables.data ?? [],
     payables: payables.data ?? [],
     prices: prices.data ?? [],
     opname: opname.data ?? [],
-  }), [active, customers.data, dashboard.data, opname.data, payables.data, prices.data, products.data, receivables.data, reconciliation.data, suppliers.data]);
+  }), [active, dashboard.data, masterData.data, opname.data, parity.data, payables.data, prices.data, receivables.data, reconciliation.data]);
 
   const filteredRows = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -189,15 +219,15 @@ export function InventoryControlPage() {
   }, [search, view.rows]);
 
   const loading = dashboard.isLoading || reconciliation.isLoading || (
-    active === 'suppliers' ? suppliers.isLoading :
-    active === 'customers' ? customers.isLoading :
-    active === 'stock' ? products.isLoading || opname.isLoading :
+    active === 'suppliers' ? masterData.isLoading :
+    active === 'customers' ? masterData.isLoading :
+    active === 'stock' ? masterData.isLoading || opname.isLoading :
     active === 'prices' ? prices.isLoading :
     active === 'purchases' ? payables.isLoading :
     active === 'salesOrders' ? receivables.isLoading :
     false
   );
-  const error = [dashboard.error, reconciliation.error, products.error, suppliers.error, customers.error, receivables.error, payables.error, prices.error, opname.error]
+  const error = [dashboard.error, reconciliation.error, parity.error, masterData.error, receivables.error, payables.error, prices.error, opname.error]
     .filter(Boolean)
     .map(errorMessage)[0];
 
@@ -222,12 +252,38 @@ export function InventoryControlPage() {
         }
       />
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
         <Metric icon={<Boxes />} label="SKU obat" value={formatNumber(dashboard.data?.summary.products)} note="master stok legacy" />
         <Metric icon={<UsersRound />} label="Customer" value={formatNumber(dashboard.data?.summary.customers)} note="wilayah & piutang" />
         <Metric icon={<Truck />} label="Supplier" value={formatNumber(dashboard.data?.summary.suppliers)} note="hutang & pembelian" />
         <Metric icon={<WalletCards />} label="Piutang" value={formatMoney(reconciliation.data?.totals.receivable_amount)} note="ledger legacy" />
         <Metric icon={<Banknote />} label="Hutang" value={formatMoney(reconciliation.data?.totals.payable_amount)} note="supplier aging" />
+        <Metric icon={<BarChart3 />} label="Laba kotor" value={formatMoney(dashboard.data?.summary.gross_profit_month)} note="HPP faktual per baris" />
+      </section>
+
+      <section className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:grid-cols-[1fr_auto]">
+        <div>
+          <p className="text-sm font-black text-slate-900 dark:text-white">Paritas aplikasi Inventory Control</p>
+          <p className="mt-1 text-sm text-slate-500">{parity.data?.parity.mapped ?? 48} dari {parity.data?.parity.screens ?? 48} layar legacy sudah dipetakan ke workspace ERP, laporan, atau jejak audit.</p>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="text-xs font-bold text-slate-600 dark:text-slate-300">
+            Posisi laporan
+            <input type="date" value={asOf} onChange={(event) => setAsOf(event.target.value)} className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-950" />
+          </label>
+          <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold dark:border-slate-700">
+            <input type="checkbox" checked={includeSettled} onChange={(event) => setIncludeSettled(event.target.checked)} />
+            Tampilkan yang lunas
+          </label>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:col-span-2 xl:grid-cols-5">
+          {parityGroups.map(([title, items]) => (
+            <details key={title} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+              <summary className="cursor-pointer text-sm font-bold">{title} <span className="text-slate-400">({items.length})</span></summary>
+              <ol className="mt-2 space-y-1 text-xs text-slate-500">{items.map((item) => <li key={item}>{item}</li>)}</ol>
+            </details>
+          ))}
+        </div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -323,6 +379,7 @@ function Metric({ icon, label, value, note }: { icon: ReactNode; label: string; 
 function buildView(active: TabKey, data: {
   dashboard?: DashboardData;
   reconciliation?: ReconciliationData;
+  parity?: ParityData;
   products: MasterRow[];
   suppliers: MasterRow[];
   customers: MasterRow[];
@@ -429,18 +486,16 @@ function buildView(active: TabKey, data: {
     };
   }
   if (active === 'profit') {
-    const rows = (data.dashboard?.topProducts ?? []).map((row) => ({
-      id: row.product_code,
-      ...row,
-      estimated_margin: Number(row.revenue || 0) * 0.18,
-    }));
+    const rows = (data.parity?.profitByProduct ?? data.dashboard?.topProducts ?? []).map((row) => ({ id: String(row.product_code), ...row }));
     return {
       title: 'Laba / Rugi Kotor',
-      description: 'Monitoring omzet, HPP estimasi, margin, performa produk, dan kontribusi sales.',
+      description: 'Monitoring omzet, HPP snapshot transaksi, laba kotor, performa produk, dan kontribusi sales.',
       filename: 'cmn-laba-rugi',
       rows,
       insights: [
         { label: 'Omzet bulan ini', value: formatMoney(data.dashboard?.summary.revenue_month), note: 'sales-dashboard' },
+        { label: 'HPP bulan ini', value: formatMoney(data.dashboard?.summary.cogs_month), note: 'HARGABELI per baris DBF' },
+        { label: 'Laba kotor', value: formatMoney(data.dashboard?.summary.gross_profit_month), note: 'tanpa persentase rekaan' },
         { label: 'Order bulan ini', value: formatNumber(data.dashboard?.summary.orders_month), note: 'transaksi sales' },
         { label: 'Best seller', value: data.dashboard?.topProducts[0]?.product_name ?? '-', note: 'kuantitas tertinggi' },
       ],
@@ -449,9 +504,10 @@ function buildView(active: TabKey, data: {
         col('product_name', 'Nama Barang'),
         col('qty', 'Qty', (row) => formatNumber(String(row.qty))),
         col('revenue', 'Omzet', (row) => formatMoney(String(row.revenue))),
-        col('estimated_margin', 'Estimasi Margin', (row) => formatMoney(Number(row.estimated_margin))),
+        col('cogs', 'HPP', (row) => formatMoney(String(row.cogs))),
+        col('gross_profit', 'Laba Kotor', (row) => formatMoney(String(row.gross_profit))),
       ],
-      exportColumns: exportCols(['product_code', 'product_name', 'qty', 'revenue', 'estimated_margin']),
+      exportColumns: exportCols(['product_code', 'product_name', 'qty', 'revenue', 'cogs', 'gross_profit']),
     };
   }
   return {
@@ -495,7 +551,7 @@ function simpleMasterView(title: string, description: string, rows: MasterRow[],
 }
 
 function financialView<T extends LegacyReceivableRow | LegacyPayableRow>(title: string, description: string, filename: string, rows: T[], partyKey: keyof T) {
-  const open = rows.filter((row) => !row.paid_at);
+  const open = rows.filter((row) => !row.is_settled);
   const total = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
   return {
     title,
@@ -512,7 +568,12 @@ function financialView<T extends LegacyReceivableRow | LegacyPayableRow>(title: 
       col(String(partyKey), partyKey === 'customer_name' ? 'Customer' : 'Supplier'),
       col('transaction_date', 'Tanggal', (row) => formatDate(String(row.transaction_date ?? ''))),
       col('due_date', 'Jatuh Tempo', (row) => formatDate(String(row.due_date ?? ''))),
-      col('paid_at', 'Bayar', (row) => row.paid_at ? formatDate(String(row.paid_at)) : <StatusBadge status="Belum lunas" tone="warning" />),
+      col('paid_at', 'Bayar', (row) => row.paid_at
+        ? formatDate(String(row.paid_at))
+        : row.is_settled
+          ? <StatusBadge status="Lunas" tone="success" />
+          : <StatusBadge status="Belum lunas" tone="warning" />),
+      col('aging_bucket', 'Aging', (row) => <StatusBadge status={String(row.aging_bucket)} tone={row.is_settled ? 'success' : 'warning'} />),
       col('amount', 'Jumlah', (row) => formatMoney(String(row.amount))),
     ],
     exportColumns: exportCols(['legacy_invoice_number', String(partyKey), 'transaction_date', 'due_date', 'paid_at', 'amount']),

@@ -1,7 +1,6 @@
 library;
 
 import 'package:ebisnis_pos/inventory/inventory_app.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -19,48 +18,55 @@ void main() {
   });
 
   testWidgets('halaman fitur memuat modul inventory lama', (tester) async {
-    await tester.pumpWidget(const AplikasiInventory());
-
-    await tester.enterText(find.byType(TextField).at(0), 'agung');
-    await tester.enterText(find.byType(TextField).at(1), 'agung123!!');
-    await tester.tap(find.text('Masuk'));
+    await tester.pumpWidget(const AplikasiInventory(
+      initialPersona:
+          PersonaInventory(username: 'agung', label: 'Agung', role: 'Sales'),
+    ));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Fitur'));
     await tester.pumpAndSettle();
 
     expect(find.text('Peta Fitur Inventory CMN'), findsOneWidget);
-    expect(find.text('Supplier'), findsOneWidget);
-    expect(find.text('Customer'), findsOneWidget);
-    expect(find.text('Stok Barang'), findsOneWidget);
-    expect(find.text('Laba / Rugi'), findsOneWidget);
+    expect(find.text('Master relasi (8 layar)'), findsOneWidget);
+    expect(find.text('Stok dan harga (11 layar)'), findsOneWidget);
+    expect(find.text('Pembelian dan hutang (10 layar)'), findsOneWidget);
+    expect(find.text('Penjualan dan piutang (13 layar)'), findsOneWidget);
+    expect(find.text('Keuangan dan periode (6 layar)'), findsOneWidget);
   });
 
-  testWidgets('sales dapat membuat draft order inventory', (tester) async {
-    await tester.pumpWidget(const AplikasiInventory());
-
-    await tester.enterText(find.byType(TextField).at(0), 'masrukin');
-    await tester.enterText(find.byType(TextField).at(1), 'masrukin123!!');
-    await tester.tap(find.text('Masuk'));
+  testWidgets('sales melihat katalog tenant nyata untuk membuat order',
+      (tester) async {
+    await tester.pumpWidget(const AplikasiInventory(
+      initialPersona: PersonaInventory(
+          username: 'masrukin', label: 'Masrukin', role: 'Sales'),
+      initialCatalog: InventoryCatalog(
+        customers: [InventoryCustomer('c1', 'C001', 'Apotek Sehat Waras')],
+        products: [
+          InventoryProductDemo(
+            id: 'p1',
+            uomId: 'u1',
+            code: '000102',
+            name: 'ADEM SARI',
+            price: 49000,
+            stock: 5,
+          ),
+        ],
+      ),
+    ));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Order Baru'));
     await tester.pumpAndSettle();
 
     expect(find.text('Order Baru Sales'), findsOneWidget);
-    expect(find.text('Amoxicillin 500 mg'), findsOneWidget);
+    expect(find.text('ADEM SARI'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Tambah').first);
     await tester.pump();
 
     expect(find.text('1 baris'), findsOneWidget);
-    expect(find.text('Rp 18.500'), findsWidgets);
-
-    await tester.ensureVisible(find.text('Simpan Draft Lokal'));
-    await tester.pump();
-    await tester.tap(find.text('Simpan Draft Lokal'));
-    await tester.pump();
-
-    expect(find.textContaining('tersimpan lokal'), findsOneWidget);
+    expect(find.text('Rp 49.000'), findsWidgets);
+    expect(find.text('Kirim Order'), findsOneWidget);
   });
 }

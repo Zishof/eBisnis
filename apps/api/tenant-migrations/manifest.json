@@ -318,6 +318,13 @@
       "description": "legacy_import_file, legacy_import_record, legacy_salesperson_map, ledger piutang/hutang legacy, riwayat harga jual/beli, stock opname, dan view rekonsiliasi impor. Tujuannya memastikan seluruh informasi DBF lama masuk utuh terlebih dahulu walaupun projection ERP bertahap."
     },
     {
+      "version": "V046",
+      "sequence": 46,
+      "file": "V046__sales_inventory_parity.sql",
+      "name": "Paritas Sales dan Inventory legacy",
+      "description": "Snapshot HPP penjualan, status lunas dari baris DBF terhapus, serah-terima nota sales, snapshot laporan, jejak cetak, dan konflik sinkronisasi. Seluruhnya menambah bukti pada ERP existing tanpa membuat buku stok, piutang, hutang, atau jurnal kedua."
+    },
+    {
       "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",
