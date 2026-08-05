@@ -51,6 +51,7 @@ import { PesantrenKateringPage } from '../pages/app/pesantren/PesantrenKateringP
 import { PesantrenSkalaHurufPage } from '../pages/app/pesantren/PesantrenSkalaHurufPage';
 import { PesantrenLaporanPage } from '../pages/app/pesantren/PesantrenLaporanPage';
 import { PesantrenPortalWaliPage } from '../pages/app/pesantren/PesantrenPortalWaliPage';
+import { PesantrenDapodikPage } from '../pages/app/pesantren/PesantrenDapodikPage';
 import { MasterListPage } from '../pages/app/MasterListPage';
 import { StockTreePage } from '../pages/app/StockTreePage';
 import { RequestOrderPage } from '../pages/app/RequestOrderPage';
@@ -649,6 +650,7 @@ export function App() {
           <Route path="pesantren/diniyah" element={<PesantrenDakwahPage initialTab="halaqah" />} />
           <Route path="pesantren/guru" element={<PesantrenGuruPage />} />
           <Route path="pesantren/kartu" element={<PesantrenKartuPage />} />
+          <Route path="pesantren/dapodik" element={<PesantrenDapodikPage />} />
           <Route path="pesantren/presensi" element={<PesantrenPresensiPage />} />
           <Route path="pesantren/tahfiz" element={<PesantrenDakwahPage initialTab="tahfiz" />} />
           <Route path="pesantren/nilai" element={<PesantrenNilaiPage />} />

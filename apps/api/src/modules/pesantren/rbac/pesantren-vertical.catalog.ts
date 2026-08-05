@@ -90,6 +90,7 @@ const KATERING_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
 const PROFIL_AKSI = ['READ', 'UPDATE'];
 const BERITA_AKSI = ['READ', 'CREATE', 'UPDATE', 'APPROVE', 'CANCEL'];
 const TAGIHAN_AKSI = ['READ', 'CREATE', 'UPDATE', 'APPROVE', 'PRINT', 'EXPORT'];
+const DAPODIK_AKSI = ['READ', 'CREATE', 'PRINT', 'EXPORT'];
 
 /*
  * Pengelompokan menu (grup/subgrup di bawah) SENGAJA HANYA mencakup menu yang
@@ -277,6 +278,17 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     moduleCode: PESANTREN_PREFIX,
     sortOrder: 3,
     actions: CATAT,
+  },
+  {
+    code: 'EPESANTREN_DAPODIK',
+    parentCode: 'EPESANTREN_GRP_MASTER',
+    label: 'Impor/Ekspor Dapodik',
+    translationKey: 'menu.epesantren.dapodik',
+    route: '/app/pesantren/dapodik',
+    icon: 'FileSpreadsheet',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 4,
+    actions: DAPODIK_AKSI,
   },
 
   // -- Akademik dan Kesantrian ------------------------------------------------

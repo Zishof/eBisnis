@@ -1,0 +1,91 @@
+import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
+import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { PesantrenDapodikService } from './pesantren-dapodik.service';
+
+const DATASET = ['santri', 'guru', 'mata-pelajaran', 'rombongan', 'kurikulum', 'jadwal', 'komponen-nilai', 'nilai'] as const;
+
+function schemaWajib(user: AuthenticatedUser): string {
+  if (!user.schemaName) {
+    throw AppError.forbidden(ErrorCodes.FORBIDDEN, 'Konteks ruang kerja tidak ditemukan pada sesi Anda.');
+  }
+  return user.schemaName;
+}
+
+class DatasetParam {
+  @ApiProperty({ enum: DATASET })
+  @IsIn(DATASET as unknown as string[])
+  dataset!: (typeof DATASET)[number];
+}
+
+class ImporDapodikDto {
+  @ApiProperty({ enum: ['csv', 'json'], default: 'csv' })
+  @IsIn(['csv', 'json'])
+  format!: 'csv' | 'json';
+
+  @ApiProperty({ description: 'Isi file CSV atau JSON array yang akan diimpor.' })
+  @IsString()
+  content!: string;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  dryRun?: boolean;
+}
+
+class EksporQuery {
+  @ApiPropertyOptional({ enum: ['csv'], default: 'csv' })
+  @IsOptional()
+  @IsIn(['csv'])
+  format?: 'csv';
+}
+
+@ApiTags('pesantren')
+@ApiBearerAuth('access-token')
+@Controller('pesantren/dapodik')
+export class PesantrenDapodikController {
+  constructor(private readonly dapodik: PesantrenDapodikService) {}
+
+  @Permissions('EPESANTREN_DAPODIK.READ')
+  @Get('datasets')
+  @ApiOperation({ summary: 'Dataset Dapodik yang didukung ePesantren' })
+  daftarDataset() {
+    return this.dapodik.daftarDataset();
+  }
+
+  @Permissions('EPESANTREN_DAPODIK.EXPORT')
+  @Get(':dataset/template')
+  @ApiOperation({ summary: 'Template CSV Dapodik untuk satu dataset' })
+  template(@Param() param: DatasetParam) {
+    return {
+      filename: `template-dapodik-${param.dataset}.csv`,
+      mimeType: 'text/csv;charset=utf-8',
+      content: this.dapodik.template(param.dataset),
+    };
+  }
+
+  @Permissions('EPESANTREN_DAPODIK.EXPORT')
+  @Get(':dataset/export')
+  @ApiOperation({ summary: 'Ekspor dataset pesantren ke format Dapodik CSV' })
+  ekspor(@Param() param: DatasetParam, @Query() _query: EksporQuery, @CurrentUser() user: AuthenticatedUser) {
+    return this.dapodik.ekspor(schemaWajib(user), param.dataset);
+  }
+
+  @Permissions('EPESANTREN_DAPODIK.CREATE')
+  @Post(':dataset/import')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Validasi atau impor dataset Dapodik dari CSV/JSON' })
+  impor(@Param() param: DatasetParam, @Body() dto: ImporDapodikDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.dapodik.impor(schemaWajib(user), {
+      dataset: param.dataset,
+      format: dto.format,
+      content: dto.content,
+      dryRun: dto.dryRun ?? true,
+      actorUserId: user.userId,
+    });
+  }
+}
