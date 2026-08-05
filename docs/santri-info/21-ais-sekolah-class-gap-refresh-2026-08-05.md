@@ -26,7 +26,7 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 | Asrama, kunjungan, keluar-masuk | `AsramaSiswaAction`, `KunjunganSiswaAction`, `PengajuanSiswaAction`, `KelompokStatusKeluarSiswaAction`, `StatusKeluarSiswaAction` | Sebagian besar selesai: asrama/kamar, perizinan, gerbang, tamu/paket/penjemput | Mutasi kamar historis detail, laporan asrama legacy, dan kunjungan wali detail belum penuh |
 | Keuangan siswa | `TagihanAction`, `PembayaranSiswaAction`, `PembayaranCalonSiswaAction`, `DepositSiswaAction`, `DiskonSiswaAction`, `ItemBiayaSekolahAction`, `JenisBiayaSekolahAction`, `KanalPembayaranAction`, `AkunPembayaranSiswaAction`, `PengaturanBiayaAction` | Operasional dasar: tagihan, item, pembayaran, dompet, top-up/belanja, POS adapter | Diskon/deposit legacy, kanal pembayaran detail, invoice wali, rekonsiliasi, dan payment gateway belum penuh |
 | Posting akuntansi legacy | `PostingPiutangSiswaAction`, `PostingCicilanSiswaAction`, `PostingDepositSiswaAction`, `PostingDibayarDimukaSiswaAction`, `PostingPiutangDendaSiswaAction`, `PostingUtangDiskonSiswaAction` | Belum penuh: baru ada dasar tagihan/pembayaran dan dompet | Mapping jurnal akuntansi legacy per skenario masih menjadi gap besar |
-| Dashboard dan rekap | `DashboardRegistrasiSiswa`, `DashboardStatusSiswa`, `DashboardStatistikSiswa`, `DashboardAsalSekolahSiswa`, `DashboardHarianSiswa`, `DasborKeuanganSiswaAction`, `RekapJalurMasukMultiTahunPsb` | Sebagian selesai: dashboard pesantren, laporan, CSV/PDF browser | Dashboard khusus PSB multi-tahun, asal sekolah, status santri, dan keuangan siswa legacy belum penuh |
+| Dashboard dan rekap | `DashboardRegistrasiSiswa`, `DashboardStatusSiswa`, `DashboardStatistikSiswa`, `DashboardAsalSekolahSiswa`, `DashboardHarianSiswa`, `DasborKeuanganSiswaAction`, `RekapJalurMasukMultiTahunPsb` | Ditingkatkan: dashboard pesantren, laporan, CSV/PDF browser, status detail santri, alamat asal, registrasi PSB bulanan, asal sekolah PSB, dan piutang per santri | Rekap jalur masuk multi-tahun dan dashboard visual tren lanjutan masih bisa diperdalam |
 
 ## Modul yang Paling Belum Ada
 
@@ -34,7 +34,7 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 2. **Timetable lanjutan:** drag-drop jadwal, copy minggu, substitusi pengajar, ekspor Excel jadwal.
 3. **Rapor resmi:** template PDF per jenjang, leger, ranking, kenaikan kelas/promosi.
 4. **Posting akuntansi sekolah:** piutang, cicilan, deposit, denda, dibayar di muka, diskon.
-5. **Dashboard AIS spesifik:** registrasi multi-tahun, asal sekolah, status santri, aktivitas harian, dan keuangan siswa.
+5. **Dashboard AIS spesifik lanjutan:** rekap jalur masuk multi-tahun, tren visual yang lebih kaya, aktivitas harian lintas asrama/kelas, dan drill-down keuangan siswa.
 6. **Workflow BK/pembinaan:** poin, eskalasi, surat panggilan, apresiasi, penghargaan, dan tindak lanjut berjenjang.
 7. **Form binding referensi Dapodik:** combobox referensi pekerjaan/pendidikan/penghasilan/transportasi/jenis tinggal/kebutuhan khusus pada semua form santri/PSB.
 
@@ -50,6 +50,7 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 - Referensi biodata Dapodik ditambahkan: tabel `pesantren_referensi_dapodik`, seed awal, serta dataset impor/ekspor untuk pekerjaan, pendidikan, penghasilan, transportasi, jenis tinggal, dan kebutuhan khusus.
 - UI pusat Dapodik dirapikan dengan pencarian dataset dan metrik cakupan agar dataset besar tetap mudah dipindai di desktop maupun mobile.
 - Kompatibilitas impor Dapodik diperkuat: header CSV/JSON kini menerima alias umum seperti `Nama Peserta Didik`, `Nama PTK`, `Kode Mapel`, `Nama Rombel`, `Nilai`, dan variasi spasi/kapitalisasi; UI juga bisa membaca `.xlsx/.xls` lalu mengonversinya menjadi CSV.
+- Laporan AIS spesifik ditambahkan: status detail santri, sebaran alamat asal santri, piutang/pembayaran per santri, registrasi PSB bulanan, dan asal sekolah pendaftar PSB; UI laporan kini menampilkan metrik baris/kolom dan format nominal uang lebih rapi.
 
 ## Prinsip UI/UX yang Dipakai
 

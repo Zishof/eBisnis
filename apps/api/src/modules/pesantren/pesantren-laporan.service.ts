@@ -84,6 +84,32 @@ export class PesantrenLaporanService {
             ORDER BY tahun DESC`,
         );
 
+      case 'SANTRI_STATUS_DETAIL':
+        return this.tenantDb.query(
+          schemaName,
+          `SELECT status, status_tinggal, jenis_kelamin,
+                  COUNT(*)::int AS jumlah,
+                  MIN(tanggal_masuk)::text AS tanggal_masuk_tertua,
+                  MAX(tanggal_masuk)::text AS tanggal_masuk_terbaru,
+                  COUNT(*) FILTER (WHERE tanggal_keluar IS NOT NULL)::int AS sudah_keluar
+             FROM ${S}.pesantren_santri
+            WHERE deleted_at IS NULL
+            GROUP BY status, status_tinggal, jenis_kelamin
+            ORDER BY status, status_tinggal, jenis_kelamin`,
+        );
+
+      case 'SANTRI_ASAL_ALAMAT':
+        return this.tenantDb.query(
+          schemaName,
+          `SELECT COALESCE(NULLIF(TRIM(alamat_asal), ''), 'Tidak diisi') AS alamat_asal,
+                  COUNT(*)::int AS jumlah
+             FROM ${S}.pesantren_santri
+            WHERE deleted_at IS NULL
+            GROUP BY COALESCE(NULLIF(TRIM(alamat_asal), ''), 'Tidak diisi')
+            ORDER BY jumlah DESC, alamat_asal ASC
+            LIMIT 100`,
+        );
+
       case 'PRESENSI_REKAP': {
         const rentang = this.rentangWajib(req);
         return this.tenantDb.query(
@@ -113,6 +139,28 @@ export class PesantrenLaporanService {
         );
         return rows;
       }
+
+      case 'TAGIHAN_SANTRI':
+        return this.tenantDb.query(
+          schemaName,
+          `SELECT s.nis, s.nama_lengkap,
+                  COUNT(t.id)::int AS jumlah_tagihan,
+                  COALESCE(SUM(t.total_tagihan), 0)::text AS total_tagihan,
+                  COALESCE(SUM(pb.total_bayar), 0)::text AS total_bayar,
+                  (COALESCE(SUM(t.total_tagihan), 0) - COALESCE(SUM(pb.total_bayar), 0))::text AS sisa_tagihan,
+                  COUNT(t.id) FILTER (WHERE t.status IN ('ISSUED', 'PARTIALLY_PAID', 'OVERDUE'))::int AS tagihan_terbuka
+             FROM ${S}.pesantren_santri s
+             LEFT JOIN ${S}.pesantren_tagihan t ON t.santri_id = s.id AND t.deleted_at IS NULL AND t.status <> 'VOID'
+             LEFT JOIN (
+               SELECT tagihan_id, SUM(jumlah_bayar) AS total_bayar
+                 FROM ${S}.pesantren_tagihan_pembayaran
+                GROUP BY tagihan_id
+             ) pb ON pb.tagihan_id = t.id
+            WHERE s.deleted_at IS NULL
+            GROUP BY s.id, s.nis, s.nama_lengkap
+            ORDER BY (COALESCE(SUM(t.total_tagihan), 0) - COALESCE(SUM(pb.total_bayar), 0)) DESC, s.nama_lengkap ASC
+            LIMIT 500`,
+        );
 
       case 'DOMPET_ARUS': {
         const rentang = this.rentangWajib(req);
@@ -163,6 +211,38 @@ export class PesantrenLaporanService {
           [req.gelombangId || null],
         );
 
+      case 'PSB_REGISTRASI_BULANAN':
+        return this.tenantDb.query(
+          schemaName,
+          `SELECT to_char(date_trunc('month', pd.created_at), 'YYYY-MM') AS bulan,
+                  g.nama AS gelombang,
+                  pd.status,
+                  COUNT(*)::int AS jumlah
+             FROM ${S}.pesantren_psb_pendaftar pd
+             JOIN ${S}.pesantren_psb_gelombang g ON g.id = pd.gelombang_id
+            WHERE pd.deleted_at IS NULL
+              AND ($1::uuid IS NULL OR pd.gelombang_id = $1)
+            GROUP BY date_trunc('month', pd.created_at), g.nama, pd.status
+            ORDER BY bulan DESC, g.nama, pd.status`,
+          [req.gelombangId || null],
+        );
+
+      case 'PSB_ASAL_SEKOLAH':
+        return this.tenantDb.query(
+          schemaName,
+          `SELECT COALESCE(NULLIF(TRIM(pd.asal_sekolah), ''), 'Tidak diisi') AS asal_sekolah,
+                  COUNT(*)::int AS jumlah,
+                  COUNT(*) FILTER (WHERE pd.status IN ('DITERIMA', 'DAFTAR_ULANG'))::int AS diterima,
+                  COUNT(*) FILTER (WHERE pd.status = 'TIDAK_LULUS')::int AS tidak_lulus
+             FROM ${S}.pesantren_psb_pendaftar pd
+            WHERE pd.deleted_at IS NULL
+              AND ($1::uuid IS NULL OR pd.gelombang_id = $1)
+            GROUP BY COALESCE(NULLIF(TRIM(pd.asal_sekolah), ''), 'Tidak diisi')
+            ORDER BY jumlah DESC, asal_sekolah ASC
+            LIMIT 100`,
+          [req.gelombangId || null],
+        );
+
       case 'ASRAMA_HUNIAN':
         return this.tenantDb.query(
           schemaName,
@@ -200,17 +280,20 @@ export class PesantrenLaporanService {
    * `PosReportService.dasbor()`.
    */
   async dasbor(schemaName: string): Promise<Record<string, unknown>> {
-    const [santri, santriPerTahunMasuk, santriPerTahunLulus, tagihan, asrama, rombongan, psb] =
+    const [santri, santriPerTahunMasuk, santriPerTahunLulus, statusDetail, tagihan, piutangSantri, asrama, rombongan, psb, psbBulanan] =
       await Promise.all([
         this.jalankan(schemaName, 'SANTRI_RINGKASAN', {}),
         this.jalankan(schemaName, 'SANTRI_PER_TAHUN_MASUK', {}),
         this.jalankan(schemaName, 'SANTRI_PER_TAHUN_LULUS', {}),
+        this.jalankan(schemaName, 'SANTRI_STATUS_DETAIL', {}),
         this.jalankan(schemaName, 'TAGIHAN_REKAP', {}),
+        this.jalankan(schemaName, 'TAGIHAN_SANTRI', {}),
         this.jalankan(schemaName, 'ASRAMA_HUNIAN', {}),
         this.jalankan(schemaName, 'ROMBONGAN_HUNIAN', {}),
         this.jalankan(schemaName, 'PSB_FUNNEL', {}),
+        this.jalankan(schemaName, 'PSB_REGISTRASI_BULANAN', {}),
       ]);
-    return { santri, santriPerTahunMasuk, santriPerTahunLulus, tagihan, asrama, rombongan, psb };
+    return { santri, santriPerTahunMasuk, santriPerTahunLulus, statusDetail, tagihan, piutangSantri, asrama, rombongan, psb, psbBulanan };
   }
 
   private rentangWajib(req: PermintaanLaporan) {

@@ -81,16 +81,21 @@ export function persen(bagian: number, keseluruhan: number): number {
 
 /** Daftar laporan yang tersedia, dipakai antarmuka untuk menyusun menunya. */
 export const LAPORAN_PESANTREN = [
-  { code: 'SANTRI_RINGKASAN', name: 'Ringkasan Santri' },
-  { code: 'SANTRI_PER_TAHUN_MASUK', name: 'Santri per Tahun Masuk' },
-  { code: 'SANTRI_PER_TAHUN_LULUS', name: 'Santri per Tahun Lulus' },
-  { code: 'PRESENSI_REKAP', name: 'Rekap Presensi' },
-  { code: 'TAGIHAN_REKAP', name: 'Rekap Tagihan SPP' },
-  { code: 'DOMPET_ARUS', name: 'Arus Dompet Santri' },
-  { code: 'NILAI_RATA', name: 'Rata-rata Nilai per Mata Pelajaran' },
-  { code: 'PSB_FUNNEL', name: 'Corong Penerimaan Santri Baru' },
-  { code: 'ASRAMA_HUNIAN', name: 'Hunian Asrama' },
-  { code: 'ROMBONGAN_HUNIAN', name: 'Hunian Rombongan Belajar' },
+  { code: 'SANTRI_RINGKASAN', name: 'Ringkasan Santri', description: 'Jumlah santri menurut status, gender, dan mukim/nonmukim.' },
+  { code: 'SANTRI_PER_TAHUN_MASUK', name: 'Santri per Tahun Masuk', description: 'Tren penerimaan santri dari tanggal masuk.' },
+  { code: 'SANTRI_PER_TAHUN_LULUS', name: 'Santri per Tahun Lulus', description: 'Tren kelulusan berdasarkan tanggal keluar berstatus lulus.' },
+  { code: 'SANTRI_STATUS_DETAIL', name: 'Status Aktif, Keluar, Pindah, dan Lulus', description: 'Dashboard status santri setara AIS DashboardStatusSiswa.' },
+  { code: 'SANTRI_ASAL_ALAMAT', name: 'Sebaran Alamat Asal Santri', description: 'Ringkasan alamat asal untuk membaca sebaran daerah santri.' },
+  { code: 'PRESENSI_REKAP', name: 'Rekap Presensi', description: 'Rekap kehadiran santri per jenis kegiatan pada rentang tanggal.' },
+  { code: 'TAGIHAN_REKAP', name: 'Rekap Tagihan SPP', description: 'Ringkasan status dan nominal tagihan per periode.' },
+  { code: 'TAGIHAN_SANTRI', name: 'Piutang dan Pembayaran per Santri', description: 'Total tagihan, pembayaran, dan sisa per santri.' },
+  { code: 'DOMPET_ARUS', name: 'Arus Dompet Santri', description: 'Total transaksi dompet santri pada rentang tanggal.' },
+  { code: 'NILAI_RATA', name: 'Rata-rata Nilai per Mata Pelajaran', description: 'Rata-rata komponen nilai per mata pelajaran.' },
+  { code: 'PSB_FUNNEL', name: 'Corong Penerimaan Santri Baru', description: 'Jumlah pendaftar PSB menurut gelombang dan status.' },
+  { code: 'PSB_REGISTRASI_BULANAN', name: 'Registrasi PSB per Bulan', description: 'Tren pendaftaran PSB bulanan setara dashboard registrasi AIS.' },
+  { code: 'PSB_ASAL_SEKOLAH', name: 'Asal Sekolah Pendaftar PSB', description: 'Sekolah asal pendaftar dan hasil seleksinya.' },
+  { code: 'ASRAMA_HUNIAN', name: 'Hunian Asrama', description: 'Kapasitas dan keterisian kamar asrama.' },
+  { code: 'ROMBONGAN_HUNIAN', name: 'Hunian Rombongan Belajar', description: 'Kapasitas dan jumlah anggota aktif per rombongan belajar.' },
 ] as const;
 
 export type KodeLaporan = (typeof LAPORAN_PESANTREN)[number]['code'];

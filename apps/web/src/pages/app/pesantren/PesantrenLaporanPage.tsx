@@ -141,8 +141,13 @@ export function PesantrenLaporanPage() {
               <div>
                 <p className="text-sm text-slate-500">{laporanAktif?.code ?? kodeAktif}</p>
                 <h2 className="section-title">{laporanAktif?.name ?? 'Laporan'}</h2>
+                <p className="mt-1 text-sm text-slate-500">{laporanAktif?.description ?? 'Data dapat dicetak, diekspor, atau digeser horizontal pada layar kecil.'}</p>
               </div>
-              {hasil.data?.range && <StatusBadge status={`${hasil.data.range.days} hari`} />}
+              <div className="flex flex-wrap gap-2">
+                <StatusBadge status={`${rows.length} baris`} />
+                <StatusBadge status={`${columns.length} kolom`} />
+                {hasil.data?.range && <StatusBadge status={`${hasil.data.range.days} hari`} />}
+              </div>
             </div>
             {hasil.isError && <p className="mt-3 text-sm text-red-600">{toMessage(hasil.error, (_key, fallback) => fallback ?? 'Gagal menjalankan laporan.')}</p>}
           </div>
@@ -169,7 +174,7 @@ export function PesantrenLaporanPage() {
                   {!hasil.isLoading && !rows.length && <tr><td className="px-4 py-6 text-slate-500">Belum ada data laporan.</td></tr>}
                   {rows.map((row, index) => (
                     <tr key={String(row.id ?? row.code ?? index)}>
-                      {columns.map((column) => <td key={column} className="px-4 py-3 text-slate-700">{renderValue(row[column])}</td>)}
+                      {columns.map((column) => <td key={column} className="px-4 py-3 text-slate-700">{renderValue(row[column], column)}</td>)}
                     </tr>
                   ))}
                 </tbody>
@@ -234,12 +239,12 @@ function labelKolom(key: string) {
   return key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function renderValue(value: unknown) {
+function renderValue(value: unknown, key = '') {
   if (value == null || value === '') return '-';
   if (typeof value === 'number') return String(value);
   if (typeof value === 'boolean') return value ? 'Ya' : 'Tidak';
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return formatDate(value);
-  if (typeof value === 'string' && /saldo|total|jumlah|nominal|tagihan|bayar/i.test(value)) return formatMoney(value);
+  if (typeof value === 'string' && /saldo|total|nominal|tagihan|bayar|sisa/i.test(key)) return formatMoney(value);
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }
