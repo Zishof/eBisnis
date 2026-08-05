@@ -78,6 +78,17 @@ describe('business vertical hosts', () => {
       ['rentalkendaraan.ebisnis.id', 'rentalkendaraan'],
       ['inventory.ebisnis.id', 'inventory'],
       ['rentalsepeda.ebisnis.id', 'rentalsepeda'],
+      ['fotokopi.ebisnis.id', 'fotokopi'],
+      ['frozenfood.ebisnis.id', 'frozenfood'],
+      ['tokoatk.ebisnis.id', 'tokoatk'],
+      ['tokohp.ebisnis.id', 'tokohp'],
+      ['petshop.ebisnis.id', 'petshop'],
+      ['cucisepatu.ebisnis.id', 'cucisepatu'],
+      ['depotair.ebisnis.id', 'depotair'],
+      ['travel.ebisnis.id', 'travel'],
+      ['homestay.ebisnis.id', 'homestay'],
+      ['kursus.ebisnis.id', 'kursus'],
+      ['daycare.ebisnis.id', 'daycare'],
     ] as const;
 
     for (const [host, code] of contoh) {

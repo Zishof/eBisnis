@@ -32,7 +32,18 @@ export type BusinessVerticalCode =
   | 'optik'
   | 'eventorganizer'
   | 'rentalalat'
-  | 'jasakebersihan';
+  | 'jasakebersihan'
+  | 'fotokopi'
+  | 'frozenfood'
+  | 'tokoatk'
+  | 'tokohp'
+  | 'petshop'
+  | 'cucisepatu'
+  | 'depotair'
+  | 'travel'
+  | 'homestay'
+  | 'kursus'
+  | 'daycare';
 
 export interface BusinessVertical {
   code: BusinessVerticalCode;
@@ -290,6 +301,17 @@ const EXTRA_VERTICALS: BusinessVertical[] = [
   simpleVertical('eventorganizer', ['eventorganizer', 'event-organizer', 'eo'], 'Event Organizer', 'Paket acara, vendor, timeline, termin, dan laporan margin proyek', 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1400&q=82'),
   simpleVertical('rentalalat', ['rentalalat', 'rental-alat'], 'Rental Alat', 'Stok alat, jadwal sewa, deposit, maintenance, dan denda keterlambatan', 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=1400&q=82'),
   simpleVertical('jasakebersihan', ['jasakebersihan', 'cleaning'], 'Jasa Kebersihan', 'Tim lapangan, jadwal kunjungan, checklist, langganan, dan invoice', 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('fotokopi', ['fotokopi', 'fotocopy', 'copycenter'], 'Fotokopi dan Print', 'Fotokopi, print, jilid, laminating, ATK, dan order dokumen cepat', 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('frozenfood', ['frozenfood', 'frozen-food'], 'Frozen Food', 'Stok beku, batch, expiry, reseller, paket grosir, dan pengiriman dingin', 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('tokoatk', ['tokoatk', 'atk', 'alat-tulis'], 'Toko ATK', 'Alat tulis, perlengkapan sekolah/kantor, barcode, grosir, dan stok rak', 'https://images.unsplash.com/photo-1456735190827-d1262f71b8a3?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('tokohp', ['tokohp', 'toko-hp', 'ponsel'], 'Toko HP dan Aksesoris', 'IMEI/serial, aksesoris, servis ringan, garansi, cicilan, dan stok etalase', 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('petshop', ['petshop', 'pet-shop'], 'Pet Shop', 'Pakan, grooming, penitipan, vaksin, membership, dan reminder perawatan', 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('cucisepatu', ['cucisepatu', 'cuci-sepatu'], 'Cuci Sepatu', 'Order treatment sepatu, status proses, pickup-delivery, foto before-after, dan komplain', 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('depotair', ['depotair', 'depot-air'], 'Depot Air Minum', 'Galon, pelanggan langganan, antar jemput, rute kirim, deposit, dan pembayaran bulanan', 'https://images.unsplash.com/photo-1564419320461-6870880221ad?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('travel', ['travel', 'tourtravel', 'tour-travel'], 'Travel dan Tour', 'Paket perjalanan, jadwal armada, kursi, invoice, komisi agen, dan manifest penumpang', 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('homestay', ['homestay', 'penginapan'], 'Homestay dan Penginapan', 'Booking kamar, kalender inap, housekeeping, deposit, channel order, dan laporan okupansi', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('kursus', ['kursus', 'les', 'bimbel'], 'Kursus dan Bimbel', 'Kelas, jadwal tutor, tagihan siswa, presensi, materi, dan laporan perkembangan', 'https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1400&q=82'),
+  simpleVertical('daycare', ['daycare', 'paud', 'penitipananak'], 'Daycare dan PAUD', 'Pendaftaran anak, jadwal penitipan, catatan harian, tagihan, dan komunikasi orang tua', 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=1400&q=82'),
 ];
 
 export const ALL_BUSINESS_VERTICALS = [...BUSINESS_VERTICALS, ...EXTRA_VERTICALS];
