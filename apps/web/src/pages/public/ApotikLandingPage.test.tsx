@@ -44,5 +44,7 @@ describe('ApotikLandingPage', () => {
     expect(screen.getByText('Katalog produk tenant')).toBeInTheDocument();
     expect(screen.getByText('Paracetamol 500 mg')).toBeInTheDocument();
     expect(screen.getByText('Antibiotik sesuai resep')).toBeInTheDocument();
+    expect(screen.getByAltText('Produk Paracetamol 500 mg di katalog tenant apotik')).toBeInTheDocument();
+    expect(screen.getByText('per strip')).toBeInTheDocument();
   });
 });

@@ -85,6 +85,9 @@ const tenantProducts = [
     detail: 'Tablet, 10 strip tersedia',
     price: 'Rp 12.500',
     badge: 'Stok aman',
+    unit: 'per strip',
+    availability: '120 strip',
+    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=700&q=80',
   },
   {
     category: 'Vitamin',
@@ -92,6 +95,9 @@ const tenantProducts = [
     detail: 'Tablet, 24 botol tersedia',
     price: 'Rp 28.000',
     badge: 'Populer',
+    unit: 'per botol',
+    availability: '24 botol',
+    image: 'https://images.unsplash.com/photo-1577174881658-0f30ed549adc?auto=format&fit=crop&w=700&q=80',
   },
   {
     category: 'Alat kesehatan',
@@ -99,6 +105,9 @@ const tenantProducts = [
     detail: 'Box 50 pcs, siap antar',
     price: 'Rp 35.000',
     badge: 'Siap kirim',
+    unit: 'per box',
+    availability: '36 box',
+    image: 'https://images.unsplash.com/photo-1584634731339-252c581abfc5?auto=format&fit=crop&w=700&q=80',
   },
   {
     category: 'Resep dokter',
@@ -106,6 +115,9 @@ const tenantProducts = [
     detail: 'Wajib telaah apoteker',
     price: 'Per resep',
     badge: 'Resep wajib',
+    unit: 'validasi resep',
+    availability: 'apoteker aktif',
+    image: 'https://images.unsplash.com/photo-1628771065518-0d82f1938462?auto=format&fit=crop&w=700&q=80',
   },
   {
     category: 'Racikan',
@@ -113,6 +125,9 @@ const tenantProducts = [
     detail: 'Dosis mengikuti resep',
     price: 'Dihitung otomatis',
     badge: 'Racikan',
+    unit: 'per resep',
+    availability: 'siap racik',
+    image: 'https://images.unsplash.com/photo-1583912267550-d44c1f008e84?auto=format&fit=crop&w=700&q=80',
   },
   {
     category: 'Perawatan',
@@ -120,6 +135,9 @@ const tenantProducts = [
     detail: 'Tube, batch-expiry tercatat',
     price: 'Rp 18.500',
     badge: 'Expiry aman',
+    unit: 'per tube',
+    availability: '42 tube',
+    image: 'https://images.unsplash.com/photo-1550572017-edd951aa8f72?auto=format&fit=crop&w=700&q=80',
   },
 ];
 
@@ -477,18 +495,41 @@ function TenantApotikProfile({ title, host }: { title: string; host: string }) {
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {tenantProducts.map((product) => (
-              <article key={product.name} className="flex min-h-52 flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-wide text-emerald-700">{product.category}</p>
-                    <h3 className="mt-2 text-lg font-black text-slate-950">{product.name}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{product.detail}</p>
-                  </div>
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
-                    <Pill className="h-5 w-5" aria-hidden />
+              <article key={product.name} className="flex min-h-[27rem] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="relative h-44 bg-emerald-50">
+                  <LandingImage
+                    src={product.image}
+                    alt={`Produk ${product.name} di katalog tenant apotik`}
+                    className="h-full w-full object-cover"
+                    fallbackLabel={product.category}
+                    tone="emerald"
+                  />
+                  <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-xs font-black uppercase tracking-wide text-emerald-800 shadow-sm">
+                    {product.category}
                   </span>
                 </div>
-                <div className="mt-auto flex items-end justify-between gap-3 pt-5">
+                <div className="flex flex-1 flex-col p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-black text-slate-950">{product.name}</h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{product.detail}</p>
+                    </div>
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+                      <Pill className="h-5 w-5" aria-hidden />
+                    </span>
+                  </div>
+                  <dl className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-lg bg-slate-50 p-3">
+                      <dt className="text-slate-500">Satuan</dt>
+                      <dd className="mt-1 font-bold text-slate-900">{product.unit}</dd>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-3">
+                      <dt className="text-slate-500">Tersedia</dt>
+                      <dd className="mt-1 font-bold text-slate-900">{product.availability}</dd>
+                    </div>
+                  </dl>
+                </div>
+                <div className="mt-auto flex items-end justify-between gap-3 border-t border-slate-100 p-5 pt-4">
                   <div>
                     <p className="text-xs text-slate-500">Harga</p>
                     <p className="text-lg font-black text-slate-950">{product.price}</p>
