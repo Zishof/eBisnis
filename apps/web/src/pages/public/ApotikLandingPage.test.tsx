@@ -27,6 +27,9 @@ describe('ApotikLandingPage', () => {
 
     expect(screen.getByRole('heading', { name: /Apotik modern untuk resep/i })).toBeInTheDocument();
     expect(screen.getByText('Daftarkan apotik')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Buka POS Apotik/i })).toEqual(
+      expect.arrayContaining([expect.objectContaining({ href: expect.stringContaining('/app/apotik/pos') })]),
+    );
     expect(screen.queryByText('Katalog produk tenant')).not.toBeInTheDocument();
   });
 
@@ -46,5 +49,23 @@ describe('ApotikLandingPage', () => {
     expect(screen.getByText('Antibiotik sesuai resep')).toBeInTheDocument();
     expect(screen.getByAltText('Produk Paracetamol 500 mg di katalog tenant apotik')).toBeInTheDocument();
     expect(screen.getByText('per strip')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Lihat katalog/i })).toEqual(
+      expect.arrayContaining([expect.objectContaining({ href: expect.stringContaining('#Katalog') })]),
+    );
+  });
+
+  it('menjadikan demo-apotik.emedik.id sebagai etalase tenant demo apotik', () => {
+    setHost('demo-apotik.emedik.id');
+
+    render(
+      <MemoryRouter>
+        <ApotikLandingPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByText('Demo Apotik eMedik').length).toBeGreaterThan(0);
+    expect(screen.getByText('Profil tenant apotik')).toBeInTheDocument();
+    expect(screen.getByText('Katalog produk tenant')).toBeInTheDocument();
+    expect(screen.getByText('Racikan puyer anak')).toBeInTheDocument();
   });
 });
