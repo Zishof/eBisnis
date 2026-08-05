@@ -245,6 +245,12 @@
       "file": "20260806T010000__pesantren__dapodik_import_batch.sql",
       "name": "Log batch import DAPODIK dan rollback aman",
       "description": "Menambah pesantren_dapodik_import_batch dan pesantren_dapodik_import_row agar import final DAPODIK punya jejak batch, detail baris, status error, serta rollback aman untuk baris yang dibuat oleh batch."
+    },
+    {
+      "id": "20260806T020000__pesantren__dapodik_import_audit_final",
+      "file": "20260806T020000__pesantren__dapodik_import_audit_final.sql",
+      "name": "Audit final import DAPODIK dan rollback UPDATE",
+      "description": "Menambah metadata file sumber, snapshot before/after, dan diff per field pada baris import DAPODIK sehingga rollback final dapat membalik CREATE maupun UPDATE secara terukur."
     }
   ]
 }

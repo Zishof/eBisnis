@@ -30,7 +30,7 @@ interface ImportResult {
   updated: number;
   skipped: number;
   errors: Array<{ row: number; message: string }>;
-  preview: Array<{ row: number; action: 'CREATE' | 'UPDATE' | 'SKIP'; key: string; summary: string }>;
+  preview: Array<{ row: number; action: 'CREATE' | 'UPDATE' | 'SKIP'; key: string; summary: string; diff?: Array<{ field: string; before: unknown; after: unknown }> }>;
 }
 
 interface ImportBatch {
@@ -47,6 +47,15 @@ interface ImportBatch {
   completedAt: string | null;
   rolledBackAt: string | null;
   rollbackNote: string | null;
+  sourceFilename: string | null;
+  sourceHash: string | null;
+}
+
+interface SourceFileMeta {
+  name: string;
+  type: string;
+  size: number;
+  hash: string;
 }
 
 export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren' | 'eschool' }) {
@@ -61,6 +70,9 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
   const [format, setFormat] = useState<'csv' | 'json'>('csv');
   const [result, setResult] = useState<ImportResult | null>(null);
   const [datasetSearch, setDatasetSearch] = useState('');
+  const [sourceFile, setSourceFile] = useState<SourceFileMeta | null>(null);
+  const [templateUnitCode, setTemplateUnitCode] = useState('MI-RU');
+  const [templateJenjang, setTemplateJenjang] = useState('MI');
 
   const datasets = useQuery({
     queryKey: [mode, 'dapodik-datasets'],
@@ -92,7 +104,13 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
   }, [active, datasets.data]);
 
   const template = useMutation({
-    mutationFn: () => api.get<CsvPayload>(`${endpointBase}/${datasetCode}/template`),
+    mutationFn: () => {
+      const params = new URLSearchParams();
+      if (templateUnitCode.trim()) params.set('unitCode', templateUnitCode.trim());
+      if (templateJenjang.trim()) params.set('jenjang', templateJenjang.trim());
+      const query = params.toString();
+      return api.get<CsvPayload>(`${endpointBase}/${datasetCode}/template${query ? `?${query}` : ''}`);
+    },
     onSuccess: (payload) => unduh(payload),
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Template gagal diunduh.'), 'error'),
   });
@@ -109,6 +127,10 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
         format,
         content,
         dryRun,
+        sourceFilename: sourceFile?.name,
+        sourceMimeType: sourceFile?.type,
+        sourceSizeBytes: sourceFile?.size,
+        sourceHash: sourceFile?.hash,
       }),
     onSuccess: (payload) => {
       setResult(payload);
@@ -213,6 +235,32 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
               </div>
               <p className="mt-4 text-sm font-semibold text-slate-900">Kolom tersedia</p>
               <p className="mt-2 text-xs leading-6 text-slate-500">{active.columns.join(', ')}</p>
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-sm font-semibold text-slate-900">Konteks template</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Dipakai untuk mengisi contoh CSV per jenjang dan unit formal.</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                  <label className="block">
+                    <span className="text-xs font-medium text-slate-600">Kode unit</span>
+                    <input
+                      className="field-input mt-1"
+                      value={templateUnitCode}
+                      onChange={(event) => setTemplateUnitCode(event.target.value.toUpperCase())}
+                      placeholder="MI-RU"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-medium text-slate-600">Jenjang</span>
+                    <select className="field-input mt-1" value={templateJenjang} onChange={(event) => setTemplateJenjang(event.target.value)}>
+                      <option value="MI">MI</option>
+                      <option value="SD">SD</option>
+                      <option value="MTS">MTs</option>
+                      <option value="SMP">SMP</option>
+                      <option value="MA">MA</option>
+                      <option value="SMA">SMA/SMK</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
             </div>
           )}
         </aside>
@@ -235,9 +283,10 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     if (!file) return;
-                    void bacaFileImpor(file).then(({ format: nextFormat, content: nextContent }) => {
+                    void bacaFileImpor(file).then(({ format: nextFormat, content: nextContent, source }) => {
                       setFormat(nextFormat);
                       setContent(nextContent);
+                      setSourceFile(source);
                     }).catch((error: unknown) => {
                       toast.push(error instanceof Error ? error.message : 'File tidak dapat dibaca.', 'error');
                     });
@@ -260,6 +309,14 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
                 onChange={(event) => setContent(event.target.value)}
                 placeholder={format === 'json' ? '[{"nis":"001","nama_lengkap":"Ahmad","jenis_kelamin":"L"}]' : 'nis,nisn,nama_lengkap,jenis_kelamin...'}
               />
+              {sourceFile && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                  <p className="font-semibold">{sourceFile.name}</p>
+                  <p className="mt-1 font-mono text-xs">
+                    {sourceFile.size.toLocaleString('id-ID')} byte - SHA-256 {sourceFile.hash.slice(0, 16)}...
+                  </p>
+                </div>
+              )}
               <div className="flex flex-wrap justify-end gap-2">
                 <button type="button" className="btn-outline" onClick={() => impor.mutate(true)} disabled={!content.trim() || impor.isPending}>
                   <FileCheck2 className="h-4 w-4" aria-hidden />
@@ -311,6 +368,7 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
                           <th className="px-3 py-2 text-left">Aksi</th>
                           <th className="px-3 py-2 text-left">Kunci</th>
                           <th className="px-3 py-2 text-left">Ringkasan</th>
+                          <th className="px-3 py-2 text-left">Diff Field</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
@@ -320,6 +378,7 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
                             <td className="px-3 py-2"><StatusBadge status={labelAksiPreview(item.action)} /></td>
                             <td className="px-3 py-2 font-mono text-xs text-slate-600">{item.key}</td>
                             <td className="px-3 py-2 text-slate-600">{item.summary}</td>
+                            <td className="px-3 py-2 text-xs text-slate-500">{ringkasDiff(item.diff)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -350,6 +409,7 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-4 py-3 text-left">Waktu</th>
+                    <th className="px-4 py-3 text-left">File</th>
                     <th className="px-4 py-3 text-left">Status</th>
                     <th className="px-4 py-3 text-left">Baris</th>
                     <th className="px-4 py-3 text-left">Hasil</th>
@@ -362,6 +422,10 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
                       <td className="px-4 py-3">
                         <p className="font-medium text-slate-900">{formatTanggal(batch.createdAt)}</p>
                         <p className="font-mono text-xs text-slate-500">{batch.id}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="max-w-56 truncate text-slate-700">{batch.sourceFilename ?? '-'}</p>
+                        <p className="font-mono text-xs text-slate-400">{batch.sourceHash ? `${batch.sourceHash.slice(0, 12)}...` : '-'}</p>
                       </td>
                       <td className="px-4 py-3"><StatusBadge status={labelStatusBatch(batch.status)} /></td>
                       <td className="px-4 py-3 text-slate-700">{batch.totalRows}</td>
@@ -383,7 +447,7 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
                   ))}
                   {!batches.isLoading && (batches.data ?? []).length === 0 && (
                     <tr>
-                      <td className="px-4 py-6 text-center text-slate-500" colSpan={5}>Belum ada import final untuk dataset ini.</td>
+                      <td className="px-4 py-6 text-center text-slate-500" colSpan={6}>Belum ada import final untuk dataset ini.</td>
                     </tr>
                   )}
                 </tbody>
@@ -415,7 +479,13 @@ function labelStatusBatch(status: string) {
 }
 
 function bisaRollback(batch: ImportBatch) {
-  return batch.createdCount > 0 && ['IMPORTED', 'IMPORTED_WITH_ERRORS'].includes(batch.status);
+  return (batch.createdCount > 0 || batch.updatedCount > 0) && ['IMPORTED', 'IMPORTED_WITH_ERRORS'].includes(batch.status);
+}
+
+function ringkasDiff(diff: ImportResult['preview'][number]['diff']) {
+  if (!diff?.length) return '-';
+  const fields = diff.slice(0, 4).map((item) => item.field).join(', ');
+  return `${diff.length} field: ${fields}${diff.length > 4 ? ', ...' : ''}`;
 }
 
 function formatTanggal(value: string) {
@@ -441,7 +511,13 @@ function unduh(payload: CsvPayload) {
   URL.revokeObjectURL(url);
 }
 
-async function bacaFileImpor(file: File): Promise<{ format: 'csv' | 'json'; content: string }> {
+async function bacaFileImpor(file: File): Promise<{ format: 'csv' | 'json'; content: string; source: SourceFileMeta }> {
+  const source = {
+    name: file.name,
+    type: file.type || 'application/octet-stream',
+    size: file.size,
+    hash: await hashFile(file),
+  };
   const lowerName = file.name.toLowerCase();
   if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
     const buffer = await file.arrayBuffer();
@@ -449,8 +525,14 @@ async function bacaFileImpor(file: File): Promise<{ format: 'csv' | 'json'; cont
     const firstSheet = workbook.SheetNames[0];
     if (!firstSheet) throw new Error('Workbook tidak memiliki sheet.');
     const worksheet = workbook.Sheets[firstSheet];
-    return { format: 'csv', content: XLSX.utils.sheet_to_csv(worksheet) };
+    return { format: 'csv', content: XLSX.utils.sheet_to_csv(worksheet), source };
   }
   const content = await file.text();
-  return { format: lowerName.endsWith('.json') ? 'json' : 'csv', content };
+  return { format: lowerName.endsWith('.json') ? 'json' : 'csv', content, source };
+}
+
+async function hashFile(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }

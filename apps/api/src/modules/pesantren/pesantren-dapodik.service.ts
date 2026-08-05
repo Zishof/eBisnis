@@ -37,6 +37,21 @@ interface ImportOptions {
   content: string;
   dryRun: boolean;
   actorUserId: string;
+  sourceFilename?: string;
+  sourceMimeType?: string;
+  sourceSizeBytes?: number;
+  sourceHash?: string;
+}
+
+interface TemplateOptions {
+  unitCode?: string;
+  jenjang?: string;
+}
+
+interface FieldDiff {
+  field: string;
+  before: unknown;
+  after: unknown;
 }
 
 export interface ImportResult {
@@ -48,7 +63,7 @@ export interface ImportResult {
   updated: number;
   skipped: number;
   errors: Array<{ row: number; message: string }>;
-  preview: Array<{ row: number; action: 'CREATE' | 'UPDATE' | 'SKIP'; key: string; summary: string }>;
+  preview: Array<{ row: number; action: 'CREATE' | 'UPDATE' | 'SKIP'; key: string; summary: string; diff?: FieldDiff[] }>;
 }
 
 export interface DapodikImportBatchRow {
@@ -65,6 +80,8 @@ export interface DapodikImportBatchRow {
   completedAt: string | null;
   rolledBackAt: string | null;
   rollbackNote: string | null;
+  sourceFilename: string | null;
+  sourceHash: string | null;
 }
 
 interface UpsertOutcome {
@@ -73,6 +90,9 @@ interface UpsertOutcome {
   targetId: string;
   key: string;
   summary: string;
+  beforeSnapshot: Record<string, unknown> | null;
+  afterSnapshot: Record<string, unknown> | null;
+  diff: FieldDiff[];
 }
 
 export interface ReferensiDapodikRow {
@@ -282,6 +302,60 @@ const REFERENSI_KATEGORI: Partial<Record<DatasetCode, string>> = {
   'ref-kebutuhan-khusus': 'KEBUTUHAN_KHUSUS',
 };
 const KATEGORI_REFERENSI = new Set(Object.values(REFERENSI_KATEGORI));
+const DAPODIK_MAPEL_TEMPLATES: Record<string, Array<Record<string, string>>> = {
+  MI: [
+    { code: 'PAI-BP-MI', nama: 'Pendidikan Agama Islam dan Budi Pekerti', kelompok: 'WAJIB', kode_mapel_dapodik: '100000020', jenjang: 'MI' },
+    { code: 'QH-MI', nama: 'Al-Quran Hadis', kelompok: 'KEAGAMAAN', kode_mapel_dapodik: '200000010', jenjang: 'MI' },
+    { code: 'AA-MI', nama: 'Akidah Akhlak', kelompok: 'KEAGAMAAN', kode_mapel_dapodik: '200000020', jenjang: 'MI' },
+    { code: 'FIQ-MI', nama: 'Fikih', kelompok: 'KEAGAMAAN', kode_mapel_dapodik: '200000030', jenjang: 'MI' },
+    { code: 'SKI-MI', nama: 'Sejarah Kebudayaan Islam', kelompok: 'KEAGAMAAN', kode_mapel_dapodik: '200000040', jenjang: 'MI' },
+    { code: 'BIN-MI', nama: 'Bahasa Indonesia', kelompok: 'WAJIB', kode_mapel_dapodik: '100000030', jenjang: 'MI' },
+    { code: 'MAT-MI', nama: 'Matematika', kelompok: 'WAJIB', kode_mapel_dapodik: '100000040', jenjang: 'MI' },
+    { code: 'IPAS-MI', nama: 'Ilmu Pengetahuan Alam dan Sosial', kelompok: 'WAJIB', kode_mapel_dapodik: '100000050', jenjang: 'MI' },
+    { code: 'PJOK-MI', nama: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kelompok: 'WAJIB', kode_mapel_dapodik: '100000080', jenjang: 'MI' },
+    { code: 'SBP-MI', nama: 'Seni Budaya dan Prakarya', kelompok: 'WAJIB', kode_mapel_dapodik: '100000090', jenjang: 'MI' },
+  ],
+  SD: [
+    { code: 'PAI-BP-SD', nama: 'Pendidikan Agama Islam dan Budi Pekerti', kelompok: 'WAJIB', kode_mapel_dapodik: '100000020', jenjang: 'SD' },
+    { code: 'BIN-SD', nama: 'Bahasa Indonesia', kelompok: 'WAJIB', kode_mapel_dapodik: '100000030', jenjang: 'SD' },
+    { code: 'MAT-SD', nama: 'Matematika', kelompok: 'WAJIB', kode_mapel_dapodik: '100000040', jenjang: 'SD' },
+    { code: 'IPAS-SD', nama: 'Ilmu Pengetahuan Alam dan Sosial', kelompok: 'WAJIB', kode_mapel_dapodik: '100000050', jenjang: 'SD' },
+    { code: 'PJOK-SD', nama: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kelompok: 'WAJIB', kode_mapel_dapodik: '100000080', jenjang: 'SD' },
+    { code: 'SBP-SD', nama: 'Seni Budaya dan Prakarya', kelompok: 'WAJIB', kode_mapel_dapodik: '100000090', jenjang: 'SD' },
+  ],
+  MTS: [
+    { code: 'QH-MTS', nama: 'Al-Quran Hadis', kelompok: 'KEAGAMAAN', kode_mapel_dapodik: '200000110', jenjang: 'MTS' },
+    { code: 'AA-MTS', nama: 'Akidah Akhlak', kelompok: 'KEAGAMAAN', kode_mapel_dapodik: '200000120', jenjang: 'MTS' },
+    { code: 'FIQ-MTS', nama: 'Fikih', kelompok: 'KEAGAMAAN', kode_mapel_dapodik: '200000130', jenjang: 'MTS' },
+    { code: 'SKI-MTS', nama: 'Sejarah Kebudayaan Islam', kelompok: 'KEAGAMAAN', kode_mapel_dapodik: '200000140', jenjang: 'MTS' },
+    { code: 'BIN-MTS', nama: 'Bahasa Indonesia', kelompok: 'WAJIB', kode_mapel_dapodik: '100000130', jenjang: 'MTS' },
+    { code: 'MAT-MTS', nama: 'Matematika', kelompok: 'WAJIB', kode_mapel_dapodik: '100000140', jenjang: 'MTS' },
+    { code: 'IPA-MTS', nama: 'Ilmu Pengetahuan Alam', kelompok: 'WAJIB', kode_mapel_dapodik: '100000150', jenjang: 'MTS' },
+    { code: 'IPS-MTS', nama: 'Ilmu Pengetahuan Sosial', kelompok: 'WAJIB', kode_mapel_dapodik: '100000160', jenjang: 'MTS' },
+  ],
+  SMP: [
+    { code: 'PAI-BP-SMP', nama: 'Pendidikan Agama Islam dan Budi Pekerti', kelompok: 'WAJIB', kode_mapel_dapodik: '100000120', jenjang: 'SMP' },
+    { code: 'BIN-SMP', nama: 'Bahasa Indonesia', kelompok: 'WAJIB', kode_mapel_dapodik: '100000130', jenjang: 'SMP' },
+    { code: 'MAT-SMP', nama: 'Matematika', kelompok: 'WAJIB', kode_mapel_dapodik: '100000140', jenjang: 'SMP' },
+    { code: 'IPA-SMP', nama: 'Ilmu Pengetahuan Alam', kelompok: 'WAJIB', kode_mapel_dapodik: '100000150', jenjang: 'SMP' },
+    { code: 'IPS-SMP', nama: 'Ilmu Pengetahuan Sosial', kelompok: 'WAJIB', kode_mapel_dapodik: '100000160', jenjang: 'SMP' },
+  ],
+  MA: [
+    { code: 'QH-MA', nama: 'Al-Quran Hadis', kelompok: 'KEAGAMAAN', kode_mapel_dapodik: '200000210', jenjang: 'MA' },
+    { code: 'AA-MA', nama: 'Akidah Akhlak', kelompok: 'KEAGAMAAN', kode_mapel_dapodik: '200000220', jenjang: 'MA' },
+    { code: 'FIQ-MA', nama: 'Fikih', kelompok: 'KEAGAMAAN', kode_mapel_dapodik: '200000230', jenjang: 'MA' },
+    { code: 'BIN-MA', nama: 'Bahasa Indonesia', kelompok: 'WAJIB', kode_mapel_dapodik: '100000230', jenjang: 'MA' },
+    { code: 'MAT-MA', nama: 'Matematika', kelompok: 'WAJIB', kode_mapel_dapodik: '100000240', jenjang: 'MA' },
+    { code: 'SEJ-MA', nama: 'Sejarah Indonesia', kelompok: 'WAJIB', kode_mapel_dapodik: '100000270', jenjang: 'MA' },
+  ],
+  SMA: [
+    { code: 'PAI-BP-SMA', nama: 'Pendidikan Agama Islam dan Budi Pekerti', kelompok: 'WAJIB', kode_mapel_dapodik: '100000220', jenjang: 'SMA' },
+    { code: 'BIN-SMA', nama: 'Bahasa Indonesia', kelompok: 'WAJIB', kode_mapel_dapodik: '100000230', jenjang: 'SMA' },
+    { code: 'MAT-SMA', nama: 'Matematika', kelompok: 'WAJIB', kode_mapel_dapodik: '100000240', jenjang: 'SMA' },
+    { code: 'SEJ-SMA', nama: 'Sejarah Indonesia', kelompok: 'WAJIB', kode_mapel_dapodik: '100000270', jenjang: 'SMA' },
+    { code: 'BIG-SMA', nama: 'Bahasa Inggris', kelompok: 'WAJIB', kode_mapel_dapodik: '100000280', jenjang: 'SMA' },
+  ],
+};
 const DAPODIK_ROLLBACK_TABLES = new Map<string, string>([
   ['pesantren_unit_pendidikan', 'pesantren_unit_pendidikan'],
   ['pesantren_tahun_ajaran', 'pesantren_tahun_ajaran'],
@@ -414,8 +488,9 @@ export class PesantrenDapodikService {
     return DATASETS;
   }
 
-  template(dataset: DatasetCode): string {
-    return toCsv([this.def(dataset).columns.reduce<Record<string, string>>((row, column) => ({ ...row, [column]: '' }), {})], this.def(dataset).columns);
+  template(dataset: DatasetCode, opsi: TemplateOptions = {}): string {
+    const def = this.def(dataset);
+    return toCsv(templateRows(dataset, def.columns, opsi), def.columns);
   }
 
   async referensi(schemaName: string, kategori: string): Promise<ReferensiDapodikRow[]> {
@@ -460,7 +535,7 @@ export class PesantrenDapodikService {
         const message = `Kolom wajib kosong: ${missing.join(', ')}`;
         result.errors.push({ row: rowNumber, message });
         result.skipped += 1;
-        result.preview.push({ row: rowNumber, action: 'SKIP', key: '-', summary: message });
+        result.preview.push({ row: rowNumber, action: 'SKIP', key: '-', summary: message, diff: [] });
         if (batchId) {
           await this.catatBatchRow(schemaName, batchId, {
             rowNumber,
@@ -482,7 +557,7 @@ export class PesantrenDapodikService {
         } catch (error) {
           result.errors.push({ row: rowNumber, message: errorMessage(error) });
           result.skipped += 1;
-          result.preview.push({ row: rowNumber, action: 'SKIP', key: '-', summary: errorMessage(error) });
+          result.preview.push({ row: rowNumber, action: 'SKIP', key: '-', summary: errorMessage(error), diff: [] });
         }
         continue;
       }
@@ -495,6 +570,7 @@ export class PesantrenDapodikService {
           action: outcome.action === 'created' ? 'CREATE' : 'UPDATE',
           key: outcome.key,
           summary: outcome.summary,
+          diff: outcome.diff,
         });
         if (batchId) {
           await this.catatBatchRow(schemaName, batchId, {
@@ -505,13 +581,16 @@ export class PesantrenDapodikService {
             key: outcome.key,
             summary: outcome.summary,
             rawRow: row,
+            beforeSnapshot: outcome.beforeSnapshot,
+            afterSnapshot: outcome.afterSnapshot,
+            diff: outcome.diff,
           });
         }
       } catch (error) {
         const message = errorMessage(error);
         result.errors.push({ row: rowNumber, message });
         result.skipped += 1;
-        result.preview.push({ row: rowNumber, action: 'SKIP', key: '-', summary: message });
+        result.preview.push({ row: rowNumber, action: 'SKIP', key: '-', summary: message, diff: [] });
         if (batchId) {
           await this.catatBatchRow(schemaName, batchId, {
             rowNumber,
@@ -536,7 +615,8 @@ export class PesantrenDapodikService {
     const rows = await this.tenantDb.query<Record<string, unknown>>(
       schemaName,
       `SELECT id::text, dataset, format, total_rows, created_count, updated_count, skipped_count, error_count,
-              status, created_at::text, completed_at::text, rolled_back_at::text, rollback_note
+              status, created_at::text, completed_at::text, rolled_back_at::text, rollback_note,
+              source_filename, source_hash
          FROM ${S}.pesantren_dapodik_import_batch
          ${where}
         ORDER BY created_at DESC
@@ -557,6 +637,8 @@ export class PesantrenDapodikService {
       completedAt: row.completed_at ? String(row.completed_at) : null,
       rolledBackAt: row.rolled_back_at ? String(row.rolled_back_at) : null,
       rollbackNote: row.rollback_note ? String(row.rollback_note) : null,
+      sourceFilename: row.source_filename ? String(row.source_filename) : null,
+      sourceHash: row.source_hash ? String(row.source_hash) : null,
     }));
   }
 
@@ -565,7 +647,8 @@ export class PesantrenDapodikService {
     const batch = await this.tenantDb.queryOne<Record<string, unknown>>(
       schemaName,
       `SELECT id::text, dataset, format, total_rows, created_count, updated_count, skipped_count, error_count,
-              status, error_summary, created_at::text, completed_at::text, rolled_back_at::text, rollback_note
+              status, error_summary, created_at::text, completed_at::text, rolled_back_at::text, rollback_note,
+              source_filename, source_mime_type, source_size_bytes, source_hash
          FROM ${S}.pesantren_dapodik_import_batch
         WHERE id = $1`,
       [batchId],
@@ -574,7 +657,8 @@ export class PesantrenDapodikService {
     const rows = await this.tenantDb.query(
       schemaName,
       `SELECT id::text, row_number, action, target_table, target_id::text, import_key, summary,
-              error_message, rollback_status, rollback_message, created_at::text
+              error_message, rollback_status, rollback_message, before_snapshot, after_snapshot, diff_fields,
+              created_at::text
          FROM ${S}.pesantren_dapodik_import_row
         WHERE batch_id = $1
         ORDER BY row_number ASC`,
@@ -595,16 +679,18 @@ export class PesantrenDapodikService {
       throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Batch import ini sudah pernah di-rollback.');
     }
 
-    const rows = await this.tenantDb.query<{ id: string; target_table: string; target_id: string }>(
+    const rows = await this.tenantDb.query<{ id: string; action: 'CREATE' | 'UPDATE'; target_table: string; target_id: string; before_snapshot: Record<string, unknown> | null }>(
       schemaName,
-      `SELECT id::text, target_table, target_id::text
+      `SELECT id::text, action, target_table, target_id::text, before_snapshot
          FROM ${S}.pesantren_dapodik_import_row
-        WHERE batch_id = $1 AND action = 'CREATE' AND target_id IS NOT NULL AND rollback_status = 'PENDING'
+        WHERE batch_id = $1 AND action IN ('CREATE', 'UPDATE') AND target_id IS NOT NULL AND rollback_status = 'PENDING'
         ORDER BY row_number DESC`,
       [batchId],
     );
     let rolledBack = 0;
     let failed = 0;
+    let restoredUpdates = 0;
+    let deletedCreates = 0;
     for (const row of rows) {
       const table = DAPODIK_ROLLBACK_TABLES.get(row.target_table);
       if (!table) {
@@ -612,20 +698,39 @@ export class PesantrenDapodikService {
         await this.tandaiRollbackRow(schemaName, row.id, 'FAILED', 'Target tabel tidak diizinkan untuk rollback otomatis.');
         continue;
       }
-      const updated = await this.tenantDb.query<{ id: string }>(
-        schemaName,
-        `UPDATE ${S}.${table}
-            SET deleted_at = now(), version = version + 1
-          WHERE id = $1 AND deleted_at IS NULL
-          RETURNING id::text`,
-        [row.target_id],
-      );
-      if (updated.length) {
+      if (row.action === 'CREATE') {
+        const updated = await this.tenantDb.query<{ id: string }>(
+          schemaName,
+          `UPDATE ${S}.${table}
+              SET deleted_at = now(), updated_at = now(), updated_by = $2, version = version + 1
+            WHERE id = $1 AND deleted_at IS NULL
+            RETURNING id::text`,
+          [row.target_id, actorUserId],
+        );
+        if (updated.length) {
+          rolledBack += 1;
+          deletedCreates += 1;
+          await this.tandaiRollbackRow(schemaName, row.id, 'ROLLED_BACK', 'Baris yang dibuat batch sudah dihapus lunak.');
+        } else {
+          failed += 1;
+          await this.tandaiRollbackRow(schemaName, row.id, 'FAILED', 'Data target tidak ditemukan atau sudah dihapus.');
+        }
+        continue;
+      }
+
+      if (!row.before_snapshot || Object.keys(row.before_snapshot).length === 0) {
+        failed += 1;
+        await this.tandaiRollbackRow(schemaName, row.id, 'FAILED', 'Snapshot sebelum import tidak tersedia.');
+        continue;
+      }
+      const restored = await restoreSnapshot(this.tenantDb, schemaName, S, table, row.target_id, row.before_snapshot, actorUserId);
+      if (restored) {
         rolledBack += 1;
-        await this.tandaiRollbackRow(schemaName, row.id, 'ROLLED_BACK', 'Baris yang dibuat batch sudah dihapus lunak.');
+        restoredUpdates += 1;
+        await this.tandaiRollbackRow(schemaName, row.id, 'ROLLED_BACK', 'Update dikembalikan ke snapshot sebelum import.');
       } else {
         failed += 1;
-        await this.tandaiRollbackRow(schemaName, row.id, 'FAILED', 'Data target tidak ditemukan atau sudah dihapus.');
+        await this.tandaiRollbackRow(schemaName, row.id, 'FAILED', 'Data target tidak ditemukan untuk restore snapshot.');
       }
     }
     const status = failed > 0 ? 'PARTIAL_ROLLBACK' : 'ROLLED_BACK';
@@ -635,9 +740,9 @@ export class PesantrenDapodikService {
           SET status = $2, rolled_back_at = now(), rolled_back_by = $3,
               rollback_note = $4
         WHERE id = $1`,
-      [batchId, status, actorUserId, `Rollback created rows: ${rolledBack}, gagal: ${failed}. Update lama tidak dibalik otomatis.`],
+      [batchId, status, actorUserId, `Rollback selesai: CREATE dihapus=${deletedCreates}, UPDATE dipulihkan=${restoredUpdates}, gagal=${failed}.`],
     );
-    return { batchId, status, rolledBack, failed, skippedUpdates: true };
+    return { batchId, status, rolledBack, failed, deletedCreates, restoredUpdates };
   }
 
   private async mulaiBatch(schemaName: string, opsi: ImportOptions, totalRows: number): Promise<string> {
@@ -645,10 +750,20 @@ export class PesantrenDapodikService {
     const row = await this.tenantDb.queryOne<{ id: string }>(
       schemaName,
       `INSERT INTO ${S}.pesantren_dapodik_import_batch
-         (dataset, format, content_hash, dry_run, total_rows, created_by)
-       VALUES ($1, $2, $3, false, $4, $5)
+         (dataset, format, content_hash, source_hash, source_filename, source_mime_type, source_size_bytes, dry_run, total_rows, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9)
        RETURNING id::text`,
-      [opsi.dataset, opsi.format, hashContent(opsi.content), totalRows, opsi.actorUserId],
+      [
+        opsi.dataset,
+        opsi.format,
+        hashContent(opsi.content),
+        opsi.sourceHash || hashContent(opsi.content),
+        opsi.sourceFilename ?? null,
+        opsi.sourceMimeType ?? null,
+        opsi.sourceSizeBytes ?? null,
+        totalRows,
+        opsi.actorUserId,
+      ],
     );
     if (!row) throw AppError.internal(ErrorCodes.INTERNAL_ERROR, 'Batch import DAPODIK gagal dibuat.');
     return row.id;
@@ -666,14 +781,18 @@ export class PesantrenDapodikService {
       summary: string;
       errorMessage?: string;
       rawRow: Record<string, string>;
+      beforeSnapshot?: Record<string, unknown> | null;
+      afterSnapshot?: Record<string, unknown> | null;
+      diff?: FieldDiff[];
     },
   ): Promise<void> {
     const S = `"${schemaName}"`;
     await this.tenantDb.query(
       schemaName,
       `INSERT INTO ${S}.pesantren_dapodik_import_row
-         (batch_id, row_number, action, target_table, target_id, import_key, summary, error_message, raw_row, rollback_status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)`,
+         (batch_id, row_number, action, target_table, target_id, import_key, summary, error_message,
+          raw_row, before_snapshot, after_snapshot, diff_fields, rollback_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11::jsonb, $12::jsonb, $13)`,
       [
         batchId,
         input.rowNumber,
@@ -684,7 +803,10 @@ export class PesantrenDapodikService {
         input.summary,
         input.errorMessage ?? null,
         JSON.stringify(input.rawRow),
-        input.action === 'CREATE' ? 'PENDING' : 'NOT_REQUIRED',
+        input.beforeSnapshot ? JSON.stringify(input.beforeSnapshot) : null,
+        input.afterSnapshot ? JSON.stringify(input.afterSnapshot) : null,
+        JSON.stringify(input.diff ?? []),
+        input.action === 'CREATE' || input.action === 'UPDATE' ? 'PENDING' : 'NOT_REQUIRED',
       ],
     );
   }
@@ -725,7 +847,7 @@ export class PesantrenDapodikService {
     schemaName: string,
     dataset: DatasetCode,
     row: Record<string, string>,
-  ): Promise<{ action: 'CREATE' | 'UPDATE'; key: string; summary: string }> {
+  ): Promise<{ action: 'CREATE' | 'UPDATE'; key: string; summary: string; diff: FieldDiff[] }> {
     const S = `"${schemaName}"`;
     switch (dataset) {
       case 'unit-pendidikan':
@@ -823,30 +945,17 @@ export class PesantrenDapodikService {
       case 'tahun-ajaran':
         return upsertSimple(this.tenantDb, schemaName, S, 'pesantren_tahun_ajaran', ['code'], ['code', 'name', 'tanggal_mulai', 'tanggal_selesai', 'status'], withDefaults(row, { status: 'DRAFT' }), actorUserId);
       case 'santri':
-        return upsertByExists(this.tenantDb, schemaName, `SELECT id::text AS id FROM ${S}.pesantren_santri WHERE nis = $1 AND deleted_at IS NULL`, [row.nis], async (exists) => {
-          const santriRow = withDefaults(row, {
-            status: 'AKTIF',
-            status_tinggal: 'MUKIM',
-            tanggal_masuk: new Date().toISOString().slice(0, 10),
-            kewarganegaraan: 'WNI',
-            kebutuhan_khusus: 'TIDAK_ADA',
-            penerima_kip: 'false',
-            penerima_kks: 'false',
-          });
-          if (santriRow.status !== 'AKTIF' && !santriRow.tanggal_keluar) {
-            santriRow.tanggal_keluar = new Date().toISOString().slice(0, 10);
-          }
-          if (santriRow.status === 'AKTIF') {
-            santriRow.tanggal_keluar = '';
-            santriRow.alasan_keluar = '';
-          }
+        {
+          const santriRow = normalizeSantriImportRow(row);
           const columns = this.def('santri').columns;
+          return upsertByExists(this.tenantDb, schemaName, `SELECT id::text AS id FROM ${S}.pesantren_santri WHERE nis = $1 AND deleted_at IS NULL`, [row.nis], async (exists) => {
           if (exists) {
             await this.tenantDb.query(schemaName, `UPDATE ${S}.pesantren_santri SET ${columns.filter((c) => c !== 'nis').map((c, i) => `${c} = $${i + 2}`).join(', ')}, updated_at = now(), updated_by = $${columns.length + 1}, version = version + 1 WHERE nis = $1 AND deleted_at IS NULL`, [row.nis, ...columns.filter((c) => c !== 'nis').map((c) => sqlValue(santriRow[c], c)), actorUserId]);
           } else {
             await this.tenantDb.query(schemaName, `INSERT INTO ${S}.pesantren_santri (${columns.join(', ')}, created_by, updated_by) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}, $${columns.length + 1}, $${columns.length + 1})`, [...columns.map((c) => sqlValue(santriRow[c], c)), actorUserId]);
           }
-        }, 'pesantren_santri', `nis=${row.nis || '-'}`, exists => exists ? 'Santri akan diperbarui.' : 'Santri akan dibuat.');
+        }, 'pesantren_santri', `nis=${row.nis || '-'}`, exists => exists ? 'Santri akan diperbarui.' : 'Santri akan dibuat.', { columns, row: santriRow });
+        }
       case 'psb-pendaftar':
         return upsertSimple(this.tenantDb, schemaName, S, 'pesantren_psb_pendaftar', ['gelombang_id', 'nomor_pendaftaran'], ['gelombang_id', 'nomor_pendaftaran', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nama_orang_tua', 'no_hp_orang_tua', 'alamat', 'asal_sekolah', 'jalur_masuk', 'status'], await this.resolvePsbPendaftar(schemaName, row), actorUserId);
       case 'guru':
@@ -1066,6 +1175,7 @@ async function upsertSimple(
     table,
     keys.map((item) => `${item}=${clean(row[item]) || '-'}`).join(', '),
     (exists) => exists ? `${labelTable(table)} akan diperbarui.` : `${labelTable(table)} akan dibuat.`,
+    { columns, row },
   );
 }
 
@@ -1077,15 +1187,21 @@ async function previewSimple(
   keys: string[],
   row: Record<string, string>,
   label: string,
-): Promise<{ action: 'CREATE' | 'UPDATE'; key: string; summary: string }> {
+): Promise<{ action: 'CREATE' | 'UPDATE'; key: string; summary: string; diff: FieldDiff[] }> {
   const where = keys.map((key, i) => `${key} = $${i + 1}`).join(' AND ');
   const params = keys.map((key) => sqlValue(row[key], key));
-  const exists = Boolean(await db.queryOne(schemaName, `SELECT id FROM ${S}.${table} WHERE ${where} AND deleted_at IS NULL`, params));
+  const existing = await db.queryOne<{ id: string }>(schemaName, `SELECT id::text AS id FROM ${S}.${table} WHERE ${where} AND deleted_at IS NULL`, params);
+  const exists = Boolean(existing);
+  const comparedColumns = Object.keys(row);
+  const before = existing ? await snapshotRow(db, schemaName, table, existing.id, comparedColumns) : null;
+  const after = Object.fromEntries(comparedColumns.map((column) => [column, sqlValue(row[column], column)]));
+  const diff = diffSnapshots(before, after);
   const key = keys.map((item) => `${item}=${clean(row[item]) || '-'}`).join(', ');
   return {
     action: exists ? 'UPDATE' : 'CREATE',
     key,
-    summary: exists ? `${label} akan diperbarui.` : `${label} akan dibuat.`,
+    summary: exists ? `${label} akan diperbarui: ${diffSummary(diff)}.` : `${label} akan dibuat.`,
+    diff,
   };
 }
 
@@ -1098,19 +1214,252 @@ async function upsertByExists(
   targetTable: string,
   key: string,
   summary: (exists: boolean) => string,
+  audit?: { columns: string[]; row: Record<string, string> },
 ): Promise<UpsertOutcome> {
   const existing = await db.queryOne<{ id: string }>(schemaName, existsSql, existsParams);
   const exists = Boolean(existing);
+  const beforeSnapshot = existing && audit ? await snapshotRow(db, schemaName, targetTable, existing.id, audit.columns) : null;
   await write(exists);
   const target = existing ?? await db.queryOne<{ id: string }>(schemaName, existsSql, existsParams);
   if (!target) throw AppError.internal(ErrorCodes.INTERNAL_ERROR, `Target import ${targetTable} gagal ditemukan setelah upsert.`);
+  const afterSnapshot = audit ? await snapshotRow(db, schemaName, targetTable, target.id, audit.columns) : null;
+  const diff = audit ? diffSnapshots(beforeSnapshot, afterSnapshot) : [];
   return {
     action: exists ? 'updated' : 'created',
     targetTable,
     targetId: target.id,
     key,
-    summary: summary(exists),
+    summary: exists && diff.length ? `${summary(exists)} ${diffSummary(diff)}.` : summary(exists),
+    beforeSnapshot,
+    afterSnapshot,
+    diff,
   };
+}
+
+async function snapshotRow(
+  db: TenantConnectionService,
+  schemaName: string,
+  table: string,
+  id: string,
+  columns: string[],
+): Promise<Record<string, unknown> | null> {
+  const safeColumns = columns.filter(isSafeIdentifier);
+  if (!safeColumns.length) return {};
+  const S = `"${schemaName}"`;
+  const row = await db.queryOne<Record<string, unknown>>(
+    schemaName,
+    `SELECT ${safeColumns.map(quoteIdent).join(', ')} FROM ${S}.${quoteIdent(table)} WHERE id = $1`,
+    [id],
+  );
+  return row ?? null;
+}
+
+async function restoreSnapshot(
+  db: TenantConnectionService,
+  schemaName: string,
+  S: string,
+  table: string,
+  id: string,
+  snapshot: Record<string, unknown>,
+  actorUserId: string,
+): Promise<boolean> {
+  const entries = Object.entries(snapshot).filter(([column]) => isSafeIdentifier(column));
+  if (!entries.length) return false;
+  const setSql = entries.map(([column], index) => `${quoteIdent(column)} = $${index + 2}`).join(', ');
+  const result = await db.query<{ id: string }>(
+    schemaName,
+    `UPDATE ${S}.${quoteIdent(table)}
+        SET ${setSql}, updated_at = now(), updated_by = $${entries.length + 2}, version = version + 1
+      WHERE id = $1 AND deleted_at IS NULL
+      RETURNING id::text`,
+    [id, ...entries.map(([, value]) => value), actorUserId],
+  );
+  return result.length > 0;
+}
+
+function diffSnapshots(before: Record<string, unknown> | null, after: Record<string, unknown> | null): FieldDiff[] {
+  const keys = Array.from(new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]));
+  return keys
+    .filter((key) => comparableValue(before?.[key]) !== comparableValue(after?.[key]))
+    .map((key) => ({ field: key, before: before?.[key] ?? null, after: after?.[key] ?? null }));
+}
+
+function diffSummary(diff: FieldDiff[]): string {
+  if (!diff.length) return 'tidak ada perubahan field';
+  const shown = diff.slice(0, 5).map((item) => item.field).join(', ');
+  return `${diff.length} field berubah (${shown}${diff.length > 5 ? ', ...' : ''})`;
+}
+
+function comparableValue(value: unknown): string {
+  if (value == null) return '';
+  if (value instanceof Date) return value.toISOString();
+  return JSON.stringify(value) ?? '';
+}
+
+function quoteIdent(value: string): string {
+  if (!isSafeIdentifier(value)) throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, `Identifier tidak valid: ${value}`);
+  return `"${value}"`;
+}
+
+function isSafeIdentifier(value: string): boolean {
+  return /^[a-z][a-z0-9_]*$/i.test(value);
+}
+
+function normalizeSantriImportRow(row: Record<string, string>): Record<string, string> {
+  const santriRow = withDefaults(row, {
+    status: 'AKTIF',
+    status_tinggal: 'MUKIM',
+    tanggal_masuk: new Date().toISOString().slice(0, 10),
+    kewarganegaraan: 'WNI',
+    kebutuhan_khusus: 'TIDAK_ADA',
+    penerima_kip: 'false',
+    penerima_kks: 'false',
+  });
+  if (santriRow.status !== 'AKTIF' && !santriRow.tanggal_keluar) {
+    santriRow.tanggal_keluar = new Date().toISOString().slice(0, 10);
+  }
+  if (santriRow.status === 'AKTIF') {
+    santriRow.tanggal_keluar = '';
+    santriRow.alasan_keluar = '';
+  }
+  return santriRow;
+}
+
+function templateRows(dataset: DatasetCode, columns: string[], opsi: TemplateOptions): Record<string, string>[] {
+  const unitCode = clean(opsi.unitCode).toUpperCase() || 'MI-RU';
+  const jenjang = normalizeJenjang(opsi.jenjang) || inferJenjangFromUnit(unitCode) || 'MI';
+  const tahunAjaran = '2026/2027';
+  const base = columns.reduce<Record<string, string>>((row, column) => ({ ...row, [column]: '' }), {});
+  switch (dataset) {
+    case 'unit-pendidikan':
+      return [{ ...base, code: unitCode, name: `Contoh Unit ${jenjang}`, jenis: jenjang, sort_order: '10' }];
+    case 'tahun-ajaran':
+      return [{ ...base, code: tahunAjaran, name: tahunAjaran, tanggal_mulai: '2026-07-13', tanggal_selesai: '2027-06-30', status: 'ACTIVE' }];
+    case 'santri':
+      return [{
+        ...base,
+        nis: `${unitCode}-2026-0001`,
+        nisn: '0091234567',
+        nipd: '20260001',
+        nik: '3522010101120001',
+        nama_lengkap: 'Contoh Peserta Didik',
+        nama_panggilan: 'Contoh',
+        jenis_kelamin: 'L',
+        status: 'AKTIF',
+        status_tinggal: 'MUKIM',
+        tanggal_masuk: '2026-07-13',
+        tempat_lahir: 'Bojonegoro',
+        tanggal_lahir: '2012-01-01',
+        agama: 'Islam',
+        kewarganegaraan: 'WNI',
+        kebutuhan_khusus: 'TIDAK_ADA',
+        anak_ke: '1',
+        jumlah_saudara: '2',
+        alamat_asal: 'Desa Campurejo, Bojonegoro',
+        alat_transportasi: 'Jalan kaki',
+        jarak_tempat_tinggal_km: '1',
+        hp: '081234567890',
+        penerima_kip: 'false',
+        penerima_kks: 'false',
+        nomor_kk: '3522010101010001',
+        nama_ayah: 'Contoh Ayah',
+        pendidikan_ayah: 'SMA/sederajat',
+        pekerjaan_ayah: 'Wiraswasta',
+        penghasilan_ayah: 'Rp1.000.000 - Rp2.000.000',
+        nama_ibu: 'Contoh Ibu',
+        pendidikan_ibu: 'SMA/sederajat',
+        pekerjaan_ibu: 'Ibu rumah tangga',
+        penghasilan_ibu: 'Tidak berpenghasilan',
+      }];
+    case 'psb-pendaftar':
+      return [{
+        ...base,
+        tahun_ajaran_code: tahunAjaran,
+        gelombang_kode: 'G1',
+        nomor_pendaftaran: 'PPDB-2026-0001',
+        nama_lengkap: 'Contoh Calon Santri',
+        jenis_kelamin: 'P',
+        tempat_lahir: 'Bojonegoro',
+        tanggal_lahir: '2012-02-02',
+        nama_orang_tua: 'Contoh Wali',
+        no_hp_orang_tua: '081234567890',
+        alamat: 'Desa Campurejo, Bojonegoro',
+        asal_sekolah: 'RA/TK Asal',
+        jalur_masuk: 'REGULER',
+        status: 'TERDAFTAR',
+      }];
+    case 'guru':
+      return [{ ...base, nip: '198001012006011001', nama: 'Contoh Guru', jenis: 'HONORER', no_hp: '081234567890', email: 'guru@example.sch.id', alamat: 'Bojonegoro', status: 'AKTIF' }];
+    case 'mata-pelajaran':
+      return DAPODIK_MAPEL_TEMPLATES[jenjang] ?? DAPODIK_MAPEL_TEMPLATES.MI;
+    case 'rombongan':
+      return [{ ...base, unit_pendidikan_code: unitCode, tahun_ajaran_code: tahunAjaran, tingkat: tingkatAwal(jenjang), nama: `${tingkatAwal(jenjang)}A`, kapasitas: '32' }];
+    case 'anggota-rombel':
+      return [{ ...base, nis: `${unitCode}-2026-0001`, rombongan_nama: `${tingkatAwal(jenjang)}A`, tahun_ajaran_code: tahunAjaran, tanggal_masuk: '2026-07-13', status: 'AKTIF' }];
+    case 'kurikulum':
+      return (DAPODIK_MAPEL_TEMPLATES[jenjang] ?? DAPODIK_MAPEL_TEMPLATES.MI).slice(0, 6).map((mapel) => ({
+        ...base,
+        unit_pendidikan_code: unitCode,
+        tahun_ajaran_code: tahunAjaran,
+        tingkat: tingkatAwal(jenjang),
+        mata_pelajaran_code: mapel.code,
+        jam_per_minggu: mapel.kelompok === 'KEAGAMAAN' ? '2' : '4',
+      }));
+    case 'jadwal':
+      return [
+        { ...base, rombongan_nama: `${tingkatAwal(jenjang)}A`, tahun_ajaran_code: tahunAjaran, mata_pelajaran_code: (DAPODIK_MAPEL_TEMPLATES[jenjang] ?? DAPODIK_MAPEL_TEMPLATES.MI)[0]?.code ?? 'BIN-MI', hari: 'SENIN', waktu_mulai: '07:00', waktu_selesai: '08:10', ruangan: 'Ruang 1' },
+        { ...base, rombongan_nama: `${tingkatAwal(jenjang)}A`, tahun_ajaran_code: tahunAjaran, mata_pelajaran_code: (DAPODIK_MAPEL_TEMPLATES[jenjang] ?? DAPODIK_MAPEL_TEMPLATES.MI)[1]?.code ?? 'MAT-MI', hari: 'SENIN', waktu_mulai: '08:10', waktu_selesai: '09:20', ruangan: 'Ruang 1' },
+      ];
+    case 'komponen-nilai':
+      return [
+        { ...base, mata_pelajaran_code: (DAPODIK_MAPEL_TEMPLATES[jenjang] ?? DAPODIK_MAPEL_TEMPLATES.MI)[0]?.code ?? 'BIN-MI', kode: 'PH', nama: 'Penilaian Harian', bobot_persen: '40' },
+        { ...base, mata_pelajaran_code: (DAPODIK_MAPEL_TEMPLATES[jenjang] ?? DAPODIK_MAPEL_TEMPLATES.MI)[0]?.code ?? 'BIN-MI', kode: 'PTS', nama: 'Penilaian Tengah Semester', bobot_persen: '30' },
+        { ...base, mata_pelajaran_code: (DAPODIK_MAPEL_TEMPLATES[jenjang] ?? DAPODIK_MAPEL_TEMPLATES.MI)[0]?.code ?? 'BIN-MI', kode: 'PAS', nama: 'Penilaian Akhir Semester', bobot_persen: '30' },
+      ];
+    case 'nilai':
+      return [{ ...base, nis: `${unitCode}-2026-0001`, mata_pelajaran_code: (DAPODIK_MAPEL_TEMPLATES[jenjang] ?? DAPODIK_MAPEL_TEMPLATES.MI)[0]?.code ?? 'BIN-MI', komponen_kode: 'PH', tahun_ajaran_code: tahunAjaran, nilai_angka: '86', catatan: 'Contoh nilai impor' }];
+    case 'ref-pekerjaan':
+      return referensiTemplateRows(base, [['P01', 'Tidak bekerja'], ['P02', 'Petani'], ['P03', 'Wiraswasta'], ['P04', 'Karyawan swasta']]);
+    case 'ref-pendidikan':
+      return referensiTemplateRows(base, [['D01', 'Tidak sekolah'], ['D02', 'SD/sederajat'], ['D03', 'SMP/sederajat'], ['D04', 'SMA/sederajat'], ['D05', 'D4/S1']]);
+    case 'ref-penghasilan':
+      return referensiTemplateRows(base, [['G00', 'Tidak berpenghasilan'], ['G01', 'Kurang dari Rp500.000'], ['G02', 'Rp500.000 - Rp999.999'], ['G03', 'Rp1.000.000 - Rp1.999.999']]);
+    case 'ref-transportasi':
+      return referensiTemplateRows(base, [['T01', 'Jalan kaki'], ['T02', 'Sepeda'], ['T03', 'Sepeda motor'], ['T04', 'Kendaraan umum']]);
+    case 'ref-jenis-tinggal':
+      return referensiTemplateRows(base, [['JT01', 'Bersama orang tua'], ['JT02', 'Asrama pesantren'], ['JT03', 'Wali/kerabat'], ['JT04', 'Kos']]);
+    case 'ref-kebutuhan-khusus':
+      return referensiTemplateRows(base, [['KK00', 'Tidak ada'], ['KK01', 'Tunanetra'], ['KK02', 'Tunarungu'], ['KK03', 'Tunadaksa']]);
+  }
+}
+
+function referensiTemplateRows(base: Record<string, string>, values: Array<[string, string]>): Record<string, string>[] {
+  return values.map(([code, nama], index) => ({ ...base, code, nama, sort_order: String(index + 1), is_active: 'true' }));
+}
+
+function normalizeJenjang(value?: string): string {
+  const normalized = clean(value).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (normalized === 'MTS') return 'MTS';
+  if (normalized === 'SMK') return 'SMA';
+  return ['MI', 'SD', 'MTS', 'SMP', 'MA', 'SMA'].includes(normalized) ? normalized : '';
+}
+
+function inferJenjangFromUnit(unitCode: string): string {
+  const normalized = clean(unitCode).toUpperCase();
+  if (normalized.startsWith('MI')) return 'MI';
+  if (normalized.startsWith('SD')) return 'SD';
+  if (normalized.startsWith('MTS') || normalized.startsWith('MTs'.toUpperCase())) return 'MTS';
+  if (normalized.startsWith('SMP')) return 'SMP';
+  if (normalized.startsWith('MA')) return 'MA';
+  if (normalized.startsWith('SMA') || normalized.startsWith('SMK')) return 'SMA';
+  return '';
+}
+
+function tingkatAwal(jenjang: string): string {
+  if (['MI', 'SD'].includes(jenjang)) return '1';
+  if (['MTS', 'SMP'].includes(jenjang)) return '7';
+  if (['MA', 'SMA'].includes(jenjang)) return '10';
+  return '1';
 }
 
 function normalizeRow(row: Record<string, unknown>, columns: string[], dataset: DatasetCode): Record<string, string> {

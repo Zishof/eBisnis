@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
@@ -61,6 +61,27 @@ class ImporDapodikDto {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   dryRun?: boolean;
+
+  @ApiPropertyOptional({ description: 'Nama file sumber yang diunggah operator.' })
+  @IsOptional()
+  @IsString()
+  sourceFilename?: string;
+
+  @ApiPropertyOptional({ description: 'MIME type file sumber.' })
+  @IsOptional()
+  @IsString()
+  sourceMimeType?: string;
+
+  @ApiPropertyOptional({ description: 'Ukuran file sumber dalam byte.' })
+  @IsOptional()
+  @Transform(({ value }) => (value === undefined || value === null || value === '' ? undefined : Number(value)))
+  @IsInt()
+  sourceSizeBytes?: number;
+
+  @ApiPropertyOptional({ description: 'Hash SHA-256 file sumber bila dihitung di client.' })
+  @IsOptional()
+  @IsString()
+  sourceHash?: string;
 }
 
 class EksporQuery {
@@ -68,6 +89,18 @@ class EksporQuery {
   @IsOptional()
   @IsIn(['csv'])
   format?: 'csv';
+}
+
+class TemplateQuery {
+  @ApiPropertyOptional({ description: 'Kode unit/sekolah untuk mengisi contoh template, misalnya MI-RU.' })
+  @IsOptional()
+  @IsString()
+  unitCode?: string;
+
+  @ApiPropertyOptional({ description: 'Jenjang formal untuk template akademik, misalnya MI, SD, MTs, SMP, MA, atau SMA.' })
+  @IsOptional()
+  @IsString()
+  jenjang?: string;
 }
 
 class BatchQuery {
@@ -128,11 +161,11 @@ export class PesantrenDapodikController {
   @Permissions('EPESANTREN_DAPODIK.EXPORT')
   @Get(':dataset/template')
   @ApiOperation({ summary: 'Template CSV Dapodik untuk satu dataset' })
-  template(@Param() param: DatasetParam) {
+  template(@Param() param: DatasetParam, @Query() query: TemplateQuery) {
     return {
       filename: `template-dapodik-${param.dataset}.csv`,
       mimeType: 'text/csv;charset=utf-8',
-      content: this.dapodik.template(param.dataset),
+      content: this.dapodik.template(param.dataset, { unitCode: query.unitCode, jenjang: query.jenjang }),
     };
   }
 
@@ -154,6 +187,10 @@ export class PesantrenDapodikController {
       content: dto.content,
       dryRun: dto.dryRun ?? true,
       actorUserId: user.userId,
+      sourceFilename: dto.sourceFilename,
+      sourceMimeType: dto.sourceMimeType,
+      sourceSizeBytes: dto.sourceSizeBytes,
+      sourceHash: dto.sourceHash,
     });
   }
 }
