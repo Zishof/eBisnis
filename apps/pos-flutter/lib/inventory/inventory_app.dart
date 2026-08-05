@@ -4,8 +4,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:excel/excel.dart' hide Border;
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import 'inventory_local_database.dart';
 
@@ -231,6 +235,8 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           NavigationDestination(
               icon: Icon(Icons.payments_outlined), label: 'Operasional'),
           NavigationDestination(
+              icon: Icon(Icons.inventory_2_outlined), label: 'Stok & Harga'),
+          NavigationDestination(
               icon: Icon(Icons.fact_check_outlined), label: 'Paritas'),
           NavigationDestination(
               icon: Icon(Icons.analytics_outlined), label: 'Laporan'),
@@ -243,7 +249,7 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           future: _snapshot,
           builder: (context, state) {
             final data = state.data;
-            final needsSnapshot = _tab == 0 || _tab == 4;
+            final needsSnapshot = _tab == 0 || _tab == 5;
             return CustomScrollView(
               slivers: [
                 SliverAppBar.large(
@@ -393,8 +399,10 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                             persona: widget.persona,
                           )
                         else if (_tab == 3)
-                          _InventoryFeaturePage(contract: _parity)
+                          InventoryStockPricingPage(client: widget.client)
                         else if (_tab == 4)
+                          _InventoryFeaturePage(contract: _parity)
+                        else if (_tab == 5)
                           _InventoryReportPage(snapshot: data!)
                         else
                           const _InventoryManualPage(),
@@ -1262,6 +1270,645 @@ class _InventoryPartyMasterPageState extends State<InventoryPartyMasterPage> {
         ]),
       ),
     );
+  }
+}
+
+class InventoryStockPricingPage extends StatefulWidget {
+  const InventoryStockPricingPage({super.key, required this.client});
+
+  final InventoryApiClient client;
+
+  @override
+  State<InventoryStockPricingPage> createState() =>
+      _InventoryStockPricingPageState();
+}
+
+class _InventoryStockPricingPageState extends State<InventoryStockPricingPage> {
+  late Future<InventoryStockPricingData> _data = widget.client.stockPricing();
+  final _search = TextEditingController();
+  String _mode = 'STOCK';
+  String? _message;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _reload() => setState(() => _data = widget.client.stockPricing());
+
+  Future<void> _export(List<List<Object?>> rows, String name) async {
+    if (rows.isEmpty) return;
+    final workbook = Excel.createExcel();
+    final sheetName = workbook.getDefaultSheet()!;
+    final sheet = workbook[sheetName];
+    for (final row in rows) {
+      sheet.appendRow(row
+          .map((value) => switch (value) {
+                int v => IntCellValue(v),
+                double v => DoubleCellValue(v),
+                _ => TextCellValue(value?.toString() ?? ''),
+              })
+          .toList());
+    }
+    final location = await getSaveLocation(
+      suggestedName: '$name.xlsx',
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'Excel', extensions: ['xlsx'])
+      ],
+    );
+    if (location == null) return;
+    final bytes = workbook.encode() ?? const <int>[];
+    await XFile.fromData(Uint8List.fromList(bytes),
+            name: '$name.xlsx',
+            mimeType:
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        .saveTo(location.path);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Excel disimpan di ${location.path}')));
+    }
+  }
+
+  Future<void> _exportPdf(
+      List<String> headers, List<List<Object?>> rows, String name) async {
+    if (rows.isEmpty) return;
+    final document = pw.Document();
+    document.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4.landscape,
+      margin: const pw.EdgeInsets.all(28),
+      header: (_) => pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 12),
+        child: pw.Text(name.replaceAll('-', ' ').toUpperCase(),
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+      ),
+      build: (_) => [
+        pw.TableHelper.fromTextArray(
+          headers: headers,
+          data: rows
+              .map((row) => row.map((cell) => cell?.toString() ?? '').toList())
+              .toList(),
+          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          cellStyle: const pw.TextStyle(fontSize: 8),
+          cellPadding: const pw.EdgeInsets.all(4),
+        ),
+      ],
+      footer: (context) => pw.Align(
+        alignment: pw.Alignment.centerRight,
+        child: pw.Text(
+            'Halaman ${context.pageNumber} dari ${context.pagesCount}',
+            style: const pw.TextStyle(fontSize: 8)),
+      ),
+    ));
+    final location = await getSaveLocation(
+      suggestedName: '$name.pdf',
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'PDF', extensions: ['pdf'])
+      ],
+    );
+    if (location == null) return;
+    final bytes = await document.save();
+    await XFile.fromData(bytes, name: '$name.pdf', mimeType: 'application/pdf')
+        .saveTo(location.path);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF disimpan di ${location.path}')));
+    }
+  }
+
+  Future<void> _opnameCommand(InventoryStockOpname session) async {
+    final next = switch (session.status) {
+      'DRAFT' => 'freeze',
+      'COUNTED' => 'approve',
+      'APPROVED' => 'post',
+      _ => null,
+    };
+    if (next == null) return;
+    setState(() => _busy = true);
+    try {
+      await widget.client.stockOpnameCommand(session.id, next);
+      setState(() => _message = 'Sesi ${session.number} berhasil diproses.');
+      _reload();
+    } on Object catch (error) {
+      setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _countOpname(InventoryStockOpname session) async {
+    setState(() => _busy = true);
+    try {
+      final lines = await widget.client.stockOpnameLines(session.id);
+      if (!mounted) return;
+      final controllers = <String, TextEditingController>{
+        for (final line in lines)
+          line.id: TextEditingController(
+              text: line.physicalQty == null ? '' : angka(line.physicalQty!)),
+      };
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('Hitung fisik ${session.number}'),
+          content: SizedBox(
+            width: 680,
+            child: lines.isEmpty
+                ? const Text('Belum ada baris stok pada sesi ini.')
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: lines.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final line = lines[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(line.name,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800)),
+                                Text(
+                                  '${line.code} | Batch ${line.lot ?? '-'} | Kedaluwarsa ${line.expiry ?? '-'}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 110,
+                            child: Text('Sistem ${angka(line.systemQty)}',
+                                textAlign: TextAlign.end),
+                          ),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 120,
+                            child: TextField(
+                              controller: controllers[line.id],
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              decoration: const InputDecoration(
+                                  labelText: 'Fisik', isDense: true),
+                            ),
+                          ),
+                        ]),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: lines.isEmpty
+                    ? null
+                    : () => Navigator.pop(dialogContext, true),
+                child: const Text('Simpan hitungan')),
+          ],
+        ),
+      );
+      if (accepted != true) return;
+      final payload = <Map<String, Object?>>[];
+      for (final line in lines) {
+        final value = controllers[line.id]?.text.trim() ?? '';
+        if (value.isEmpty) continue;
+        final quantity = double.tryParse(value.replaceAll(',', '.'));
+        if (quantity == null || quantity < 0) {
+          throw const InventoryApiException(
+              'Jumlah fisik harus berupa angka nol atau lebih.');
+        }
+        payload.add({'lineId': line.id, 'physicalQty': quantity});
+      }
+      if (payload.isEmpty) {
+        throw const InventoryApiException(
+            'Isi minimal satu hasil hitung fisik.');
+      }
+      await widget.client.countStockOpname(session.id, payload);
+      if (mounted) {
+        setState(() => _message =
+            'Hitungan fisik ${session.number} tersimpan dan dapat ditinjau.');
+        _reload();
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _createOpname(InventoryStockPricingData data) async {
+    if (data.warehouses.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await widget.client.createStockOpname(data.warehouses.first.id);
+      setState(() => _message = 'Sesi opname baru berhasil dibuat.');
+      _reload();
+    } on Object catch (error) {
+      setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _createPriceBook(InventoryStockPricingData data) async {
+    if (data.products.isEmpty) return;
+    final code = TextEditingController();
+    final name = TextEditingController();
+    final price = TextEditingController();
+    String productId = data.products.first.id;
+    String scopeType = 'TENANT';
+    String? scopeId;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(builder: (context, update) {
+        return AlertDialog(
+          title: const Text('Buku harga baru'),
+          content: SizedBox(
+            width: 520,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(
+                  controller: code,
+                  decoration: const InputDecoration(labelText: 'Kode')),
+              TextField(
+                  controller: name,
+                  decoration:
+                      const InputDecoration(labelText: 'Nama buku harga')),
+              DropdownButtonFormField<String>(
+                value: scopeType,
+                decoration: const InputDecoration(labelText: 'Lingkup harga'),
+                items: const [
+                  DropdownMenuItem(value: 'TENANT', child: Text('Umum tenant')),
+                  DropdownMenuItem(
+                      value: 'CUSTOMER', child: Text('Khusus customer')),
+                  DropdownMenuItem(
+                      value: 'SUPPLIER', child: Text('Harga beli supplier')),
+                ],
+                onChanged: (value) => update(() {
+                  scopeType = value ?? 'TENANT';
+                  scopeId = null;
+                }),
+              ),
+              if (scopeType != 'TENANT')
+                DropdownButtonFormField<String>(
+                  value: scopeId,
+                  decoration: InputDecoration(
+                      labelText: scopeType == 'CUSTOMER'
+                          ? 'Customer tujuan'
+                          : 'Supplier tujuan'),
+                  items: (scopeType == 'CUSTOMER'
+                          ? data.customers
+                          : data.suppliers)
+                      .map((row) => DropdownMenuItem(
+                          value: row.id,
+                          child: Text('${row.code} - ${row.name}')))
+                      .toList(),
+                  onChanged: (value) => update(() => scopeId = value),
+                ),
+              DropdownButtonFormField<String>(
+                value: productId,
+                decoration: const InputDecoration(labelText: 'Produk'),
+                items: data.products
+                    .take(500)
+                    .map((row) => DropdownMenuItem(
+                        value: row.id,
+                        child: Text('${row.code} - ${row.name}')))
+                    .toList(),
+                onChanged: (value) =>
+                    update(() => productId = value ?? productId),
+              ),
+              TextField(
+                controller: price,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Harga'),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Ajukan')),
+          ],
+        );
+      }),
+    );
+    if (accepted != true) return;
+    setState(() => _busy = true);
+    try {
+      await widget.client.createPriceBook(
+        code: code.text.trim(),
+        name: name.text.trim(),
+        scopeType: scopeType,
+        scopeId: scopeId,
+        productId: productId,
+        price: double.tryParse(price.text) ?? -1,
+      );
+      setState(() => _message = 'Buku harga dibuat dan diajukan.');
+      _reload();
+    } on Object catch (error) {
+      setState(() => _message = error.toString());
+    } finally {
+      code.dispose();
+      name.dispose();
+      price.dispose();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<InventoryStockPricingData>(
+      future: _data,
+      builder: (context, state) {
+        if (state.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state.hasError || state.data == null) {
+          return _ErrorPanel(message: state.error.toString(), onRetry: _reload);
+        }
+        final data = state.data!;
+        final needle = _search.text.trim().toLowerCase();
+        return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SectionCard(
+                title: 'Persediaan, Opname, dan Harga',
+                icon: Icons.inventory_2_outlined,
+                child: Column(children: [
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                          value: 'STOCK',
+                          label: Text('Stok'),
+                          icon: Icon(Icons.inventory_outlined)),
+                      ButtonSegment(
+                          value: 'OPNAME',
+                          label: Text('Opname'),
+                          icon: Icon(Icons.fact_check_outlined)),
+                      ButtonSegment(
+                          value: 'PRICE',
+                          label: Text('Harga'),
+                          icon: Icon(Icons.sell_outlined)),
+                    ],
+                    selected: {_mode},
+                    onSelectionChanged: (value) =>
+                        setState(() => _mode = value.first),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _search,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      labelText: 'Cari kode, produk, batch, pihak, atau sesi',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (_message != null) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(_message!,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700))),
+                  ],
+                ]),
+              ),
+              const SizedBox(height: 12),
+              if (_mode == 'STOCK') _stockView(data, needle),
+              if (_mode == 'OPNAME') _opnameView(data, needle),
+              if (_mode == 'PRICE') _priceView(data, needle),
+            ]);
+      },
+    );
+  }
+
+  Widget _stockView(InventoryStockPricingData data, String needle) {
+    final rows = data.products
+        .where((row) =>
+            needle.isEmpty ||
+            row.code.toLowerCase().contains(needle) ||
+            row.name.toLowerCase().contains(needle))
+        .toList();
+    return _SectionCard(
+      title: '${rows.length} produk',
+      icon: Icons.warehouse_outlined,
+      child: Column(children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: Wrap(spacing: 8, children: [
+            OutlinedButton.icon(
+                onPressed: () => _export([
+                      ['Kode', 'Nama', 'Satuan', 'Stok', 'Harga jual'],
+                      ...rows.map((row) =>
+                          [row.code, row.name, row.uom, row.stock, row.price]),
+                    ], 'stok-inventory'),
+                icon: const Icon(Icons.table_view_outlined),
+                label: const Text('Excel')),
+            FilledButton.tonalIcon(
+                onPressed: () => _exportPdf(
+                    ['Kode', 'Nama', 'Satuan', 'Stok', 'Harga jual'],
+                    rows
+                        .map((row) => [
+                              row.code,
+                              row.name,
+                              row.uom,
+                              angka(row.stock),
+                              rupiah(row.price)
+                            ])
+                        .toList(),
+                    'laporan-stok-inventory'),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('PDF')),
+          ]),
+        ),
+        ...rows.take(200).map((row) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading:
+                  const CircleAvatar(child: Icon(Icons.medication_outlined)),
+              title: Text(row.name,
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text('${row.code} | ${row.uom} | ${rupiah(row.price)}'),
+              trailing: Chip(label: Text('Stok ${angka(row.stock)}')),
+            )),
+      ]),
+    );
+  }
+
+  Widget _opnameView(InventoryStockPricingData data, String needle) {
+    final rows = data.opnames
+        .where((row) =>
+            needle.isEmpty ||
+            row.number.toLowerCase().contains(needle) ||
+            row.warehouse.toLowerCase().contains(needle))
+        .toList();
+    return _SectionCard(
+      title: 'Sesi stock opname',
+      icon: Icons.fact_check_outlined,
+      child: Column(children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: Wrap(spacing: 8, runSpacing: 8, children: [
+            FilledButton.icon(
+                onPressed: _busy || data.warehouses.isEmpty
+                    ? null
+                    : () => _createOpname(data),
+                icon: const Icon(Icons.add),
+                label: const Text('Sesi baru')),
+            FilledButton.tonalIcon(
+                onPressed: rows.isEmpty
+                    ? null
+                    : () => _exportPdf(
+                        ['Nomor', 'Gudang', 'Status', 'Dihitung', 'Selisih'],
+                        rows
+                            .map((row) => [
+                                  row.number,
+                                  row.warehouse,
+                                  row.status,
+                                  '${row.counted}/${row.lines}',
+                                  rupiah(row.varianceValue)
+                                ])
+                            .toList(),
+                        'laporan-stock-opname'),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('Laporan PDF')),
+          ]),
+        ),
+        ...rows.map((row) => Card(
+              child: ListTile(
+                onTap: _busy || !['FROZEN', 'COUNTED'].contains(row.status)
+                    ? null
+                    : () => _countOpname(row),
+                title: Text(row.number,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text(
+                    '${row.warehouse} | ${row.counted}/${row.lines} dihitung | Selisih ${rupiah(row.varianceValue)}${[
+                  'FROZEN',
+                  'COUNTED'
+                ].contains(row.status) ? ' | Ketuk untuk isi fisik' : ''}'),
+                leading: const Icon(Icons.inventory_2_outlined),
+                trailing: FilledButton.tonal(
+                  onPressed: _busy ||
+                          !['DRAFT', 'COUNTED', 'APPROVED'].contains(row.status)
+                      ? null
+                      : () => _opnameCommand(row),
+                  child: Text(switch (row.status) {
+                    'DRAFT' => 'Bekukan',
+                    'COUNTED' => 'Setujui',
+                    'APPROVED' => 'Posting',
+                    _ => row.status,
+                  }),
+                ),
+              ),
+            )),
+      ]),
+    );
+  }
+
+  Widget _priceView(InventoryStockPricingData data, String needle) {
+    final prices = data.prices
+        .where((row) =>
+            needle.isEmpty ||
+            row.productName.toLowerCase().contains(needle) ||
+            row.partyName.toLowerCase().contains(needle))
+        .toList();
+    return Column(children: [
+      _SectionCard(
+        title: 'Buku harga dan persetujuan',
+        icon: Icons.approval_outlined,
+        child: Column(children: [
+          Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                  onPressed: _busy ? null : () => _createPriceBook(data),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Buku harga'))),
+          ...data.priceBooks.take(50).map((row) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('${row.code} - ${row.name}',
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text('${row.scope} | ${row.itemCount} item'),
+                trailing: Chip(label: Text(row.status)),
+              )),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      _SectionCard(
+        title: 'Riwayat harga per pihak',
+        icon: Icons.history_outlined,
+        child: Column(children: [
+          Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(spacing: 8, children: [
+                OutlinedButton.icon(
+                    onPressed: () => _export([
+                          [
+                            'Jenis',
+                            'Pihak',
+                            'Kode',
+                            'Produk',
+                            'Tanggal',
+                            'Harga'
+                          ],
+                          ...prices.map((row) => [
+                                row.partyType,
+                                row.partyName,
+                                row.productCode,
+                                row.productName,
+                                row.date,
+                                row.price
+                              ]),
+                        ], 'riwayat-harga'),
+                    icon: const Icon(Icons.table_view_outlined),
+                    label: const Text('Excel')),
+                FilledButton.tonalIcon(
+                    onPressed: prices.isEmpty
+                        ? null
+                        : () => _exportPdf(
+                                [
+                                  'Jenis',
+                                  'Pihak',
+                                  'Kode',
+                                  'Produk',
+                                  'Tanggal',
+                                  'Harga'
+                                ],
+                                prices
+                                    .map((row) => [
+                                          row.partyType,
+                                          row.partyName,
+                                          row.productCode,
+                                          row.productName,
+                                          row.date,
+                                          rupiah(row.price)
+                                        ])
+                                    .toList(),
+                                'laporan-riwayat-harga'),
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('PDF'))
+              ])),
+          ...prices.take(200).map((row) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(row.productName,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle:
+                    Text('${row.partyType} | ${row.partyName} | ${row.date}'),
+                trailing: Text(rupiah(row.price),
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+              )),
+        ]),
+      ),
+    ]);
   }
 }
 
@@ -2191,6 +2838,95 @@ class InventoryApiClient {
     return InventoryParityContract.fromApi(data);
   }
 
+  Future<InventoryStockPricingData> stockPricing() async {
+    final values = await Future.wait([
+      _request<Map<String, Object?>>('GET', '/inventory/mobile-catalog'),
+      _request<List<Object?>>(
+          'GET', '/inventory/legacy/price-history?pageSize=1000'),
+      _request<Map<String, Object?>>('GET', '/stock-opnames'),
+      _request<List<Object?>>('GET', '/inventory/price-books'),
+      _request<Map<String, Object?>>('GET', '/inventory/master-data'),
+    ]);
+    return InventoryStockPricingData.fromApi(
+      values[0] as Map<String, Object?>,
+      values[1] as List<Object?>,
+      values[2] as Map<String, Object?>,
+      values[3] as List<Object?>,
+      values[4] as Map<String, Object?>,
+    );
+  }
+
+  Future<void> createStockOpname(String warehouseId) async {
+    await _request<Map<String, Object?>>('POST', '/stock-opnames', body: {
+      'warehouseId': warehouseId,
+      'opnameDate': DateTime.now().toIso8601String().substring(0, 10),
+      'note': 'Dibuat dari Flutter Inventory',
+    });
+  }
+
+  Future<void> stockOpnameCommand(String id, String command) async {
+    if (!const ['freeze', 'approve', 'post'].contains(command)) {
+      throw const InventoryApiException('Perintah opname tidak dikenal.');
+    }
+    await _request<Map<String, Object?>>('POST', '/stock-opnames/$id/$command');
+  }
+
+  Future<List<InventoryStockOpnameLine>> stockOpnameLines(String id) async {
+    final detail =
+        await _request<Map<String, Object?>>('GET', '/stock-opnames/$id');
+    return ((detail['lines'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((row) =>
+            InventoryStockOpnameLine.fromApi(Map<String, Object?>.from(row)))
+        .toList(growable: false);
+  }
+
+  Future<void> countStockOpname(
+      String id, List<Map<String, Object?>> lines) async {
+    if (lines.isEmpty) {
+      throw const InventoryApiException('Isi minimal satu hasil hitung fisik.');
+    }
+    await _request<Map<String, Object?>>('PATCH', '/stock-opnames/$id',
+        body: {'lines': lines});
+  }
+
+  Future<void> createPriceBook({
+    required String code,
+    required String name,
+    required String scopeType,
+    String? scopeId,
+    required String productId,
+    required double price,
+  }) async {
+    if (code.isEmpty ||
+        name.isEmpty ||
+        !const ['TENANT', 'CUSTOMER', 'SUPPLIER'].contains(scopeType) ||
+        (scopeType != 'TENANT' && (scopeId == null || scopeId.isEmpty)) ||
+        productId.isEmpty ||
+        price < 0) {
+      throw const InventoryApiException(
+          'Kode, nama, produk, dan harga wajib valid.');
+    }
+    final created = await _request<Map<String, Object?>>(
+      'POST',
+      '/inventory/price-books',
+      body: {
+        'code': code,
+        'name': name,
+        'scopeType': scopeType,
+        if (scopeType != 'TENANT') 'scopeId': scopeId,
+        'lines': [
+          {'productId': productId, 'minimumQty': 1, 'price': price}
+        ],
+      },
+    );
+    await _request<Map<String, Object?>>(
+      'PATCH',
+      '/inventory/price-books/${created['id']}/status',
+      body: {'status': 'SUBMITTED', 'note': 'Diajukan dari Flutter Inventory'},
+    );
+  }
+
   Future<List<InventoryPartyRecord>> partyMasters(String kind) async {
     if (!partyLabels.containsKey(kind)) {
       throw const InventoryApiException('Jenis master tidak dikenal.');
@@ -2655,6 +3391,219 @@ const partyFields = <String, List<PartyField>>{
     PartyField('description', 'Catatan penugasan', multiline: true),
   ],
 };
+
+class InventoryStockPricingData {
+  const InventoryStockPricingData({
+    required this.products,
+    required this.prices,
+    required this.warehouses,
+    required this.opnames,
+    required this.priceBooks,
+    required this.customers,
+    required this.suppliers,
+  });
+
+  factory InventoryStockPricingData.fromApi(
+    Map<String, Object?> catalog,
+    List<Object?> prices,
+    Map<String, Object?> opname,
+    List<Object?> books,
+    Map<String, Object?> masters,
+  ) {
+    return InventoryStockPricingData(
+      products: ((catalog['products'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map(InventoryStockProduct.fromApi)
+          .where((row) => row.id.isNotEmpty)
+          .toList(),
+      prices: prices
+          .whereType<Map<String, Object?>>()
+          .map(InventoryPriceHistory.fromApi)
+          .toList(),
+      warehouses: ((opname['warehouses'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => InventoryWarehouse(
+                (row['id'] ?? '').toString(),
+                (row['code'] ?? '').toString(),
+                (row['name'] ?? '').toString(),
+              ))
+          .toList(),
+      opnames: ((opname['sessions'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map(InventoryStockOpname.fromApi)
+          .toList(),
+      priceBooks: books
+          .whereType<Map<String, Object?>>()
+          .map(InventoryPriceBookSummary.fromApi)
+          .toList(),
+      customers: ((masters['customers'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map(InventoryPriceParty.fromApi)
+          .toList(),
+      suppliers: ((masters['suppliers'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map(InventoryPriceParty.fromApi)
+          .toList(),
+    );
+  }
+
+  final List<InventoryStockProduct> products;
+  final List<InventoryPriceHistory> prices;
+  final List<InventoryWarehouse> warehouses;
+  final List<InventoryStockOpname> opnames;
+  final List<InventoryPriceBookSummary> priceBooks;
+  final List<InventoryPriceParty> customers;
+  final List<InventoryPriceParty> suppliers;
+}
+
+class InventoryPriceParty {
+  const InventoryPriceParty(this.id, this.code, this.name);
+
+  factory InventoryPriceParty.fromApi(Map<String, Object?> row) =>
+      InventoryPriceParty(
+        (row['id'] ?? '').toString(),
+        (row['code'] ?? '').toString(),
+        (row['name'] ?? '').toString(),
+      );
+
+  final String id;
+  final String code;
+  final String name;
+}
+
+class InventoryStockProduct {
+  const InventoryStockProduct(
+      this.id, this.code, this.name, this.uom, this.stock, this.price);
+
+  factory InventoryStockProduct.fromApi(Map<String, Object?> row) =>
+      InventoryStockProduct(
+        (row['id'] ?? '').toString(),
+        (row['code'] ?? '').toString(),
+        (row['name'] ?? '').toString(),
+        (row['uom_code'] ?? row['uom'] ?? 'PCS').toString(),
+        toInt(row['available_qty']),
+        toDouble(row['price']),
+      );
+
+  final String id;
+  final String code;
+  final String name;
+  final String uom;
+  final int stock;
+  final double price;
+}
+
+class InventoryWarehouse {
+  const InventoryWarehouse(this.id, this.code, this.name);
+  final String id;
+  final String code;
+  final String name;
+}
+
+class InventoryStockOpname {
+  const InventoryStockOpname({
+    required this.id,
+    required this.number,
+    required this.status,
+    required this.warehouse,
+    required this.lines,
+    required this.counted,
+    required this.varianceValue,
+  });
+
+  factory InventoryStockOpname.fromApi(Map<String, Object?> row) =>
+      InventoryStockOpname(
+        id: (row['id'] ?? '').toString(),
+        number: (row['opname_number'] ?? '-').toString(),
+        status: (row['status'] ?? '-').toString(),
+        warehouse: (row['warehouse_name'] ?? '-').toString(),
+        lines: toInt(row['line_count']),
+        counted: toInt(row['counted_count']),
+        varianceValue: toDouble(row['variance_value']),
+      );
+
+  final String id;
+  final String number;
+  final String status;
+  final String warehouse;
+  final int lines;
+  final int counted;
+  final double varianceValue;
+}
+
+class InventoryStockOpnameLine {
+  const InventoryStockOpnameLine({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.lot,
+    required this.expiry,
+    required this.systemQty,
+    required this.physicalQty,
+  });
+
+  factory InventoryStockOpnameLine.fromApi(Map<String, Object?> row) =>
+      InventoryStockOpnameLine(
+        id: (row['id'] ?? '').toString(),
+        code: (row['product_code'] ?? '-').toString(),
+        name: (row['product_name'] ?? '-').toString(),
+        lot: nullableText(row['lot_number']),
+        expiry: nullableText(row['expiry_date']),
+        systemQty: toDouble(row['system_qty']),
+        physicalQty:
+            row['physical_qty'] == null ? null : toDouble(row['physical_qty']),
+      );
+
+  final String id;
+  final String code;
+  final String name;
+  final String? lot;
+  final String? expiry;
+  final double systemQty;
+  final double? physicalQty;
+}
+
+class InventoryPriceHistory {
+  const InventoryPriceHistory(this.partyType, this.partyName, this.productCode,
+      this.productName, this.date, this.price);
+
+  factory InventoryPriceHistory.fromApi(Map<String, Object?> row) =>
+      InventoryPriceHistory(
+        (row['party_type'] ?? '-').toString(),
+        (row['party_name'] ?? '-').toString(),
+        (row['product_code'] ?? '-').toString(),
+        (row['product_name'] ?? '-').toString(),
+        (row['effective_date'] ?? '-').toString(),
+        toDouble(row['price']),
+      );
+
+  final String partyType;
+  final String partyName;
+  final String productCode;
+  final String productName;
+  final String date;
+  final double price;
+}
+
+class InventoryPriceBookSummary {
+  const InventoryPriceBookSummary(
+      this.code, this.name, this.scope, this.status, this.itemCount);
+
+  factory InventoryPriceBookSummary.fromApi(Map<String, Object?> row) =>
+      InventoryPriceBookSummary(
+        (row['code'] ?? '-').toString(),
+        (row['name'] ?? '-').toString(),
+        (row['scope_type'] ?? '-').toString(),
+        (row['approval_status'] ?? '-').toString(),
+        toInt(row['item_count']),
+      );
+
+  final String code;
+  final String name;
+  final String scope;
+  final String status;
+  final int itemCount;
+}
 
 class InventoryPartyRecord {
   const InventoryPartyRecord({
@@ -3474,6 +4423,11 @@ String angka(Object? value) {
 double toDouble(Object? value) {
   if (value is num) return value.toDouble();
   return double.tryParse((value ?? '0').toString()) ?? 0;
+}
+
+String? nullableText(Object? value) {
+  final text = value?.toString().trim() ?? '';
+  return text.isEmpty ? null : text;
 }
 
 int toInt(Object? value) => toDouble(value).round();

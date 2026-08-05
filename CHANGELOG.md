@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-06 - Inventory parity wave 2
+
+- Menambahkan workspace Flutter responsif untuk stok, stock opname, dan harga.
+- Menyamakan siklus opname Web/Flutter: bekukan, hitung fisik, setujui, dan posting.
+- Menambahkan ekspor XLSX serta laporan PDF stok, opname, dan riwayat harga.
+- Menambahkan buku harga umum, harga beli supplier, dan harga jual customer dengan
+  pengajuan persetujuan.
+- Menaikkan layar legacy 08-19 menjadi operasional berdasarkan tes dan bukti visual.
+
 ## 2026-08-06 - Inventory / Sales 48 Screen Parity, Wave 1
 
 - Completed screens 01-07 for supplier, customer, and field-sales masters on
