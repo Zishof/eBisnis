@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApotikLandingPage } from './ApotikLandingPage';
@@ -13,6 +13,7 @@ function setHost(hostname: string) {
 
 describe('ApotikLandingPage', () => {
   afterEach(() => {
+    window.localStorage.removeItem('emedik-download-worker-repair-v1');
     vi.unstubAllGlobals();
   });
 
@@ -59,6 +60,31 @@ describe('ApotikLandingPage', () => {
       'emedik-pos-apotik-android.apk',
     );
     expect(screen.queryByText('Katalog produk tenant')).not.toBeInTheDocument();
+  });
+
+  it('melepas service worker lama yang mengalihkan URL unduhan ke landing', async () => {
+    const unregister = vi.fn().mockResolvedValue(true);
+    const reload = vi.fn();
+    setHost('apotik.emedik.id');
+    vi.stubGlobal('location', { ...location, hostname: 'apotik.emedik.id', reload });
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serviceWorker: {
+        controller: {},
+        getRegistrations: vi.fn().mockResolvedValue([{ unregister }]),
+      },
+    });
+    window.localStorage.removeItem('emedik-download-worker-repair-v1');
+
+    render(
+      <MemoryRouter>
+        <ApotikLandingPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(unregister).toHaveBeenCalledOnce());
+    expect(reload).toHaveBeenCalledOnce();
+    expect(window.localStorage.getItem('emedik-download-worker-repair-v1')).toBe('done');
   });
 
   it('menjadikan subdomain tenant apotik sebagai profil dan katalog produk tenant', () => {

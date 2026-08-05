@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -176,7 +177,34 @@ function isTenantApotikProfile(title: string, demo: boolean): boolean {
   return demo || title !== 'Apotik eMedik';
 }
 
+function useRepairLegacyDownloadWorker() {
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    const hostname = location.hostname.toLowerCase();
+    if (hostname !== 'apotik.emedik.id' && !hostname.endsWith('-apotik.emedik.id')) return;
+
+    const repairKey = 'emedik-download-worker-repair-v1';
+    try {
+      if (window.localStorage.getItem(repairKey) === 'done') return;
+    } catch {
+      // Penyimpanan dapat ditolak pada mode privat; perbaikan tetap dijalankan.
+    }
+
+    void navigator.serviceWorker.getRegistrations().then(async (registrations) => {
+      const controlled = navigator.serviceWorker.controller !== null;
+      const removed = await Promise.all(registrations.map((registration) => registration.unregister()));
+      try {
+        window.localStorage.setItem(repairKey, 'done');
+      } catch {
+        // Landing tetap dapat dipakai walaupun penyimpanan lokal ditolak.
+      }
+      if (controlled && removed.some(Boolean)) location.reload();
+    });
+  }, []);
+}
+
 export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
+  useRepairLegacyDownloadWorker();
   const brand = emedikPublicBrandFor();
   const title = demo ? 'Demo Apotik eMedik' : brand?.kind === 'apotik' ? brand.name : 'Apotik eMedik';
   const tenantProfile = isTenantApotikProfile(title, demo);
