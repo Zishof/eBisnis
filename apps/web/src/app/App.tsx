@@ -1,5 +1,5 @@
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
+import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
+import { Suspense, lazy, useEffect } from 'react';
 import { PublicLayout } from '../pages/public/PublicLayout';
 import { HomePage } from '../pages/public/HomePage';
 import { EmedikLandingPage } from '../pages/public/EmedikLandingPage';
@@ -14,7 +14,7 @@ import { ContactPage } from '../pages/public/ContactPage';
 import { BelanjaLayout } from '../pages/belanja/BelanjaLayout';
 import { isMarketplaceHost } from '../pages/belanja/marketplace-host';
 import { isSalonDemoHost, salonRootRedirectFor } from '../pages/contoh/salon-host';
-import { businessVerticalRootRedirectFor } from '../pages/contoh/business-verticals';
+import { businessVerticalPublicHostFor, businessVerticalRootRedirectFor } from '../pages/contoh/business-verticals';
 import { pelangganRootRedirectFor } from '../pages/pelanggan/pelanggan-host';
 import { inventoryRootRedirectFor } from '../pages/inventory/inventory-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
@@ -412,6 +412,35 @@ function AkarMenurutHost() {
   return <HomePage />;
 }
 
+function isEbisnisApexHost() {
+  const host = window.location.hostname.toLowerCase().replace(/\.$/, '');
+  return host === 'ebisnis.id' || host === 'www.ebisnis.id';
+}
+
+function ExternalRedirect({ host }: { host: string }) {
+  useEffect(() => {
+    window.location.replace(`https://${host}`);
+  }, [host]);
+  return <LoadingState label="Membuka website unit usaha" />;
+}
+
+function DemoDomainRedirect() {
+  if (!isEbisnisApexHost()) return <DemoEntryPage />;
+  return <ExternalRedirect host="demo.ebisnis.id" />;
+}
+
+function SalonLegacyRedirect() {
+  if (!isEbisnisApexHost()) return <SalonDemoPage />;
+  return <ExternalRedirect host="salon.ebisnis.id" />;
+}
+
+function BusinessVerticalDomainRedirect() {
+  const params = useParams();
+  const host = businessVerticalPublicHostFor(params.vertical);
+  if (!host || !isEbisnisApexHost()) return <BusinessVerticalPage />;
+  return <ExternalRedirect host={host} />;
+}
+
 function AppTenantGate() {
   if (isSalonDemoHost()) return <Navigate to="/masuk" replace />;
   if (isApotikHost() && window.location.pathname === '/app/pos') {
@@ -466,9 +495,9 @@ export function App() {
           <Route path="/masuk" element={<LoginPage />} />
           <Route path="/daftar" element={<RegisterPage />} />
           <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
-          <Route path="/demo" element={<DemoEntryPage />} />
+          <Route path="/demo" element={<DemoDomainRedirect />} />
           <Route path="/inventory" element={<InventoryLandingPage />} />
-          <Route path="/contoh-usaha/:vertical" element={<BusinessVerticalPage />} />
+          <Route path="/contoh-usaha/:vertical" element={<BusinessVerticalDomainRedirect />} />
           <Route path="/a/*" element={<AkarMenurutHost />} />
           <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />
         </Route>
@@ -551,7 +580,7 @@ export function App() {
         <Route path="/pelanggan/:slug" element={<PelangganDemoPage />} />
 
         {/* Contoh jenis usaha untuk calon tenant */}
-        <Route path="/contoh/salon" element={<SalonDemoPage />} />
+        <Route path="/contoh/salon" element={<SalonLegacyRedirect />} />
 
         {/* Aplikasi tenant */}
         <Route

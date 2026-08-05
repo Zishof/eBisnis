@@ -3,6 +3,7 @@ import {
   businessTenantNameFromHost,
   businessVerticalByCode,
   businessVerticalFromHost,
+  businessVerticalPublicHostFor,
   businessVerticalRootRedirectFor,
 } from './business-verticals';
 
@@ -23,6 +24,8 @@ describe('business vertical hosts', () => {
     expect(businessVerticalFromHost('laundy.ebisnis.id')?.code).toBe('laundry');
     expect(businessVerticalFromHost('cepat-laundy.ebisnis.id')?.code).toBe('laundry');
     expect(businessVerticalByCode('laundri')?.code).toBe('laundry');
+    expect(businessVerticalPublicHostFor('fashion')).toBe('fasion.ebisnis.id');
+    expect(businessVerticalPublicHostFor('laundry')).toBe('laundy.ebisnis.id');
   });
 
   it('menghasilkan nama tenant dan redirect landing', () => {

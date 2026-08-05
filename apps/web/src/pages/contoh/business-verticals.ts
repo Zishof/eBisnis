@@ -397,6 +397,17 @@ export function businessVerticalByCode(code: string | undefined): BusinessVertic
   return ALL_BUSINESS_VERTICALS.find((vertical) => vertical.code === normalized || vertical.aliases.includes(normalized)) ?? null;
 }
 
+const PUBLIC_VERTICAL_HOSTS: Partial<Record<BusinessVerticalCode, string>> = {
+  fashion: 'fasion.ebisnis.id',
+  laundry: 'laundy.ebisnis.id',
+};
+
+export function businessVerticalPublicHostFor(code: string | undefined): string | null {
+  const vertical = businessVerticalByCode(code);
+  if (!vertical) return null;
+  return PUBLIC_VERTICAL_HOSTS[vertical.code] ?? `${vertical.tenantSuffix}.ebisnis.id`;
+}
+
 export function businessVerticalFromHost(hostname: string = window.location.hostname): BusinessVertical | null {
   const subdomain = businessSubdomain(hostname);
   if (!subdomain) return null;
