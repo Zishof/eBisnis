@@ -1,5 +1,40 @@
 # 16 — Implementation Plan / MI-0 Status (2026-08-06)
 
+## Koreksi atas temuan MI-0 (ditemukan saat memulai MI-1)
+
+MI-0 (`02-portal-domain-username-inventory.md`, `17-high-conflict-file-map.md`)
+menyimpulkan **tidak ada** konsep "Portal Registry" formal di kodebase, hanya
+`VerticalSiteDomain` (host -> penyewa). Kesimpulan itu SALAH -- pencariannya
+memakai pola `grep "model Portal\b"`, yang tidak menangkap nama model
+sesungguhnya, `PlatformPortal` (`\b` tidak berlaku di antara "m" dan "P" pada
+"PlatformPortal"). Portal Registry NYATA ada dan matang:
+
+```text
+apps/api/prisma/platform/portal.prisma      -- PlatformPortal, PlatformPortalDomain,
+                                                 PlatformPortalCrossLink
+apps/api/src/infrastructure/portal/portal.catalog.ts  -- KATALOG_PORTAL, satu-satunya
+                                                 sumber kebenaran (data, bukan kode)
+apps/api/src/infrastructure/portal/portal-host.ts     -- aturan host murni (dapat diuji
+                                                 tanpa basis data)
+apps/api/src/modules/master-seed/platform-seed.service.ts -- seedPortals(): upsert
+                                                 idempoten dari KATALOG_PORTAL, TERMASUK
+                                                 tautan silang penuh (mesh) antar seluruh
+                                                 portal
+apps/web/src/verticals/pesantren/santri-host.ts + SantriLayout.tsx -- pola sisi web
+                                                 yang diikuti persis oleh MitraInap
+```
+
+Ini mengubah bentuk MI-1 sepenuhnya: bukan merancang Portal Registry dari nol,
+melainkan MENAMBAH SATU BARIS ke `KATALOG_PORTAL` (infrastruktur sudah
+menangani seed, cross-link mesh, dan endpoint publik `GET /public/portals`
+secara otomatis untuk portal baru mana pun). Lihat commit MI-1 untuk detail
+implementasi dan `19-requirement-ledger.csv` baris `MI-1-001`.
+
+Efek samping temuan ini: verifikasi `GET /public/portals` lewat API sungguhan
+(bukan cuma baca kode) menemukan bug pre-existing pada endpoint itu sendiri
+(`linksTo` vs `linksFrom` tertukar, memengaruhi SELURUH portal, bukan cuma
+MitraInap) -- diperbaiki dalam commit yang sama, dicatat di `MI-1-002`.
+
 ## Status jujur MI-0 pada titik ini
 
 Dari 19 dokumen audit + 1 ledger yang diminta perintah master (§7.3),

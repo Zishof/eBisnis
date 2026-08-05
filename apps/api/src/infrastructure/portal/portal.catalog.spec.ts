@@ -22,6 +22,7 @@ describe('katalog portal', () => {
       'ENTERPRISE_EDUCATION',
       'SANTRI_INFO',
       'EMEDIK',
+      'MITRAINAP',
       'EKOPERASI',
       'INFO_DESA',
     ]);
@@ -49,6 +50,7 @@ describe('katalog portal', () => {
       'CORE_ERP',
       'ENTERPRISE_EDUCATION',
       'HEALTH',
+      'HOSPITALITY',
       'COOPERATIVE',
       'VILLAGE_GOVERNMENT',
     ]);

@@ -171,6 +171,33 @@ export const KATALOG_PORTAL: PortalKatalog[] = [
     ],
   },
   {
+    /*
+     * MitraInap.id -- vertical baru (HOSPITALITY), bukan modul tambahan pada
+     * vertical yang sudah ada. §8.1 perintah master MitraInap V14 menetapkan
+     * kode portal, kode vertical, dan host apex/app persis seperti di bawah.
+     *
+     * `demo.mitrainap.id` SENGAJA belum didaftarkan di sini. Perintah master
+     * memintanya sandboxed dan resettable -- perilaku yang belum ada
+     * implementasinya (menyusul fase demo/sample data). Mendaftarkan hostnya
+     * sekarang tanpa perilaku di baliknya berarti domain yang aktif tapi tidak
+     * menjawab apa-apa secara berarti; lebih jujur menunda pendaftarannya ke
+     * fase yang benar-benar membangun perilaku itu.
+     */
+    code: 'MITRAINAP',
+    name: 'MitraInap.id',
+    tagline: 'PMS, booking engine, dan operasional hotel/properti dalam satu platform.',
+    verticalCode: 'HOSPITALITY',
+    brandPrimary: '#1E1B4B',
+    brandAccent: '#7C3AED',
+    sortOrder: 7,
+    crossLinkDescription: 'PMS, Booking Engine, Front Office, Housekeeping',
+    domains: [
+      { host: 'mitrainap.id', kind: 'PUBLIC', isCanonical: true },
+      { host: 'www.mitrainap.id', kind: 'PUBLIC', isCanonical: false },
+      { host: 'app.mitrainap.id', kind: 'APP', isCanonical: true },
+    ],
+  },
+  {
     code: 'EKOPERASI',
     name: 'eKoperasi.id',
     tagline: 'Keanggotaan, simpan pinjam, RAT, dan SHU.',

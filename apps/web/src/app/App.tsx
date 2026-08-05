@@ -20,6 +20,7 @@ import { inventoryRootRedirectFor } from '../pages/inventory/inventory-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
 import { isSantriPortalHost, slugPondokDariHost } from '../verticals/pesantren/santri-host';
 import { PondokChrome } from '../verticals/pesantren/PondokChrome';
+import { isMitrainapPortalHost } from '../verticals/hospitality/mitrainap-host';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
@@ -391,6 +392,19 @@ const PenawaranPesantrenPage = lazy(() =>
   })),
 );
 
+// Portal MitraInap.id (Hospitality) -- kerangkanya sendiri, sebab `PublicLayout`
+// memakai merek eBisnis dan keterangan footer tentang retail dan F&B.
+const MitrainapLayout = lazy(() =>
+  import('../verticals/hospitality/MitrainapLayout').then((m) => ({
+    default: m.MitrainapLayout,
+  })),
+);
+const MitrainapHomePage = lazy(() =>
+  import('../verticals/hospitality/MitrainapHomePage').then((m) => ({
+    default: m.MitrainapHomePage,
+  })),
+);
+
 /**
  * Apa yang dilihat pengunjung di akar situs, menurut alamat yang ia ketik.
  *
@@ -420,6 +434,7 @@ function AkarMenurutHost() {
    */
   if (isSantriPortalHost()) return <Navigate to="/santri" replace />;
   if (slugPondokDariHost()) return <Navigate to="/santri/pondok" replace />;
+  if (isMitrainapPortalHost()) return <Navigate to="/mitrainap" replace />;
   return <HomePage />;
 }
 
@@ -524,6 +539,17 @@ export function App() {
             `SantriLayout` alih-alih `PublicLayout` supaya pengunjung santri.info
             tidak berpindah merek saat menekan "Masuk" (§ tidak mencampur eBisnis
             dan ePesantren pada satu alur masuk).
+          */}
+          <Route path="masuk" element={<LoginPage />} />
+        </Route>
+
+        {/* Portal MitraInap.id (Hospitality) */}
+        <Route path="/mitrainap" element={<MitrainapLayout />}>
+          <Route index element={<MitrainapHomePage />} />
+          {/*
+            Masuk BERBEDA dari `/masuk` global: `LoginPage` yang sama, dibungkus
+            `MitrainapLayout` alih-alih `PublicLayout` supaya pengunjung
+            mitrainap.id tidak berpindah merek saat menekan "Masuk".
           */}
           <Route path="masuk" element={<LoginPage />} />
         </Route>
