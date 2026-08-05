@@ -111,12 +111,14 @@ export function metadataForTenant(hostname = window.location.hostname): TenantMe
   if (emedikBrand) {
     const apotik = isApotikHost(host);
     return {
-      title: apotik ? 'Apotik eMedik — Farmasi dan POS Apotik' : 'eMedik.id — Sistem Operasional Kesehatan',
+      title: apotik
+        ? `${emedikBrand.name} - Farmasi dan POS Apotik`
+        : `${emedikBrand.name} - Sistem Operasional Kesehatan`,
       description: emedikBrand.description,
       siteName: emedikBrand.name,
       appName: emedikBrand.name,
       iconText: emedikBrand.logoText,
-      themeColor: apotik ? '#0f766e' : '#2563eb',
+      themeColor: apotik ? '#0f766e' : '#0891b2',
       imageUrl: apotik ? APOTIK_IMAGE : EMEDIK_IMAGE,
     };
   }

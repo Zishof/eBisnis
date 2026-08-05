@@ -7,7 +7,7 @@ import { Check, Loader2, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { api } from '../../lib/api';
 import { useErrorMessage } from '../../app/auth-context';
-import { emedikPublicBrandFor } from '../public/emedik-host';
+import { emedikPublicBrandFor, type EmedikPublicBrand } from '../public/emedik-host';
 
 interface RegistrationConfig {
   countries: string[];
@@ -58,12 +58,19 @@ interface RegisterForm {
 
 const STEPS = ['stepBusiness', 'stepLocation', 'stepContact', 'stepAccount'] as const;
 
+export function registerStepLabels(brand: EmedikPublicBrand | null, translate: (key: string) => string): string[] {
+  if (brand?.kind === 'apotik') return ['Profil Apotik', 'Lokasi layanan', 'Kontak farmasi', 'Akun apotik'];
+  if (brand?.kind === 'emedik') return ['Profil Fasilitas', 'Lokasi layanan', 'Kontak PIC', 'Akun fasilitas'];
+  return STEPS.map((key) => translate(`register.${key}`));
+}
+
 export function RegisterPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toMessage = useErrorMessage();
   const emedikBrand = emedikPublicBrandFor();
+  const stepLabels = useMemo(() => registerStepLabels(emedikBrand, (key) => t(key)), [emedikBrand, t]);
 
   const [step, setStep] = useState(0);
   const [generatePassword, setGeneratePassword] = useState(true);
@@ -192,7 +199,7 @@ export function RegisterPage() {
                   index === step ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-500',
                 )}
               >
-                {t(`register.${key}`)}
+                {stepLabels[index]}
               </span>
               {index < STEPS.length - 1 && <span className="hidden h-px w-6 bg-slate-300 sm:inline-block" />}
             </li>

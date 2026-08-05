@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, CheckCircle2, Copy, Download } from 'lucide-react';
 import { useToast } from '../../components/ui';
-import { emedikPublicBrandFor } from '../public/emedik-host';
+import { emedikPublicBrandFor, type EmedikPublicBrand } from '../public/emedik-host';
 
 interface RegistrationResult {
   status: string;
@@ -17,6 +17,25 @@ interface RegistrationResult {
   mustChangePassword: boolean;
 }
 
+export function registerSuccessCopy(brand: EmedikPublicBrand | null, translate: (key: string) => string) {
+  if (brand?.kind === 'apotik') {
+    return {
+      title: `${brand.name} berhasil disiapkan`,
+      subtitle: 'Ruang kerja apotik, contoh obat, supplier, stok awal, dan POS Apotik siap dicoba.',
+    };
+  }
+  if (brand?.kind === 'emedik') {
+    return {
+      title: `${brand.name} berhasil disiapkan`,
+      subtitle: 'Ruang kerja fasilitas kesehatan, data contoh layanan, farmasi, billing, dan akses awal siap dicoba.',
+    };
+  }
+  return {
+    title: translate('register.successTitle'),
+    subtitle: translate('register.successSubtitle'),
+  };
+}
+
 export function RegisterSuccessPage() {
   const { t } = useTranslation();
   const location = useLocation();
@@ -25,6 +44,7 @@ export function RegisterSuccessPage() {
   const emedikBrand = emedikPublicBrandFor();
   const brandName = emedikBrand?.name ?? 'eBisnis.id';
   const filePrefix = emedikBrand?.kind === 'apotik' ? 'apotik-emedik' : emedikBrand ? 'emedik' : 'ebisnis';
+  const successCopy = registerSuccessCopy(emedikBrand, (key) => t(key));
 
   const result = (location.state as { result?: RegistrationResult } | null)?.result;
 
@@ -72,10 +92,10 @@ export function RegisterSuccessPage() {
           <div className="text-center">
             <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" aria-hidden />
             <h1 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
-              {t('register.successTitle')}
+              {successCopy.title}
             </h1>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              {t('register.successSubtitle')}
+              {successCopy.subtitle}
             </p>
           </div>
 
