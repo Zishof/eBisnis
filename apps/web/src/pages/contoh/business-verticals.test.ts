@@ -47,6 +47,45 @@ describe('business vertical hosts', () => {
     expect(businessVerticalFromHost('bersih-jasakebersihan.ebisnis.id')?.code).toBe('jasakebersihan');
   });
 
+  it('mengenali seluruh domain unit usaha publik dan tenant prefixed', () => {
+    const contoh = [
+      ['salon.ebisnis.id', 'salon'],
+      ['ayu-salon.ebisnis.id', 'salon'],
+      ['barbershop.ebisnis.id', 'barbershop'],
+      ['joko-barbershop.ebisnis.id', 'barbershop'],
+      ['bengkelmotor.ebisnis.id', 'bengkelmotor'],
+      ['bengkelmobil.ebisnis.id', 'bengkelmobil'],
+      ['bengkelsepeda.ebisnis.id', 'bengkelsepeda'],
+      ['restoran.ebisnis.id', 'restoran'],
+      ['cafe.ebisnis.id', 'cafe'],
+      ['kuliner.ebisnis.id', 'kuliner'],
+      ['fasion.ebisnis.id', 'fashion'],
+      ['toko.ebisnis.id', 'toko'],
+      ['warteg.ebisnis.id', 'warteg'],
+      ['jasa.ebisnis.id', 'jasa'],
+      ['tokopertanian.ebisnis.id', 'tokopertanian'],
+      ['olahanpertanian.ebisnis.id', 'olahanpertanian'],
+      ['fitnes.ebisnis.id', 'fitnes'],
+      ['spa.ebisnis.id', 'spa'],
+      ['katering.ebisnis.id', 'katering'],
+      ['minimarket.ebisnis.id', 'minimarket'],
+      ['kosmetik.ebisnis.id', 'kosmetik'],
+      ['kerajinan.ebisnis.id', 'kerajinan'],
+      ['agribisnis.ebisnis.id', 'agribisnis'],
+      ['laundy.ebisnis.id', 'laundry'],
+      ['cucimobil.ebisnis.id', 'cucimobil'],
+      ['cucimotor.ebisnis.id', 'cucimotor'],
+      ['rentalkendaraan.ebisnis.id', 'rentalkendaraan'],
+      ['inventory.ebisnis.id', 'inventory'],
+      ['rentalsepeda.ebisnis.id', 'rentalsepeda'],
+    ] as const;
+
+    for (const [host, code] of contoh) {
+      expect(businessVerticalFromHost(host)?.code, host).toBe(code);
+      expect(businessVerticalFromHost(`tenant-${host}`)?.code, `tenant-${host}`).toBe(code);
+    }
+  });
+
   it('tidak mengambil host asing', () => {
     expect(businessVerticalFromHost('barbershop.ebisnis.id.evil.test')).toBeNull();
     expect(businessVerticalFromHost('ebisnis.id')).toBeNull();

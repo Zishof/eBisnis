@@ -392,14 +392,14 @@ const PenawaranPesantrenPage = lazy(() =>
  * API dari host permintaan, bukan dari peramban.
  */
 function AkarMenurutHost() {
+  const businessVerticalRedirect = businessVerticalRootRedirectFor();
+  if (businessVerticalRedirect) return <BusinessVerticalPage />;
   const salonRedirect = salonRootRedirectFor();
   if (salonRedirect) return <Navigate to={salonRedirect} replace />;
   const pelangganRedirect = pelangganRootRedirectFor();
   if (pelangganRedirect) return <Navigate to={pelangganRedirect} replace />;
   const inventoryRedirect = inventoryRootRedirectFor();
   if (inventoryRedirect) return <Navigate to={inventoryRedirect} replace />;
-  const businessVerticalRedirect = businessVerticalRootRedirectFor();
-  if (businessVerticalRedirect) return <Navigate to={businessVerticalRedirect} replace />;
   if (isMarketplaceHost()) return <Navigate to="/belanja" replace />;
   if (isCooperativeHost()) return <Navigate to="/ekoperasi/situs" replace />;
   /*
