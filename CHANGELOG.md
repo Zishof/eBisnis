@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-06 - Inventory parity wave 3
+
+- Menambahkan alur Flutter purchase order dari pembuatan, pengajuan, persetujuan,
+  pengiriman, hingga penerimaan dengan batch dan tanggal kedaluwarsa.
+- Menambahkan daftar hutang terbuka/lunas, pembayaran hutang idempoten, riwayat
+  pembayaran, dan analisis umur hutang.
+- Menambahkan PDF register pembayaran, aging hutang, faktur detail pembelian,
+  dan laporan pembelian.
+- Menaikkan layar legacy 20-29 menjadi operasional pada React Web dan Flutter.
+
 ## 2026-08-06 - Inventory parity wave 2
 
 - Menambahkan workspace Flutter responsif untuk stok, stock opname, dan harga.

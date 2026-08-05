@@ -394,7 +394,7 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                             initialCatalog: widget.initialCatalog,
                           )
                         else if (_tab == 2)
-                          _InventoryOperationsPage(
+                          InventoryOperationsPage(
                             client: widget.client,
                             persona: widget.persona,
                           )
@@ -765,8 +765,9 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
   }
 }
 
-class _InventoryOperationsPage extends StatefulWidget {
-  const _InventoryOperationsPage({
+class InventoryOperationsPage extends StatefulWidget {
+  const InventoryOperationsPage({
+    super.key,
     required this.client,
     required this.persona,
   });
@@ -775,7 +776,7 @@ class _InventoryOperationsPage extends StatefulWidget {
   final PersonaInventory persona;
 
   @override
-  State<_InventoryOperationsPage> createState() =>
+  State<InventoryOperationsPage> createState() =>
       _InventoryOperationsPageState();
 }
 
@@ -1912,16 +1913,17 @@ class _InventoryStockPricingPageState extends State<InventoryStockPricingPage> {
   }
 }
 
-class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
+class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
   late Future<InventoryOperationsData> _data = _load();
   int _segment = 0;
   String? _message;
   String? _busyId;
+  bool _includeSettled = false;
 
   bool get _canSeePayables => widget.persona.role != 'Sales';
 
-  Future<InventoryOperationsData> _load() =>
-      widget.client.operations(includePayables: _canSeePayables);
+  Future<InventoryOperationsData> _load() => widget.client.operations(
+      includePayables: _canSeePayables, includeSettled: _includeSettled);
 
   void _refresh() {
     setState(() {
@@ -1981,6 +1983,348 @@ class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
     }
   }
 
+  Future<void> _createPurchaseOrder(InventoryOperationsData data) async {
+    if (data.suppliers.isEmpty ||
+        data.products.isEmpty ||
+        data.warehouses.isEmpty) {
+      setState(() => _message =
+          'Supplier, produk, dan gudang harus tersedia sebelum membuat PO.');
+      return;
+    }
+    String supplierId = data.suppliers.first.id;
+    String warehouseId = data.warehouses.first.id;
+    String productId = data.products.first.id;
+    final quantity = TextEditingController(text: '1');
+    final price = TextEditingController(
+        text: data.products.first.price.round().toString());
+    final expected = TextEditingController(
+        text: DateTime.now()
+            .add(const Duration(days: 7))
+            .toIso8601String()
+            .substring(0, 10));
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(builder: (context, update) {
+        return AlertDialog(
+          title: const Text('Purchase order baru'),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                DropdownButtonFormField<String>(
+                    value: supplierId,
+                    decoration: const InputDecoration(labelText: 'Supplier'),
+                    items: data.suppliers
+                        .map((row) => DropdownMenuItem(
+                            value: row.id,
+                            child: Text('${row.code} - ${row.name}')))
+                        .toList(),
+                    onChanged: (value) =>
+                        update(() => supplierId = value ?? supplierId)),
+                DropdownButtonFormField<String>(
+                    value: warehouseId,
+                    decoration: const InputDecoration(labelText: 'Gudang'),
+                    items: data.warehouses
+                        .map((row) => DropdownMenuItem(
+                            value: row.id,
+                            child: Text('${row.code} - ${row.name}')))
+                        .toList(),
+                    onChanged: (value) =>
+                        update(() => warehouseId = value ?? warehouseId)),
+                DropdownButtonFormField<String>(
+                    value: productId,
+                    decoration: const InputDecoration(labelText: 'Produk'),
+                    items: data.products
+                        .take(1000)
+                        .map((row) => DropdownMenuItem(
+                            value: row.id,
+                            child: Text('${row.code} - ${row.name}')))
+                        .toList(),
+                    onChanged: (value) => update(() {
+                          productId = value ?? productId;
+                          final product = data.products
+                              .firstWhere((row) => row.id == productId);
+                          price.text = product.price.round().toString();
+                        })),
+                Row(children: [
+                  Expanded(
+                    child: TextField(
+                        controller: quantity,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: const InputDecoration(labelText: 'Jumlah')),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                        controller: price,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration:
+                            const InputDecoration(labelText: 'Harga satuan')),
+                  ),
+                ]),
+                TextField(
+                    controller: expected,
+                    decoration:
+                        const InputDecoration(labelText: 'Tanggal diharapkan')),
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Simpan PO')),
+          ],
+        );
+      }),
+    );
+    if (accepted != true) return;
+    setState(() => _busyId = 'NEW-PO');
+    try {
+      final product = data.products.firstWhere((row) => row.id == productId);
+      final number = await widget.client.createPurchaseOrder(
+        supplierId: supplierId,
+        warehouseId: warehouseId,
+        product: product,
+        quantity: double.tryParse(quantity.text.replaceAll(',', '.')) ?? 0,
+        unitPrice: double.tryParse(price.text.replaceAll(',', '.')) ?? -1,
+        expectedDate: expected.text.trim(),
+      );
+      if (mounted) {
+        setState(() => _message = 'Purchase order $number berhasil dibuat.');
+        _refresh();
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      quantity.dispose();
+      price.dispose();
+      expected.dispose();
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _purchaseCommand(PurchaseOrderSummary order) async {
+    final action = switch (order.status) {
+      'DRAFT' => 'submit',
+      'SUBMITTED' => 'approve',
+      'APPROVED' => 'send',
+      _ => null,
+    };
+    if (action == null) return;
+    setState(() => _busyId = order.id);
+    try {
+      await widget.client.transitionPurchaseOrder(order.id, action);
+      if (mounted) {
+        setState(() => _message = '${order.number} berhasil diproses.');
+        _refresh();
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _receivePurchase(PurchaseOrderSummary order) async {
+    final batch = TextEditingController();
+    final expiry = TextEditingController();
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Terima ${order.number}'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(
+              controller: batch,
+              decoration: const InputDecoration(labelText: 'Nomor batch')),
+          TextField(
+              controller: expiry,
+              decoration: const InputDecoration(
+                  labelText: 'Tanggal kedaluwarsa (YYYY-MM-DD)')),
+        ]),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Buat penerimaan')),
+        ],
+      ),
+    );
+    if (accepted != true) return;
+    setState(() => _busyId = order.id);
+    try {
+      final number = await widget.client
+          .receivePurchaseOrder(order, batch.text.trim(), expiry.text.trim());
+      if (mounted) {
+        setState(() => _message =
+            'Penerimaan $number dibuat. Pemeriksaan dan posting mengikuti pemisahan tugas.');
+        _refresh();
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      batch.dispose();
+      expiry.dispose();
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _purchasePdf(InventoryOperationsData data, String kind) async {
+    final document = pw.Document();
+    final title = switch (kind) {
+      'PAYMENT' => 'Register Pembayaran Hutang',
+      'AGING' => 'Analisis Umur Hutang',
+      _ => 'Laporan Pembelian per Periode',
+    };
+    final headers = switch (kind) {
+      'PAYMENT' => [
+          'Nomor',
+          'Tanggal',
+          'Supplier',
+          'Metode',
+          'Jumlah',
+          'Status'
+        ],
+      'AGING' => ['Faktur', 'Supplier', 'Bucket', 'Saldo'],
+      _ => ['PO', 'Tanggal', 'Supplier', 'Status', 'Total'],
+    };
+    final rows = switch (kind) {
+      'PAYMENT' => data.apPayments
+          .map((row) => [
+                row.number,
+                row.date,
+                row.supplierName,
+                row.method,
+                rupiah(row.total),
+                row.status
+              ])
+          .toList(),
+      'AGING' => data.payables
+          .map((row) => [
+                row.invoiceNumber,
+                row.partyName,
+                row.agingBucket,
+                rupiah(row.amount)
+              ])
+          .toList(),
+      _ => data.purchaseOrders
+          .map((row) => [
+                row.number,
+                row.date,
+                row.supplierName,
+                row.status,
+                rupiah(row.total)
+              ])
+          .toList(),
+    };
+    document.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4.landscape,
+      build: (_) => [
+        pw.Header(level: 0, text: title),
+        pw.TableHelper.fromTextArray(headers: headers, data: rows)
+      ],
+      footer: (context) => pw.Align(
+          alignment: pw.Alignment.centerRight,
+          child:
+              pw.Text('Halaman ${context.pageNumber}/${context.pagesCount}')),
+    ));
+    final name = 'inventory-${kind.toLowerCase()}';
+    final location = await getSaveLocation(
+      suggestedName: '$name.pdf',
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'PDF', extensions: ['pdf'])
+      ],
+    );
+    if (location == null) return;
+    await XFile.fromData(await document.save(),
+            name: '$name.pdf', mimeType: 'application/pdf')
+        .saveTo(location.path);
+  }
+
+  Future<void> _purchaseInvoicePdf(PurchaseOrderSummary order) async {
+    setState(() {
+      _busyId = order.id;
+      _message = null;
+    });
+    try {
+      final detail = await widget.client.purchaseOrderDetail(order.id);
+      final lines = ((detail['lines'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((row) => Map<String, Object?>.from(row))
+          .toList();
+      final document = pw.Document();
+      document.addPage(pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (_) => [
+          pw.Header(level: 0, text: 'Faktur Pembelian Barang'),
+          pw.Text('Nomor: ${order.number}'),
+          pw.Text('Supplier: ${order.supplierName}'),
+          pw.Text('Tanggal: ${order.date}'),
+          pw.Text('Status: ${order.status}'),
+          pw.SizedBox(height: 14),
+          pw.TableHelper.fromTextArray(
+            headers: const [
+              'Kode',
+              'Nama barang',
+              'Jumlah',
+              'Satuan',
+              'Harga',
+              'Diskon',
+              'Pajak',
+              'Total'
+            ],
+            data: lines
+                .map((line) => [
+                      (line['product_code'] ?? '-').toString(),
+                      (line['product_name'] ?? '-').toString(),
+                      angka(toDouble(line['ordered_qty'])),
+                      (line['uom_code'] ?? '-').toString(),
+                      rupiah(toDouble(line['unit_price'])),
+                      rupiah(toDouble(line['discount_amount'])),
+                      rupiah(toDouble(line['tax_amount'])),
+                      rupiah(toDouble(line['line_total'])),
+                    ])
+                .toList(),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text('Grand total: ${rupiah(order.total)}',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+        footer: (context) => pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child:
+                pw.Text('Halaman ${context.pageNumber}/${context.pagesCount}')),
+      ));
+      final safeNumber =
+          order.number.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+      final name = 'faktur-pembelian-$safeNumber.pdf';
+      final location = await getSaveLocation(
+        suggestedName: name,
+        acceptedTypeGroups: const [
+          XTypeGroup(label: 'PDF', extensions: ['pdf'])
+        ],
+      );
+      if (location != null) {
+        await XFile.fromData(await document.save(),
+                name: name, mimeType: 'application/pdf')
+            .saveTo(location.path);
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<InventoryOperationsData>(
@@ -2008,6 +2352,11 @@ class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
               value: 2,
               icon: Icon(Icons.assignment_ind_outlined),
               label: Text('Nota')),
+          if (_canSeePayables)
+            const ButtonSegment(
+                value: 3,
+                icon: Icon(Icons.shopping_cart_checkout_outlined),
+                label: Text('Pembelian')),
         ];
         if (!_canSeePayables && _segment == 1) _segment = 0;
         return Column(
@@ -2032,6 +2381,20 @@ class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
                     onSelectionChanged: (value) =>
                         setState(() => _segment = value.first),
                   ),
+                  if (_canSeePayables && _segment == 1) ...[
+                    const SizedBox(height: 10),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Tampilkan hutang yang sudah lunas'),
+                      value: _includeSettled,
+                      onChanged: (value) {
+                        setState(() {
+                          _includeSettled = value;
+                          _data = _load();
+                        });
+                      },
+                    ),
+                  ],
                   if (_message != null) ...[
                     const SizedBox(height: 12),
                     Text(_message!,
@@ -2051,18 +2414,39 @@ class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
                 onSecondary: _carry,
               )
             else if (_segment == 1)
-              _SettlementList(
-                title: 'Hutang Belum Lunas',
-                documents: data.payables,
-                busyId: _busyId,
-                primaryLabel: 'Bayar penuh',
-                onPrimary: _settle,
-              )
-            else
+              Column(children: [
+                _SettlementList(
+                  title: _includeSettled
+                      ? 'Hutang Supplier - Semua Status'
+                      : 'Hutang Supplier - Belum Lunas',
+                  documents: data.payables,
+                  busyId: _busyId,
+                  primaryLabel: 'Bayar penuh',
+                  onPrimary: _settle,
+                ),
+                const SizedBox(height: 12),
+                _PurchaseReportActions(
+                    onPayments: () => _purchasePdf(data, 'PAYMENT'),
+                    onAging: () => _purchasePdf(data, 'AGING'),
+                    onPurchases: () => _purchasePdf(data, 'PURCHASE')),
+                const SizedBox(height: 12),
+                _ApPaymentHistoryList(payments: data.apPayments),
+              ])
+            else if (_segment == 2)
               _HandoverList(
                 handovers: data.handovers,
                 busyId: _busyId,
                 onReturnAndClose: _returnAndClose,
+              )
+            else
+              _PurchaseList(
+                data: data,
+                busyId: _busyId,
+                onCreate: () => _createPurchaseOrder(data),
+                onCommand: _purchaseCommand,
+                onReceive: _receivePurchase,
+                onInvoice: _purchaseInvoicePdf,
+                onReport: () => _purchasePdf(data, 'PURCHASE'),
               ),
           ],
         );
@@ -2146,6 +2530,152 @@ class _SettlementList extends StatelessWidget {
             ),
     );
   }
+}
+
+class _PurchaseReportActions extends StatelessWidget {
+  const _PurchaseReportActions({
+    required this.onPayments,
+    required this.onAging,
+    required this.onPurchases,
+  });
+
+  final VoidCallback onPayments;
+  final VoidCallback onAging;
+  final VoidCallback onPurchases;
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'Dokumen Pembelian dan Hutang',
+        icon: Icons.picture_as_pdf_outlined,
+        child: Wrap(spacing: 8, runSpacing: 8, children: [
+          OutlinedButton.icon(
+              onPressed: onPayments,
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: const Text('Pembayaran PDF')),
+          OutlinedButton.icon(
+              onPressed: onAging,
+              icon: const Icon(Icons.timelapse_outlined),
+              label: const Text('Aging hutang PDF')),
+          FilledButton.tonalIcon(
+              onPressed: onPurchases,
+              icon: const Icon(Icons.assessment_outlined),
+              label: const Text('Pembelian PDF')),
+        ]),
+      );
+}
+
+class _ApPaymentHistoryList extends StatelessWidget {
+  const _ApPaymentHistoryList({required this.payments});
+
+  final List<ApPaymentSummary> payments;
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'Riwayat Pembayaran Hutang',
+        icon: Icons.history_outlined,
+        child: payments.isEmpty
+            ? const Text('Belum ada pembayaran hutang.')
+            : Column(
+                children: payments
+                    .take(200)
+                    .map((payment) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const CircleAvatar(
+                              child: Icon(Icons.payments_outlined)),
+                          title: Text(
+                              '${payment.number} - ${payment.supplierName}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w800)),
+                          subtitle: Text(
+                              '${payment.date} | ${payment.method} | ${payment.status}'),
+                          trailing: Text(rupiah(payment.total),
+                              style: const TextStyle(
+                                  color: Color(0xFF0F766E),
+                                  fontWeight: FontWeight.w900)),
+                        ))
+                    .toList(),
+              ),
+      );
+}
+
+class _PurchaseList extends StatelessWidget {
+  const _PurchaseList({
+    required this.data,
+    required this.busyId,
+    required this.onCreate,
+    required this.onCommand,
+    required this.onReceive,
+    required this.onInvoice,
+    required this.onReport,
+  });
+
+  final InventoryOperationsData data;
+  final String? busyId;
+  final VoidCallback onCreate;
+  final ValueChanged<PurchaseOrderSummary> onCommand;
+  final ValueChanged<PurchaseOrderSummary> onReceive;
+  final ValueChanged<PurchaseOrderSummary> onInvoice;
+  final VoidCallback onReport;
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'Purchase Order dan Penerimaan',
+        icon: Icons.shopping_cart_checkout_outlined,
+        child: Column(children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(spacing: 8, runSpacing: 8, children: [
+              OutlinedButton.icon(
+                  onPressed: onReport,
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  label: const Text('Laporan PDF')),
+              FilledButton.icon(
+                  onPressed: busyId == 'NEW-PO' ? null : onCreate,
+                  icon: const Icon(Icons.add),
+                  label: const Text('PO baru')),
+            ]),
+          ),
+          if (data.purchaseOrders.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('Belum ada purchase order.'),
+            )
+          else
+            ...data.purchaseOrders.take(200).map((order) {
+              final busy = busyId == order.id;
+              final action = switch (order.status) {
+                'DRAFT' => 'Ajukan',
+                'SUBMITTED' => 'Setujui',
+                'APPROVED' => 'Kirim',
+                _ => null,
+              };
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading:
+                    const CircleAvatar(child: Icon(Icons.inventory_2_outlined)),
+                title: Text('${order.number} - ${order.supplierName}',
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text(
+                    '${order.date} | ${order.status} | ${rupiah(order.total)}'),
+                trailing: Wrap(spacing: 6, children: [
+                  IconButton(
+                    tooltip: 'Cetak faktur pembelian',
+                    onPressed: busy ? null : () => onInvoice(order),
+                    icon: const Icon(Icons.print_outlined),
+                  ),
+                  if (action != null)
+                    FilledButton.tonal(
+                        onPressed: busy ? null : () => onCommand(order),
+                        child: Text(action)),
+                  if (order.status == 'SENT')
+                    FilledButton(
+                        onPressed: busy ? null : () => onReceive(order),
+                        child: const Text('Terima')),
+                ]),
+              );
+            }),
+        ]),
+      );
 }
 
 class _HandoverList extends StatelessWidget {
@@ -3010,7 +3540,7 @@ class InventoryApiClient {
   }
 
   Future<InventoryOperationsData> operations(
-      {required bool includePayables}) async {
+      {required bool includePayables, bool includeSettled = false}) async {
     if (_token == null) {
       throw const InventoryApiException('Silakan masuk kembali.');
     }
@@ -3019,12 +3549,140 @@ class InventoryApiClient {
     final handoverFuture =
         _request<List<Object?>>('GET', '/sales-note-handovers');
     final payableFuture = includePayables
-        ? _request<List<Object?>>(
-            'GET', '/inventory/legacy/payables?pageSize=200')
+        ? _request<List<Object?>>('GET',
+            '/inventory/legacy/payables?pageSize=1000&includeSettled=$includeSettled')
         : Future.value(<Object?>[]);
-    final values =
-        await Future.wait([receivableFuture, payableFuture, handoverFuture]);
-    return InventoryOperationsData.fromApi(values[0], values[1], values[2]);
+    final purchaseFuture = includePayables
+        ? _request<List<Object?>>('GET', '/purchase-orders?pageSize=500')
+        : Future.value(<Object?>[]);
+    final paymentFuture = includePayables
+        ? _request<List<Object?>>('GET', '/ap/payments')
+        : Future.value(<Object?>[]);
+    final masterFuture = includePayables
+        ? _request<Map<String, Object?>>('GET', '/inventory/master-data')
+        : Future.value(<String, Object?>{});
+    final catalogFuture = includePayables
+        ? _request<Map<String, Object?>>('GET', '/inventory/mobile-catalog')
+        : Future.value(<String, Object?>{});
+    final opnameFuture = includePayables
+        ? _request<Map<String, Object?>>('GET', '/stock-opnames')
+        : Future.value(<String, Object?>{});
+    final values = await Future.wait([
+      receivableFuture,
+      payableFuture,
+      handoverFuture,
+      purchaseFuture,
+      paymentFuture,
+      masterFuture,
+      catalogFuture,
+      opnameFuture,
+    ]);
+    return InventoryOperationsData.fromApi(
+      values[0] as List<Object?>,
+      values[1] as List<Object?>,
+      values[2] as List<Object?>,
+      values[3] as List<Object?>,
+      values[4] as List<Object?>,
+      values[5] as Map<String, Object?>,
+      values[6] as Map<String, Object?>,
+      values[7] as Map<String, Object?>,
+      baseUrl,
+    );
+  }
+
+  Future<String> createPurchaseOrder({
+    required String supplierId,
+    required String warehouseId,
+    required InventoryProductDemo product,
+    required double quantity,
+    required double unitPrice,
+    String? expectedDate,
+  }) async {
+    if (supplierId.isEmpty ||
+        warehouseId.isEmpty ||
+        product.id.isEmpty ||
+        product.uomId.isEmpty ||
+        quantity <= 0 ||
+        unitPrice < 0) {
+      throw const InventoryApiException('Data purchase order belum lengkap.');
+    }
+    final created = await _request<Map<String, Object?>>(
+      'POST',
+      '/purchase-orders',
+      headers: {
+        'Idempotency-Key':
+            'PO_${DateTime.now().microsecondsSinceEpoch}_${product.id}'
+      },
+      body: {
+        'supplierId': supplierId,
+        'warehouseId': warehouseId,
+        if (expectedDate != null && expectedDate.isNotEmpty)
+          'expectedDate': expectedDate,
+        'note': 'Dibuat dari Flutter Inventory',
+        'lines': [
+          {
+            'productId': product.id,
+            'uomId': product.uomId,
+            'orderedQty': quantity,
+            'unitPrice': unitPrice,
+          }
+        ],
+      },
+    );
+    return (created['purchase_order_number'] ??
+            created['purchaseOrderNumber'] ??
+            created['id'] ??
+            '-')
+        .toString();
+  }
+
+  Future<void> transitionPurchaseOrder(String id, String action) async {
+    if (!const ['submit', 'approve', 'send'].contains(action)) {
+      throw const InventoryApiException('Transisi purchase order tidak valid.');
+    }
+    await _request<Map<String, Object?>>(
+        'POST', '/purchase-orders/$id/$action');
+  }
+
+  Future<Map<String, Object?>> purchaseOrderDetail(String id) =>
+      _request<Map<String, Object?>>('GET', '/purchase-orders/$id');
+
+  Future<String> receivePurchaseOrder(
+      PurchaseOrderSummary order, String batch, String expiry) async {
+    final detail = await purchaseOrderDetail(order.id);
+    final lines = ((detail['lines'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((raw) => Map<String, Object?>.from(raw))
+        .toList();
+    if (lines.isEmpty) {
+      throw const InventoryApiException('Purchase order tidak memiliki item.');
+    }
+    final created = await _request<Map<String, Object?>>(
+      'POST',
+      '/goods-receipts',
+      headers: {
+        'Idempotency-Key':
+            'GR_${DateTime.now().microsecondsSinceEpoch}_${order.id}'
+      },
+      body: {
+        'purchaseOrderId': order.id,
+        'supplierDoNumber': 'MOBILE-${DateTime.now().millisecondsSinceEpoch}',
+        'note': 'Penerimaan dari Flutter Inventory',
+        'lines': lines
+            .map((line) => {
+                  'purchaseOrderLineId': (line['id'] ?? '').toString(),
+                  'receivedQty': toDouble(line['ordered_qty']),
+                  if (batch.isNotEmpty) 'batchNumber': batch,
+                  if (expiry.isNotEmpty) 'expiryDate': expiry,
+                })
+            .toList(),
+      },
+    );
+    return (created['receipt_number'] ??
+            created['receiptNumber'] ??
+            created['id'] ??
+            '-')
+        .toString();
   }
 
   Future<String> settle(SettlementDocument document) async {
@@ -3673,13 +4331,25 @@ class InventoryOperationsData {
     required this.receivables,
     required this.payables,
     required this.handovers,
+    required this.purchaseOrders,
+    required this.apPayments,
+    required this.suppliers,
+    required this.products,
+    required this.warehouses,
   });
 
   factory InventoryOperationsData.fromApi(
     List<Object?> receivables,
     List<Object?> payables,
-    List<Object?> handovers,
-  ) {
+    List<Object?> handovers, [
+    List<Object?> purchaseOrders = const [],
+    List<Object?> apPayments = const [],
+    Map<String, Object?> masters = const {},
+    Map<String, Object?> catalog = const {},
+    Map<String, Object?> opname = const {},
+    Uri? baseUrl,
+  ]) {
+    final catalogBaseUrl = baseUrl ?? Uri.parse('http://localhost');
     return InventoryOperationsData(
       receivables: receivables
           .whereType<Map<String, Object?>>()
@@ -3696,12 +4366,81 @@ class InventoryOperationsData {
           .map(HandoverSummary.fromApi)
           .where((row) => row.id.isNotEmpty)
           .toList(),
+      purchaseOrders: purchaseOrders
+          .whereType<Map<String, Object?>>()
+          .map(PurchaseOrderSummary.fromApi)
+          .where((row) => row.id.isNotEmpty)
+          .toList(),
+      apPayments: apPayments
+          .whereType<Map<String, Object?>>()
+          .map(ApPaymentSummary.fromApi)
+          .toList(),
+      suppliers: ((masters['suppliers'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map(InventoryPriceParty.fromApi)
+          .toList(),
+      products:
+          InventoryCatalog.fromApi(catalog, baseUrl: catalogBaseUrl).products,
+      warehouses: ((opname['warehouses'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => InventoryWarehouse((row['id'] ?? '').toString(),
+              (row['code'] ?? '').toString(), (row['name'] ?? '').toString()))
+          .toList(),
     );
   }
 
   final List<SettlementDocument> receivables;
   final List<SettlementDocument> payables;
   final List<HandoverSummary> handovers;
+  final List<PurchaseOrderSummary> purchaseOrders;
+  final List<ApPaymentSummary> apPayments;
+  final List<InventoryPriceParty> suppliers;
+  final List<InventoryProductDemo> products;
+  final List<InventoryWarehouse> warehouses;
+}
+
+class PurchaseOrderSummary {
+  const PurchaseOrderSummary(this.id, this.number, this.status, this.date,
+      this.supplierName, this.total);
+
+  factory PurchaseOrderSummary.fromApi(Map<String, Object?> row) =>
+      PurchaseOrderSummary(
+        (row['id'] ?? '').toString(),
+        (row['purchase_order_number'] ?? '-').toString(),
+        (row['status'] ?? '-').toString(),
+        (row['order_date'] ?? '-').toString(),
+        (row['supplier_name'] ?? '-').toString(),
+        toDouble(row['grand_total']),
+      );
+
+  final String id;
+  final String number;
+  final String status;
+  final String date;
+  final String supplierName;
+  final double total;
+}
+
+class ApPaymentSummary {
+  const ApPaymentSummary(this.number, this.date, this.supplierName, this.method,
+      this.total, this.status);
+
+  factory ApPaymentSummary.fromApi(Map<String, Object?> row) =>
+      ApPaymentSummary(
+        (row['payment_number'] ?? '-').toString(),
+        (row['payment_date'] ?? '-').toString(),
+        (row['supplier_name'] ?? '-').toString(),
+        (row['method'] ?? '-').toString(),
+        toDouble(row['total_amount']),
+        (row['status'] ?? '-').toString(),
+      );
+
+  final String number;
+  final String date;
+  final String supplierName;
+  final String method;
+  final double total;
+  final String status;
 }
 
 class SettlementDocument {
