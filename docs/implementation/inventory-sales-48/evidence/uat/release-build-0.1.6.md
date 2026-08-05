@@ -17,8 +17,8 @@ Tanggal verifikasi: 6 Agustus 2026.
 
 | Platform | Nama rilis | Ukuran | SHA-256 |
 | --- | --- | ---: | --- |
-| Windows 64-bit | `ebisnis-inventory-sales-0.1.6-windows.exe` | 11.518.854 byte | `E8B2A6AFDB72DDEB7DCE796C0E715EDC0F1BC0C9B7CE5CC5A0BE1440C2569748` |
-| Android | `ebisnis-inventory-sales-0.1.6.apk` | 26.996.345 byte | `4D6F28CB3F46DAB1A2DC753905A622488C8FBD5BC17249081D7428410004D6EB` |
+| Windows 64-bit | `ebisnis-inventory-sales-0.1.6-windows.exe` | 11.549.825 byte | `8F554B45C3D44569E5D5DB507AFA853C52F1E9A6E0355B4871CEE841161FE8ED` |
+| Android | `ebisnis-inventory-sales-0.1.6.apk` | 27.037.713 byte | `D14CBBA8D9D9C65FAA42D6365459F8DF9F57D6EE106D3621F611B8200752DBDE` |
 
 Artefak binary tidak disimpan dalam riwayat Git. Berkas diterbitkan sebagai
 asset GitHub Release `inventory-v0.1.6`; deployment server dapat menyalinnya ke
