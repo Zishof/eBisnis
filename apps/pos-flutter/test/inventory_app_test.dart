@@ -17,14 +17,15 @@ void main() {
     expect(find.text('Admin CMN'), findsNothing);
   });
 
-  testWidgets('halaman fitur memuat modul inventory lama', (tester) async {
+  testWidgets('halaman paritas memuat kontrak modul inventory lama',
+      (tester) async {
     await tester.pumpWidget(const AplikasiInventory(
       initialPersona:
           PersonaInventory(username: 'agung', label: 'Agung', role: 'Sales'),
     ));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Fitur'));
+    await tester.tap(find.text('Paritas'));
     await tester.pumpAndSettle();
 
     expect(find.text('Peta Fitur Inventory CMN'), findsOneWidget);
@@ -33,6 +34,48 @@ void main() {
     expect(find.text('Pembelian dan hutang (10 layar)'), findsOneWidget);
     expect(find.text('Penjualan dan piutang (13 layar)'), findsOneWidget);
     expect(find.text('Keuangan dan periode (6 layar)'), findsOneWidget);
+  });
+
+  test('operasional memetakan piutang, hutang, dan serah-terima nota', () {
+    final data = InventoryOperationsData.fromApi(
+      [
+        {
+          'id': 'ar-1',
+          'customer_id': 'customer-1',
+          'customer_name': 'Apotek Sehat',
+          'salesperson_id': 'sales-1',
+          'legacy_invoice_number': 'INV-001',
+          'amount': '125000',
+          'aging_bucket': '1-30',
+        },
+      ],
+      [
+        {
+          'id': 'ap-1',
+          'supplier_id': 'supplier-1',
+          'supplier_name': 'PBF Nusantara',
+          'legacy_invoice_number': 'PO-001',
+          'amount': '80000',
+          'aging_bucket': 'BELUM JATUH TEMPO',
+        },
+      ],
+      [
+        {
+          'id': 'note-1',
+          'handover_number': 'NOTA-001',
+          'salesperson_name': 'Masrukin',
+          'invoice_count': 1,
+          'outstanding_amount': '125000',
+          'status': 'HANDED_OVER',
+        },
+      ],
+    );
+
+    expect(data.receivables.single.partyName, 'Apotek Sehat');
+    expect(data.receivables.single.salespersonId, 'sales-1');
+    expect(data.payables.single.partyName, 'PBF Nusantara');
+    expect(data.handovers.single.status, 'HANDED_OVER');
+    expect(data.handovers.single.amount, 125000);
   });
 
   testWidgets('sales melihat katalog tenant nyata untuk membuat order',

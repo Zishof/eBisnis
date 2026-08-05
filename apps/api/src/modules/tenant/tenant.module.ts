@@ -44,6 +44,7 @@ import {
   ResourcePermission,
 } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { SalesInventoryOperationsController } from './sales-inventory-operations.controller';
 
 // ---------------------------------------------------------------------------
 // DTO
@@ -1846,7 +1847,9 @@ export class ErpController {
     return this.inventoryQuery(
       ctx,
       `SELECT lr.id::text, lr.source_file, lr.legacy_invoice_number, lr.transaction_date::text,
-              lr.due_date::text, lr.paid_at::text, lr.amount::text, lr.payment_note,
+              lr.due_date::text, lr.paid_at::text, lr.amount::text AS original_amount,
+              GREATEST(abs(lr.amount) - COALESCE(settlement.allocated_amount, 0), 0)::text AS amount,
+              lr.payment_note,
               lr.giro_number, lr.bank_name, lr.return_number, lr.is_settled, lr.source_deleted, lr.status,
               CASE
                 WHEN lr.is_settled THEN 'LUNAS'
@@ -1856,11 +1859,18 @@ export class ErpController {
                 WHEN CURRENT_DATE - lr.due_date <= 90 THEN '61-90'
                 ELSE '>90'
               END AS aging_bucket,
+              lr.customer_id::text AS customer_id, lr.salesperson_id::text AS salesperson_id,
               COALESCE(c.name, lr.metadata->>'KODECUST', 'Pelanggan tidak dikenal') AS customer_name,
               COALESCE(us.name, us.username_snapshot, lr.metadata->>'KODESALES', 'Tanpa sales') AS sales_name
          FROM ${S}.legacy_receivable_ledger lr
          LEFT JOIN ${S}.customer c ON c.id = lr.customer_id
          LEFT JOIN ${S}.user_subject us ON us.id = lr.salesperson_id
+         LEFT JOIN LATERAL (
+           SELECT sum(a.allocated_amount) AS allocated_amount
+             FROM ${S}.inventory_ar_receipt_allocation a
+             JOIN ${S}.inventory_ar_receipt r ON r.id = a.receipt_id
+            WHERE a.receivable_ledger_id = lr.id AND r.status = 'POSTED'
+         ) settlement ON TRUE
         WHERE ($2::boolean OR NOT lr.is_settled)
           AND ($1::text IS NULL
            OR lr.legacy_invoice_number ILIKE '%' || $1 || '%'
@@ -1887,7 +1897,9 @@ export class ErpController {
     return this.inventoryQuery(
       ctx,
       `SELECT lp.id::text, lp.source_file, lp.legacy_invoice_number, lp.transaction_date::text,
-              lp.due_date::text, lp.paid_at::text, lp.amount::text, lp.payment_note,
+              lp.due_date::text, lp.paid_at::text, lp.amount::text AS original_amount,
+              GREATEST(abs(lp.amount) - COALESCE(settlement.allocated_amount, 0), 0)::text AS amount,
+              lp.payment_note,
               lp.giro_number, lp.bank_name, lp.is_settled, lp.source_deleted, lp.status,
               CASE
                 WHEN lp.is_settled THEN 'LUNAS'
@@ -1897,9 +1909,16 @@ export class ErpController {
                 WHEN CURRENT_DATE - lp.due_date <= 90 THEN '61-90'
                 ELSE '>90'
               END AS aging_bucket,
+              lp.supplier_id::text AS supplier_id,
               COALESCE(s.name, lp.metadata->>'KODESUPPL', 'Supplier tidak dikenal') AS supplier_name
          FROM ${S}.legacy_payable_ledger lp
          LEFT JOIN ${S}.supplier s ON s.id = lp.supplier_id
+         LEFT JOIN LATERAL (
+           SELECT sum(a.allocated_amount) AS allocated_amount
+             FROM ${S}.inventory_ap_payment_allocation a
+             JOIN ${S}.inventory_ap_payment p ON p.id = a.payment_id
+            WHERE a.payable_ledger_id = lp.id AND p.status = 'POSTED'
+         ) settlement ON TRUE
         WHERE ($2::boolean OR NOT lp.is_settled)
           AND ($1::text IS NULL
            OR lp.legacy_invoice_number ILIKE '%' || $1 || '%'
@@ -2152,7 +2171,7 @@ function schemaOf(user: AuthenticatedUser): string {
 @Module({
   // Controller route spesifik lebih dahulu: ia harus menang atas
   // wildcard `:resource` pada MasterController.
-  controllers: [ErpController, AccountingDocumentController, MasterController, TenantAdminController],
+  controllers: [SalesInventoryOperationsController, ErpController, AccountingDocumentController, MasterController, TenantAdminController],
   providers: [MasterLifecycleService, ErpPurchasingService, ErpInventoryService],
   exports: [MasterLifecycleService, ErpPurchasingService, ErpInventoryService],
 })

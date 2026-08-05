@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Banknote,
   BarChart3,
@@ -86,6 +86,8 @@ type LegacyReceivableRow = Record<string, unknown> & {
   due_date: string | null;
   paid_at: string | null;
   amount: string;
+  customer_id: string | null;
+  salesperson_id: string | null;
   customer_name: string;
   sales_name: string;
   bank_name: string | null;
@@ -100,6 +102,7 @@ type LegacyPayableRow = Record<string, unknown> & {
   due_date: string | null;
   paid_at: string | null;
   amount: string;
+  supplier_id: string | null;
   supplier_name: string;
   bank_name: string | null;
   is_settled: boolean;
@@ -115,6 +118,22 @@ type ParityData = {
   profitByProduct: Array<Record<string, unknown>>;
   evidence: Record<string, string | number>;
   parity: { screens: number; mapped: number; requiresBusinessUat: string[] };
+};
+
+type ParityContract = {
+  summary: {
+    screens: number;
+    web: { operational: number; readOnly: number; contractOnly: number };
+    flutter: { operational: number; readOnly: number; contractOnly: number };
+  };
+  items: Array<{
+    screen: number;
+    legacyName: string;
+    domain: string;
+    api: string[];
+    web: 'OPERATIONAL' | 'READ_ONLY' | 'CONTRACT_ONLY';
+    flutter: 'OPERATIONAL' | 'READ_ONLY' | 'CONTRACT_ONLY';
+  }>;
 };
 
 type LegacyPriceRow = Record<string, unknown> & {
@@ -160,6 +179,7 @@ const parityGroups = [
 ] as const;
 
 export function InventoryControlPage() {
+  const queryClient = useQueryClient();
   const [active, setActive] = useState<TabKey>('stock');
   const [search, setSearch] = useState('');
   const [includeSettled, setIncludeSettled] = useState(false);
@@ -176,6 +196,10 @@ export function InventoryControlPage() {
   const parity = useQuery({
     queryKey: ['inventory-control-parity', asOf, includeSettled],
     queryFn: () => api.get<ParityData>(`/inventory/parity-summary?asOf=${encodeURIComponent(asOf)}&includeSettled=${includeSettled}`),
+  });
+  const parityContract = useQuery({
+    queryKey: ['inventory-parity-contract'],
+    queryFn: () => api.get<ParityContract>('/inventory/parity-contract'),
   });
   const masterData = useQuery({
     queryKey: ['inventory-control-master-data'],
@@ -228,7 +252,7 @@ export function InventoryControlPage() {
     active === 'salesOrders' ? receivables.isLoading :
     false
   );
-  const error = [dashboard.error, reconciliation.error, parity.error, masterData.error, receivables.error, payables.error, prices.error, opname.error]
+  const error = [dashboard.error, reconciliation.error, parity.error, parityContract.error, masterData.error, receivables.error, payables.error, prices.error, opname.error]
     .filter(Boolean)
     .map(errorMessage)[0];
 
@@ -268,7 +292,9 @@ export function InventoryControlPage() {
       <section className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:grid-cols-[1fr_auto]">
         <div>
           <p className="text-sm font-black text-slate-900 dark:text-white">Paritas aplikasi Inventory Control</p>
-          <p className="mt-1 text-sm text-slate-500">{parity.data?.parity.mapped ?? 48} dari {parity.data?.parity.screens ?? 48} layar legacy sudah dipetakan ke workspace ERP, laporan, atau jejak audit.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Kontrak {parityContract.data?.summary.screens ?? 48} layar diperiksa per permukaan. Operasional berarti alur nyata tersedia; baca-saja tidak dihitung sebagai transaksi selesai.
+          </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-xs font-bold text-slate-600 dark:text-slate-300">
@@ -279,6 +305,10 @@ export function InventoryControlPage() {
             <input type="checkbox" checked={includeSettled} onChange={(event) => setIncludeSettled(event.target.checked)} />
             Tampilkan yang lunas
           </label>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:col-span-2">
+          <CoverageSummary label="Web" values={parityContract.data?.summary.web} />
+          <CoverageSummary label="Flutter Desktop & Android" values={parityContract.data?.summary.flutter} />
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:col-span-2 xl:grid-cols-5">
           {parityGroups.map(([title, items]) => (
@@ -342,6 +372,19 @@ export function InventoryControlPage() {
           </div>
         )}
 
+        {(active === 'purchases' || active === 'salesOrders') && (
+          <SettlementWorkflowPanel
+            kind={active === 'purchases' ? 'AP' : 'AR'}
+            payables={payables.data ?? []}
+            receivables={receivables.data ?? []}
+            onChanged={() => {
+              void queryClient.invalidateQueries({ queryKey: ['inventory-control-payables'] });
+              void queryClient.invalidateQueries({ queryKey: ['inventory-control-receivables'] });
+              void queryClient.invalidateQueries({ queryKey: ['inventory-control-parity'] });
+            }}
+          />
+        )}
+
         <DataGrid
           columns={view.columns}
           rows={filteredRows}
@@ -351,6 +394,123 @@ export function InventoryControlPage() {
           rowKey={(row) => rowKey(row)}
         />
       </section>
+    </div>
+  );
+}
+
+function SettlementWorkflowPanel({
+  kind,
+  payables,
+  receivables,
+  onChanged,
+}: {
+  kind: 'AP' | 'AR';
+  payables: LegacyPayableRow[];
+  receivables: LegacyReceivableRow[];
+  onChanged: () => void;
+}) {
+  const rows = kind === 'AP'
+    ? payables.filter((row) => !row.is_settled && Number(row.amount) > 0 && row.supplier_id)
+    : receivables.filter((row) => !row.is_settled && Number(row.amount) > 0 && row.customer_id);
+  const [selectedId, setSelectedId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [method, setMethod] = useState('TRANSFER');
+  const [message, setMessage] = useState('');
+  const selected = rows.find((row) => row.id === selectedId) ?? rows[0];
+
+  const settlement = useMutation({
+    mutationFn: async () => {
+      if (!selected) throw new Error('Pilih dokumen terlebih dahulu.');
+      const total = Number(amount || selected.amount);
+      if (!Number.isFinite(total) || total <= 0 || total > Number(selected.amount)) {
+        throw new Error('Nominal harus lebih dari nol dan tidak melebihi tagihan.');
+      }
+      const path = kind === 'AP' ? '/ap/payments' : '/ar/receipts';
+      const partyId = kind === 'AP'
+        ? (selected as LegacyPayableRow).supplier_id
+        : (selected as LegacyReceivableRow).customer_id;
+      const created = await api.post<{ id: string; number: string }>(path, {
+        partyId,
+        method,
+        allocations: [{ ledgerId: selected.id, amount: total }],
+      }, { headers: { 'Idempotency-Key': crypto.randomUUID() } });
+      await api.post(`${path}/${created.id}/post`);
+      return created;
+    },
+    onSuccess: (created) => {
+      setMessage(`${kind === 'AP' ? 'Pembayaran' : 'Penerimaan'} ${created.number} berhasil diposting.`);
+      setSelectedId('');
+      setAmount('');
+      onChanged();
+    },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+
+  const handover = useMutation({
+    mutationFn: async () => {
+      if (kind !== 'AR' || !selected || !(selected as LegacyReceivableRow).salesperson_id) {
+        throw new Error('Piutang ini belum memiliki sales penanggung jawab.');
+      }
+      const created = await api.post<{ id: string; handover_number: string }>('/sales-note-handovers', {
+        salespersonId: (selected as LegacyReceivableRow).salesperson_id,
+        lines: [{ receivableLedgerId: selected.id }],
+      });
+      await api.post(`/sales-note-handovers/${created.id}/handover`);
+      return created;
+    },
+    onSuccess: (created) => setMessage(`Nota ${created.handover_number} sudah diserahterimakan.`),
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+
+  if (!rows.length) return null;
+  return (
+    <div className="mb-4 rounded-xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-900 dark:bg-brand-950/20">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(8rem,1fr)_minmax(8rem,1fr)_auto] lg:items-end">
+        <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
+          {kind === 'AP' ? 'Faktur supplier' : 'Faktur customer'}
+          <select
+            value={selected?.id ?? ''}
+            onChange={(event) => { setSelectedId(event.target.value); setAmount(''); setMessage(''); }}
+            className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+          >
+            {rows.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.legacy_invoice_number} - {kind === 'AP' ? (row as LegacyPayableRow).supplier_name : (row as LegacyReceivableRow).customer_name} - {formatMoney(row.amount)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
+          Nominal
+          <input
+            inputMode="decimal"
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            placeholder={selected?.amount ?? '0'}
+            className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+          />
+        </label>
+        <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
+          Metode
+          <select value={method} onChange={(event) => setMethod(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+            <option value="CASH">Tunai</option>
+            <option value="TRANSFER">Transfer</option>
+            <option value="GIRO">Giro</option>
+            <option value="RETURN">Retur</option>
+          </select>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-primary" disabled={settlement.isPending} onClick={() => settlement.mutate()}>
+            {settlement.isPending ? 'Memproses...' : kind === 'AP' ? 'Bayar & posting' : 'Terima & posting'}
+          </button>
+          {kind === 'AR' && (
+            <button type="button" className="btn-secondary" disabled={handover.isPending} onClick={() => handover.mutate()}>
+              Bawa nota
+            </button>
+          )}
+        </div>
+      </div>
+      {message && <p className="mt-3 text-sm font-bold text-slate-700 dark:text-slate-200">{message}</p>}
     </div>
   );
 }
@@ -375,6 +535,31 @@ function Metric({ icon, label, value, note }: { icon: ReactNode; label: string; 
           <p className="text-xl font-black text-slate-900 dark:text-white">{value}</p>
           <p className="text-xs text-slate-500">{note}</p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function CoverageSummary({
+  label,
+  values,
+}: {
+  label: string;
+  values?: { operational: number; readOnly: number; contractOnly: number };
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
+      <p className="text-sm font-black text-slate-900 dark:text-white">{label}</p>
+      <div className="mt-2 flex flex-wrap gap-2 text-xs font-bold">
+        <span className="rounded-md bg-emerald-100 px-2 py-1 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+          {values?.operational ?? 0} operasional
+        </span>
+        <span className="rounded-md bg-sky-100 px-2 py-1 text-sky-800 dark:bg-sky-950 dark:text-sky-200">
+          {values?.readOnly ?? 0} baca-saja
+        </span>
+        <span className="rounded-md bg-amber-100 px-2 py-1 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          {values?.contractOnly ?? 0} belum berlayar
+        </span>
       </div>
     </div>
   );

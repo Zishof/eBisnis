@@ -170,10 +170,14 @@ class InventoryHomePage extends StatefulWidget {
 
 class _InventoryHomePageState extends State<InventoryHomePage> {
   late Future<InventorySnapshot> _snapshot = widget.client.snapshot();
+  late Future<InventoryParityContract> _parity = widget.client.parityContract();
   int _tab = 0;
 
   void _refresh() {
-    setState(() => _snapshot = widget.client.snapshot());
+    setState(() {
+      _snapshot = widget.client.snapshot();
+      _parity = widget.client.parityContract();
+    });
   }
 
   @override
@@ -189,7 +193,9 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
               icon: Icon(Icons.add_shopping_cart_outlined),
               label: 'Order Baru'),
           NavigationDestination(
-              icon: Icon(Icons.apps_outlined), label: 'Fitur'),
+              icon: Icon(Icons.payments_outlined), label: 'Operasional'),
+          NavigationDestination(
+              icon: Icon(Icons.fact_check_outlined), label: 'Paritas'),
           NavigationDestination(
               icon: Icon(Icons.analytics_outlined), label: 'Laporan'),
           NavigationDestination(
@@ -201,6 +207,7 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           future: _snapshot,
           builder: (context, state) {
             final data = state.data;
+            final needsSnapshot = _tab == 0 || _tab == 4;
             return CustomScrollView(
               slivers: [
                 SliverAppBar.large(
@@ -230,10 +237,11 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                     ),
                   ],
                 ),
-                if (state.connectionState != ConnectionState.done)
+                if (needsSnapshot &&
+                    state.connectionState != ConnectionState.done)
                   const SliverFillRemaining(
                       child: Center(child: CircularProgressIndicator()))
-                else if (state.hasError)
+                else if (needsSnapshot && state.hasError)
                   SliverFillRemaining(
                     child: _ErrorPanel(
                       message: state.error.toString(),
@@ -327,8 +335,13 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                             initialCatalog: widget.initialCatalog,
                           )
                         else if (_tab == 2)
-                          const _InventoryFeaturePage()
+                          _InventoryOperationsPage(
+                            client: widget.client,
+                            persona: widget.persona,
+                          )
                         else if (_tab == 3)
+                          _InventoryFeaturePage(contract: _parity)
+                        else if (_tab == 4)
                           _InventoryReportPage(snapshot: data!)
                         else
                           const _InventoryManualPage(),
@@ -689,6 +702,294 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
   }
 }
 
+class _InventoryOperationsPage extends StatefulWidget {
+  const _InventoryOperationsPage({
+    required this.client,
+    required this.persona,
+  });
+
+  final InventoryApiClient client;
+  final PersonaInventory persona;
+
+  @override
+  State<_InventoryOperationsPage> createState() =>
+      _InventoryOperationsPageState();
+}
+
+class _InventoryOperationsPageState extends State<_InventoryOperationsPage> {
+  late Future<InventoryOperationsData> _data = _load();
+  int _segment = 0;
+  String? _message;
+  String? _busyId;
+
+  bool get _canSeePayables => widget.persona.role != 'Sales';
+
+  Future<InventoryOperationsData> _load() =>
+      widget.client.operations(includePayables: _canSeePayables);
+
+  void _refresh() {
+    setState(() {
+      _data = _load();
+      _message = null;
+    });
+  }
+
+  Future<void> _settle(SettlementDocument document) async {
+    setState(() {
+      _busyId = document.id;
+      _message = null;
+    });
+    try {
+      final number = await widget.client.settle(document);
+      if (!mounted) return;
+      setState(() => _message = '$number berhasil diposting.');
+      _refresh();
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _carry(SettlementDocument document) async {
+    setState(() {
+      _busyId = document.id;
+      _message = null;
+    });
+    try {
+      final number = await widget.client.carryNote(document);
+      if (!mounted) return;
+      setState(() => _message = 'Nota $number sudah diserahterimakan.');
+      _refresh();
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _returnAndClose(HandoverSummary handover) async {
+    setState(() {
+      _busyId = handover.id;
+      _message = null;
+    });
+    try {
+      await widget.client.returnAndCloseHandover(handover.id);
+      if (!mounted) return;
+      setState(() => _message = 'Nota ${handover.number} kembali dan ditutup.');
+      _refresh();
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<InventoryOperationsData>(
+      future: _data,
+      builder: (context, state) {
+        if (state.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state.hasError || state.data == null) {
+          return _ErrorPanel(
+              message: state.error.toString(), onRetry: _refresh);
+        }
+        final data = state.data!;
+        final segments = <ButtonSegment<int>>[
+          const ButtonSegment(
+              value: 0,
+              icon: Icon(Icons.wallet_outlined),
+              label: Text('Piutang')),
+          if (_canSeePayables)
+            const ButtonSegment(
+                value: 1,
+                icon: Icon(Icons.account_balance_outlined),
+                label: Text('Hutang')),
+          const ButtonSegment(
+              value: 2,
+              icon: Icon(Icons.assignment_ind_outlined),
+              label: Text('Nota')),
+        ];
+        if (!_canSeePayables && _segment == 1) _segment = 0;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SectionCard(
+              title: 'Operasional Lapangan',
+              icon: Icons.sync_alt_outlined,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Pembayaran, penerimaan, dan nota memakai command idempoten yang sama dengan Web. Nominal penuh ditampilkan sebelum posting.',
+                    style: TextStyle(color: Color(0xFF475569), height: 1.45),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<int>(
+                    segments: segments,
+                    selected: {_segment},
+                    onSelectionChanged: (value) =>
+                        setState(() => _segment = value.first),
+                  ),
+                  if (_message != null) ...[
+                    const SizedBox(height: 12),
+                    Text(_message!,
+                        style: const TextStyle(fontWeight: FontWeight.w800)),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (_segment == 0)
+              _SettlementList(
+                title: 'Piutang Belum Lunas',
+                documents: data.receivables,
+                busyId: _busyId,
+                primaryLabel: 'Terima penuh',
+                onPrimary: _settle,
+                onSecondary: _carry,
+              )
+            else if (_segment == 1)
+              _SettlementList(
+                title: 'Hutang Belum Lunas',
+                documents: data.payables,
+                busyId: _busyId,
+                primaryLabel: 'Bayar penuh',
+                onPrimary: _settle,
+              )
+            else
+              _HandoverList(
+                handovers: data.handovers,
+                busyId: _busyId,
+                onReturnAndClose: _returnAndClose,
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SettlementList extends StatelessWidget {
+  const _SettlementList({
+    required this.title,
+    required this.documents,
+    required this.busyId,
+    required this.primaryLabel,
+    required this.onPrimary,
+    this.onSecondary,
+  });
+
+  final String title;
+  final List<SettlementDocument> documents;
+  final String? busyId;
+  final String primaryLabel;
+  final ValueChanged<SettlementDocument> onPrimary;
+  final ValueChanged<SettlementDocument>? onSecondary;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: title,
+      icon: Icons.receipt_long_outlined,
+      child: documents.isEmpty
+          ? const Text('Tidak ada dokumen terbuka.')
+          : Column(
+              children: documents.take(100).map((document) {
+                final busy = busyId == document.id;
+                return Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: const BoxDecoration(
+                    border:
+                        Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(document.partyName,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800)),
+                            Text(
+                                '${document.invoiceNumber} - ${document.agingBucket}'),
+                            Text(rupiah(document.amount),
+                                style: const TextStyle(
+                                    color: Color(0xFF0F766E),
+                                    fontWeight: FontWeight.w900)),
+                          ],
+                        ),
+                      ),
+                      Wrap(
+                        spacing: 6,
+                        children: [
+                          if (onSecondary != null)
+                            OutlinedButton(
+                              onPressed: busy || document.salespersonId == null
+                                  ? null
+                                  : () => onSecondary!(document),
+                              child: const Text('Bawa nota'),
+                            ),
+                          FilledButton(
+                            onPressed: busy ? null : () => onPrimary(document),
+                            child: Text(busy ? 'Memproses...' : primaryLabel),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+    );
+  }
+}
+
+class _HandoverList extends StatelessWidget {
+  const _HandoverList(
+      {required this.handovers,
+      required this.busyId,
+      required this.onReturnAndClose});
+  final List<HandoverSummary> handovers;
+  final String? busyId;
+  final ValueChanged<HandoverSummary> onReturnAndClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Serah-terima Nota Sales',
+      icon: Icons.assignment_turned_in_outlined,
+      child: handovers.isEmpty
+          ? const Text('Belum ada serah-terima nota.')
+          : Column(
+              children: handovers
+                  .map((row) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(row.number,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
+                        subtitle: Text(
+                            '${row.salesperson} - ${row.invoiceCount} nota - ${row.status}'),
+                        trailing: row.status == 'HANDED_OVER'
+                            ? FilledButton.tonal(
+                                onPressed: busyId == row.id
+                                    ? null
+                                    : () => onReturnAndClose(row),
+                                child: const Text('Kembali & tutup'),
+                              )
+                            : Text(rupiah(row.amount)),
+                      ))
+                  .toList(),
+            ),
+    );
+  }
+}
+
 class _InventoryReportPage extends StatelessWidget {
   const _InventoryReportPage({required this.snapshot});
   final InventorySnapshot snapshot;
@@ -736,7 +1037,9 @@ class _InventoryReportPage extends StatelessWidget {
 }
 
 class _InventoryFeaturePage extends StatelessWidget {
-  const _InventoryFeaturePage();
+  const _InventoryFeaturePage({required this.contract});
+
+  final Future<InventoryParityContract> contract;
 
   @override
   Widget build(BuildContext context) {
@@ -889,6 +1192,27 @@ class _InventoryFeaturePage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        FutureBuilder<InventoryParityContract>(
+          future: contract,
+          builder: (context, state) {
+            if (state.connectionState != ConnectionState.done) {
+              return const _SectionCard(
+                title: 'Memeriksa paritas',
+                icon: Icons.sync_outlined,
+                child: LinearProgressIndicator(),
+              );
+            }
+            if (state.hasError || state.data == null) {
+              return _SectionCard(
+                title: 'Kontrak paritas belum dapat dimuat',
+                icon: Icons.warning_amber_outlined,
+                child: Text(state.error.toString()),
+              );
+            }
+            return _ParityCoverageCard(contract: state.data!);
+          },
+        ),
+        const SizedBox(height: 16),
         _SectionCard(
           title: 'Peta Fitur Inventory CMN',
           icon: Icons.apps_outlined,
@@ -908,6 +1232,84 @@ class _InventoryFeaturePage extends StatelessWidget {
               ),
             )),
       ],
+    );
+  }
+}
+
+class _ParityCoverageCard extends StatelessWidget {
+  const _ParityCoverageCard({required this.contract});
+
+  final InventoryParityContract contract;
+
+  @override
+  Widget build(BuildContext context) {
+    final flutter = contract.flutter;
+    return _SectionCard(
+      title: 'Bukti Paritas Flutter',
+      icon: Icons.fact_check_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            '${contract.screens} layar diperiksa dari kontrak API yang sama dengan Web.',
+            style: const TextStyle(color: Color(0xFF475569), height: 1.45),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _CoveragePill('${flutter.operational}', 'operasional',
+                  const Color(0xFF047857)),
+              _CoveragePill(
+                  '${flutter.readOnly}', 'baca-saja', const Color(0xFF0369A1)),
+              _CoveragePill('${flutter.contractOnly}', 'belum berlayar',
+                  const Color(0xFFB45309)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...contract.items
+              .where((item) => item.flutter != 'OPERATIONAL')
+              .take(12)
+              .map((item) => ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      item.flutter == 'READ_ONLY'
+                          ? Icons.visibility_outlined
+                          : Icons.construction_outlined,
+                      color: item.flutter == 'READ_ONLY'
+                          ? const Color(0xFF0369A1)
+                          : const Color(0xFFB45309),
+                    ),
+                    title: Text('${item.screen}. ${item.name}'),
+                    subtitle: Text(item.flutter == 'READ_ONLY'
+                        ? 'Data nyata tersedia, command belum lengkap.'
+                        : 'Kontrak ada, layar transaksi belum tersedia.'),
+                  )),
+        ],
+      ),
+    );
+  }
+}
+
+class _CoveragePill extends StatelessWidget {
+  const _CoveragePill(this.value, this.label, this.color);
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Text('$value $label',
+          style: TextStyle(color: color, fontWeight: FontWeight.w800)),
     );
   }
 }
@@ -1173,12 +1575,111 @@ class InventoryApiClient {
   }
 
   Future<InventorySnapshot> snapshot() async {
-    if (_token == null) return InventorySnapshot.demo();
+    if (_token == null) {
+      throw const InventoryApiException('Silakan masuk kembali.');
+    }
     final dashboard = await _request<Map<String, Object?>>(
         'GET', '/inventory/sales-dashboard');
     final reconciliation = await _request<Map<String, Object?>>(
         'GET', '/inventory/legacy-import-reconciliation');
     return InventorySnapshot.fromApi(dashboard, reconciliation);
+  }
+
+  Future<InventoryParityContract> parityContract() async {
+    if (_token == null) {
+      throw const InventoryApiException('Silakan masuk kembali.');
+    }
+    final data = await _request<Map<String, Object?>>(
+        'GET', '/inventory/parity-contract');
+    return InventoryParityContract.fromApi(data);
+  }
+
+  Future<InventoryOperationsData> operations(
+      {required bool includePayables}) async {
+    if (_token == null) {
+      throw const InventoryApiException('Silakan masuk kembali.');
+    }
+    final receivableFuture = _request<List<Object?>>(
+        'GET', '/inventory/legacy/receivables?pageSize=200');
+    final handoverFuture =
+        _request<List<Object?>>('GET', '/sales-note-handovers');
+    final payableFuture = includePayables
+        ? _request<List<Object?>>(
+            'GET', '/inventory/legacy/payables?pageSize=200')
+        : Future.value(<Object?>[]);
+    final values =
+        await Future.wait([receivableFuture, payableFuture, handoverFuture]);
+    return InventoryOperationsData.fromApi(values[0], values[1], values[2]);
+  }
+
+  Future<String> settle(SettlementDocument document) async {
+    final path = document.kind == 'AP' ? '/ap/payments' : '/ar/receipts';
+    final created = await _request<Map<String, Object?>>(
+      'POST',
+      path,
+      headers: {
+        'Idempotency-Key':
+            '${document.kind}_${DateTime.now().microsecondsSinceEpoch}_${document.id}'
+      },
+      body: {
+        'partyId': document.partyId,
+        'method': 'TRANSFER',
+        'allocations': [
+          {'ledgerId': document.id, 'amount': document.amount}
+        ],
+      },
+    );
+    final id = (created['id'] ?? '').toString();
+    await _request<Map<String, Object?>>('POST', '$path/$id/post');
+    return (created['number'] ??
+            created['payment_number'] ??
+            created['receipt_number'] ??
+            id)
+        .toString();
+  }
+
+  Future<String> carryNote(SettlementDocument document) async {
+    if (document.salespersonId == null) {
+      throw const InventoryApiException(
+          'Piutang belum memiliki sales penanggung jawab.');
+    }
+    final created = await _request<Map<String, Object?>>(
+      'POST',
+      '/sales-note-handovers',
+      body: {
+        'salespersonId': document.salespersonId,
+        'lines': [
+          {'receivableLedgerId': document.id}
+        ],
+      },
+    );
+    final id = (created['id'] ?? '').toString();
+    await _request<Map<String, Object?>>(
+        'POST', '/sales-note-handovers/$id/handover');
+    return (created['handover_number'] ?? id).toString();
+  }
+
+  Future<void> returnAndCloseHandover(String id) async {
+    final detail = await _request<Map<String, Object?>>(
+        'GET', '/sales-note-handovers/$id');
+    final lines = ((detail['lines'] as List?) ?? const [])
+        .whereType<Map<String, Object?>>()
+        .map((row) => {
+              'lineId': (row['id'] ?? '').toString(),
+              'status': 'RETURNED',
+              'amount': toDouble(row['outstanding_amount']),
+            })
+        .toList();
+    if (lines.isEmpty) {
+      throw const InventoryApiException('Nota tidak memiliki rincian.');
+    }
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/sales-note-handovers/$id/return',
+      body: {'lines': lines},
+    );
+    await _request<Map<String, Object?>>(
+        'POST', '/sales-note-handovers/$id/close');
   }
 
   Future<InventoryCatalog> catalog() async {
@@ -1212,6 +1713,7 @@ class InventoryApiClient {
     String path, {
     Object? body,
     bool withoutToken = false,
+    Map<String, String>? headers,
   }) async {
     final uri =
         baseUrl.resolve(path.startsWith('/') ? path.substring(1) : path);
@@ -1223,6 +1725,7 @@ class InventoryApiClient {
     if (!withoutToken && _token != null) {
       request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $_token');
     }
+    headers?.forEach((name, value) => request.headers.set(name, value));
     if (body != null) request.write(jsonEncode(body));
     final response = await request.close().timeout(const Duration(seconds: 30));
     final text = await response.transform(utf8.decoder).join();
@@ -1269,6 +1772,167 @@ const akunInventory = [
   PersonaInventory(username: 'cmnmedika', label: 'Admin CMN', role: 'Admin'),
 ];
 
+class InventoryOperationsData {
+  const InventoryOperationsData({
+    required this.receivables,
+    required this.payables,
+    required this.handovers,
+  });
+
+  factory InventoryOperationsData.fromApi(
+    List<Object?> receivables,
+    List<Object?> payables,
+    List<Object?> handovers,
+  ) {
+    return InventoryOperationsData(
+      receivables: receivables
+          .whereType<Map<String, Object?>>()
+          .map((row) => SettlementDocument.fromApi(row, kind: 'AR'))
+          .where((row) => row.id.isNotEmpty && row.partyId.isNotEmpty)
+          .toList(),
+      payables: payables
+          .whereType<Map<String, Object?>>()
+          .map((row) => SettlementDocument.fromApi(row, kind: 'AP'))
+          .where((row) => row.id.isNotEmpty && row.partyId.isNotEmpty)
+          .toList(),
+      handovers: handovers
+          .whereType<Map<String, Object?>>()
+          .map(HandoverSummary.fromApi)
+          .where((row) => row.id.isNotEmpty)
+          .toList(),
+    );
+  }
+
+  final List<SettlementDocument> receivables;
+  final List<SettlementDocument> payables;
+  final List<HandoverSummary> handovers;
+}
+
+class SettlementDocument {
+  const SettlementDocument({
+    required this.id,
+    required this.kind,
+    required this.partyId,
+    required this.partyName,
+    required this.invoiceNumber,
+    required this.amount,
+    required this.agingBucket,
+    this.salespersonId,
+  });
+
+  factory SettlementDocument.fromApi(
+    Map<String, Object?> row, {
+    required String kind,
+  }) {
+    final isPayable = kind == 'AP';
+    return SettlementDocument(
+      id: (row['id'] ?? '').toString(),
+      kind: kind,
+      partyId:
+          (row[isPayable ? 'supplier_id' : 'customer_id'] ?? '').toString(),
+      partyName: (row[isPayable ? 'supplier_name' : 'customer_name'] ?? '-')
+          .toString(),
+      invoiceNumber: (row['legacy_invoice_number'] ?? '-').toString(),
+      amount: toDouble(row['amount']),
+      agingBucket: (row['aging_bucket'] ?? '-').toString(),
+      salespersonId: row['salesperson_id']?.toString(),
+    );
+  }
+
+  final String id;
+  final String kind;
+  final String partyId;
+  final String partyName;
+  final String invoiceNumber;
+  final double amount;
+  final String agingBucket;
+  final String? salespersonId;
+}
+
+class HandoverSummary {
+  const HandoverSummary({
+    required this.id,
+    required this.number,
+    required this.salesperson,
+    required this.invoiceCount,
+    required this.amount,
+    required this.status,
+  });
+
+  factory HandoverSummary.fromApi(Map<String, Object?> row) {
+    return HandoverSummary(
+      id: (row['id'] ?? '').toString(),
+      number: (row['handover_number'] ?? '-').toString(),
+      salesperson: (row['salesperson_name'] ?? '-').toString(),
+      invoiceCount: toInt(row['invoice_count']),
+      amount: toDouble(row['outstanding_amount']),
+      status: (row['status'] ?? '-').toString(),
+    );
+  }
+
+  final String id;
+  final String number;
+  final String salesperson;
+  final int invoiceCount;
+  final double amount;
+  final String status;
+}
+
+class InventoryParityContract {
+  const InventoryParityContract({
+    required this.screens,
+    required this.flutter,
+    required this.items,
+  });
+
+  factory InventoryParityContract.fromApi(Map<String, Object?> data) {
+    final summary = data['summary'] as Map<String, Object?>? ?? const {};
+    final flutter = summary['flutter'] as Map<String, Object?>? ?? const {};
+    return InventoryParityContract(
+      screens: toInt(summary['screens']),
+      flutter: InventoryCoverageSummary(
+        operational: toInt(flutter['operational']),
+        readOnly: toInt(flutter['readOnly']),
+        contractOnly: toInt(flutter['contractOnly']),
+      ),
+      items: ((data['items'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => InventoryParityItem(
+                screen: toInt(row['screen']),
+                name: (row['legacyName'] ?? '-').toString(),
+                flutter: (row['flutter'] ?? 'CONTRACT_ONLY').toString(),
+              ))
+          .toList(),
+    );
+  }
+
+  final int screens;
+  final InventoryCoverageSummary flutter;
+  final List<InventoryParityItem> items;
+}
+
+class InventoryCoverageSummary {
+  const InventoryCoverageSummary({
+    required this.operational,
+    required this.readOnly,
+    required this.contractOnly,
+  });
+  final int operational;
+  final int readOnly;
+  final int contractOnly;
+}
+
+class InventoryParityItem {
+  const InventoryParityItem({
+    required this.screen,
+    required this.name,
+    required this.flutter,
+  });
+  final int screen;
+  final String name;
+  final String flutter;
+}
+
 class InventorySnapshot {
   const InventorySnapshot({
     required this.revenueToday,
@@ -1288,39 +1952,6 @@ class InventorySnapshot {
     required this.orders,
     required this.expiringLots,
   });
-
-  factory InventorySnapshot.demo() => const InventorySnapshot(
-        revenueToday: 16850000,
-        revenueMonth: 238475000,
-        cogsMonth: 196425000,
-        grossProfitMonth: 42050000,
-        ordersMonth: 428,
-        products: 626,
-        customers: 334,
-        availableQty: 18420,
-        rawRecords: 222944,
-        receivableAmount: 156980000,
-        payableAmount: 84250000,
-        purchaseOrders: 11842,
-        priceRows: 15037,
-        topSales: [
-          SalesKpi('Masrukin', 124, 78000000),
-          SalesKpi('Tohirin', 108, 64250000),
-          SalesKpi('Nofal', 97, 51150000),
-          SalesKpi('Agung', 92, 45075000),
-        ],
-        orders: [
-          OrderKpi(
-              'CMN-20260804-F0921', 'Apotek Sehat Waras', 'Masrukin', 2450000),
-          OrderKpi('CMN-20260804-F0920', 'Klinik Barokah', 'Tohirin', 1875000),
-          OrderKpi(
-              'CMN-20260804-F0919', 'Toko Obat Sumber Urip', 'Nofal', 1540000),
-        ],
-        expiringLots: [
-          LotKpi('OBT-0241', 'Amoxicillin 500 mg', 'B2407A', '2026-09-12'),
-          LotKpi('OBT-0187', 'Paracetamol 500 mg', 'P2601C', '2026-10-03'),
-        ],
-      );
 
   factory InventorySnapshot.fromApi(
       Map<String, Object?> dashboard, Map<String, Object?> reconciliation) {

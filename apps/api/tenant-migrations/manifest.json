@@ -325,6 +325,13 @@
       "description": "Snapshot HPP penjualan, status lunas dari baris DBF terhapus, serah-terima nota sales, snapshot laporan, jejak cetak, dan konflik sinkronisasi. Seluruhnya menambah bukti pada ERP existing tanpa membuat buku stok, piutang, hutang, atau jurnal kedua."
     },
     {
+      "version": "V047",
+      "sequence": 47,
+      "file": "V047__sales_inventory_operations.sql",
+      "name": "Operasional Sales dan Inventory lintas perangkat",
+      "description": "Workflow pembayaran hutang, penerimaan piutang, serah-terima nota sampai kembali/ditutup, sesi stock opname, dan status perangkat sinkronisasi. Pembuatan pembayaran memakai kunci idempotensi dan seluruhnya tetap memakai ledger ERP/legacy yang sama sebagai sumber rekonsiliasi."
+    },
+    {
       "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

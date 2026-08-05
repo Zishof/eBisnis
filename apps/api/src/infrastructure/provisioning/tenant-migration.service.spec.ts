@@ -18,12 +18,12 @@ describe('TenantMigrationService', () => {
     };
 
     jest.spyOn(service, 'getManifest').mockReturnValue({ schemaVersion: 1, migrations: [definition] });
-    jest.spyOn(service as never, 'loadSql').mockReturnValue({
+    jest.spyOn(service as unknown as { loadSql: (file: string) => { sql: string; checksum: string } }, 'loadSql').mockReturnValue({
       sql: 'ALTER TABLE "{{TENANT_SCHEMA}}".pesantren_unit_pendidikan ADD COLUMN hero_image_url TEXT;',
       checksum: 'checksum-v044',
     });
-    jest.spyOn(service as never, 'hasTenantTable').mockResolvedValue(false);
-    jest.spyOn(service as never, 'markMigrationSucceeded').mockResolvedValue(undefined);
+    jest.spyOn(service as unknown as { hasTenantTable: (schema: string, table: string) => Promise<boolean> }, 'hasTenantTable').mockResolvedValue(false);
+    jest.spyOn(service as unknown as { markMigrationSucceeded: (...args: unknown[]) => Promise<void> }, 'markMigrationSucceeded').mockResolvedValue(undefined);
 
     const result = await service.applyAll('cmnmedika_inventory', 'cmnmedika_inventory_audit');
 
