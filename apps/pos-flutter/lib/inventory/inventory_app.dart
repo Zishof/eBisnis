@@ -18,17 +18,19 @@ class AplikasiInventory extends StatefulWidget {
     super.key,
     this.initialPersona,
     this.initialCatalog,
+    this.client,
   });
 
   final PersonaInventory? initialPersona;
   final InventoryCatalog? initialCatalog;
+  final InventoryApiClient? client;
 
   @override
   State<AplikasiInventory> createState() => _AplikasiInventoryState();
 }
 
 class _AplikasiInventoryState extends State<AplikasiInventory> {
-  final _client = InventoryApiClient.fromEnvironment();
+  late final _client = widget.client ?? InventoryApiClient.fromEnvironment();
   PersonaInventory? _persona;
 
   @override
@@ -44,11 +46,55 @@ class _AplikasiInventoryState extends State<AplikasiInventory> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0F766E),
+          seedColor: const Color(0xFF1769E0),
           brightness: Brightness.light,
+          surface: Colors.white,
         ),
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF4F7FB),
+        scaffoldBackgroundColor: const Color(0xFFF7F9FC),
+        fontFamily: 'Arial',
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: Color(0xFFE3E9F2)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Color(0xFFDCE3ED)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Color(0xFFDCE3ED)),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            side: const BorderSide(color: Color(0xFFD7E0EC)),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+        ),
+        dividerColor: const Color(0xFFE7ECF3),
       ),
       home: _persona == null
           ? InventoryLoginPage(
@@ -220,204 +266,1057 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
     }
   }
 
+  void _selectTab(int value) => setState(() => _tab = value);
+
+  String get _pageTitle => const [
+        'Dashboard',
+        'Sales Order',
+        'Pembelian, Hutang & Piutang',
+        'Master Produk & Inventori',
+        'Paritas Sistem Legacy',
+        'Kas, Bank & Akuntansi',
+        'Reports & Analytics',
+        'Panduan Penggunaan',
+      ][_tab];
+
+  String get _pageSubtitle => const [
+        'Ringkasan operasional dan keuangan bisnis hari ini.',
+        'Buat pesanan lapangan dengan stok dan harga pelanggan terkini.',
+        'Kelola pembelian, kewajiban, penjualan, penerimaan, dan penagihan.',
+        'Kelola produk, harga, batch, expiry, dan perhitungan fisik stok.',
+        'Pastikan seluruh layar aplikasi lama telah tersedia dan teruji.',
+        'Jurnal, buku besar, periode, rekonsiliasi, dan laporan keuangan.',
+        'Pusat laporan operasional dan keuangan perusahaan.',
+        'Petunjuk kerja end-to-end untuk pengguna nonteknis.',
+      ][_tab];
+
+  Widget _pageFor(InventorySnapshot? data) {
+    if (_tab == 0) {
+      return _InventoryDashboard(
+        snapshot: data!,
+        client: widget.client,
+        onCreateOrder: () => _selectTab(1),
+      );
+    }
+    if (_tab == 1) {
+      return _SalesOrderDraftPage(
+        persona: widget.persona,
+        client: widget.client,
+        initialCatalog: widget.initialCatalog,
+      );
+    }
+    if (_tab == 2) {
+      return InventoryOperationsPage(
+        client: widget.client,
+        persona: widget.persona,
+      );
+    }
+    if (_tab == 3) return InventoryStockPricingPage(client: widget.client);
+    if (_tab == 4) return _InventoryFeaturePage(contract: _parity);
+    if (_tab == 5) return InventoryFinancePage(client: widget.client);
+    if (_tab == 6) return _InventoryReportPage(snapshot: data!);
+    return const _InventoryManualPage();
+  }
+
+  Widget _content() {
+    return FutureBuilder<InventorySnapshot>(
+      future: _snapshot,
+      builder: (context, state) {
+        final needsSnapshot = _tab == 0 || _tab == 6;
+        if (needsSnapshot && state.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (needsSnapshot && state.hasError) {
+          return _ErrorPanel(
+              message: state.error.toString(), onRetry: _refresh);
+        }
+        return Scrollbar(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _InventoryPageHeading(
+                  title: _pageTitle,
+                  subtitle: _pageSubtitle,
+                  actions: _tab == 0
+                      ? [
+                          FilledButton.icon(
+                            onPressed: () => _selectTab(1),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Buat Transaksi'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: _refresh,
+                            icon: const Icon(Icons.tune, size: 18),
+                            label: const Text('Filter Dashboard'),
+                          ),
+                        ]
+                      : const [],
+                ),
+                const SizedBox(height: 18),
+                _pageFor(state.data),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      final desktop = box.maxWidth >= 1100;
+      if (desktop) {
+        return _InventoryDesktopShell(
+          selectedIndex: _tab,
+          persona: widget.persona,
+          pending: _pending,
+          syncing: _syncing,
+          onSelected: _selectTab,
+          onSync: _synchronize,
+          onRefresh: _refresh,
+          onLogout: widget.onKeluar,
+          content: _content(),
+        );
+      }
+      return _InventoryMobileShell(
+        selectedIndex: _tab,
+        persona: widget.persona,
+        pending: _pending,
+        syncing: _syncing,
+        onSelected: _selectTab,
+        onSync: _synchronize,
+        onLogout: widget.onKeluar,
+        content: _content(),
+      );
+    });
+  }
+}
+
+class _InventoryNavItem {
+  const _InventoryNavItem(this.label, this.icon);
+  final String label;
+  final IconData icon;
+}
+
+const _inventoryNavigation = [
+  _InventoryNavItem('Dashboard', Icons.dashboard_outlined),
+  _InventoryNavItem('Order Baru', Icons.receipt_long_outlined),
+  _InventoryNavItem('Operasional', Icons.shopping_cart_outlined),
+  _InventoryNavItem('Stok & Harga', Icons.inventory_2_outlined),
+  _InventoryNavItem('Paritas', Icons.fact_check_outlined),
+  _InventoryNavItem('Keuangan', Icons.account_balance_outlined),
+  _InventoryNavItem('Laporan', Icons.analytics_outlined),
+  _InventoryNavItem('Panduan', Icons.menu_book_outlined),
+];
+
+class _InventoryDesktopShell extends StatelessWidget {
+  const _InventoryDesktopShell({
+    required this.selectedIndex,
+    required this.persona,
+    required this.pending,
+    required this.syncing,
+    required this.onSelected,
+    required this.onSync,
+    required this.onRefresh,
+    required this.onLogout,
+    required this.content,
+  });
+
+  final int selectedIndex;
+  final PersonaInventory persona;
+  final int pending;
+  final bool syncing;
+  final ValueChanged<int> onSelected;
+  final VoidCallback onSync;
+  final VoidCallback onRefresh;
+  final VoidCallback onLogout;
+  final Widget content;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      body: SafeArea(
+        child: Row(
+          children: [
+            Container(
+              width: 220,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(right: BorderSide(color: Color(0xFFE5EAF1))),
+              ),
+              child: Column(
+                children: [
+                  const _InventoryBrand(),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+                      children: [
+                        for (var index = 0;
+                            index < _inventoryNavigation.length;
+                            index++)
+                          _InventoryNavButton(
+                            item: _inventoryNavigation[index],
+                            selected: selectedIndex == index,
+                            onTap: () => onSelected(index),
+                          ),
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(10, 16, 10, 8),
+                          child: Text(
+                            'FAVORIT',
+                            style: TextStyle(
+                              color: Color(0xFF1769E0),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const _InventoryFavorite(
+                            'Penjualan Hari Ini', Icons.trending_up),
+                        const _InventoryFavorite(
+                            'Stok Menipis', Icons.warning_amber_outlined),
+                        const _InventoryFavorite(
+                            'Piutang Jatuh Tempo', Icons.schedule_outlined),
+                      ],
+                    ),
+                  ),
+                  _SyncStatusCard(
+                    pending: pending,
+                    syncing: syncing,
+                    onSync: onSync,
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 14),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('v2.6.0  -  eBisnis Suite',
+                          style: TextStyle(
+                              color: Color(0xFF8793A5), fontSize: 10)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  _InventoryTopBar(
+                    persona: persona,
+                    pending: pending,
+                    syncing: syncing,
+                    onSync: onSync,
+                    onRefresh: onRefresh,
+                    onLogout: onLogout,
+                  ),
+                  Expanded(child: content),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InventoryMobileShell extends StatelessWidget {
+  const _InventoryMobileShell({
+    required this.selectedIndex,
+    required this.persona,
+    required this.pending,
+    required this.syncing,
+    required this.onSelected,
+    required this.onSync,
+    required this.onLogout,
+    required this.content,
+  });
+
+  final int selectedIndex;
+  final PersonaInventory persona;
+  final int pending;
+  final bool syncing;
+  final ValueChanged<int> onSelected;
+  final VoidCallback onSync;
+  final VoidCallback onLogout;
+  final Widget content;
+
+  void _openMore(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var index = 3; index < _inventoryNavigation.length; index++)
+                ListTile(
+                  leading: Icon(_inventoryNavigation[index].icon),
+                  title: Text(_inventoryNavigation[index].label),
+                  selected: selectedIndex == index,
+                  onTap: () {
+                    Navigator.pop(context);
+                    onSelected(index);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        titleSpacing: 8,
+        title: const Row(
+          children: [
+            _InventoryLogo(size: 34),
+            SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                'eBisnis Inventory',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Semua modul',
+            onPressed: () => _openMore(context),
+            icon: const Icon(Icons.apps_outlined),
+          ),
+          Badge(
+            isLabelVisible: pending > 0,
+            label: Text('$pending'),
+            child: IconButton(
+              tooltip: 'Sinkronkan data',
+              onPressed: syncing ? null : onSync,
+              icon: syncing
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.cloud_done_outlined),
+            ),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Akun pengguna',
+            onSelected: (value) {
+              if (value == 'logout') onLogout();
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(enabled: false, child: Text(persona.label)),
+              const PopupMenuItem(value: 'logout', child: Text('Keluar')),
+            ],
+            icon: const CircleAvatar(
+              radius: 15,
+              backgroundColor: Color(0xFFE9F1FF),
+              child: Icon(Icons.person_outline, size: 18),
+            ),
+          ),
+        ],
+      ),
+      body: SafeArea(top: false, child: content),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (value) => setState(() => _tab = value),
+        height: 64,
+        selectedIndex: switch (selectedIndex) {
+          0 => 0,
+          1 => 1,
+          2 => 2,
+          4 => 3,
+          7 => 4,
+          _ => 0,
+        },
+        onDestinationSelected: (value) {
+          onSelected(const [0, 1, 2, 4, 7][value]);
+        },
         destinations: const [
           NavigationDestination(
               icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
           NavigationDestination(
-              icon: Icon(Icons.add_shopping_cart_outlined),
-              label: 'Order Baru'),
+              icon: Icon(Icons.receipt_long_outlined), label: 'Order Baru'),
           NavigationDestination(
               icon: Icon(Icons.payments_outlined), label: 'Operasional'),
           NavigationDestination(
-              icon: Icon(Icons.inventory_2_outlined), label: 'Stok & Harga'),
-          NavigationDestination(
               icon: Icon(Icons.fact_check_outlined), label: 'Paritas'),
-          NavigationDestination(
-              icon: Icon(Icons.account_balance_outlined), label: 'Keuangan'),
-          NavigationDestination(
-              icon: Icon(Icons.analytics_outlined), label: 'Laporan'),
           NavigationDestination(
               icon: Icon(Icons.menu_book_outlined), label: 'Panduan'),
         ],
       ),
-      body: SafeArea(
-        child: FutureBuilder<InventorySnapshot>(
-          future: _snapshot,
-          builder: (context, state) {
-            final data = state.data;
-            final needsSnapshot = _tab == 0 || _tab == 6;
-            return CustomScrollView(
-              slivers: [
-                SliverAppBar.large(
-                  pinned: true,
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF0F172A),
-                  title: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Caruban Medika Nusantara'),
-                      Text(
-                        widget.persona.label,
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                    ],
-                  ),
-                  actions: [
-                    Badge(
-                      isLabelVisible: _pending > 0,
-                      label: Text('$_pending'),
-                      child: IconButton(
-                        tooltip: 'Sinkronkan data',
-                        onPressed: _syncing ? null : _synchronize,
-                        icon: _syncing
-                            ? const SizedBox.square(
-                                dimension: 20,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.cloud_sync_outlined),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Muat ulang',
-                      onPressed: _refresh,
-                      icon: const Icon(Icons.refresh),
-                    ),
-                    IconButton(
-                      tooltip: 'Keluar',
-                      onPressed: widget.onKeluar,
-                      icon: const Icon(Icons.logout),
-                    ),
-                  ],
-                ),
-                if (needsSnapshot &&
-                    state.connectionState != ConnectionState.done)
-                  const SliverFillRemaining(
-                      child: Center(child: CircularProgressIndicator()))
-                else if (needsSnapshot && state.hasError)
-                  SliverFillRemaining(
-                    child: _ErrorPanel(
-                      message: state.error.toString(),
-                      onRetry: _refresh,
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.all(16),
-                    sliver: SliverList.list(
-                      children: [
-                        if (_tab == 0) ...[
-                          _KpiGrid(snapshot: data!),
-                          const SizedBox(height: 16),
-                          _PartyMasterLauncher(client: widget.client),
-                          const SizedBox(height: 16),
-                          _SectionCard(
-                            title: 'Performa sales',
-                            icon: Icons.groups_outlined,
-                            child: Column(
-                              children: data.topSales
-                                  .map((row) => _ProgressLine(
-                                        label: row.name,
-                                        note: '${row.orders} order',
-                                        value: rupiah(row.revenue),
-                                        current: row.revenue,
-                                        max: data.topSalesMax,
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _SectionCard(
-                            title: 'Order terbaru',
-                            icon: Icons.receipt_long_outlined,
-                            child: Column(
-                              children: data.orders
-                                  .map((order) => ListTile(
-                                        contentPadding: EdgeInsets.zero,
-                                        title: Text(order.number),
-                                        subtitle: Text(
-                                            '${order.customer} - ${order.sales}'),
-                                        trailing: Text(
-                                          rupiah(order.total),
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w800),
-                                        ),
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _SectionCard(
-                            title: 'Rekonsiliasi legacy',
-                            icon: Icons.storage_outlined,
-                            child: Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: [
-                                _Pill('Raw rows', angka(data.rawRecords)),
-                                _Pill('HPP bulan', rupiah(data.cogsMonth)),
-                                _Pill('Laba kotor',
-                                    rupiah(data.grossProfitMonth)),
-                                _Pill('Piutang', rupiah(data.receivableAmount)),
-                                _Pill('Hutang', rupiah(data.payableAmount)),
-                                _Pill('PO legacy', angka(data.purchaseOrders)),
-                                _Pill('Riwayat harga', angka(data.priceRows)),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _SectionCard(
-                            title: 'Risiko batch dan stok',
-                            icon: Icons.warning_amber_outlined,
-                            child: Column(
-                              children: data.expiringLots
-                                  .map((lot) => ListTile(
-                                        contentPadding: EdgeInsets.zero,
-                                        leading: const Icon(
-                                            Icons.medication_outlined),
-                                        title: Text(lot.productName),
-                                        subtitle: Text(
-                                            '${lot.productCode} - batch ${lot.lotNumber}'),
-                                        trailing: Text(lot.expiryDate),
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
-                        ] else if (_tab == 1)
-                          _SalesOrderDraftPage(
-                            persona: widget.persona,
-                            client: widget.client,
-                            initialCatalog: widget.initialCatalog,
-                          )
-                        else if (_tab == 2)
-                          InventoryOperationsPage(
-                            client: widget.client,
-                            persona: widget.persona,
-                          )
-                        else if (_tab == 3)
-                          InventoryStockPricingPage(client: widget.client)
-                        else if (_tab == 4)
-                          _InventoryFeaturePage(contract: _parity)
-                        else if (_tab == 5)
-                          InventoryFinancePage(client: widget.client)
-                        else if (_tab == 6)
-                          _InventoryReportPage(snapshot: data!)
-                        else
-                          const _InventoryManualPage(),
-                      ],
-                    ),
-                  ),
-              ],
-            );
-          },
+    );
+  }
+}
+
+class _InventoryBrand extends StatelessWidget {
+  const _InventoryBrand();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 72,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            _InventoryLogo(size: 38),
+            SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('eBisnis',
+                      style:
+                          TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                  Text('Inventory Sales',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF526176),
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class _InventoryLogo extends StatelessWidget {
+  const _InventoryLogo({required this.size});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1769E0),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(Icons.inventory_2_outlined, color: Colors.white),
+    );
+  }
+}
+
+class _InventoryNavButton extends StatelessWidget {
+  const _InventoryNavButton({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+  final _InventoryNavItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Material(
+        color: selected ? const Color(0xFFEAF2FF) : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 11),
+            decoration: BoxDecoration(
+              border: selected
+                  ? const Border(
+                      left: BorderSide(color: Color(0xFF1769E0), width: 3))
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Icon(item.icon,
+                    size: 19,
+                    color: selected
+                        ? const Color(0xFF1769E0)
+                        : const Color(0xFF536176)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    item.label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: selected
+                          ? const Color(0xFF1769E0)
+                          : const Color(0xFF263449),
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (const {'Operasional', 'Stok & Harga', 'Keuangan'}
+                    .contains(item.label))
+                  const Icon(Icons.expand_more,
+                      size: 16, color: Color(0xFF8290A3)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InventoryFavorite extends StatelessWidget {
+  const _InventoryFavorite(this.label, this.icon);
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: const Color(0xFF67758A)),
+          const SizedBox(width: 10),
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 12))),
+        ],
+      ),
+    );
+  }
+}
+
+class _SyncStatusCard extends StatelessWidget {
+  const _SyncStatusCard({
+    required this.pending,
+    required this.syncing,
+    required this.onSync,
+  });
+  final int pending;
+  final bool syncing;
+  final VoidCallback onSync;
+
+  @override
+  Widget build(BuildContext context) {
+    final online = pending == 0;
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FBFE),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text('STATUS SISTEM',
+                    style:
+                        TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
+              ),
+              Icon(online ? Icons.wifi : Icons.wifi_tethering_error,
+                  size: 17,
+                  color: online
+                      ? const Color(0xFF16A34A)
+                      : const Color(0xFFF59E0B)),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Text(
+            online ? 'Semua Sistem Online' : 'Semi Online - $pending antrean',
+            style: TextStyle(
+              color: online ? const Color(0xFF15803D) : const Color(0xFFD97706),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 7),
+          const Text('Terakhir sinkronisasi',
+              style: TextStyle(fontSize: 10, color: Color(0xFF78869A))),
+          const Text('Hari ini 10:15',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: syncing ? null : onSync,
+              icon: syncing
+                  ? const SizedBox.square(
+                      dimension: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.sync, size: 16),
+              label: const Text('Sinkronisasi Sekarang',
+                  style: TextStyle(fontSize: 10)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InventoryTopBar extends StatelessWidget {
+  const _InventoryTopBar({
+    required this.persona,
+    required this.pending,
+    required this.syncing,
+    required this.onSync,
+    required this.onRefresh,
+    required this.onLogout,
+  });
+  final PersonaInventory persona;
+  final int pending;
+  final bool syncing;
+  final VoidCallback onSync;
+  final VoidCallback onRefresh;
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE5EAF1))),
+      ),
+      child: Row(
+        children: [
+          const _TopSelector(
+              icon: Icons.business_outlined,
+              title: 'Caruban Medika Nusantara',
+              subtitle: 'Tenant'),
+          const SizedBox(width: 10),
+          const _TopSelector(
+              icon: Icons.warehouse_outlined,
+              title: 'Gudang Pusat',
+              subtitle: 'Cabang / Gudang'),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Cari menu, transaksi, pelanggan, produk...',
+                prefixIcon: Icon(Icons.search, size: 20),
+                suffixText: 'Ctrl + K',
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          TextButton.icon(
+            onPressed: syncing ? null : onSync,
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF15803D),
+              backgroundColor: const Color(0xFFEAF8EE),
+            ),
+            icon: syncing
+                ? const SizedBox.square(
+                    dimension: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.check_circle_outline, size: 17),
+            label: Text(pending == 0 ? 'Tersinkronisasi' : '$pending antrean',
+                style: const TextStyle(fontSize: 11)),
+          ),
+          Badge(
+            isLabelVisible: pending > 0,
+            label: Text('$pending'),
+            child: IconButton(
+                tooltip: 'Notifikasi',
+                onPressed: onRefresh,
+                icon: const Icon(Icons.notifications_none, size: 21)),
+          ),
+          IconButton(
+              tooltip: 'Bantuan',
+              onPressed: () {},
+              icon: const Icon(Icons.help_outline, size: 21)),
+          const SizedBox(width: 4),
+          const CircleAvatar(
+            radius: 18,
+            backgroundColor: Color(0xFFEAF2FF),
+            child: Icon(Icons.person_outline, color: Color(0xFF1769E0)),
+          ),
+          const SizedBox(width: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 118),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(persona.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w800)),
+                Text(persona.role,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 10, color: Color(0xFF77859A))),
+              ],
+            ),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Menu akun',
+            onSelected: (value) {
+              if (value == 'logout') onLogout();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'logout', child: Text('Keluar')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopSelector extends StatelessWidget {
+  const _TopSelector({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 190,
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFFDCE3ED)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF1769E0)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w800)),
+                Text(subtitle,
+                    style:
+                        const TextStyle(color: Color(0xFF7A8799), fontSize: 9)),
+              ],
+            ),
+          ),
+          const Icon(Icons.expand_more, size: 16),
+        ],
+      ),
+    );
+  }
+}
+
+class _InventoryPageHeading extends StatelessWidget {
+  const _InventoryPageHeading({
+    required this.title,
+    required this.subtitle,
+    required this.actions,
+  });
+  final String title;
+  final String subtitle;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      final narrow = box.maxWidth < 620;
+      final heading = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: TextStyle(
+                  fontSize: narrow ? 22 : 24,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF111827))),
+          const SizedBox(height: 3),
+          Text(subtitle,
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+        ],
+      );
+      if (narrow || actions.isEmpty) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            heading,
+            if (actions.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(spacing: 8, runSpacing: 8, children: actions),
+            ],
+          ],
+        );
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: heading),
+          Wrap(spacing: 8, runSpacing: 8, children: actions),
+        ],
+      );
+    });
+  }
+}
+
+class _InventoryDashboard extends StatelessWidget {
+  const _InventoryDashboard({
+    required this.snapshot,
+    required this.client,
+    required this.onCreateOrder,
+  });
+  final InventorySnapshot snapshot;
+  final InventoryApiClient client;
+  final VoidCallback onCreateOrder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _KpiGrid(snapshot: snapshot),
+        const SizedBox(height: 14),
+        LayoutBuilder(builder: (context, box) {
+          final wide = box.maxWidth >= 1040;
+          final trend = _SectionCard(
+            title: 'Tren Penjualan',
+            icon: Icons.show_chart,
+            action: const _RangeChip('30 Hari Terakhir'),
+            child: _SalesTrend(snapshot: snapshot),
+          );
+          final sales = _SectionCard(
+            title: 'Top Sales',
+            icon: Icons.workspace_premium_outlined,
+            action:
+                TextButton(onPressed: () {}, child: const Text('Lihat semua')),
+            child: Column(
+              children: snapshot.topSales
+                  .take(5)
+                  .map((row) => _ProgressLine(
+                        label: row.name,
+                        note: '${row.orders} order',
+                        value: rupiah(row.revenue),
+                        current: row.revenue,
+                        max: snapshot.topSalesMax,
+                      ))
+                  .toList(),
+            ),
+          );
+          if (!wide) {
+            return Column(children: [trend, const SizedBox(height: 14), sales]);
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 2, child: trend),
+              const SizedBox(width: 14),
+              Expanded(child: sales),
+            ],
+          );
+        }),
+        const SizedBox(height: 14),
+        LayoutBuilder(builder: (context, box) {
+          final wide = box.maxWidth >= 1040;
+          final stock = _SectionCard(
+            title: 'Peringatan Stok & Batch',
+            icon: Icons.warning_amber_outlined,
+            action:
+                TextButton(onPressed: () {}, child: const Text('Lihat semua')),
+            child: _CompactRiskTable(lots: snapshot.expiringLots),
+          );
+          final orders = _SectionCard(
+            title: 'Transaksi Terbaru',
+            icon: Icons.receipt_long_outlined,
+            action: TextButton(
+                onPressed: onCreateOrder, child: const Text('Buat transaksi')),
+            child: _CompactOrderTable(orders: snapshot.orders),
+          );
+          if (!wide) {
+            return Column(
+                children: [stock, const SizedBox(height: 14), orders]);
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: stock),
+              const SizedBox(width: 14),
+              Expanded(flex: 2, child: orders),
+            ],
+          );
+        }),
+        const SizedBox(height: 14),
+        _PartyMasterLauncher(client: client),
+      ],
+    );
+  }
+}
+
+class _RangeChip extends StatelessWidget {
+  const _RangeChip(this.label);
+  final String label;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFDDE4EE)),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(label, style: const TextStyle(fontSize: 10)),
+          const SizedBox(width: 4),
+          const Icon(Icons.expand_more, size: 14),
+        ]),
+      );
+}
+
+class _SalesTrend extends StatelessWidget {
+  const _SalesTrend({required this.snapshot});
+  final InventorySnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final values = snapshot.topSales.isEmpty
+        ? const [0.35, 0.62, 0.44, 0.78, 0.55, 0.9, 0.67]
+        : snapshot.topSales
+            .map((row) => row.revenue / snapshot.topSalesMax)
+            .toList();
+    return SizedBox(
+      height: 190,
+      child: Column(
+        children: [
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (var i = 0; i < values.length; i++) ...[
+                  Expanded(
+                    child: Container(
+                      height: 24 + 130 * values[i].clamp(0.05, 1),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF2F73E8),
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(4)),
+                      ),
+                    ),
+                  ),
+                  if (i != values.length - 1) const SizedBox(width: 10),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Awal periode',
+                  style: TextStyle(fontSize: 10, color: Color(0xFF7C899A))),
+              Text('Hari ini',
+                  style: TextStyle(fontSize: 10, color: Color(0xFF7C899A))),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactRiskTable extends StatelessWidget {
+  const _CompactRiskTable({required this.lots});
+  final List<LotKpi> lots;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = lots.take(5).toList();
+    if (rows.isEmpty) {
+      return const SizedBox(
+          height: 120, child: Center(child: Text('Tidak ada risiko aktif')));
+    }
+    return Column(
+      children: rows
+          .map((lot) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 7),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Color(0xFFF59E0B), size: 18),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(lot.productName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w700)),
+                          Text('${lot.productCode} - ${lot.lotNumber}',
+                              style: const TextStyle(
+                                  fontSize: 10, color: Color(0xFF7A8798))),
+                        ],
+                      ),
+                    ),
+                    Text(lot.expiryDate,
+                        style: const TextStyle(
+                            fontSize: 10, color: Color(0xFFC2410C))),
+                  ],
+                ),
+              ))
+          .toList(),
+    );
+  }
+}
+
+class _CompactOrderTable extends StatelessWidget {
+  const _CompactOrderTable({required this.orders});
+  final List<OrderKpi> orders;
+
+  @override
+  Widget build(BuildContext context) {
+    if (orders.isEmpty) {
+      return const SizedBox(
+          height: 120, child: Center(child: Text('Belum ada transaksi')));
+    }
+    return Column(
+      children: orders
+          .take(6)
+          .map((order) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 7),
+                child: Row(
+                  children: [
+                    Expanded(
+                        child: Text(order.number,
+                            style: const TextStyle(
+                                color: Color(0xFF1769E0),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700))),
+                    Expanded(
+                        flex: 2,
+                        child: Text('${order.customer} - ${order.sales}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11))),
+                    Text(rupiah(order.total),
+                        style: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ))
+          .toList(),
     );
   }
 }
@@ -5992,24 +6891,47 @@ class _KpiGrid extends StatelessWidget {
         angka(snapshot.ordersMonth),
         Icons.receipt_long_outlined
       ),
-      ('Produk obat', angka(snapshot.products), Icons.medication_outlined),
-      ('Pelanggan', angka(snapshot.customers), Icons.storefront_outlined),
-      ('Stok tersedia', angka(snapshot.availableQty), Icons.warehouse_outlined),
+      (
+        'Nilai persediaan',
+        rupiah(snapshot.cogsMonth),
+        Icons.warehouse_outlined
+      ),
+      (
+        'Stok menipis',
+        '${snapshot.expiringLots.length} produk',
+        Icons.warning_amber_outlined
+      ),
+      (
+        'Piutang usaha',
+        rupiah(snapshot.receivableAmount),
+        Icons.account_balance_wallet_outlined
+      ),
+      (
+        'Kas & proyeksi',
+        rupiah(snapshot.revenueMonth - snapshot.cogsMonth),
+        Icons.account_balance_outlined
+      ),
     ];
     return LayoutBuilder(
       builder: (context, box) {
-        final cols = box.maxWidth > 900
-            ? 3
-            : box.maxWidth > 560
-                ? 2
-                : 1;
+        final cols = box.maxWidth >= 1320
+            ? 8
+            : box.maxWidth >= 920
+                ? 4
+                : box.maxWidth >= 520
+                    ? 2
+                    : 1;
         return GridView.count(
           crossAxisCount: cols,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: cols == 1 ? 3.6 : 2.5,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+          childAspectRatio: cols >= 4
+              ? 1.25
+              : cols == 2
+                  ? 2.2
+                  : 3.15,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
           children: items
               .map((item) =>
                   _KpiCard(label: item.$1, value: item.$2, icon: item.$3))
@@ -6032,25 +6954,32 @@ class _KpiCard extends StatelessWidget {
     return Card(
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+        padding: const EdgeInsets.all(13),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircleAvatar(
-                backgroundColor: const Color(0xFFE0F2F1),
-                foregroundColor: const Color(0xFF0F766E),
-                child: Icon(icon)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(label, style: Theme.of(context).textTheme.labelMedium),
-                  Text(value,
-                      style: const TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.w900)),
-                ],
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAF2FF),
+                borderRadius: BorderRadius.circular(7),
               ),
+              child: Icon(icon, size: 19, color: const Color(0xFF1769E0)),
+            ),
+            const SizedBox(height: 10),
+            Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Color(0xFF66758A), fontSize: 10)),
+            const SizedBox(height: 3),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(value,
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w900)),
             ),
           ],
         ),
@@ -6075,18 +7004,18 @@ class _SectionCard extends StatelessWidget {
     return Card(
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(icon, color: const Color(0xFF0F766E)),
+                Icon(icon, size: 19, color: const Color(0xFF1769E0)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(title,
                       style: const TextStyle(
-                          fontWeight: FontWeight.w900, fontSize: 18)),
+                          fontWeight: FontWeight.w800, fontSize: 14)),
                 ),
                 if (action != null) action!,
               ],
