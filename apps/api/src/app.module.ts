@@ -31,6 +31,7 @@ import { ActivityModule } from './modules/activity/activity.module';
 import { AccountingModule } from './modules/accounting/accounting.module';
 import { PosModule } from './modules/pos/pos.module';
 import { SuratModule } from './modules/surat/surat.module';
+import { EducationModule } from './modules/education/education.module';
 // Vertikal koperasi (eKoperasi). Satu baris impor dan satu entri — sengaja
 // sekecil mungkin, sebab berkas ini disentuh empat sesi paralel.
 import { CooperativeModule } from './modules/cooperative/cooperative.module';
@@ -90,6 +91,7 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
     AccountingModule,
     PosModule,
     SuratModule,
+    EducationModule,
     CooperativeModule,
     PesantrenModule,
     NotificationModule,

@@ -12,11 +12,13 @@ import {
   MasukanNilai,
   MasukanSkalaHuruf,
   cariHurufMutu,
+  hitungRankingPadat,
   validasiKomponenNilai,
   validasiMataPelajaran,
   validasiNilai,
   validasiSkalaHuruf,
 } from './pesantren-nilai';
+import { buatRaporPdf } from './pesantren-rapor-pdf';
 
 export interface BarisMataPelajaran {
   id: string;
@@ -64,6 +66,22 @@ export interface BarisGradebook {
   nilai: Record<string, string | null>;
 }
 
+export interface BarisLegerNilai {
+  santri_id: string;
+  nis: string;
+  nama_lengkap: string;
+  nilai: Array<{
+    mata_pelajaran_id: string;
+    mata_pelajaran: string;
+    nilai_akhir: number | null;
+    huruf_mutu: string | null;
+  }>;
+  rata_rata: number | null;
+  ranking: number | null;
+  status_kenaikan: 'NAIK' | 'BELUM_DITENTUKAN';
+  catatan_kenaikan: string;
+}
+
 export interface BarisTahunAjaran {
   id: string;
   code: string;
@@ -71,6 +89,11 @@ export interface BarisTahunAjaran {
   tanggal_mulai: string;
   tanggal_selesai: string;
   status: string;
+}
+
+export interface RaporPdfResult {
+  filename: string;
+  buffer: Buffer;
 }
 
 @Injectable()
@@ -368,6 +391,120 @@ export class PesantrenNilaiService {
     return { tersimpan, dilewati };
   }
 
+  async leger(
+    schemaName: string,
+    opsi: { rombonganId: string; tahunAjaranId: string },
+  ): Promise<BarisLegerNilai[]> {
+    const S = `"${schemaName}"`;
+    const baris = await this.tenantDb.query<{
+      santri_id: string;
+      nis: string;
+      nama_lengkap: string;
+      mata_pelajaran_id: string | null;
+      mata_pelajaran: string | null;
+      komponen_nama: string | null;
+      nilai_angka: string | null;
+      bobot_persen: string | null;
+    }>(
+      schemaName,
+      `SELECT s.id::text AS santri_id, s.nis, s.nama_lengkap,
+              mp.id::text AS mata_pelajaran_id, mp.nama AS mata_pelajaran,
+              kn.nama AS komponen_nama, n.nilai_angka::text, kn.bobot_persen::text
+         FROM ${S}.pesantren_rombongan_anggota ra
+         JOIN ${S}.pesantren_santri s ON s.id = ra.santri_id
+         LEFT JOIN ${S}.pesantren_nilai n
+           ON n.santri_id = s.id
+          AND n.tahun_ajaran_id = $2
+          AND n.deleted_at IS NULL
+         LEFT JOIN ${S}.pesantren_komponen_nilai kn
+           ON kn.id = n.komponen_id
+          AND kn.deleted_at IS NULL
+         LEFT JOIN ${S}.pesantren_mata_pelajaran mp
+           ON mp.id = kn.mata_pelajaran_id
+          AND mp.deleted_at IS NULL
+        WHERE ra.rombongan_id = $1
+          AND ra.tahun_ajaran_id = $2
+          AND ra.status = 'AKTIF'
+          AND ra.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+        ORDER BY s.nama_lengkap ASC, mp.nama ASC NULLS LAST, kn.sort_order ASC NULLS LAST`,
+      [opsi.rombonganId, opsi.tahunAjaranId],
+    );
+
+    const skala = await this.daftarSkalaHuruf(schemaName);
+    const perSantri = new Map<
+      string,
+      {
+        santri_id: string;
+        nis: string;
+        nama_lengkap: string;
+        mapel: Map<string, { mata_pelajaran: string; komponen: { nilai: number; bobot_persen: number }[] }>;
+      }
+    >();
+
+    for (const row of baris) {
+      if (!perSantri.has(row.santri_id)) {
+        perSantri.set(row.santri_id, {
+          santri_id: row.santri_id,
+          nis: row.nis,
+          nama_lengkap: row.nama_lengkap,
+          mapel: new Map(),
+        });
+      }
+
+      if (!row.mata_pelajaran_id || !row.mata_pelajaran || row.nilai_angka === null || row.bobot_persen === null) {
+        continue;
+      }
+
+      const santri = perSantri.get(row.santri_id)!;
+      if (!santri.mapel.has(row.mata_pelajaran_id)) {
+        santri.mapel.set(row.mata_pelajaran_id, { mata_pelajaran: row.mata_pelajaran, komponen: [] });
+      }
+      santri.mapel.get(row.mata_pelajaran_id)!.komponen.push({
+        nilai: Number(row.nilai_angka),
+        bobot_persen: Number(row.bobot_persen),
+      });
+    }
+
+    const hasil: BarisLegerNilai[] = [...perSantri.values()].map((santri) => {
+      const nilai = [...santri.mapel.entries()].map(([mataPelajaranId, data]) => {
+        const totalBobot = data.komponen.reduce((total, item) => total + item.bobot_persen, 0);
+        const nilaiAkhir =
+          totalBobot > 0
+            ? Math.round((data.komponen.reduce((total, item) => total + item.nilai * item.bobot_persen, 0) / totalBobot) * 100) / 100
+            : null;
+        return {
+          mata_pelajaran_id: mataPelajaranId,
+          mata_pelajaran: data.mata_pelajaran,
+          nilai_akhir: nilaiAkhir,
+          huruf_mutu: nilaiAkhir !== null ? cariHurufMutu(nilaiAkhir, skala) : null,
+        };
+      });
+      const nilaiAkhir = nilai.map((item) => item.nilai_akhir).filter((value): value is number => value !== null);
+      const rataRata = nilaiAkhir.length
+        ? Math.round((nilaiAkhir.reduce((total, value) => total + value, 0) / nilaiAkhir.length) * 100) / 100
+        : null;
+      return {
+        santri_id: santri.santri_id,
+        nis: santri.nis,
+        nama_lengkap: santri.nama_lengkap,
+        nilai,
+        rata_rata: rataRata,
+        ranking: null,
+        status_kenaikan: rataRata !== null && rataRata >= 70 ? 'NAIK' : 'BELUM_DITENTUKAN',
+        catatan_kenaikan:
+          rataRata !== null && rataRata >= 70
+            ? 'Rekomendasi awal sistem; keputusan akhir tetap ditetapkan wali kelas dan kepala madrasah.'
+            : 'Belum cukup data atau perlu keputusan wali kelas/kepala madrasah.',
+      };
+    });
+
+    const ranking = hitungRankingPadat(hasil.map((row) => ({ id: row.santri_id, rataRata: row.rata_rata })));
+    return hasil
+      .map((row) => ({ ...row, ranking: ranking.get(row.santri_id) ?? null }))
+      .sort((a, b) => (a.ranking ?? Number.MAX_SAFE_INTEGER) - (b.ranking ?? Number.MAX_SAFE_INTEGER) || a.nama_lengkap.localeCompare(b.nama_lengkap));
+  }
+
   /**
    * Rapor satu santri untuk satu tahun ajaran: seluruh mata pelajaran yang
    * punya nilai, nilai akhir berbobot, dan huruf mutunya.
@@ -419,6 +556,72 @@ export class PesantrenNilaiService {
         huruf_mutu: nilaiAkhir !== null ? cariHurufMutu(nilaiAkhir, skala) : null,
       };
     });
+  }
+
+  async raporPdf(schemaName: string, santriId: string, tahunAjaranId: string): Promise<RaporPdfResult> {
+    const S = `"${schemaName}"`;
+    const santri = await this.tenantDb.queryOne<{ nis: string; nama_lengkap: string }>(
+      schemaName,
+      `SELECT nis, nama_lengkap FROM ${S}.pesantren_santri WHERE id = $1 AND deleted_at IS NULL`,
+      [santriId],
+    );
+    if (!santri) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Santri tidak ditemukan.');
+    }
+
+    const tahun = await this.tenantDb.queryOne<{ code: string; name: string }>(
+      schemaName,
+      `SELECT code, name FROM ${S}.pesantren_tahun_ajaran WHERE id = $1 AND deleted_at IS NULL`,
+      [tahunAjaranId],
+    );
+    if (!tahun) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Tahun ajaran tidak ditemukan.');
+    }
+
+    const profil = await this.tenantDb.queryOne<{ nama_tampilan: string | null; alamat_publik: string | null }>(
+      schemaName,
+      `SELECT nama_tampilan, alamat_publik FROM ${S}.pesantren_website_setting WHERE singleton = TRUE`,
+    );
+    const rows = await this.rapor(schemaName, santriId, tahunAjaranId);
+    const nilaiAkhir = rows.map((row) => row.nilai_akhir).filter((value): value is number => value !== null);
+    const sebaran = new Map<string, number>();
+    for (const row of rows) {
+      if (row.huruf_mutu) sebaran.set(row.huruf_mutu, (sebaran.get(row.huruf_mutu) ?? 0) + 1);
+    }
+    const predikatDominan = [...sebaran.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const rataRata = nilaiAkhir.length
+      ? Math.round((nilaiAkhir.reduce((total, value) => total + value, 0) / nilaiAkhir.length) * 100) / 100
+      : null;
+
+    const buffer = buatRaporPdf({
+      pondok: {
+        nama: profil?.nama_tampilan ?? 'Pondok Pesantren',
+        alamat: profil?.alamat_publik ?? '-',
+      },
+      santri: {
+        nis: santri.nis,
+        nama: santri.nama_lengkap,
+      },
+      tahunAjaran: {
+        nama: tahun.name,
+      },
+      rows: rows.map((row) => ({
+        mata_pelajaran: row.mata_pelajaran,
+        nilai_akhir: row.nilai_akhir,
+        huruf_mutu: row.huruf_mutu,
+      })),
+      ringkasan: {
+        jumlahMapel: rows.length,
+        rataRata,
+        predikatDominan,
+      },
+      tanggalCetak: new Date().toISOString().slice(0, 10),
+    });
+
+    return {
+      filename: `rapor-${santri.nis || santriId}-${tahun.code}.pdf`,
+      buffer,
+    };
   }
 }
 

@@ -54,6 +54,7 @@ import { PesantrenSkalaHurufPage } from '../pages/app/pesantren/PesantrenSkalaHu
 import { PesantrenLaporanPage } from '../pages/app/pesantren/PesantrenLaporanPage';
 import { PesantrenPortalWaliPage } from '../pages/app/pesantren/PesantrenPortalWaliPage';
 import { PesantrenDapodikPage } from '../pages/app/pesantren/PesantrenDapodikPage';
+import { EducationGapImplementationPage } from '../pages/app/education/EducationGapImplementationPage';
 import { MasterListPage } from '../pages/app/MasterListPage';
 import { StockTreePage } from '../pages/app/StockTreePage';
 import { RequestOrderPage } from '../pages/app/RequestOrderPage';
@@ -670,6 +671,10 @@ export function App() {
           <Route path="pesantren/gerbang" element={<PesantrenGerbangPage />} />
           <Route path="pesantren/portal-wali" element={<PesantrenPortalWaliPage />} />
           <Route path="pesantren/kiosk" element={<PesantrenKioskPage />} />
+          <Route path="education/implementasi" element={<EducationGapImplementationPage />} />
+          <Route path="eschool" element={<EducationGapImplementationPage />} />
+          <Route path="eschool/dapodik" element={<PesantrenDapodikPage mode="eschool" />} />
+          <Route path="ecampus" element={<EducationGapImplementationPage />} />
           <Route path="*" element={<OperationalModulePage />} />
         </Route>
 

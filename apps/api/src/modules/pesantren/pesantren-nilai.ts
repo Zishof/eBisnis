@@ -144,3 +144,33 @@ export function cariHurufMutu(
   );
   return cocok?.huruf ?? null;
 }
+
+export interface MasukanRanking {
+  id: string;
+  rataRata: number | null;
+}
+
+/**
+ * Ranking padat untuk leger kelas. Nilai kosong tidak diberi ranking, dan
+ * nilai yang sama menempati ranking yang sama.
+ */
+export function hitungRankingPadat(rows: MasukanRanking[]): Map<string, number | null> {
+  const ranking = new Map<string, number | null>();
+  for (const row of rows) ranking.set(row.id, null);
+
+  const berNilai = rows
+    .filter((row): row is { id: string; rataRata: number } => row.rataRata !== null)
+    .sort((a, b) => b.rataRata - a.rataRata || a.id.localeCompare(b.id));
+
+  let posisi = 0;
+  let nilaiSebelumnya: number | null = null;
+  for (const row of berNilai) {
+    if (nilaiSebelumnya === null || row.rataRata !== nilaiSebelumnya) {
+      posisi += 1;
+      nilaiSebelumnya = row.rataRata;
+    }
+    ranking.set(row.id, posisi);
+  }
+
+  return ranking;
+}

@@ -4,6 +4,7 @@
 
 import {
   cariHurufMutu,
+  hitungRankingPadat,
   validasiKomponenNilai,
   validasiMataPelajaran,
   validasiNilai,
@@ -90,5 +91,23 @@ describe('cariHurufMutu', () => {
 
   it('mengembalikan null bila tidak ada skala yang cocok', () => {
     expect(cariHurufMutu(50, skala)).toBeNull();
+  });
+});
+
+describe('hitungRankingPadat', () => {
+  it('memberi ranking padat dan menjaga nilai kosong tanpa ranking', () => {
+    const ranking = hitungRankingPadat([
+      { id: 'a', rataRata: 88 },
+      { id: 'b', rataRata: 92 },
+      { id: 'c', rataRata: 92 },
+      { id: 'd', rataRata: null },
+      { id: 'e', rataRata: 80 },
+    ]);
+
+    expect(ranking.get('b')).toBe(1);
+    expect(ranking.get('c')).toBe(1);
+    expect(ranking.get('a')).toBe(2);
+    expect(ranking.get('e')).toBe(3);
+    expect(ranking.get('d')).toBeNull();
   });
 });

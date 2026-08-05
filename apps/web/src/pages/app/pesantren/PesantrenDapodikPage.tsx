@@ -31,9 +31,13 @@ interface ImportResult {
   errors: Array<{ row: number; message: string }>;
 }
 
-export function PesantrenDapodikPage() {
+export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren' | 'eschool' }) {
   const toast = useToast();
   const toMessage = useErrorMessage();
+  const isEschool = mode === 'eschool';
+  const endpointBase = isEschool ? '/eschool/dapodik' : '/pesantren/dapodik';
+  const productLabel = isEschool ? 'eSchool' : 'Pesantren';
+  const productCrumb = isEschool ? 'eSchool' : 'Pesantren';
   const [datasetCode, setDatasetCode] = useState('santri');
   const [content, setContent] = useState('');
   const [format, setFormat] = useState<'csv' | 'json'>('csv');
@@ -41,8 +45,8 @@ export function PesantrenDapodikPage() {
   const [datasetSearch, setDatasetSearch] = useState('');
 
   const datasets = useQuery({
-    queryKey: ['pesantren-dapodik-datasets'],
-    queryFn: () => api.get<Dataset[]>('/pesantren/dapodik/datasets'),
+    queryKey: [mode, 'dapodik-datasets'],
+    queryFn: () => api.get<Dataset[]>(`${endpointBase}/datasets`),
   });
   const active = useMemo(
     () => datasets.data?.find((item) => item.code === datasetCode) ?? datasets.data?.[0],
@@ -66,20 +70,20 @@ export function PesantrenDapodikPage() {
   }, [active, datasets.data]);
 
   const template = useMutation({
-    mutationFn: () => api.get<CsvPayload>(`/pesantren/dapodik/${datasetCode}/template`),
+    mutationFn: () => api.get<CsvPayload>(`${endpointBase}/${datasetCode}/template`),
     onSuccess: (payload) => unduh(payload),
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Template gagal diunduh.'), 'error'),
   });
 
   const ekspor = useMutation({
-    mutationFn: () => api.get<CsvPayload>(`/pesantren/dapodik/${datasetCode}/export`),
+    mutationFn: () => api.get<CsvPayload>(`${endpointBase}/${datasetCode}/export`),
     onSuccess: (payload) => unduh(payload),
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Data gagal diekspor.'), 'error'),
   });
 
   const impor = useMutation({
     mutationFn: (dryRun: boolean) =>
-      api.post<ImportResult>(`/pesantren/dapodik/${datasetCode}/import`, {
+      api.post<ImportResult>(`${endpointBase}/${datasetCode}/import`, {
         format,
         content,
         dryRun,
@@ -94,9 +98,9 @@ export function PesantrenDapodikPage() {
   return (
     <>
       <PageHeader
-        title="Impor/Ekspor Dapodik"
-        description="Pusat pertukaran data sekolah: peserta didik, GTK, rombongan belajar, mata pelajaran, jadwal, dan nilai."
-        breadcrumbs={[{ label: 'Beranda', href: '/app' }, { label: 'Pesantren' }, { label: 'Dapodik' }]}
+        title={isEschool ? 'DAPODIK eSchool' : 'Impor/Ekspor Dapodik'}
+        description={`Pusat pertukaran data ${productLabel}: peserta didik, GTK, rombongan belajar, mata pelajaran, jadwal, dan nilai.`}
+        breadcrumbs={[{ label: 'Beranda', href: '/app' }, { label: productCrumb }, { label: 'Dapodik' }]}
         actions={
           <>
             <button type="button" className="btn-outline" onClick={() => template.mutate()} disabled={!active || template.isPending}>

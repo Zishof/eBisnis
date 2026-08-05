@@ -3,14 +3,16 @@
  * `pesantren-santri.controller.ts`.
  */
 
-import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, Res, StreamableFile } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { IsArray, IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PesantrenNilaiService } from './pesantren-nilai.service';
 import { JENJANG_MAPEL } from './pesantren-nilai';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { rawResponse } from '../../common/interceptors/response-envelope.interceptor';
 
 function schemaWajib(user: AuthenticatedUser): string {
   if (!user.schemaName) {
@@ -98,6 +100,14 @@ class GradebookQuery {
 
   @ApiProperty() @IsString()
   mataPelajaranId!: string;
+
+  @ApiProperty() @IsString()
+  tahunAjaranId!: string;
+}
+
+class LegerQuery {
+  @ApiProperty() @IsString()
+  rombonganId!: string;
 
   @ApiProperty() @IsString()
   tahunAjaranId!: string;
@@ -208,6 +218,13 @@ export class PesantrenNilaiController {
     return this.nilai.gradebook(schemaWajib(user), query);
   }
 
+  @Permissions('EPESANTREN_NILAI.READ')
+  @Get('leger')
+  @ApiOperation({ summary: 'Leger kelas berisi nilai akhir, rata-rata, ranking, dan rekomendasi kenaikan awal' })
+  leger(@Query() query: LegerQuery, @CurrentUser() user: AuthenticatedUser) {
+    return this.nilai.leger(schemaWajib(user), query);
+  }
+
   @Permissions('EPESANTREN_NILAI.CREATE')
   @Post('massal')
   @HttpCode(200)
@@ -225,5 +242,23 @@ export class PesantrenNilaiController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.nilai.rapor(schemaWajib(user), santriId, tahunAjaranId);
+  }
+
+  @Permissions('EPESANTREN_NILAI.PRINT')
+  @Get('rapor/:santriId/:tahunAjaranId/pdf')
+  @ApiOperation({ summary: 'Unduh rapor santri sebagai PDF resmi server-side' })
+  async raporPdf(
+    @Param('santriId') santriId: string,
+    @Param('tahunAjaranId') tahunAjaranId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const pdf = await this.nilai.raporPdf(schemaWajib(user), santriId, tahunAjaranId);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${pdf.filename.replace(/"/g, '')}"`,
+      'Cache-Control': 'private, no-store',
+    });
+    return rawResponse(new StreamableFile(pdf.buffer));
   }
 }

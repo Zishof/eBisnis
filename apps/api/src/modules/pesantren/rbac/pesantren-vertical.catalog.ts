@@ -473,6 +473,17 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     sortOrder: 7,
     actions: LAPORAN_AKSI,
   },
+  {
+    code: 'EPESANTREN_EDUCATION_IMPLEMENTASI',
+    parentCode: 'EPESANTREN_GROUP',
+    label: 'Roadmap eSchool/eCampus',
+    translationKey: 'menu.epesantren.educationImplementasi',
+    route: '/app/education/implementasi',
+    icon: 'Network',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 8,
+    actions: LAPORAN_AKSI,
+  },
 
   // -- Berdiri sendiri (lihat catatan besar di atas array ini) --------------
   {

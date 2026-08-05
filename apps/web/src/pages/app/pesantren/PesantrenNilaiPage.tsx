@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Plus, Printer, RefreshCw, Save } from 'lucide-react';
-import { api } from '../../../lib/api';
+import { Download, Plus, Printer, RefreshCw, Save, Trophy } from 'lucide-react';
+import { API_BASE, api, getAccessToken, segarkanSesi } from '../../../lib/api';
 import { DataGrid, PageHeader, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
 
@@ -60,11 +60,27 @@ interface GradebookPayload {
   rows: GradebookRow[];
 }
 
+interface LegerRow {
+  santri_id: string;
+  nis: string;
+  nama_lengkap: string;
+  nilai: Array<{
+    mata_pelajaran_id: string;
+    mata_pelajaran: string;
+    nilai_akhir: number | null;
+    huruf_mutu: string | null;
+  }>;
+  rata_rata: number | null;
+  ranking: number | null;
+  status_kenaikan: string;
+  catatan_kenaikan: string;
+}
+
 export function PesantrenNilaiPage() {
   const toast = useToast();
   const toMessage = useErrorMessage();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<'mapel' | 'input' | 'kelas' | 'rapor'>('mapel');
+  const [tab, setTab] = useState<'mapel' | 'input' | 'kelas' | 'leger' | 'rapor'>('mapel');
   const [mapelId, setMapelId] = useState('');
   const [tahunAjaranId, setTahunAjaranId] = useState('');
   const [formMapel, setFormMapel] = useState({ code: '', nama: '', kelompok: '', jenjang: '' });
@@ -72,6 +88,7 @@ export function PesantrenNilaiPage() {
   const [formNilai, setFormNilai] = useState({ santriId: '', komponenId: '', nilaiAngka: '', catatan: '' });
   const [filterRapor, setFilterRapor] = useState({ santriId: '', tahunAjaranId: '' });
   const [filterKelas, setFilterKelas] = useState({ rombonganId: '', mataPelajaranId: '', tahunAjaranId: '' });
+  const [filterLeger, setFilterLeger] = useState({ rombonganId: '', tahunAjaranId: '' });
   const [nilaiKelas, setNilaiKelas] = useState<Record<string, Record<string, string>>>({});
 
   const tahunAjaran = useQuery({
@@ -96,10 +113,11 @@ export function PesantrenNilaiPage() {
   });
 
   const rombongan = useQuery({
-    queryKey: ['pesantren-nilai-rombongan', filterKelas.tahunAjaranId],
+    queryKey: ['pesantren-nilai-rombongan', filterKelas.tahunAjaranId, filterLeger.tahunAjaranId],
     queryFn: () => {
       const params = new URLSearchParams({ halaman: '1', ukuranHalaman: '100' });
-      if (filterKelas.tahunAjaranId) params.set('tahunAjaranId', filterKelas.tahunAjaranId);
+      const tahunFilter = filterKelas.tahunAjaranId || filterLeger.tahunAjaranId;
+      if (tahunFilter) params.set('tahunAjaranId', tahunFilter);
       return api.get<{ items: RombonganRow[]; total: number }>(`/pesantren/rombongan?${params.toString()}`);
     },
   });
@@ -135,6 +153,18 @@ export function PesantrenNilaiPage() {
     queryKey: ['pesantren-nilai-rapor', filterRapor.santriId, filterRapor.tahunAjaranId],
     enabled: Boolean(filterRapor.santriId && filterRapor.tahunAjaranId),
     queryFn: () => api.get<RaporRow[]>(`/pesantren/nilai/rapor/${filterRapor.santriId}/${filterRapor.tahunAjaranId}`),
+  });
+
+  const leger = useQuery({
+    queryKey: ['pesantren-nilai-leger', filterLeger],
+    enabled: Boolean(filterLeger.rombonganId && filterLeger.tahunAjaranId),
+    queryFn: () => {
+      const params = new URLSearchParams({
+        rombonganId: filterLeger.rombonganId,
+        tahunAjaranId: filterLeger.tahunAjaranId,
+      });
+      return api.get<LegerRow[]>(`/pesantren/nilai/leger?${params.toString()}`);
+    },
   });
 
   const tambahMapel = useMutation({
@@ -218,8 +248,10 @@ export function PesantrenNilaiPage() {
   const tahunAktif = tahunAjaran.data?.find((item) => item.status === 'ACTIVE') ?? tahunAjaran.data?.[0];
   const tahunInput = tahunAjaran.data?.find((item) => item.id === tahunAjaranId);
   const tahunRapor = tahunAjaran.data?.find((item) => item.id === filterRapor.tahunAjaranId);
+  const tahunLeger = tahunAjaran.data?.find((item) => item.id === filterLeger.tahunAjaranId);
   const santriRapor = (santri.data?.items ?? []).find((item) => item.id === filterRapor.santriId);
   const ringkasanRapor = hitungRingkasanRapor(rapor.data ?? []);
+  const ringkasanLeger = hitungRingkasanLeger(leger.data ?? []);
 
   const pilihTahunInput = (value: string) => setTahunAjaranId(value);
   const pilihTahunRapor = (value: string) => setFilterRapor({ ...filterRapor, tahunAjaranId: value });
@@ -228,6 +260,7 @@ export function PesantrenNilaiPage() {
     setTahunAjaranId(tahunAktif.id);
     setFilterRapor((sebelumnya) => ({ ...sebelumnya, tahunAjaranId: tahunAktif.id }));
     setFilterKelas((sebelumnya) => ({ ...sebelumnya, tahunAjaranId: tahunAktif.id }));
+    setFilterLeger((sebelumnya) => ({ ...sebelumnya, tahunAjaranId: tahunAktif.id }));
   };
 
   const unduhCsvNilaiKelas = () => {
@@ -266,6 +299,61 @@ export function PesantrenNilaiPage() {
     URL.revokeObjectURL(url);
   };
 
+  const unduhPdfRapor = async () => {
+    if (!filterRapor.santriId || !filterRapor.tahunAjaranId || !santriRapor) return;
+    const path = `/pesantren/nilai/rapor/${filterRapor.santriId}/${filterRapor.tahunAjaranId}/pdf`;
+    let response = await fetch(`${API_BASE}${path}`, {
+      headers: {
+        ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {}),
+        'Accept-Language': 'id',
+      },
+    });
+    if (response.status === 401 && await segarkanSesi()) {
+      response = await fetch(`${API_BASE}${path}`, {
+        headers: {
+          ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {}),
+          'Accept-Language': 'id',
+        },
+      });
+    }
+    if (!response.ok) {
+      toast.push('PDF rapor gagal diunduh.', 'error');
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const filename = filenameDariDisposition(response.headers.get('content-disposition'))
+      ?? `rapor-${santriRapor.nis || santriRapor.id}-${tahunRapor?.code ?? 'tahun-ajaran'}.pdf`;
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const unduhCsvLeger = () => {
+    if (!leger.data?.length) return;
+    const mapelColumns = [...new Map(leger.data.flatMap((row) => row.nilai.map((item) => [item.mata_pelajaran_id, item.mata_pelajaran]))).values()];
+    const rows = [
+      ['Tahun Ajaran', tahunLeger?.name ?? filterLeger.tahunAjaranId],
+      [],
+      ['Ranking', 'NIS', 'Nama Santri', ...mapelColumns, 'Rata-rata', 'Status Kenaikan', 'Catatan'],
+      ...leger.data.map((row) => [
+        row.ranking ?? '',
+        row.nis,
+        row.nama_lengkap,
+        ...mapelColumns.map((namaMapel) => {
+          const nilai = row.nilai.find((item) => item.mata_pelajaran === namaMapel);
+          return nilai?.nilai_akhir ?? '';
+        }),
+        row.rata_rata ?? '',
+        row.status_kenaikan,
+        row.catatan_kenaikan,
+      ]),
+    ];
+    unduhCsv(`leger-${tahunLeger?.code ?? 'tahun-ajaran'}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  };
+
   return (
     <>
       <PageHeader
@@ -292,6 +380,7 @@ export function PesantrenNilaiPage() {
         <button type="button" className={tab === 'mapel' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('mapel')}>Mata Pelajaran</button>
         <button type="button" className={tab === 'input' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('input')}>Input Nilai</button>
         <button type="button" className={tab === 'kelas' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('kelas')}>Nilai Kelas</button>
+        <button type="button" className={tab === 'leger' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('leger')}>Leger</button>
         <button type="button" className={tab === 'rapor' ? 'btn-primary' : 'btn-outline'} onClick={() => setTab('rapor')}>Rapor</button>
       </div>
 
@@ -504,6 +593,102 @@ export function PesantrenNilaiPage() {
             )}
           </div>
         </div>
+      ) : tab === 'leger' ? (
+        <div className="space-y-4">
+          <div className="card p-4">
+            <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto]">
+              <Field label="Tahun ajaran">
+                <select
+                  className="field-input"
+                  value={filterLeger.tahunAjaranId}
+                  onChange={(e) => setFilterLeger({ tahunAjaranId: e.target.value, rombonganId: '' })}
+                >
+                  <option value="">Pilih tahun ajaran</option>
+                  {(tahunAjaran.data ?? []).map((item) => (
+                    <option key={item.id} value={item.id}>{item.name} {item.status === 'ACTIVE' ? '(aktif)' : ''}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Rombongan">
+                <select className="field-input" value={filterLeger.rombonganId} onChange={(e) => setFilterLeger({ ...filterLeger, rombonganId: e.target.value })}>
+                  <option value="">Pilih rombongan</option>
+                  {(rombongan.data?.items ?? []).map((item) => <option key={item.id} value={item.id}>{item.tingkat} - {item.nama}</option>)}
+                </select>
+              </Field>
+              <div className="flex items-end">
+                <button type="button" className="btn-outline" disabled={!leger.data?.length} onClick={unduhCsvLeger}>
+                  <Download className="h-4 w-4" aria-hidden />
+                  CSV
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Summary label="Santri dinilai" value={String(ringkasanLeger.jumlahSantri)} />
+            <Summary label="Rata-rata kelas" value={ringkasanLeger.rataRataKelas === null ? '-' : ringkasanLeger.rataRataKelas.toFixed(2)} />
+            <Summary label="Rekomendasi naik" value={String(ringkasanLeger.rekomendasiNaik)} />
+          </div>
+
+          <div className="card overflow-hidden">
+            <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+              <h2 className="section-title flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-500" aria-hidden />
+                Leger dan Ranking Kelas
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Rekap nilai akhir semua mata pelajaran per rombongan. Status kenaikan adalah rekomendasi awal, keputusan final tetap oleh wali kelas dan kepala madrasah.
+              </p>
+            </div>
+            {!filterLeger.rombonganId || !filterLeger.tahunAjaranId ? (
+              <div className="p-6 text-sm text-slate-500">Pilih tahun ajaran dan rombongan untuk menampilkan leger.</div>
+            ) : leger.isLoading ? (
+              <div className="p-6 text-sm text-slate-500">Memuat leger...</div>
+            ) : leger.isError ? (
+              <div className="p-6 text-sm text-rose-600">{toMessage(leger.error, (_key, fallback) => fallback ?? 'Gagal memuat leger.')}</div>
+            ) : !leger.data?.length ? (
+              <div className="p-6 text-sm text-slate-500">Belum ada anggota aktif atau nilai pada rombongan ini.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900/70">
+                    <tr>
+                      <th className="sticky left-0 z-10 min-w-56 bg-slate-50 px-4 py-3 text-left dark:bg-slate-900">Santri</th>
+                      <th className="px-3 py-3 text-center">Ranking</th>
+                      <th className="px-3 py-3 text-right">Rata-rata</th>
+                      <th className="px-3 py-3 text-center">Status</th>
+                      <th className="min-w-80 px-4 py-3 text-left">Nilai Mata Pelajaran</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
+                    {leger.data.map((row) => (
+                      <tr key={row.santri_id}>
+                        <td className="sticky left-0 z-10 bg-white px-4 py-3 dark:bg-slate-950">
+                          <p className="font-semibold text-slate-900 dark:text-white">{row.nama_lengkap}</p>
+                          <p className="text-xs text-slate-500">{row.nis}</p>
+                        </td>
+                        <td className="px-3 py-3 text-center font-semibold text-slate-900 dark:text-white">{row.ranking ?? '-'}</td>
+                        <td className="px-3 py-3 text-right font-semibold text-slate-900 dark:text-white">{row.rata_rata ?? '-'}</td>
+                        <td className="px-3 py-3 text-center">
+                          <StatusBadge status={row.status_kenaikan === 'NAIK' ? 'Direkomendasikan' : 'Review'} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            {row.nilai.length ? row.nilai.map((item) => (
+                              <span key={item.mata_pelajaran_id} className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 dark:border-slate-800 dark:text-slate-300">
+                                {item.mata_pelajaran}: <strong>{item.nilai_akhir ?? '-'}</strong>{item.huruf_mutu ? ` (${item.huruf_mutu})` : ''}
+                              </span>
+                            )) : <span className="text-sm text-slate-500">Belum ada nilai.</span>}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="space-y-4">
           <div className="card p-4 print:hidden">
@@ -531,9 +716,9 @@ export function PesantrenNilaiPage() {
                 </button>
               </div>
               <div className="flex items-end">
-                <button type="button" className="btn-outline" disabled={!rapor.data?.length} onClick={() => window.print()}>
+                <button type="button" className="btn-outline" disabled={!rapor.data?.length} onClick={() => void unduhPdfRapor()}>
                   <Printer className="h-4 w-4" aria-hidden />
-                  Cetak / PDF
+                  PDF Resmi
                 </button>
               </div>
             </div>
@@ -655,6 +840,13 @@ function hitungRingkasanRapor(rows: RaporRow[]) {
   return { jumlahMapel: rows.length, rataRata, predikatDominan };
 }
 
+function hitungRingkasanLeger(rows: LegerRow[]) {
+  const nilai = rows.map((row) => row.rata_rata).filter((value): value is number => value !== null);
+  const rataRataKelas = nilai.length ? nilai.reduce((total, value) => total + value, 0) / nilai.length : null;
+  const rekomendasiNaik = rows.filter((row) => row.status_kenaikan === 'NAIK').length;
+  return { jumlahSantri: rows.length, rataRataKelas, rekomendasiNaik };
+}
+
 function formatCsv(value: unknown) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
@@ -668,4 +860,10 @@ function unduhCsv(filename: string, rows: unknown[][]) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function filenameDariDisposition(disposition: string | null): string | null {
+  if (!disposition) return null;
+  const match = /filename="?([^";]+)"?/i.exec(disposition);
+  return match?.[1] ?? null;
 }
