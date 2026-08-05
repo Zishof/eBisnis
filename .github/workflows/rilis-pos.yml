@@ -133,6 +133,20 @@ jobs:
             "/DSumber=$PWD\${{ env.JALUR }}\build\windows\x64\runner\Release" `
             "/DKeluaran=$PWD\keluaran" `
             "${{ env.JALUR }}\windows\pemasang.iss"
+
+          flutter build windows --release `
+            --dart-define=VERSI=${{ steps.versi.outputs.nilai }} `
+            --dart-define=APP_PRODUCT=inventory
+          & $iscc `
+            "/DVersi=${{ steps.versi.outputs.nilai }}" `
+            "/DNamaApl=eBisnis Inventory dan Sales" `
+            "/DPenerbit=eBisnis.id" `
+            "/DSitus=https://inventory.ebisnis.id" `
+            "/DAppIdPemasang={{A7C84E12-7B8D-44C7-92B8-7E5D28B69A16}" `
+            "/DNamaBerkasKeluaran=ebisnis-inventory-sales" `
+            "/DSumber=$PWD\${{ env.JALUR }}\build\windows\x64\runner\Release" `
+            "/DKeluaran=$PWD\keluaran" `
+            "${{ env.JALUR }}\windows\pemasang.iss"
           Get-ChildItem keluaran
 
       - uses: actions/upload-artifact@v4
@@ -220,6 +234,13 @@ jobs:
           mkdir -p "${GITHUB_WORKSPACE}/keluaran"
           cp build/app/outputs/flutter-apk/app-penjualan-release.apk \
              "${GITHUB_WORKSPACE}/keluaran/ebisnis-pos-${{ steps.versi.outputs.nilai }}.apk"
+          flutter build apk --release --flavor penjualan \
+            --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
+            --dart-define=APP_PRODUCT=inventory \
+            --build-name=${{ steps.versi.outputs.nilai }} \
+            --build-number=${{ github.run_number }}
+          cp build/app/outputs/flutter-apk/app-penjualan-release.apk \
+             "${GITHUB_WORKSPACE}/keluaran/ebisnis-inventory-sales-${{ steps.versi.outputs.nilai }}.apk"
           flutter build apk --release --flavor apotik \
             --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
             --dart-define=POS_MODE=apotik \
@@ -301,9 +322,11 @@ jobs:
             echo
             echo "| Berkas | Untuk |"
             echo "| --- | --- |"
+            echo "| \`ebisnis-inventory-sales-$versi-windows.exe\` | Windows 64-bit - Inventory dan Sales |"
             echo "| \`ebisnis-pos-$versi-windows.exe\` | Windows 64-bit — pemasang, dijalankan tanpa hak administrator |"
             echo "| \`emedik-pos-apotik-$versi-windows.exe\` | Windows 64-bit - POS Apotik eMedik |"
             if [ "$DITANDATANGANI" = "true" ]; then
+              echo "| \`ebisnis-inventory-sales-$versi.apk\` | Android - Inventory dan Sales |"
               echo "| \`ebisnis-pos-$versi.apk\` | Android — pasang langsung dari berkas |"
               echo "| \`emedik-pos-apotik-$versi.apk\` | Android - POS Apotik eMedik |"
             else

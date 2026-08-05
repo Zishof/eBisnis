@@ -16,7 +16,7 @@ fitur tidak boleh menaikkan status menjadi operasional.
 
 Hasil kontrak saat audit ini:
 
-- Web: 16 operasional, 32 baca-saja, 0 kontrak-saja.
+- Web: 20 operasional, 28 baca-saja, 0 kontrak-saja.
 - Flutter Windows/Android: 5 operasional, 8 baca-saja, 35 kontrak-saja.
 
 Angka ini sengaja tidak dibulatkan menjadi 48/48. Endpoint atau tabel tanpa
@@ -34,6 +34,11 @@ alur pengguna, cetak nyata, pengujian, dan bukti UAT belum dianggap selesai.
 - Serah-terima nota sales dengan status draft, handed-over, returned, dan closed.
 - Stock opname dengan snapshot stok, hitung fisik, freeze, approval, posting,
   dan immutable stock movement.
+- Buku harga tenant/customer/supplier dengan status draft, submitted, approved,
+  rejected, dan inactive; persetujuan tidak mengubah histori harga legacy.
+- Jurnal manual seimbang, posting, reversal tunggal, validasi tutup periode,
+  snapshot penutupan, dan pembukaan kembali periode paling akhir.
+- Inbox command perangkat dan event cursor untuk sinkronisasi idempoten.
 - Preview/snapshot laporan, hash payload, serta print/export log.
 - Registrasi perangkat dan daftar konflik sinkronisasi.
 - Laporan supplier, customer, stok, opname, harga jual/beli, pembelian, AP/AR,
@@ -46,6 +51,12 @@ alur pengguna, cetak nyata, pengujian, dan bukti UAT belum dianggap selesai.
   pembelian, penjualan, hutang, piutang, kas/jurnal, dan laba-rugi.
 - Pencarian, filter, tabel responsif, dan ekspor pada workspace Inventory Control.
 - Pembayaran penuh hutang, penerimaan penuh piutang, serta serah-terima nota.
+- Pembuatan dan pengajuan buku harga, persetujuan/penolakan, serta
+  penonaktifan harga tenant, customer, dan supplier.
+- Stock opname dari pembuatan sesi, freeze, input hitung fisik, approval,
+  hingga posting selisih ke mutasi stok ERP.
+- Jurnal seimbang yang langsung diposting, daftar periode, validasi tutup
+  periode, dan pembukaan kembali periode terakhir.
 - Cakupan 48 layar ditampilkan dengan status operasional/baca saja/kontrak.
 
 ### Flutter Windows dan Android
@@ -56,19 +67,24 @@ alur pengguna, cetak nyata, pengujian, dan bukti UAT belum dianggap selesai.
 - Penerimaan penuh piutang, membawa nota, pengembalian, dan penutupan nota.
 - Kontrak 48 layar dibaca dari API; gap tidak ditutup dengan data demo palsu.
 - Satu codebase dibuild untuk Windows dan Android.
+- Drift/SQLite menyimpan cache katalog, identitas perangkat, cursor sinkronisasi,
+  serta outbox order idempoten. Order yang gagal karena jaringan tetap antre,
+  kemudian dikirim ulang dan direkonsiliasi melalui bootstrap/delta pull.
+- Workflow rilis menghasilkan APK Android dan installer Windows Inventory/Sales
+  sebagai aset GitHub Release. Artefak versi `0.1.6` juga tersedia di folder
+  rilis privat agar `deploy/update.sh` dapat menyalinnya ke endpoint pembaruan.
 
 ## Gap yang Tetap Terbuka
 
 Status berikut tidak boleh disebut selesai sebelum bukti implementasi dan UAT
 tersedia:
 
-- Flutter belum memakai Drift/SQLite untuk local database, outbox, inbox,
-  bootstrap chunked, delta pull, background retry, dan conflict recovery.
+- Bootstrap dan delta pull Flutter sudah tersedia, tetapi belum chunked untuk
+  tenant di atas 1.000 produk/customer dan belum memiliki UI resolusi konflik.
 - Flutter belum menyediakan CRUD penuh supplier/customer/product/sales, workflow
   pembelian, stock opname, harga khusus, jurnal, dan tutup periode.
-- Web belum menyediakan seluruh command create/edit/deactivate, reversal/void,
-  approval harga, jurnal posting/reversal, dan period close/reopen dari satu
-  workspace Inventory Control.
+- Web belum menyediakan reversal jurnal dari workspace Inventory Control,
+  pembatalan stock opname, dan editor multi-baris buku harga setelah draft dibuat.
 - Snapshot laporan masih JSON yang immutable; renderer PDF/Excel, download,
   nomor dokumen, watermark reprint, dan antrean print lintas perangkat belum
   lengkap untuk seluruh report.

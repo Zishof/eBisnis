@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import {
   Banknote,
   BarChart3,
@@ -14,6 +15,9 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  ArrowRight,
+  CheckCircle2,
+  Plus,
   Truck,
   UsersRound,
   WalletCards,
@@ -157,6 +161,59 @@ type LegacyStockOpnameRow = Record<string, unknown> & {
   unit_cost: string;
 };
 
+type InventoryPriceBook = {
+  id: string;
+  code: string;
+  name: string;
+  scope_type: 'TENANT' | 'CUSTOMER' | 'SUPPLIER';
+  scope_id: string | null;
+  valid_from: string;
+  valid_until: string | null;
+  approval_status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'INACTIVE';
+  approval_note: string | null;
+  is_active: boolean;
+  item_count: number;
+  minimum_price: string | null;
+  maximum_price: string | null;
+};
+
+type FinanceWorkspace = {
+  accounts: Array<{ id: string; code: string; name: string; account_type: string; normal_balance: string }>;
+  periods: Array<{ id: string; code: string; name: string; start_date: string; end_date: string; status: string }>;
+  journals: Array<{ id: string; journal_number: string; journal_date: string; description: string; status: string; total_debit: string }>;
+  closeRuns: Array<{ id: string; run_number: string; status: string; validation_result: Record<string, number>; period_code: string }>;
+};
+
+type StockOpnameWorkspace = {
+  warehouses: Array<{ id: string; code: string; name: string }>;
+  sessions: Array<{
+    id: string;
+    opname_number: string;
+    opname_date: string;
+    status: 'DRAFT' | 'FROZEN' | 'COUNTED' | 'APPROVED' | 'POSTED' | 'CANCELLED';
+    warehouse_code: string;
+    warehouse_name: string;
+    line_count: number;
+    counted_count: number;
+    variance_value: string;
+  }>;
+};
+
+type StockOpnameDetail = StockOpnameWorkspace['sessions'][number] & {
+  lines: Array<{
+    id: string;
+    product_code: string;
+    product_name: string;
+    uom_code: string;
+    lot_number: string | null;
+    expiry_date: string | null;
+    system_qty: string;
+    physical_qty: string | null;
+    variance_qty: string;
+    variance_value: string;
+  }>;
+};
+
 const tabs: Array<{ key: TabKey; label: string; icon: ReactNode; note: string }> = [
   { key: 'suppliers', label: 'Supplier', icon: <Truck />, note: 'Pemasok, alamat, tempo, bank, saldo hutang' },
   { key: 'customers', label: 'Customer', icon: <UsersRound />, note: 'Pelanggan, wilayah, tempo, saldo piutang' },
@@ -221,6 +278,21 @@ export function InventoryControlPage() {
     queryKey: ['inventory-control-opname'],
     queryFn: () => api.get<LegacyStockOpnameRow[]>('/inventory/legacy/stock-opname?pageSize=1000'),
   });
+  const priceBooks = useQuery({
+    queryKey: ['inventory-price-books'],
+    queryFn: () => api.get<InventoryPriceBook[]>('/inventory/price-books'),
+    enabled: active === 'prices',
+  });
+  const finance = useQuery({
+    queryKey: ['inventory-finance-workspace'],
+    queryFn: () => api.get<FinanceWorkspace>('/inventory/finance-workspace'),
+    enabled: active === 'cash' || active === 'periodClose',
+  });
+  const stockOpnames = useQuery({
+    queryKey: ['inventory-stock-opnames'],
+    queryFn: () => api.get<StockOpnameWorkspace>('/stock-opnames'),
+    enabled: active === 'stock',
+  });
 
   const view = useMemo(() => buildView(active, {
     dashboard: dashboard.data,
@@ -252,7 +324,7 @@ export function InventoryControlPage() {
     active === 'salesOrders' ? receivables.isLoading :
     false
   );
-  const error = [dashboard.error, reconciliation.error, parity.error, parityContract.error, masterData.error, receivables.error, payables.error, prices.error, opname.error]
+  const error = [dashboard.error, reconciliation.error, parity.error, parityContract.error, masterData.error, receivables.error, payables.error, prices.error, opname.error, priceBooks.error, finance.error, stockOpnames.error]
     .filter(Boolean)
     .map(errorMessage)[0];
 
@@ -385,6 +457,33 @@ export function InventoryControlPage() {
           />
         )}
 
+        <OperationalLinks active={active} />
+
+        {active === 'stock' && (
+          <StockOpnameWorkflowPanel
+            workspace={stockOpnames.data}
+            onChanged={() => void queryClient.invalidateQueries({ queryKey: ['inventory-stock-opnames'] })}
+          />
+        )}
+
+        {active === 'prices' && (
+          <PriceBookWorkflowPanel
+            books={priceBooks.data ?? []}
+            products={masterData.data?.products ?? []}
+            customers={masterData.data?.customers ?? []}
+            suppliers={masterData.data?.suppliers ?? []}
+            onChanged={() => void queryClient.invalidateQueries({ queryKey: ['inventory-price-books'] })}
+          />
+        )}
+
+        {(active === 'cash' || active === 'periodClose') && (
+          <FinanceWorkflowPanel
+            mode={active}
+            data={finance.data}
+            onChanged={() => void queryClient.invalidateQueries({ queryKey: ['inventory-finance-workspace'] })}
+          />
+        )}
+
         <DataGrid
           columns={view.columns}
           rows={filteredRows}
@@ -394,6 +493,272 @@ export function InventoryControlPage() {
           rowKey={(row) => rowKey(row)}
         />
       </section>
+    </div>
+  );
+}
+
+function OperationalLinks({ active }: { active: TabKey }) {
+  const links: Record<TabKey, Array<{ label: string; href: string; note: string }>> = {
+    suppliers: [{ label: 'Kelola supplier', href: '/app/suppliers', note: 'Tambah, ubah, nonaktifkan, audit' }],
+    customers: [{ label: 'Kelola customer', href: '/app/customers', note: 'Identitas, wilayah, tempo, status' }],
+    sales: [{ label: 'Kelola pengguna & sales', href: '/app/users', note: 'Akun, role, wilayah penugasan' }],
+    stock: [
+      { label: 'Master produk', href: '/app/products', note: 'SKU, satuan, batch, status jual' },
+      { label: 'Pohon stok', href: '/app/stock-tree', note: 'Gudang, bin, lot, dan saldo' },
+      { label: 'Mutasi stok', href: '/app/stock-movements', note: 'Jejak masuk, keluar, dan koreksi' },
+    ],
+    prices: [{ label: 'Master produk', href: '/app/products', note: 'Harga dasar dan identitas barang' }],
+    purchases: [
+      { label: 'Purchase order', href: '/app/purchase-orders', note: 'Buat, submit, approve, kirim' },
+      { label: 'Penerimaan barang', href: '/app/goods-receipts', note: 'Batch, expiry, inspeksi, posting stok' },
+    ],
+    salesOrders: [{ label: 'Order penjualan', href: '/app/sales/orders', note: 'Order lapangan dan status pemenuhan' }],
+    cash: [
+      { label: 'Daftar akun', href: '/app/chart-of-accounts', note: 'Akun aset, kewajiban, modal, pendapatan, biaya' },
+      { label: 'Jurnal lengkap', href: '/app/journal-entries', note: 'Riwayat jurnal dan rincian debit kredit' },
+    ],
+    profit: [{ label: 'Jurnal lengkap', href: '/app/journal-entries', note: 'Telusuri sumber angka laba rugi' }],
+    periodClose: [{ label: 'Jurnal lengkap', href: '/app/journal-entries', note: 'Selesaikan seluruh jurnal draft sebelum tutup' }],
+  };
+  return (
+    <div className="mb-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      {links[active].map((link) => (
+        <Link key={link.href + link.label} to={link.href} className="group flex items-center gap-3 rounded-lg border border-slate-200 p-3 hover:border-brand-400 hover:bg-brand-50/50 dark:border-slate-700 dark:hover:bg-brand-950/20">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-black text-slate-900 dark:text-white">{link.label}</span>
+            <span className="block text-xs text-slate-500">{link.note}</span>
+          </span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function StockOpnameWorkflowPanel({
+  workspace,
+  onChanged,
+}: {
+  workspace?: StockOpnameWorkspace;
+  onChanged: () => void;
+}) {
+  const [warehouseId, setWarehouseId] = useState('');
+  const [selectedId, setSelectedId] = useState('');
+  const [counts, setCounts] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState('');
+  const selected = workspace?.sessions.find((row) => row.id === selectedId) ?? workspace?.sessions[0];
+  const detail = useQuery({
+    queryKey: ['inventory-stock-opname-detail', selected?.id],
+    queryFn: () => api.get<StockOpnameDetail>(`/stock-opnames/${selected?.id}`),
+    enabled: Boolean(selected?.id),
+  });
+  const refresh = () => {
+    onChanged();
+    void detail.refetch();
+  };
+  const create = useMutation({
+    mutationFn: () => {
+      const target = warehouseId || workspace?.warehouses[0]?.id;
+      if (!target) throw new Error('Gudang wajib dipilih.');
+      return api.post<{ id: string; opnameNumber: string }>('/stock-opnames', { warehouseId: target });
+    },
+    onSuccess: (result) => {
+      setSelectedId(result.id);
+      setCounts({});
+      setMessage(`Sesi ${result.opnameNumber} dibuat. Bekukan sebelum penghitungan fisik.`);
+      onChanged();
+    },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+  const command = useMutation({
+    mutationFn: async (action: 'freeze' | 'count' | 'approve' | 'post') => {
+      if (!selected) throw new Error('Pilih sesi stock opname.');
+      if (action === 'count') {
+        const lines = Object.entries(counts)
+          .filter(([, value]) => value.trim() !== '' && Number.isFinite(Number(value)) && Number(value) >= 0)
+          .map(([lineId, value]) => ({ lineId, physicalQty: Number(value) }));
+        if (!lines.length) throw new Error('Isi minimal satu hasil hitung fisik.');
+        return api.patch<{ status: string; pending: number }>(`/stock-opnames/${selected.id}`, { lines });
+      }
+      return api.post<{ status: string }>(`/stock-opnames/${selected.id}/${action}`);
+    },
+    onSuccess: (result) => {
+      setCounts({});
+      setMessage(`Status stock opname diperbarui menjadi ${result.status}.`);
+      refresh();
+    },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+
+  if (!workspace) {
+    return <div className="mb-4 rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Memuat sesi stock opname...</div>;
+  }
+  return (
+    <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950">
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <label className="min-w-56 text-xs font-bold text-slate-700 dark:text-slate-200">
+          Gudang sesi baru
+          <select value={warehouseId || workspace.warehouses[0]?.id || ''} onChange={(event) => setWarehouseId(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+            {workspace.warehouses.map((row) => <option key={row.id} value={row.id}>{row.code} - {row.name}</option>)}
+          </select>
+        </label>
+        <button type="button" className="btn-primary" disabled={create.isPending} onClick={() => create.mutate()}><Plus className="h-4 w-4" />Sesi baru</button>
+        <label className="min-w-72 text-xs font-bold text-slate-700 dark:text-slate-200">
+          Sesi aktif
+          <select value={selected?.id ?? ''} onChange={(event) => { setSelectedId(event.target.value); setCounts({}); setMessage(''); }} className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+            {workspace.sessions.map((row) => <option key={row.id} value={row.id}>{row.opname_number} - {row.warehouse_code} - {row.status}</option>)}
+          </select>
+        </label>
+        {selected?.status === 'DRAFT' && <button type="button" className="btn-secondary" onClick={() => command.mutate('freeze')}>Bekukan saldo</button>}
+        {selected?.status === 'COUNTED' && <button type="button" className="btn-primary" onClick={() => command.mutate('approve')}>Setujui selisih</button>}
+        {selected?.status === 'APPROVED' && <button type="button" className="btn-primary" onClick={() => command.mutate('post')}>Posting mutasi</button>}
+      </div>
+      {selected && <p className="mb-3 text-xs text-slate-500">{selected.counted_count}/{selected.line_count} baris dihitung - nilai selisih {formatMoney(selected.variance_value)}</p>}
+      {selected && ['FROZEN', 'COUNTED'].includes(selected.status) && (
+        <div className="max-h-80 overflow-auto rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="sticky top-0 bg-slate-100 text-xs uppercase text-slate-500 dark:bg-slate-800"><tr><th className="p-2">Produk</th><th className="p-2">Lot / expiry</th><th className="p-2 text-right">Sistem</th><th className="p-2">Fisik</th><th className="p-2 text-right">Selisih</th></tr></thead>
+            <tbody>{(detail.data?.lines ?? []).map((line) => <tr key={line.id} className="border-t border-slate-100 dark:border-slate-800"><td className="p-2"><strong>{line.product_code}</strong><br /><span className="text-xs text-slate-500">{line.product_name} ({line.uom_code})</span></td><td className="p-2 text-xs">{line.lot_number ?? '-'}<br />{line.expiry_date ? formatDate(line.expiry_date) : '-'}</td><td className="p-2 text-right font-mono">{formatNumber(line.system_qty)}</td><td className="p-2"><input aria-label={`Hitung fisik ${line.product_code}`} inputMode="decimal" value={counts[line.id] ?? line.physical_qty ?? ''} onChange={(event) => setCounts((current) => ({ ...current, [line.id]: event.target.value }))} className="w-28 rounded-lg border border-slate-200 px-2 py-1 text-right font-mono dark:border-slate-700 dark:bg-slate-950" /></td><td className="p-2 text-right font-mono">{formatNumber(line.variance_qty)}</td></tr>)}</tbody>
+          </table>
+        </div>
+      )}
+      {selected && ['FROZEN', 'COUNTED'].includes(selected.status) && <div className="mt-3"><button type="button" className="btn-primary" disabled={command.isPending} onClick={() => command.mutate('count')}>Simpan hasil hitung</button></div>}
+      {message && <p className="mt-3 text-sm font-bold">{message}</p>}
+    </div>
+  );
+}
+
+function PriceBookWorkflowPanel({
+  books,
+  products,
+  customers,
+  suppliers,
+  onChanged,
+}: {
+  books: InventoryPriceBook[];
+  products: MasterRow[];
+  customers: MasterRow[];
+  suppliers: MasterRow[];
+  onChanged: () => void;
+}) {
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [scopeType, setScopeType] = useState<'TENANT' | 'CUSTOMER' | 'SUPPLIER'>('TENANT');
+  const [scopeId, setScopeId] = useState('');
+  const [productId, setProductId] = useState('');
+  const [price, setPrice] = useState('');
+  const [message, setMessage] = useState('');
+  const parties = scopeType === 'CUSTOMER' ? customers : scopeType === 'SUPPLIER' ? suppliers : [];
+
+  const create = useMutation({
+    mutationFn: async () => {
+      if (!code.trim() || !name.trim() || !productId || Number(price) < 0) throw new Error('Kode, nama, produk, dan harga wajib valid.');
+      if (scopeType !== 'TENANT' && !scopeId) throw new Error('Pilih customer atau supplier tujuan harga.');
+      const created = await api.post<{ id: string; code: string }>('/inventory/price-books', {
+        code, name, scopeType, scopeId: scopeType === 'TENANT' ? undefined : scopeId,
+        lines: [{ productId, minimumQty: 1, price: Number(price) }],
+      });
+      await api.patch(`/inventory/price-books/${created.id}/status`, { status: 'SUBMITTED', note: 'Diajukan dari Inventory Control' });
+      return created;
+    },
+    onSuccess: (created) => {
+      setMessage(`Buku harga ${created.code} dibuat dan diajukan untuk persetujuan.`);
+      setCode(''); setName(''); setProductId(''); setPrice(''); setScopeId(''); onChanged();
+    },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+  const transition = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'APPROVED' | 'REJECTED' | 'INACTIVE' }) =>
+      api.patch(`/inventory/price-books/${id}/status`, { status, note: `Diproses dari Inventory Control: ${status}` }),
+    onSuccess: () => { setMessage('Status buku harga diperbarui.'); onChanged(); },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+
+  return (
+    <div className="mb-4 rounded-lg border border-brand-200 bg-brand-50/40 p-4 dark:border-brand-900 dark:bg-brand-950/20">
+      <div className="mb-3 flex items-center gap-2"><Plus className="h-4 w-4" /><h3 className="text-sm font-black">Harga khusus modern dengan persetujuan</h3></div>
+      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-6">
+        <input aria-label="Kode buku harga" value={code} onChange={(event) => setCode(event.target.value)} placeholder="Kode" className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+        <input aria-label="Nama buku harga" value={name} onChange={(event) => setName(event.target.value)} placeholder="Nama harga" className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+        <select aria-label="Lingkup harga" value={scopeType} onChange={(event) => { setScopeType(event.target.value as typeof scopeType); setScopeId(''); }} className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+          <option value="TENANT">Umum tenant</option><option value="CUSTOMER">Khusus customer</option><option value="SUPPLIER">Harga beli supplier</option>
+        </select>
+        {scopeType !== 'TENANT' ? (
+          <select aria-label="Pihak tujuan" value={scopeId} onChange={(event) => setScopeId(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+            <option value="">Pilih pihak</option>{parties.map((row) => <option key={row.id} value={row.id}>{row.code} - {row.name}</option>)}
+          </select>
+        ) : <div className="hidden xl:block" />}
+        <select aria-label="Produk harga" value={productId} onChange={(event) => setProductId(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+          <option value="">Pilih produk</option>{products.map((row) => <option key={row.id} value={row.id}>{row.code} - {row.name}</option>)}
+        </select>
+        <div className="flex gap-2"><input aria-label="Nominal harga" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Harga" className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" /><button type="button" className="btn-primary" disabled={create.isPending} onClick={() => create.mutate()}>Ajukan</button></div>
+      </div>
+      {message && <p className="mt-3 text-sm font-bold">{message}</p>}
+      <div className="mt-4 grid gap-2 lg:grid-cols-2">
+        {books.slice(0, 12).map((book) => (
+          <div key={book.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+            <div><p className="text-sm font-black">{book.code} - {book.name}</p><p className="text-xs text-slate-500">{book.scope_type} - {book.item_count} item - {book.approval_status}</p></div>
+            <div className="flex gap-2">
+              {book.approval_status === 'SUBMITTED' && <><button type="button" className="btn-primary" onClick={() => transition.mutate({ id: book.id, status: 'APPROVED' })}>Setujui</button><button type="button" className="btn-secondary" onClick={() => transition.mutate({ id: book.id, status: 'REJECTED' })}>Tolak</button></>}
+              {book.approval_status === 'APPROVED' && <button type="button" className="btn-secondary" onClick={() => transition.mutate({ id: book.id, status: 'INACTIVE' })}>Nonaktifkan</button>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FinanceWorkflowPanel({ mode, data, onChanged }: { mode: 'cash' | 'periodClose'; data?: FinanceWorkspace; onChanged: () => void }) {
+  const openPeriods = data?.periods.filter((period) => period.status === 'OPEN') ?? [];
+  const [periodId, setPeriodId] = useState('');
+  const [debitAccount, setDebitAccount] = useState('');
+  const [creditAccount, setCreditAccount] = useState('');
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [message, setMessage] = useState('');
+  const selectedPeriod = periodId || openPeriods[0]?.id || '';
+  const journal = useMutation({
+    mutationFn: async () => {
+      if (!selectedPeriod || !debitAccount || !creditAccount || debitAccount === creditAccount || Number(amount) <= 0 || !description.trim()) throw new Error('Periode, dua akun berbeda, nominal, dan uraian wajib diisi.');
+      const created = await api.post<{ id: string; journalNumber: string }>('/inventory/journals', {
+        fiscalPeriodId: selectedPeriod, description,
+        lines: [{ accountId: debitAccount, debit: Number(amount), credit: 0 }, { accountId: creditAccount, debit: 0, credit: Number(amount) }],
+      }, { headers: { 'Idempotency-Key': crypto.randomUUID() } });
+      await api.post(`/inventory/journals/${created.id}/post`);
+      return created;
+    },
+    onSuccess: (created) => { setMessage(`Jurnal ${created.journalNumber} seimbang dan berhasil diposting.`); setAmount(''); setDescription(''); onChanged(); },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+  const periodCommand = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'close' | 'reopen' }) => api.post<{ status: string; validation: Record<string, number> }>(`/inventory/fiscal-periods/${id}/${action}`, { note: 'Diproses dari Inventory Control' }),
+    onSuccess: (result) => { setMessage(result.status === 'BLOCKED' ? `Periode belum ditutup: ${JSON.stringify(result.validation)}` : `Periode sekarang berstatus ${result.status}.`); onChanged(); },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+
+  if (!data) return <div className="mb-4 rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Memuat workspace keuangan...</div>;
+  return (
+    <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950">
+      {mode === 'cash' ? <>
+        <div className="mb-3 flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /><h3 className="text-sm font-black">Jurnal harian seimbang</h3></div>
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-6">
+          <select aria-label="Periode jurnal" value={selectedPeriod} onChange={(event) => setPeriodId(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">{openPeriods.map((row) => <option key={row.id} value={row.id}>{row.code}</option>)}</select>
+          <select aria-label="Akun debit" value={debitAccount} onChange={(event) => setDebitAccount(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"><option value="">Akun debit</option>{data.accounts.map((row) => <option key={row.id} value={row.id}>{row.code} - {row.name}</option>)}</select>
+          <select aria-label="Akun kredit" value={creditAccount} onChange={(event) => setCreditAccount(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"><option value="">Akun kredit</option>{data.accounts.map((row) => <option key={row.id} value={row.id}>{row.code} - {row.name}</option>)}</select>
+          <input aria-label="Nominal jurnal" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Nominal" className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
+          <input aria-label="Uraian jurnal" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Uraian" className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
+          <button type="button" className="btn-primary" disabled={journal.isPending} onClick={() => journal.mutate()}>Simpan & posting</button>
+        </div>
+      </> : <>
+        <h3 className="mb-3 text-sm font-black">Tutup periode dengan validasi transaksi tertunda</h3>
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {data.periods.slice(0, 12).map((period) => <div key={period.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"><div><p className="text-sm font-black">{period.code}</p><p className="text-xs text-slate-500">{formatDate(period.start_date)} - {formatDate(period.end_date)} - {period.status}</p></div><button type="button" className={period.status === 'OPEN' ? 'btn-primary' : 'btn-secondary'} disabled={periodCommand.isPending} onClick={() => periodCommand.mutate({ id: period.id, action: period.status === 'OPEN' ? 'close' : 'reopen' })}>{period.status === 'OPEN' ? 'Tutup' : 'Buka kembali'}</button></div>)}
+        </div>
+      </>}
+      {message && <p className="mt-3 text-sm font-bold">{message}</p>}
     </div>
   );
 }

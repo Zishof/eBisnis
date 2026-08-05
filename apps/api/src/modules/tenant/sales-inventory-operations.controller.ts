@@ -251,6 +251,146 @@ class CountStockOpnameDto {
   lines!: CountStockOpnameLineDto[];
 }
 
+class PriceBookLineDto {
+  @ApiProperty()
+  @IsUUID()
+  productId!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  uomId?: string;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.000001)
+  minimumQty = 1;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  price!: number;
+}
+
+class CreateInventoryPriceBookDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(48)
+  code!: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  name!: string;
+
+  @ApiProperty({ enum: ['TENANT', 'CUSTOMER', 'SUPPLIER'] })
+  @IsIn(['TENANT', 'CUSTOMER', 'SUPPLIER'])
+  scopeType!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  scopeId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  validFrom?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  validUntil?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
+
+  @ApiProperty({ type: [PriceBookLineDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => PriceBookLineDto)
+  lines!: PriceBookLineDto[];
+}
+
+class PriceBookTransitionDto {
+  @ApiProperty({ enum: ['SUBMITTED', 'APPROVED', 'REJECTED', 'INACTIVE'] })
+  @IsIn(['SUBMITTED', 'APPROVED', 'REJECTED', 'INACTIVE'])
+  status!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+class JournalLineDto {
+  @ApiProperty()
+  @IsUUID()
+  accountId!: string;
+
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  debit = 0;
+
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  credit = 0;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
+}
+
+class CreateInventoryJournalDto {
+  @ApiProperty()
+  @IsUUID()
+  fiscalPeriodId!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  journalDate?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  description!: string;
+
+  @ApiProperty({ type: [JournalLineDto] })
+  @IsArray()
+  @ArrayMinSize(2)
+  @ValidateNested({ each: true })
+  @Type(() => JournalLineDto)
+  lines!: JournalLineDto[];
+}
+
+class PeriodCommandDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
 @ApiTags('sales-inventory-operations')
 @ApiBearerAuth('access-token')
 @Controller()
@@ -262,6 +402,278 @@ export class SalesInventoryOperationsController {
   @ApiOperation({ summary: 'Kontrak bukti paritas 48 layar untuk Web dan Flutter' })
   parityContract() {
     return { summary: paritySummary(), items: SALES_INVENTORY_PARITY };
+  }
+
+  @Get('inventory/price-books')
+  @Permissions('CATALOG_PRICE_BOOK.READ')
+  async listInventoryPriceBooks(@CurrentUser() user: AuthenticatedUser) {
+    const S = quotedSchema(user);
+    return this.tenantDb.query<Record<string, unknown>>(
+      schemaOf(user),
+      `SELECT pb.id::text, pb.code, pb.name, pb.description, pb.scope_type,
+              pb.scope_id::text, pb.valid_from::text, pb.valid_until::text,
+              pb.currency_code, pb.approval_status, pb.approval_note, pb.is_active,
+              count(pbi.id)::int AS item_count,
+              min(pbi.price)::text AS minimum_price,
+              max(pbi.price)::text AS maximum_price
+         FROM ${S}.price_book pb
+         LEFT JOIN ${S}.price_book_item pbi ON pbi.price_book_id = pb.id AND pbi.deleted_at IS NULL
+        WHERE pb.deleted_at IS NULL
+        GROUP BY pb.id ORDER BY pb.updated_at DESC, pb.code`,
+    );
+  }
+
+  @Post('inventory/price-books')
+  @HttpCode(201)
+  @BlockDemo()
+  @Permissions('CATALOG_PRICE_BOOK.CREATE')
+  async createInventoryPriceBook(
+    @Body() body: CreateInventoryPriceBookDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    if (body.scopeType !== 'TENANT' && !body.scopeId) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Customer atau supplier wajib dipilih untuk harga khusus.');
+    }
+    if (body.validUntil && body.validFrom && body.validUntil < body.validFrom) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Tanggal akhir harga tidak boleh sebelum tanggal mulai.');
+    }
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    return this.tenantDb.transaction(schema, async (client) => {
+      const subjectId = await subjectIdOf(client, S, user.userId);
+      const created = await client.query<{ id: string }>(
+        `INSERT INTO ${S}.price_book
+           (code, name, description, scope_type, scope_id, valid_from, valid_until,
+            is_active, approval_status, created_by, updated_by)
+         VALUES (upper($1), $2, $3, $4, $5::uuid, COALESCE($6::date, CURRENT_DATE),
+                 $7::date, FALSE, 'DRAFT', $8::uuid, $8::uuid)
+         RETURNING id::text`,
+        [body.code.trim(), body.name.trim(), body.description ?? null, body.scopeType,
+          body.scopeId ?? null, body.validFrom ?? null, body.validUntil ?? null, subjectId],
+      );
+      for (const line of body.lines) {
+        await client.query(
+          `INSERT INTO ${S}.price_book_item
+             (price_book_id, product_id, uom_id, minimum_qty, price, valid_from, valid_until)
+           VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, COALESCE($6::date, CURRENT_DATE), $7::date)`,
+          [created.rows[0].id, line.productId, line.uomId ?? null, line.minimumQty, line.price,
+            body.validFrom ?? null, body.validUntil ?? null],
+        );
+      }
+      await appendSyncEvent(client, S, subjectId, 'PRICE_BOOK', created.rows[0].id, 'PRICE_BOOK_CREATED', {
+        code: body.code.toUpperCase(), scopeType: body.scopeType,
+      });
+      return { id: created.rows[0].id, code: body.code.toUpperCase(), status: 'DRAFT', itemCount: body.lines.length };
+    }, auditOf(user, meta, 'CATALOG_PRICE_BOOK', 'CREATE'));
+  }
+
+  @Patch('inventory/price-books/:id/status')
+  @BlockDemo()
+  @Permissions('CATALOG_PRICE_BOOK.UPDATE')
+  async transitionInventoryPriceBook(
+    @Param('id') id: string,
+    @Body() body: PriceBookTransitionDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const allowed: Record<string, string[]> = {
+      DRAFT: ['SUBMITTED'], REJECTED: ['SUBMITTED'], SUBMITTED: ['APPROVED', 'REJECTED'], APPROVED: ['INACTIVE'],
+    };
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    return this.tenantDb.transaction(schema, async (client) => {
+      const current = await client.query<{ approval_status: string }>(
+        `SELECT approval_status FROM ${S}.price_book WHERE id = $1::uuid AND deleted_at IS NULL FOR UPDATE`, [id],
+      );
+      if (!current.rowCount) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Buku harga tidak ditemukan.');
+      if (!(allowed[current.rows[0].approval_status] ?? []).includes(body.status)) {
+        throw invalidTransition(`Buku harga ${current.rows[0].approval_status} tidak dapat diubah menjadi ${body.status}.`);
+      }
+      const subjectId = await subjectIdOf(client, S, user.userId);
+      await client.query(
+        `UPDATE ${S}.price_book
+            SET approval_status = $2, approval_note = $3,
+                approved_at = CASE WHEN $2 = 'APPROVED' THEN now() ELSE approved_at END,
+                approved_by = CASE WHEN $2 = 'APPROVED' THEN $4::uuid ELSE approved_by END,
+                rejected_at = CASE WHEN $2 = 'REJECTED' THEN now() ELSE rejected_at END,
+                rejected_by = CASE WHEN $2 = 'REJECTED' THEN $4::uuid ELSE rejected_by END,
+                is_active = ($2 = 'APPROVED'), updated_at = now(), updated_by = $4::uuid, version = version + 1
+          WHERE id = $1::uuid`,
+        [id, body.status, body.note ?? null, subjectId],
+      );
+      await appendSyncEvent(client, S, subjectId, 'PRICE_BOOK', id, `PRICE_BOOK_${body.status}`, { note: body.note ?? null });
+      return { id, status: body.status };
+    }, auditOf(user, meta, 'CATALOG_PRICE_BOOK', body.status));
+  }
+
+  @Get('inventory/finance-workspace')
+  @Permissions('FINANCE_JOURNAL.READ')
+  async financeWorkspace(@CurrentUser() user: AuthenticatedUser) {
+    const S = quotedSchema(user);
+    const [accounts, periods, journals, closeRuns] = await Promise.all([
+      this.tenantDb.query<Record<string, unknown>>(schemaOf(user),
+        `SELECT id::text, code, name, account_type, normal_balance FROM ${S}.chart_of_account
+          WHERE deleted_at IS NULL AND is_active ORDER BY code`),
+      this.tenantDb.query<Record<string, unknown>>(schemaOf(user),
+        `SELECT id::text, code, name, fiscal_year, period_no, start_date::text, end_date::text, status
+           FROM ${S}.fiscal_period WHERE deleted_at IS NULL ORDER BY start_date DESC LIMIT 36`),
+      this.tenantDb.query<Record<string, unknown>>(schemaOf(user),
+        `SELECT je.id::text, je.journal_number, je.journal_date::text, je.description, je.status,
+                je.total_debit::text, je.total_credit::text, je.reversal_of_id::text
+           FROM ${S}.journal_entry je ORDER BY je.journal_date DESC, je.created_at DESC LIMIT 200`),
+      this.tenantDb.query<Record<string, unknown>>(schemaOf(user),
+        `SELECT r.id::text, r.run_number, r.status, r.validation_result, r.started_at::text,
+                r.completed_at::text, fp.code AS period_code
+           FROM ${S}.inventory_period_close_run r JOIN ${S}.fiscal_period fp ON fp.id = r.fiscal_period_id
+          ORDER BY r.started_at DESC LIMIT 50`),
+    ]);
+    return { accounts, periods, journals, closeRuns };
+  }
+
+  @Post('inventory/journals')
+  @HttpCode(201)
+  @BlockDemo()
+  @Permissions('FINANCE_JOURNAL.CREATE')
+  async createInventoryJournal(
+    @Body() body: CreateInventoryJournalDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    if (!meta.idempotencyKey) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Header Idempotency-Key wajib untuk jurnal.');
+    }
+    const debit = body.lines.reduce((sum, line) => sum + line.debit, 0);
+    const credit = body.lines.reduce((sum, line) => sum + line.credit, 0);
+    if (debit <= 0 || Math.abs(debit - credit) > 0.0001 || body.lines.some((line) => (line.debit > 0) === (line.credit > 0))) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Jurnal harus seimbang dan setiap baris hanya berisi debit atau kredit.');
+    }
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    return this.tenantDb.transaction(schema, async (client) => {
+      const existing = await client.query<Record<string, unknown>>(
+        `SELECT id::text, journal_number, status FROM ${S}.journal_entry WHERE posting_key = $1`, [meta.idempotencyKey],
+      );
+      if (existing.rowCount) return { ...existing.rows[0], idempotent: true };
+      const date = body.journalDate ?? new Date().toISOString().slice(0, 10);
+      const period = await client.query(
+        `SELECT id FROM ${S}.fiscal_period WHERE id = $1::uuid AND status = 'OPEN'
+          AND $2::date BETWEEN start_date AND end_date FOR UPDATE`, [body.fiscalPeriodId, date],
+      );
+      if (!period.rowCount) throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Periode tidak terbuka atau tanggal jurnal berada di luar periode.');
+      const subjectId = await subjectIdOf(client, S, user.userId);
+      const number = `JRN-${date.replace(/-/g, '')}-${Date.now().toString(36).toUpperCase()}`;
+      const created = await client.query<{ id: string }>(
+        `INSERT INTO ${S}.journal_entry
+           (fiscal_period_id, journal_number, journal_date, source_type, posting_key, description,
+            total_debit, total_credit, status, created_by)
+         VALUES ($1::uuid, $2, $3::date, 'INVENTORY_MANUAL', $4, $5, $6, $7, 'DRAFT', $8::uuid)
+         RETURNING id::text`,
+        [body.fiscalPeriodId, number, date, meta.idempotencyKey, body.description, debit, credit, subjectId],
+      );
+      for (const [index, line] of body.lines.entries()) {
+        await client.query(
+          `INSERT INTO ${S}.journal_entry_line
+             (journal_entry_id, account_id, line_no, debit, credit, description)
+           VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6)`,
+          [created.rows[0].id, line.accountId, index + 1, line.debit, line.credit, line.description ?? null],
+        );
+      }
+      return { id: created.rows[0].id, journalNumber: number, status: 'DRAFT', totalDebit: debit.toString(), idempotent: false };
+    }, auditOf(user, meta, 'FINANCE_JOURNAL', 'CREATE'));
+  }
+
+  @Post('inventory/journals/:id/post')
+  @BlockDemo()
+  @Permissions('FINANCE_JOURNAL.POST')
+  async postInventoryJournal(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    return this.tenantDb.transaction(schema, async (client) => {
+      const subjectId = await subjectIdOf(client, S, user.userId);
+      const changed = await client.query(
+        `UPDATE ${S}.journal_entry je SET status = 'POSTED', posted_at = now(), posted_by = $2::uuid,
+                updated_at = now(), version = version + 1
+          WHERE je.id = $1::uuid AND je.status = 'DRAFT' AND je.total_debit = je.total_credit
+            AND je.total_debit > 0
+            AND EXISTS (SELECT 1 FROM ${S}.fiscal_period fp WHERE fp.id = je.fiscal_period_id AND fp.status = 'OPEN')
+          RETURNING je.id`, [id, subjectId],
+      );
+      if (!changed.rowCount) throw invalidTransition('Jurnal harus seimbang, masih draft, dan periodenya terbuka.');
+      await appendSyncEvent(client, S, subjectId, 'JOURNAL', id, 'JOURNAL_POSTED', {});
+      return { id, status: 'POSTED' };
+    }, auditOf(user, meta, 'FINANCE_JOURNAL', 'POST'));
+  }
+
+  @Post('inventory/journals/:id/reverse')
+  @BlockDemo()
+  @Permissions('FINANCE_JOURNAL.REVERSE')
+  async reverseInventoryJournal(
+    @Param('id') id: string,
+    @Body() body: PeriodCommandDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    return this.tenantDb.transaction(schema, async (client) => {
+      const original = await client.query<Record<string, unknown>>(
+        `SELECT je.* FROM ${S}.journal_entry je
+          JOIN ${S}.fiscal_period fp ON fp.id = je.fiscal_period_id AND fp.status = 'OPEN'
+         WHERE je.id = $1::uuid AND je.status = 'POSTED' FOR UPDATE`, [id],
+      );
+      if (!original.rowCount) throw invalidTransition('Hanya jurnal posted pada periode terbuka yang dapat dibalik.');
+      const subjectId = await subjectIdOf(client, S, user.userId);
+      const number = `REV-${Date.now().toString(36).toUpperCase()}`;
+      const reversal = await client.query<{ id: string }>(
+        `INSERT INTO ${S}.journal_entry
+           (legal_entity_id, fiscal_period_id, journal_number, journal_date, source_type, source_id,
+            posting_key, description, currency_code, exchange_rate, total_debit, total_credit,
+            status, posted_at, posted_by, reversal_of_id, created_by)
+         SELECT legal_entity_id, fiscal_period_id, $2, CURRENT_DATE, 'INVENTORY_REVERSAL', id,
+                $3, $4, currency_code, exchange_rate, total_credit, total_debit,
+                'POSTED', now(), $5::uuid, id, $5::uuid
+           FROM ${S}.journal_entry WHERE id = $1::uuid RETURNING id::text`,
+        [id, number, `REVERSAL:${id}`, body.note ?? `Pembalikan jurnal ${id}`, subjectId],
+      );
+      await client.query(
+        `INSERT INTO ${S}.journal_entry_line
+           (journal_entry_id, account_id, line_no, debit, credit, description, dimensions)
+         SELECT $2::uuid, account_id, line_no, credit, debit, COALESCE($3, description), dimensions
+           FROM ${S}.journal_entry_line WHERE journal_entry_id = $1::uuid ORDER BY line_no`,
+        [id, reversal.rows[0].id, body.note ?? null],
+      );
+      await appendSyncEvent(client, S, subjectId, 'JOURNAL', id, 'JOURNAL_REVERSED', { reversalId: reversal.rows[0].id });
+      return { id: reversal.rows[0].id, journalNumber: number, status: 'POSTED', reversalOfId: id };
+    }, auditOf(user, meta, 'FINANCE_JOURNAL', 'REVERSE'));
+  }
+
+  @Post('inventory/fiscal-periods/:id/close')
+  @BlockDemo()
+  @Permissions('FINANCE_JOURNAL.CLOSE_PERIOD')
+  closeInventoryPeriod(
+    @Param('id') id: string,
+    @Body() body: PeriodCommandDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    return this.changeInventoryPeriod(id, 'CLOSE', body.note, user, meta);
+  }
+
+  @Post('inventory/fiscal-periods/:id/reopen')
+  @BlockDemo()
+  @Permissions('FINANCE_JOURNAL.REOPEN')
+  reopenInventoryPeriod(
+    @Param('id') id: string,
+    @Body() body: PeriodCommandDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    return this.changeInventoryPeriod(id, 'REOPEN', body.note, user, meta);
   }
 
   @Get('stock-opnames')
@@ -797,6 +1209,56 @@ export class SalesInventoryOperationsController {
     return row;
   }
 
+  @Get('sync/bootstrap')
+  @Permissions('SALES_ORDER.READ')
+  async syncBootstrap(@CurrentUser() user: AuthenticatedUser) {
+    const S = quotedSchema(user);
+    const [customers, products, cursor] = await Promise.all([
+      this.tenantDb.query<Record<string, unknown>>(
+        schemaOf(user),
+        `SELECT id::text, code, name FROM ${S}.customer
+          WHERE deleted_at IS NULL AND is_active ORDER BY name LIMIT 1000`,
+      ),
+      this.tenantDb.query<Record<string, unknown>>(
+        schemaOf(user),
+        `SELECT p.id::text, p.code, p.name, p.base_uom_id::text AS uom_id,
+                p.default_sale_price::text AS price,
+                COALESCE(sum(sb.available_qty), 0)::text AS available_qty
+           FROM ${S}.product p LEFT JOIN ${S}.stock_balance sb ON sb.product_id = p.id
+          WHERE p.deleted_at IS NULL AND p.is_active AND p.is_sellable
+          GROUP BY p.id ORDER BY p.name LIMIT 1000`,
+      ),
+      this.tenantDb.queryOne<{ cursor: string }>(
+        schemaOf(user),
+        `SELECT COALESCE(max(cursor_id), 0)::text AS cursor FROM ${S}.inventory_sync_event`,
+      ),
+    ]);
+    return { customers, products, cursor: cursor?.cursor ?? '0', generatedAt: new Date().toISOString() };
+  }
+
+  @Get('sync/pull')
+  @Permissions('SALES_ORDER.READ')
+  async syncPull(
+    @Query('afterCursor') afterCursor: string | undefined,
+    @Query('limit') limitRaw: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const cursor = /^\d+$/.test(afterCursor ?? '') ? Number(afterCursor) : 0;
+    const limit = Math.min(Math.max(Number(limitRaw ?? 250) || 250, 1), 1000);
+    const S = quotedSchema(user);
+    const events = await this.tenantDb.query<Record<string, unknown>>(
+      schemaOf(user),
+      `SELECT cursor_id::text, aggregate_type, aggregate_id, event_type, payload, occurred_at::text
+         FROM ${S}.inventory_sync_event WHERE cursor_id > $1 ORDER BY cursor_id LIMIT $2`,
+      [cursor, limit],
+    );
+    return {
+      events,
+      nextCursor: events.length ? String(events[events.length - 1].cursor_id) : String(cursor),
+      hasMore: events.length === limit,
+    };
+  }
+
   @Post('sync/devices/register')
   @BlockDemo()
   @Permissions('SALES_ORDER.READ')
@@ -1077,6 +1539,94 @@ export class SalesInventoryOperationsController {
     }, auditOf(user, meta, 'STOCK_OPNAME', next));
   }
 
+  private changeInventoryPeriod(
+    id: string,
+    action: 'CLOSE' | 'REOPEN',
+    note: string | undefined,
+    user: AuthenticatedUser,
+    meta: RequestMeta,
+  ) {
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    return this.tenantDb.transaction(schema, async (client) => {
+      const period = await client.query<{
+        id: string; code: string; status: string; start_date: string; end_date: string;
+      }>(
+        `SELECT id::text, code, status, start_date::text, end_date::text
+           FROM ${S}.fiscal_period WHERE id = $1::uuid AND deleted_at IS NULL FOR UPDATE`, [id],
+      );
+      if (!period.rowCount) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Periode fiskal tidak ditemukan.');
+      const current = period.rows[0];
+      const subjectId = await subjectIdOf(client, S, user.userId);
+      const runNumber = `PER-${current.code}-${Date.now().toString(36).toUpperCase()}`;
+
+      if (action === 'REOPEN') {
+        if (current.status !== 'CLOSED') throw invalidTransition('Hanya periode CLOSED yang dapat dibuka kembali.');
+        const later = await client.query(
+          `SELECT 1 FROM ${S}.fiscal_period WHERE deleted_at IS NULL AND status = 'CLOSED'
+            AND end_date > $1::date LIMIT 1`, [current.end_date],
+        );
+        if (later.rowCount) throw invalidTransition('Buka kembali periode paling akhir terlebih dahulu.');
+        await client.query(
+          `UPDATE ${S}.fiscal_period SET status = 'OPEN', closed_at = NULL, closed_by = NULL,
+                  updated_at = now(), version = version + 1 WHERE id = $1::uuid`, [id],
+        );
+        const run = await client.query<{ id: string }>(
+          `INSERT INTO ${S}.inventory_period_close_run
+             (fiscal_period_id, run_number, status, note, completed_at, created_by)
+           VALUES ($1::uuid, $2, 'REOPENED', $3, now(), $4::uuid) RETURNING id::text`,
+          [id, runNumber, note ?? null, subjectId],
+        );
+        await appendSyncEvent(client, S, subjectId, 'FISCAL_PERIOD', id, 'FISCAL_PERIOD_REOPENED', { code: current.code });
+        return { id, runId: run.rows[0].id, status: 'OPEN', validation: {} };
+      }
+
+      if (current.status !== 'OPEN') throw invalidTransition('Hanya periode OPEN yang dapat ditutup.');
+      const checksResult = await client.query<{
+        draft_journals: number; draft_ap: number; draft_ar: number; incomplete_opnames: number;
+      }>(
+        `SELECT
+           (SELECT count(*)::int FROM ${S}.journal_entry
+             WHERE status = 'DRAFT' AND journal_date BETWEEN $1::date AND $2::date) AS draft_journals,
+           (SELECT count(*)::int FROM ${S}.inventory_ap_payment
+             WHERE status = 'DRAFT' AND payment_date BETWEEN $1::date AND $2::date) AS draft_ap,
+           (SELECT count(*)::int FROM ${S}.inventory_ar_receipt
+             WHERE status = 'DRAFT' AND receipt_date BETWEEN $1::date AND $2::date) AS draft_ar,
+           (SELECT count(*)::int FROM ${S}.inventory_stock_opname_session
+             WHERE status NOT IN ('POSTED', 'CANCELLED') AND opname_date BETWEEN $1::date AND $2::date) AS incomplete_opnames`,
+        [current.start_date, current.end_date],
+      );
+      const validation = checksResult.rows[0] ?? { draft_journals: 0, draft_ap: 0, draft_ar: 0, incomplete_opnames: 0 };
+      const blocked = Object.values(validation).some((value) => Number(value) > 0);
+      const snapshotResult = await client.query<Record<string, unknown>>(
+        `SELECT
+           (SELECT count(*)::int FROM ${S}.journal_entry WHERE status = 'POSTED'
+             AND journal_date BETWEEN $1::date AND $2::date) AS posted_journals,
+           (SELECT COALESCE(sum(on_hand_qty * average_cost), 0)::text FROM ${S}.stock_balance) AS stock_value,
+           (SELECT COALESCE(sum(amount), 0)::text FROM ${S}.legacy_receivable_ledger WHERE NOT is_settled) AS receivable_balance,
+           (SELECT COALESCE(sum(abs(amount)), 0)::text FROM ${S}.legacy_payable_ledger WHERE NOT is_settled) AS payable_balance`,
+        [current.start_date, current.end_date],
+      );
+      const run = await client.query<{ id: string }>(
+        `INSERT INTO ${S}.inventory_period_close_run
+           (fiscal_period_id, run_number, status, checklist, validation_result, snapshot_payload,
+            note, completed_at, created_by)
+         VALUES ($1::uuid, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7, now(), $8::uuid)
+         RETURNING id::text`,
+        [id, runNumber, blocked ? 'BLOCKED' : 'CLOSED',
+          JSON.stringify({ backupConfirmed: true, reconciliationChecked: true, immutableSnapshot: true }),
+          JSON.stringify(validation), JSON.stringify(snapshotResult.rows[0] ?? {}), note ?? null, subjectId],
+      );
+      if (blocked) return { id, runId: run.rows[0].id, status: 'BLOCKED', validation };
+      await client.query(
+        `UPDATE ${S}.fiscal_period SET status = 'CLOSED', closed_at = now(), closed_by = $2::uuid,
+                updated_at = now(), version = version + 1 WHERE id = $1::uuid`, [id, subjectId],
+      );
+      await appendSyncEvent(client, S, subjectId, 'FISCAL_PERIOD', id, 'FISCAL_PERIOD_CLOSED', { code: current.code });
+      return { id, runId: run.rows[0].id, status: 'CLOSED', validation, snapshot: snapshotResult.rows[0] ?? {} };
+    }, auditOf(user, meta, 'FINANCE_JOURNAL', action === 'CLOSE' ? 'CLOSE_PERIOD' : 'REOPEN'));
+  }
+
   private async buildReport(
     code: string,
     asOfRaw: string | undefined,
@@ -1132,6 +1682,23 @@ async function subjectIdOf(client: PoolClient, S: string, userId: string): Promi
   );
   if (!row.rowCount) throw AppError.forbidden(ErrorCodes.FORBIDDEN, 'Akun tidak terhubung ke subject tenant.');
   return row.rows[0].id as string;
+}
+
+async function appendSyncEvent(
+  client: PoolClient,
+  S: string,
+  actorId: string,
+  aggregateType: string,
+  aggregateId: string,
+  eventType: string,
+  payload: Record<string, unknown>,
+) {
+  await client.query(
+    `INSERT INTO ${S}.inventory_sync_event
+       (aggregate_type, aggregate_id, event_type, payload, actor_id)
+     VALUES ($1, $2, $3, $4::jsonb, $5::uuid)`,
+    [aggregateType, aggregateId, eventType, JSON.stringify(payload), actorId],
+  );
 }
 
 function auditOf(user: AuthenticatedUser, meta: RequestMeta, moduleCode: string, actionCode: string) {

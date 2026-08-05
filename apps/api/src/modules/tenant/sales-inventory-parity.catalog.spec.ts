@@ -25,5 +25,6 @@ describe('sales inventory legacy parity contract', () => {
     expect(summary.flutter.operational + summary.flutter.readOnly + summary.flutter.contractOnly).toBe(48);
     expect(summary.flutter.operational).toBeGreaterThanOrEqual(5);
     expect(summary.flutter.readOnly).toBeGreaterThan(0);
+    expect(summary.web.operational).toBe(20);
   });
 });

@@ -332,6 +332,13 @@
       "description": "Workflow pembayaran hutang, penerimaan piutang, serah-terima nota sampai kembali/ditutup, sesi stock opname, dan status perangkat sinkronisasi. Pembuatan pembayaran memakai kunci idempotensi dan seluruhnya tetap memakai ledger ERP/legacy yang sama sebagai sumber rekonsiliasi."
     },
     {
+      "version": "V048",
+      "sequence": 48,
+      "file": "V048__sales_inventory_command_parity.sql",
+      "name": "Command parity Sales dan Inventory",
+      "description": "Persetujuan buku harga ERP, jejak tutup/buka periode, cursor event sinkronisasi, dan inbox command perangkat. Migrasi bersifat aditif dan tetap memakai price_book, journal_entry, fiscal_period, serta ledger ERP yang sudah ada sebagai sumber kebenaran."
+    },
+    {
       "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

@@ -7,6 +7,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'inventory_local_database.dart';
+
 class AplikasiInventory extends StatefulWidget {
   const AplikasiInventory({
     super.key,
@@ -172,12 +174,46 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
   late Future<InventorySnapshot> _snapshot = widget.client.snapshot();
   late Future<InventoryParityContract> _parity = widget.client.parityContract();
   int _tab = 0;
+  bool _syncing = false;
+  int _pending = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadPendingCount());
+  }
+
+  Future<void> _loadPendingCount() async {
+    final pending = await widget.client.pendingOutboxCount();
+    if (mounted) setState(() => _pending = pending);
+  }
 
   void _refresh() {
     setState(() {
       _snapshot = widget.client.snapshot();
       _parity = widget.client.parityContract();
     });
+  }
+
+  Future<void> _synchronize() async {
+    setState(() => _syncing = true);
+    try {
+      final result = await widget.client.synchronize();
+      if (!mounted) return;
+      setState(() => _pending = result.pending);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+            '${result.sent} transaksi terkirim, ${result.pending} masih menunggu.'),
+      ));
+      _refresh();
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Sinkronisasi belum selesai: $error'),
+      ));
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
   }
 
   @override
@@ -225,6 +261,21 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                     ],
                   ),
                   actions: [
+                    Badge(
+                      isLabelVisible: _pending > 0,
+                      label: Text('$_pending'),
+                      child: IconButton(
+                        tooltip: 'Sinkronkan data',
+                        onPressed: _syncing ? null : _synchronize,
+                        icon: _syncing
+                            ? const SizedBox.square(
+                                dimension: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.cloud_sync_outlined),
+                      ),
+                    ),
                     IconButton(
                       tooltip: 'Muat ulang',
                       onPressed: _refresh,
@@ -577,7 +628,9 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
       );
       if (!mounted) return;
       setState(() {
-        _savedMessage = 'Order ${order['order_number']} berhasil dikirim.';
+        _savedMessage = order['queued'] == true
+            ? 'Order ${order['order_number']} tersimpan di perangkat dan akan dikirim otomatis saat koneksi kembali.'
+            : 'Order ${order['order_number']} berhasil dikirim.';
         _qty.clear();
       });
     } on Object catch (error) {
@@ -1526,7 +1579,9 @@ class InventoryApiClient {
     required this.baseUrl,
     required this.tenantCode,
     HttpClient? http,
-  }) : _http = http ?? HttpClient();
+    InventoryLocalDatabase? localDatabase,
+  })  : _http = http ?? HttpClient(),
+        _localDatabase = localDatabase;
 
   factory InventoryApiClient.fromEnvironment() => InventoryApiClient(
         baseUrl: Uri.parse(
@@ -1539,11 +1594,13 @@ class InventoryApiClient {
           'INVENTORY_TENANT',
           defaultValue: 'CMNMEDIKA',
         ),
+        localDatabase: InventoryLocalDatabase.shared(),
       );
 
   final Uri baseUrl;
   final String tenantCode;
   final HttpClient _http;
+  final InventoryLocalDatabase? _localDatabase;
   String? _token;
 
   Future<PersonaInventory> login({
@@ -1564,6 +1621,7 @@ class InventoryApiClient {
     if (_token == null || _token!.isEmpty) {
       throw const InventoryApiException('Token login tidak diterima.');
     }
+    unawaited(synchronize());
     return akunInventory.firstWhere(
       (p) => p.username == username,
       orElse: () => PersonaInventory(
@@ -1686,26 +1744,148 @@ class InventoryApiClient {
     if (_token == null) {
       throw const InventoryApiException('Silakan masuk kembali.');
     }
-    final data = await _request<Map<String, Object?>>(
-        'GET', '/inventory/mobile-catalog');
-    return InventoryCatalog.fromApi(data);
+    try {
+      final data = await _request<Map<String, Object?>>(
+          'GET', '/inventory/mobile-catalog');
+      await _localDatabase?.putCache('mobile-catalog', data);
+      return InventoryCatalog.fromApi(data);
+    } on Object {
+      final cached = await _localDatabase?.getCache('mobile-catalog');
+      if (cached != null) return InventoryCatalog.fromApi(cached);
+      rethrow;
+    }
   }
 
   Future<Map<String, Object?>> createOrder({
     required String customerId,
     required List<Map<String, Object?>> lines,
-  }) {
+  }) async {
+    final deviceId = await _localDatabase?.getOrCreateDeviceId() ?? tenantCode;
     final eventId =
-        '${tenantCode}_${DateTime.now().microsecondsSinceEpoch}_${lines.length}';
-    return _request<Map<String, Object?>>(
-      'POST',
-      '/inventory/mobile-orders',
-      body: {
-        'deviceEventId': eventId,
-        'customerId': customerId,
-        'lines': lines,
-      },
+        '${deviceId}_${DateTime.now().microsecondsSinceEpoch}_${lines.length}';
+    final payload = <String, Object?>{
+      'deviceId': deviceId,
+      'deviceEventId': eventId,
+      'customerId': customerId,
+      'lines': lines,
+    };
+    await _localDatabase?.enqueue(
+      eventId: eventId,
+      method: 'POST',
+      path: '/inventory/mobile-orders',
+      payload: payload,
     );
+    try {
+      final result = await _request<Map<String, Object?>>(
+        'POST',
+        '/inventory/mobile-orders',
+        body: payload,
+      );
+      await _localDatabase?.markCompleted(eventId);
+      return result;
+    } on SocketException catch (error) {
+      return _queuedOrder(eventId, error);
+    } on TimeoutException catch (error) {
+      return _queuedOrder(eventId, error);
+    } on HttpException catch (error) {
+      return _queuedOrder(eventId, error);
+    } on Object catch (error) {
+      final item = await _outboxItem(eventId);
+      if (item != null) await _localDatabase?.markFailed(item, error);
+      rethrow;
+    }
+  }
+
+  Future<Map<String, Object?>> _queuedOrder(
+      String eventId, Object error) async {
+    final item = await _outboxItem(eventId);
+    if (item != null) await _localDatabase?.markFailed(item, error);
+    return {
+      'order_number': 'TERTUNDA-${eventId.substring(eventId.length - 8)}',
+      'queued': true,
+    };
+  }
+
+  Future<InventorySyncResult> synchronize() async {
+    final database = _localDatabase;
+    if (database == null || _token == null) {
+      return const InventorySyncResult(0, 0);
+    }
+    final deviceId = await database.getOrCreateDeviceId();
+    var cursor = await database.lastPullCursor(deviceId);
+    var sent = 0;
+    final pending = await database.pendingOutbox();
+    for (final item in pending) {
+      try {
+        await _request<Map<String, Object?>>(
+          item.method,
+          item.path,
+          body: jsonDecode(item.payload) as Map<String, Object?>,
+        );
+        await database.markCompleted(item.eventId);
+        sent += 1;
+      } on Object catch (error) {
+        await database.markFailed(item, error);
+        break;
+      }
+    }
+    final pendingCount = await database.pendingCount();
+    try {
+      await _request<Map<String, Object?>>(
+        'POST',
+        '/sync/devices/register',
+        body: {
+          'deviceId': deviceId,
+          'platform': Platform.operatingSystem,
+          'appVersion': '0.1.6',
+          'pendingOutbox': pendingCount,
+        },
+      );
+
+      var refreshCatalog = cursor == 0;
+      if (cursor > 0) {
+        var hasMore = true;
+        var pages = 0;
+        while (hasMore && pages < 4) {
+          final delta = await _request<Map<String, Object?>>(
+            'GET',
+            '/sync/pull?afterCursor=$cursor&limit=250',
+          );
+          final events = (delta['events'] as List?) ?? const [];
+          refreshCatalog = refreshCatalog || events.isNotEmpty;
+          cursor = int.tryParse((delta['nextCursor'] ?? cursor).toString()) ?? cursor;
+          hasMore = delta['hasMore'] == true;
+          pages += 1;
+        }
+      }
+      if (refreshCatalog) {
+        final bootstrap = await _request<Map<String, Object?>>(
+          'GET',
+          '/sync/bootstrap',
+        );
+        await database.putCache('mobile-catalog', {
+          'customers': bootstrap['customers'] ?? const [],
+          'products': bootstrap['products'] ?? const [],
+        });
+        cursor = int.tryParse((bootstrap['cursor'] ?? cursor).toString()) ?? cursor;
+      }
+      await database.recordSync(deviceId, cursor: cursor);
+    } on Object catch (error) {
+      await database.recordSync(deviceId, cursor: cursor, error: error.toString());
+    }
+    return InventorySyncResult(sent, pendingCount);
+  }
+
+  Future<int> pendingOutboxCount() =>
+      _localDatabase?.pendingCount() ?? Future.value(0);
+
+  Future<InventoryOutboxItem?> _outboxItem(String eventId) async {
+    final rows = await _localDatabase?.pendingOutbox();
+    if (rows == null) return null;
+    for (final row in rows) {
+      if (row.eventId == eventId) return row;
+    }
+    return null;
   }
 
   Future<T> _request<T extends Object?>(
@@ -1749,6 +1929,12 @@ class InventoryApiException implements Exception {
   final String message;
   @override
   String toString() => message;
+}
+
+class InventorySyncResult {
+  const InventorySyncResult(this.sent, this.pending);
+  final int sent;
+  final int pending;
 }
 
 class PersonaInventory {

@@ -75,6 +75,13 @@ class MobileSalesOrderLineDto {
 }
 
 class CreateMobileSalesOrderDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(160)
+  deviceId?: string;
+
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
@@ -1616,11 +1623,36 @@ export class ErpController {
     const ctx = context(user, meta);
     const S = `"${ctx.schemaName}"`;
     return this.tenantDb.transaction(ctx.schemaName, async (client) => {
+      const subject = await client.query<{ id: string }>(
+        `SELECT id::text FROM ${S}.user_subject
+          WHERE id = $1::uuid OR platform_user_id = $1::uuid LIMIT 1`,
+        [ctx.userId],
+      );
+      if (!subject.rowCount) {
+        throw AppError.forbidden(ErrorCodes.FORBIDDEN, 'Akun tidak terhubung ke subject tenant.');
+      }
+      const subjectId = subject.rows[0].id;
+      const deviceId = body.deviceId?.trim() || 'legacy-mobile-client';
+      await client.query(
+        `INSERT INTO ${S}.inventory_mobile_command
+           (device_id, device_event_id, command_type, payload, status, user_subject_id)
+         VALUES ($1, $2, 'CREATE_SALES_ORDER', $3::jsonb, 'PROCESSING', $4::uuid)
+         ON CONFLICT (device_id, device_event_id) DO NOTHING`,
+        [deviceId, body.deviceEventId, JSON.stringify(body), subjectId],
+      );
       const existing = await client.query<{ id: string; order_number: string }>(
         `SELECT id::text, order_number FROM ${S}.sales_order WHERE source_event_id = $1`,
         [body.deviceEventId],
       );
-      if (existing.rowCount) return { ...existing.rows[0], idempotent: true };
+      if (existing.rowCount) {
+        await client.query(
+          `UPDATE ${S}.inventory_mobile_command
+              SET status = 'PROCESSED', result_payload = $3::jsonb, processed_at = now()
+            WHERE device_id = $1 AND device_event_id = $2`,
+          [deviceId, body.deviceEventId, JSON.stringify(existing.rows[0])],
+        );
+        return { ...existing.rows[0], idempotent: true };
+      }
       const customer = await client.query<{ id: string }>(
         `SELECT id::text FROM ${S}.customer WHERE id = $1::uuid AND deleted_at IS NULL AND is_active`,
         [body.customerId],
@@ -1645,7 +1677,7 @@ export class ErpController {
            (customer_id, outlet_id, order_number, order_date, delivery_date, channel, subtotal, grand_total, status, created_by, source_event_id)
          VALUES ($1::uuid, $2::uuid, $3, CURRENT_DATE, $4::date, 'FIELD_SALES', $5, $5, 'CONFIRMED', $6::uuid, $7)
          RETURNING id::text, order_number`,
-        [body.customerId, outlet.rows[0]?.id ?? null, orderNumber, body.deliveryDate ?? null, subtotal, ctx.userId, body.deviceEventId],
+        [body.customerId, outlet.rows[0]?.id ?? null, orderNumber, body.deliveryDate ?? null, subtotal, subjectId, body.deviceEventId],
       );
       for (const [index, line] of body.lines.entries()) {
         const product = productMap.get(line.productId)!;
@@ -1657,7 +1689,20 @@ export class ErpController {
           [order.rows[0].id, line.productId, line.uomId, index + 1, line.qty, price, line.qty * price, Number(product.standard_cost)],
         );
       }
-      return { ...order.rows[0], idempotent: false, subtotal: subtotal.toString() };
+      const result = { ...order.rows[0], idempotent: false, subtotal: subtotal.toString() };
+      await client.query(
+        `UPDATE ${S}.inventory_mobile_command
+            SET status = 'PROCESSED', result_payload = $3::jsonb, processed_at = now()
+          WHERE device_id = $1 AND device_event_id = $2`,
+        [deviceId, body.deviceEventId, JSON.stringify(result)],
+      );
+      await client.query(
+        `INSERT INTO ${S}.inventory_sync_event
+           (aggregate_type, aggregate_id, event_type, payload, actor_id)
+         VALUES ('SALES_ORDER', $1, 'SALES_ORDER_CREATED', $2::jsonb, $3::uuid)`,
+        [order.rows[0].id, JSON.stringify({ orderNumber: order.rows[0].order_number }), subjectId],
+      );
+      return result;
     });
   }
 
