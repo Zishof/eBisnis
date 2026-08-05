@@ -28,3 +28,9 @@ permission, audit, UI, laporan/ekspor, pengujian, dan bukti UAT tersedia.
 
 Evidence disimpan di `evidence/screens`, `evidence/reports`, dan
 `evidence/test-results` dengan nama yang mengandung nomor layar serta platform.
+
+## Hasil Akhir
+
+- Seluruh 48 layar berstatus `OPERATIONAL` pada Web dan Flutter Windows/Android.
+- Bukti build produksi dan checksum paket tersedia di
+  `evidence/uat/release-build-0.1.6.md`.
