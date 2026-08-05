@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CrudActionBar, CrudDashboard } from './crud-actions';
 
 // --- State primitives ------------------------------------------------------
 
@@ -386,6 +387,10 @@ export function DataGrid<T extends Record<string, unknown>>({
   sortBy,
   sortDir,
   onSort,
+  showCrudTools = true,
+  crudTitle,
+  crudFilename,
+  onUploadRows,
 }: {
   columns: Array<GridColumn<T>>;
   rows: T[];
@@ -397,13 +402,47 @@ export function DataGrid<T extends Record<string, unknown>>({
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
   onSort?: (key: string) => void;
+  showCrudTools?: boolean;
+  crudTitle?: string;
+  crudFilename?: string;
+  onUploadRows?: (rows: Array<Record<string, unknown>>, file: File) => Promise<void> | void;
 }) {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
-  if (!rows.length) return <EmptyState title={emptyTitle} />;
+
+  const dataColumns = columns.filter((column) => column.key !== 'aksi');
+  const tools = showCrudTools ? (
+    <div className="mb-4 space-y-3">
+      <CrudDashboard
+        metrics={[
+          { label: 'Data tampil', value: rows.length, tone: 'emerald' },
+          { label: 'Kolom data', value: dataColumns.length, tone: 'sky' },
+          { label: 'Aksi tabel', value: columns.length - dataColumns.length, tone: 'amber' },
+        ]}
+      />
+      <CrudActionBar
+        title={crudTitle ?? 'Data Tabel'}
+        rows={rows}
+        columns={dataColumns.map((column) => ({ key: column.key, header: column.header }))}
+        filename={crudFilename ?? slugifyFilename(crudTitle ?? emptyTitle ?? 'data-tabel')}
+        onUploadRows={onUploadRows}
+        compact
+      />
+    </div>
+  ) : null;
+
+  if (!rows.length) {
+    return (
+      <>
+        {tools}
+        <EmptyState title={emptyTitle} />
+      </>
+    );
+  }
 
   return (
     <>
+      {tools}
       {/* Tabel penuh pada layar besar */}
       <div className="hidden overflow-x-auto rounded-xl border border-slate-200 md:block dark:border-slate-800">
         <table className="table-grid">
@@ -462,6 +501,13 @@ export function DataGrid<T extends Record<string, unknown>>({
       </div>
     </>
   );
+}
+
+function slugifyFilename(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'data-tabel';
 }
 
 export function Pagination({
