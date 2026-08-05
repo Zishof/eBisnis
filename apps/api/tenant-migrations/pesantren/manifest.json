@@ -239,6 +239,12 @@
       "file": "20260805T030000__pesantren__psb_jalur_masuk.sql",
       "name": "Jalur masuk PSB",
       "description": "Menambah jalur_masuk pada pesantren_psb_pendaftar untuk menutup pola AIS RekapJalurMasukMultiTahunPsb tanpa mengubah alur status PSB yang sudah berjalan."
+    },
+    {
+      "id": "20260806T010000__pesantren__dapodik_import_batch",
+      "file": "20260806T010000__pesantren__dapodik_import_batch.sql",
+      "name": "Log batch import DAPODIK dan rollback aman",
+      "description": "Menambah pesantren_dapodik_import_batch dan pesantren_dapodik_import_row agar import final DAPODIK punya jejak batch, detail baris, status error, serta rollback aman untuk baris yang dibuat oleh batch."
     }
   ]
 }

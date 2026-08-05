@@ -125,9 +125,26 @@ Yang sudah ditambahkan:
 
 Yang masih tersisa setelah batch ini:
 
-- Log batch import permanen, termasuk file sumber, user pengunggah, waktu proses, dan ringkasan error.
-- Rollback batch untuk membatalkan import final secara aman.
+- Rollback perubahan `UPDATE` lama-vs-baru per field masih perlu snapshot lebih detail.
 - Template resmi DAPODIK per jenjang/unit formal masih perlu dicocokkan dengan format operasional terakhir tenant.
+
+## Status Implementasi Batch 2026-08-06 DAPODIK Batch Log
+
+Batch lanjutan menutup gap audit import DAPODIK yang sebelumnya belum punya histori permanen.
+
+Yang sudah ditambahkan:
+
+- Migration tenant `20260806T010000__pesantren__dapodik_import_batch` untuk tabel `pesantren_dapodik_import_batch` dan `pesantren_dapodik_import_row`.
+- Import final DAPODIK mencatat `batchId`, dataset, format, hash isi file, total baris, jumlah dibuat/diperbarui/dilewati, error, waktu proses, dan user pengunggah.
+- Setiap baris import final dicatat dengan nomor baris, aksi `CREATE`/`UPDATE`/`SKIP`, target table, target id, kunci import, ringkasan, pesan error, dan raw row JSON.
+- Endpoint riwayat/detail/rollback batch pada `pesantren/dapodik` dan facade `eschool/dapodik`.
+- UI DAPODIK ePesantren/eSchool menampilkan riwayat import dataset aktif dan tombol rollback untuk batch yang membuat data baru.
+- Rollback aman saat ini melakukan soft-delete untuk baris yang dibuat oleh batch; baris yang hanya di-update tidak dibalik otomatis agar tidak menimpa perubahan manual setelah import.
+
+Yang masih tersisa setelah batch ini:
+
+- Snapshot before/after per field untuk rollback UPDATE penuh.
+- Detail view baris batch di UI bila operator perlu audit seluruh baris, bukan hanya ringkasan batch.
 
 ## Skala Status
 
@@ -318,8 +335,8 @@ Gap DAPODIK yang masih perlu dipastikan untuk parity penuh eSchool setelah facad
 - Template resmi per entitas eSchool dengan validasi kolom wajib per jenjang/unit formal.
 - Export balik ke format DAPODIK untuk siswa, guru, mapel, rombel, anggota rombel, nilai, dan referensi.
 - Preview diff sebelum import: dry-run sudah menampilkan rencana `CREATE`/`UPDATE`/`SKIP` per baris; diff nilai lama-vs-baru per field masih bisa diperdalam.
-- Rollback batch setelah import final.
-- Log import per batch.
+- Rollback batch setelah import final: soft-delete baris yang dibuat batch sudah tersedia; rollback UPDATE per field masih perlu snapshot before/after.
+- Log import per batch sudah tersedia untuk import final, termasuk detail baris.
 - Mapping kode referensi nasional yang dapat diperbarui admin.
 - Resolusi data ganda berbasis NISN, NIK, NUPTK, dan kode sekolah.
 
@@ -343,7 +360,7 @@ Untuk eCampus, DAPODIK bukan standar utama. Yang harus dibuat adalah integrasi F
 - PSB/PPDB: form dinamis, kartu peserta, verifikasi dokumen, hasil seleksi, ekspor.
 - Gerbang: QR scanner tablet/PC, log kunjungan, penjemput, paket, mode offline ringan.
 - Keuangan: rekonsiliasi pembayaran, export tagihan/piutang, posting jurnal.
-- DAPODIK: export/import lengkap sudah tersedia untuk dataset utama; dry-run preview aksi per baris sudah tersedia; diff per field, log batch, dan rollback batch masih menjadi prioritas lanjutan.
+- DAPODIK: export/import lengkap sudah tersedia untuk dataset utama; dry-run preview aksi per baris, log batch final, dan rollback aman untuk baris baru sudah tersedia; diff per field dan rollback UPDATE masih menjadi prioritas lanjutan.
 - Situs pondok/unit: konsolidasi UI, gambar bisa diubah admin, tidak ada header/CTA double, responsif mobile/desktop.
 
 ### P1 - Jadikan eSchool vertical nyata

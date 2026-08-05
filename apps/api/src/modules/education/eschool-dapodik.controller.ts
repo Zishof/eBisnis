@@ -70,6 +70,19 @@ class EksporQuery {
   format?: 'csv';
 }
 
+class BatchQuery {
+  @ApiPropertyOptional({ enum: DATASET })
+  @IsOptional()
+  @IsIn(DATASET as unknown as string[])
+  dataset?: (typeof DATASET)[number];
+}
+
+class BatchParam {
+  @ApiProperty()
+  @IsString()
+  batchId!: string;
+}
+
 @ApiTags('eschool')
 @ApiBearerAuth('access-token')
 @Controller('eschool/dapodik')
@@ -88,6 +101,28 @@ export class EschoolDapodikController {
   @ApiOperation({ summary: 'Referensi DAPODIK aktif untuk form eSchool' })
   referensi(@Param() param: ReferensiParam, @CurrentUser() user: AuthenticatedUser) {
     return this.dapodik.referensi(schemaWajib(user), param.kategori);
+  }
+
+  @Permissions('EPESANTREN_DAPODIK.READ')
+  @Get('batches')
+  @ApiOperation({ summary: 'Riwayat batch import DAPODIK eSchool' })
+  daftarBatch(@Query() query: BatchQuery, @CurrentUser() user: AuthenticatedUser) {
+    return this.dapodik.daftarBatch(schemaWajib(user), query.dataset);
+  }
+
+  @Permissions('EPESANTREN_DAPODIK.READ')
+  @Get('batches/:batchId')
+  @ApiOperation({ summary: 'Detail baris batch import DAPODIK eSchool' })
+  detailBatch(@Param() param: BatchParam, @CurrentUser() user: AuthenticatedUser) {
+    return this.dapodik.detailBatch(schemaWajib(user), param.batchId);
+  }
+
+  @Permissions('EPESANTREN_DAPODIK.CREATE')
+  @Post('batches/:batchId/rollback')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Rollback aman batch import DAPODIK eSchool' })
+  rollbackBatch(@Param() param: BatchParam, @CurrentUser() user: AuthenticatedUser) {
+    return this.dapodik.rollbackBatch(schemaWajib(user), param.batchId, user.userId);
   }
 
   @Permissions('EPESANTREN_DAPODIK.EXPORT')

@@ -243,7 +243,7 @@ Status saat ini: sebagian lewat nilai pesantren. Rapor sekolah resmi belum terse
 
 Mencakup import dan export siswa, guru, mapel, rombel, anggota rombel, nilai, referensi, serta validasi data nasional.
 
-Status saat ini: sebagian kuat. ePesantren memiliki menu DAPODIK utama, dan eSchool sudah memiliki route `/app/eschool/dapodik` serta endpoint `/eschool/dapodik/...` yang memakai mesin import/export yang sama. Import dry-run sudah menampilkan preview aksi `CREATE`, `UPDATE`, atau `SKIP` per baris sebelum data disimpan. Domain siswa eSchool murni, filter unit formal, template resmi per jenjang, log batch permanen, diff per field, dan rollback batch masih perlu diperdalam.
+Status saat ini: sebagian kuat. ePesantren memiliki menu DAPODIK utama, dan eSchool sudah memiliki route `/app/eschool/dapodik` serta endpoint `/eschool/dapodik/...` yang memakai mesin import/export yang sama. Import dry-run sudah menampilkan preview aksi `CREATE`, `UPDATE`, atau `SKIP` per baris sebelum data disimpan. Import final sudah memiliki log batch permanen dan rollback aman untuk baris baru yang dibuat batch. Domain siswa eSchool murni, filter unit formal, template resmi per jenjang, diff per field, dan rollback perubahan UPDATE masih perlu diperdalam.
 
 ### 8. PPDB Sekolah
 
@@ -491,7 +491,7 @@ Fitur minimal import/export:
 - Deteksi data ganda.
 - Mapping referensi nasional.
 - Simpan batch import.
-- Rollback batch.
+- Rollback batch untuk data baru yang dibuat import final.
 - Export ulang per entitas.
 - Log error per baris.
 

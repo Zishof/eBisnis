@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Database, Download, FileCheck2, FileSpreadsheet, Search, UploadCloud } from 'lucide-react';
+import { CheckCircle2, Database, Download, FileCheck2, FileSpreadsheet, History, RotateCcw, Search, UploadCloud } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useErrorMessage } from '../../../app/auth-context';
 import { PageHeader, StatusBadge, useToast } from '../../../components/ui';
@@ -22,6 +22,7 @@ interface CsvPayload {
 }
 
 interface ImportResult {
+  batchId?: string;
   dataset: string;
   dryRun: boolean;
   totalRows: number;
@@ -30,6 +31,22 @@ interface ImportResult {
   skipped: number;
   errors: Array<{ row: number; message: string }>;
   preview: Array<{ row: number; action: 'CREATE' | 'UPDATE' | 'SKIP'; key: string; summary: string }>;
+}
+
+interface ImportBatch {
+  id: string;
+  dataset: string;
+  format: 'csv' | 'json';
+  totalRows: number;
+  createdCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  errorCount: number;
+  status: string;
+  createdAt: string;
+  completedAt: string | null;
+  rolledBackAt: string | null;
+  rollbackNote: string | null;
 }
 
 export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren' | 'eschool' }) {
@@ -48,6 +65,10 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
   const datasets = useQuery({
     queryKey: [mode, 'dapodik-datasets'],
     queryFn: () => api.get<Dataset[]>(`${endpointBase}/datasets`),
+  });
+  const batches = useQuery({
+    queryKey: [mode, 'dapodik-batches', datasetCode],
+    queryFn: () => api.get<ImportBatch[]>(`${endpointBase}/batches?dataset=${encodeURIComponent(datasetCode)}`),
   });
   const active = useMemo(
     () => datasets.data?.find((item) => item.code === datasetCode) ?? datasets.data?.[0],
@@ -92,8 +113,18 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
     onSuccess: (payload) => {
       setResult(payload);
       toast.push(payload.dryRun ? 'Validasi selesai.' : 'Impor Dapodik selesai.', 'success');
+      if (!payload.dryRun) void batches.refetch();
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Impor Dapodik gagal.'), 'error'),
+  });
+
+  const rollback = useMutation({
+    mutationFn: (batchId: string) => api.post<{ rolledBack: number; failed: number }>(`${endpointBase}/batches/${batchId}/rollback`, {}),
+    onSuccess: (payload) => {
+      toast.push(`Rollback selesai. ${payload.rolledBack} baris dibatalkan, ${payload.failed} gagal.`, payload.failed ? 'info' : 'success');
+      void batches.refetch();
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Rollback batch gagal.'), 'error'),
   });
 
   return (
@@ -244,6 +275,11 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
 
           {result && (
             <div className="card p-4">
+              {result.batchId && (
+                <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                  Batch import tersimpan: <span className="font-mono text-xs font-semibold">{result.batchId}</span>
+                </div>
+              )}
               <div className="grid gap-3 sm:grid-cols-4">
                 <Metric label="Baris" value={result.totalRows} />
                 <Metric label="Dibuat" value={result.created} />
@@ -293,6 +329,67 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
               )}
             </div>
           )}
+
+          <div className="card overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-sky-50 text-sky-700">
+                  <History className="h-4 w-4" aria-hidden />
+                </span>
+                <div>
+                  <h2 className="section-title">Riwayat Import</h2>
+                  <p className="text-xs text-slate-500">Batch final dataset aktif, termasuk status rollback.</p>
+                </div>
+              </div>
+              <button type="button" className="btn-outline" onClick={() => batches.refetch()} disabled={batches.isFetching}>
+                Muat Ulang
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Waktu</th>
+                    <th className="px-4 py-3 text-left">Status</th>
+                    <th className="px-4 py-3 text-left">Baris</th>
+                    <th className="px-4 py-3 text-left">Hasil</th>
+                    <th className="px-4 py-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {(batches.data ?? []).map((batch) => (
+                    <tr key={batch.id}>
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-slate-900">{formatTanggal(batch.createdAt)}</p>
+                        <p className="font-mono text-xs text-slate-500">{batch.id}</p>
+                      </td>
+                      <td className="px-4 py-3"><StatusBadge status={labelStatusBatch(batch.status)} /></td>
+                      <td className="px-4 py-3 text-slate-700">{batch.totalRows}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {batch.createdCount} dibuat, {batch.updatedCount} diperbarui, {batch.skippedCount} dilewati
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          className="btn-outline"
+                          disabled={!bisaRollback(batch) || rollback.isPending}
+                          onClick={() => rollback.mutate(batch.id)}
+                        >
+                          <RotateCcw className="h-4 w-4" aria-hidden />
+                          Rollback
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {!batches.isLoading && (batches.data ?? []).length === 0 && (
+                    <tr>
+                      <td className="px-4 py-6 text-center text-slate-500" colSpan={5}>Belum ada import final untuk dataset ini.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </section>
       </div>
     </>
@@ -303,6 +400,26 @@ function labelAksiPreview(action: 'CREATE' | 'UPDATE' | 'SKIP') {
   if (action === 'CREATE') return 'Akan dibuat';
   if (action === 'UPDATE') return 'Akan diperbarui';
   return 'Dilewati';
+}
+
+function labelStatusBatch(status: string) {
+  const labels: Record<string, string> = {
+    PROCESSING: 'Diproses',
+    IMPORTED: 'Terimpor',
+    IMPORTED_WITH_ERRORS: 'Terimpor dengan catatan',
+    FAILED: 'Gagal',
+    ROLLED_BACK: 'Rollback',
+    PARTIAL_ROLLBACK: 'Rollback sebagian',
+  };
+  return labels[status] ?? status;
+}
+
+function bisaRollback(batch: ImportBatch) {
+  return batch.createdCount > 0 && ['IMPORTED', 'IMPORTED_WITH_ERRORS'].includes(batch.status);
+}
+
+function formatTanggal(value: string) {
+  return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 
 function Metric({ label, value }: { label: string; value: number }) {

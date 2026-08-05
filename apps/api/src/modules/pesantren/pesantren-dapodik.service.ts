@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 
@@ -39,6 +40,7 @@ interface ImportOptions {
 }
 
 export interface ImportResult {
+  batchId?: string;
   dataset: DatasetCode;
   dryRun: boolean;
   totalRows: number;
@@ -47,6 +49,30 @@ export interface ImportResult {
   skipped: number;
   errors: Array<{ row: number; message: string }>;
   preview: Array<{ row: number; action: 'CREATE' | 'UPDATE' | 'SKIP'; key: string; summary: string }>;
+}
+
+export interface DapodikImportBatchRow {
+  id: string;
+  dataset: DatasetCode;
+  format: 'csv' | 'json';
+  totalRows: number;
+  createdCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  errorCount: number;
+  status: string;
+  createdAt: string;
+  completedAt: string | null;
+  rolledBackAt: string | null;
+  rollbackNote: string | null;
+}
+
+interface UpsertOutcome {
+  action: 'created' | 'updated';
+  targetTable: string;
+  targetId: string;
+  key: string;
+  summary: string;
 }
 
 export interface ReferensiDapodikRow {
@@ -256,6 +282,21 @@ const REFERENSI_KATEGORI: Partial<Record<DatasetCode, string>> = {
   'ref-kebutuhan-khusus': 'KEBUTUHAN_KHUSUS',
 };
 const KATEGORI_REFERENSI = new Set(Object.values(REFERENSI_KATEGORI));
+const DAPODIK_ROLLBACK_TABLES = new Map<string, string>([
+  ['pesantren_unit_pendidikan', 'pesantren_unit_pendidikan'],
+  ['pesantren_tahun_ajaran', 'pesantren_tahun_ajaran'],
+  ['pesantren_santri', 'pesantren_santri'],
+  ['pesantren_psb_pendaftar', 'pesantren_psb_pendaftar'],
+  ['pesantren_guru', 'pesantren_guru'],
+  ['pesantren_mata_pelajaran', 'pesantren_mata_pelajaran'],
+  ['pesantren_rombongan_belajar', 'pesantren_rombongan_belajar'],
+  ['pesantren_rombongan_anggota', 'pesantren_rombongan_anggota'],
+  ['pesantren_kurikulum', 'pesantren_kurikulum'],
+  ['pesantren_jadwal_pelajaran', 'pesantren_jadwal_pelajaran'],
+  ['pesantren_komponen_nilai', 'pesantren_komponen_nilai'],
+  ['pesantren_nilai', 'pesantren_nilai'],
+  ['pesantren_referensi_dapodik', 'pesantren_referensi_dapodik'],
+]);
 const DATASET_ALIASES: Partial<Record<DatasetCode, Partial<Record<string, string[]>>>> = {
   'unit-pendidikan': {
     code: ['kode', 'kode sekolah', 'kode unit', 'npsn'],
@@ -408,15 +449,28 @@ export class PesantrenDapodikService {
     const def = this.def(opsi.dataset);
     const rows = opsi.format === 'json' ? parseJsonRows(opsi.content) : parseCsv(opsi.content);
     const result: ImportResult = { dataset: opsi.dataset, dryRun: opsi.dryRun, totalRows: rows.length, created: 0, updated: 0, skipped: 0, errors: [], preview: [] };
+    const batchId = opsi.dryRun ? undefined : await this.mulaiBatch(schemaName, opsi, rows.length);
+    if (batchId) result.batchId = batchId;
 
     for (let index = 0; index < rows.length; index += 1) {
       const rowNumber = index + 2;
       const row = normalizeRow(rows[index], def.columns, opsi.dataset);
       const missing = def.required.filter((column) => !clean(row[column]));
       if (missing.length) {
-        result.errors.push({ row: rowNumber, message: `Kolom wajib kosong: ${missing.join(', ')}` });
+        const message = `Kolom wajib kosong: ${missing.join(', ')}`;
+        result.errors.push({ row: rowNumber, message });
         result.skipped += 1;
-        result.preview.push({ row: rowNumber, action: 'SKIP', key: '-', summary: `Kolom wajib kosong: ${missing.join(', ')}` });
+        result.preview.push({ row: rowNumber, action: 'SKIP', key: '-', summary: message });
+        if (batchId) {
+          await this.catatBatchRow(schemaName, batchId, {
+            rowNumber,
+            action: 'SKIP',
+            key: '-',
+            summary: message,
+            errorMessage: message,
+            rawRow: row,
+          });
+        }
         continue;
       }
       if (opsi.dryRun) {
@@ -433,16 +487,238 @@ export class PesantrenDapodikService {
         continue;
       }
       try {
-        const action = await this.upsert(schemaName, opsi.dataset, row, opsi.actorUserId);
-        if (action === 'created') result.created += 1;
+        const outcome = await this.upsert(schemaName, opsi.dataset, row, opsi.actorUserId);
+        if (outcome.action === 'created') result.created += 1;
         else result.updated += 1;
+        result.preview.push({
+          row: rowNumber,
+          action: outcome.action === 'created' ? 'CREATE' : 'UPDATE',
+          key: outcome.key,
+          summary: outcome.summary,
+        });
+        if (batchId) {
+          await this.catatBatchRow(schemaName, batchId, {
+            rowNumber,
+            action: outcome.action === 'created' ? 'CREATE' : 'UPDATE',
+            targetTable: outcome.targetTable,
+            targetId: outcome.targetId,
+            key: outcome.key,
+            summary: outcome.summary,
+            rawRow: row,
+          });
+        }
       } catch (error) {
-        result.errors.push({ row: rowNumber, message: errorMessage(error) });
+        const message = errorMessage(error);
+        result.errors.push({ row: rowNumber, message });
         result.skipped += 1;
+        result.preview.push({ row: rowNumber, action: 'SKIP', key: '-', summary: message });
+        if (batchId) {
+          await this.catatBatchRow(schemaName, batchId, {
+            rowNumber,
+            action: 'SKIP',
+            key: '-',
+            summary: message,
+            errorMessage: message,
+            rawRow: row,
+          });
+        }
       }
     }
 
+    if (batchId) await this.selesaikanBatch(schemaName, batchId, result);
     return result;
+  }
+
+  async daftarBatch(schemaName: string, dataset?: DatasetCode): Promise<DapodikImportBatchRow[]> {
+    const S = `"${schemaName}"`;
+    const params = dataset ? [dataset] : [];
+    const where = dataset ? 'WHERE dataset = $1' : '';
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schemaName,
+      `SELECT id::text, dataset, format, total_rows, created_count, updated_count, skipped_count, error_count,
+              status, created_at::text, completed_at::text, rolled_back_at::text, rollback_note
+         FROM ${S}.pesantren_dapodik_import_batch
+         ${where}
+        ORDER BY created_at DESC
+        LIMIT 50`,
+      params,
+    );
+    return rows.map((row) => ({
+      id: String(row.id),
+      dataset: row.dataset as DatasetCode,
+      format: row.format as 'csv' | 'json',
+      totalRows: Number(row.total_rows ?? 0),
+      createdCount: Number(row.created_count ?? 0),
+      updatedCount: Number(row.updated_count ?? 0),
+      skippedCount: Number(row.skipped_count ?? 0),
+      errorCount: Number(row.error_count ?? 0),
+      status: String(row.status),
+      createdAt: String(row.created_at),
+      completedAt: row.completed_at ? String(row.completed_at) : null,
+      rolledBackAt: row.rolled_back_at ? String(row.rolled_back_at) : null,
+      rollbackNote: row.rollback_note ? String(row.rollback_note) : null,
+    }));
+  }
+
+  async detailBatch(schemaName: string, batchId: string) {
+    const S = `"${schemaName}"`;
+    const batch = await this.tenantDb.queryOne<Record<string, unknown>>(
+      schemaName,
+      `SELECT id::text, dataset, format, total_rows, created_count, updated_count, skipped_count, error_count,
+              status, error_summary, created_at::text, completed_at::text, rolled_back_at::text, rollback_note
+         FROM ${S}.pesantren_dapodik_import_batch
+        WHERE id = $1`,
+      [batchId],
+    );
+    if (!batch) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Batch import DAPODIK tidak ditemukan.');
+    const rows = await this.tenantDb.query(
+      schemaName,
+      `SELECT id::text, row_number, action, target_table, target_id::text, import_key, summary,
+              error_message, rollback_status, rollback_message, created_at::text
+         FROM ${S}.pesantren_dapodik_import_row
+        WHERE batch_id = $1
+        ORDER BY row_number ASC`,
+      [batchId],
+    );
+    return { batch, rows };
+  }
+
+  async rollbackBatch(schemaName: string, batchId: string, actorUserId: string) {
+    const S = `"${schemaName}"`;
+    const batch = await this.tenantDb.queryOne<{ id: string; status: string }>(
+      schemaName,
+      `SELECT id::text, status FROM ${S}.pesantren_dapodik_import_batch WHERE id = $1`,
+      [batchId],
+    );
+    if (!batch) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Batch import DAPODIK tidak ditemukan.');
+    if (['ROLLED_BACK', 'PARTIAL_ROLLBACK'].includes(batch.status)) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Batch import ini sudah pernah di-rollback.');
+    }
+
+    const rows = await this.tenantDb.query<{ id: string; target_table: string; target_id: string }>(
+      schemaName,
+      `SELECT id::text, target_table, target_id::text
+         FROM ${S}.pesantren_dapodik_import_row
+        WHERE batch_id = $1 AND action = 'CREATE' AND target_id IS NOT NULL AND rollback_status = 'PENDING'
+        ORDER BY row_number DESC`,
+      [batchId],
+    );
+    let rolledBack = 0;
+    let failed = 0;
+    for (const row of rows) {
+      const table = DAPODIK_ROLLBACK_TABLES.get(row.target_table);
+      if (!table) {
+        failed += 1;
+        await this.tandaiRollbackRow(schemaName, row.id, 'FAILED', 'Target tabel tidak diizinkan untuk rollback otomatis.');
+        continue;
+      }
+      const updated = await this.tenantDb.query<{ id: string }>(
+        schemaName,
+        `UPDATE ${S}.${table}
+            SET deleted_at = now(), version = version + 1
+          WHERE id = $1 AND deleted_at IS NULL
+          RETURNING id::text`,
+        [row.target_id],
+      );
+      if (updated.length) {
+        rolledBack += 1;
+        await this.tandaiRollbackRow(schemaName, row.id, 'ROLLED_BACK', 'Baris yang dibuat batch sudah dihapus lunak.');
+      } else {
+        failed += 1;
+        await this.tandaiRollbackRow(schemaName, row.id, 'FAILED', 'Data target tidak ditemukan atau sudah dihapus.');
+      }
+    }
+    const status = failed > 0 ? 'PARTIAL_ROLLBACK' : 'ROLLED_BACK';
+    await this.tenantDb.query(
+      schemaName,
+      `UPDATE ${S}.pesantren_dapodik_import_batch
+          SET status = $2, rolled_back_at = now(), rolled_back_by = $3,
+              rollback_note = $4
+        WHERE id = $1`,
+      [batchId, status, actorUserId, `Rollback created rows: ${rolledBack}, gagal: ${failed}. Update lama tidak dibalik otomatis.`],
+    );
+    return { batchId, status, rolledBack, failed, skippedUpdates: true };
+  }
+
+  private async mulaiBatch(schemaName: string, opsi: ImportOptions, totalRows: number): Promise<string> {
+    const S = `"${schemaName}"`;
+    const row = await this.tenantDb.queryOne<{ id: string }>(
+      schemaName,
+      `INSERT INTO ${S}.pesantren_dapodik_import_batch
+         (dataset, format, content_hash, dry_run, total_rows, created_by)
+       VALUES ($1, $2, $3, false, $4, $5)
+       RETURNING id::text`,
+      [opsi.dataset, opsi.format, hashContent(opsi.content), totalRows, opsi.actorUserId],
+    );
+    if (!row) throw AppError.internal(ErrorCodes.INTERNAL_ERROR, 'Batch import DAPODIK gagal dibuat.');
+    return row.id;
+  }
+
+  private async catatBatchRow(
+    schemaName: string,
+    batchId: string,
+    input: {
+      rowNumber: number;
+      action: 'CREATE' | 'UPDATE' | 'SKIP';
+      targetTable?: string;
+      targetId?: string;
+      key: string;
+      summary: string;
+      errorMessage?: string;
+      rawRow: Record<string, string>;
+    },
+  ): Promise<void> {
+    const S = `"${schemaName}"`;
+    await this.tenantDb.query(
+      schemaName,
+      `INSERT INTO ${S}.pesantren_dapodik_import_row
+         (batch_id, row_number, action, target_table, target_id, import_key, summary, error_message, raw_row, rollback_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)`,
+      [
+        batchId,
+        input.rowNumber,
+        input.action,
+        input.targetTable ?? null,
+        input.targetId ?? null,
+        input.key,
+        input.summary,
+        input.errorMessage ?? null,
+        JSON.stringify(input.rawRow),
+        input.action === 'CREATE' ? 'PENDING' : 'NOT_REQUIRED',
+      ],
+    );
+  }
+
+  private async selesaikanBatch(schemaName: string, batchId: string, result: ImportResult): Promise<void> {
+    const S = `"${schemaName}"`;
+    const status = result.errors.length ? 'IMPORTED_WITH_ERRORS' : 'IMPORTED';
+    await this.tenantDb.query(
+      schemaName,
+      `UPDATE ${S}.pesantren_dapodik_import_batch
+          SET created_count = $2, updated_count = $3, skipped_count = $4, error_count = $5,
+              status = $6, error_summary = $7, completed_at = now()
+        WHERE id = $1`,
+      [
+        batchId,
+        result.created,
+        result.updated,
+        result.skipped,
+        result.errors.length,
+        status,
+        result.errors.slice(0, 10).map((item) => `Baris ${item.row}: ${item.message}`).join('\n') || null,
+      ],
+    );
+  }
+
+  private async tandaiRollbackRow(schemaName: string, rowId: string, status: 'ROLLED_BACK' | 'FAILED', message: string): Promise<void> {
+    const S = `"${schemaName}"`;
+    await this.tenantDb.query(
+      schemaName,
+      `UPDATE ${S}.pesantren_dapodik_import_row
+          SET rollback_status = $2, rollback_message = $3
+        WHERE id = $1`,
+      [rowId, status, message],
+    );
   }
 
   private async previewUpsert(
@@ -539,7 +815,7 @@ export class PesantrenDapodikService {
     }
   }
 
-  private async upsert(schemaName: string, dataset: DatasetCode, row: Record<string, string>, actorUserId: string): Promise<'created' | 'updated'> {
+  private async upsert(schemaName: string, dataset: DatasetCode, row: Record<string, string>, actorUserId: string): Promise<UpsertOutcome> {
     const S = `"${schemaName}"`;
     switch (dataset) {
       case 'unit-pendidikan':
@@ -547,7 +823,7 @@ export class PesantrenDapodikService {
       case 'tahun-ajaran':
         return upsertSimple(this.tenantDb, schemaName, S, 'pesantren_tahun_ajaran', ['code'], ['code', 'name', 'tanggal_mulai', 'tanggal_selesai', 'status'], withDefaults(row, { status: 'DRAFT' }), actorUserId);
       case 'santri':
-        return upsertByExists(this.tenantDb, schemaName, `SELECT id FROM ${S}.pesantren_santri WHERE nis = $1 AND deleted_at IS NULL`, [row.nis], async (exists) => {
+        return upsertByExists(this.tenantDb, schemaName, `SELECT id::text AS id FROM ${S}.pesantren_santri WHERE nis = $1 AND deleted_at IS NULL`, [row.nis], async (exists) => {
           const santriRow = withDefaults(row, {
             status: 'AKTIF',
             status_tinggal: 'MUKIM',
@@ -570,7 +846,7 @@ export class PesantrenDapodikService {
           } else {
             await this.tenantDb.query(schemaName, `INSERT INTO ${S}.pesantren_santri (${columns.join(', ')}, created_by, updated_by) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}, $${columns.length + 1}, $${columns.length + 1})`, [...columns.map((c) => sqlValue(santriRow[c], c)), actorUserId]);
           }
-        });
+        }, 'pesantren_santri', `nis=${row.nis || '-'}`, exists => exists ? 'Santri akan diperbarui.' : 'Santri akan dibuat.');
       case 'psb-pendaftar':
         return upsertSimple(this.tenantDb, schemaName, S, 'pesantren_psb_pendaftar', ['gelombang_id', 'nomor_pendaftaran'], ['gelombang_id', 'nomor_pendaftaran', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nama_orang_tua', 'no_hp_orang_tua', 'alamat', 'asal_sekolah', 'jalur_masuk', 'status'], await this.resolvePsbPendaftar(schemaName, row), actorUserId);
       case 'guru':
@@ -772,16 +1048,25 @@ async function upsertSimple(
   columns: string[],
   row: Record<string, string>,
   actorUserId: string,
-): Promise<'created' | 'updated'> {
+): Promise<UpsertOutcome> {
   const where = keys.map((key, i) => `${key} = $${i + 1}`).join(' AND ');
-  return upsertByExists(db, schemaName, `SELECT id FROM ${S}.${table} WHERE ${where} AND deleted_at IS NULL`, keys.map((key) => sqlValue(row[key], key)), async (exists) => {
-    if (exists) {
-      const updateColumns = columns.filter((column) => !keys.includes(column));
-      await db.query(schemaName, `UPDATE ${S}.${table} SET ${updateColumns.map((c, i) => `${c} = $${keys.length + i + 1}`).join(', ')}, updated_at = now(), updated_by = $${keys.length + updateColumns.length + 1}, version = version + 1 WHERE ${where} AND deleted_at IS NULL`, [...keys.map((key) => sqlValue(row[key], key)), ...updateColumns.map((c) => sqlValue(row[c], c)), actorUserId]);
-    } else {
-      await db.query(schemaName, `INSERT INTO ${S}.${table} (${columns.join(', ')}, created_by, updated_by) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}, $${columns.length + 1}, $${columns.length + 1})`, [...columns.map((c) => sqlValue(row[c], c)), actorUserId]);
-    }
-  });
+  return upsertByExists(
+    db,
+    schemaName,
+    `SELECT id::text AS id FROM ${S}.${table} WHERE ${where} AND deleted_at IS NULL`,
+    keys.map((key) => sqlValue(row[key], key)),
+    async (exists) => {
+      if (exists) {
+        const updateColumns = columns.filter((column) => !keys.includes(column));
+        await db.query(schemaName, `UPDATE ${S}.${table} SET ${updateColumns.map((c, i) => `${c} = $${keys.length + i + 1}`).join(', ')}, updated_at = now(), updated_by = $${keys.length + updateColumns.length + 1}, version = version + 1 WHERE ${where} AND deleted_at IS NULL`, [...keys.map((key) => sqlValue(row[key], key)), ...updateColumns.map((c) => sqlValue(row[c], c)), actorUserId]);
+      } else {
+        await db.query(schemaName, `INSERT INTO ${S}.${table} (${columns.join(', ')}, created_by, updated_by) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}, $${columns.length + 1}, $${columns.length + 1})`, [...columns.map((c) => sqlValue(row[c], c)), actorUserId]);
+      }
+    },
+    table,
+    keys.map((item) => `${item}=${clean(row[item]) || '-'}`).join(', '),
+    (exists) => exists ? `${labelTable(table)} akan diperbarui.` : `${labelTable(table)} akan dibuat.`,
+  );
 }
 
 async function previewSimple(
@@ -810,10 +1095,22 @@ async function upsertByExists(
   existsSql: string,
   existsParams: unknown[],
   write: (exists: boolean) => Promise<void>,
-): Promise<'created' | 'updated'> {
-  const exists = Boolean(await db.queryOne(schemaName, existsSql, existsParams));
+  targetTable: string,
+  key: string,
+  summary: (exists: boolean) => string,
+): Promise<UpsertOutcome> {
+  const existing = await db.queryOne<{ id: string }>(schemaName, existsSql, existsParams);
+  const exists = Boolean(existing);
   await write(exists);
-  return exists ? 'updated' : 'created';
+  const target = existing ?? await db.queryOne<{ id: string }>(schemaName, existsSql, existsParams);
+  if (!target) throw AppError.internal(ErrorCodes.INTERNAL_ERROR, `Target import ${targetTable} gagal ditemukan setelah upsert.`);
+  return {
+    action: exists ? 'updated' : 'created',
+    targetTable,
+    targetId: target.id,
+    key,
+    summary: summary(exists),
+  };
 }
 
 function normalizeRow(row: Record<string, unknown>, columns: string[], dataset: DatasetCode): Record<string, string> {
@@ -906,6 +1203,29 @@ function toCsv(rows: Record<string, unknown>[], columns: string[]): string {
 
 function csvCell(value: unknown): string {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function hashContent(content: string): string {
+  return createHash('sha256').update(content).digest('hex');
+}
+
+function labelTable(table: string): string {
+  const labels: Record<string, string> = {
+    pesantren_unit_pendidikan: 'Unit pendidikan',
+    pesantren_tahun_ajaran: 'Tahun ajaran',
+    pesantren_santri: 'Santri',
+    pesantren_psb_pendaftar: 'Pendaftar PSB',
+    pesantren_guru: 'Guru',
+    pesantren_mata_pelajaran: 'Mata pelajaran',
+    pesantren_rombongan_belajar: 'Rombongan belajar',
+    pesantren_rombongan_anggota: 'Anggota rombel',
+    pesantren_kurikulum: 'Kurikulum',
+    pesantren_jadwal_pelajaran: 'Jadwal',
+    pesantren_komponen_nilai: 'Komponen nilai',
+    pesantren_nilai: 'Nilai',
+    pesantren_referensi_dapodik: 'Referensi DAPODIK',
+  };
+  return labels[table] ?? table;
 }
 
 function errorMessage(error: unknown): string {
