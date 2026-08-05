@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-06 - Inventory / Sales 48 Screen Parity, Wave 0
+
+- Added auditable source, route, API, permission, report, sync, test, and UAT ledgers.
+- Added explicit Web routes for all 48 legacy screen contracts while preserving
+  `/app/inventory-control` as a compatibility route.
+- Made the backend parity contract return the canonical route for each screen.
+- Added route contract tests for backend and Web.
+
 Seluruh perubahan penting pada eBisnis.id dicatat di berkas ini.
 
 Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),

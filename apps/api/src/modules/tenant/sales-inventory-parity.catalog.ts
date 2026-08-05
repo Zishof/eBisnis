@@ -23,11 +23,30 @@ const item = (
   legacyName,
   domain,
   api,
-  webRoute: '/app/inventory-control',
+  webRoute: webRouteForScreen(screen),
   flutterModule: 'Inventory Control',
   web,
   flutter,
 });
+
+export function webRouteForScreen(screen: number): string {
+  if (screen <= 3) return '/app/master/suppliers';
+  if (screen <= 6) return '/app/master/customers';
+  if (screen === 7) return '/app/master/salespeople';
+  if (screen === 8) return '/app/inventory/stock';
+  if (screen <= 10) return '/app/inventory/stock-opnames';
+  if (screen <= 19) return '/app/inventory/pricing';
+  if (screen === 20) return '/app/purchasing/invoices';
+  if (screen <= 27) return '/app/purchasing/payables';
+  if (screen <= 29) return '/app/purchasing/reports';
+  if (screen === 30) return '/app/sales/invoices';
+  if (screen <= 38) return '/app/sales/receivables';
+  if (screen <= 40) return '/app/sales/note-custody';
+  if (screen <= 42) return '/app/sales/receivable-reports';
+  if (screen <= 44) return '/app/finance/journals';
+  if (screen <= 48) return '/app/finance/profit-loss';
+  throw new RangeError(`Nomor layar inventory tidak valid: ${screen}`);
+}
 
 /**
  * Kontrak paritas 48 layar dari manual lama. Status hanya boleh dinaikkan bila

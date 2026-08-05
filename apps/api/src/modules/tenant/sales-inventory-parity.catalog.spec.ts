@@ -1,4 +1,4 @@
-import { SALES_INVENTORY_PARITY, paritySummary } from './sales-inventory-parity.catalog';
+import { SALES_INVENTORY_PARITY, paritySummary, webRouteForScreen } from './sales-inventory-parity.catalog';
 
 describe('sales inventory legacy parity contract', () => {
   it('keeps every one of the 48 documented screens in sequence', () => {
@@ -13,9 +13,18 @@ describe('sales inventory legacy parity contract', () => {
       expect(item.legacyName.trim()).not.toBe('');
       expect(item.api.length).toBeGreaterThan(0);
       expect(item.api.every((path) => path.startsWith('/'))).toBe(true);
-      expect(item.webRoute).toBe('/app/inventory-control');
+      expect(item.webRoute).toBe(webRouteForScreen(item.screen));
+      expect(item.webRoute).not.toBe('/app/inventory-control');
       expect(item.flutterModule).toBe('Inventory Control');
     }
+  });
+
+  it('maps every screen to its explicit operational route', () => {
+    expect(webRouteForScreen(1)).toBe('/app/master/suppliers');
+    expect(webRouteForScreen(20)).toBe('/app/purchasing/invoices');
+    expect(webRouteForScreen(39)).toBe('/app/sales/note-custody');
+    expect(webRouteForScreen(48)).toBe('/app/finance/profit-loss');
+    expect(() => webRouteForScreen(49)).toThrow(RangeError);
   });
 
   it('reports surface totals without hiding read-only or contract-only gaps', () => {

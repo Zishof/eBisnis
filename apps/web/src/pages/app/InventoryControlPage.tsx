@@ -1,6 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Banknote,
   BarChart3,
@@ -25,18 +25,9 @@ import {
 import { api, formatDate, formatMoney, formatNumber } from '../../lib/api';
 import { downloadExcel, downloadPdf, type ExportColumn } from '../../lib/export-table';
 import { Code, DataGrid, PageHeader, StatusBadge, type GridColumn } from '../../components/ui';
+import { inventoryRouteContext, inventoryTabRoutes, type InventoryTabKey } from './inventory-route-context';
 
-type TabKey =
-  | 'suppliers'
-  | 'customers'
-  | 'sales'
-  | 'stock'
-  | 'prices'
-  | 'purchases'
-  | 'salesOrders'
-  | 'cash'
-  | 'profit'
-  | 'periodClose';
+type TabKey = InventoryTabKey;
 
 type MasterRow = Record<string, unknown> & {
   id: string;
@@ -237,10 +228,18 @@ const parityGroups = [
 
 export function InventoryControlPage() {
   const queryClient = useQueryClient();
-  const [active, setActive] = useState<TabKey>('stock');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const routeContext = useMemo(
+    () => inventoryRouteContext(location.pathname, location.search),
+    [location.pathname, location.search],
+  );
+  const [active, setActive] = useState<TabKey>(routeContext.tab);
   const [search, setSearch] = useState('');
   const [includeSettled, setIncludeSettled] = useState(false);
   const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
+
+  useEffect(() => setActive(routeContext.tab), [routeContext.tab]);
 
   const dashboard = useQuery({
     queryKey: ['inventory-control-dashboard'],
@@ -331,9 +330,9 @@ export function InventoryControlPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Inventory Control CMN"
-        description="Seluruh fungsi aplikasi Inventory lama disusun ulang menjadi workspace modern: cepat dicari, bisa diekspor, responsif, dan siap audit."
-        breadcrumbs={[{ label: 'Dashboard', href: '/app' }, { label: 'Inventory Control' }]}
+        title={routeContext.title}
+        description={`Layar ${routeContext.screenRange} dari kontrak transisi Inventory & Sales. Data, command, audit, laporan, dan sinkronisasi memakai layanan tenant yang sama.`}
+        breadcrumbs={[{ label: 'Dashboard', href: '/app' }, { label: 'Inventory & Sales', href: '/app/inventory-control' }, { label: routeContext.title }]}
         actions={
           <>
             <a href="/panduan/inventory-sales" target="_blank" rel="noreferrer" className="btn-secondary">
@@ -398,7 +397,10 @@ export function InventoryControlPage() {
             <button
               key={tab.key}
               type="button"
-              onClick={() => setActive(tab.key)}
+              onClick={() => {
+                setActive(tab.key);
+                void navigate(inventoryTabRoutes[tab.key]);
+              }}
               className={`rounded-xl border p-3 text-left transition ${
                 active === tab.key
                   ? 'border-brand-500 bg-brand-50 text-brand-900 shadow-sm dark:bg-brand-950/40 dark:text-brand-100'

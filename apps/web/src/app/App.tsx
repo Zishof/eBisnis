@@ -620,6 +620,21 @@ export function App() {
           <Route path="chart-of-accounts" element={<MasterListPage resource="chart-of-accounts" />} />
           <Route path="journal-entries" element={<JournalEntriesPage />} />
           <Route path="inventory-control" element={<InventoryControlPage />} />
+          <Route path="master/suppliers" element={<InventoryControlPage />} />
+          <Route path="master/customers" element={<InventoryControlPage />} />
+          <Route path="master/salespeople" element={<InventoryControlPage />} />
+          <Route path="inventory/stock" element={<InventoryControlPage />} />
+          <Route path="inventory/stock-opnames" element={<InventoryControlPage />} />
+          <Route path="inventory/pricing" element={<InventoryControlPage />} />
+          <Route path="purchasing/invoices" element={<InventoryControlPage />} />
+          <Route path="purchasing/payables" element={<InventoryControlPage />} />
+          <Route path="purchasing/reports" element={<InventoryControlPage />} />
+          <Route path="sales/invoices" element={<InventoryControlPage />} />
+          <Route path="sales/receivables" element={<InventoryControlPage />} />
+          <Route path="sales/note-custody" element={<InventoryControlPage />} />
+          <Route path="sales/receivable-reports" element={<InventoryControlPage />} />
+          <Route path="finance/journals" element={<InventoryControlPage />} />
+          <Route path="finance/profit-loss" element={<InventoryControlPage />} />
           <Route path="roles" element={<MasterListPage resource="roles" />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="role-permissions" element={<RolePermissionsPage />} />
