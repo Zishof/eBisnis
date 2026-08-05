@@ -391,6 +391,34 @@ class PeriodCommandDto {
   note?: string;
 }
 
+class CreateInventoryAccountDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(48)
+  code!: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(160)
+  name!: string;
+
+  @ApiProperty({ enum: ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'] })
+  @IsIn(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'])
+  category!: string;
+
+  @ApiProperty({ enum: ['DEBIT', 'CREDIT'] })
+  @IsIn(['DEBIT', 'CREDIT'])
+  normalBalance!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
+}
+
 @ApiTags('sales-inventory-operations')
 @ApiBearerAuth('access-token')
 @Controller()
@@ -531,8 +559,11 @@ export class SalesInventoryOperationsController {
     const S = quotedSchema(user);
     const [accounts, periods, journals, closeRuns] = await Promise.all([
       this.tenantDb.query<Record<string, unknown>>(schemaOf(user),
-        `SELECT id::text, code, name, account_type, normal_balance FROM ${S}.chart_of_account
-          WHERE deleted_at IS NULL AND is_active ORDER BY code`),
+        `SELECT coa.id::text, coa.code, coa.name, coa.account_type_id::text,
+                at.category AS account_type, coa.normal_balance, coa.allow_posting
+           FROM ${S}.chart_of_account coa
+           LEFT JOIN ${S}.account_type at ON at.id = coa.account_type_id
+          WHERE coa.deleted_at IS NULL AND coa.is_active ORDER BY coa.code`),
       this.tenantDb.query<Record<string, unknown>>(schemaOf(user),
         `SELECT id::text, code, name, fiscal_year, period_no, start_date::text, end_date::text, status
            FROM ${S}.fiscal_period WHERE deleted_at IS NULL ORDER BY start_date DESC LIMIT 36`),
@@ -547,6 +578,44 @@ export class SalesInventoryOperationsController {
           ORDER BY r.started_at DESC LIMIT 50`),
     ]);
     return { accounts, periods, journals, closeRuns };
+  }
+
+  @Post('inventory/chart-accounts')
+  @HttpCode(201)
+  @BlockDemo()
+  @Permissions('FINANCE_COA.CREATE')
+  async createInventoryAccount(
+    @Body() body: CreateInventoryAccountDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    return this.tenantDb.transaction(schema, async (client) => {
+      const subjectId = await subjectIdOf(client, S, user.userId);
+      const typeCode = `INVENTORY_${body.category}`;
+      const type = await client.query<{ id: string }>(
+        `INSERT INTO ${S}.account_type
+           (code, name, description, normal_balance, category, is_system, created_by)
+         VALUES ($1, $2, $3, $4, $5, FALSE, $6::uuid)
+         ON CONFLICT (code) WHERE deleted_at IS NULL
+         DO UPDATE SET name = EXCLUDED.name, normal_balance = EXCLUDED.normal_balance,
+                       category = EXCLUDED.category, updated_at = now(), version = ${S}.account_type.version + 1
+         RETURNING id::text`,
+        [typeCode, body.category, 'Tipe akun Inventory/Sales', body.normalBalance, body.category, subjectId],
+      );
+      const account = await client.query<Record<string, unknown>>(
+        `INSERT INTO ${S}.chart_of_account
+           (account_type_id, code, name, description, normal_balance, allow_posting, created_by)
+         VALUES ($1::uuid, $2, $3, $4, $5, TRUE, $6::uuid)
+         RETURNING id::text, code, name, normal_balance, allow_posting`,
+        [type.rows[0].id, body.code.trim(), body.name.trim(), body.description ?? null, body.normalBalance, subjectId],
+      );
+      await appendSyncEvent(client, S, subjectId, 'CHART_OF_ACCOUNT', account.rows[0].id as string, 'ACCOUNT_CREATED', {
+        code: body.code.trim(), category: body.category,
+      });
+      return { ...account.rows[0], account_type: body.category, account_type_id: type.rows[0].id };
+    }, auditOf(user, meta, 'FINANCE_COA', 'CREATE'));
   }
 
   @Post('inventory/journals')
@@ -1784,7 +1853,7 @@ function settlementConfig(kind: 'AP' | 'AR') {
       };
 }
 
-function reportSql(code: string, S: string): { title: string; sql: string; totalKey?: string } | null {
+export function reportSql(code: string, S: string): { title: string; sql: string; totalKey?: string } | null {
   const reports: Record<string, { title: string; sql: string; totalKey?: string }> = {
     'supplier-list': {
       title: 'Daftar Supplier',
@@ -1910,7 +1979,10 @@ function reportSql(code: string, S: string): { title: string; sql: string; total
     return {
       title: 'Laporan Laba Rugi Akuntansi', totalKey: 'balance',
       sql: `SELECT coa.code, coa.name, coa.account_type,
-                   COALESCE(sum(jel.credit - jel.debit), 0)::text AS balance
+                   COALESCE(sum(CASE
+                     WHEN coa.normal_balance = 'DEBIT' THEN jel.debit - jel.credit
+                     ELSE jel.credit - jel.debit
+                   END), 0)::text AS balance
               FROM ${S}.chart_of_account coa LEFT JOIN ${S}.journal_entry_line jel ON jel.account_id = coa.id
               LEFT JOIN ${S}.journal_entry je ON je.id = jel.journal_entry_id
                AND je.status = 'POSTED' AND je.journal_date <= $1::date

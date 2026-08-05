@@ -1,4 +1,5 @@
 import { SALES_INVENTORY_PARITY, paritySummary, webRouteForScreen } from './sales-inventory-parity.catalog';
+import { reportSql } from './sales-inventory-operations.controller';
 
 describe('sales inventory legacy parity contract', () => {
   it('keeps every one of the 48 documented screens in sequence', () => {
@@ -32,9 +33,22 @@ describe('sales inventory legacy parity contract', () => {
     expect(summary.screens).toBe(48);
     expect(summary.web.operational + summary.web.readOnly + summary.web.contractOnly).toBe(48);
     expect(summary.flutter.operational + summary.flutter.readOnly + summary.flutter.contractOnly).toBe(48);
-    expect(summary.flutter.operational).toBeGreaterThanOrEqual(5);
-    expect(summary.flutter.operational).toBe(42);
-    expect(summary.flutter.readOnly).toBeGreaterThan(0);
-    expect(summary.web.operational).toBe(44);
+    expect(summary.flutter.operational).toBe(48);
+    expect(summary.flutter.readOnly).toBe(0);
+    expect(summary.flutter.contractOnly).toBe(0);
+    expect(summary.web.operational).toBe(48);
+    expect(summary.web.readOnly).toBe(0);
+    expect(summary.web.contractOnly).toBe(0);
+  });
+
+  it('keeps finance reports tied to posted journals and correct normal balances', () => {
+    const profitLoss = reportSql('profit-loss', '"tenant_test"');
+    const grossProfit = reportSql('gross-profit', '"tenant_test"');
+
+    expect(profitLoss?.sql).toContain("je.status = 'POSTED'");
+    expect(profitLoss?.sql).toContain("coa.normal_balance = 'DEBIT'");
+    expect(profitLoss?.totalKey).toBe('balance');
+    expect(grossProfit?.sql).toContain('legacy_unit_cost');
+    expect(grossProfit?.totalKey).toBe('gross_profit');
   });
 });

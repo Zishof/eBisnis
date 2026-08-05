@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-06 - Inventory parity wave 5
+
+- Memperbaiki relasi tipe akun pada workspace keuangan tenant.
+- Menambahkan pembuatan perkiraan, jurnal berimbang, posting, dan pembalikan pada Flutter.
+- Menambahkan laporan laba kotor dan laba rugi berbasis snapshot beserta audit cetak.
+- Menambahkan tutup/buka kembali periode yang non-destruktif dan tervalidasi.
+- Menaikkan seluruh 48 layar legacy menjadi operasional pada React Web dan Flutter.
+
 ## 2026-08-06 - Inventory parity wave 4
 
 - Melengkapi order sales offline-first dengan workspace piutang terbuka dan lunas.

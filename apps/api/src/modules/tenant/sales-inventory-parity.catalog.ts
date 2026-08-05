@@ -95,12 +95,12 @@ export const SALES_INVENTORY_PARITY: InventoryParityItem[] = [
   item(40, 'Nota Sales', 'SALES_AR', ['/sales-note-handovers/:id', '/reports/sales-note-handover/snapshot'], 'OPERATIONAL', 'OPERATIONAL'),
   item(41, 'Laporan Piutang', 'SALES_AR', ['/reports/ar-outstanding/snapshot'], 'OPERATIONAL', 'OPERATIONAL'),
   item(42, 'Mencetak Laporan Piutang', 'SALES_AR', ['/reports/ar-outstanding/snapshot', '/report-snapshots/:id'], 'OPERATIONAL', 'OPERATIONAL'),
-  item(43, 'Kas dan Jurnal', 'FINANCE', ['/journal-entries'], 'OPERATIONAL', 'CONTRACT_ONLY'),
-  item(44, 'Membuat Perkiraan Baru', 'FINANCE', ['/chart-of-accounts'], 'OPERATIONAL', 'CONTRACT_ONLY'),
-  item(45, 'Menu Laba/Rugi', 'FINANCE', ['/inventory/parity-summary'], 'READ_ONLY', 'READ_ONLY'),
-  item(46, 'Mencetak Laba Rugi Kotor', 'FINANCE', ['/reports/gross-profit/snapshot'], 'READ_ONLY', 'CONTRACT_ONLY'),
-  item(47, 'Laporan Laba/Rugi', 'FINANCE', ['/reports/profit-loss/snapshot'], 'READ_ONLY', 'CONTRACT_ONLY'),
-  item(48, 'Mencetak Laporan Laba/Rugi', 'FINANCE', ['/report-snapshots/:id'], 'READ_ONLY', 'CONTRACT_ONLY'),
+  item(43, 'Kas dan Jurnal', 'FINANCE', ['/inventory/finance-workspace', '/inventory/journals', '/inventory/journals/:id/post', '/inventory/journals/:id/reverse'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(44, 'Membuat Perkiraan Baru', 'FINANCE', ['/inventory/chart-accounts'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(45, 'Menu Laba/Rugi', 'FINANCE', ['/reports/gross-profit/preview', '/reports/profit-loss/preview'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(46, 'Mencetak Laba Rugi Kotor', 'FINANCE', ['/reports/gross-profit/snapshot', '/report-snapshots/:id/print-log'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(47, 'Laporan Laba/Rugi', 'FINANCE', ['/reports/profit-loss/preview', '/reports/profit-loss/snapshot'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(48, 'Mencetak Laporan Laba/Rugi', 'FINANCE', ['/report-snapshots/:id', '/report-snapshots/:id/print-log'], 'OPERATIONAL', 'OPERATIONAL'),
 ];
 
 export function paritySummary() {

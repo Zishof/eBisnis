@@ -239,6 +239,8 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           NavigationDestination(
               icon: Icon(Icons.fact_check_outlined), label: 'Paritas'),
           NavigationDestination(
+              icon: Icon(Icons.account_balance_outlined), label: 'Keuangan'),
+          NavigationDestination(
               icon: Icon(Icons.analytics_outlined), label: 'Laporan'),
           NavigationDestination(
               icon: Icon(Icons.menu_book_outlined), label: 'Panduan'),
@@ -249,7 +251,7 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           future: _snapshot,
           builder: (context, state) {
             final data = state.data;
-            final needsSnapshot = _tab == 0 || _tab == 5;
+            final needsSnapshot = _tab == 0 || _tab == 6;
             return CustomScrollView(
               slivers: [
                 SliverAppBar.large(
@@ -403,6 +405,8 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                         else if (_tab == 4)
                           _InventoryFeaturePage(contract: _parity)
                         else if (_tab == 5)
+                          InventoryFinancePage(client: widget.client)
+                        else if (_tab == 6)
                           _InventoryReportPage(snapshot: data!)
                         else
                           const _InventoryManualPage(),
@@ -2934,6 +2938,516 @@ class _HandoverList extends StatelessWidget {
   }
 }
 
+class InventoryFinancePage extends StatefulWidget {
+  const InventoryFinancePage({super.key, required this.client});
+
+  final InventoryApiClient client;
+
+  @override
+  State<InventoryFinancePage> createState() => _InventoryFinancePageState();
+}
+
+class _InventoryFinancePageState extends State<InventoryFinancePage> {
+  late Future<InventoryFinanceData> _workspace =
+      widget.client.financeWorkspace();
+  String _mode = 'journal';
+  bool _busy = false;
+  String? _message;
+  InventoryFinancialReport? _report;
+  DateTime _asOf = DateTime.now();
+
+  void _refresh() {
+    setState(() => _workspace = widget.client.financeWorkspace());
+  }
+
+  Future<void> _command(Future<void> Function() action, String success) async {
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      await action();
+      if (!mounted) return;
+      setState(() => _message = success);
+      _refresh();
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _newAccount() async {
+    final code = TextEditingController();
+    final name = TextEditingController();
+    var category = 'ASSET';
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(builder: (context, setDialog) {
+        return AlertDialog(
+          title: const Text('Perkiraan baru'),
+          content: SizedBox(
+            width: 460,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(
+                  controller: code,
+                  decoration: const InputDecoration(labelText: 'Kode akun')),
+              TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Nama akun')),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: category,
+                decoration: const InputDecoration(labelText: 'Kelompok akun'),
+                items: const [
+                  DropdownMenuItem(value: 'ASSET', child: Text('Aset')),
+                  DropdownMenuItem(
+                      value: 'LIABILITY', child: Text('Kewajiban')),
+                  DropdownMenuItem(value: 'EQUITY', child: Text('Modal')),
+                  DropdownMenuItem(value: 'REVENUE', child: Text('Pendapatan')),
+                  DropdownMenuItem(value: 'EXPENSE', child: Text('Biaya')),
+                ],
+                onChanged: (value) => setDialog(() => category = value!),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Simpan')),
+          ],
+        );
+      }),
+    );
+    if (accepted != true) return;
+    final normal =
+        const ['ASSET', 'EXPENSE'].contains(category) ? 'DEBIT' : 'CREDIT';
+    await _command(
+      () => widget.client.createFinanceAccount(
+        code: code.text.trim(),
+        name: name.text.trim(),
+        category: category,
+        normalBalance: normal,
+      ),
+      'Perkiraan ${code.text.trim()} berhasil dibuat.',
+    );
+  }
+
+  Future<void> _newJournal(InventoryFinanceData data) async {
+    final openPeriods =
+        data.periods.where((row) => row.status == 'OPEN').toList();
+    final postingAccounts =
+        data.accounts.where((row) => row.allowPosting).toList();
+    if (openPeriods.isEmpty || postingAccounts.length < 2) {
+      setState(() => _message =
+          'Diperlukan satu periode terbuka dan minimal dua akun posting.');
+      return;
+    }
+    final description = TextEditingController();
+    final amount = TextEditingController();
+    var periodId = openPeriods.first.id;
+    var debitId = postingAccounts.first.id;
+    var creditId = postingAccounts[1].id;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(builder: (context, setDialog) {
+        return AlertDialog(
+          title: const Text('Jurnal kas baru'),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+              DropdownButtonFormField<String>(
+                value: periodId,
+                decoration: const InputDecoration(labelText: 'Periode terbuka'),
+                items: openPeriods
+                    .map((row) => DropdownMenuItem(
+                        value: row.id,
+                        child: Text('${row.code} - ${row.name}')))
+                    .toList(),
+                onChanged: (value) => setDialog(() => periodId = value!),
+              ),
+              TextField(
+                  controller: description,
+                  decoration:
+                      const InputDecoration(labelText: 'Uraian transaksi')),
+              TextField(
+                  controller: amount,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Nominal')),
+              DropdownButtonFormField<String>(
+                value: debitId,
+                decoration: const InputDecoration(labelText: 'Akun debit'),
+                items: postingAccounts
+                    .map((row) => DropdownMenuItem(
+                        value: row.id,
+                        child: Text('${row.code} - ${row.name}')))
+                    .toList(),
+                onChanged: (value) => setDialog(() => debitId = value!),
+              ),
+              DropdownButtonFormField<String>(
+                value: creditId,
+                decoration: const InputDecoration(labelText: 'Akun kredit'),
+                items: postingAccounts
+                    .map((row) => DropdownMenuItem(
+                        value: row.id,
+                        child: Text('${row.code} - ${row.name}')))
+                    .toList(),
+                onChanged: (value) => setDialog(() => creditId = value!),
+              ),
+            ])),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Buat draft')),
+          ],
+        );
+      }),
+    );
+    if (accepted != true) return;
+    await _command(
+      () => widget.client.createJournal(
+        periodId: periodId,
+        description: description.text.trim(),
+        amount: double.tryParse(amount.text.replaceAll(',', '.')) ?? 0,
+        debitAccountId: debitId,
+        creditAccountId: creditId,
+      ),
+      'Draft jurnal berhasil dibuat dan siap diperiksa.',
+    );
+  }
+
+  Future<void> _loadReport(String code) async {
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final value = await widget.client.financeReport(code, _asOf);
+      if (mounted) setState(() => _report = value);
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _exportReport() async {
+    final report = _report;
+    if (report == null) return;
+    setState(() => _busy = true);
+    try {
+      final snapshotId = await widget.client
+          .snapshotFinanceReport(report.reportCode, report.asOfDate);
+      final keys = report.rows.isEmpty
+          ? <String>[]
+          : report.rows.first.keys.take(7).toList();
+      final pdf = pw.Document();
+      pdf.addPage(pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(28),
+        header: (_) => pw
+            .Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          pw.Text('Caruban Medika Nusantara',
+              style:
+                  pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+          pw.Text(report.title,
+              style:
+                  pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Text('Posisi ${report.asOfDate} | Snapshot $snapshotId'),
+          pw.SizedBox(height: 8),
+        ]),
+        build: (_) => [
+          if (keys.isNotEmpty)
+            pw.TableHelper.fromTextArray(
+              headers: keys.map(financeLabel).toList(),
+              data: report.rows
+                  .map((row) =>
+                      keys.map((key) => row[key]?.toString() ?? '').toList())
+                  .toList(),
+              headerDecoration:
+                  const pw.BoxDecoration(color: PdfColors.grey300),
+              headerStyle:
+                  pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+              cellStyle: const pw.TextStyle(fontSize: 7),
+            )
+          else
+            pw.Text('Tidak ada transaksi pada periode ini.'),
+          pw.SizedBox(height: 12),
+          pw.Text('Total: ${rupiah(report.total)}',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        ],
+      ));
+      final name = '${report.reportCode}-${report.asOfDate}.pdf';
+      await XFile.fromData(await pdf.save(),
+              name: name, mimeType: 'application/pdf')
+          .saveTo(name);
+      await widget.client.logFinancePrint(snapshotId, name);
+      if (mounted) {
+        setState(() =>
+            _message = 'PDF $name tersimpan dan jejak cetaknya tercatat.');
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<InventoryFinanceData>(
+      future: _workspace,
+      builder: (context, state) {
+        if (state.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state.hasError) {
+          return _ErrorPanel(
+              message: state.error.toString(), onRetry: _refresh);
+        }
+        final data = state.data!;
+        return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Keuangan dan Akuntansi',
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w900)),
+              const Text(
+                  'Jurnal berimbang, bagan akun, laba rugi, dan penutupan periode dengan jejak audit.'),
+              const SizedBox(height: 14),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                        value: 'journal',
+                        icon: Icon(Icons.menu_book_outlined),
+                        label: Text('Jurnal')),
+                    ButtonSegment(
+                        value: 'account',
+                        icon: Icon(Icons.account_tree_outlined),
+                        label: Text('Perkiraan')),
+                    ButtonSegment(
+                        value: 'profit',
+                        icon: Icon(Icons.trending_up),
+                        label: Text('Laba/Rugi')),
+                    ButtonSegment(
+                        value: 'period',
+                        icon: Icon(Icons.event_available_outlined),
+                        label: Text('Periode')),
+                  ],
+                  selected: {_mode},
+                  onSelectionChanged: (value) =>
+                      setState(() => _mode = value.first),
+                ),
+              ),
+              if (_message != null)
+                Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(_message!,
+                        style: const TextStyle(fontWeight: FontWeight.w700))),
+              const SizedBox(height: 14),
+              if (_mode == 'journal') _journalView(data),
+              if (_mode == 'account') _accountView(data),
+              if (_mode == 'profit') _profitView(),
+              if (_mode == 'period') _periodView(data),
+            ]);
+      },
+    );
+  }
+
+  Widget _journalView(InventoryFinanceData data) => _SectionCard(
+        title: 'Kas dan jurnal harian',
+        icon: Icons.receipt_long_outlined,
+        action: FilledButton.icon(
+            onPressed: _busy ? null : () => _newJournal(data),
+            icon: const Icon(Icons.add),
+            label: const Text('Jurnal baru')),
+        child: Column(children: [
+          if (data.journals.isEmpty)
+            const ListTile(title: Text('Belum ada jurnal.')),
+          ...data.journals.map((row) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                    child: Text(row.status == 'POSTED' ? 'P' : 'D')),
+                title: Text(row.number,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text(
+                    '${row.date} - ${row.description}\nDebit ${rupiah(row.debit)} | Kredit ${rupiah(row.credit)}'),
+                isThreeLine: true,
+                trailing: Wrap(spacing: 6, children: [
+                  if (row.status == 'DRAFT')
+                    IconButton(
+                        tooltip: 'Posting jurnal',
+                        onPressed: _busy
+                            ? null
+                            : () => _command(
+                                () => widget.client.postJournal(row.id),
+                                'Jurnal ${row.number} diposting.'),
+                        icon: const Icon(Icons.check_circle_outline)),
+                  if (row.status == 'POSTED')
+                    IconButton(
+                        tooltip: 'Balik jurnal',
+                        onPressed: _busy
+                            ? null
+                            : () => _command(
+                                () => widget.client.reverseJournal(row.id),
+                                'Jurnal pembalik ${row.number} dibuat.'),
+                        icon: const Icon(Icons.undo)),
+                ]),
+              )),
+        ]),
+      );
+
+  Widget _accountView(InventoryFinanceData data) => _SectionCard(
+        title: 'Daftar nomor perkiraan',
+        icon: Icons.account_tree_outlined,
+        action: FilledButton.icon(
+            onPressed: _busy ? null : _newAccount,
+            icon: const Icon(Icons.add),
+            label: const Text('Perkiraan baru')),
+        child: Column(
+            children: data.accounts
+                .map((row) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading:
+                          const Icon(Icons.account_balance_wallet_outlined),
+                      title: Text('${row.code} - ${row.name}',
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                      subtitle: Text(
+                          '${financeLabel(row.category)} | saldo normal ${financeLabel(row.normalBalance)}'),
+                      trailing: row.allowPosting
+                          ? const Chip(label: Text('Posting'))
+                          : const Chip(label: Text('Header')),
+                    ))
+                .toList()),
+      );
+
+  Widget _profitView() {
+    final report = _report;
+    return _SectionCard(
+      title: 'Laporan laba dan rugi',
+      icon: Icons.query_stats_outlined,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () async {
+                          final value = await showDatePicker(
+                              context: context,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                              initialDate: _asOf);
+                          if (value != null) setState(() => _asOf = value);
+                        },
+                  icon: const Icon(Icons.calendar_month),
+                  label: Text(_asOf.toIso8601String().substring(0, 10))),
+              FilledButton.tonal(
+                  onPressed: _busy ? null : () => _loadReport('gross-profit'),
+                  child: const Text('Laba kotor')),
+              FilledButton.tonal(
+                  onPressed: _busy ? null : () => _loadReport('profit-loss'),
+                  child: const Text('Laba rugi akuntansi')),
+              FilledButton.icon(
+                  onPressed: _busy || report == null ? null : _exportReport,
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  label: const Text('Cetak PDF')),
+            ]),
+        if (report != null) ...[
+          const SizedBox(height: 16),
+          Text(report.title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+              '${angka(report.rows.length)} baris | Total ${rupiah(report.total)}'),
+          const Divider(),
+          ...report.rows.take(100).map((row) => ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text((row['product_name'] ??
+                        row['name'] ??
+                        row['order_number'] ??
+                        '-')
+                    .toString()),
+                subtitle: Text((row['product_code'] ??
+                        row['code'] ??
+                        row['account_type'] ??
+                        '')
+                    .toString()),
+                trailing: Text(rupiah(toDouble(row[report.totalKey])),
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+              )),
+        ],
+      ]),
+    );
+  }
+
+  Widget _periodView(InventoryFinanceData data) => Column(children: [
+        _SectionCard(
+          title: 'Periode fiskal',
+          icon: Icons.event_available_outlined,
+          child: Column(
+              children: data.periods
+                  .map((row) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('${row.code} - ${row.name}',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
+                        subtitle: Text('${row.startDate} s.d. ${row.endDate}'),
+                        trailing: FilledButton.tonal(
+                          onPressed: _busy
+                              ? null
+                              : () => _command(
+                                    () => widget.client.changeFiscalPeriod(
+                                        row.id,
+                                        close: row.status == 'OPEN'),
+                                    row.status == 'OPEN'
+                                        ? 'Validasi penutupan periode selesai.'
+                                        : 'Periode dibuka kembali.',
+                                  ),
+                          child: Text(
+                              row.status == 'OPEN' ? 'Tutup' : 'Buka kembali'),
+                        ),
+                      ))
+                  .toList()),
+        ),
+        const SizedBox(height: 12),
+        _SectionCard(
+          title: 'Riwayat proses akhir',
+          icon: Icons.history,
+          child: Column(
+              children: data.closeRuns
+                  .map((row) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('${row.number} - ${row.periodCode}',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
+                        subtitle: Text(row.startedAt),
+                        trailing: Chip(label: Text(row.status)),
+                      ))
+                  .toList()),
+        ),
+      ]);
+}
+
 class _InventoryReportPage extends StatelessWidget {
   const _InventoryReportPage({required this.snapshot});
   final InventorySnapshot snapshot;
@@ -3582,6 +4096,128 @@ class InventoryApiClient {
     final data = await _request<Map<String, Object?>>(
         'GET', '/inventory/parity-contract');
     return InventoryParityContract.fromApi(data);
+  }
+
+  Future<InventoryFinanceData> financeWorkspace() async {
+    final data = await _request<Map<String, Object?>>(
+        'GET', '/inventory/finance-workspace');
+    return InventoryFinanceData.fromApi(data);
+  }
+
+  Future<void> createFinanceAccount({
+    required String code,
+    required String name,
+    required String category,
+    required String normalBalance,
+  }) async {
+    if (code.isEmpty || name.isEmpty) {
+      throw const InventoryApiException('Kode dan nama perkiraan wajib diisi.');
+    }
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/inventory/chart-accounts',
+      body: {
+        'code': code,
+        'name': name,
+        'category': category,
+        'normalBalance': normalBalance,
+        'description': 'Dibuat dari Flutter Inventory',
+      },
+    );
+  }
+
+  Future<void> createJournal({
+    required String periodId,
+    required String description,
+    required double amount,
+    required String debitAccountId,
+    required String creditAccountId,
+  }) async {
+    if (description.isEmpty ||
+        amount <= 0 ||
+        debitAccountId == creditAccountId) {
+      throw const InventoryApiException(
+          'Uraian, nominal positif, dan dua akun berbeda wajib diisi.');
+    }
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/inventory/journals',
+      headers: {
+        'Idempotency-Key': 'JRN_${DateTime.now().microsecondsSinceEpoch}'
+      },
+      body: {
+        'fiscalPeriodId': periodId,
+        'journalDate': DateTime.now().toIso8601String().substring(0, 10),
+        'description': description,
+        'lines': [
+          {
+            'accountId': debitAccountId,
+            'debit': amount,
+            'credit': 0,
+            'description': description
+          },
+          {
+            'accountId': creditAccountId,
+            'debit': 0,
+            'credit': amount,
+            'description': description
+          },
+        ],
+      },
+    );
+  }
+
+  Future<void> postJournal(String id) async {
+    await _request<Map<String, Object?>>(
+        'POST', '/inventory/journals/$id/post');
+  }
+
+  Future<void> reverseJournal(String id) async {
+    await _request<Map<String, Object?>>(
+        'POST', '/inventory/journals/$id/reverse',
+        body: {'note': 'Pembalikan dari Flutter Inventory'});
+  }
+
+  Future<void> changeFiscalPeriod(String id, {required bool close}) async {
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/inventory/fiscal-periods/$id/${close ? 'close' : 'reopen'}',
+      body: {
+        'note': close
+            ? 'Proses akhir dari Flutter Inventory'
+            : 'Dibuka kembali dari Flutter Inventory'
+      },
+    );
+  }
+
+  Future<InventoryFinancialReport> financeReport(
+      String code, DateTime asOf) async {
+    final data = await _request<Map<String, Object?>>(
+      'POST',
+      '/reports/$code/preview',
+      body: {
+        'asOfDate': asOf.toIso8601String().substring(0, 10),
+        'filters': {}
+      },
+    );
+    return InventoryFinancialReport.fromApi(data);
+  }
+
+  Future<String> snapshotFinanceReport(String code, String asOfDate) async {
+    final data = await _request<Map<String, Object?>>(
+      'POST',
+      '/reports/$code/snapshot',
+      body: {'asOfDate': asOfDate, 'filters': {}},
+    );
+    return (data['id'] ?? '').toString();
+  }
+
+  Future<void> logFinancePrint(String snapshotId, String documentNumber) async {
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/report-snapshots/$snapshotId/print-log',
+      body: {'format': 'PDF', 'documentNumber': documentNumber},
+    );
   }
 
   Future<InventoryStockPricingData> stockPricing() async {
@@ -4270,6 +4906,155 @@ const partyFields = <String, List<PartyField>>{
     PartyField('description', 'Catatan penugasan', multiline: true),
   ],
 };
+
+class InventoryFinanceData {
+  const InventoryFinanceData({
+    required this.accounts,
+    required this.periods,
+    required this.journals,
+    required this.closeRuns,
+  });
+
+  factory InventoryFinanceData.fromApi(Map<String, Object?> data) =>
+      InventoryFinanceData(
+        accounts: ((data['accounts'] as List?) ?? const [])
+            .whereType<Map<String, Object?>>()
+            .map(FinanceAccount.fromApi)
+            .toList(),
+        periods: ((data['periods'] as List?) ?? const [])
+            .whereType<Map<String, Object?>>()
+            .map(FinancePeriod.fromApi)
+            .toList(),
+        journals: ((data['journals'] as List?) ?? const [])
+            .whereType<Map<String, Object?>>()
+            .map(FinanceJournal.fromApi)
+            .toList(),
+        closeRuns: ((data['closeRuns'] as List?) ?? const [])
+            .whereType<Map<String, Object?>>()
+            .map(FinanceCloseRun.fromApi)
+            .toList(),
+      );
+
+  final List<FinanceAccount> accounts;
+  final List<FinancePeriod> periods;
+  final List<FinanceJournal> journals;
+  final List<FinanceCloseRun> closeRuns;
+}
+
+class FinanceAccount {
+  const FinanceAccount(this.id, this.code, this.name, this.category,
+      this.normalBalance, this.allowPosting);
+
+  factory FinanceAccount.fromApi(Map<String, Object?> row) => FinanceAccount(
+        (row['id'] ?? '').toString(),
+        (row['code'] ?? '').toString(),
+        (row['name'] ?? '').toString(),
+        (row['account_type'] ?? 'ASSET').toString(),
+        (row['normal_balance'] ?? 'DEBIT').toString(),
+        row['allow_posting'] != false,
+      );
+
+  final String id;
+  final String code;
+  final String name;
+  final String category;
+  final String normalBalance;
+  final bool allowPosting;
+}
+
+class FinancePeriod {
+  const FinancePeriod(
+      this.id, this.code, this.name, this.startDate, this.endDate, this.status);
+
+  factory FinancePeriod.fromApi(Map<String, Object?> row) => FinancePeriod(
+        (row['id'] ?? '').toString(),
+        (row['code'] ?? '').toString(),
+        (row['name'] ?? '').toString(),
+        (row['start_date'] ?? '').toString(),
+        (row['end_date'] ?? '').toString(),
+        (row['status'] ?? '').toString(),
+      );
+
+  final String id;
+  final String code;
+  final String name;
+  final String startDate;
+  final String endDate;
+  final String status;
+}
+
+class FinanceJournal {
+  const FinanceJournal(this.id, this.number, this.date, this.description,
+      this.status, this.debit, this.credit);
+
+  factory FinanceJournal.fromApi(Map<String, Object?> row) => FinanceJournal(
+        (row['id'] ?? '').toString(),
+        (row['journal_number'] ?? '').toString(),
+        (row['journal_date'] ?? '').toString(),
+        (row['description'] ?? '').toString(),
+        (row['status'] ?? '').toString(),
+        toDouble(row['total_debit']),
+        toDouble(row['total_credit']),
+      );
+
+  final String id;
+  final String number;
+  final String date;
+  final String description;
+  final String status;
+  final double debit;
+  final double credit;
+}
+
+class FinanceCloseRun {
+  const FinanceCloseRun(
+      this.number, this.periodCode, this.status, this.startedAt);
+
+  factory FinanceCloseRun.fromApi(Map<String, Object?> row) => FinanceCloseRun(
+        (row['run_number'] ?? '').toString(),
+        (row['period_code'] ?? '').toString(),
+        (row['status'] ?? '').toString(),
+        (row['started_at'] ?? '').toString(),
+      );
+
+  final String number;
+  final String periodCode;
+  final String status;
+  final String startedAt;
+}
+
+class InventoryFinancialReport {
+  const InventoryFinancialReport({
+    required this.reportCode,
+    required this.title,
+    required this.asOfDate,
+    required this.totalKey,
+    required this.total,
+    required this.rows,
+  });
+
+  factory InventoryFinancialReport.fromApi(Map<String, Object?> data) {
+    final totals = data['totals'] as Map<String, Object?>? ?? const {};
+    final key = totals.keys.isEmpty ? 'balance' : totals.keys.first;
+    return InventoryFinancialReport(
+      reportCode: (data['reportCode'] ?? '').toString(),
+      title: (data['title'] ?? '').toString(),
+      asOfDate: (data['asOfDate'] ?? '').toString(),
+      totalKey: key,
+      total: toDouble(totals[key]),
+      rows: ((data['rows'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .toList(),
+    );
+  }
+
+  final String reportCode;
+  final String title;
+  final String asOfDate;
+  final String totalKey;
+  final double total;
+  final List<Map<String, Object?>> rows;
+}
 
 class InventoryStockPricingData {
   const InventoryStockPricingData({
@@ -5276,10 +6061,14 @@ class _KpiCard extends StatelessWidget {
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard(
-      {required this.title, required this.icon, required this.child});
+      {required this.title,
+      required this.icon,
+      required this.child,
+      this.action});
   final String title;
   final IconData icon;
   final Widget child;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -5294,9 +6083,12 @@ class _SectionCard extends StatelessWidget {
               children: [
                 Icon(icon, color: const Color(0xFF0F766E)),
                 const SizedBox(width: 8),
-                Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900, fontSize: 18)),
+                Expanded(
+                  child: Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900, fontSize: 18)),
+                ),
+                if (action != null) action!,
               ],
             ),
             const SizedBox(height: 12),
@@ -5426,3 +6218,26 @@ String? nullableText(Object? value) {
 }
 
 int toInt(Object? value) => toDouble(value).round();
+
+String financeLabel(String value) =>
+    const {
+      'ASSET': 'Aset',
+      'LIABILITY': 'Kewajiban',
+      'EQUITY': 'Modal',
+      'REVENUE': 'Pendapatan',
+      'EXPENSE': 'Biaya',
+      'DEBIT': 'Debit',
+      'CREDIT': 'Kredit',
+      'product_code': 'Kode produk',
+      'product_name': 'Nama produk',
+      'order_number': 'Nomor order',
+      'order_date': 'Tanggal',
+      'revenue': 'Omzet',
+      'cogs': 'HPP',
+      'gross_profit': 'Laba kotor',
+      'code': 'Kode',
+      'name': 'Nama akun',
+      'account_type': 'Kelompok',
+      'balance': 'Saldo',
+    }[value] ??
+    value.replaceAll('_', ' ');
