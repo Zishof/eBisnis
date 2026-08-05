@@ -80,6 +80,7 @@ const KIOSK_AKSI = ['READ'];
 const PSB_AKSI = ['READ', 'CREATE', 'UPDATE', 'REVIEW', 'APPROVE', 'REJECT', 'CANCEL', 'PRINT', 'EXPORT'];
 const KURIKULUM_AKSI = ['READ', 'CREATE', 'CANCEL', 'PRINT', 'EXPORT'];
 const NILAI_AKSI = ['READ', 'CREATE', 'UPDATE', 'REVIEW', 'APPROVE', 'CANCEL', 'PRINT', 'EXPORT'];
+const AKADEMIK_AKSI = ['READ', 'CREATE', 'APPROVE', 'CANCEL', 'PRINT', 'EXPORT'];
 const LAPORAN_AKSI = ['READ', 'PRINT', 'EXPORT'];
 const PELANGGARAN_AKSI = ['READ', 'CREATE', 'UPDATE', 'CANCEL', 'PRINT', 'EXPORT'];
 const GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
@@ -325,6 +326,17 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     actions: NILAI_AKSI,
   },
   {
+    code: 'EPESANTREN_AKADEMIK',
+    parentCode: 'EPESANTREN_GRP_AKADEMIK',
+    label: 'Kenaikan dan Kelulusan',
+    translationKey: 'menu.epesantren.akademik',
+    route: '/app/pesantren/akademik',
+    icon: 'BadgeCheck',
+    moduleCode: PESANTREN_PREFIX,
+    sortOrder: 4,
+    actions: AKADEMIK_AKSI,
+  },
+  {
     code: 'EPESANTREN_ABSENSI_GURU',
     parentCode: 'EPESANTREN_GRP_AKADEMIK',
     label: 'Absensi Guru dan Piket',
@@ -332,7 +344,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/absensi-guru',
     icon: 'ClipboardCheck',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 4,
+    sortOrder: 5,
     actions: ABSENSI_GURU_AKSI,
   },
   {
@@ -343,7 +355,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/ekstrakurikuler',
     icon: 'Flag',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 5,
+    sortOrder: 6,
     actions: EKSTRAKURIKULER_AKSI,
   },
   {
@@ -354,7 +366,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/prestasi',
     icon: 'Award',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 6,
+    sortOrder: 7,
     actions: PRESTASI_AKSI,
   },
   {
@@ -365,7 +377,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     route: '/app/pesantren/buku-penghubung',
     icon: 'MessagesSquare',
     moduleCode: PESANTREN_PREFIX,
-    sortOrder: 7,
+    sortOrder: 8,
     actions: BUKU_PENGHUBUNG_AKSI,
   },
 

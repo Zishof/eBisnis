@@ -53,6 +53,7 @@ import { PesantrenSkalaHurufPage } from '../pages/app/pesantren/PesantrenSkalaHu
 import { PesantrenLaporanPage } from '../pages/app/pesantren/PesantrenLaporanPage';
 import { PesantrenPortalWaliPage } from '../pages/app/pesantren/PesantrenPortalWaliPage';
 import { PesantrenDapodikPage } from '../pages/app/pesantren/PesantrenDapodikPage';
+import { PesantrenAkademikPage } from '../pages/app/pesantren/PesantrenAkademikPage';
 import { EducationGapImplementationPage } from '../pages/app/education/EducationGapImplementationPage';
 import { EschoolDashboardPage } from '../pages/app/eschool/EschoolDashboardPage';
 import { EschoolOperationalPage } from '../pages/app/eschool/EschoolOperationalPage';
@@ -765,6 +766,7 @@ export function App() {
           <Route path="pesantren/presensi" element={<PesantrenPresensiPage />} />
           <Route path="pesantren/tahfiz" element={<PesantrenDakwahPage initialTab="tahfiz" />} />
           <Route path="pesantren/nilai" element={<PesantrenNilaiPage />} />
+          <Route path="pesantren/akademik" element={<PesantrenAkademikPage />} />
           <Route path="pesantren/nilai/skala-huruf" element={<PesantrenSkalaHurufPage />} />
           <Route path="pesantren/absensi-guru" element={<PesantrenAbsensiGuruPage />} />
           <Route path="pesantren/ekstrakurikuler" element={<PesantrenPembinaanPage initialTab="ekskul" />} />

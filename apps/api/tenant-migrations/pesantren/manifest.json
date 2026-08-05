@@ -257,6 +257,12 @@
       "file": "20260806T030000__pesantren__rapor_finalisasi.sql",
       "name": "Finalisasi rapor, verifikasi QR, dan tanda tangan digital",
       "description": "Menambah pesantren_rapor_finalisasi sebagai snapshot dokumen rapor final per santri/tahun ajaran, lengkap dengan checksum, kode verifikasi QR, penanda tanda tangan wali kelas/kepala satuan, dan pembatalan finalisasi terjejak."
+    },
+    {
+      "id": "20260806T040000__pesantren__keputusan_akademik",
+      "file": "20260806T040000__pesantren__keputusan_akademik.sql",
+      "name": "Keputusan kenaikan kelas dan kelulusan",
+      "description": "Menambah pesantren_keputusan_akademik untuk workflow draft-final-eksekusi kenaikan kelas, tinggal kelas, kelulusan, dan keluar dari satuan. Eksekusi keputusan memindahkan rombongan atau mengubah status santri secara terjejak."
     }
   ]
 }
