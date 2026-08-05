@@ -49,6 +49,9 @@ describe('ApotikLandingPage', () => {
     expect(screen.getByText('Antibiotik sesuai resep')).toBeInTheDocument();
     expect(screen.getByAltText('Produk Paracetamol 500 mg di katalog tenant apotik')).toBeInTheDocument();
     expect(screen.getByText('per strip')).toBeInTheDocument();
+    expect(screen.getByText('Dikelola admin tenant')).toBeInTheDocument();
+    expect(screen.getByText('OTC dan checkout POS')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Kelola katalog produk/i })).toHaveAttribute('href', '/app/products');
     expect(screen.getAllByRole('link', { name: /Lihat katalog/i })).toEqual(
       expect.arrayContaining([expect.objectContaining({ href: expect.stringContaining('#Katalog') })]),
     );

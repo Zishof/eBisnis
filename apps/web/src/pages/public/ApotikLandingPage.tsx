@@ -87,6 +87,7 @@ const tenantProducts = [
     badge: 'Stok aman',
     unit: 'per strip',
     availability: '120 strip',
+    channel: 'OTC dan checkout POS',
     image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=700&q=80',
   },
   {
@@ -97,6 +98,7 @@ const tenantProducts = [
     badge: 'Populer',
     unit: 'per botol',
     availability: '24 botol',
+    channel: 'Bisa dipesan publik',
     image: 'https://images.unsplash.com/photo-1577174881658-0f30ed549adc?auto=format&fit=crop&w=700&q=80',
   },
   {
@@ -107,6 +109,7 @@ const tenantProducts = [
     badge: 'Siap kirim',
     unit: 'per box',
     availability: '36 box',
+    channel: 'Ambil di apotik',
     image: 'https://images.unsplash.com/photo-1584634731339-252c581abfc5?auto=format&fit=crop&w=700&q=80',
   },
   {
@@ -117,6 +120,7 @@ const tenantProducts = [
     badge: 'Resep wajib',
     unit: 'validasi resep',
     availability: 'apoteker aktif',
+    channel: 'Resep ditelaah',
     image: 'https://images.unsplash.com/photo-1628771065518-0d82f1938462?auto=format&fit=crop&w=700&q=80',
   },
   {
@@ -127,6 +131,7 @@ const tenantProducts = [
     badge: 'Racikan',
     unit: 'per resep',
     availability: 'siap racik',
+    channel: 'Dihitung di POS Apotik',
     image: 'https://images.unsplash.com/photo-1583912267550-d44c1f008e84?auto=format&fit=crop&w=700&q=80',
   },
   {
@@ -137,6 +142,7 @@ const tenantProducts = [
     badge: 'Expiry aman',
     unit: 'per tube',
     availability: '42 tube',
+    channel: 'Katalog publik',
     image: 'https://images.unsplash.com/photo-1550572017-edd951aa8f72?auto=format&fit=crop&w=700&q=80',
   },
 ];
@@ -192,7 +198,7 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
               </h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
                 {tenantProfile
-                  ? 'Halaman ini menampilkan identitas tenant, layanan apotik, dan contoh katalog produk yang dijual. Produk resep tetap melewati telaah apoteker; stok, batch, expiry, dan transaksi terhubung ke POS Apotik.'
+                  ? 'Halaman ini menampilkan identitas tenant, layanan apotik, dan etalase produk yang dijual tenant. Produk resep tetap melewati telaah apoteker; stok, batch, expiry, dan transaksi terhubung ke POS Apotik.'
                   : 'eMedik memisahkan POS Apotik dari POS penjualan biasa karena obat bukan barang retail biasa. Kasir tetap cepat, tetapi resep dokter, batch-expiry, racikan, obat terkendali, dan audit pasien ikut terlihat.'}
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
@@ -449,6 +455,17 @@ function TenantApotikProfile({ title, host }: { title: string; host: string }) {
               </div>
               <Star className="h-7 w-7 text-amber-500" aria-hidden />
             </div>
+            <div className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-xs font-black uppercase tracking-wide text-emerald-800">Dikelola admin tenant</p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">
+                Nama produk, harga, foto, kategori, dan status tampil dari etalase tenant
+                yang disiapkan untuk sinkron ke master produk, buku harga, dan POS Apotik.
+              </p>
+              <Link to="/app/products" className="mt-3 inline-flex items-center gap-2 text-sm font-black text-emerald-800">
+                Kelola katalog produk
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {tenantServices.map(([service, body]) => (
                 <article key={service} className="rounded-lg bg-emerald-50 p-4 ring-1 ring-emerald-100">
@@ -468,8 +485,8 @@ function TenantApotikProfile({ title, host }: { title: string; host: string }) {
               <p className="section-eyebrow bg-emerald-50 text-emerald-800">Katalog produk tenant</p>
               <h2 className="section-heading text-slate-950">Produk yang dijual terlihat jelas sebelum pasien datang.</h2>
               <p className="mt-3 text-base leading-8 text-slate-700">
-                Katalog memakai kategori yang mudah dipahami, kartu produk ringkas, harga,
-                status stok, dan penanda resep agar pengunjung cepat mengambil keputusan.
+                Etalase tenant memakai kategori yang mudah dipahami, kartu produk bergambar,
+                harga, satuan, status stok, dan penanda resep agar pengunjung cepat mengambil keputusan.
               </p>
             </div>
             <div className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
@@ -526,6 +543,10 @@ function TenantApotikProfile({ title, host }: { title: string; host: string }) {
                     <div className="rounded-lg bg-slate-50 p-3">
                       <dt className="text-slate-500">Tersedia</dt>
                       <dd className="mt-1 font-bold text-slate-900">{product.availability}</dd>
+                    </div>
+                    <div className="col-span-2 rounded-lg bg-emerald-50 p-3">
+                      <dt className="text-emerald-700">Layanan</dt>
+                      <dd className="mt-1 font-bold text-emerald-950">{product.channel}</dd>
                     </div>
                   </dl>
                 </div>
