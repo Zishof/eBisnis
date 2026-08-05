@@ -46,6 +46,7 @@ export interface ImportResult {
   updated: number;
   skipped: number;
   errors: Array<{ row: number; message: string }>;
+  preview: Array<{ row: number; action: 'CREATE' | 'UPDATE' | 'SKIP'; key: string; summary: string }>;
 }
 
 export interface ReferensiDapodikRow {
@@ -406,7 +407,7 @@ export class PesantrenDapodikService {
   async impor(schemaName: string, opsi: ImportOptions): Promise<ImportResult> {
     const def = this.def(opsi.dataset);
     const rows = opsi.format === 'json' ? parseJsonRows(opsi.content) : parseCsv(opsi.content);
-    const result: ImportResult = { dataset: opsi.dataset, dryRun: opsi.dryRun, totalRows: rows.length, created: 0, updated: 0, skipped: 0, errors: [] };
+    const result: ImportResult = { dataset: opsi.dataset, dryRun: opsi.dryRun, totalRows: rows.length, created: 0, updated: 0, skipped: 0, errors: [], preview: [] };
 
     for (let index = 0; index < rows.length; index += 1) {
       const rowNumber = index + 2;
@@ -415,10 +416,20 @@ export class PesantrenDapodikService {
       if (missing.length) {
         result.errors.push({ row: rowNumber, message: `Kolom wajib kosong: ${missing.join(', ')}` });
         result.skipped += 1;
+        result.preview.push({ row: rowNumber, action: 'SKIP', key: '-', summary: `Kolom wajib kosong: ${missing.join(', ')}` });
         continue;
       }
       if (opsi.dryRun) {
-        result.skipped += 1;
+        try {
+          const preview = await this.previewUpsert(schemaName, opsi.dataset, row);
+          result.preview.push({ row: rowNumber, ...preview });
+          if (preview.action === 'CREATE') result.created += 1;
+          else result.updated += 1;
+        } catch (error) {
+          result.errors.push({ row: rowNumber, message: errorMessage(error) });
+          result.skipped += 1;
+          result.preview.push({ row: rowNumber, action: 'SKIP', key: '-', summary: errorMessage(error) });
+        }
         continue;
       }
       try {
@@ -432,6 +443,55 @@ export class PesantrenDapodikService {
     }
 
     return result;
+  }
+
+  private async previewUpsert(
+    schemaName: string,
+    dataset: DatasetCode,
+    row: Record<string, string>,
+  ): Promise<{ action: 'CREATE' | 'UPDATE'; key: string; summary: string }> {
+    const S = `"${schemaName}"`;
+    switch (dataset) {
+      case 'unit-pendidikan':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_unit_pendidikan', ['code'], withDefaults(row, { sort_order: '0' }), 'Unit pendidikan');
+      case 'tahun-ajaran':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_tahun_ajaran', ['code'], withDefaults(row, { status: 'DRAFT' }), 'Tahun ajaran');
+      case 'santri':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_santri', ['nis'], row, 'Santri');
+      case 'psb-pendaftar':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_psb_pendaftar', ['gelombang_id', 'nomor_pendaftaran'], await this.resolvePsbPendaftar(schemaName, row), 'Pendaftar PSB');
+      case 'guru':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_guru', ['nama'], withDefaults(row, { jenis: 'HONORER', status: 'AKTIF' }), 'Guru');
+      case 'mata-pelajaran':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_mata_pelajaran', ['code'], row, 'Mata pelajaran');
+      case 'rombongan':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_rombongan_belajar', ['unit_pendidikan_id', 'tahun_ajaran_id', 'nama'], await this.resolveRombongan(schemaName, row), 'Rombongan belajar');
+      case 'anggota-rombel':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_rombongan_anggota', ['santri_id', 'tahun_ajaran_id'], await this.resolveAnggotaRombel(schemaName, row), 'Anggota rombel');
+      case 'kurikulum':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_kurikulum', ['unit_pendidikan_id', 'tahun_ajaran_id', 'tingkat', 'mata_pelajaran_id'], await this.resolveKurikulum(schemaName, row), 'Kurikulum');
+      case 'jadwal':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_jadwal_pelajaran', ['rombongan_id', 'hari', 'waktu_mulai'], await this.resolveJadwal(schemaName, row), 'Jadwal');
+      case 'komponen-nilai':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_komponen_nilai', ['mata_pelajaran_id', 'kode'], await this.resolveKomponen(schemaName, row), 'Komponen nilai');
+      case 'nilai':
+        return previewSimple(this.tenantDb, schemaName, S, 'pesantren_nilai', ['santri_id', 'komponen_id', 'tahun_ajaran_id'], await this.resolveNilai(schemaName, row), 'Nilai');
+      case 'ref-pekerjaan':
+      case 'ref-pendidikan':
+      case 'ref-penghasilan':
+      case 'ref-transportasi':
+      case 'ref-jenis-tinggal':
+      case 'ref-kebutuhan-khusus':
+        return previewSimple(
+          this.tenantDb,
+          schemaName,
+          S,
+          'pesantren_referensi_dapodik',
+          ['kategori', 'code'],
+          withDefaults({ ...row, kategori: this.kategoriReferensi(dataset) }, { sort_order: '0', is_active: 'true' }),
+          'Referensi DAPODIK',
+        );
+    }
   }
 
   private def(dataset: DatasetCode): DatasetDef {
@@ -722,6 +782,26 @@ async function upsertSimple(
       await db.query(schemaName, `INSERT INTO ${S}.${table} (${columns.join(', ')}, created_by, updated_by) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}, $${columns.length + 1}, $${columns.length + 1})`, [...columns.map((c) => sqlValue(row[c], c)), actorUserId]);
     }
   });
+}
+
+async function previewSimple(
+  db: TenantConnectionService,
+  schemaName: string,
+  S: string,
+  table: string,
+  keys: string[],
+  row: Record<string, string>,
+  label: string,
+): Promise<{ action: 'CREATE' | 'UPDATE'; key: string; summary: string }> {
+  const where = keys.map((key, i) => `${key} = $${i + 1}`).join(' AND ');
+  const params = keys.map((key) => sqlValue(row[key], key));
+  const exists = Boolean(await db.queryOne(schemaName, `SELECT id FROM ${S}.${table} WHERE ${where} AND deleted_at IS NULL`, params));
+  const key = keys.map((item) => `${item}=${clean(row[item]) || '-'}`).join(', ');
+  return {
+    action: exists ? 'UPDATE' : 'CREATE',
+    key,
+    summary: exists ? `${label} akan diperbarui.` : `${label} akan dibuat.`,
+  };
 }
 
 async function upsertByExists(

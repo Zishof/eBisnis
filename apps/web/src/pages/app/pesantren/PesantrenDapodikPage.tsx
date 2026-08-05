@@ -29,6 +29,7 @@ interface ImportResult {
   updated: number;
   skipped: number;
   errors: Array<{ row: number; message: string }>;
+  preview: Array<{ row: number; action: 'CREATE' | 'UPDATE' | 'SKIP'; key: string; summary: string }>;
 }
 
 export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren' | 'eschool' }) {
@@ -259,12 +260,49 @@ export function PesantrenDapodikPage({ mode = 'pesantren' }: { mode?: 'pesantren
                   </ul>
                 </div>
               )}
+              {result.preview.length > 0 && (
+                <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
+                  <div className="border-b border-slate-200 bg-slate-50 px-3 py-2">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {result.dryRun ? 'Preview perubahan sebelum impor final' : 'Ringkasan baris impor'}
+                    </p>
+                  </div>
+                  <div className="max-h-80 overflow-auto">
+                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                      <thead className="bg-white text-xs uppercase tracking-wide text-slate-500">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Baris</th>
+                          <th className="px-3 py-2 text-left">Aksi</th>
+                          <th className="px-3 py-2 text-left">Kunci</th>
+                          <th className="px-3 py-2 text-left">Ringkasan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {result.preview.slice(0, 100).map((item) => (
+                          <tr key={`${item.row}-${item.key}-${item.action}`}>
+                            <td className="px-3 py-2">{item.row}</td>
+                            <td className="px-3 py-2"><StatusBadge status={labelAksiPreview(item.action)} /></td>
+                            <td className="px-3 py-2 font-mono text-xs text-slate-600">{item.key}</td>
+                            <td className="px-3 py-2 text-slate-600">{item.summary}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
       </div>
     </>
   );
+}
+
+function labelAksiPreview(action: 'CREATE' | 'UPDATE' | 'SKIP') {
+  if (action === 'CREATE') return 'Akan dibuat';
+  if (action === 'UPDATE') return 'Akan diperbarui';
+  return 'Dilewati';
 }
 
 function Metric({ label, value }: { label: string; value: number }) {
