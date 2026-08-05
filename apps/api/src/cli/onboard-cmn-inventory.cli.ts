@@ -55,9 +55,21 @@ const LEGACY_DIR_CANDIDATES = [
   'C:/Users/USER/Documents/5-Inventory--/5-Inventory',
 ].filter(Boolean) as string[];
 
+const CLI_ARGS = new Set(process.argv.slice(2));
+
 async function main(): Promise<void> {
   const ctx = await createSeedContext();
   try {
+    if (CLI_ARGS.has('--legacy-import-only')) {
+      const imported = await importLegacyDataIfPresent(ctx, TENANT.schema);
+      process.stdout.write(
+        `Import legacy CMN selesai: produk=${imported.products}, pelanggan=${imported.customers}, ` +
+          `pemasok=${imported.suppliers}, penjualan=${imported.salesOrders}, pembelian=${imported.purchaseOrders}, ` +
+          `raw=${imported.rawRecords}, piutang=${imported.receivables}, hutang=${imported.payables}.\n`,
+      );
+      return;
+    }
+
     const owner = await ensurePlatformUser(ctx, USERS[0]);
     let tenant = await ctx.prisma.tenant.findUnique({ where: { code: TENANT.code } });
     if (!tenant) {
@@ -136,7 +148,13 @@ async function main(): Promise<void> {
       await ensureTenantMembershipAndRole(ctx, tenant.id, TENANT.schema, platformUser, user.roleCode, Boolean(user.owner));
     }
 
-    const imported = await importLegacyDataIfPresent(ctx, TENANT.schema);
+    const skipLegacyImport = CLI_ARGS.has('--skip-legacy-import') || process.env.CMN_SKIP_LEGACY_IMPORT === '1';
+    const imported = skipLegacyImport
+      ? { products: 0, customers: 0, suppliers: 0, salesOrders: 0, purchaseOrders: 0, rawRecords: 0, receivables: 0, payables: 0 }
+      : await importLegacyDataIfPresent(ctx, TENANT.schema);
+    if (skipLegacyImport) {
+      process.stdout.write('Import legacy DBF CMN dilewati pada proses ini.\n');
+    }
     process.stdout.write(
       `CMN siap: tenant=${TENANT.code}, schema=${TENANT.schema}, host=${TENANT.host}, ` +
         `produk=${imported.products}, pelanggan=${imported.customers}, pemasok=${imported.suppliers}, penjualan=${imported.salesOrders}.\n`,
