@@ -1445,6 +1445,7 @@ class InventoryProductDemo {
     required this.name,
     required this.price,
     required this.stock,
+    required this.imageUrl,
   });
   final String id;
   final String uomId;
@@ -1452,6 +1453,7 @@ class InventoryProductDemo {
   final String name;
   final double price;
   final int stock;
+  final String imageUrl;
 }
 
 class InventoryCustomer {
@@ -1466,7 +1468,10 @@ class InventoryCatalog {
   final List<InventoryCustomer> customers;
   final List<InventoryProductDemo> products;
 
-  factory InventoryCatalog.fromApi(Map<String, Object?> data) {
+  factory InventoryCatalog.fromApi(
+    Map<String, Object?> data, {
+    required Uri baseUrl,
+  }) {
     return InventoryCatalog(
       customers: ((data['customers'] as List?) ?? const [])
           .whereType<Map<String, Object?>>()
@@ -1485,9 +1490,20 @@ class InventoryCatalog {
                 name: (row['name'] ?? '').toString(),
                 price: toDouble(row['price']),
                 stock: toInt(row['available_qty']),
+                imageUrl: _resolveMediaUrl(
+                  baseUrl,
+                  (row['image_url'] ?? '').toString(),
+                ),
               ))
           .toList(),
     );
+  }
+
+  static String _resolveMediaUrl(Uri baseUrl, String value) {
+    if (value.isEmpty) return '';
+    final parsed = Uri.tryParse(value);
+    if (parsed?.hasScheme == true) return value;
+    return baseUrl.resolve(value.startsWith('/') ? value.substring(1) : value).toString();
   }
 }
 
@@ -1511,6 +1527,29 @@ class _ProductQtyTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: 72,
+                height: 72,
+                color: Colors.white,
+                alignment: Alignment.center,
+                child: product.imageUrl.isEmpty
+                    ? const Icon(Icons.inventory_2_outlined,
+                        color: Color(0xFF64748B))
+                    : Image.network(
+                        product.imageUrl,
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.inventory_2_outlined,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1748,10 +1787,10 @@ class InventoryApiClient {
       final data = await _request<Map<String, Object?>>(
           'GET', '/inventory/mobile-catalog');
       await _localDatabase?.putCache('mobile-catalog', data);
-      return InventoryCatalog.fromApi(data);
+      return InventoryCatalog.fromApi(data, baseUrl: baseUrl);
     } on Object {
       final cached = await _localDatabase?.getCache('mobile-catalog');
-      if (cached != null) return InventoryCatalog.fromApi(cached);
+      if (cached != null) return InventoryCatalog.fromApi(cached, baseUrl: baseUrl);
       rethrow;
     }
   }

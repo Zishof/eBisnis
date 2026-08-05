@@ -1025,3 +1025,41 @@ model SeoStructuredData {
   @@map("seo_structured_data")
   @@schema("platform")
 }
+
+model ProductMediaBlob {
+  id                String   @id @default(uuid()) @db.Uuid
+  contentHash       String   @unique @map("content_hash") @db.VarChar(64)
+  mimeType          String   @map("mime_type") @db.VarChar(128)
+  content           Bytes
+  sizeBytes         Int      @map("size_bytes")
+  width             Int?
+  height            Int?
+  sourceUrl         String?  @map("source_url") @db.VarChar(1000)
+  sourceAttribution String?  @map("source_attribution") @db.VarChar(255)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  identities ProductMediaIdentity[]
+
+  @@map("product_media_blob")
+  @@schema("platform")
+}
+
+model ProductMediaIdentity {
+  id                String   @id @default(uuid()) @db.Uuid
+  canonicalKey      String   @unique @map("canonical_key") @db.VarChar(320)
+  normalizedBarcode String?  @map("normalized_barcode") @db.VarChar(128)
+  normalizedCode    String?  @map("normalized_code") @db.VarChar(128)
+  normalizedName    String   @unique @map("normalized_name") @db.VarChar(255)
+  mediaBlobId       String   @map("media_blob_id") @db.Uuid
+  matchBasis        String   @map("match_basis") @db.VarChar(24)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  mediaBlob ProductMediaBlob @relation(fields: [mediaBlobId], references: [id], onDelete: Restrict)
+
+  @@index([normalizedBarcode])
+  @@index([normalizedCode])
+  @@map("product_media_identity")
+  @@schema("platform")
+}

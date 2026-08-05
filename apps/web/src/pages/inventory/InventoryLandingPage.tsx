@@ -1,3 +1,4 @@
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -17,11 +18,13 @@ import {
   Pill,
   ReceiptText,
   Route,
+  Search,
   Settings2,
   ShieldCheck,
   Smartphone,
   WalletCards,
 } from 'lucide-react';
+import { apiRequest } from '../../lib/api';
 import { inventoryTenantLabelFromHost, isCmnInventoryHost } from './inventory-host';
 
 const photos = {
@@ -168,56 +171,187 @@ const downloads = [
   },
 ];
 
-const cmnProductCatalog = [
-  {
-    name: 'Analgesik dan Antipiretik',
-    category: 'Obat nyeri dan demam',
-    body: 'Pilihan obat nyeri ringan, demam, dan kebutuhan harian apotek dengan ketersediaan stok terpantau.',
-    image: 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&w=900&q=82',
-  },
-  {
-    name: 'Antasida dan Lambung',
-    category: 'Pencernaan',
-    body: 'Katalog produk maag, asam lambung, dan pendukung kesehatan pencernaan untuk outlet farmasi.',
-    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=900&q=82',
-  },
-  {
-    name: 'Vitamin dan Suplemen',
-    category: 'Daya tahan tubuh',
-    body: 'Vitamin harian, mineral, dan suplemen keluarga untuk kebutuhan ritel kesehatan.',
-    image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=900&q=82',
-  },
-  {
-    name: 'Obat Batuk dan Flu',
-    category: 'Respirasi',
-    body: 'Produk batuk, flu, dekongestan, dan pendukung pemulihan yang umum dicari pelanggan apotek.',
-    image: 'https://images.unsplash.com/photo-1585435557343-3b092031a831?auto=format&fit=crop&w=900&q=82',
-  },
-  {
-    name: 'Perawatan Luka',
-    category: 'Alat kesehatan',
-    body: 'Kasa, plester, antiseptik, dan produk perawatan luka untuk klinik kecil, apotek, dan toko obat.',
-    image: 'https://images.unsplash.com/photo-1584516150909-c43483ee7932?auto=format&fit=crop&w=900&q=82',
-  },
-  {
-    name: 'Produk Ibu dan Anak',
-    category: 'Keluarga',
-    body: 'Kebutuhan bayi, anak, ibu, dan nutrisi pendamping yang lazim dijual di jaringan apotek.',
-    image: 'https://images.unsplash.com/photo-1583947581924-a6d1dc388ed3?auto=format&fit=crop&w=900&q=82',
-  },
-  {
-    name: 'Alat Diagnostik Mandiri',
-    category: 'Monitoring kesehatan',
-    body: 'Termometer, alat cek gula darah, test strip, dan perlengkapan monitoring kesehatan rumah.',
-    image: 'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=900&q=82',
-  },
-  {
-    name: 'Personal Care Farmasi',
-    category: 'Perawatan harian',
-    body: 'Produk perawatan kulit, rambut, kebersihan, dan kebutuhan personal care farmasi.',
-    image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=900&q=82',
-  },
-];
+interface PublicCatalogProduct {
+  id: string;
+  code: string;
+  sku: string;
+  barcode: string | null;
+  name: string;
+  description: string | null;
+  category: string;
+  uom: string;
+  available: boolean;
+  imageUrl: string;
+}
+
+interface PublicCatalogResponse {
+  products: PublicCatalogProduct[];
+  categories: Array<{ name: string; count: number }>;
+  summary: { products: number; available: number };
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}
+
+function CmnProductCatalog() {
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('');
+  const [page, setPage] = useState(1);
+  const [catalog, setCatalog] = useState<PublicCatalogResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({ page: String(page), limit: '24' });
+    if (search) params.set('q', search);
+    if (category) params.set('category', category);
+    setLoading(true);
+    setError('');
+    apiRequest<PublicCatalogResponse>(`/inventory/public/catalog?${params}`, {
+      signal: controller.signal,
+      skipRefresh: true,
+    })
+      .then(setCatalog)
+      .catch((reason: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(reason instanceof Error ? reason.message : 'Katalog belum dapat dimuat.');
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [category, page, search]);
+
+  const submitSearch = (event: FormEvent) => {
+    event.preventDefault();
+    setPage(1);
+    setSearch(searchInput.trim());
+  };
+
+  return (
+    <section id="katalog" className="container-page py-12">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-3xl">
+          <p className="section-eyebrow">Katalog produk nyata</p>
+          <h2 className="text-3xl font-black text-slate-950 dark:text-white">
+            Produk yang dipasarkan Caruban Medika Nusantara.
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+            Cari berdasarkan nama, kode, SKU, atau barcode. Katalog ini bersifat informasi; harga khusus dan
+            pemesanan tersedia setelah pelanggan login melalui aplikasi.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:w-auto">
+          <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-xs font-bold uppercase text-slate-500">Produk aktif</p>
+            <p className="mt-1 text-xl font-black">{catalog?.summary.products.toLocaleString('id-ID') ?? '-'}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-xs font-bold uppercase text-slate-500">Tersedia</p>
+            <p className="mt-1 text-xl font-black text-emerald-700 dark:text-emerald-300">
+              {catalog?.summary.available.toLocaleString('id-ID') ?? '-'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={submitSearch} className="mt-7 flex max-w-3xl gap-2" role="search">
+        <label className="relative min-w-0 flex-1">
+          <span className="sr-only">Cari produk</span>
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
+          <input
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Cari Bodrex, Paramex, kode, atau barcode..."
+            className="h-12 w-full rounded-lg border border-slate-300 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:focus:ring-emerald-950"
+          />
+        </label>
+        <button type="submit" className="btn-primary h-12 shrink-0 px-5">Cari</button>
+      </form>
+
+      {catalog?.categories.length ? (
+        <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Filter kategori produk">
+          <button
+            type="button"
+            onClick={() => { setCategory(''); setPage(1); }}
+            className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold ${category === '' ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'}`}
+          >
+            Semua ({catalog.summary.products.toLocaleString('id-ID')})
+          </button>
+          {catalog.categories.map((item) => (
+            <button
+              key={item.name}
+              type="button"
+              onClick={() => { setCategory(item.name); setPage(1); }}
+              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold ${category === item.name ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'}`}
+            >
+              {item.name} ({item.count})
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="mt-7 rounded-lg border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">
+          {error} Muat ulang halaman untuk mencoba kembali.
+        </div>
+      ) : null}
+
+      <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy={loading}>
+        {loading && !catalog
+          ? Array.from({ length: 8 }, (_, index) => (
+              <div key={index} className="h-80 animate-pulse rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-900" />
+            ))
+          : catalog?.products.map((product) => (
+              <article key={product.id} className="group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-700">
+                <div className="relative aspect-[4/3] overflow-hidden border-b border-slate-100 bg-white p-4 dark:border-slate-800">
+                  <img
+                    src={product.imageUrl}
+                    alt={`Foto produk ${product.name}`}
+                    loading="lazy"
+                    className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.03]"
+                  />
+                  <span className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold ${product.available ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+                    {product.available ? 'Tersedia' : 'Konfirmasi stok'}
+                  </span>
+                </div>
+                <div className="p-5">
+                  <p className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-300">{product.category}</p>
+                  <h3 className="mt-2 min-h-12 text-base font-extrabold leading-6 text-slate-950 dark:text-white">{product.name}</h3>
+                  <div className="mt-4 flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="truncate font-mono">{product.code}</span>
+                    <span className="shrink-0 rounded bg-slate-100 px-2 py-1 font-bold dark:bg-slate-800">{product.uom}</span>
+                  </div>
+                </div>
+              </article>
+            ))}
+      </div>
+
+      {!loading && catalog?.products.length === 0 ? (
+        <div className="mt-7 rounded-lg border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
+          <PackageSearch className="mx-auto h-9 w-9 text-slate-400" aria-hidden />
+          <p className="mt-3 font-bold">Produk tidak ditemukan</p>
+          <p className="mt-1 text-sm text-slate-500">Coba nama yang lebih singkat atau pilih Semua kategori.</p>
+        </div>
+      ) : null}
+
+      {catalog && catalog.pagination.totalPages > 1 ? (
+        <nav className="mt-8 flex items-center justify-center gap-3" aria-label="Halaman katalog">
+          <button type="button" className="btn-secondary" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+            Sebelumnya
+          </button>
+          <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+            Halaman {catalog.pagination.page} dari {catalog.pagination.totalPages}
+          </span>
+          <button type="button" className="btn-secondary" disabled={page >= catalog.pagination.totalPages} onClick={() => setPage((value) => value + 1)}>
+            Berikutnya
+          </button>
+        </nav>
+      ) : null}
+    </section>
+  );
+}
 
 export function InventoryLandingPage() {
   const tenantName = inventoryTenantLabelFromHost();
@@ -649,40 +783,7 @@ function CmnCompanyProfile() {
         </div>
       </section>
 
-      <section id="katalog" className="container-page py-12">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-3xl">
-            <p className="section-eyebrow">Katalog display</p>
-            <h2 className="text-3xl font-black text-slate-950 dark:text-white">
-              Contoh kelompok produk yang dipasarkan Caruban Medika Nusantara.
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
-              Katalog ini bersifat informasi. Stok, harga, diskon, dan pemesanan hanya tersedia setelah pelanggan login
-              melalui aplikasi.
-            </p>
-          </div>
-          <span className="inline-flex rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-            Tidak menerima order dari web publik
-          </span>
-        </div>
-        <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {cmnProductCatalog.map((product) => (
-            <article key={product.name} className="card overflow-hidden">
-              <img src={product.image} alt={product.name} className="h-40 w-full object-cover" />
-              <div className="p-5">
-                <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                  {product.category}
-                </p>
-                <h3 className="mt-2 text-lg font-bold">{product.name}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{product.body}</p>
-                <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  Display katalog saja
-                </p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+      <CmnProductCatalog />
 
       <section id="download" className="border-t border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">
         <div className="container-page grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">

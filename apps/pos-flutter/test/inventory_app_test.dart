@@ -93,6 +93,7 @@ void main() {
             name: 'ADEM SARI',
             price: 49000,
             stock: 5,
+            imageUrl: '',
           ),
         ],
       ),

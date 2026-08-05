@@ -1222,8 +1222,9 @@ export class SalesInventoryOperationsController {
       this.tenantDb.query<Record<string, unknown>>(
         schemaOf(user),
         `SELECT p.id::text, p.code, p.name, p.base_uom_id::text AS uom_id,
-                p.default_sale_price::text AS price,
-                COALESCE(sum(sb.available_qty), 0)::text AS available_qty
+                 p.default_sale_price::text AS price,
+                 COALESCE(sum(sb.available_qty), 0)::text AS available_qty,
+                 '/inventory/public/products/' || p.id::text || '/image' AS image_url
            FROM ${S}.product p LEFT JOIN ${S}.stock_balance sb ON sb.product_id = p.id
           WHERE p.deleted_at IS NULL AND p.is_active AND p.is_sellable
           GROUP BY p.id ORDER BY p.name LIMIT 1000`,

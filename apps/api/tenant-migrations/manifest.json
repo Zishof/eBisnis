@@ -339,6 +339,13 @@
       "description": "Persetujuan buku harga ERP, jejak tutup/buka periode, cursor event sinkronisasi, dan inbox command perangkat. Migrasi bersifat aditif dan tetap memakai price_book, journal_entry, fiscal_period, serta ledger ERP yang sudah ada sebagai sumber kebenaran."
     },
     {
+      "version": "V049",
+      "sequence": 49,
+      "file": "V049__shared_product_media_binding.sql",
+      "name": "Media produk bersama lintas tenant",
+      "description": "Mengikat produk ERP tenant ke satu identitas media platform yang dideduplikasi berdasarkan barcode, nama, atau kode. Override manual tetap disimpan sebagai BLOB tenant tanpa menggandakan media bawaan global."
+    },
+    {
       "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

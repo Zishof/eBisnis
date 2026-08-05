@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, RotateCcw, Trash2, ShieldAlert, Power, Eye } from 'lucide-react';
+import { Camera, Plus, RotateCcw, Trash2, ShieldAlert, Power, Eye } from 'lucide-react';
 import { api, apiRequestPaged, formatDateTime, type PageMeta } from '../../lib/api';
 import {
   Code,
@@ -64,6 +64,7 @@ export function MasterListPage({ resource }: { resource: string }) {
   const [drawer, setDrawer] = useState<{ row: MasterRow; report?: ReferenceReport } | null>(null);
   const [pendingPurge, setPendingPurge] = useState<{ row: MasterRow; reason: string } | null>(null);
   const [creating, setCreating] = useState(false);
+  const [imageTarget, setImageTarget] = useState<MasterRow | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
 
   const resources = useQuery({
@@ -169,6 +170,19 @@ export function MasterListPage({ resource }: { resource: string }) {
     },
   });
 
+  const uploadImage = useMutation({
+    mutationFn: async (input: { product: MasterRow; file: File }) => {
+      const body = new FormData();
+      body.append('file', input.file);
+      return api.post(`/inventory/products/${input.product.id}/image`, body);
+    },
+    onSuccess: () => {
+      toast.push('Gambar produk berhasil diperbarui.', 'success');
+      setImageTarget(null);
+    },
+    onError: (error) => toast.push(toMessage(error, (key, fallback) => t(key, fallback ?? key)), 'error'),
+  });
+
   const columns = useMemo<Array<GridColumn<MasterRow>>>(
     () => [
       {
@@ -204,6 +218,17 @@ export function MasterListPage({ resource }: { resource: string }) {
         className: 'text-end',
         render: (row) => (
           <div className="flex flex-wrap justify-end gap-1">
+            {resource === 'products' && !row.deleted_at ? (
+              <button
+                type="button"
+                className="rounded p-1.5 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                onClick={() => setImageTarget(row)}
+                title="Ganti gambar produk"
+                aria-label={`Ganti gambar ${row.name}`}
+              >
+                <Camera className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
             <button
               type="button"
               className="rounded p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -262,7 +287,7 @@ export function MasterListPage({ resource }: { resource: string }) {
         ),
       },
     ],
-    [t, meta, mutate, openReferences],
+    [t, meta, mutate, openReferences, resource],
   );
 
   const label = meta?.label ?? resource;
@@ -407,6 +432,40 @@ export function MasterListPage({ resource }: { resource: string }) {
           </div>
         </div>
       )}
+
+      {imageTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="card w-full max-w-md p-6">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-emerald-50 p-2 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                <Camera className="h-5 w-5" aria-hidden />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Ganti gambar produk</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{imageTarget.name}</p>
+              </div>
+            </div>
+            <label className="mt-5 block">
+              <span className="field-label">JPEG, PNG, atau WEBP (maksimum 5 MB)</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="field-input mt-1"
+                disabled={uploadImage.isPending}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) uploadImage.mutate({ product: imageTarget, file });
+                }}
+              />
+            </label>
+            <div className="mt-5 flex justify-end">
+              <button type="button" className="btn-secondary" disabled={uploadImage.isPending} onClick={() => setImageTarget(null)}>
+                {uploadImage.isPending ? 'Mengunggah...' : t('common.cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Panel referensi */}
       {drawer && (
