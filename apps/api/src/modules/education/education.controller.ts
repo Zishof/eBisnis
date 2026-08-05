@@ -49,6 +49,20 @@ export class EschoolController {
   constructor(private readonly education: EducationService) {}
 
   @Permissions('EPESANTREN_EDUCATION_IMPLEMENTASI.READ')
+  @Get('dashboard')
+  @ApiOperation({ summary: 'Dashboard eSchool dan kesiapan modul sekolah formal' })
+  dashboard() {
+    return this.education.eschoolDashboard();
+  }
+
+  @Permissions('EPESANTREN_EDUCATION_IMPLEMENTASI.READ')
+  @Get('navigation')
+  @ApiOperation({ summary: 'Navigasi modul eSchool lengkap' })
+  navigation() {
+    return this.education.eschoolNavigation();
+  }
+
+  @Permissions('EPESANTREN_EDUCATION_IMPLEMENTASI.READ')
   @Get('modules')
   @ApiOperation({ summary: 'Katalog modul eSchool dan status implementasinya' })
   modules() {

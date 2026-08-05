@@ -39,6 +39,7 @@ import { AuditService } from '../../infrastructure/audit/audit.service';
 import { TenantBootstrapService } from '../../infrastructure/provisioning/tenant-bootstrap.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { RegistrationService } from './registration.service';
+import { ROLE_ADMIN_ESCHOOL } from '../education/rbac/eschool-vertical.catalog';
 import { ROLE_ADMIN_EPESANTREN } from '../pesantren/rbac/pesantren-vertical.catalog';
 import {
   AFILIASI_PESANTREN,
@@ -396,23 +397,25 @@ export class PesantrenRegistrationService {
           where: { tenantId: umum.tenantId, isOwner: true },
           select: { platformUserId: true },
         });
-        const hasil = pemilik
-          ? await this.bootstrap.assignAdditionalRole(
-              umum.schemaName,
-              pemilik.platformUserId,
-              ROLE_ADMIN_EPESANTREN,
-            )
-          : { assigned: false };
-        if (!hasil.assigned) {
-          this.logger.warn(
-            `Peran ${ROLE_ADMIN_EPESANTREN} tidak diberikan pada ${umum.schemaName}: ` +
-              'pemilik, peran, atau subjek pengguna tidak ditemukan.',
-          );
+        for (const roleCode of [ROLE_ADMIN_EPESANTREN, ROLE_ADMIN_ESCHOOL]) {
+          const hasil = pemilik
+            ? await this.bootstrap.assignAdditionalRole(
+                umum.schemaName,
+                pemilik.platformUserId,
+                roleCode,
+              )
+            : { assigned: false };
+          if (!hasil.assigned) {
+            this.logger.warn(
+              `Peran ${roleCode} tidak diberikan pada ${umum.schemaName}: ` +
+                'pemilik, peran, atau subjek pengguna tidak ditemukan.',
+            );
+          }
         }
       } catch (error) {
         const pesan = error instanceof Error ? error.message : String(error);
         this.logger.error(
-          `Pemberian peran ${ROLE_ADMIN_EPESANTREN} pada ${umum.schemaName} gagal: ${pesan}`,
+          `Pemberian peran ${ROLE_ADMIN_EPESANTREN}/${ROLE_ADMIN_ESCHOOL} pada ${umum.schemaName} gagal: ${pesan}`,
         );
       }
 

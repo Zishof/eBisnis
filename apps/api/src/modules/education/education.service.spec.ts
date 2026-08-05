@@ -25,6 +25,16 @@ describe('EducationService', () => {
     expect(siswa?.templateEndpoint).toBe('/eschool/dapodik/santri/template');
   });
 
+  it('menyediakan dashboard dan navigasi eSchool lengkap', () => {
+    const dashboard = service.eschoolDashboard();
+    const navigation = service.eschoolNavigation();
+
+    expect(dashboard.modules.length).toBeGreaterThanOrEqual(10);
+    expect(navigation.some((item) => item.code === 'dapodik' && item.href === '/app/eschool/dapodik')).toBe(true);
+    expect(navigation.some((item) => item.code === 'perpustakaan')).toBe(true);
+    expect(navigation.some((item) => item.code === 'akreditasi')).toBe(true);
+  });
+
   it('mengembalikan salinan data supaya katalog tidak termutasi dari luar', () => {
     const first = service.datasets('epesantren')[0];
     expect(first).toBeDefined();

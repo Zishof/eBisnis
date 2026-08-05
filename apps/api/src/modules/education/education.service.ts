@@ -3,6 +3,8 @@ import {
   EDUCATION_DATASETS,
   EDUCATION_GAP_MODULES,
   EDUCATION_ROADMAP,
+  ESCHOOL_DASHBOARD,
+  ESCHOOL_NAVIGATION,
   type EducationProduct,
 } from './education-catalog';
 
@@ -46,5 +48,18 @@ export class EducationService {
       ...item,
       items: [...item.items],
     }));
+  }
+
+  eschoolDashboard() {
+    return {
+      ...ESCHOOL_DASHBOARD,
+      readiness: ESCHOOL_DASHBOARD.readiness.map((item) => ({ ...item })),
+      quickActions: ESCHOOL_DASHBOARD.quickActions.map((item) => ({ ...item })),
+      modules: ESCHOOL_NAVIGATION.map((item) => ({ ...item })),
+    };
+  }
+
+  eschoolNavigation() {
+    return ESCHOOL_NAVIGATION.map((item) => ({ ...item }));
   }
 }

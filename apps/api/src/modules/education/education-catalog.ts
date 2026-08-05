@@ -33,6 +33,200 @@ export interface EducationRoadmapItem {
   items: string[];
 }
 
+export interface EschoolNavigationItem {
+  code: string;
+  name: string;
+  description: string;
+  href: string;
+  status: EducationModuleStatus;
+  priority: EducationPriority;
+  metricLabel: string;
+  metricValue: string;
+  foundation: string;
+}
+
+export interface EschoolDashboard {
+  title: string;
+  subtitle: string;
+  readiness: Array<{ label: string; value: string; status: EducationModuleStatus }>;
+  quickActions: Array<{ label: string; href: string; description: string }>;
+  modules: EschoolNavigationItem[];
+}
+
+export const ESCHOOL_NAVIGATION: EschoolNavigationItem[] = [
+  {
+    code: 'dashboard',
+    name: 'Dashboard Sekolah',
+    description: 'Ringkasan siswa, guru, rombel, presensi, PPDB, nilai, DAPODIK, dan pekerjaan harian kepala sekolah.',
+    href: '/app/eschool',
+    status: 'SEBAGIAN',
+    priority: 'P1',
+    metricLabel: 'Panel',
+    metricValue: 'Aktif',
+    foundation: 'Education catalog dan dashboard eSchool.',
+  },
+  {
+    code: 'siswa',
+    name: 'Siswa',
+    description: 'Biodata siswa, NIS/NISN/NIK, orang tua/wali, status aktif, mutasi, alumni, dan validasi DAPODIK.',
+    href: '/app/eschool/siswa',
+    status: 'FONDASI',
+    priority: 'P1',
+    metricLabel: 'Dataset',
+    metricValue: 'DAPODIK',
+    foundation: 'pesantren_santri sebagai education-core peserta didik.',
+  },
+  {
+    code: 'guru',
+    name: 'Guru dan GTK',
+    description: 'Data guru/tenaga kependidikan, NUPTK/NIP, penugasan mengajar, kontak, dan status aktif.',
+    href: '/app/eschool/guru',
+    status: 'FONDASI',
+    priority: 'P1',
+    metricLabel: 'Dataset',
+    metricValue: 'GTK',
+    foundation: 'pesantren_guru dan penugasan mengajar.',
+  },
+  {
+    code: 'ppdb',
+    name: 'PPDB',
+    description: 'Gelombang penerimaan, formulir pendaftar, verifikasi, seleksi, daftar ulang, dan kartu peserta.',
+    href: '/app/eschool/ppdb',
+    status: 'FONDASI',
+    priority: 'P1',
+    metricLabel: 'Alur',
+    metricValue: 'PSB',
+    foundation: 'pesantren_psb_gelombang dan pendaftar.',
+  },
+  {
+    code: 'kelas',
+    name: 'Kelas dan Rombel',
+    description: 'Kelas, rombongan belajar, anggota rombel, wali kelas, kapasitas, dan tahun ajaran.',
+    href: '/app/eschool/kelas',
+    status: 'FONDASI',
+    priority: 'P1',
+    metricLabel: 'Struktur',
+    metricValue: 'Rombel',
+    foundation: 'pesantren_rombongan_belajar.',
+  },
+  {
+    code: 'akademik',
+    name: 'Mapel, Jadwal, Nilai/Rapor',
+    description: 'Mata pelajaran, kurikulum, jadwal, komponen nilai, skala, input nilai, leger, dan rapor.',
+    href: '/app/eschool/akademik',
+    status: 'FONDASI',
+    priority: 'P1',
+    metricLabel: 'Akademik',
+    metricValue: 'Siap fondasi',
+    foundation: 'pesantren_mata_pelajaran, kurikulum, jadwal, nilai.',
+  },
+  {
+    code: 'presensi',
+    name: 'Presensi',
+    description: 'Kehadiran siswa, presensi kelas, rekap harian, izin, dan export laporan ke wali kelas.',
+    href: '/app/eschool/presensi',
+    status: 'FONDASI',
+    priority: 'P1',
+    metricLabel: 'Absensi',
+    metricValue: 'Harian',
+    foundation: 'pesantren_presensi dan izin.',
+  },
+  {
+    code: 'bk',
+    name: 'BK dan Pembinaan',
+    description: 'Catatan konseling, pelanggaran, prestasi, tindak lanjut, dan buku penghubung orang tua.',
+    href: '/app/eschool/bk',
+    status: 'FONDASI',
+    priority: 'P2',
+    metricLabel: 'Layanan',
+    metricValue: 'BK',
+    foundation: 'pembinaan, pelanggaran, prestasi, buku penghubung.',
+  },
+  {
+    code: 'dapodik',
+    name: 'DAPODIK',
+    description: 'Import, export, template, diff per field, log batch, dan rollback aman untuk data nasional.',
+    href: '/app/eschool/dapodik',
+    status: 'SEBAGIAN',
+    priority: 'P0',
+    metricLabel: 'Audit',
+    metricValue: 'Batch',
+    foundation: 'EschoolDapodikController.',
+  },
+  {
+    code: 'perpustakaan',
+    name: 'Perpustakaan',
+    description: 'Katalog buku, anggota, peminjaman, pengembalian, denda, dan statistik literasi.',
+    href: '/app/eschool/perpustakaan',
+    status: 'BELUM',
+    priority: 'P2',
+    metricLabel: 'Roadmap',
+    metricValue: 'P2',
+    foundation: 'Belum ada entity khusus.',
+  },
+  {
+    code: 'sarpras',
+    name: 'Sarpras',
+    description: 'Ruang, aset pendidikan, kondisi, inventaris, perawatan, dan bukti kelayakan sarana.',
+    href: '/app/eschool/sarpras',
+    status: 'BELUM',
+    priority: 'P2',
+    metricLabel: 'Roadmap',
+    metricValue: 'P2',
+    foundation: 'Bisa memakai inventory/core asset sebagai referensi.',
+  },
+  {
+    code: 'akreditasi',
+    name: 'Akreditasi dan Mutu',
+    description: 'Evidence center, indikator mutu, dokumen pendukung, visitasi, dan riwayat akreditasi.',
+    href: '/app/eschool/akreditasi',
+    status: 'BELUM',
+    priority: 'P2',
+    metricLabel: 'Roadmap',
+    metricValue: 'P2',
+    foundation: 'Surat, CMS, audit, dan dokumen dapat menjadi fondasi.',
+  },
+  {
+    code: 'alumni',
+    name: 'Alumni',
+    description: 'Data lulusan, tracer study, kontak alumni, riwayat lanjut studi/kerja, dan komunitas.',
+    href: '/app/eschool/alumni',
+    status: 'FONDASI',
+    priority: 'P2',
+    metricLabel: 'Status',
+    metricValue: 'Mutasi',
+    foundation: 'Status santri/siswa keluar/lulus.',
+  },
+  {
+    code: 'laporan',
+    name: 'Laporan',
+    description: 'Laporan siswa, guru, rombel, presensi, PPDB, nilai, DAPODIK, dan manajemen sekolah.',
+    href: '/app/eschool/laporan',
+    status: 'FONDASI',
+    priority: 'P1',
+    metricLabel: 'Output',
+    metricValue: 'PDF/Excel',
+    foundation: 'CRUD tools, laporan pesantren, dan DAPODIK export.',
+  },
+];
+
+export const ESCHOOL_DASHBOARD: EschoolDashboard = {
+  title: 'Dashboard eSchool',
+  subtitle: 'Ruang kerja sekolah formal untuk kepala sekolah, operator, wali kelas, guru, BK, dan tata usaha.',
+  readiness: [
+    { label: 'DAPODIK', value: 'Log batch, diff, rollback', status: 'SEBAGIAN' },
+    { label: 'Siswa/GTK', value: 'Fondasi import/export', status: 'FONDASI' },
+    { label: 'Akademik', value: 'Rombel, mapel, jadwal, nilai', status: 'FONDASI' },
+    { label: 'Layanan sekolah', value: 'BK, perpustakaan, sarpras', status: 'BELUM' },
+  ],
+  quickActions: [
+    { label: 'Import DAPODIK', href: '/app/eschool/dapodik', description: 'Validasi, preview diff, import final, dan rollback batch.' },
+    { label: 'Kelola siswa', href: '/app/eschool/siswa', description: 'Buka facade siswa dengan kosakata sekolah formal.' },
+    { label: 'Akademik', href: '/app/eschool/akademik', description: 'Rombel, mapel, jadwal, nilai, rapor, dan leger.' },
+  ],
+  modules: ESCHOOL_NAVIGATION,
+};
+
 export const EDUCATION_GAP_MODULES: EducationGapModule[] = [
   {
     code: 'EP-DASH',
@@ -126,12 +320,12 @@ export const EDUCATION_GAP_MODULES: EducationGapModule[] = [
     code: 'ES-MASTER',
     name: 'Master sekolah dan unit formal',
     product: 'eschool',
-    status: 'FONDASI',
+    status: 'SEBAGIAN',
     priority: 'P1',
     summary: 'Profil sekolah, NPSN, jenjang, tahun ajaran, semester, kelas, rombel, dan alamat.',
-    implementedBy: 'Fondasi dapat memakai unit pendidikan, rombel, kurikulum, tenant, dan profil.',
-    nextAction: 'Buat namespace eSchool dan mapping sekolah formal dari unit pendidikan.',
-    href: '/app/pesantren/unit-pendidikan',
+    implementedBy: 'ESCHOOL_VERTICAL_CATALOG, EschoolDashboardPage, EschoolOperationalPage, unit pendidikan, rombel, kurikulum, tenant, dan profil.',
+    nextAction: 'Pisahkan entity sekolah formal murni dari unit pendidikan pesantren tanpa memutus data yang sudah ada.',
+    href: '/app/eschool/siswa',
   },
   {
     code: 'ES-SISWA',
@@ -140,9 +334,9 @@ export const EDUCATION_GAP_MODULES: EducationGapModule[] = [
     status: 'FONDASI',
     priority: 'P1',
     summary: 'Biodata siswa, NISN, NIK, wali, mutasi, alumni, dan referensi nasional.',
-    implementedBy: 'Facade DAPODIK eSchool memakai mesin DAPODIK ePesantren sebagai fondasi education-core.',
-    nextAction: 'Buat facade siswa eSchool agar istilah, filter unit formal, dan validasi sesuai sekolah formal.',
-    href: '/app/eschool/dapodik',
+    implementedBy: 'Facade DAPODIK eSchool, navigasi eSchool, dan shell operasional siswa memakai education-core sebagai fondasi.',
+    nextAction: 'Tambahkan endpoint CRUD siswa eSchool dengan filter unit formal, mutasi, wali, dan validasi NISN/NIK.',
+    href: '/app/eschool/siswa',
   },
   {
     code: 'ES-AKADEMIK',
@@ -151,19 +345,20 @@ export const EDUCATION_GAP_MODULES: EducationGapModule[] = [
     status: 'FONDASI',
     priority: 'P1',
     summary: 'Mapel, kurikulum, jadwal, nilai, rapor, ujian, kelulusan, dan PPDB sekolah.',
-    implementedBy: 'Pola rombel, kurikulum, jadwal, nilai, dan PSB sudah tersedia di ePesantren.',
+    implementedBy: 'Shell eSchool akademik, pola rombel, kurikulum, jadwal, nilai, dan PSB sudah tersedia di ePesantren.',
     nextAction: 'Tambah rapor sekolah resmi, kartu PPDB sekolah, dan finalisasi export DAPODIK khusus sekolah formal.',
-    href: '/app/pesantren/psb',
+    href: '/app/eschool/akademik',
   },
   {
     code: 'ES-LAYANAN',
     name: 'BK, perpustakaan, sarpras, akreditasi, alumni',
     product: 'eschool',
-    status: 'BELUM',
+    status: 'FONDASI',
     priority: 'P2',
     summary: 'Layanan pendukung sekolah untuk mutu, aset, literasi, konseling, dan jejaring alumni.',
-    implementedBy: 'Belum ada domain eSchool khusus; sebagian bisa memakai surat, CMS, dan pembinaan.',
-    nextAction: 'Buat modul BK sekolah terlebih dahulu, lalu sarpras/perpustakaan/akreditasi.',
+    implementedBy: 'ESCHOOL_VERTICAL_CATALOG dan EschoolOperationalPage menyiapkan shell menu layanan; sebagian bisa memakai surat, CMS, inventory, dan pembinaan.',
+    nextAction: 'Buat modul BK sekolah terlebih dahulu, lalu perpustakaan, sarpras, akreditasi, dan alumni.',
+    href: '/app/eschool/perpustakaan',
   },
   {
     code: 'EC-MASTER',
