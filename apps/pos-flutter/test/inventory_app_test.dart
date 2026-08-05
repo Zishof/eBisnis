@@ -69,4 +69,22 @@ void main() {
     expect(find.text('Rp 49.000'), findsWidgets);
     expect(find.text('Kirim Order'), findsOneWidget);
   });
+
+  testWidgets('panduan inventory dapat dibaca dari aplikasi', (tester) async {
+    await tester.pumpWidget(const AplikasiInventory(
+      initialPersona:
+          PersonaInventory(username: 'agung', label: 'Agung', role: 'Sales'),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Panduan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Panduan Inventory / Sales'), findsOneWidget);
+    expect(find.text('Mulai bekerja'), findsOneWidget);
+    expect(
+      find.text('https://inventory.ebisnis.id/panduan/inventory-sales'),
+      findsOneWidget,
+    );
+  });
 }

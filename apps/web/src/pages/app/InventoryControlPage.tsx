@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Banknote,
   BarChart3,
+  BookOpen,
   Boxes,
   ClipboardList,
   Download,
@@ -239,6 +240,9 @@ export function InventoryControlPage() {
         breadcrumbs={[{ label: 'Dashboard', href: '/app' }, { label: 'Inventory Control' }]}
         actions={
           <>
+            <a href="/panduan/inventory-sales" target="_blank" rel="noreferrer" className="btn-secondary">
+              <BookOpen className="h-4 w-4" aria-hidden /> Panduan
+            </a>
             <button type="button" className="btn-secondary" onClick={() => window.print()}>
               <Printer className="h-4 w-4" aria-hidden /> Cetak
             </button>

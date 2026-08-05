@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   BarChart3,
+  BookOpen,
   Boxes,
   CalendarClock,
   Camera,
@@ -258,6 +259,9 @@ export function InventoryLandingPage() {
               <a href="#download" className="btn-outline px-5 py-3">
                 Download aplikasi
               </a>
+              <Link to="/panduan/inventory-sales" className="btn-outline px-5 py-3">
+                <BookOpen className="h-4 w-4" aria-hidden /> Panduan pengguna
+              </Link>
               <a href="#kesiapan" className="btn-outline px-5 py-3">
                 Cek kesiapan data
               </a>
@@ -582,6 +586,9 @@ function CmnCompanyProfile() {
               <a href="#download" className="btn-outline px-5 py-3">
                 Download aplikasi pelanggan
               </a>
+              <Link to="/panduan/inventory-sales" className="btn-outline px-5 py-3">
+                <BookOpen className="h-4 w-4" aria-hidden /> Panduan pengguna
+              </Link>
               <Link to="/masuk?produk=inventory&role=PELANGGAN" className="btn-outline px-5 py-3">
                 Login pelanggan
               </Link>

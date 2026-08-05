@@ -293,6 +293,9 @@ const PortalPelangganAdminPage = lazy(() =>
 const InventoryLandingPage = lazy(() =>
   import('../pages/inventory/InventoryLandingPage').then((m) => ({ default: m.InventoryLandingPage })),
 );
+const InventoryManualPage = lazy(() =>
+  import('../pages/inventory/InventoryManualPage').then((m) => ({ default: m.InventoryManualPage })),
+);
 
 const BelanjaHomePage = lazy(() =>
   import('../pages/belanja/BelanjaHomePage').then((m) => ({ default: m.BelanjaHomePage })),
@@ -497,6 +500,7 @@ export function App() {
           <Route path="/daftar/berhasil" element={<RegisterSuccessPage />} />
           <Route path="/demo" element={<DemoDomainRedirect />} />
           <Route path="/inventory" element={<InventoryLandingPage />} />
+          <Route path="/panduan/inventory-sales" element={<InventoryManualPage />} />
           <Route path="/contoh-usaha/:vertical" element={<BusinessVerticalDomainRedirect />} />
           <Route path="/a/*" element={<AkarMenurutHost />} />
           <Route path="/ganti-kata-sandi" element={<ChangePasswordPage />} />

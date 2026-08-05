@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AplikasiInventory extends StatefulWidget {
   const AplikasiInventory({
@@ -191,6 +192,8 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
               icon: Icon(Icons.apps_outlined), label: 'Fitur'),
           NavigationDestination(
               icon: Icon(Icons.analytics_outlined), label: 'Laporan'),
+          NavigationDestination(
+              icon: Icon(Icons.menu_book_outlined), label: 'Panduan'),
         ],
       ),
       body: SafeArea(
@@ -325,8 +328,10 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                           )
                         else if (_tab == 2)
                           const _InventoryFeaturePage()
+                        else if (_tab == 3)
+                          _InventoryReportPage(snapshot: data!)
                         else
-                          _InventoryReportPage(snapshot: data!),
+                          const _InventoryManualPage(),
                       ],
                     ),
                   ),
@@ -335,6 +340,159 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           },
         ),
       ),
+    );
+  }
+}
+
+class _InventoryManualPage extends StatelessWidget {
+  const _InventoryManualPage();
+
+  static const manualUrl =
+      'https://inventory.ebisnis.id/panduan/inventory-sales';
+
+  @override
+  Widget build(BuildContext context) {
+    const chapters = <(String, IconData, List<String>)>[
+      (
+        'Mulai bekerja',
+        Icons.rocket_launch_outlined,
+        [
+          'Masuk dengan akun sendiri dan periksa tenant Caruban Medika Nusantara.',
+          'Sinkronkan master customer, katalog, harga, stok batch, dan expiry.',
+          'Sales memilih customer, menambahkan produk, memeriksa total, lalu mengirim order.',
+          'Admin memvalidasi stok, limit piutang, dan pengiriman sebelum invoice diterbitkan.',
+        ],
+      ),
+      (
+        'Order sales lapangan',
+        Icons.add_shopping_cart_outlined,
+        [
+          'Gunakan Order Baru, pilih customer dan produk sesuai wilayah penugasan.',
+          'Periksa jumlah, harga, batch, expiry, dan ketersediaan sebelum dikirim.',
+          'Jangan menekan kirim berulang; setiap order memakai identitas kejadian unik.',
+          'Order tersimpan dapat dipantau sampai validasi, pengiriman, dan pembayaran.',
+        ],
+      ),
+      (
+        'Stok, batch, dan expiry',
+        Icons.inventory_2_outlined,
+        [
+          'Gudang menggunakan FEFO: batch yang lebih cepat kedaluwarsa dikeluarkan dahulu.',
+          'Stok opname mencatat stok sistem, fisik, selisih, alasan, dan petugas.',
+          'Batch kedaluwarsa atau dikarantina tidak boleh dijanjikan kepada customer.',
+        ],
+      ),
+      (
+        'Piutang dan serah-terima nota',
+        Icons.account_balance_wallet_outlined,
+        [
+          'Sales hanya melihat piutang customer yang menjadi tanggung jawabnya.',
+          'Pembayaran wajib mencantumkan faktur, metode, tanggal, nominal, dan bukti.',
+          'Nota yang dibawa sales diserahterimakan dan ditutup dengan jejak audit.',
+        ],
+      ),
+      (
+        'Dashboard pemilik',
+        Icons.monitor_heart_outlined,
+        [
+          'Pantau omzet, HPP faktual, laba kotor, aging piutang, hutang, dan nilai stok.',
+          'Bandingkan performa per sales, customer, produk, wilayah, serta periode.',
+          'Tindak lanjuti expiry risk, stok minimum, dead stock, dan order tertahan.',
+        ],
+      ),
+      (
+        'Sinkronisasi dan bantuan',
+        Icons.sync_outlined,
+        [
+          'Jaga koneksi saat sinkronisasi dan jangan menghapus data lokal secara manual.',
+          'Jika gagal, catat waktu, akun, nomor transaksi, langkah, dan tangkapan layar.',
+          'Panduan Word dan PDF lengkap tersedia pada alamat publik di bawah.',
+        ],
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionCard(
+          title: 'Panduan Inventory / Sales',
+          icon: Icons.menu_book_outlined,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Panduan ringkas ini dapat dibaca tanpa meninggalkan aplikasi. Versi lengkap mencakup 16 bab dan paritas 48 layar aplikasi lama.',
+              ),
+              const SizedBox(height: 12),
+              SelectableText(
+                manualUrl,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    await Clipboard.setData(
+                      const ClipboardData(text: manualUrl),
+                    );
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Alamat panduan berhasil disalin.'),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.copy_outlined),
+                  label: const Text('Salin alamat panduan'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...chapters.map(
+          (chapter) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Card(
+              clipBehavior: Clip.antiAlias,
+              child: ExpansionTile(
+                leading: Icon(chapter.$2),
+                title: Text(
+                  chapter.$1,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+                children: chapter.$3
+                    .map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(top: 2),
+                              child: Icon(
+                                Icons.check_circle_outline,
+                                size: 18,
+                                color: Color(0xFF0F766E),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(item)),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

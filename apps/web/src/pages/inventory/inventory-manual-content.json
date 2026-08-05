@@ -1,0 +1,779 @@
+{
+  "meta": {
+    "title": "Panduan Pengguna eBisnis Inventory / Sales",
+    "subtitle": "Web, Desktop Windows, dan Android Flutter",
+    "version": "1.0",
+    "updated": "5 Agustus 2026",
+    "owner": "eBisnis.id",
+    "scope": "Inventory obat, sales lapangan, gudang, pembelian, piutang, hutang, laporan pemilik, dan migrasi data legacy"
+  },
+  "principles": [
+    "Satu transaksi dicatat sekali dan dipakai bersama oleh sales, gudang, admin, serta pemilik.",
+    "Hak akses mengikuti pekerjaan. Sales tidak menerima menu administrasi yang tidak diperlukan.",
+    "Batch dan tanggal kedaluwarsa dikelola dengan FEFO: stok yang lebih dahulu kedaluwarsa diprioritaskan.",
+    "Order dari perangkat menggunakan identitas kejadian unik agar pengiriman ulang tidak membuat transaksi ganda.",
+    "Data legacy tidak dihapus. Baris asli, status pelunasan, harga historis, dan HPP transaksi disimpan untuk audit.",
+    "Tutup periode membuat snapshot dan bukti audit, bukan menghapus transaksi historis."
+  ],
+  "roles": [
+    {
+      "role": "Pemilik",
+      "purpose": "Memantau omzet, HPP, laba kotor, piutang, hutang, stok, dan performa seluruh sales.",
+      "platform": "Web, Windows, Android",
+      "limits": "Tidak mengubah transaksi operasional harian kecuali diberi hak khusus."
+    },
+    {
+      "role": "Admin / Manajemen",
+      "purpose": "Menjaga master data, validasi order, pembelian, penerimaan, pembayaran, rekonsiliasi, dan laporan.",
+      "platform": "Web dan Windows; Android untuk pemantauan bila diizinkan.",
+      "limits": "Perubahan sensitif mengikuti izin, alasan perubahan, dan jejak audit."
+    },
+    {
+      "role": "Sales",
+      "purpose": "Memilih customer, melihat katalog dan stok, membuat order, memantau order serta piutang yang menjadi tanggung jawabnya.",
+      "platform": "Android Flutter, Windows, dan Web terbatas.",
+      "limits": "Hanya melihat wilayah, customer, order, dan laporan yang diizinkan."
+    },
+    {
+      "role": "Gudang",
+      "purpose": "Menerima barang, memeriksa batch/ED, menyiapkan pesanan, mencatat mutasi dan opname.",
+      "platform": "Web dan Windows.",
+      "limits": "Tidak mengubah harga jual, pembayaran, atau jurnal tanpa hak tambahan."
+    },
+    {
+      "role": "Pelanggan",
+      "purpose": "Melihat katalog publik; pemesanan hanya tersedia setelah login pada aplikasi pelanggan yang disediakan tenant.",
+      "platform": "Web publik dan Android.",
+      "limits": "Tidak dapat melihat data internal, HPP, stok rinci, piutang pihak lain, atau laporan perusahaan."
+    }
+  ],
+  "quickStart": [
+    "Pastikan URL tenant benar, misalnya https://cmnmedika-inventory.ebisnis.id.",
+    "Masuk memakai akun pribadi. Jangan memakai akun milik rekan kerja.",
+    "Periksa nama tenant dan nama pengguna pada header sebelum bekerja.",
+    "Sales memilih customer, menambahkan produk, memeriksa jumlah dan harga, lalu mengirim order.",
+    "Admin memvalidasi order dan gudang menyiapkan barang berdasarkan batch/ED.",
+    "Pembayaran, piutang, hutang, dan jurnal dicatat pada transaksi yang sesuai.",
+    "Pemilik memeriksa dashboard dan laporan, lalu menindaklanjuti anomali."
+  ],
+  "chapters": [
+    {
+      "id": "mengenal-sistem",
+      "title": "1. Mengenal Sistem dan Alur End-to-End",
+      "summary": "Memahami hubungan antarperan, data, dan perangkat sebelum mulai bertransaksi.",
+      "image": "/panduan/inventory-sales/images/alur-end-to-end.png",
+      "imageAlt": "Ilustrasi alur sales, gudang, admin, dan pemilik dalam satu sistem",
+      "sections": [
+        {
+          "title": "Satu sumber data",
+          "paragraphs": [
+            "Aplikasi Web, Desktop Windows, dan Android Flutter menggunakan layanan dan database tenant yang sama. Order yang dikirim sales menjadi data yang dapat diproses admin dan gudang tanpa diketik ulang.",
+            "Setiap tenant memiliki schema sendiri. Nama perusahaan boleh lengkap pada tampilan, sedangkan domain tetap ringkas. Data tenant lain tidak dicampur dengan data perusahaan Anda."
+          ],
+          "bullets": [
+            "Master bersama: produk, satuan, customer, supplier, sales, gudang, outlet, metode bayar, dan pajak.",
+            "Transaksi bersama: order, pembelian, penerimaan, mutasi stok, piutang, hutang, pembayaran, dan jurnal.",
+            "Laporan bersama: omzet, HPP, laba kotor, aging, batch/ED, opname, serta performa sales."
+          ]
+        },
+        {
+          "title": "Alur normal transaksi",
+          "steps": [
+            "Admin memastikan produk, harga, customer, wilayah, sales, dan stok awal sudah benar.",
+            "Sales mengunjungi customer, membuka katalog Android, dan membuat order.",
+            "Server menerima order satu kali walaupun perangkat mengirim ulang karena koneksi tidak stabil.",
+            "Admin memvalidasi syarat harga, kredit, alamat, dan ketersediaan barang.",
+            "Gudang memilih batch dengan prinsip FEFO, menyiapkan barang, dan mencatat pengeluaran stok.",
+            "Invoice dan piutang terbentuk sesuai metode pembayaran dan termin customer.",
+            "Sales atau kasir menerima pembayaran dan mencatat bukti pada invoice yang benar.",
+            "Pemilik memantau hasil pada dashboard tanpa menunggu rekap manual."
+          ]
+        },
+        {
+          "title": "Batas sistem",
+          "paragraphs": [
+            "Sistem membantu kontrol operasional dan pencatatan. Keputusan penjualan obat tetap harus mengikuti izin usaha, kebijakan perusahaan, ketentuan produk, dan penanggung jawab yang berwenang.",
+            "Katalog publik bukan sarana pemesanan anonim. Pengunjung dapat melihat display produk, tetapi transaksi pelanggan memerlukan login dan hak yang sesuai."
+          ],
+          "warning": "Jangan menaruh data pasien, resep, nomor identitas, atau informasi rahasia lain pada catatan order umum. Gunakan modul kesehatan yang memang disediakan untuk data klinis."
+        }
+      ]
+    },
+    {
+      "id": "akses-keamanan",
+      "title": "2. Akses, Login, dan Keamanan Akun",
+      "summary": "Masuk dengan tenant yang benar, melindungi akun, dan mengenali sesi yang aman.",
+      "sections": [
+        {
+          "title": "Login Web dan Desktop",
+          "steps": [
+            "Buka domain tenant atau aplikasi Windows resmi.",
+            "Pilih Masuk, lalu isi username atau email dan kata sandi pribadi.",
+            "Periksa nama perusahaan pada header setelah login.",
+            "Pastikan menu yang muncul sesuai peran. Laporkan jika menu terlalu luas atau pekerjaan utama tidak tersedia.",
+            "Keluar setelah memakai komputer bersama."
+          ],
+          "warning": "Jangan menyimpan kata sandi pada catatan tempel, grup percakapan, atau berkas yang dapat dibaca umum. Admin tidak perlu mengetahui kata sandi pengguna untuk membantu reset."
+        },
+        {
+          "title": "Login Android Flutter",
+          "steps": [
+            "Unduh APK hanya dari halaman Download tenant atau sumber pembaruan resmi.",
+            "Jika Android meminta izin instalasi, izinkan hanya untuk sumber unduhan resmi lalu nonaktifkan kembali setelah instalasi.",
+            "Buka aplikasi, masukkan akun pribadi, dan pastikan nama tenant sesuai.",
+            "Aplikasi menolak login palsu saat server tidak dapat dihubungi. Periksa koneksi dan coba kembali."
+          ]
+        },
+        {
+          "title": "Praktik keamanan harian",
+          "bullets": [
+            "Gunakan kata sandi unik dan ubah segera jika diduga diketahui orang lain.",
+            "Jangan meminjamkan akun sales karena laporan per sales mengikuti identitas pembuat transaksi.",
+            "Periksa kembali tenant sebelum mengimpor, menutup periode, atau melakukan perubahan massal.",
+            "Gunakan alasan perubahan yang jelas saat sistem memintanya.",
+            "Hubungi admin jika perangkat hilang agar sesi dapat dicabut."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "navigasi-web",
+      "title": "3. Navigasi Web dan Desktop Windows",
+      "summary": "Mengenal dashboard, pencarian, tabel, filter, ekspor, cetak, dan konteks tenant.",
+      "image": "/panduan/inventory-sales/images/kontrol-web-desktop.png",
+      "imageAlt": "Ilustrasi admin dan pemilik memakai dashboard inventory Web dan Desktop",
+      "sections": [
+        {
+          "title": "Struktur halaman",
+          "bullets": [
+            "Header: identitas tenant, pencarian menu, bahasa, tema, notifikasi, dan keluar.",
+            "Navigasi: hanya kelompok menu yang relevan terhadap peran.",
+            "Kartu KPI: ringkasan kondisi terkini yang harus dapat ditelusuri ke laporan sumber.",
+            "Tabel kerja: pencarian, filter, pengurutan, pagination, detail, dan tindakan sesuai izin.",
+            "Aksi dokumen: cetak, PDF, Excel, dan histori cetak bila tersedia."
+          ]
+        },
+        {
+          "title": "Mencari dan menyaring data",
+          "steps": [
+            "Pilih tab kerja, misalnya Stok Barang atau Penjualan dan Piutang.",
+            "Gunakan kotak Cari untuk kode, nama, nomor faktur, customer, supplier, atau sales.",
+            "Atur posisi laporan untuk aging dan laporan periode.",
+            "Aktifkan Tampilkan yang lunas hanya saat membutuhkan histori lengkap.",
+            "Ekspor hasil setelah filter benar. Nama dan periode filter harus diperiksa kembali sebelum dibagikan."
+          ]
+        },
+        {
+          "title": "Membaca status",
+          "bullets": [
+            "Hijau menunjukkan keadaan selesai atau terkendali, bukan jaminan bahwa transaksi sudah diaudit manusia.",
+            "Kuning menunjukkan perhatian, misalnya belum lunas, mendekati jatuh tempo, atau perlu opname.",
+            "Merah menunjukkan risiko atau tindakan segera, misalnya kedaluwarsa, konflik, atau validasi gagal.",
+            "Status Lunas dari data legacy dapat berasal dari baris DBF yang ditandai terhapus oleh aplikasi lama. Bukti ini tetap disimpan."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "android-sales",
+      "title": "4. Penggunaan Android Flutter untuk Sales",
+      "summary": "Alur cepat dari kunjungan customer hingga order berhasil diterima server.",
+      "image": "/panduan/inventory-sales/images/sales-android.png",
+      "imageAlt": "Ilustrasi sales membuat order melalui Android saat mengunjungi customer",
+      "sections": [
+        {
+          "title": "Dashboard sales",
+          "paragraphs": [
+            "Dashboard menampilkan ringkasan yang diizinkan, termasuk order terbaru, performa sales, risiko batch/stok, dan rekonsiliasi. Data pemilik yang bersifat lintas-sales hanya tampil bila akun memiliki hak tersebut."
+          ],
+          "bullets": [
+            "Tarik atau tekan Muat ulang untuk mengambil data terbaru.",
+            "Jika data gagal dimuat, jangan menganggap angka lama sebagai kondisi saat ini.",
+            "Periksa tanggal dan nama sales pada layar sebelum membuat order."
+          ]
+        },
+        {
+          "title": "Membuat order baru",
+          "steps": [
+            "Buka tab Order Baru.",
+            "Pilih customer yang benar. Cocokkan nama dan lokasi untuk menghindari salah toko.",
+            "Cari produk berdasarkan nama atau kode, lalu tambahkan jumlah.",
+            "Periksa stok tersedia, satuan, harga, jumlah baris, dan total.",
+            "Tanyakan kembali persetujuan customer sebelum menekan Kirim Order.",
+            "Tunggu pesan Order berhasil dikirim beserta nomor order.",
+            "Jika koneksi terputus, jangan membuat order baru dengan isi yang sama. Gunakan pengiriman ulang dari transaksi yang sama bila tersedia."
+          ],
+          "warning": "Harga nol, stok tidak diketahui, customer yang tidak aktif, atau produk yang tidak dapat dijual harus dikonfirmasi ke admin sebelum order dilanjutkan."
+        },
+        {
+          "title": "Koneksi dan idempotensi",
+          "paragraphs": [
+            "Setiap order Android membawa device event ID. Server menggunakan ID ini untuk mencegah transaksi ganda saat tombol ditekan kembali atau jaringan mengulang permintaan.",
+            "Pesan berhasil berarti server telah mencatat order. Ambil tangkapan nomor order bila customer memerlukan referensi, bukan tangkapan data rahasia."
+          ]
+        },
+        {
+          "title": "Menutup sesi",
+          "steps": [
+            "Pastikan seluruh order kunjungan memiliki nomor order atau status yang jelas.",
+            "Muat ulang dashboard dan periksa order terbaru.",
+            "Keluar dari aplikasi bila perangkat dipakai bergantian.",
+            "Laporkan perangkat hilang secepatnya."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "master-data",
+      "title": "5. Master Data Produk, Customer, Supplier, dan Sales",
+      "summary": "Menjaga data pokok agar transaksi dan laporan tidak salah sejak awal.",
+      "sections": [
+        {
+          "title": "Produk dan satuan",
+          "bullets": [
+            "Kode produk harus unik dan stabil. Jangan mengganti kode hanya untuk memperbaiki nama.",
+            "Nama produk harus jelas, konsisten, dan tidak memakai singkatan yang ambigu.",
+            "Tentukan satuan dasar dan konversi satuan penjualan dengan benar.",
+            "Isi harga beli standar, harga jual default, status dapat dibeli, dan status dapat dijual.",
+            "Produk nonaktif tidak dihapus jika pernah dipakai transaksi."
+          ]
+        },
+        {
+          "title": "Customer",
+          "bullets": [
+            "Gunakan satu record untuk satu badan usaha/lokasi sesuai kebijakan perusahaan.",
+            "Lengkapi kode, nama resmi, alamat, wilayah, telepon, termin, dan kelompok customer.",
+            "Tetapkan sales penanggung jawab dan aturan harga bila digunakan.",
+            "Nonaktifkan customer yang tidak lagi dilayani; jangan menghapus histori."
+          ]
+        },
+        {
+          "title": "Supplier",
+          "bullets": [
+            "Lengkapi kode, nama, alamat, kontak, termin pembayaran, dan informasi bank yang telah diverifikasi.",
+            "Perubahan rekening harus diverifikasi melalui prosedur di luar email atau pesan tunggal.",
+            "Hubungkan produk-supplier dan riwayat harga untuk analisis pembelian."
+          ]
+        },
+        {
+          "title": "Sales dan wilayah",
+          "bullets": [
+            "Satu akun pribadi untuk satu sales aktif.",
+            "Mapping kode sales legacy harus menunjuk ke username modern yang benar.",
+            "Perpindahan wilayah tidak boleh memindahkan kepemilikan histori lama tanpa persetujuan.",
+            "Akun keluar dinonaktifkan dan sesi dicabut; histori tetap memakai identitas awal."
+          ]
+        },
+        {
+          "title": "Pemeriksaan sebelum aktif",
+          "steps": [
+            "Cari duplikasi kode dan nama.",
+            "Periksa satuan dan konversi.",
+            "Periksa harga nol atau tidak wajar.",
+            "Periksa customer/supplier tanpa wilayah atau termin.",
+            "Lakukan transaksi uji terbatas sebelum import atau perubahan massal."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stok-batch-expiry",
+      "title": "6. Stok, Batch, Kedaluwarsa, dan Opname",
+      "summary": "Mengendalikan kuantitas dan nilai stok sampai tingkat batch.",
+      "sections": [
+        {
+          "title": "Membaca stok",
+          "bullets": [
+            "On hand adalah stok tercatat secara fisik dalam sistem.",
+            "Available adalah stok yang dapat dialokasikan setelah memperhitungkan reservasi.",
+            "In transit adalah stok dalam perjalanan antar lokasi atau dari supplier.",
+            "Stok minimum adalah pemicu perhatian, bukan otomatis jumlah pembelian.",
+            "Nilai stok memakai harga pokok yang ditentukan kebijakan akuntansi."
+          ]
+        },
+        {
+          "title": "Batch dan FEFO",
+          "steps": [
+            "Saat penerimaan, masukkan nomor batch dan tanggal kedaluwarsa dari kemasan/dokumen.",
+            "Pastikan tanggal masuk akal dan batch tidak tertukar antarproduk.",
+            "Saat pengeluaran, pilih batch dengan kedaluwarsa terdekat yang masih layak.",
+            "Pisahkan stok rusak, karantina, retur, atau kedaluwarsa dari stok tersedia.",
+            "Tindak lanjuti daftar mendekati ED sesuai ambang perusahaan."
+          ]
+        },
+        {
+          "title": "Stock opname",
+          "steps": [
+            "Tentukan ruang lingkup, lokasi, tanggal cut-off, dan petugas penghitung.",
+            "Hentikan atau kendalikan mutasi selama penghitungan.",
+            "Catat stok sistem dan stok fisik tanpa menghapus angka awal.",
+            "Selidiki selisih per produk dan batch.",
+            "Adjustment membutuhkan alasan, bukti, dan persetujuan sesuai materialitas.",
+            "Cetak atau simpan snapshot hasil opname."
+          ],
+          "warning": "Jangan mengubah stok langsung hanya agar sama dengan fisik. Gunakan transaksi adjustment/opname agar jejak penyebab tetap tersedia."
+        },
+        {
+          "title": "Stok negatif dan tidak diketahui",
+          "paragraphs": [
+            "Stok negatif dapat menandakan transaksi terlambat, salah lokasi, konversi satuan keliru, atau import yang belum lengkap. Jangan menutup masalah dengan mengubah angka awal tanpa rekonsiliasi.",
+            "Stok tidak diketahui berbeda dari nol. Tahan keputusan penjualan sampai sumber data diperiksa."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pembelian-hutang",
+      "title": "7. Pembelian, Penerimaan, dan Hutang Supplier",
+      "summary": "Mengontrol kebutuhan, harga beli, batch, dokumen, dan kewajiban pembayaran.",
+      "sections": [
+        {
+          "title": "Membuat pembelian",
+          "steps": [
+            "Tinjau stok, penjualan, safety stock, lead time, dan batch mendekati ED.",
+            "Pilih supplier dan syarat pembayaran yang benar.",
+            "Isi produk, jumlah, satuan, harga, diskon, pajak, dan tanggal kebutuhan.",
+            "Periksa total dan minta approval bila melewati batas kewenangan.",
+            "Kirim purchase order dan simpan referensi dokumen."
+          ]
+        },
+        {
+          "title": "Penerimaan barang",
+          "steps": [
+            "Cocokkan PO, surat jalan, faktur, produk, jumlah, dan kondisi fisik.",
+            "Catat batch serta ED berdasarkan barang yang benar-benar diterima.",
+            "Pisahkan selisih, kerusakan, atau barang tanpa dokumen.",
+            "Posting penerimaan hanya setelah pemeriksaan selesai.",
+            "Hutang mengikuti invoice dan termin yang telah diverifikasi."
+          ]
+        },
+        {
+          "title": "Hutang dan pembayaran",
+          "steps": [
+            "Buka Pembelian dan Hutang, lalu filter supplier atau jatuh tempo.",
+            "Periksa faktur, tanggal transaksi, jatuh tempo, nilai, dan pembayaran sebelumnya.",
+            "Pilih metode bayar dan rekening yang telah diverifikasi.",
+            "Catat nomor giro/transfer bila relevan.",
+            "Simpan bukti pembayaran dan periksa status Lunas.",
+            "Gunakan laporan aging untuk prioritas cash-out."
+          ]
+        },
+        {
+          "title": "Aging hutang",
+          "bullets": [
+            "Belum jatuh tempo: jadwalkan sesuai arus kas dan termin.",
+            "1-30 hari: konfirmasi dokumen dan penyebab keterlambatan.",
+            "31-60 hari: eskalasi ke manajemen.",
+            "61-90 hari dan lebih dari 90 hari: perlakukan sebagai risiko tinggi dan susun tindakan tertulis."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "penjualan-piutang",
+      "title": "8. Penjualan, Pemenuhan, dan Piutang Customer",
+      "summary": "Mengubah order menjadi pengiriman dan penerimaan kas yang dapat ditelusuri.",
+      "sections": [
+        {
+          "title": "Validasi order",
+          "steps": [
+            "Periksa customer, alamat, sales, nomor order, dan tanggal.",
+            "Periksa harga khusus, diskon, pajak, termin, plafon, dan piutang lewat jatuh tempo.",
+            "Periksa stok tersedia serta batch yang akan dipakai.",
+            "Konfirmasi perubahan kepada sales/customer sebelum posting.",
+            "Gunakan status order untuk menunjukkan DRAFT, CONFIRMED, diproses, dikirim, selesai, atau dibatalkan."
+          ]
+        },
+        {
+          "title": "Pengiriman dan invoice",
+          "steps": [
+            "Gudang melakukan picking sesuai FEFO.",
+            "Petugas kedua memeriksa produk, batch, jumlah, dan customer bila diwajibkan.",
+            "Buat surat jalan/invoice dari transaksi yang sama.",
+            "Catat pengiriman sebagian sebagai backorder, bukan mengubah jumlah awal tanpa jejak.",
+            "Serahkan dokumen sesuai prosedur dan perbarui status."
+          ]
+        },
+        {
+          "title": "Piutang dan penerimaan",
+          "steps": [
+            "Buka Penjualan dan Piutang, lalu cari customer atau nomor faktur.",
+            "Periksa sisa piutang, jatuh tempo, retur, diskon pembayaran, dan bukti sebelumnya.",
+            "Catat penerimaan pada invoice yang benar.",
+            "Untuk pembayaran gabungan, alokasikan nilai per invoice secara transparan.",
+            "Periksa status Lunas dan total aging setelah posting."
+          ]
+        },
+        {
+          "title": "Sales bawa nota",
+          "steps": [
+            "Pilih sales dan tanggal serah-terima.",
+            "Pilih invoice yang benar-benar dibawa untuk penagihan.",
+            "Cetak atau simpan daftar yang memuat customer, faktur, tanggal, jatuh tempo, dan sisa nilai.",
+            "Sales dan petugas menyerahkan/menyetujui bukti sesuai kebijakan.",
+            "Saat nota kembali, rekonsiliasi hasil tagih, pembayaran, dan dokumen yang belum selesai."
+          ],
+          "warning": "Alur Sales Bawa Nota wajib diuji bersama sales dan admin sebelum dijadikan prosedur resmi karena bentuk bukti serah-terima dapat berbeda antarperusahaan."
+        }
+      ]
+    },
+    {
+      "id": "harga-margin",
+      "title": "9. Harga, HPP, dan Laba Kotor",
+      "summary": "Membedakan harga jual, harga beli, HPP transaksi, dan laba faktual.",
+      "sections": [
+        {
+          "title": "Jenis harga",
+          "bullets": [
+            "Harga jual default adalah acuan awal pada produk.",
+            "Harga customer adalah harga khusus berdasarkan hubungan dan tanggal efektif.",
+            "Harga supplier adalah riwayat biaya pembelian dari pemasok tertentu.",
+            "Harga tunai dan kredit dapat berbeda bila kebijakan perusahaan mengizinkan.",
+            "Perubahan harga harus memiliki tanggal efektif dan penanggung jawab."
+          ]
+        },
+        {
+          "title": "HPP transaksi",
+          "paragraphs": [
+            "Untuk data legacy CMN, HPP penjualan dibaca dari snapshot HARGABELI pada baris JUAL. Sistem tidak memakai persentase rekaan untuk menghitung laba historis.",
+            "Untuk transaksi baru, HPP mengikuti biaya standar atau metode biaya yang ditentukan ERP. Perubahan biaya produk tidak boleh mengubah HPP historis transaksi yang sudah diposting."
+          ]
+        },
+        {
+          "title": "Membaca laba kotor",
+          "steps": [
+            "Pilih periode atau posisi laporan.",
+            "Bandingkan omzet dengan HPP.",
+            "Telusuri laba per produk dan per sales.",
+            "Periksa nilai negatif, harga nol, retur, dan transaksi tanpa HPP.",
+            "Jangan menyamakan laba kotor dengan laba bersih; biaya operasional dan pendapatan lain masih harus diperhitungkan."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dashboard-pemilik",
+      "title": "10. Dashboard dan Laporan Pemilik",
+      "summary": "Membaca kesehatan usaha dan menindaklanjuti indikator, bukan sekadar melihat angka.",
+      "sections": [
+        {
+          "title": "KPI utama",
+          "bullets": [
+            "Omzet hari/bulan: nilai penjualan pada periode.",
+            "HPP bulan: biaya produk yang terjual berdasarkan snapshot transaksi.",
+            "Laba kotor: omzet dikurangi HPP.",
+            "Order: jumlah dokumen unik, bukan jumlah baris barang.",
+            "Piutang/hutang: nilai ledger sesuai filter lunas dan posisi tanggal.",
+            "Stok: jumlah on hand, available, batch mendekati ED, dan expired.",
+            "Performa sales: order, omzet, HPP, laba kotor, dan kolektibilitas per sales."
+          ]
+        },
+        {
+          "title": "Rutinitas pemilik",
+          "steps": [
+            "Harian: periksa omzet, order gagal, stok kritis, dan penerimaan besar.",
+            "Mingguan: tinjau performa sales, batch mendekati ED, piutang jatuh tempo, dan pembelian besar.",
+            "Bulanan: rekonsiliasi omzet-HPP-laba, aging, nilai stok, retur, dan tutup periode.",
+            "Tindak lanjuti anomali dengan membuka transaksi sumber; jangan menilai sales hanya dari satu KPI."
+          ]
+        },
+        {
+          "title": "Laporan per sales",
+          "bullets": [
+            "Gunakan order unik agar invoice dengan banyak baris tidak dihitung berkali-kali.",
+            "Bandingkan omzet dengan laba kotor, bukan omzet saja.",
+            "Gabungkan penjualan dengan aging dan penerimaan piutang.",
+            "Pisahkan perubahan wilayah, cuti, atau customer pindah sales saat membandingkan periode."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "laporan-ekspor",
+      "title": "11. Laporan, PDF, Excel, dan Cetak",
+      "summary": "Menghasilkan dokumen yang dapat diverifikasi dan dibagikan secara aman.",
+      "sections": [
+        {
+          "title": "Sebelum mengekspor",
+          "steps": [
+            "Pilih modul dan laporan yang benar.",
+            "Periksa periode, posisi tanggal, status, tenant, gudang, customer/supplier, dan sales.",
+            "Periksa apakah data lunas disertakan.",
+            "Bandingkan total layar dengan total file setelah ekspor.",
+            "Beri nama file yang memuat laporan dan periode, bukan kata sandi atau data rahasia."
+          ]
+        },
+        {
+          "title": "Memilih format",
+          "bullets": [
+            "PDF untuk dokumen final, pratinjau, atau arsip yang tidak perlu diedit.",
+            "Excel untuk analisis lanjutan, rekonsiliasi, atau pemrosesan terkontrol.",
+            "Cetak untuk kebutuhan fisik dengan jejak copy dan penanggung jawab.",
+            "CSV untuk pertukaran data sederhana bila tersedia."
+          ]
+        },
+        {
+          "title": "Kerahasiaan dokumen",
+          "warning": "File laporan dapat memuat harga, HPP, kontak, rekening, dan saldo. Bagikan hanya kepada penerima yang berwenang, gunakan media resmi, dan hapus salinan sementara setelah tidak diperlukan."
+        }
+      ]
+    },
+    {
+      "id": "migrasi-legacy",
+      "title": "12. Migrasi dan Rekonsiliasi Data Legacy DBF",
+      "summary": "Memastikan seluruh data lama masuk tanpa kehilangan bukti historis.",
+      "sections": [
+        {
+          "title": "Apa yang dimigrasikan",
+          "bullets": [
+            "Produk dan stok: STOK, satuan, stok awal/masuk/keluar, harga beli, serta minimum.",
+            "Relasi: CUSTOMER, SUPPLIER, SALES, wilayah, termin, dan data bank yang tersedia.",
+            "Transaksi: JUAL, BELI, detail barang, faktur, tanggal, batch, ED, harga, dan nilai.",
+            "Ledger: Tran_Piut, PIUTSEMEN, Tran_Hut, pembayaran, giro, retur, dan status pelunasan.",
+            "Harga dan opname: MASTERJL, MASTERBL, DATAOPN, serta bukti raw setiap file."
+          ]
+        },
+        {
+          "title": "Raw vault dan proyeksi ERP",
+          "paragraphs": [
+            "Setiap baris DBF disimpan pada raw vault sebelum atau bersamaan dengan proyeksi ke tabel ERP. Kolom yang belum dipakai tetap tersedia sebagai bukti dan bahan mapping lanjutan.",
+            "Import bersifat idempoten. Menjalankan bootstrap kembali memperbarui data sumber yang sama, bukan menggandakan transaksi."
+          ]
+        },
+        {
+          "title": "Baris deleted sebagai bukti lunas",
+          "paragraphs": [
+            "Pada aplikasi lama, sebagian baris piutang/hutang yang ditandai deleted merepresentasikan transaksi yang telah diselesaikan. Import baru menyimpan baris ini dengan source_deleted dan is_settled agar tombol Tampilkan yang lunas dan laporan historis tetap benar."
+          ]
+        },
+        {
+          "title": "Checklist rekonsiliasi",
+          "steps": [
+            "Bandingkan jumlah file dan raw record dengan sumber.",
+            "Bandingkan 626 produk, 334 customer, 101 supplier, dan mapping sales untuk dataset CMN saat sumber tidak berubah.",
+            "Bandingkan jumlah baris penjualan, pembelian, piutang, hutang, harga, dan opname.",
+            "Uji sampel faktur dari awal, tengah, dan akhir periode.",
+            "Uji transaksi lunas dan belum lunas.",
+            "Bandingkan omzet, HPP, stok akhir, piutang, dan hutang dengan laporan legacy.",
+            "Catat selisih, keputusan mapping, penanggung jawab, dan tanggal persetujuan."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sinkronisasi-update",
+      "title": "13. Sinkronisasi, Konflik, dan Pembaruan Aplikasi",
+      "summary": "Menjaga perangkat, server, dan data transaksi tetap konsisten.",
+      "sections": [
+        {
+          "title": "Status sinkronisasi",
+          "bullets": [
+            "Online berarti pemeriksaan ke server berhasil, bukan sekadar perangkat tersambung Wi-Fi.",
+            "Belum diperiksa berarti aplikasi belum memiliki bukti kondisi server.",
+            "Gagal berarti data terbaru mungkin belum tersedia dan tindakan harus ditunda atau dicatat."
+          ]
+        },
+        {
+          "title": "Konflik data",
+          "steps": [
+            "Jangan menghapus salah satu versi secara manual.",
+            "Catat perangkat, entitas, waktu, dan tindakan terakhir.",
+            "Admin membandingkan client payload dan server payload.",
+            "Pilih server wins, client wins, merged, atau duplicate berdasarkan bukti.",
+            "Simpan resolusi dan pengguna yang menyelesaikan konflik."
+          ]
+        },
+        {
+          "title": "Pembaruan Android dan Windows",
+          "steps": [
+            "Gunakan tombol Cek Pembaruan atau halaman Download tenant.",
+            "Pastikan domain HTTPS resmi dan nama file sesuai platform.",
+            "Selesaikan transaksi dan sinkronisasi sebelum memperbarui.",
+            "Unduh, instal, lalu buka kembali aplikasi.",
+            "Periksa versi, tenant, login, katalog, dan satu order uji bila pembaruan besar."
+          ],
+          "warning": "Jangan menginstal APK/EXE yang dikirim dari akun pribadi atau domain yang menyerupai eBisnis."
+        }
+      ]
+    },
+    {
+      "id": "proses-akhir",
+      "title": "14. Proses Akhir Periode, Backup, dan Audit",
+      "summary": "Menutup periode secara aman tanpa menghilangkan transaksi historis.",
+      "sections": [
+        {
+          "title": "Prasyarat",
+          "bullets": [
+            "Seluruh order, penerimaan, pengiriman, pembayaran, retur, dan adjustment pada periode sudah diposting.",
+            "Piutang, hutang, kas, stok, dan jurnal telah direkonsiliasi.",
+            "Konflik sinkronisasi tidak ada yang terbuka untuk periode tersebut.",
+            "Backup database berhasil dan dapat ditemukan.",
+            "Approval pemilik/admin tersedia sesuai kebijakan."
+          ]
+        },
+        {
+          "title": "Langkah tutup periode",
+          "steps": [
+            "Tentukan tanggal cut-off dan umumkan waktu penghentian transaksi.",
+            "Jalankan laporan kontrol serta simpan snapshot.",
+            "Jalankan backup dan verifikasi hasilnya.",
+            "Periksa raw vault serta jumlah data hasil import bila masih dalam masa migrasi.",
+            "Ajukan approval dan catat keputusan.",
+            "Kunci periode bila fungsi tersebut sudah diaktifkan.",
+            "Buka periode berikutnya dan lakukan pemeriksaan saldo awal."
+          ],
+          "warning": "Proses Akhir Periode harus melalui UAT perusahaan sebelum digunakan pada data produksi. Jangan menjalankan penghapusan massal seperti perilaku aplikasi lama."
+        },
+        {
+          "title": "Jejak audit",
+          "paragraphs": [
+            "Snapshot laporan, filter, pengguna pembuat, waktu, output cetak, dan approval harus dapat ditelusuri. Perubahan setelah tutup periode memerlukan prosedur koreksi, bukan edit diam-diam."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "15. Troubleshooting dan Dukungan",
+      "summary": "Langkah aman ketika login, data, order, download, atau laporan bermasalah.",
+      "sections": [
+        {
+          "title": "Tidak bisa login",
+          "steps": [
+            "Periksa domain tenant, koneksi, username, huruf besar/kecil, dan waktu perangkat.",
+            "Coba muat ulang sekali; jangan berulang kali menebak kata sandi.",
+            "Gunakan reset kata sandi atau hubungi admin.",
+            "Sertakan waktu, domain, platform, versi aplikasi, dan pesan error tanpa menyertakan kata sandi."
+          ]
+        },
+        {
+          "title": "Data kosong atau tidak terbaru",
+          "steps": [
+            "Periksa tenant dan filter.",
+            "Tekan Muat ulang dan periksa status koneksi.",
+            "Bandingkan dengan Web jika masalah terjadi di Android.",
+            "Periksa hak akses akun.",
+            "Laporkan endpoint/waktu dan tangkapan layar yang telah disensor."
+          ]
+        },
+        {
+          "title": "Order tidak muncul",
+          "steps": [
+            "Cari nomor order pada Order Terbaru atau Web.",
+            "Jika pesan sukses sudah diterima, jangan membuat order kedua.",
+            "Jika belum sukses, periksa koneksi lalu gunakan pengiriman ulang yang sama.",
+            "Admin memeriksa device event ID dan log server untuk menentukan apakah order sudah tercatat."
+          ]
+        },
+        {
+          "title": "Download APK/EXE gagal",
+          "steps": [
+            "Gunakan tombol Download, bukan URL API lama yang tersimpan di cache.",
+            "Pastikan nama file dan platform benar.",
+            "Muat ulang halaman dan periksa versi rilis.",
+            "Laporkan URL, waktu, status HTTP, browser, dan perangkat."
+          ]
+        },
+        {
+          "title": "Data minimum untuk tiket dukungan",
+          "bullets": [
+            "Nama tenant dan URL.",
+            "Nama pengguna, tanpa kata sandi.",
+            "Peran pengguna.",
+            "Web/Windows/Android dan versi.",
+            "Waktu kejadian dengan zona waktu.",
+            "Langkah yang dilakukan dan hasil yang diharapkan.",
+            "Pesan error serta screenshot yang tidak memuat data rahasia."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "checklist-operasional",
+      "title": "16. Checklist Operasional",
+      "summary": "Daftar pemeriksaan singkat untuk sales, admin, gudang, dan pemilik.",
+      "sections": [
+        {
+          "title": "Sales - sebelum berangkat",
+          "bullets": [
+            "Aplikasi dapat login dan tenant benar.",
+            "Katalog serta customer dapat dimuat.",
+            "Perangkat cukup daya dan jaringan tersedia.",
+            "Daftar kunjungan, piutang, dan nota yang dibawa telah diperiksa."
+          ]
+        },
+        {
+          "title": "Sales - setelah kunjungan",
+          "bullets": [
+            "Setiap order memiliki nomor atau status jelas.",
+            "Perubahan customer/order telah dikomunikasikan.",
+            "Pembayaran dan nota diserahkan sesuai prosedur.",
+            "Tidak ada data customer tersimpan di media pribadi."
+          ]
+        },
+        {
+          "title": "Gudang/Admin - harian",
+          "bullets": [
+            "Order gagal dan backorder diperiksa.",
+            "Penerimaan memiliki batch dan ED.",
+            "Stok negatif/tidak diketahui ditelusuri.",
+            "Batch mendekati ED dan stok minimum ditindaklanjuti.",
+            "Piutang/hutang jatuh tempo serta pembayaran belum teralokasi diperiksa."
+          ]
+        },
+        {
+          "title": "Pemilik - mingguan/bulanan",
+          "bullets": [
+            "Omzet, HPP, laba kotor, dan order unik konsisten.",
+            "Performa sales dinilai bersama aging dan laba.",
+            "Nilai stok dan selisih opname ditinjau.",
+            "Transaksi besar, diskon besar, retur, dan koreksi diperiksa.",
+            "Backup, rekonsiliasi, dan approval periode terdokumentasi."
+          ]
+        }
+      ]
+    }
+  ],
+  "parityGroups": [
+    {
+      "group": "Master relasi",
+      "count": 8,
+      "features": ["Data supplier", "Supplier terbuka", "Supplier lunas", "Data customer", "Customer terbuka", "Customer lunas", "Data sales", "Daftar sales"]
+    },
+    {
+      "group": "Stok dan harga",
+      "count": 11,
+      "features": ["Daftar stok", "Laporan opname", "Cetak opname", "Analisis harga", "Pilih harga", "Cetak harga jual", "Ekspor harga/stok", "Cetak stok", "Pratinjau stok", "Master harga", "Harga khusus mitra"]
+    },
+    {
+      "group": "Pembelian dan hutang",
+      "count": 10,
+      "features": ["Transaksi pembelian", "Daftar hutang", "Hutang supplier", "Hutang lunas", "Pembayaran hutang", "Riwayat pembayaran", "Cetak pembayaran", "Aging hutang", "Cetak faktur beli", "Laporan periode"]
+    },
+    {
+      "group": "Penjualan dan piutang",
+      "count": 13,
+      "features": ["Transaksi penjualan", "Daftar piutang", "Piutang customer", "Piutang lunas", "Penerimaan piutang", "Riwayat penerimaan", "Cetak penerimaan", "Analisis customer", "Analisis sales", "Sales bawa nota", "Cetak serah-terima", "Laporan piutang", "Cetak laporan"]
+    },
+    {
+      "group": "Keuangan dan periode",
+      "count": 6,
+      "features": ["Kas dan jurnal", "Akun perkiraan", "Laba/rugi", "Cetak laba kotor", "Laporan laba/rugi", "Proses akhir periode"]
+    }
+  ],
+  "glossary": [
+    {"term": "Aging", "definition": "Pengelompokan umur piutang/hutang berdasarkan jarak dari tanggal jatuh tempo."},
+    {"term": "Available", "definition": "Stok yang dapat dipakai setelah memperhitungkan reservasi atau alokasi."},
+    {"term": "Batch", "definition": "Kelompok produksi/lot yang digunakan untuk pelacakan dan kedaluwarsa."},
+    {"term": "Device event ID", "definition": "Identitas unik kejadian dari perangkat untuk mencegah transaksi ganda."},
+    {"term": "ED / Expiry Date", "definition": "Tanggal kedaluwarsa produk."},
+    {"term": "FEFO", "definition": "First Expired, First Out; stok yang lebih dahulu kedaluwarsa diprioritaskan keluar."},
+    {"term": "HPP", "definition": "Harga pokok penjualan, yaitu biaya produk yang benar-benar terjual."},
+    {"term": "Idempoten", "definition": "Permintaan yang sama dapat diulang tanpa menghasilkan transaksi ganda."},
+    {"term": "On hand", "definition": "Kuantitas stok yang tercatat berada di lokasi."},
+    {"term": "Raw vault", "definition": "Penyimpanan baris sumber legacy apa adanya untuk audit dan rekonsiliasi."},
+    {"term": "Schema tenant", "definition": "Ruang tabel database khusus satu tenant agar data tidak bercampur."},
+    {"term": "Snapshot", "definition": "Salinan hasil laporan dan filter pada waktu tertentu untuk bukti audit."},
+    {"term": "UAT", "definition": "User Acceptance Test; pengujian bersama pengguna bisnis sebelum prosedur dinyatakan siap."}
+  ]
+}

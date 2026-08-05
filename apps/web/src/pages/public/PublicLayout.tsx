@@ -108,6 +108,7 @@ function PublicLayoutEBisnis({
   const inventoryHomeUrl = inventoryHost ? '/' : 'https://inventory.ebisnis.id';
   const inventoryLandingUrl = inventoryHost ? '/inventory' : 'https://inventory.ebisnis.id/inventory';
   const inventoryDownloadUrl = inventoryHost ? '/inventory#download' : 'https://inventory.ebisnis.id/inventory#download';
+  const inventoryManualUrl = inventoryHost ? '/panduan/inventory-sales' : 'https://inventory.ebisnis.id/panduan/inventory-sales';
   const inventoryApkUrl = inventoryHost
     ? '/update/ebisnis-inventory-sales.apk'
     : 'https://demo-inventory.ebisnis.id/update/ebisnis-inventory-sales.apk';
@@ -186,6 +187,7 @@ function PublicLayoutEBisnis({
                 { label: 'Landing inventory', url: inventoryLandingUrl },
                 { label: 'Demo bersama', url: 'https://demo-inventory.ebisnis.id' },
                 { label: 'Caruban Medika Nusantara', url: 'https://cmnmedika-inventory.ebisnis.id' },
+                { label: 'Panduan pengguna', url: inventoryManualUrl },
               ],
             },
             {
@@ -226,7 +228,8 @@ function PublicLayoutEBisnis({
                 url: cmnInventoryHost ? '/inventory#cara-pesan' : '/inventory#dashboard',
                 sortOrder: 3,
               },
-              { labelKey: 'inventory.download', label: 'Download', url: inventoryDownloadUrl, sortOrder: 4 },
+              { labelKey: 'inventory.manual', label: 'Panduan', url: inventoryManualUrl, sortOrder: 4 },
+              { labelKey: 'inventory.download', label: 'Download', url: inventoryDownloadUrl, sortOrder: 5 },
             ]
       : site?.navigation.find((nav) => nav.location === 'HEADER')?.items ?? [
       { labelKey: 'nav.home', label: t('nav.home'), url: '/', sortOrder: 1 },
