@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CheckCircle2, Database, Download, FileCheck2, FileSpreadsheet, Search, UploadCloud } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { useErrorMessage } from '../../../app/auth-context';
 import { PageHeader, StatusBadge, useToast } from '../../../components/ui';
 import { api } from '../../../lib/api';
@@ -35,6 +36,7 @@ export function PesantrenDapodikPage() {
   const toMessage = useErrorMessage();
   const [datasetCode, setDatasetCode] = useState('santri');
   const [content, setContent] = useState('');
+  const [format, setFormat] = useState<'csv' | 'json'>('csv');
   const [result, setResult] = useState<ImportResult | null>(null);
   const [datasetSearch, setDatasetSearch] = useState('');
 
@@ -78,7 +80,7 @@ export function PesantrenDapodikPage() {
   const impor = useMutation({
     mutationFn: (dryRun: boolean) =>
       api.post<ImportResult>(`/pesantren/dapodik/${datasetCode}/import`, {
-        format: 'csv',
+        format,
         content,
         dryRun,
       }),
@@ -183,29 +185,44 @@ export function PesantrenDapodikPage() {
           <div className="card overflow-hidden">
             <div className="border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-sky-50 px-4 py-3">
               <h2 className="section-title">Area Impor CSV</h2>
-              <p className="text-sm text-slate-600">Gunakan template yang diunduh dari tombol atas, isi datanya, lalu unggah atau tempel CSV di sini.</p>
+              <p className="text-sm text-slate-600">Gunakan template yang diunduh dari tombol atas, isi datanya, lalu unggah CSV/Excel/JSON atau tempel isi file di sini.</p>
             </div>
             <div className="space-y-3 p-4">
               <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center hover:border-emerald-300 hover:bg-emerald-50">
                 <UploadCloud className="h-7 w-7 text-emerald-700" aria-hidden />
-                <span className="mt-2 text-sm font-semibold text-slate-900">Unggah file CSV</span>
-                <span className="text-xs text-slate-500">Atau tempel manual pada kotak di bawah.</span>
+                <span className="mt-2 text-sm font-semibold text-slate-900">Unggah file CSV, Excel, atau JSON</span>
+                <span className="text-xs text-slate-500">Header Dapodik umum akan dicocokkan otomatis dengan kolom internal.</span>
                 <input
                   type="file"
-                  accept=".csv,text/csv"
+                  accept=".csv,.json,.xlsx,.xls,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                   className="sr-only"
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     if (!file) return;
-                    void file.text().then(setContent);
+                    void bacaFileImpor(file).then(({ format: nextFormat, content: nextContent }) => {
+                      setFormat(nextFormat);
+                      setContent(nextContent);
+                    }).catch((error: unknown) => {
+                      toast.push(error instanceof Error ? error.message : 'File tidak dapat dibaca.', 'error');
+                    });
                   }}
                 />
               </label>
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Format impor</p>
+                  <p className="text-xs text-slate-500">Excel akan otomatis dikonversi menjadi CSV.</p>
+                </div>
+                <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+                  <button type="button" className={format === 'csv' ? 'btn-primary px-3 py-1.5 text-xs' : 'btn-ghost px-3 py-1.5 text-xs'} onClick={() => setFormat('csv')}>CSV</button>
+                  <button type="button" className={format === 'json' ? 'btn-primary px-3 py-1.5 text-xs' : 'btn-ghost px-3 py-1.5 text-xs'} onClick={() => setFormat('json')}>JSON</button>
+                </div>
+              </div>
               <textarea
                 className="field-input min-h-72 font-mono text-xs"
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
-                placeholder="nis,nisn,nama_lengkap,jenis_kelamin..."
+                placeholder={format === 'json' ? '[{"nis":"001","nama_lengkap":"Ahmad","jenis_kelamin":"L"}]' : 'nis,nisn,nama_lengkap,jenis_kelamin...'}
               />
               <div className="flex flex-wrap justify-end gap-2">
                 <button type="button" className="btn-outline" onClick={() => impor.mutate(true)} disabled={!content.trim() || impor.isPending}>
@@ -263,4 +280,18 @@ function unduh(payload: CsvPayload) {
   link.download = payload.filename || 'dapodik.csv';
   link.click();
   URL.revokeObjectURL(url);
+}
+
+async function bacaFileImpor(file: File): Promise<{ format: 'csv' | 'json'; content: string }> {
+  const lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const firstSheet = workbook.SheetNames[0];
+    if (!firstSheet) throw new Error('Workbook tidak memiliki sheet.');
+    const worksheet = workbook.Sheets[firstSheet];
+    return { format: 'csv', content: XLSX.utils.sheet_to_csv(worksheet) };
+  }
+  const content = await file.text();
+  return { format: lowerName.endsWith('.json') ? 'json' : 'csv', content };
 }

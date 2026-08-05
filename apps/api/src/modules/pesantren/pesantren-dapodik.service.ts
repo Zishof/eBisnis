@@ -221,6 +221,95 @@ const REFERENSI_KATEGORI: Partial<Record<DatasetCode, string>> = {
   'ref-jenis-tinggal': 'JENIS_TINGGAL',
   'ref-kebutuhan-khusus': 'KEBUTUHAN_KHUSUS',
 };
+const DATASET_ALIASES: Partial<Record<DatasetCode, Partial<Record<string, string[]>>>> = {
+  'unit-pendidikan': {
+    code: ['kode', 'kode sekolah', 'kode unit', 'npsn'],
+    name: ['nama', 'nama sekolah', 'nama unit', 'satuan pendidikan'],
+    jenis: ['bentuk pendidikan', 'jenjang', 'jenis sekolah', 'jenis unit'],
+  },
+  santri: {
+    nis: ['nis lokal', 'nomor induk', 'nomor induk siswa'],
+    nisn: ['nisn peserta didik', 'nomor nisn'],
+    nipd: ['nipd', 'no induk peserta didik'],
+    nik: ['nik peserta didik', 'nik siswa'],
+    nama_lengkap: ['nama', 'nama peserta didik', 'nama siswa', 'nama santri'],
+    nama_panggilan: ['nama panggilan'],
+    jenis_kelamin: ['jk', 'kelamin', 'jenis kelamin'],
+    tempat_lahir: ['tempat lahir'],
+    tanggal_lahir: ['tanggal lahir', 'tgl lahir', 'tgl_lahir'],
+    kebutuhan_khusus: ['berkebutuhan khusus', 'kebutuhan khusus peserta didik'],
+    anak_ke: ['anak ke', 'anak ke-'],
+    jumlah_saudara: ['jumlah saudara kandung', 'jml saudara'],
+    alamat_asal: ['alamat', 'alamat jalan', 'alamat lengkap', 'alamat peserta didik'],
+    alat_transportasi: ['transportasi', 'alat transportasi ke sekolah'],
+    jarak_tempat_tinggal_km: ['jarak rumah', 'jarak ke sekolah', 'jarak tempat tinggal'],
+    hp: ['no hp', 'nomor hp', 'handphone', 'no handphone'],
+    penerima_kip: ['layak pip', 'penerima pip', 'penerima kip'],
+    nomor_kip: ['no kip', 'nomor kip', 'nomor pip'],
+    penerima_kks: ['penerima kks'],
+    nomor_kks: ['no kks', 'nomor kks'],
+    nomor_kk: ['no kk', 'nomor kk'],
+    nama_ayah: ['nama ayah kandung', 'ayah'],
+    nik_ayah: ['nik ayah'],
+    tahun_lahir_ayah: ['tahun lahir ayah'],
+    pendidikan_ayah: ['pendidikan ayah'],
+    pekerjaan_ayah: ['pekerjaan ayah'],
+    penghasilan_ayah: ['penghasilan ayah'],
+    nama_ibu: ['nama ibu kandung', 'ibu'],
+    nik_ibu: ['nik ibu'],
+    tahun_lahir_ibu: ['tahun lahir ibu'],
+    pendidikan_ibu: ['pendidikan ibu'],
+    pekerjaan_ibu: ['pekerjaan ibu'],
+    penghasilan_ibu: ['penghasilan ibu'],
+    nama_wali: ['nama wali'],
+    nik_wali: ['nik wali'],
+    tahun_lahir_wali: ['tahun lahir wali'],
+    pendidikan_wali: ['pendidikan wali'],
+    pekerjaan_wali: ['pekerjaan wali'],
+    penghasilan_wali: ['penghasilan wali'],
+  },
+  guru: {
+    nip: ['nuptk', 'nik', 'nip/nuptk'],
+    nama: ['nama gtk', 'nama ptk', 'nama guru', 'nama lengkap'],
+    jenis: ['jenis gtk', 'jenis ptk', 'status kepegawaian'],
+    no_hp: ['no hp', 'nomor hp', 'handphone', 'telepon'],
+    alamat: ['alamat jalan', 'alamat lengkap'],
+  },
+  'mata-pelajaran': {
+    code: ['kode', 'kode mata pelajaran', 'kode mapel'],
+    nama: ['mata pelajaran', 'nama mapel', 'nama mata pelajaran'],
+    kelompok: ['kelompok mapel', 'kelompok mata pelajaran'],
+    kode_mapel_dapodik: ['kode dapodik', 'kode referensi dapodik'],
+  },
+  rombongan: {
+    unit_pendidikan_code: ['kode unit', 'unit pendidikan', 'npsn'],
+    tahun_ajaran_code: ['tahun ajaran', 'periode'],
+    tingkat: ['kelas', 'tingkat kelas'],
+    nama: ['nama rombel', 'rombongan belajar', 'rombel'],
+    wali_kelas_user_id: ['wali kelas user id', 'wali kelas'],
+  },
+  'anggota-rombel': {
+    nis: ['nisn', 'nomor induk', 'nis lokal'],
+    rombongan_nama: ['nama rombel', 'rombongan belajar', 'rombel'],
+    tahun_ajaran_code: ['tahun ajaran', 'periode'],
+    tanggal_masuk: ['tanggal masuk rombel', 'tgl masuk'],
+  },
+  jadwal: {
+    rombongan_nama: ['nama rombel', 'rombongan belajar', 'rombel'],
+    tahun_ajaran_code: ['tahun ajaran', 'periode'],
+    mata_pelajaran_code: ['kode mapel', 'mata pelajaran', 'nama mapel'],
+    waktu_mulai: ['jam mulai'],
+    waktu_selesai: ['jam selesai'],
+    ruangan: ['ruang', 'kelas'],
+  },
+  nilai: {
+    nis: ['nisn', 'nomor induk', 'nis lokal'],
+    mata_pelajaran_code: ['kode mapel', 'mata pelajaran', 'nama mapel'],
+    komponen_kode: ['kode komponen', 'jenis nilai', 'komponen nilai'],
+    tahun_ajaran_code: ['tahun ajaran', 'periode'],
+    nilai_angka: ['nilai', 'angka', 'skor'],
+  },
+};
 
 @Injectable()
 export class PesantrenDapodikService {
@@ -252,7 +341,7 @@ export class PesantrenDapodikService {
 
     for (let index = 0; index < rows.length; index += 1) {
       const rowNumber = index + 2;
-      const row = normalizeRow(rows[index], def.columns);
+      const row = normalizeRow(rows[index], def.columns, opsi.dataset);
       const missing = def.required.filter((column) => !clean(row[column]));
       if (missing.length) {
         result.errors.push({ row: rowNumber, message: `Kolom wajib kosong: ${missing.join(', ')}` });
@@ -533,10 +622,25 @@ async function upsertByExists(
   return exists ? 'updated' : 'created';
 }
 
-function normalizeRow(row: Record<string, unknown>, columns: string[]): Record<string, string> {
+function normalizeRow(row: Record<string, unknown>, columns: string[], dataset: DatasetCode): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const column of columns) out[column] = clean(row[column]);
+  const indexed = new Map(Object.entries(row).map(([key, value]) => [headerKey(key), value]));
+  const aliases = DATASET_ALIASES[dataset] ?? {};
+  for (const column of columns) {
+    const candidates = [column, ...(aliases[column] ?? [])];
+    const found = candidates.map(headerKey).find((candidate) => indexed.has(candidate));
+    out[column] = clean(found ? indexed.get(found) : row[column]);
+  }
   return out;
+}
+
+function headerKey(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/^\uFEFF/, '')
+    .replace(/[_./()-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function withDefaults(row: Record<string, string>, defaults: Record<string, string>): Record<string, string> {
