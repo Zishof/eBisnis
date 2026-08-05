@@ -38,3 +38,23 @@ Jalankan generator volume bergambar dari root repository:
 ```powershell
 python tools/manuals/generate_inventory_illustrated_manual.py
 ```
+
+## Panduan transisi 48 layar
+
+Volume transisi memasangkan setiap tangkapan layar dari manual DBF lama dengan
+ilustrasi padanan eBisnis yang baru. Setiap pasangan memuat status paritas Web
+dan Flutter, perubahan istilah, langkah kerja, kontrol risiko, bukti
+penyelesaian, serta sedikitnya 1.500 kata penjelasan untuk pengguna nonteknis.
+
+- Word: `apps/web/public/panduan/inventory-sales/Panduan-Transisi-48-Layar-eBisnis-Inventory-Sales.docx`
+- PDF: `apps/web/public/panduan/inventory-sales/Panduan-Transisi-48-Layar-eBisnis-Inventory-Sales.pdf`
+- Indeks: `docs/user-manual/inventory-transition-index.json`
+- Validasi jumlah kata: `docs/user-manual/inventory-transition-word-count.json`
+- Ilustrasi baru: `apps/web/public/panduan/inventory-sales/images/transisi/baru/`
+
+Generator membaca manual dan matriks legacy dari paket dokumentasi pada folder
+Downloads. Lokasi sumber dapat diganti melalui `INVENTORY_LEGACY_PACKAGE`.
+
+```powershell
+python tools/manuals/generate_inventory_transition_manual.py
+```

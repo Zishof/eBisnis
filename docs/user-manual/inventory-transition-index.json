@@ -1,0 +1,441 @@
+{
+  "meta": {
+    "title": "Indeks Transisi 48 Layar",
+    "version": "1.0",
+    "updated": "5 Agustus 2026"
+  },
+  "screens": [
+    {
+      "screen": 1,
+      "legacyName": "Data Supplier",
+      "module": "Master Supplier",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2459,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/01-data-supplier.png"
+    },
+    {
+      "screen": 2,
+      "legacyName": "Membuka Daftar Supplier",
+      "module": "Master Supplier",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2469,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/02-membuka-daftar-supplier.png"
+    },
+    {
+      "screen": 3,
+      "legacyName": "Menutup Daftar Supplier",
+      "module": "Master Supplier",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2429,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/03-menutup-daftar-supplier.png"
+    },
+    {
+      "screen": 4,
+      "legacyName": "Data Customer",
+      "module": "Master Customer",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2451,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/04-data-customer.png"
+    },
+    {
+      "screen": 5,
+      "legacyName": "Membuka Daftar Customer",
+      "module": "Master Customer",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2448,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/05-membuka-daftar-customer.png"
+    },
+    {
+      "screen": 6,
+      "legacyName": "Menutup Daftar Customer",
+      "module": "Master Customer",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2419,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/06-menutup-daftar-customer.png"
+    },
+    {
+      "screen": 7,
+      "legacyName": "Data Sales atau Penjual Keliling",
+      "module": "Master Sales",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2471,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/07-data-sales-atau-penjual-keliling.png"
+    },
+    {
+      "screen": 8,
+      "legacyName": "Data Stok Barang",
+      "module": "Persediaan",
+      "web": "OPERATIONAL",
+      "flutter": "READ_ONLY",
+      "wordCount": 2431,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/08-data-stok-barang.png"
+    },
+    {
+      "screen": 9,
+      "legacyName": "Laporan Opname",
+      "module": "Stok Opname",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2337,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/09-laporan-opname.png"
+    },
+    {
+      "screen": 10,
+      "legacyName": "Mencetak Laporan Opname",
+      "module": "Stok Opname",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2435,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/10-mencetak-laporan-opname.png"
+    },
+    {
+      "screen": 11,
+      "legacyName": "Harga Beli dan Harga Jual",
+      "module": "Analisis Harga",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2420,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/11-harga-beli-dan-harga-jual.png"
+    },
+    {
+      "screen": 12,
+      "legacyName": "Memilih dan Menjalankan Cetak Harga Beli/Jual",
+      "module": "Analisis Harga",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2478,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/12-memilih-dan-menjalankan-cetak-harga-beli-jual.png"
+    },
+    {
+      "screen": 13,
+      "legacyName": "Mencetak Harga Jual",
+      "module": "Harga Jual",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2467,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/13-mencetak-harga-jual.png"
+    },
+    {
+      "screen": 14,
+      "legacyName": "Mengekspor Data Harga/Stok ke Excel",
+      "module": "Ekspor Data",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2450,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/14-mengekspor-data-harga-stok-ke-excel.png"
+    },
+    {
+      "screen": 15,
+      "legacyName": "Mencetak Daftar Stok",
+      "module": "Laporan Persediaan",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2482,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/15-mencetak-daftar-stok.png"
+    },
+    {
+      "screen": 16,
+      "legacyName": "Hasil Cetak Stok",
+      "module": "Laporan Persediaan",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2429,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/16-hasil-cetak-stok.png"
+    },
+    {
+      "screen": 17,
+      "legacyName": "Menu Master Harga",
+      "module": "Master Harga",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2385,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/17-menu-master-harga.png"
+    },
+    {
+      "screen": 18,
+      "legacyName": "Master Harga Beli per Supplier",
+      "module": "Master Harga Beli",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2465,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/18-master-harga-beli-per-supplier.png"
+    },
+    {
+      "screen": 19,
+      "legacyName": "Master Harga Jual per Customer",
+      "module": "Master Harga Jual",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2453,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/19-master-harga-jual-per-customer.png"
+    },
+    {
+      "screen": 20,
+      "legacyName": "Proses Pembelian Barang dari Supplier",
+      "module": "Pembelian",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2515,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/20-proses-pembelian-barang-dari-supplier.png"
+    },
+    {
+      "screen": 21,
+      "legacyName": "Tombol Hutang pada Pembelian",
+      "module": "Hutang Dagang",
+      "web": "READ_ONLY",
+      "flutter": "READ_ONLY",
+      "wordCount": 2425,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/21-tombol-hutang-pada-pembelian.png"
+    },
+    {
+      "screen": 22,
+      "legacyName": "Data Hutang Supplier",
+      "module": "Hutang Dagang",
+      "web": "READ_ONLY",
+      "flutter": "READ_ONLY",
+      "wordCount": 2431,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/22-data-hutang-supplier.png"
+    },
+    {
+      "screen": 23,
+      "legacyName": "Menampilkan Hutang yang Sudah Lunas",
+      "module": "Hutang Dagang",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2419,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/23-menampilkan-hutang-yang-sudah-lunas.png"
+    },
+    {
+      "screen": 24,
+      "legacyName": "Pembayaran Hutang",
+      "module": "Pembayaran Hutang",
+      "web": "OPERATIONAL",
+      "flutter": "OPERATIONAL",
+      "wordCount": 2421,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/24-pembayaran-hutang.png"
+    },
+    {
+      "screen": 25,
+      "legacyName": "Melihat Pembayaran Hutang",
+      "module": "Riwayat Pembayaran Hutang",
+      "web": "READ_ONLY",
+      "flutter": "READ_ONLY",
+      "wordCount": 2386,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/25-melihat-pembayaran-hutang.png"
+    },
+    {
+      "screen": 26,
+      "legacyName": "Mencetak Pembayaran Hutang",
+      "module": "Laporan Pembayaran Hutang",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2441,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/26-mencetak-pembayaran-hutang.png"
+    },
+    {
+      "screen": 27,
+      "legacyName": "Analisis Hutang",
+      "module": "Analisis Hutang",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2412,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/27-analisis-hutang.png"
+    },
+    {
+      "screen": 28,
+      "legacyName": "Mencetak Faktur Pembelian Barang",
+      "module": "Cetak Pembelian",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2464,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/28-mencetak-faktur-pembelian-barang.png"
+    },
+    {
+      "screen": 29,
+      "legacyName": "Mencetak Laporan Pembelian per Periode",
+      "module": "Laporan Pembelian",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2485,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/29-mencetak-laporan-pembelian-per-periode.png"
+    },
+    {
+      "screen": 30,
+      "legacyName": "Menu Penjualan",
+      "module": "Penjualan",
+      "web": "OPERATIONAL",
+      "flutter": "OPERATIONAL",
+      "wordCount": 2483,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/30-menu-penjualan.png"
+    },
+    {
+      "screen": 31,
+      "legacyName": "Membuka Piutang dari Menu Penjualan",
+      "module": "Piutang Dagang",
+      "web": "READ_ONLY",
+      "flutter": "READ_ONLY",
+      "wordCount": 2455,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/31-membuka-piutang-dari-menu-penjualan.png"
+    },
+    {
+      "screen": 32,
+      "legacyName": "Data Piutang Customer",
+      "module": "Piutang Dagang",
+      "web": "READ_ONLY",
+      "flutter": "READ_ONLY",
+      "wordCount": 2454,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/32-data-piutang-customer.png"
+    },
+    {
+      "screen": 33,
+      "legacyName": "Menampilkan Piutang yang Sudah Lunas",
+      "module": "Piutang Dagang",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2430,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/33-menampilkan-piutang-yang-sudah-lunas.png"
+    },
+    {
+      "screen": 34,
+      "legacyName": "Pembayaran Piutang",
+      "module": "Penerimaan Piutang",
+      "web": "OPERATIONAL",
+      "flutter": "OPERATIONAL",
+      "wordCount": 2460,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/34-pembayaran-piutang.png"
+    },
+    {
+      "screen": 35,
+      "legacyName": "Melihat Pembayaran Piutang",
+      "module": "Riwayat Penerimaan Piutang",
+      "web": "READ_ONLY",
+      "flutter": "READ_ONLY",
+      "wordCount": 2408,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/35-melihat-pembayaran-piutang.png"
+    },
+    {
+      "screen": 36,
+      "legacyName": "Mencetak Pembayaran Piutang",
+      "module": "Laporan Penerimaan Piutang",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2457,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/36-mencetak-pembayaran-piutang.png"
+    },
+    {
+      "screen": 37,
+      "legacyName": "Analisis Piutang per Customer",
+      "module": "Analisis Piutang",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2427,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/37-analisis-piutang-per-customer.png"
+    },
+    {
+      "screen": 38,
+      "legacyName": "Analisis Piutang per Sales",
+      "module": "Analisis Piutang",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2440,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/38-analisis-piutang-per-sales.png"
+    },
+    {
+      "screen": 39,
+      "legacyName": "Sales Membawa Nota",
+      "module": "Distribusi Nota Sales",
+      "web": "OPERATIONAL",
+      "flutter": "OPERATIONAL",
+      "wordCount": 2477,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/39-sales-membawa-nota.png"
+    },
+    {
+      "screen": 40,
+      "legacyName": "Nota Sales",
+      "module": "Nota Penjualan",
+      "web": "OPERATIONAL",
+      "flutter": "OPERATIONAL",
+      "wordCount": 2472,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/40-nota-sales.png"
+    },
+    {
+      "screen": 41,
+      "legacyName": "Laporan Piutang",
+      "module": "Laporan Piutang",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2421,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/41-laporan-piutang.png"
+    },
+    {
+      "screen": 42,
+      "legacyName": "Mencetak Laporan Piutang",
+      "module": "Laporan Piutang",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2476,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/42-mencetak-laporan-piutang.png"
+    },
+    {
+      "screen": 43,
+      "legacyName": "Kas dan Jurnal",
+      "module": "Kas/Jurnal",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2426,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/43-kas-dan-jurnal.png"
+    },
+    {
+      "screen": 44,
+      "legacyName": "Membuat Perkiraan Baru",
+      "module": "Master Perkiraan",
+      "web": "OPERATIONAL",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2406,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/44-membuat-perkiraan-baru.png"
+    },
+    {
+      "screen": 45,
+      "legacyName": "Menu Laba/Rugi",
+      "module": "Laporan Laba Rugi",
+      "web": "READ_ONLY",
+      "flutter": "READ_ONLY",
+      "wordCount": 2452,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/45-menu-laba-rugi.png"
+    },
+    {
+      "screen": 46,
+      "legacyName": "Mencetak Laba Rugi Kotor",
+      "module": "Laba Rugi Kotor",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2474,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/46-mencetak-laba-rugi-kotor.png"
+    },
+    {
+      "screen": 47,
+      "legacyName": "Laporan Laba/Rugi",
+      "module": "Laporan Laba Rugi",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2427,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/47-laporan-laba-rugi.png"
+    },
+    {
+      "screen": 48,
+      "legacyName": "Mencetak Laporan Laba/Rugi",
+      "module": "Laporan Laba Rugi",
+      "web": "READ_ONLY",
+      "flutter": "CONTRACT_ONLY",
+      "wordCount": 2458,
+      "modernImage": "/panduan/inventory-sales/images/transisi/baru/48-mencetak-laporan-laba-rugi.png"
+    }
+  ]
+}

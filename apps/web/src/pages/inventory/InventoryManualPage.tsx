@@ -31,8 +31,9 @@ export function InventoryManualPage() {
             <h1 className="mt-5 max-w-3xl text-4xl font-black leading-tight sm:text-5xl">{manual.meta.title}</h1>
             <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-300">{manual.meta.subtitle}. Dari persiapan data, order sales, batch dan expiry, hingga laporan pemilik serta tutup periode.</p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <a className="btn-primary" href={`${assetBase}/Panduan-Operasional-Bergambar-eBisnis-Inventory-Sales.pdf`} download><Download className="h-4 w-4" aria-hidden /> Panduan rinci PDF</a>
-              <a className="btn-outline" href={`${assetBase}/Panduan-Operasional-Bergambar-eBisnis-Inventory-Sales.docx`} download><FileText className="h-4 w-4" aria-hidden /> Panduan rinci Word</a>
+              <a className="btn-primary" href={`${assetBase}/Panduan-Transisi-48-Layar-eBisnis-Inventory-Sales.pdf`} download><Download className="h-4 w-4" aria-hidden /> Transisi 48 layar PDF</a>
+              <a className="btn-outline" href={`${assetBase}/Panduan-Transisi-48-Layar-eBisnis-Inventory-Sales.docx`} download><FileText className="h-4 w-4" aria-hidden /> Transisi 48 layar Word</a>
+              <a className="btn-outline" href={`${assetBase}/Panduan-Operasional-Bergambar-eBisnis-Inventory-Sales.pdf`} download><Download className="h-4 w-4" aria-hidden /> Panduan operasional</a>
               <a className="btn-outline" href={`${assetBase}/Panduan-Pengguna-eBisnis-Inventory-Sales.pdf`} download><Download className="h-4 w-4" aria-hidden /> Panduan ringkas</a>
             </div>
             <p className="mt-4 text-sm text-slate-500">Versi {manual.meta.version} / diperbarui {manual.meta.updated}</p>
@@ -90,6 +91,26 @@ export function InventoryManualPage() {
               );
             })}
             {chapters.length === 0 ? <p className="rounded-lg border border-slate-200 bg-white p-6 text-center text-slate-500 dark:border-slate-800 dark:bg-slate-900">Topik tidak ditemukan.</p> : null}
+          </div>
+        </section>
+
+        <section className="mt-12 border-t border-slate-200 pt-10 dark:border-slate-800" aria-labelledby="transition-manual-title">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_520px] lg:items-center">
+            <div>
+              <p className="text-xs font-bold uppercase text-brand-700">Jembatan dari aplikasi DBF lama</p>
+              <h2 id="transition-manual-title" className="mt-1 text-3xl font-black">48 layar lama, 48 ilustrasi padanan baru</h2>
+              <p className="mt-3 max-w-3xl leading-7 text-slate-600 dark:text-slate-300">Manual transisi memperlihatkan tangkapan layar asli INVENTORY CONTROL dan padanannya pada eBisnis. Setiap layar mempunyai lebih dari 1.500 kata penjelasan formal, langkah operasional, kontrol risiko, bukti penyelesaian, serta status implementasi yang tidak dilebihkan.</p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><strong className="block text-2xl">20</strong><span className="text-sm text-slate-600 dark:text-slate-300">layar Web operasional</span></div>
+                <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><strong className="block text-2xl">5</strong><span className="text-sm text-slate-600 dark:text-slate-300">layar Flutter operasional</span></div>
+                <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><strong className="block text-2xl">117.000+</strong><span className="text-sm text-slate-600 dark:text-slate-300">kata panduan transisi</span></div>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <a className="btn-primary" href={`${assetBase}/Panduan-Transisi-48-Layar-eBisnis-Inventory-Sales.pdf`} download><Download className="h-4 w-4" aria-hidden /> Baca PDF lengkap</a>
+                <a className="btn-outline" href={`${assetBase}/Panduan-Transisi-48-Layar-eBisnis-Inventory-Sales.docx`} download><FileText className="h-4 w-4" aria-hidden /> Unduh Word</a>
+              </div>
+            </div>
+            <img src={`${assetBase}/images/transisi/baru/01-data-supplier.png`} alt="Ilustrasi padanan modern layar Data Supplier" className="aspect-video w-full rounded-lg border border-slate-200 object-cover shadow-sm dark:border-slate-800" />
           </div>
         </section>
 
