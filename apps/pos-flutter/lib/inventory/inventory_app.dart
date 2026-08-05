@@ -1919,11 +1919,15 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
   String? _message;
   String? _busyId;
   bool _includeSettled = false;
+  bool _includeReceivableSettled = false;
 
   bool get _canSeePayables => widget.persona.role != 'Sales';
 
   Future<InventoryOperationsData> _load() => widget.client.operations(
-      includePayables: _canSeePayables, includeSettled: _includeSettled);
+        includePayables: _canSeePayables,
+        includeSettled: _includeSettled,
+        includeReceivableSettled: _includeReceivableSettled,
+      );
 
   void _refresh() {
     setState(() {
@@ -2325,6 +2329,93 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
     }
   }
 
+  Future<void> _receivablePdf(InventoryOperationsData data, String kind) async {
+    final document = pw.Document();
+    final title = switch (kind) {
+      'RECEIPT' => 'Register Penerimaan Piutang',
+      'AGING_SALES' => 'Analisis Piutang per Sales',
+      'NOTES' => 'Serah-terima Nota Sales',
+      'OUTSTANDING' => 'Piutang Belum Lunas',
+      _ => 'Analisis Piutang per Customer',
+    };
+    final headers = switch (kind) {
+      'RECEIPT' => [
+          'Nomor',
+          'Tanggal',
+          'Customer',
+          'Metode',
+          'Jumlah',
+          'Status'
+        ],
+      'NOTES' => ['Nomor', 'Sales', 'Jumlah nota', 'Saldo', 'Status'],
+      'AGING_SALES' => ['Sales', 'Faktur', 'Customer', 'Bucket', 'Saldo'],
+      _ => ['Customer', 'Faktur', 'Sales', 'Bucket', 'Saldo'],
+    };
+    final rows = switch (kind) {
+      'RECEIPT' => data.arReceipts
+          .map((row) => [
+                row.number,
+                row.date,
+                row.customerName,
+                row.method,
+                rupiah(row.total),
+                row.status
+              ])
+          .toList(),
+      'NOTES' => data.handovers
+          .map((row) => [
+                row.number,
+                row.salesperson,
+                angka(row.invoiceCount),
+                rupiah(row.amount),
+                row.status
+              ])
+          .toList(),
+      'AGING_SALES' => data.receivables
+          .where((row) => !row.isSettled)
+          .map((row) => [
+                row.salesName,
+                row.invoiceNumber,
+                row.partyName,
+                row.agingBucket,
+                rupiah(row.amount)
+              ])
+          .toList(),
+      _ => data.receivables
+          .where((row) => !row.isSettled)
+          .map((row) => [
+                row.partyName,
+                row.invoiceNumber,
+                row.salesName,
+                row.agingBucket,
+                rupiah(row.amount)
+              ])
+          .toList(),
+    };
+    document.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4.landscape,
+      build: (_) => [
+        pw.Header(level: 0, text: title),
+        pw.TableHelper.fromTextArray(headers: headers, data: rows),
+      ],
+      footer: (context) => pw.Align(
+          alignment: pw.Alignment.centerRight,
+          child:
+              pw.Text('Halaman ${context.pageNumber}/${context.pagesCount}')),
+    ));
+    final name = 'inventory-ar-${kind.toLowerCase()}.pdf';
+    final location = await getSaveLocation(
+      suggestedName: name,
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'PDF', extensions: ['pdf'])
+      ],
+    );
+    if (location == null) return;
+    await XFile.fromData(await document.save(),
+            name: name, mimeType: 'application/pdf')
+        .saveTo(location.path);
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<InventoryOperationsData>(
@@ -2395,6 +2486,20 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
                       },
                     ),
                   ],
+                  if (_segment == 0) ...[
+                    const SizedBox(height: 10),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Tampilkan piutang yang sudah lunas'),
+                      value: _includeReceivableSettled,
+                      onChanged: (value) {
+                        setState(() {
+                          _includeReceivableSettled = value;
+                          _data = _load();
+                        });
+                      },
+                    ),
+                  ],
                   if (_message != null) ...[
                     const SizedBox(height: 12),
                     Text(_message!,
@@ -2405,14 +2510,28 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
             ),
             const SizedBox(height: 12),
             if (_segment == 0)
-              _SettlementList(
-                title: 'Piutang Belum Lunas',
-                documents: data.receivables,
-                busyId: _busyId,
-                primaryLabel: 'Terima penuh',
-                onPrimary: _settle,
-                onSecondary: _carry,
-              )
+              Column(children: [
+                _SettlementList(
+                  title: _includeReceivableSettled
+                      ? 'Piutang Customer - Semua Status'
+                      : 'Piutang Customer - Belum Lunas',
+                  documents: data.receivables,
+                  busyId: _busyId,
+                  primaryLabel: 'Terima penuh',
+                  onPrimary: _settle,
+                  onSecondary: _carry,
+                ),
+                const SizedBox(height: 12),
+                _ReceivableReportActions(
+                  onReceipts: () => _receivablePdf(data, 'RECEIPT'),
+                  onCustomerAging: () => _receivablePdf(data, 'AGING_CUSTOMER'),
+                  onSalesAging: () => _receivablePdf(data, 'AGING_SALES'),
+                  onOutstanding: () => _receivablePdf(data, 'OUTSTANDING'),
+                  onNotes: () => _receivablePdf(data, 'NOTES'),
+                ),
+                const SizedBox(height: 12),
+                _ArReceiptHistoryList(receipts: data.arReceipts),
+              ])
             else if (_segment == 1)
               Column(children: [
                 _SettlementList(
@@ -2437,6 +2556,7 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
                 handovers: data.handovers,
                 busyId: _busyId,
                 onReturnAndClose: _returnAndClose,
+                onReport: () => _receivablePdf(data, 'NOTES'),
               )
             else
               _PurchaseList(
@@ -2482,6 +2602,7 @@ class _SettlementList extends StatelessWidget {
           : Column(
               children: documents.take(100).map((document) {
                 final busy = busyId == document.id;
+                final settled = document.isSettled || document.amount <= 0;
                 return Container(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: const BoxDecoration(
@@ -2510,17 +2631,20 @@ class _SettlementList extends StatelessWidget {
                       Wrap(
                         spacing: 6,
                         children: [
-                          if (onSecondary != null)
+                          if (settled) const Chip(label: Text('Lunas')),
+                          if (!settled && onSecondary != null)
                             OutlinedButton(
                               onPressed: busy || document.salespersonId == null
                                   ? null
                                   : () => onSecondary!(document),
                               child: const Text('Bawa nota'),
                             ),
-                          FilledButton(
-                            onPressed: busy ? null : () => onPrimary(document),
-                            child: Text(busy ? 'Memproses...' : primaryLabel),
-                          ),
+                          if (!settled)
+                            FilledButton(
+                              onPressed:
+                                  busy ? null : () => onPrimary(document),
+                              child: Text(busy ? 'Memproses...' : primaryLabel),
+                            ),
                         ],
                       ),
                     ],
@@ -2530,6 +2654,84 @@ class _SettlementList extends StatelessWidget {
             ),
     );
   }
+}
+
+class _ReceivableReportActions extends StatelessWidget {
+  const _ReceivableReportActions({
+    required this.onReceipts,
+    required this.onCustomerAging,
+    required this.onSalesAging,
+    required this.onOutstanding,
+    required this.onNotes,
+  });
+
+  final VoidCallback onReceipts;
+  final VoidCallback onCustomerAging;
+  final VoidCallback onSalesAging;
+  final VoidCallback onOutstanding;
+  final VoidCallback onNotes;
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'Laporan Piutang dan Nota Sales',
+        icon: Icons.picture_as_pdf_outlined,
+        child: Wrap(spacing: 8, runSpacing: 8, children: [
+          OutlinedButton.icon(
+              onPressed: onReceipts,
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: const Text('Penerimaan PDF')),
+          OutlinedButton.icon(
+              onPressed: onCustomerAging,
+              icon: const Icon(Icons.storefront_outlined),
+              label: const Text('Aging customer')),
+          OutlinedButton.icon(
+              onPressed: onSalesAging,
+              icon: const Icon(Icons.badge_outlined),
+              label: const Text('Aging sales')),
+          FilledButton.tonalIcon(
+              onPressed: onOutstanding,
+              icon: const Icon(Icons.account_balance_wallet_outlined),
+              label: const Text('Piutang PDF')),
+          FilledButton.tonalIcon(
+              onPressed: onNotes,
+              icon: const Icon(Icons.assignment_ind_outlined),
+              label: const Text('Nota sales PDF')),
+        ]),
+      );
+}
+
+class _ArReceiptHistoryList extends StatelessWidget {
+  const _ArReceiptHistoryList({required this.receipts});
+
+  final List<ArReceiptSummary> receipts;
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'Riwayat Penerimaan Piutang',
+        icon: Icons.history_outlined,
+        child: receipts.isEmpty
+            ? const Text('Belum ada penerimaan piutang.')
+            : Column(
+                children: receipts
+                    .take(200)
+                    .map((receipt) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const CircleAvatar(
+                              child: Icon(Icons.payments_outlined)),
+                          title: Text(
+                              '${receipt.number} - ${receipt.customerName}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w800)),
+                          subtitle: Text(
+                              '${receipt.date} | ${receipt.method} | ${receipt.status}'),
+                          trailing: Text(rupiah(receipt.total),
+                              style: const TextStyle(
+                                  color: Color(0xFF0F766E),
+                                  fontWeight: FontWeight.w900)),
+                        ))
+                    .toList(),
+              ),
+      );
 }
 
 class _PurchaseReportActions extends StatelessWidget {
@@ -2682,38 +2884,52 @@ class _HandoverList extends StatelessWidget {
   const _HandoverList(
       {required this.handovers,
       required this.busyId,
-      required this.onReturnAndClose});
+      required this.onReturnAndClose,
+      required this.onReport});
   final List<HandoverSummary> handovers;
   final String? busyId;
   final ValueChanged<HandoverSummary> onReturnAndClose;
+  final VoidCallback onReport;
 
   @override
   Widget build(BuildContext context) {
     return _SectionCard(
       title: 'Serah-terima Nota Sales',
       icon: Icons.assignment_turned_in_outlined,
-      child: handovers.isEmpty
-          ? const Text('Belum ada serah-terima nota.')
-          : Column(
-              children: handovers
-                  .map((row) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(row.number,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w800)),
-                        subtitle: Text(
-                            '${row.salesperson} - ${row.invoiceCount} nota - ${row.status}'),
-                        trailing: row.status == 'HANDED_OVER'
-                            ? FilledButton.tonal(
-                                onPressed: busyId == row.id
-                                    ? null
-                                    : () => onReturnAndClose(row),
-                                child: const Text('Kembali & tutup'),
-                              )
-                            : Text(rupiah(row.amount)),
-                      ))
-                  .toList(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: onReport,
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Cetak nota sales'),
             ),
+          ),
+          if (handovers.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text('Belum ada serah-terima nota.'),
+            )
+          else
+            ...handovers.map((row) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(row.number,
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: Text(
+                      '${row.salesperson} - ${row.invoiceCount} nota - ${row.status}'),
+                  trailing: row.status == 'HANDED_OVER'
+                      ? FilledButton.tonal(
+                          onPressed: busyId == row.id
+                              ? null
+                              : () => onReturnAndClose(row),
+                          child: const Text('Kembali & tutup'),
+                        )
+                      : Text(rupiah(row.amount)),
+                )),
+        ],
+      ),
     );
   }
 }
@@ -3540,12 +3756,15 @@ class InventoryApiClient {
   }
 
   Future<InventoryOperationsData> operations(
-      {required bool includePayables, bool includeSettled = false}) async {
+      {required bool includePayables,
+      bool includeSettled = false,
+      bool includeReceivableSettled = false}) async {
     if (_token == null) {
       throw const InventoryApiException('Silakan masuk kembali.');
     }
-    final receivableFuture = _request<List<Object?>>(
-        'GET', '/inventory/legacy/receivables?pageSize=200');
+    final receivableFuture = _request<List<Object?>>('GET',
+        '/inventory/legacy/receivables?pageSize=1000&includeSettled=$includeReceivableSettled');
+    final receiptFuture = _request<List<Object?>>('GET', '/ar/receipts');
     final handoverFuture =
         _request<List<Object?>>('GET', '/sales-note-handovers');
     final payableFuture = includePayables
@@ -3576,6 +3795,7 @@ class InventoryApiClient {
       masterFuture,
       catalogFuture,
       opnameFuture,
+      receiptFuture,
     ]);
     return InventoryOperationsData.fromApi(
       values[0] as List<Object?>,
@@ -3587,6 +3807,7 @@ class InventoryApiClient {
       values[6] as Map<String, Object?>,
       values[7] as Map<String, Object?>,
       baseUrl,
+      values[8] as List<Object?>,
     );
   }
 
@@ -4336,6 +4557,7 @@ class InventoryOperationsData {
     required this.suppliers,
     required this.products,
     required this.warehouses,
+    this.arReceipts = const [],
   });
 
   factory InventoryOperationsData.fromApi(
@@ -4348,6 +4570,7 @@ class InventoryOperationsData {
     Map<String, Object?> catalog = const {},
     Map<String, Object?> opname = const {},
     Uri? baseUrl,
+    List<Object?> arReceipts = const [],
   ]) {
     final catalogBaseUrl = baseUrl ?? Uri.parse('http://localhost');
     return InventoryOperationsData(
@@ -4386,6 +4609,10 @@ class InventoryOperationsData {
           .map((row) => InventoryWarehouse((row['id'] ?? '').toString(),
               (row['code'] ?? '').toString(), (row['name'] ?? '').toString()))
           .toList(),
+      arReceipts: arReceipts
+          .whereType<Map<String, Object?>>()
+          .map(ArReceiptSummary.fromApi)
+          .toList(),
     );
   }
 
@@ -4397,6 +4624,7 @@ class InventoryOperationsData {
   final List<InventoryPriceParty> suppliers;
   final List<InventoryProductDemo> products;
   final List<InventoryWarehouse> warehouses;
+  final List<ArReceiptSummary> arReceipts;
 }
 
 class PurchaseOrderSummary {
@@ -4443,6 +4671,28 @@ class ApPaymentSummary {
   final String status;
 }
 
+class ArReceiptSummary {
+  const ArReceiptSummary(this.number, this.date, this.customerName, this.method,
+      this.total, this.status);
+
+  factory ArReceiptSummary.fromApi(Map<String, Object?> row) =>
+      ArReceiptSummary(
+        (row['receipt_number'] ?? '-').toString(),
+        (row['receipt_date'] ?? '-').toString(),
+        (row['customer_name'] ?? '-').toString(),
+        (row['method'] ?? '-').toString(),
+        toDouble(row['total_amount']),
+        (row['status'] ?? '-').toString(),
+      );
+
+  final String number;
+  final String date;
+  final String customerName;
+  final String method;
+  final double total;
+  final String status;
+}
+
 class SettlementDocument {
   const SettlementDocument({
     required this.id,
@@ -4453,6 +4703,8 @@ class SettlementDocument {
     required this.amount,
     required this.agingBucket,
     this.salespersonId,
+    this.salesName = '-',
+    this.isSettled = false,
   });
 
   factory SettlementDocument.fromApi(
@@ -4471,6 +4723,8 @@ class SettlementDocument {
       amount: toDouble(row['amount']),
       agingBucket: (row['aging_bucket'] ?? '-').toString(),
       salespersonId: row['salesperson_id']?.toString(),
+      salesName: (row['sales_name'] ?? '-').toString(),
+      isSettled: row['is_settled'] == true,
     );
   }
 
@@ -4482,6 +4736,8 @@ class SettlementDocument {
   final double amount;
   final String agingBucket;
   final String? salespersonId;
+  final String salesName;
+  final bool isSettled;
 }
 
 class HandoverSummary {

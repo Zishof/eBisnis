@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-06 - Inventory parity wave 4
+
+- Melengkapi order sales offline-first dengan workspace piutang terbuka dan lunas.
+- Menambahkan riwayat penerimaan piutang serta aging per customer dan sales.
+- Menambahkan PDF penerimaan, aging, piutang belum lunas, dan nota sales.
+- Menyamakan siklus serah-terima, pengembalian, dan penutupan nota Web/Flutter.
+- Menaikkan layar legacy 30-42 menjadi operasional pada React Web dan Flutter.
+
 ## 2026-08-06 - Inventory parity wave 3
 
 - Menambahkan alur Flutter purchase order dari pembuatan, pengajuan, persetujuan,

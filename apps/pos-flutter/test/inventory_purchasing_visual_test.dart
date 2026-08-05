@@ -11,7 +11,9 @@ class _PurchasingVisualClient extends InventoryApiClient {
 
   @override
   Future<InventoryOperationsData> operations(
-          {required bool includePayables, bool includeSettled = false}) async =>
+          {required bool includePayables,
+          bool includeSettled = false,
+          bool includeReceivableSettled = false}) async =>
       InventoryOperationsData(
         receivables: const [],
         payables: const [],
