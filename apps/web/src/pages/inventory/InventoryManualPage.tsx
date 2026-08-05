@@ -1,5 +1,6 @@
 import { BookOpen, CheckCircle2, Download, FileText, Search, ShieldCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import illustratedManual from './inventory-illustrated-manual-content.json';
 import manual from './inventory-manual-content.json';
 
 const assetBase = '/panduan/inventory-sales';
@@ -11,6 +12,12 @@ export function InventoryManualPage() {
     return needle
       ? manual.chapters.filter((chapter) => JSON.stringify(chapter).toLocaleLowerCase('id').includes(needle))
       : manual.chapters;
+  }, [query]);
+  const illustratedChapters = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase('id');
+    return needle
+      ? illustratedManual.chapters.filter((chapter) => JSON.stringify(chapter).toLocaleLowerCase('id').includes(needle))
+      : illustratedManual.chapters;
   }, [query]);
 
   return (
@@ -24,8 +31,9 @@ export function InventoryManualPage() {
             <h1 className="mt-5 max-w-3xl text-4xl font-black leading-tight sm:text-5xl">{manual.meta.title}</h1>
             <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-300">{manual.meta.subtitle}. Dari persiapan data, order sales, batch dan expiry, hingga laporan pemilik serta tutup periode.</p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <a className="btn-primary" href={`${assetBase}/Panduan-Pengguna-eBisnis-Inventory-Sales.pdf`} download><Download className="h-4 w-4" aria-hidden /> Unduh PDF</a>
-              <a className="btn-outline" href={`${assetBase}/Panduan-Pengguna-eBisnis-Inventory-Sales.docx`} download><FileText className="h-4 w-4" aria-hidden /> Unduh Word</a>
+              <a className="btn-primary" href={`${assetBase}/Panduan-Operasional-Bergambar-eBisnis-Inventory-Sales.pdf`} download><Download className="h-4 w-4" aria-hidden /> Panduan rinci PDF</a>
+              <a className="btn-outline" href={`${assetBase}/Panduan-Operasional-Bergambar-eBisnis-Inventory-Sales.docx`} download><FileText className="h-4 w-4" aria-hidden /> Panduan rinci Word</a>
+              <a className="btn-outline" href={`${assetBase}/Panduan-Pengguna-eBisnis-Inventory-Sales.pdf`} download><Download className="h-4 w-4" aria-hidden /> Panduan ringkas</a>
             </div>
             <p className="mt-4 text-sm text-slate-500">Versi {manual.meta.version} / diperbarui {manual.meta.updated}</p>
           </div>
@@ -82,6 +90,50 @@ export function InventoryManualPage() {
               );
             })}
             {chapters.length === 0 ? <p className="rounded-lg border border-slate-200 bg-white p-6 text-center text-slate-500 dark:border-slate-800 dark:bg-slate-900">Topik tidak ditemukan.</p> : null}
+          </div>
+        </section>
+
+        <section className="mt-12 border-t border-slate-200 pt-10 dark:border-slate-800" aria-labelledby="illustrated-manual-title">
+          <div className="max-w-3xl">
+            <p className="text-xs font-bold uppercase text-brand-700">Panduan operasional bergambar</p>
+            <h2 id="illustrated-manual-title" className="mt-1 text-3xl font-black">Delapan layar, penjelasan mendalam untuk pengguna nonteknis</h2>
+            <p className="mt-3 leading-7 text-slate-600 dark:text-slate-300">Setiap ilustrasi mempunyai sedikitnya 1.500 kata penjelasan formal, contoh kasus, pemeriksaan, risiko, pembagian tanggung jawab, dan checklist penyelesaian. Angka pada gambar hanya contoh pelatihan.</p>
+          </div>
+          <div className="mt-7 space-y-5">
+            {illustratedChapters.map((chapter, index) => (
+              <details key={chapter.id} className="group overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                <summary className="grid cursor-pointer list-none gap-4 p-5 md:grid-cols-[180px_minmax(0,1fr)_auto] md:items-center">
+                  <img src={`${assetBase}/images/operasional/${chapter.image}`} alt={chapter.alt} className="aspect-video w-full rounded-md border border-slate-200 object-cover dark:border-slate-700" />
+                  <span>
+                    <span className="text-xs font-bold uppercase text-brand-700">Gambar {index + 1} / {chapter.wordCount.toLocaleString('id-ID')} kata</span>
+                    <span className="mt-1 block text-lg font-bold">{chapter.title}</span>
+                    <span className="mt-2 block text-sm leading-6 text-slate-600 dark:text-slate-300">{chapter.summary}</span>
+                  </span>
+                  <span className="text-2xl text-slate-400 transition group-open:rotate-45">+</span>
+                </summary>
+                <div className="border-t border-slate-200 px-5 py-7 dark:border-slate-800">
+                  <img src={`${assetBase}/images/operasional/${chapter.image}`} alt={chapter.alt} className="w-full rounded-lg border border-slate-200 object-contain dark:border-slate-700" />
+                  <p className="mt-3 text-xs font-semibold uppercase text-slate-500">Ilustrasi konseptual, bukan data produksi / {chapter.platform} / {chapter.role}</p>
+                  <div className="mx-auto mt-8 max-w-4xl space-y-8">
+                    {chapter.sections.map((section) => (
+                      <section key={section.title}>
+                        <h3 className="text-xl font-bold">{section.title}</h3>
+                        <div className="mt-3 space-y-4">
+                          {section.paragraphs.map((paragraph) => <p key={paragraph} className="leading-8 text-slate-700 dark:text-slate-200">{paragraph}</p>)}
+                        </div>
+                      </section>
+                    ))}
+                    <section>
+                      <h3 className="text-xl font-bold">Ringkasan langkah kerja</h3>
+                      <ol className="mt-3 grid gap-3 sm:grid-cols-2">
+                        {chapter.steps.map((step, stepIndex) => <li key={step} className="flex gap-3 rounded-lg bg-slate-50 p-3 text-sm leading-6 dark:bg-slate-950"><span className="font-bold text-brand-700">{stepIndex + 1}.</span>{step}</li>)}
+                      </ol>
+                    </section>
+                  </div>
+                </div>
+              </details>
+            ))}
+            {illustratedChapters.length === 0 ? <p className="rounded-lg border border-slate-200 bg-white p-6 text-center text-slate-500 dark:border-slate-800 dark:bg-slate-900">Bab bergambar tidak ditemukan.</p> : null}
           </div>
         </section>
 

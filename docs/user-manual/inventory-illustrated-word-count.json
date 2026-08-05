@@ -1,0 +1,13 @@
+{
+  "minimumWordsPerIllustration": 1500,
+  "counts": {
+    "dashboard-pemilik": 1819,
+    "sales-mobile": 1815,
+    "produk-batch-harga": 1832,
+    "pelanggan-order-kredit": 1815,
+    "pembelian-penerimaan-hutang": 1802,
+    "stok-opname-expiry": 1816,
+    "piutang-penagihan": 1818,
+    "laporan-tutup-periode": 1819
+  }
+}

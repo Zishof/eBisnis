@@ -1,0 +1,930 @@
+{
+  "meta": {
+    "title": "Panduan Operasional Bergambar eBisnis Inventory / Sales",
+    "subtitle": "Penjelasan end to end untuk pemilik, admin, sales, gudang, keuangan, dan pengguna nonteknis",
+    "version": "2.0",
+    "updated": "5 Agustus 2026"
+  },
+  "chapters": [
+    {
+      "id": "dashboard-pemilik",
+      "title": "Dashboard Pemilik dan Ringkasan Kinerja",
+      "image": "01-dashboard-pemilik.png",
+      "alt": "Ilustrasi layar Dashboard Pemilik dan Ringkasan Kinerja pada eBisnis Inventory / Sales.",
+      "platform": "Web dan Desktop Windows",
+      "role": "Pemilik usaha dan manajemen",
+      "summary": "Memahami omzet, laba kotor, piutang, persediaan, risiko kedaluwarsa, dan kinerja setiap sales tanpa harus membuka transaksi satu per satu.",
+      "steps": [
+        "pastikan periode dan cabang sudah benar",
+        "baca omzet bersama laba, bukan omzet sendirian",
+        "bandingkan target dengan realisasi sales",
+        "periksa piutang yang melewati jatuh tempo",
+        "buka rincian batch yang mendekati kedaluwarsa",
+        "catat keputusan dan penanggung jawab tindak lanjut"
+      ],
+      "validations": [
+        "angka kartu sama dengan rincian laporan",
+        "periode tidak tercampur dengan bulan sebelumnya",
+        "retur dan pembatalan sudah mengurangi omzet",
+        "sales tanpa transaksi tetap terlihat",
+        "peringatan stok mempunyai nama barang dan lokasi",
+        "data terakhir tersinkron tercantum"
+      ],
+      "sections": [
+        {
+          "title": "Tujuan layar dan hasil yang diharapkan",
+          "paragraphs": [
+            "Ilustrasi Dashboard Pemilik dan Ringkasan Kinerja menggambarkan ruang kerja yang dipakai untuk memahami omzet, laba kotor, piutang, persediaan, risiko kedaluwarsa, dan kinerja setiap sales tanpa harus membuka transaksi satu per satu. Layar ini tidak dimaksudkan sebagai kumpulan angka yang hanya dilihat sekilas. Setiap bagian membantu pengguna menjawab pertanyaan operasional: apa yang sudah terjadi, apa yang belum selesai, siapa yang harus menindaklanjuti, dan bukti apa yang harus disimpan. Pengguna utama adalah Pemilik usaha dan manajemen, sedangkan media yang digunakan adalah Web dan Desktop Windows. Tampilan nyata dapat menyesuaikan ukuran perangkat dan hak akses, tetapi urutan berpikirnya tetap sama.",
+            "Hasil terbaik diperoleh ketika pengguna membuka layar dengan tujuan yang jelas. Sebelum menekan tombol apa pun, tentukan keputusan yang ingin dibuat dan periode data yang ingin diperiksa. Setelah pekerjaan selesai, hasil yang diharapkan adalah: Pemilik mendapatkan satu daftar keputusan harian yang dapat ditindaklanjuti, sementara sales menerima arahan yang jelas dan gudang memahami barang yang perlu disiapkan. Dengan pendekatan ini, sistem bukan sekadar tempat mengetik, melainkan catatan bersama yang menghubungkan sales, gudang, administrasi, keuangan, dan pemilik. Setiap orang membaca sumber data yang sama sesuai batas kewenangannya."
+          ]
+        },
+        {
+          "title": "Cara membaca ilustrasi dari atas ke bawah",
+          "paragraphs": [
+            "Mulailah dari bagian paling atas. Di sana biasanya terdapat nama perusahaan, identitas pengguna, periode kerja, lokasi atau cabang, serta waktu pembaruan terakhir. Informasi ini wajib dibaca agar pengguna tidak mengolah data milik tenant, periode, atau gudang yang salah. Setelah identitas benar, lanjutkan ke bagian utama yang terdiri atas periode laporan, kartu indikator utama, grafik tren penjualan, peringkat sales, peringatan stok, dan daftar tindakan yang perlu diputuskan. Susunan tersebut dibuat agar pengguna melihat ringkasan lebih dulu, kemudian beralih ke rincian dan tindakan.",
+            "Warna pada ilustrasi berfungsi sebagai petunjuk, bukan hiasan. Hijau menunjukkan kondisi selesai atau aman, kuning menunjukkan keadaan yang perlu diperiksa, merah menunjukkan risiko atau pekerjaan yang tertahan, dan abu-abu menunjukkan informasi pendukung. Jangan mengambil keputusan hanya berdasarkan warna; buka rincian yang mendasarinya. Angka pada ilustrasi adalah contoh pembelajaran dan bukan data produksi Caruban Medika Nusantara. Pada aplikasi asli, pengguna harus memeriksa nomor dokumen, tanggal, pihak terkait, dan status sebelum melanjutkan."
+          ]
+        },
+        {
+          "title": "Persiapan sebelum memulai pekerjaan",
+          "paragraphs": [
+            "Sebelum menggunakan Dashboard Pemilik dan Ringkasan Kinerja, pastikan akun yang dipakai adalah akun pribadi dan peran yang tampil sesuai pekerjaan. Jangan berbagi akun karena sistem mencatat siapa yang membuat, mengubah, menyetujui, atau membatalkan data. Periksa koneksi, indikator sinkronisasi, tanggal serta jam perangkat, dan cabang aktif. Untuk pekerjaan yang memengaruhi stok atau uang, siapkan dokumen pendukung seperti pesanan, invoice, bukti penerimaan, bukti transfer, atau berita acara. Persiapan sederhana ini mencegah kesalahan yang sulit dilacak kemudian.",
+            "Pengguna juga perlu memahami batas kewenangan. Pemilik usaha dan manajemen tidak selalu mempunyai hak yang sama. Bila tombol tidak terlihat atau tidak aktif, jangan mencari cara untuk melewati pengendalian. Catat nomor dokumen dan minta bantuan atasan atau admin hak akses. Data sensitif tidak boleh dikirim melalui grup umum. Ketika bekerja menggunakan Web dan Desktop Windows, pastikan layar terkunci saat ditinggalkan dan berkas hasil ekspor disimpan pada tempat yang disetujui perusahaan."
+          ]
+        },
+        {
+          "title": "Langkah kerja utama",
+          "paragraphs": [
+            "Urutan kerja yang disarankan adalah pastikan periode dan cabang sudah benar, baca omzet bersama laba, bukan omzet sendirian, bandingkan target dengan realisasi sales, periksa piutang yang melewati jatuh tempo, buka rincian batch yang mendekati kedaluwarsa, dan catat keputusan dan penanggung jawab tindak lanjut. Jalankan urutan tersebut secara tertib karena setiap langkah menyiapkan informasi bagi langkah berikutnya. Misalnya, pemilihan pelanggan atau supplier menentukan alamat, syarat bayar, harga, dan batas kredit; pemilihan produk menentukan satuan, batch, HPP, dan ketersediaan. Jika data awal salah, hasil akhir juga salah meskipun perhitungan sistem benar. Gunakan pencarian dan filter untuk mempersempit data, lalu buka satu catatan yang benar sebelum melakukan tindakan.",
+            "Sesudah memasukkan data, baca kembali ringkasan sebelum menyimpan. Sistem dapat memberikan peringatan, menahan proses, atau meminta persetujuan. Peringatan bukan gangguan; peringatan menjelaskan risiko yang harus diselesaikan. Jika jaringan terputus, periksa apakah pekerjaan tersimpan sebagai draft lokal, antrean sinkronisasi, atau belum tersimpan sama sekali. Jangan mengulang transaksi tanpa memeriksa nomor referensi karena pengulangan dapat menghasilkan data ganda. Setelah berhasil, catat status akhir dan pihak yang menerima pekerjaan berikutnya."
+          ]
+        },
+        {
+          "title": "Pemeriksaan sebelum menyimpan atau menyetujui",
+          "paragraphs": [
+            "Gunakan daftar pemeriksaan berikut sebagai kebiasaan: angka kartu sama dengan rincian laporan, periode tidak tercampur dengan bulan sebelumnya, retur dan pembatalan sudah mengurangi omzet, sales tanpa transaksi tetap terlihat, peringatan stok mempunyai nama barang dan lokasi, dan data terakhir tersinkron tercantum. Pemeriksaan tidak perlu memakan waktu lama jika dilakukan pada setiap transaksi. Fokus pada identitas pihak, tanggal, mata uang, satuan, jumlah, harga, pajak, potongan, batch, jatuh tempo, dan status. Untuk transaksi bernilai besar atau berisiko, lakukan prinsip empat mata: satu orang menyiapkan dan orang lain memeriksa. Pemisahan ini melindungi pegawai sekaligus perusahaan dari kesalahan yang tidak disengaja.",
+            "Setelah tombol simpan ditekan, cari tanda keberhasilan yang nyata, misalnya nomor dokumen, status tersimpan, waktu sinkronisasi, atau perubahan pada daftar. Pesan singkat saja tidak cukup jika layar kemudian menunjukkan status gagal. Pada perangkat Android, bedakan antara tersimpan di perangkat dan sudah diterima server. Pada Web atau Desktop, jangan menutup jendela saat proses masih berjalan. Bila hasil tidak sesuai, jangan membuat koreksi diam-diam; gunakan prosedur edit, pembatalan, retur, atau penyesuaian yang menyediakan alasan dan jejak audit."
+          ]
+        },
+        {
+          "title": "Kesalahan umum dan cara mencegahnya",
+          "paragraphs": [
+            "Kesalahan yang paling sering terjadi pada alur ini adalah menganggap omzet sebagai laba, membandingkan sales dengan wilayah yang tidak setara, mengabaikan transaksi yang belum tersinkron, mengambil keputusan hanya dari satu hari, membaca stok tanpa memperhatikan batch, dan membagikan dashboard kepada pihak yang tidak berwenang. Sebagian besar bukan disebabkan oleh kerusakan sistem, melainkan karena konteks tidak diperiksa, pekerjaan terburu-buru, atau tanggung jawab tidak jelas. Cara pencegahannya adalah menggunakan akun sendiri, memulai dari dokumen sumber, membaca ringkasan, dan menyelesaikan satu transaksi sebelum pindah ke transaksi lain. Hindari membuka banyak tab untuk pekerjaan yang sama karena pengguna dapat menyimpan versi yang berbeda.",
+            "Jika kesalahan sudah terjadi, hentikan proses berikutnya dan catat fakta apa adanya: nomor dokumen, waktu, pengguna, nilai, status, dan dampak. Jangan menghapus bukti atau mengganti data agar tampak benar. Laporkan kepada penanggung jawab, pilih mekanisme koreksi yang tersedia, lalu periksa laporan setelah koreksi diposting. Sikap terbuka terhadap kesalahan mempercepat pemulihan dan membuat aturan kerja dapat diperbaiki. Sistem menyimpan jejak perubahan untuk membantu penelusuran, bukan untuk menyalahkan pengguna yang mengikuti prosedur."
+          ]
+        },
+        {
+          "title": "Pembagian tanggung jawab antarperan",
+          "paragraphs": [
+            "Pada Dashboard Pemilik dan Ringkasan Kinerja, pembuat data bertanggung jawab terhadap kelengkapan informasi awal; pemeriksa bertanggung jawab terhadap kesesuaian dokumen; penyetuju bertanggung jawab terhadap keputusan bisnis; dan administrator bertanggung jawab terhadap ketersediaan sistem serta hak akses. Pemilik usaha menggunakan hasil untuk mengarahkan bisnis, tetapi tidak seharusnya mengambil alih seluruh pekerjaan operasional. Pembagian tugas yang jelas mempercepat proses karena setiap orang mengetahui kapan harus bertindak dan kapan harus menyerahkan pekerjaan.",
+            "Gunakan kolom catatan, status, dan penanggung jawab untuk melakukan serah terima. Instruksi lisan tetap boleh digunakan untuk mempercepat komunikasi, tetapi keputusan penting harus dicatat di sistem atau dokumen resmi. Jika seorang pegawai tidak hadir, atasan menunjuk pengganti melalui hak akses sementara yang terdokumentasi. Jangan memberikan kata sandi pegawai yang tidak hadir. Setelah tugas selesai, cabut hak sementara dan tinjau aktivitas yang dilakukan selama masa penggantian."
+          ]
+        },
+        {
+          "title": "Perbedaan penggunaan Web, Windows, dan Android",
+          "paragraphs": [
+            "Web dan Desktop Windows menyediakan kemampuan yang sama pada inti data, tetapi cara berinteraksinya dapat berbeda. Web dan Desktop cocok untuk tabel lebar, pemeriksaan banyak dokumen, rekonsiliasi, ekspor, serta persetujuan. Android cocok untuk pekerjaan lapangan, pencarian cepat, pemindaian, pengambilan bukti, dan pekerjaan yang perlu tetap berjalan ketika koneksi tidak stabil. Pengguna tidak perlu memaksakan semua pekerjaan ke satu perangkat. Pilih perangkat berdasarkan risiko, jumlah data, dan kondisi tempat kerja.",
+            "Pada layar kecil, bagian informasi dapat disusun vertikal dan beberapa kolom diringkas menjadi kartu. Gulir sampai akhir dan buka detail sebelum menyimpulkan bahwa data tidak tersedia. Pada layar besar, jangan mengabaikan kolom di sebelah kanan; gunakan pengguliran horizontal bila diperlukan. Perubahan yang dibuat di satu perangkat baru terlihat di perangkat lain setelah sinkronisasi berhasil. Karena itu, indikator pembaruan terakhir harus menjadi bagian dari pemeriksaan, terutama sebelum menyetujui stok, kredit, pembayaran, atau penutupan periode."
+          ]
+        },
+        {
+          "title": "Contoh kasus sederhana",
+          "paragraphs": [
+            "Muklis membuka dashboard pada awal pagi untuk melihat penjualan empat sales, mengecek piutang yang harus ditagih, lalu menentukan produk yang perlu diprioritaskan sebelum kunjungan lapangan dimulai. Dalam contoh ini, pengguna tidak langsung mengejar kecepatan. Ia memeriksa identitas, konteks, dokumen, dan status. Ketika menemukan peringatan, ia membuka rincian dan menentukan apakah pekerjaan dapat dilanjutkan sendiri atau membutuhkan persetujuan. Seluruh tindakan diberi nomor referensi sehingga pihak berikutnya tidak perlu menebak asal informasi. Cara kerja seperti ini membuat pelayanan pelanggan tetap cepat tanpa mengorbankan pengendalian.",
+            "Setelah kasus selesai, pengguna membandingkan hasil dengan tujuan awal. Ia memastikan tidak ada draft tertinggal, antrean sinkronisasi kosong atau diketahui, dan laporan terkait telah berubah sesuai transaksi. Bila hasil belum muncul, ia tidak langsung mengulangi input; ia memeriksa status dan log lebih dahulu. Contoh ini dapat dipakai sebagai latihan. Gunakan data demo, lakukan langkah dari awal sampai akhir, lalu minta peserta lain menjelaskan apa yang terjadi dengan bahasa mereka sendiri."
+          ]
+        },
+        {
+          "title": "Bukti, audit, dan keamanan informasi",
+          "paragraphs": [
+            "Setiap pekerjaan pada Dashboard Pemilik dan Ringkasan Kinerja menghasilkan bukti. Bukti dapat berupa nomor dokumen, waktu pembuatan, pengguna, status, foto, tanda terima, file ekspor, atau catatan persetujuan. Bukti harus cukup untuk menjawab siapa, apa, kapan, di mana, mengapa, dan berapa nilainya. Simpan bukti pada fasilitas yang disediakan sistem atau lokasi resmi perusahaan. Jangan menggunakan foto pribadi, penyimpanan umum, atau aplikasi pesan sebagai arsip utama.",
+            "Hak akses mengikuti kebutuhan kerja minimum. Data harga beli, laba, saldo piutang, nomor rekening, dan identitas pelanggan hanya boleh dibuka oleh peran yang memerlukannya. Ketika menampilkan layar kepada pihak luar, gunakan mode demo atau samarkan data. Saat mengekspor laporan, periksa penerima dan masa simpan. Jika perangkat hilang, segera laporkan agar sesi dapat dicabut. Audit log tidak boleh dihapus untuk menyembunyikan kesalahan; justru catatan tersebut membantu perusahaan memahami dan memperbaiki proses."
+          ]
+        },
+        {
+          "title": "Checklist penyelesaian pekerjaan",
+          "paragraphs": [
+            "Sebelum meninggalkan layar, tanyakan: apakah tujuan sudah tercapai, apakah nomor dokumen sudah terbentuk, apakah status akhir benar, apakah data sudah tersinkron, apakah dokumen pendukung tersimpan, apakah pihak berikutnya sudah menerima tugas, dan apakah terdapat peringatan yang belum ditangani. Jika satu jawaban masih tidak jelas, pekerjaan belum benar-benar selesai. Tuliskan catatan singkat agar pergantian shift atau pemeriksaan berikutnya tidak dimulai dari nol.",
+            "Pada akhir hari, supervisor meninjau daftar transaksi gagal, draft, pembatalan, penyesuaian, dan persetujuan tertunda. Tinjauan harian lebih ringan daripada menunggu akhir bulan. Gunakan laporan pengecualian untuk mencari hal yang tidak biasa, bukan hanya laporan total. Apabila seluruh pemeriksaan telah lulus, pengguna dapat menutup tugas dan melanjutkan pekerjaan lain. Kebiasaan menyelesaikan satu siklus penuh adalah dasar data yang akurat dan laporan pemilik yang dapat dipercaya."
+          ]
+        },
+        {
+          "title": "Cara melatih pengguna baru",
+          "paragraphs": [
+            "Pelatihan dimulai dengan menjelaskan tujuan bisnis, bukan nama tombol. Tunjukkan ilustrasi, sebutkan peran Pemilik usaha dan manajemen, lalu minta peserta menunjuk periode laporan, kartu indikator utama, grafik tren penjualan, peringkat sales, peringatan stok, dan daftar tindakan yang perlu diputuskan. Setelah itu demonstrasikan satu kasus normal dan satu kasus yang menghasilkan peringatan. Peserta kemudian mengulang menggunakan data demo sambil menjelaskan alasan setiap langkah. Pendamping hanya membantu ketika peserta berhenti, sehingga pemahaman tidak bergantung pada hafalan.",
+            "Pengguna dinyatakan siap ketika mampu menyelesaikan kasus, menemukan kesalahan yang sengaja disisipkan, menjelaskan bukti yang harus disimpan, dan mengetahui kapan harus meminta persetujuan. Catat hasil latihan dan topik yang perlu diulang. Jangan melatih langsung dengan data produksi yang sensitif. Setelah pengguna mulai bekerja, lakukan pendampingan pada transaksi pertama dan tinjau hasilnya. Pelatihan yang baik membuat orang nonteknis percaya diri karena mereka memahami maksud proses, bukan sekadar mengikuti layar."
+          ]
+        }
+      ],
+      "wordCount": 1819
+    },
+    {
+      "id": "sales-mobile",
+      "title": "Kunjungan dan Order Sales melalui Android Flutter",
+      "image": "02-sales-mobile.png",
+      "alt": "Ilustrasi layar Kunjungan dan Order Sales melalui Android Flutter pada eBisnis Inventory / Sales.",
+      "platform": "Android Flutter",
+      "role": "Sales lapangan",
+      "summary": "Menjalankan kunjungan pelanggan, memeriksa katalog dan stok, membuat order, serta menyimpan bukti kegiatan secara tertib meskipun koneksi internet tidak selalu stabil.",
+      "steps": [
+        "masuk menggunakan akun pribadi",
+        "sinkronkan data sebelum berangkat",
+        "pilih pelanggan pada rute hari ini",
+        "konfirmasi alamat dan batas kredit",
+        "tambahkan produk beserta jumlahnya",
+        "periksa harga, potongan, dan stok",
+        "simpan order",
+        "pastikan status terkirim ke server"
+      ],
+      "validations": [
+        "pelanggan sesuai wilayah sales",
+        "harga berasal dari buku harga aktif",
+        "jumlah tidak melebihi kebijakan stok",
+        "potongan mempunyai dasar yang sah",
+        "tanggal kirim dapat dipenuhi",
+        "order mempunyai nomor referensi",
+        "status offline atau online terlihat jelas"
+      ],
+      "sections": [
+        {
+          "title": "Tujuan layar dan hasil yang diharapkan",
+          "paragraphs": [
+            "Ilustrasi Kunjungan dan Order Sales melalui Android Flutter menggambarkan ruang kerja yang dipakai untuk menjalankan kunjungan pelanggan, memeriksa katalog dan stok, membuat order, serta menyimpan bukti kegiatan secara tertib meskipun koneksi internet tidak selalu stabil. Layar ini tidak dimaksudkan sebagai kumpulan angka yang hanya dilihat sekilas. Setiap bagian membantu pengguna menjawab pertanyaan operasional: apa yang sudah terjadi, apa yang belum selesai, siapa yang harus menindaklanjuti, dan bukti apa yang harus disimpan. Pengguna utama adalah Sales lapangan, sedangkan media yang digunakan adalah Android Flutter. Tampilan nyata dapat menyesuaikan ukuran perangkat dan hak akses, tetapi urutan berpikirnya tetap sama.",
+            "Hasil terbaik diperoleh ketika pengguna membuka layar dengan tujuan yang jelas. Sebelum menekan tombol apa pun, tentukan keputusan yang ingin dibuat dan periode data yang ingin diperiksa. Setelah pekerjaan selesai, hasil yang diharapkan adalah: Order lapangan tercatat dengan identitas sales, pelanggan, waktu, harga, dan status sinkronisasi sehingga admin tidak perlu mengetik ulang catatan kertas. Dengan pendekatan ini, sistem bukan sekadar tempat mengetik, melainkan catatan bersama yang menghubungkan sales, gudang, administrasi, keuangan, dan pemilik. Setiap orang membaca sumber data yang sama sesuai batas kewenangannya."
+          ]
+        },
+        {
+          "title": "Cara membaca ilustrasi dari atas ke bawah",
+          "paragraphs": [
+            "Mulailah dari bagian paling atas. Di sana biasanya terdapat nama perusahaan, identitas pengguna, periode kerja, lokasi atau cabang, serta waktu pembaruan terakhir. Informasi ini wajib dibaca agar pengguna tidak mengolah data milik tenant, periode, atau gudang yang salah. Setelah identitas benar, lanjutkan ke bagian utama yang terdiri atas identitas sales dan status sinkronisasi, rute kunjungan, profil pelanggan, katalog dan pencarian produk, keranjang order, dan ringkasan pengiriman dan pembayaran. Susunan tersebut dibuat agar pengguna melihat ringkasan lebih dulu, kemudian beralih ke rincian dan tindakan.",
+            "Warna pada ilustrasi berfungsi sebagai petunjuk, bukan hiasan. Hijau menunjukkan kondisi selesai atau aman, kuning menunjukkan keadaan yang perlu diperiksa, merah menunjukkan risiko atau pekerjaan yang tertahan, dan abu-abu menunjukkan informasi pendukung. Jangan mengambil keputusan hanya berdasarkan warna; buka rincian yang mendasarinya. Angka pada ilustrasi adalah contoh pembelajaran dan bukan data produksi Caruban Medika Nusantara. Pada aplikasi asli, pengguna harus memeriksa nomor dokumen, tanggal, pihak terkait, dan status sebelum melanjutkan."
+          ]
+        },
+        {
+          "title": "Persiapan sebelum memulai pekerjaan",
+          "paragraphs": [
+            "Sebelum menggunakan Kunjungan dan Order Sales melalui Android Flutter, pastikan akun yang dipakai adalah akun pribadi dan peran yang tampil sesuai pekerjaan. Jangan berbagi akun karena sistem mencatat siapa yang membuat, mengubah, menyetujui, atau membatalkan data. Periksa koneksi, indikator sinkronisasi, tanggal serta jam perangkat, dan cabang aktif. Untuk pekerjaan yang memengaruhi stok atau uang, siapkan dokumen pendukung seperti pesanan, invoice, bukti penerimaan, bukti transfer, atau berita acara. Persiapan sederhana ini mencegah kesalahan yang sulit dilacak kemudian.",
+            "Pengguna juga perlu memahami batas kewenangan. Sales lapangan tidak selalu mempunyai hak yang sama. Bila tombol tidak terlihat atau tidak aktif, jangan mencari cara untuk melewati pengendalian. Catat nomor dokumen dan minta bantuan atasan atau admin hak akses. Data sensitif tidak boleh dikirim melalui grup umum. Ketika bekerja menggunakan Android Flutter, pastikan layar terkunci saat ditinggalkan dan berkas hasil ekspor disimpan pada tempat yang disetujui perusahaan."
+          ]
+        },
+        {
+          "title": "Langkah kerja utama",
+          "paragraphs": [
+            "Urutan kerja yang disarankan adalah masuk menggunakan akun pribadi, sinkronkan data sebelum berangkat, pilih pelanggan pada rute hari ini, konfirmasi alamat dan batas kredit, tambahkan produk beserta jumlahnya, periksa harga, potongan, dan stok, simpan order, dan pastikan status terkirim ke server. Jalankan urutan tersebut secara tertib karena setiap langkah menyiapkan informasi bagi langkah berikutnya. Misalnya, pemilihan pelanggan atau supplier menentukan alamat, syarat bayar, harga, dan batas kredit; pemilihan produk menentukan satuan, batch, HPP, dan ketersediaan. Jika data awal salah, hasil akhir juga salah meskipun perhitungan sistem benar. Gunakan pencarian dan filter untuk mempersempit data, lalu buka satu catatan yang benar sebelum melakukan tindakan.",
+            "Sesudah memasukkan data, baca kembali ringkasan sebelum menyimpan. Sistem dapat memberikan peringatan, menahan proses, atau meminta persetujuan. Peringatan bukan gangguan; peringatan menjelaskan risiko yang harus diselesaikan. Jika jaringan terputus, periksa apakah pekerjaan tersimpan sebagai draft lokal, antrean sinkronisasi, atau belum tersimpan sama sekali. Jangan mengulang transaksi tanpa memeriksa nomor referensi karena pengulangan dapat menghasilkan data ganda. Setelah berhasil, catat status akhir dan pihak yang menerima pekerjaan berikutnya."
+          ]
+        },
+        {
+          "title": "Pemeriksaan sebelum menyimpan atau menyetujui",
+          "paragraphs": [
+            "Gunakan daftar pemeriksaan berikut sebagai kebiasaan: pelanggan sesuai wilayah sales, harga berasal dari buku harga aktif, jumlah tidak melebihi kebijakan stok, potongan mempunyai dasar yang sah, tanggal kirim dapat dipenuhi, order mempunyai nomor referensi, dan status offline atau online terlihat jelas. Pemeriksaan tidak perlu memakan waktu lama jika dilakukan pada setiap transaksi. Fokus pada identitas pihak, tanggal, mata uang, satuan, jumlah, harga, pajak, potongan, batch, jatuh tempo, dan status. Untuk transaksi bernilai besar atau berisiko, lakukan prinsip empat mata: satu orang menyiapkan dan orang lain memeriksa. Pemisahan ini melindungi pegawai sekaligus perusahaan dari kesalahan yang tidak disengaja.",
+            "Setelah tombol simpan ditekan, cari tanda keberhasilan yang nyata, misalnya nomor dokumen, status tersimpan, waktu sinkronisasi, atau perubahan pada daftar. Pesan singkat saja tidak cukup jika layar kemudian menunjukkan status gagal. Pada perangkat Android, bedakan antara tersimpan di perangkat dan sudah diterima server. Pada Web atau Desktop, jangan menutup jendela saat proses masih berjalan. Bila hasil tidak sesuai, jangan membuat koreksi diam-diam; gunakan prosedur edit, pembatalan, retur, atau penyesuaian yang menyediakan alasan dan jejak audit."
+          ]
+        },
+        {
+          "title": "Kesalahan umum dan cara mencegahnya",
+          "paragraphs": [
+            "Kesalahan yang paling sering terjadi pada alur ini adalah memakai akun sales lain, membuat order untuk pelanggan yang salah, menjanjikan stok yang belum tersedia, menghapus aplikasi sebelum sinkronisasi, menyimpan kata sandi di catatan terbuka, dan menganggap tombol simpan sama dengan berhasil tersinkron. Sebagian besar bukan disebabkan oleh kerusakan sistem, melainkan karena konteks tidak diperiksa, pekerjaan terburu-buru, atau tanggung jawab tidak jelas. Cara pencegahannya adalah menggunakan akun sendiri, memulai dari dokumen sumber, membaca ringkasan, dan menyelesaikan satu transaksi sebelum pindah ke transaksi lain. Hindari membuka banyak tab untuk pekerjaan yang sama karena pengguna dapat menyimpan versi yang berbeda.",
+            "Jika kesalahan sudah terjadi, hentikan proses berikutnya dan catat fakta apa adanya: nomor dokumen, waktu, pengguna, nilai, status, dan dampak. Jangan menghapus bukti atau mengganti data agar tampak benar. Laporkan kepada penanggung jawab, pilih mekanisme koreksi yang tersedia, lalu periksa laporan setelah koreksi diposting. Sikap terbuka terhadap kesalahan mempercepat pemulihan dan membuat aturan kerja dapat diperbaiki. Sistem menyimpan jejak perubahan untuk membantu penelusuran, bukan untuk menyalahkan pengguna yang mengikuti prosedur."
+          ]
+        },
+        {
+          "title": "Pembagian tanggung jawab antarperan",
+          "paragraphs": [
+            "Pada Kunjungan dan Order Sales melalui Android Flutter, pembuat data bertanggung jawab terhadap kelengkapan informasi awal; pemeriksa bertanggung jawab terhadap kesesuaian dokumen; penyetuju bertanggung jawab terhadap keputusan bisnis; dan administrator bertanggung jawab terhadap ketersediaan sistem serta hak akses. Pemilik usaha menggunakan hasil untuk mengarahkan bisnis, tetapi tidak seharusnya mengambil alih seluruh pekerjaan operasional. Pembagian tugas yang jelas mempercepat proses karena setiap orang mengetahui kapan harus bertindak dan kapan harus menyerahkan pekerjaan.",
+            "Gunakan kolom catatan, status, dan penanggung jawab untuk melakukan serah terima. Instruksi lisan tetap boleh digunakan untuk mempercepat komunikasi, tetapi keputusan penting harus dicatat di sistem atau dokumen resmi. Jika seorang pegawai tidak hadir, atasan menunjuk pengganti melalui hak akses sementara yang terdokumentasi. Jangan memberikan kata sandi pegawai yang tidak hadir. Setelah tugas selesai, cabut hak sementara dan tinjau aktivitas yang dilakukan selama masa penggantian."
+          ]
+        },
+        {
+          "title": "Perbedaan penggunaan Web, Windows, dan Android",
+          "paragraphs": [
+            "Android Flutter menyediakan kemampuan yang sama pada inti data, tetapi cara berinteraksinya dapat berbeda. Web dan Desktop cocok untuk tabel lebar, pemeriksaan banyak dokumen, rekonsiliasi, ekspor, serta persetujuan. Android cocok untuk pekerjaan lapangan, pencarian cepat, pemindaian, pengambilan bukti, dan pekerjaan yang perlu tetap berjalan ketika koneksi tidak stabil. Pengguna tidak perlu memaksakan semua pekerjaan ke satu perangkat. Pilih perangkat berdasarkan risiko, jumlah data, dan kondisi tempat kerja.",
+            "Pada layar kecil, bagian informasi dapat disusun vertikal dan beberapa kolom diringkas menjadi kartu. Gulir sampai akhir dan buka detail sebelum menyimpulkan bahwa data tidak tersedia. Pada layar besar, jangan mengabaikan kolom di sebelah kanan; gunakan pengguliran horizontal bila diperlukan. Perubahan yang dibuat di satu perangkat baru terlihat di perangkat lain setelah sinkronisasi berhasil. Karena itu, indikator pembaruan terakhir harus menjadi bagian dari pemeriksaan, terutama sebelum menyetujui stok, kredit, pembayaran, atau penutupan periode."
+          ]
+        },
+        {
+          "title": "Contoh kasus sederhana",
+          "paragraphs": [
+            "Masrukin mengunjungi toko pelanggan di wilayah Cirebon, memilih produk yang biasa dibeli, menyesuaikan jumlah dengan stok dan batas kredit, lalu mengirim order saat koneksi kembali tersedia. Dalam contoh ini, pengguna tidak langsung mengejar kecepatan. Ia memeriksa identitas, konteks, dokumen, dan status. Ketika menemukan peringatan, ia membuka rincian dan menentukan apakah pekerjaan dapat dilanjutkan sendiri atau membutuhkan persetujuan. Seluruh tindakan diberi nomor referensi sehingga pihak berikutnya tidak perlu menebak asal informasi. Cara kerja seperti ini membuat pelayanan pelanggan tetap cepat tanpa mengorbankan pengendalian.",
+            "Setelah kasus selesai, pengguna membandingkan hasil dengan tujuan awal. Ia memastikan tidak ada draft tertinggal, antrean sinkronisasi kosong atau diketahui, dan laporan terkait telah berubah sesuai transaksi. Bila hasil belum muncul, ia tidak langsung mengulangi input; ia memeriksa status dan log lebih dahulu. Contoh ini dapat dipakai sebagai latihan. Gunakan data demo, lakukan langkah dari awal sampai akhir, lalu minta peserta lain menjelaskan apa yang terjadi dengan bahasa mereka sendiri."
+          ]
+        },
+        {
+          "title": "Bukti, audit, dan keamanan informasi",
+          "paragraphs": [
+            "Setiap pekerjaan pada Kunjungan dan Order Sales melalui Android Flutter menghasilkan bukti. Bukti dapat berupa nomor dokumen, waktu pembuatan, pengguna, status, foto, tanda terima, file ekspor, atau catatan persetujuan. Bukti harus cukup untuk menjawab siapa, apa, kapan, di mana, mengapa, dan berapa nilainya. Simpan bukti pada fasilitas yang disediakan sistem atau lokasi resmi perusahaan. Jangan menggunakan foto pribadi, penyimpanan umum, atau aplikasi pesan sebagai arsip utama.",
+            "Hak akses mengikuti kebutuhan kerja minimum. Data harga beli, laba, saldo piutang, nomor rekening, dan identitas pelanggan hanya boleh dibuka oleh peran yang memerlukannya. Ketika menampilkan layar kepada pihak luar, gunakan mode demo atau samarkan data. Saat mengekspor laporan, periksa penerima dan masa simpan. Jika perangkat hilang, segera laporkan agar sesi dapat dicabut. Audit log tidak boleh dihapus untuk menyembunyikan kesalahan; justru catatan tersebut membantu perusahaan memahami dan memperbaiki proses."
+          ]
+        },
+        {
+          "title": "Checklist penyelesaian pekerjaan",
+          "paragraphs": [
+            "Sebelum meninggalkan layar, tanyakan: apakah tujuan sudah tercapai, apakah nomor dokumen sudah terbentuk, apakah status akhir benar, apakah data sudah tersinkron, apakah dokumen pendukung tersimpan, apakah pihak berikutnya sudah menerima tugas, dan apakah terdapat peringatan yang belum ditangani. Jika satu jawaban masih tidak jelas, pekerjaan belum benar-benar selesai. Tuliskan catatan singkat agar pergantian shift atau pemeriksaan berikutnya tidak dimulai dari nol.",
+            "Pada akhir hari, supervisor meninjau daftar transaksi gagal, draft, pembatalan, penyesuaian, dan persetujuan tertunda. Tinjauan harian lebih ringan daripada menunggu akhir bulan. Gunakan laporan pengecualian untuk mencari hal yang tidak biasa, bukan hanya laporan total. Apabila seluruh pemeriksaan telah lulus, pengguna dapat menutup tugas dan melanjutkan pekerjaan lain. Kebiasaan menyelesaikan satu siklus penuh adalah dasar data yang akurat dan laporan pemilik yang dapat dipercaya."
+          ]
+        },
+        {
+          "title": "Cara melatih pengguna baru",
+          "paragraphs": [
+            "Pelatihan dimulai dengan menjelaskan tujuan bisnis, bukan nama tombol. Tunjukkan ilustrasi, sebutkan peran Sales lapangan, lalu minta peserta menunjuk identitas sales dan status sinkronisasi, rute kunjungan, profil pelanggan, katalog dan pencarian produk, keranjang order, dan ringkasan pengiriman dan pembayaran. Setelah itu demonstrasikan satu kasus normal dan satu kasus yang menghasilkan peringatan. Peserta kemudian mengulang menggunakan data demo sambil menjelaskan alasan setiap langkah. Pendamping hanya membantu ketika peserta berhenti, sehingga pemahaman tidak bergantung pada hafalan.",
+            "Pengguna dinyatakan siap ketika mampu menyelesaikan kasus, menemukan kesalahan yang sengaja disisipkan, menjelaskan bukti yang harus disimpan, dan mengetahui kapan harus meminta persetujuan. Catat hasil latihan dan topik yang perlu diulang. Jangan melatih langsung dengan data produksi yang sensitif. Setelah pengguna mulai bekerja, lakukan pendampingan pada transaksi pertama dan tinjau hasilnya. Pelatihan yang baik membuat orang nonteknis percaya diri karena mereka memahami maksud proses, bukan sekadar mengikuti layar."
+          ]
+        }
+      ],
+      "wordCount": 1815
+    },
+    {
+      "id": "produk-batch-harga",
+      "title": "Produk, Batch, Kedaluwarsa, dan Harga Pelanggan",
+      "image": "03-produk-batch-harga.png",
+      "alt": "Ilustrasi layar Produk, Batch, Kedaluwarsa, dan Harga Pelanggan pada eBisnis Inventory / Sales.",
+      "platform": "Web, Desktop Windows, dan Android Flutter",
+      "role": "Admin master data, gudang, sales, dan pemilik",
+      "summary": "Menjaga satu sumber data produk yang lengkap, menelusuri batch dan kedaluwarsa, serta memastikan harga jual sesuai pelanggan dan kebijakan margin.",
+      "steps": [
+        "cari produk dengan kode atau nama",
+        "periksa satuan penjualan",
+        "lihat stok per gudang dan batch",
+        "utamakan batch sesuai kebijakan FEFO",
+        "pilih buku harga pelanggan",
+        "periksa margin sebelum menyimpan",
+        "catat alasan perubahan harga"
+      ],
+      "validations": [
+        "kode produk tidak ganda",
+        "satuan dasar dan satuan jual konsisten",
+        "batch mempunyai tanggal penerimaan",
+        "produk kedaluwarsa tidak dapat dijual",
+        "harga tidak berada di bawah batas tanpa persetujuan",
+        "riwayat harga menyimpan pengguna dan waktu"
+      ],
+      "sections": [
+        {
+          "title": "Tujuan layar dan hasil yang diharapkan",
+          "paragraphs": [
+            "Ilustrasi Produk, Batch, Kedaluwarsa, dan Harga Pelanggan menggambarkan ruang kerja yang dipakai untuk menjaga satu sumber data produk yang lengkap, menelusuri batch dan kedaluwarsa, serta memastikan harga jual sesuai pelanggan dan kebijakan margin. Layar ini tidak dimaksudkan sebagai kumpulan angka yang hanya dilihat sekilas. Setiap bagian membantu pengguna menjawab pertanyaan operasional: apa yang sudah terjadi, apa yang belum selesai, siapa yang harus menindaklanjuti, dan bukti apa yang harus disimpan. Pengguna utama adalah Admin master data, gudang, sales, dan pemilik, sedangkan media yang digunakan adalah Web, Desktop Windows, dan Android Flutter. Tampilan nyata dapat menyesuaikan ukuran perangkat dan hak akses, tetapi urutan berpikirnya tetap sama.",
+            "Hasil terbaik diperoleh ketika pengguna membuka layar dengan tujuan yang jelas. Sebelum menekan tombol apa pun, tentukan keputusan yang ingin dibuat dan periode data yang ingin diperiksa. Setelah pekerjaan selesai, hasil yang diharapkan adalah: Nama, satuan, stok, batch, dan harga tetap konsisten pada katalog publik, order sales, penerimaan gudang, invoice, dan laporan laba. Dengan pendekatan ini, sistem bukan sekadar tempat mengetik, melainkan catatan bersama yang menghubungkan sales, gudang, administrasi, keuangan, dan pemilik. Setiap orang membaca sumber data yang sama sesuai batas kewenangannya."
+          ]
+        },
+        {
+          "title": "Cara membaca ilustrasi dari atas ke bawah",
+          "paragraphs": [
+            "Mulailah dari bagian paling atas. Di sana biasanya terdapat nama perusahaan, identitas pengguna, periode kerja, lokasi atau cabang, serta waktu pembaruan terakhir. Informasi ini wajib dibaca agar pengguna tidak mengolah data milik tenant, periode, atau gudang yang salah. Setelah identitas benar, lanjutkan ke bagian utama yang terdiri atas kode dan nama produk, satuan dan isi kemasan, stok tersedia, batch dan tanggal kedaluwarsa, harga tunai dan kredit, dan riwayat perubahan harga. Susunan tersebut dibuat agar pengguna melihat ringkasan lebih dulu, kemudian beralih ke rincian dan tindakan.",
+            "Warna pada ilustrasi berfungsi sebagai petunjuk, bukan hiasan. Hijau menunjukkan kondisi selesai atau aman, kuning menunjukkan keadaan yang perlu diperiksa, merah menunjukkan risiko atau pekerjaan yang tertahan, dan abu-abu menunjukkan informasi pendukung. Jangan mengambil keputusan hanya berdasarkan warna; buka rincian yang mendasarinya. Angka pada ilustrasi adalah contoh pembelajaran dan bukan data produksi Caruban Medika Nusantara. Pada aplikasi asli, pengguna harus memeriksa nomor dokumen, tanggal, pihak terkait, dan status sebelum melanjutkan."
+          ]
+        },
+        {
+          "title": "Persiapan sebelum memulai pekerjaan",
+          "paragraphs": [
+            "Sebelum menggunakan Produk, Batch, Kedaluwarsa, dan Harga Pelanggan, pastikan akun yang dipakai adalah akun pribadi dan peran yang tampil sesuai pekerjaan. Jangan berbagi akun karena sistem mencatat siapa yang membuat, mengubah, menyetujui, atau membatalkan data. Periksa koneksi, indikator sinkronisasi, tanggal serta jam perangkat, dan cabang aktif. Untuk pekerjaan yang memengaruhi stok atau uang, siapkan dokumen pendukung seperti pesanan, invoice, bukti penerimaan, bukti transfer, atau berita acara. Persiapan sederhana ini mencegah kesalahan yang sulit dilacak kemudian.",
+            "Pengguna juga perlu memahami batas kewenangan. Admin master data, gudang, sales, dan pemilik tidak selalu mempunyai hak yang sama. Bila tombol tidak terlihat atau tidak aktif, jangan mencari cara untuk melewati pengendalian. Catat nomor dokumen dan minta bantuan atasan atau admin hak akses. Data sensitif tidak boleh dikirim melalui grup umum. Ketika bekerja menggunakan Web, Desktop Windows, dan Android Flutter, pastikan layar terkunci saat ditinggalkan dan berkas hasil ekspor disimpan pada tempat yang disetujui perusahaan."
+          ]
+        },
+        {
+          "title": "Langkah kerja utama",
+          "paragraphs": [
+            "Urutan kerja yang disarankan adalah cari produk dengan kode atau nama, periksa satuan penjualan, lihat stok per gudang dan batch, utamakan batch sesuai kebijakan FEFO, pilih buku harga pelanggan, periksa margin sebelum menyimpan, dan catat alasan perubahan harga. Jalankan urutan tersebut secara tertib karena setiap langkah menyiapkan informasi bagi langkah berikutnya. Misalnya, pemilihan pelanggan atau supplier menentukan alamat, syarat bayar, harga, dan batas kredit; pemilihan produk menentukan satuan, batch, HPP, dan ketersediaan. Jika data awal salah, hasil akhir juga salah meskipun perhitungan sistem benar. Gunakan pencarian dan filter untuk mempersempit data, lalu buka satu catatan yang benar sebelum melakukan tindakan.",
+            "Sesudah memasukkan data, baca kembali ringkasan sebelum menyimpan. Sistem dapat memberikan peringatan, menahan proses, atau meminta persetujuan. Peringatan bukan gangguan; peringatan menjelaskan risiko yang harus diselesaikan. Jika jaringan terputus, periksa apakah pekerjaan tersimpan sebagai draft lokal, antrean sinkronisasi, atau belum tersimpan sama sekali. Jangan mengulang transaksi tanpa memeriksa nomor referensi karena pengulangan dapat menghasilkan data ganda. Setelah berhasil, catat status akhir dan pihak yang menerima pekerjaan berikutnya."
+          ]
+        },
+        {
+          "title": "Pemeriksaan sebelum menyimpan atau menyetujui",
+          "paragraphs": [
+            "Gunakan daftar pemeriksaan berikut sebagai kebiasaan: kode produk tidak ganda, satuan dasar dan satuan jual konsisten, batch mempunyai tanggal penerimaan, produk kedaluwarsa tidak dapat dijual, harga tidak berada di bawah batas tanpa persetujuan, dan riwayat harga menyimpan pengguna dan waktu. Pemeriksaan tidak perlu memakan waktu lama jika dilakukan pada setiap transaksi. Fokus pada identitas pihak, tanggal, mata uang, satuan, jumlah, harga, pajak, potongan, batch, jatuh tempo, dan status. Untuk transaksi bernilai besar atau berisiko, lakukan prinsip empat mata: satu orang menyiapkan dan orang lain memeriksa. Pemisahan ini melindungi pegawai sekaligus perusahaan dari kesalahan yang tidak disengaja.",
+            "Setelah tombol simpan ditekan, cari tanda keberhasilan yang nyata, misalnya nomor dokumen, status tersimpan, waktu sinkronisasi, atau perubahan pada daftar. Pesan singkat saja tidak cukup jika layar kemudian menunjukkan status gagal. Pada perangkat Android, bedakan antara tersimpan di perangkat dan sudah diterima server. Pada Web atau Desktop, jangan menutup jendela saat proses masih berjalan. Bila hasil tidak sesuai, jangan membuat koreksi diam-diam; gunakan prosedur edit, pembatalan, retur, atau penyesuaian yang menyediakan alasan dan jejak audit."
+          ]
+        },
+        {
+          "title": "Kesalahan umum dan cara mencegahnya",
+          "paragraphs": [
+            "Kesalahan yang paling sering terjadi pada alur ini adalah menjual satuan yang keliru, mengabaikan tanggal kedaluwarsa, mengubah harga lama tanpa tanggal berlaku, mengandalkan stok total tanpa melihat batch, memakai foto produk yang menyesatkan, dan menghapus produk yang sudah dipakai transaksi. Sebagian besar bukan disebabkan oleh kerusakan sistem, melainkan karena konteks tidak diperiksa, pekerjaan terburu-buru, atau tanggung jawab tidak jelas. Cara pencegahannya adalah menggunakan akun sendiri, memulai dari dokumen sumber, membaca ringkasan, dan menyelesaikan satu transaksi sebelum pindah ke transaksi lain. Hindari membuka banyak tab untuk pekerjaan yang sama karena pengguna dapat menyimpan versi yang berbeda.",
+            "Jika kesalahan sudah terjadi, hentikan proses berikutnya dan catat fakta apa adanya: nomor dokumen, waktu, pengguna, nilai, status, dan dampak. Jangan menghapus bukti atau mengganti data agar tampak benar. Laporkan kepada penanggung jawab, pilih mekanisme koreksi yang tersedia, lalu periksa laporan setelah koreksi diposting. Sikap terbuka terhadap kesalahan mempercepat pemulihan dan membuat aturan kerja dapat diperbaiki. Sistem menyimpan jejak perubahan untuk membantu penelusuran, bukan untuk menyalahkan pengguna yang mengikuti prosedur."
+          ]
+        },
+        {
+          "title": "Pembagian tanggung jawab antarperan",
+          "paragraphs": [
+            "Pada Produk, Batch, Kedaluwarsa, dan Harga Pelanggan, pembuat data bertanggung jawab terhadap kelengkapan informasi awal; pemeriksa bertanggung jawab terhadap kesesuaian dokumen; penyetuju bertanggung jawab terhadap keputusan bisnis; dan administrator bertanggung jawab terhadap ketersediaan sistem serta hak akses. Pemilik usaha menggunakan hasil untuk mengarahkan bisnis, tetapi tidak seharusnya mengambil alih seluruh pekerjaan operasional. Pembagian tugas yang jelas mempercepat proses karena setiap orang mengetahui kapan harus bertindak dan kapan harus menyerahkan pekerjaan.",
+            "Gunakan kolom catatan, status, dan penanggung jawab untuk melakukan serah terima. Instruksi lisan tetap boleh digunakan untuk mempercepat komunikasi, tetapi keputusan penting harus dicatat di sistem atau dokumen resmi. Jika seorang pegawai tidak hadir, atasan menunjuk pengganti melalui hak akses sementara yang terdokumentasi. Jangan memberikan kata sandi pegawai yang tidak hadir. Setelah tugas selesai, cabut hak sementara dan tinjau aktivitas yang dilakukan selama masa penggantian."
+          ]
+        },
+        {
+          "title": "Perbedaan penggunaan Web, Windows, dan Android",
+          "paragraphs": [
+            "Web, Desktop Windows, dan Android Flutter menyediakan kemampuan yang sama pada inti data, tetapi cara berinteraksinya dapat berbeda. Web dan Desktop cocok untuk tabel lebar, pemeriksaan banyak dokumen, rekonsiliasi, ekspor, serta persetujuan. Android cocok untuk pekerjaan lapangan, pencarian cepat, pemindaian, pengambilan bukti, dan pekerjaan yang perlu tetap berjalan ketika koneksi tidak stabil. Pengguna tidak perlu memaksakan semua pekerjaan ke satu perangkat. Pilih perangkat berdasarkan risiko, jumlah data, dan kondisi tempat kerja.",
+            "Pada layar kecil, bagian informasi dapat disusun vertikal dan beberapa kolom diringkas menjadi kartu. Gulir sampai akhir dan buka detail sebelum menyimpulkan bahwa data tidak tersedia. Pada layar besar, jangan mengabaikan kolom di sebelah kanan; gunakan pengguliran horizontal bila diperlukan. Perubahan yang dibuat di satu perangkat baru terlihat di perangkat lain setelah sinkronisasi berhasil. Karena itu, indikator pembaruan terakhir harus menjadi bagian dari pemeriksaan, terutama sebelum menyetujui stok, kredit, pembayaran, atau penutupan periode."
+          ]
+        },
+        {
+          "title": "Contoh kasus sederhana",
+          "paragraphs": [
+            "Admin memperbarui harga obat yang baru diterima, gudang memeriksa batch, dan sales melihat harga khusus pelanggan yang berlaku tanpa mengubah data master dari ponsel. Dalam contoh ini, pengguna tidak langsung mengejar kecepatan. Ia memeriksa identitas, konteks, dokumen, dan status. Ketika menemukan peringatan, ia membuka rincian dan menentukan apakah pekerjaan dapat dilanjutkan sendiri atau membutuhkan persetujuan. Seluruh tindakan diberi nomor referensi sehingga pihak berikutnya tidak perlu menebak asal informasi. Cara kerja seperti ini membuat pelayanan pelanggan tetap cepat tanpa mengorbankan pengendalian.",
+            "Setelah kasus selesai, pengguna membandingkan hasil dengan tujuan awal. Ia memastikan tidak ada draft tertinggal, antrean sinkronisasi kosong atau diketahui, dan laporan terkait telah berubah sesuai transaksi. Bila hasil belum muncul, ia tidak langsung mengulangi input; ia memeriksa status dan log lebih dahulu. Contoh ini dapat dipakai sebagai latihan. Gunakan data demo, lakukan langkah dari awal sampai akhir, lalu minta peserta lain menjelaskan apa yang terjadi dengan bahasa mereka sendiri."
+          ]
+        },
+        {
+          "title": "Bukti, audit, dan keamanan informasi",
+          "paragraphs": [
+            "Setiap pekerjaan pada Produk, Batch, Kedaluwarsa, dan Harga Pelanggan menghasilkan bukti. Bukti dapat berupa nomor dokumen, waktu pembuatan, pengguna, status, foto, tanda terima, file ekspor, atau catatan persetujuan. Bukti harus cukup untuk menjawab siapa, apa, kapan, di mana, mengapa, dan berapa nilainya. Simpan bukti pada fasilitas yang disediakan sistem atau lokasi resmi perusahaan. Jangan menggunakan foto pribadi, penyimpanan umum, atau aplikasi pesan sebagai arsip utama.",
+            "Hak akses mengikuti kebutuhan kerja minimum. Data harga beli, laba, saldo piutang, nomor rekening, dan identitas pelanggan hanya boleh dibuka oleh peran yang memerlukannya. Ketika menampilkan layar kepada pihak luar, gunakan mode demo atau samarkan data. Saat mengekspor laporan, periksa penerima dan masa simpan. Jika perangkat hilang, segera laporkan agar sesi dapat dicabut. Audit log tidak boleh dihapus untuk menyembunyikan kesalahan; justru catatan tersebut membantu perusahaan memahami dan memperbaiki proses."
+          ]
+        },
+        {
+          "title": "Checklist penyelesaian pekerjaan",
+          "paragraphs": [
+            "Sebelum meninggalkan layar, tanyakan: apakah tujuan sudah tercapai, apakah nomor dokumen sudah terbentuk, apakah status akhir benar, apakah data sudah tersinkron, apakah dokumen pendukung tersimpan, apakah pihak berikutnya sudah menerima tugas, dan apakah terdapat peringatan yang belum ditangani. Jika satu jawaban masih tidak jelas, pekerjaan belum benar-benar selesai. Tuliskan catatan singkat agar pergantian shift atau pemeriksaan berikutnya tidak dimulai dari nol.",
+            "Pada akhir hari, supervisor meninjau daftar transaksi gagal, draft, pembatalan, penyesuaian, dan persetujuan tertunda. Tinjauan harian lebih ringan daripada menunggu akhir bulan. Gunakan laporan pengecualian untuk mencari hal yang tidak biasa, bukan hanya laporan total. Apabila seluruh pemeriksaan telah lulus, pengguna dapat menutup tugas dan melanjutkan pekerjaan lain. Kebiasaan menyelesaikan satu siklus penuh adalah dasar data yang akurat dan laporan pemilik yang dapat dipercaya."
+          ]
+        },
+        {
+          "title": "Cara melatih pengguna baru",
+          "paragraphs": [
+            "Pelatihan dimulai dengan menjelaskan tujuan bisnis, bukan nama tombol. Tunjukkan ilustrasi, sebutkan peran Admin master data, gudang, sales, dan pemilik, lalu minta peserta menunjuk kode dan nama produk, satuan dan isi kemasan, stok tersedia, batch dan tanggal kedaluwarsa, harga tunai dan kredit, dan riwayat perubahan harga. Setelah itu demonstrasikan satu kasus normal dan satu kasus yang menghasilkan peringatan. Peserta kemudian mengulang menggunakan data demo sambil menjelaskan alasan setiap langkah. Pendamping hanya membantu ketika peserta berhenti, sehingga pemahaman tidak bergantung pada hafalan.",
+            "Pengguna dinyatakan siap ketika mampu menyelesaikan kasus, menemukan kesalahan yang sengaja disisipkan, menjelaskan bukti yang harus disimpan, dan mengetahui kapan harus meminta persetujuan. Catat hasil latihan dan topik yang perlu diulang. Jangan melatih langsung dengan data produksi yang sensitif. Setelah pengguna mulai bekerja, lakukan pendampingan pada transaksi pertama dan tinjau hasilnya. Pelatihan yang baik membuat orang nonteknis percaya diri karena mereka memahami maksud proses, bukan sekadar mengikuti layar."
+          ]
+        }
+      ],
+      "wordCount": 1832
+    },
+    {
+      "id": "pelanggan-order-kredit",
+      "title": "Pelanggan, Order, Batas Kredit, dan Pemenuhan",
+      "image": "04-pelanggan-order-kredit.png",
+      "alt": "Ilustrasi layar Pelanggan, Order, Batas Kredit, dan Pemenuhan pada eBisnis Inventory / Sales.",
+      "platform": "Web, Desktop Windows, dan Android Flutter",
+      "role": "Sales, admin penjualan, kredit, gudang, dan pengiriman",
+      "summary": "Mengubah permintaan pelanggan menjadi order yang dapat dipenuhi, disetujui, disiapkan, dan dikirim dengan pengendalian kredit yang mudah dipahami.",
+      "steps": [
+        "pilih pelanggan yang tepat",
+        "konfirmasi alamat pengiriman",
+        "periksa saldo piutang dan jatuh tempo",
+        "masukkan item dan jumlah",
+        "jalankan pemeriksaan harga dan kredit",
+        "minta persetujuan bila diperlukan",
+        "serahkan ke gudang",
+        "pantau pengiriman sampai diterima"
+      ],
+      "validations": [
+        "pelanggan aktif dan tidak terblokir",
+        "alamat pengiriman tersedia",
+        "order tidak melampaui batas kredit tanpa persetujuan",
+        "harga sesuai segmen",
+        "stok dialokasikan satu kali",
+        "status berubah berurutan",
+        "penerima barang tercatat"
+      ],
+      "sections": [
+        {
+          "title": "Tujuan layar dan hasil yang diharapkan",
+          "paragraphs": [
+            "Ilustrasi Pelanggan, Order, Batas Kredit, dan Pemenuhan menggambarkan ruang kerja yang dipakai untuk mengubah permintaan pelanggan menjadi order yang dapat dipenuhi, disetujui, disiapkan, dan dikirim dengan pengendalian kredit yang mudah dipahami. Layar ini tidak dimaksudkan sebagai kumpulan angka yang hanya dilihat sekilas. Setiap bagian membantu pengguna menjawab pertanyaan operasional: apa yang sudah terjadi, apa yang belum selesai, siapa yang harus menindaklanjuti, dan bukti apa yang harus disimpan. Pengguna utama adalah Sales, admin penjualan, kredit, gudang, dan pengiriman, sedangkan media yang digunakan adalah Web, Desktop Windows, dan Android Flutter. Tampilan nyata dapat menyesuaikan ukuran perangkat dan hak akses, tetapi urutan berpikirnya tetap sama.",
+            "Hasil terbaik diperoleh ketika pengguna membuka layar dengan tujuan yang jelas. Sebelum menekan tombol apa pun, tentukan keputusan yang ingin dibuat dan periode data yang ingin diperiksa. Setelah pekerjaan selesai, hasil yang diharapkan adalah: Penjualan tetap berjalan tanpa menghilangkan disiplin kredit, sementara setiap keputusan pengecualian memiliki alasan dan jejak persetujuan. Dengan pendekatan ini, sistem bukan sekadar tempat mengetik, melainkan catatan bersama yang menghubungkan sales, gudang, administrasi, keuangan, dan pemilik. Setiap orang membaca sumber data yang sama sesuai batas kewenangannya."
+          ]
+        },
+        {
+          "title": "Cara membaca ilustrasi dari atas ke bawah",
+          "paragraphs": [
+            "Mulailah dari bagian paling atas. Di sana biasanya terdapat nama perusahaan, identitas pengguna, periode kerja, lokasi atau cabang, serta waktu pembaruan terakhir. Informasi ini wajib dibaca agar pengguna tidak mengolah data milik tenant, periode, atau gudang yang salah. Setelah identitas benar, lanjutkan ke bagian utama yang terdiri atas profil pelanggan, alamat dan wilayah, batas serta sisa kredit, item order, status persetujuan, dan status siapkan dan kirim. Susunan tersebut dibuat agar pengguna melihat ringkasan lebih dulu, kemudian beralih ke rincian dan tindakan.",
+            "Warna pada ilustrasi berfungsi sebagai petunjuk, bukan hiasan. Hijau menunjukkan kondisi selesai atau aman, kuning menunjukkan keadaan yang perlu diperiksa, merah menunjukkan risiko atau pekerjaan yang tertahan, dan abu-abu menunjukkan informasi pendukung. Jangan mengambil keputusan hanya berdasarkan warna; buka rincian yang mendasarinya. Angka pada ilustrasi adalah contoh pembelajaran dan bukan data produksi Caruban Medika Nusantara. Pada aplikasi asli, pengguna harus memeriksa nomor dokumen, tanggal, pihak terkait, dan status sebelum melanjutkan."
+          ]
+        },
+        {
+          "title": "Persiapan sebelum memulai pekerjaan",
+          "paragraphs": [
+            "Sebelum menggunakan Pelanggan, Order, Batas Kredit, dan Pemenuhan, pastikan akun yang dipakai adalah akun pribadi dan peran yang tampil sesuai pekerjaan. Jangan berbagi akun karena sistem mencatat siapa yang membuat, mengubah, menyetujui, atau membatalkan data. Periksa koneksi, indikator sinkronisasi, tanggal serta jam perangkat, dan cabang aktif. Untuk pekerjaan yang memengaruhi stok atau uang, siapkan dokumen pendukung seperti pesanan, invoice, bukti penerimaan, bukti transfer, atau berita acara. Persiapan sederhana ini mencegah kesalahan yang sulit dilacak kemudian.",
+            "Pengguna juga perlu memahami batas kewenangan. Sales, admin penjualan, kredit, gudang, dan pengiriman tidak selalu mempunyai hak yang sama. Bila tombol tidak terlihat atau tidak aktif, jangan mencari cara untuk melewati pengendalian. Catat nomor dokumen dan minta bantuan atasan atau admin hak akses. Data sensitif tidak boleh dikirim melalui grup umum. Ketika bekerja menggunakan Web, Desktop Windows, dan Android Flutter, pastikan layar terkunci saat ditinggalkan dan berkas hasil ekspor disimpan pada tempat yang disetujui perusahaan."
+          ]
+        },
+        {
+          "title": "Langkah kerja utama",
+          "paragraphs": [
+            "Urutan kerja yang disarankan adalah pilih pelanggan yang tepat, konfirmasi alamat pengiriman, periksa saldo piutang dan jatuh tempo, masukkan item dan jumlah, jalankan pemeriksaan harga dan kredit, minta persetujuan bila diperlukan, serahkan ke gudang, dan pantau pengiriman sampai diterima. Jalankan urutan tersebut secara tertib karena setiap langkah menyiapkan informasi bagi langkah berikutnya. Misalnya, pemilihan pelanggan atau supplier menentukan alamat, syarat bayar, harga, dan batas kredit; pemilihan produk menentukan satuan, batch, HPP, dan ketersediaan. Jika data awal salah, hasil akhir juga salah meskipun perhitungan sistem benar. Gunakan pencarian dan filter untuk mempersempit data, lalu buka satu catatan yang benar sebelum melakukan tindakan.",
+            "Sesudah memasukkan data, baca kembali ringkasan sebelum menyimpan. Sistem dapat memberikan peringatan, menahan proses, atau meminta persetujuan. Peringatan bukan gangguan; peringatan menjelaskan risiko yang harus diselesaikan. Jika jaringan terputus, periksa apakah pekerjaan tersimpan sebagai draft lokal, antrean sinkronisasi, atau belum tersimpan sama sekali. Jangan mengulang transaksi tanpa memeriksa nomor referensi karena pengulangan dapat menghasilkan data ganda. Setelah berhasil, catat status akhir dan pihak yang menerima pekerjaan berikutnya."
+          ]
+        },
+        {
+          "title": "Pemeriksaan sebelum menyimpan atau menyetujui",
+          "paragraphs": [
+            "Gunakan daftar pemeriksaan berikut sebagai kebiasaan: pelanggan aktif dan tidak terblokir, alamat pengiriman tersedia, order tidak melampaui batas kredit tanpa persetujuan, harga sesuai segmen, stok dialokasikan satu kali, status berubah berurutan, dan penerima barang tercatat. Pemeriksaan tidak perlu memakan waktu lama jika dilakukan pada setiap transaksi. Fokus pada identitas pihak, tanggal, mata uang, satuan, jumlah, harga, pajak, potongan, batch, jatuh tempo, dan status. Untuk transaksi bernilai besar atau berisiko, lakukan prinsip empat mata: satu orang menyiapkan dan orang lain memeriksa. Pemisahan ini melindungi pegawai sekaligus perusahaan dari kesalahan yang tidak disengaja.",
+            "Setelah tombol simpan ditekan, cari tanda keberhasilan yang nyata, misalnya nomor dokumen, status tersimpan, waktu sinkronisasi, atau perubahan pada daftar. Pesan singkat saja tidak cukup jika layar kemudian menunjukkan status gagal. Pada perangkat Android, bedakan antara tersimpan di perangkat dan sudah diterima server. Pada Web atau Desktop, jangan menutup jendela saat proses masih berjalan. Bila hasil tidak sesuai, jangan membuat koreksi diam-diam; gunakan prosedur edit, pembatalan, retur, atau penyesuaian yang menyediakan alasan dan jejak audit."
+          ]
+        },
+        {
+          "title": "Kesalahan umum dan cara mencegahnya",
+          "paragraphs": [
+            "Kesalahan yang paling sering terjadi pada alur ini adalah memilih pelanggan dengan nama mirip, melewati pemeriksaan kredit, mengubah order setelah gudang menyiapkan barang, mengirim ke alamat lama, membuat invoice sebelum barang siap, dan menandai terkirim tanpa bukti. Sebagian besar bukan disebabkan oleh kerusakan sistem, melainkan karena konteks tidak diperiksa, pekerjaan terburu-buru, atau tanggung jawab tidak jelas. Cara pencegahannya adalah menggunakan akun sendiri, memulai dari dokumen sumber, membaca ringkasan, dan menyelesaikan satu transaksi sebelum pindah ke transaksi lain. Hindari membuka banyak tab untuk pekerjaan yang sama karena pengguna dapat menyimpan versi yang berbeda.",
+            "Jika kesalahan sudah terjadi, hentikan proses berikutnya dan catat fakta apa adanya: nomor dokumen, waktu, pengguna, nilai, status, dan dampak. Jangan menghapus bukti atau mengganti data agar tampak benar. Laporkan kepada penanggung jawab, pilih mekanisme koreksi yang tersedia, lalu periksa laporan setelah koreksi diposting. Sikap terbuka terhadap kesalahan mempercepat pemulihan dan membuat aturan kerja dapat diperbaiki. Sistem menyimpan jejak perubahan untuk membantu penelusuran, bukan untuk menyalahkan pengguna yang mengikuti prosedur."
+          ]
+        },
+        {
+          "title": "Pembagian tanggung jawab antarperan",
+          "paragraphs": [
+            "Pada Pelanggan, Order, Batas Kredit, dan Pemenuhan, pembuat data bertanggung jawab terhadap kelengkapan informasi awal; pemeriksa bertanggung jawab terhadap kesesuaian dokumen; penyetuju bertanggung jawab terhadap keputusan bisnis; dan administrator bertanggung jawab terhadap ketersediaan sistem serta hak akses. Pemilik usaha menggunakan hasil untuk mengarahkan bisnis, tetapi tidak seharusnya mengambil alih seluruh pekerjaan operasional. Pembagian tugas yang jelas mempercepat proses karena setiap orang mengetahui kapan harus bertindak dan kapan harus menyerahkan pekerjaan.",
+            "Gunakan kolom catatan, status, dan penanggung jawab untuk melakukan serah terima. Instruksi lisan tetap boleh digunakan untuk mempercepat komunikasi, tetapi keputusan penting harus dicatat di sistem atau dokumen resmi. Jika seorang pegawai tidak hadir, atasan menunjuk pengganti melalui hak akses sementara yang terdokumentasi. Jangan memberikan kata sandi pegawai yang tidak hadir. Setelah tugas selesai, cabut hak sementara dan tinjau aktivitas yang dilakukan selama masa penggantian."
+          ]
+        },
+        {
+          "title": "Perbedaan penggunaan Web, Windows, dan Android",
+          "paragraphs": [
+            "Web, Desktop Windows, dan Android Flutter menyediakan kemampuan yang sama pada inti data, tetapi cara berinteraksinya dapat berbeda. Web dan Desktop cocok untuk tabel lebar, pemeriksaan banyak dokumen, rekonsiliasi, ekspor, serta persetujuan. Android cocok untuk pekerjaan lapangan, pencarian cepat, pemindaian, pengambilan bukti, dan pekerjaan yang perlu tetap berjalan ketika koneksi tidak stabil. Pengguna tidak perlu memaksakan semua pekerjaan ke satu perangkat. Pilih perangkat berdasarkan risiko, jumlah data, dan kondisi tempat kerja.",
+            "Pada layar kecil, bagian informasi dapat disusun vertikal dan beberapa kolom diringkas menjadi kartu. Gulir sampai akhir dan buka detail sebelum menyimpulkan bahwa data tidak tersedia. Pada layar besar, jangan mengabaikan kolom di sebelah kanan; gunakan pengguliran horizontal bila diperlukan. Perubahan yang dibuat di satu perangkat baru terlihat di perangkat lain setelah sinkronisasi berhasil. Karena itu, indikator pembaruan terakhir harus menjadi bagian dari pemeriksaan, terutama sebelum menyetujui stok, kredit, pembayaran, atau penutupan periode."
+          ]
+        },
+        {
+          "title": "Contoh kasus sederhana",
+          "paragraphs": [
+            "Nofal membuat order untuk pelanggan lama yang memiliki sebagian piutang jatuh tempo. Sistem menahan order, manajemen menilai riwayat pembayaran, lalu menyetujui sebagian jumlah yang aman untuk dikirim. Dalam contoh ini, pengguna tidak langsung mengejar kecepatan. Ia memeriksa identitas, konteks, dokumen, dan status. Ketika menemukan peringatan, ia membuka rincian dan menentukan apakah pekerjaan dapat dilanjutkan sendiri atau membutuhkan persetujuan. Seluruh tindakan diberi nomor referensi sehingga pihak berikutnya tidak perlu menebak asal informasi. Cara kerja seperti ini membuat pelayanan pelanggan tetap cepat tanpa mengorbankan pengendalian.",
+            "Setelah kasus selesai, pengguna membandingkan hasil dengan tujuan awal. Ia memastikan tidak ada draft tertinggal, antrean sinkronisasi kosong atau diketahui, dan laporan terkait telah berubah sesuai transaksi. Bila hasil belum muncul, ia tidak langsung mengulangi input; ia memeriksa status dan log lebih dahulu. Contoh ini dapat dipakai sebagai latihan. Gunakan data demo, lakukan langkah dari awal sampai akhir, lalu minta peserta lain menjelaskan apa yang terjadi dengan bahasa mereka sendiri."
+          ]
+        },
+        {
+          "title": "Bukti, audit, dan keamanan informasi",
+          "paragraphs": [
+            "Setiap pekerjaan pada Pelanggan, Order, Batas Kredit, dan Pemenuhan menghasilkan bukti. Bukti dapat berupa nomor dokumen, waktu pembuatan, pengguna, status, foto, tanda terima, file ekspor, atau catatan persetujuan. Bukti harus cukup untuk menjawab siapa, apa, kapan, di mana, mengapa, dan berapa nilainya. Simpan bukti pada fasilitas yang disediakan sistem atau lokasi resmi perusahaan. Jangan menggunakan foto pribadi, penyimpanan umum, atau aplikasi pesan sebagai arsip utama.",
+            "Hak akses mengikuti kebutuhan kerja minimum. Data harga beli, laba, saldo piutang, nomor rekening, dan identitas pelanggan hanya boleh dibuka oleh peran yang memerlukannya. Ketika menampilkan layar kepada pihak luar, gunakan mode demo atau samarkan data. Saat mengekspor laporan, periksa penerima dan masa simpan. Jika perangkat hilang, segera laporkan agar sesi dapat dicabut. Audit log tidak boleh dihapus untuk menyembunyikan kesalahan; justru catatan tersebut membantu perusahaan memahami dan memperbaiki proses."
+          ]
+        },
+        {
+          "title": "Checklist penyelesaian pekerjaan",
+          "paragraphs": [
+            "Sebelum meninggalkan layar, tanyakan: apakah tujuan sudah tercapai, apakah nomor dokumen sudah terbentuk, apakah status akhir benar, apakah data sudah tersinkron, apakah dokumen pendukung tersimpan, apakah pihak berikutnya sudah menerima tugas, dan apakah terdapat peringatan yang belum ditangani. Jika satu jawaban masih tidak jelas, pekerjaan belum benar-benar selesai. Tuliskan catatan singkat agar pergantian shift atau pemeriksaan berikutnya tidak dimulai dari nol.",
+            "Pada akhir hari, supervisor meninjau daftar transaksi gagal, draft, pembatalan, penyesuaian, dan persetujuan tertunda. Tinjauan harian lebih ringan daripada menunggu akhir bulan. Gunakan laporan pengecualian untuk mencari hal yang tidak biasa, bukan hanya laporan total. Apabila seluruh pemeriksaan telah lulus, pengguna dapat menutup tugas dan melanjutkan pekerjaan lain. Kebiasaan menyelesaikan satu siklus penuh adalah dasar data yang akurat dan laporan pemilik yang dapat dipercaya."
+          ]
+        },
+        {
+          "title": "Cara melatih pengguna baru",
+          "paragraphs": [
+            "Pelatihan dimulai dengan menjelaskan tujuan bisnis, bukan nama tombol. Tunjukkan ilustrasi, sebutkan peran Sales, admin penjualan, kredit, gudang, dan pengiriman, lalu minta peserta menunjuk profil pelanggan, alamat dan wilayah, batas serta sisa kredit, item order, status persetujuan, dan status siapkan dan kirim. Setelah itu demonstrasikan satu kasus normal dan satu kasus yang menghasilkan peringatan. Peserta kemudian mengulang menggunakan data demo sambil menjelaskan alasan setiap langkah. Pendamping hanya membantu ketika peserta berhenti, sehingga pemahaman tidak bergantung pada hafalan.",
+            "Pengguna dinyatakan siap ketika mampu menyelesaikan kasus, menemukan kesalahan yang sengaja disisipkan, menjelaskan bukti yang harus disimpan, dan mengetahui kapan harus meminta persetujuan. Catat hasil latihan dan topik yang perlu diulang. Jangan melatih langsung dengan data produksi yang sensitif. Setelah pengguna mulai bekerja, lakukan pendampingan pada transaksi pertama dan tinjau hasilnya. Pelatihan yang baik membuat orang nonteknis percaya diri karena mereka memahami maksud proses, bukan sekadar mengikuti layar."
+          ]
+        }
+      ],
+      "wordCount": 1815
+    },
+    {
+      "id": "pembelian-penerimaan-hutang",
+      "title": "Pembelian, Penerimaan Batch, dan Hutang Supplier",
+      "image": "05-pembelian-penerimaan.png",
+      "alt": "Ilustrasi layar Pembelian, Penerimaan Batch, dan Hutang Supplier pada eBisnis Inventory / Sales.",
+      "platform": "Web dan Desktop Windows",
+      "role": "Pembelian, gudang, keuangan, dan manajemen",
+      "summary": "Merencanakan pembelian, menerima barang sesuai dokumen, mencatat batch dan kedaluwarsa, serta mengendalikan hutang supplier dari satu alur yang dapat diaudit.",
+      "steps": [
+        "buat kebutuhan pembelian",
+        "pilih supplier yang disetujui",
+        "terbitkan pesanan pembelian",
+        "cocokkan barang datang",
+        "catat batch dan kedaluwarsa",
+        "pisahkan barang bermasalah",
+        "posting penerimaan",
+        "verifikasi invoice",
+        "jadwalkan pembayaran"
+      ],
+      "validations": [
+        "supplier aktif",
+        "harga beli sesuai persetujuan",
+        "jumlah diterima tidak melebihi toleransi",
+        "batch tidak kosong",
+        "tanggal kedaluwarsa memenuhi batas minimal",
+        "invoice tidak ganda",
+        "hutang sama dengan dokumen yang diterima"
+      ],
+      "sections": [
+        {
+          "title": "Tujuan layar dan hasil yang diharapkan",
+          "paragraphs": [
+            "Ilustrasi Pembelian, Penerimaan Batch, dan Hutang Supplier menggambarkan ruang kerja yang dipakai untuk merencanakan pembelian, menerima barang sesuai dokumen, mencatat batch dan kedaluwarsa, serta mengendalikan hutang supplier dari satu alur yang dapat diaudit. Layar ini tidak dimaksudkan sebagai kumpulan angka yang hanya dilihat sekilas. Setiap bagian membantu pengguna menjawab pertanyaan operasional: apa yang sudah terjadi, apa yang belum selesai, siapa yang harus menindaklanjuti, dan bukti apa yang harus disimpan. Pengguna utama adalah Pembelian, gudang, keuangan, dan manajemen, sedangkan media yang digunakan adalah Web dan Desktop Windows. Tampilan nyata dapat menyesuaikan ukuran perangkat dan hak akses, tetapi urutan berpikirnya tetap sama.",
+            "Hasil terbaik diperoleh ketika pengguna membuka layar dengan tujuan yang jelas. Sebelum menekan tombol apa pun, tentukan keputusan yang ingin dibuat dan periode data yang ingin diperiksa. Setelah pekerjaan selesai, hasil yang diharapkan adalah: Stok hanya bertambah dari barang yang diterima dan lolos pemeriksaan, sementara hutang tercatat berdasarkan dokumen yang dapat dilacak kembali. Dengan pendekatan ini, sistem bukan sekadar tempat mengetik, melainkan catatan bersama yang menghubungkan sales, gudang, administrasi, keuangan, dan pemilik. Setiap orang membaca sumber data yang sama sesuai batas kewenangannya."
+          ]
+        },
+        {
+          "title": "Cara membaca ilustrasi dari atas ke bawah",
+          "paragraphs": [
+            "Mulailah dari bagian paling atas. Di sana biasanya terdapat nama perusahaan, identitas pengguna, periode kerja, lokasi atau cabang, serta waktu pembaruan terakhir. Informasi ini wajib dibaca agar pengguna tidak mengolah data milik tenant, periode, atau gudang yang salah. Setelah identitas benar, lanjutkan ke bagian utama yang terdiri atas supplier dan syarat bayar, nomor pesanan pembelian, daftar barang, hasil pemeriksaan penerimaan, batch dan kedaluwarsa, dan invoice serta jadwal hutang. Susunan tersebut dibuat agar pengguna melihat ringkasan lebih dulu, kemudian beralih ke rincian dan tindakan.",
+            "Warna pada ilustrasi berfungsi sebagai petunjuk, bukan hiasan. Hijau menunjukkan kondisi selesai atau aman, kuning menunjukkan keadaan yang perlu diperiksa, merah menunjukkan risiko atau pekerjaan yang tertahan, dan abu-abu menunjukkan informasi pendukung. Jangan mengambil keputusan hanya berdasarkan warna; buka rincian yang mendasarinya. Angka pada ilustrasi adalah contoh pembelajaran dan bukan data produksi Caruban Medika Nusantara. Pada aplikasi asli, pengguna harus memeriksa nomor dokumen, tanggal, pihak terkait, dan status sebelum melanjutkan."
+          ]
+        },
+        {
+          "title": "Persiapan sebelum memulai pekerjaan",
+          "paragraphs": [
+            "Sebelum menggunakan Pembelian, Penerimaan Batch, dan Hutang Supplier, pastikan akun yang dipakai adalah akun pribadi dan peran yang tampil sesuai pekerjaan. Jangan berbagi akun karena sistem mencatat siapa yang membuat, mengubah, menyetujui, atau membatalkan data. Periksa koneksi, indikator sinkronisasi, tanggal serta jam perangkat, dan cabang aktif. Untuk pekerjaan yang memengaruhi stok atau uang, siapkan dokumen pendukung seperti pesanan, invoice, bukti penerimaan, bukti transfer, atau berita acara. Persiapan sederhana ini mencegah kesalahan yang sulit dilacak kemudian.",
+            "Pengguna juga perlu memahami batas kewenangan. Pembelian, gudang, keuangan, dan manajemen tidak selalu mempunyai hak yang sama. Bila tombol tidak terlihat atau tidak aktif, jangan mencari cara untuk melewati pengendalian. Catat nomor dokumen dan minta bantuan atasan atau admin hak akses. Data sensitif tidak boleh dikirim melalui grup umum. Ketika bekerja menggunakan Web dan Desktop Windows, pastikan layar terkunci saat ditinggalkan dan berkas hasil ekspor disimpan pada tempat yang disetujui perusahaan."
+          ]
+        },
+        {
+          "title": "Langkah kerja utama",
+          "paragraphs": [
+            "Urutan kerja yang disarankan adalah buat kebutuhan pembelian, pilih supplier yang disetujui, terbitkan pesanan pembelian, cocokkan barang datang, catat batch dan kedaluwarsa, pisahkan barang bermasalah, posting penerimaan, verifikasi invoice, dan jadwalkan pembayaran. Jalankan urutan tersebut secara tertib karena setiap langkah menyiapkan informasi bagi langkah berikutnya. Misalnya, pemilihan pelanggan atau supplier menentukan alamat, syarat bayar, harga, dan batas kredit; pemilihan produk menentukan satuan, batch, HPP, dan ketersediaan. Jika data awal salah, hasil akhir juga salah meskipun perhitungan sistem benar. Gunakan pencarian dan filter untuk mempersempit data, lalu buka satu catatan yang benar sebelum melakukan tindakan.",
+            "Sesudah memasukkan data, baca kembali ringkasan sebelum menyimpan. Sistem dapat memberikan peringatan, menahan proses, atau meminta persetujuan. Peringatan bukan gangguan; peringatan menjelaskan risiko yang harus diselesaikan. Jika jaringan terputus, periksa apakah pekerjaan tersimpan sebagai draft lokal, antrean sinkronisasi, atau belum tersimpan sama sekali. Jangan mengulang transaksi tanpa memeriksa nomor referensi karena pengulangan dapat menghasilkan data ganda. Setelah berhasil, catat status akhir dan pihak yang menerima pekerjaan berikutnya."
+          ]
+        },
+        {
+          "title": "Pemeriksaan sebelum menyimpan atau menyetujui",
+          "paragraphs": [
+            "Gunakan daftar pemeriksaan berikut sebagai kebiasaan: supplier aktif, harga beli sesuai persetujuan, jumlah diterima tidak melebihi toleransi, batch tidak kosong, tanggal kedaluwarsa memenuhi batas minimal, invoice tidak ganda, dan hutang sama dengan dokumen yang diterima. Pemeriksaan tidak perlu memakan waktu lama jika dilakukan pada setiap transaksi. Fokus pada identitas pihak, tanggal, mata uang, satuan, jumlah, harga, pajak, potongan, batch, jatuh tempo, dan status. Untuk transaksi bernilai besar atau berisiko, lakukan prinsip empat mata: satu orang menyiapkan dan orang lain memeriksa. Pemisahan ini melindungi pegawai sekaligus perusahaan dari kesalahan yang tidak disengaja.",
+            "Setelah tombol simpan ditekan, cari tanda keberhasilan yang nyata, misalnya nomor dokumen, status tersimpan, waktu sinkronisasi, atau perubahan pada daftar. Pesan singkat saja tidak cukup jika layar kemudian menunjukkan status gagal. Pada perangkat Android, bedakan antara tersimpan di perangkat dan sudah diterima server. Pada Web atau Desktop, jangan menutup jendela saat proses masih berjalan. Bila hasil tidak sesuai, jangan membuat koreksi diam-diam; gunakan prosedur edit, pembatalan, retur, atau penyesuaian yang menyediakan alasan dan jejak audit."
+          ]
+        },
+        {
+          "title": "Kesalahan umum dan cara mencegahnya",
+          "paragraphs": [
+            "Kesalahan yang paling sering terjadi pada alur ini adalah mencatat barang yang belum diterima, mencampur batch, menerima kedaluwarsa terlalu dekat, membayar invoice ganda, mengubah harga setelah persetujuan, dan menutup selisih tanpa berita acara. Sebagian besar bukan disebabkan oleh kerusakan sistem, melainkan karena konteks tidak diperiksa, pekerjaan terburu-buru, atau tanggung jawab tidak jelas. Cara pencegahannya adalah menggunakan akun sendiri, memulai dari dokumen sumber, membaca ringkasan, dan menyelesaikan satu transaksi sebelum pindah ke transaksi lain. Hindari membuka banyak tab untuk pekerjaan yang sama karena pengguna dapat menyimpan versi yang berbeda.",
+            "Jika kesalahan sudah terjadi, hentikan proses berikutnya dan catat fakta apa adanya: nomor dokumen, waktu, pengguna, nilai, status, dan dampak. Jangan menghapus bukti atau mengganti data agar tampak benar. Laporkan kepada penanggung jawab, pilih mekanisme koreksi yang tersedia, lalu periksa laporan setelah koreksi diposting. Sikap terbuka terhadap kesalahan mempercepat pemulihan dan membuat aturan kerja dapat diperbaiki. Sistem menyimpan jejak perubahan untuk membantu penelusuran, bukan untuk menyalahkan pengguna yang mengikuti prosedur."
+          ]
+        },
+        {
+          "title": "Pembagian tanggung jawab antarperan",
+          "paragraphs": [
+            "Pada Pembelian, Penerimaan Batch, dan Hutang Supplier, pembuat data bertanggung jawab terhadap kelengkapan informasi awal; pemeriksa bertanggung jawab terhadap kesesuaian dokumen; penyetuju bertanggung jawab terhadap keputusan bisnis; dan administrator bertanggung jawab terhadap ketersediaan sistem serta hak akses. Pemilik usaha menggunakan hasil untuk mengarahkan bisnis, tetapi tidak seharusnya mengambil alih seluruh pekerjaan operasional. Pembagian tugas yang jelas mempercepat proses karena setiap orang mengetahui kapan harus bertindak dan kapan harus menyerahkan pekerjaan.",
+            "Gunakan kolom catatan, status, dan penanggung jawab untuk melakukan serah terima. Instruksi lisan tetap boleh digunakan untuk mempercepat komunikasi, tetapi keputusan penting harus dicatat di sistem atau dokumen resmi. Jika seorang pegawai tidak hadir, atasan menunjuk pengganti melalui hak akses sementara yang terdokumentasi. Jangan memberikan kata sandi pegawai yang tidak hadir. Setelah tugas selesai, cabut hak sementara dan tinjau aktivitas yang dilakukan selama masa penggantian."
+          ]
+        },
+        {
+          "title": "Perbedaan penggunaan Web, Windows, dan Android",
+          "paragraphs": [
+            "Web dan Desktop Windows menyediakan kemampuan yang sama pada inti data, tetapi cara berinteraksinya dapat berbeda. Web dan Desktop cocok untuk tabel lebar, pemeriksaan banyak dokumen, rekonsiliasi, ekspor, serta persetujuan. Android cocok untuk pekerjaan lapangan, pencarian cepat, pemindaian, pengambilan bukti, dan pekerjaan yang perlu tetap berjalan ketika koneksi tidak stabil. Pengguna tidak perlu memaksakan semua pekerjaan ke satu perangkat. Pilih perangkat berdasarkan risiko, jumlah data, dan kondisi tempat kerja.",
+            "Pada layar kecil, bagian informasi dapat disusun vertikal dan beberapa kolom diringkas menjadi kartu. Gulir sampai akhir dan buka detail sebelum menyimpulkan bahwa data tidak tersedia. Pada layar besar, jangan mengabaikan kolom di sebelah kanan; gunakan pengguliran horizontal bila diperlukan. Perubahan yang dibuat di satu perangkat baru terlihat di perangkat lain setelah sinkronisasi berhasil. Karena itu, indikator pembaruan terakhir harus menjadi bagian dari pemeriksaan, terutama sebelum menyetujui stok, kredit, pembayaran, atau penutupan periode."
+          ]
+        },
+        {
+          "title": "Contoh kasus sederhana",
+          "paragraphs": [
+            "Gudang menerima kiriman supplier dalam dua batch. Satu batch memenuhi syarat, sedangkan satu batch terlalu dekat dengan kedaluwarsa sehingga ditempatkan pada area karantina dan tidak menambah stok jual. Dalam contoh ini, pengguna tidak langsung mengejar kecepatan. Ia memeriksa identitas, konteks, dokumen, dan status. Ketika menemukan peringatan, ia membuka rincian dan menentukan apakah pekerjaan dapat dilanjutkan sendiri atau membutuhkan persetujuan. Seluruh tindakan diberi nomor referensi sehingga pihak berikutnya tidak perlu menebak asal informasi. Cara kerja seperti ini membuat pelayanan pelanggan tetap cepat tanpa mengorbankan pengendalian.",
+            "Setelah kasus selesai, pengguna membandingkan hasil dengan tujuan awal. Ia memastikan tidak ada draft tertinggal, antrean sinkronisasi kosong atau diketahui, dan laporan terkait telah berubah sesuai transaksi. Bila hasil belum muncul, ia tidak langsung mengulangi input; ia memeriksa status dan log lebih dahulu. Contoh ini dapat dipakai sebagai latihan. Gunakan data demo, lakukan langkah dari awal sampai akhir, lalu minta peserta lain menjelaskan apa yang terjadi dengan bahasa mereka sendiri."
+          ]
+        },
+        {
+          "title": "Bukti, audit, dan keamanan informasi",
+          "paragraphs": [
+            "Setiap pekerjaan pada Pembelian, Penerimaan Batch, dan Hutang Supplier menghasilkan bukti. Bukti dapat berupa nomor dokumen, waktu pembuatan, pengguna, status, foto, tanda terima, file ekspor, atau catatan persetujuan. Bukti harus cukup untuk menjawab siapa, apa, kapan, di mana, mengapa, dan berapa nilainya. Simpan bukti pada fasilitas yang disediakan sistem atau lokasi resmi perusahaan. Jangan menggunakan foto pribadi, penyimpanan umum, atau aplikasi pesan sebagai arsip utama.",
+            "Hak akses mengikuti kebutuhan kerja minimum. Data harga beli, laba, saldo piutang, nomor rekening, dan identitas pelanggan hanya boleh dibuka oleh peran yang memerlukannya. Ketika menampilkan layar kepada pihak luar, gunakan mode demo atau samarkan data. Saat mengekspor laporan, periksa penerima dan masa simpan. Jika perangkat hilang, segera laporkan agar sesi dapat dicabut. Audit log tidak boleh dihapus untuk menyembunyikan kesalahan; justru catatan tersebut membantu perusahaan memahami dan memperbaiki proses."
+          ]
+        },
+        {
+          "title": "Checklist penyelesaian pekerjaan",
+          "paragraphs": [
+            "Sebelum meninggalkan layar, tanyakan: apakah tujuan sudah tercapai, apakah nomor dokumen sudah terbentuk, apakah status akhir benar, apakah data sudah tersinkron, apakah dokumen pendukung tersimpan, apakah pihak berikutnya sudah menerima tugas, dan apakah terdapat peringatan yang belum ditangani. Jika satu jawaban masih tidak jelas, pekerjaan belum benar-benar selesai. Tuliskan catatan singkat agar pergantian shift atau pemeriksaan berikutnya tidak dimulai dari nol.",
+            "Pada akhir hari, supervisor meninjau daftar transaksi gagal, draft, pembatalan, penyesuaian, dan persetujuan tertunda. Tinjauan harian lebih ringan daripada menunggu akhir bulan. Gunakan laporan pengecualian untuk mencari hal yang tidak biasa, bukan hanya laporan total. Apabila seluruh pemeriksaan telah lulus, pengguna dapat menutup tugas dan melanjutkan pekerjaan lain. Kebiasaan menyelesaikan satu siklus penuh adalah dasar data yang akurat dan laporan pemilik yang dapat dipercaya."
+          ]
+        },
+        {
+          "title": "Cara melatih pengguna baru",
+          "paragraphs": [
+            "Pelatihan dimulai dengan menjelaskan tujuan bisnis, bukan nama tombol. Tunjukkan ilustrasi, sebutkan peran Pembelian, gudang, keuangan, dan manajemen, lalu minta peserta menunjuk supplier dan syarat bayar, nomor pesanan pembelian, daftar barang, hasil pemeriksaan penerimaan, batch dan kedaluwarsa, dan invoice serta jadwal hutang. Setelah itu demonstrasikan satu kasus normal dan satu kasus yang menghasilkan peringatan. Peserta kemudian mengulang menggunakan data demo sambil menjelaskan alasan setiap langkah. Pendamping hanya membantu ketika peserta berhenti, sehingga pemahaman tidak bergantung pada hafalan.",
+            "Pengguna dinyatakan siap ketika mampu menyelesaikan kasus, menemukan kesalahan yang sengaja disisipkan, menjelaskan bukti yang harus disimpan, dan mengetahui kapan harus meminta persetujuan. Catat hasil latihan dan topik yang perlu diulang. Jangan melatih langsung dengan data produksi yang sensitif. Setelah pengguna mulai bekerja, lakukan pendampingan pada transaksi pertama dan tinjau hasilnya. Pelatihan yang baik membuat orang nonteknis percaya diri karena mereka memahami maksud proses, bukan sekadar mengikuti layar."
+          ]
+        }
+      ],
+      "wordCount": 1802
+    },
+    {
+      "id": "stok-opname-expiry",
+      "title": "Stok Opname, Penyesuaian, FEFO, dan Penarikan Produk",
+      "image": "06-stok-opname.png",
+      "alt": "Ilustrasi layar Stok Opname, Penyesuaian, FEFO, dan Penarikan Produk pada eBisnis Inventory / Sales.",
+      "platform": "Web, Desktop Windows, dan Android Flutter",
+      "role": "Gudang, supervisor, quality control, dan auditor",
+      "summary": "Membandingkan stok fisik dengan sistem secara tertib, menjelaskan selisih, mengendalikan batch kedaluwarsa, dan menangani penarikan produk tanpa kehilangan jejak.",
+      "steps": [
+        "tentukan ruang lingkup opname",
+        "bekukan pergerakan bila diperlukan",
+        "hitung tanpa melihat angka sistem",
+        "masukkan hasil per batch",
+        "ulang hitung selisih besar",
+        "pilih alasan yang tepat",
+        "minta persetujuan",
+        "posting penyesuaian",
+        "arsipkan berita acara"
+      ],
+      "validations": [
+        "lokasi dan batch benar",
+        "petugas hitung dan pemeriksa berbeda",
+        "selisih besar dihitung ulang",
+        "alasan wajib terisi",
+        "barang karantina tidak dianggap stok jual",
+        "posting hanya sekali",
+        "dokumen mempunyai waktu dan pengguna"
+      ],
+      "sections": [
+        {
+          "title": "Tujuan layar dan hasil yang diharapkan",
+          "paragraphs": [
+            "Ilustrasi Stok Opname, Penyesuaian, FEFO, dan Penarikan Produk menggambarkan ruang kerja yang dipakai untuk membandingkan stok fisik dengan sistem secara tertib, menjelaskan selisih, mengendalikan batch kedaluwarsa, dan menangani penarikan produk tanpa kehilangan jejak. Layar ini tidak dimaksudkan sebagai kumpulan angka yang hanya dilihat sekilas. Setiap bagian membantu pengguna menjawab pertanyaan operasional: apa yang sudah terjadi, apa yang belum selesai, siapa yang harus menindaklanjuti, dan bukti apa yang harus disimpan. Pengguna utama adalah Gudang, supervisor, quality control, dan auditor, sedangkan media yang digunakan adalah Web, Desktop Windows, dan Android Flutter. Tampilan nyata dapat menyesuaikan ukuran perangkat dan hak akses, tetapi urutan berpikirnya tetap sama.",
+            "Hasil terbaik diperoleh ketika pengguna membuka layar dengan tujuan yang jelas. Sebelum menekan tombol apa pun, tentukan keputusan yang ingin dibuat dan periode data yang ingin diperiksa. Setelah pekerjaan selesai, hasil yang diharapkan adalah: Saldo stok kembali dapat dipercaya, penyebab selisih diketahui, dan tindakan pencegahan dapat diterapkan pada proses penerimaan atau pengeluaran berikutnya. Dengan pendekatan ini, sistem bukan sekadar tempat mengetik, melainkan catatan bersama yang menghubungkan sales, gudang, administrasi, keuangan, dan pemilik. Setiap orang membaca sumber data yang sama sesuai batas kewenangannya."
+          ]
+        },
+        {
+          "title": "Cara membaca ilustrasi dari atas ke bawah",
+          "paragraphs": [
+            "Mulailah dari bagian paling atas. Di sana biasanya terdapat nama perusahaan, identitas pengguna, periode kerja, lokasi atau cabang, serta waktu pembaruan terakhir. Informasi ini wajib dibaca agar pengguna tidak mengolah data milik tenant, periode, atau gudang yang salah. Setelah identitas benar, lanjutkan ke bagian utama yang terdiri atas lokasi dan sesi opname, stok sistem, hasil hitung fisik, selisih dan nilai, alasan penyesuaian, dan status persetujuan serta posting. Susunan tersebut dibuat agar pengguna melihat ringkasan lebih dulu, kemudian beralih ke rincian dan tindakan.",
+            "Warna pada ilustrasi berfungsi sebagai petunjuk, bukan hiasan. Hijau menunjukkan kondisi selesai atau aman, kuning menunjukkan keadaan yang perlu diperiksa, merah menunjukkan risiko atau pekerjaan yang tertahan, dan abu-abu menunjukkan informasi pendukung. Jangan mengambil keputusan hanya berdasarkan warna; buka rincian yang mendasarinya. Angka pada ilustrasi adalah contoh pembelajaran dan bukan data produksi Caruban Medika Nusantara. Pada aplikasi asli, pengguna harus memeriksa nomor dokumen, tanggal, pihak terkait, dan status sebelum melanjutkan."
+          ]
+        },
+        {
+          "title": "Persiapan sebelum memulai pekerjaan",
+          "paragraphs": [
+            "Sebelum menggunakan Stok Opname, Penyesuaian, FEFO, dan Penarikan Produk, pastikan akun yang dipakai adalah akun pribadi dan peran yang tampil sesuai pekerjaan. Jangan berbagi akun karena sistem mencatat siapa yang membuat, mengubah, menyetujui, atau membatalkan data. Periksa koneksi, indikator sinkronisasi, tanggal serta jam perangkat, dan cabang aktif. Untuk pekerjaan yang memengaruhi stok atau uang, siapkan dokumen pendukung seperti pesanan, invoice, bukti penerimaan, bukti transfer, atau berita acara. Persiapan sederhana ini mencegah kesalahan yang sulit dilacak kemudian.",
+            "Pengguna juga perlu memahami batas kewenangan. Gudang, supervisor, quality control, dan auditor tidak selalu mempunyai hak yang sama. Bila tombol tidak terlihat atau tidak aktif, jangan mencari cara untuk melewati pengendalian. Catat nomor dokumen dan minta bantuan atasan atau admin hak akses. Data sensitif tidak boleh dikirim melalui grup umum. Ketika bekerja menggunakan Web, Desktop Windows, dan Android Flutter, pastikan layar terkunci saat ditinggalkan dan berkas hasil ekspor disimpan pada tempat yang disetujui perusahaan."
+          ]
+        },
+        {
+          "title": "Langkah kerja utama",
+          "paragraphs": [
+            "Urutan kerja yang disarankan adalah tentukan ruang lingkup opname, bekukan pergerakan bila diperlukan, hitung tanpa melihat angka sistem, masukkan hasil per batch, ulang hitung selisih besar, pilih alasan yang tepat, minta persetujuan, posting penyesuaian, dan arsipkan berita acara. Jalankan urutan tersebut secara tertib karena setiap langkah menyiapkan informasi bagi langkah berikutnya. Misalnya, pemilihan pelanggan atau supplier menentukan alamat, syarat bayar, harga, dan batas kredit; pemilihan produk menentukan satuan, batch, HPP, dan ketersediaan. Jika data awal salah, hasil akhir juga salah meskipun perhitungan sistem benar. Gunakan pencarian dan filter untuk mempersempit data, lalu buka satu catatan yang benar sebelum melakukan tindakan.",
+            "Sesudah memasukkan data, baca kembali ringkasan sebelum menyimpan. Sistem dapat memberikan peringatan, menahan proses, atau meminta persetujuan. Peringatan bukan gangguan; peringatan menjelaskan risiko yang harus diselesaikan. Jika jaringan terputus, periksa apakah pekerjaan tersimpan sebagai draft lokal, antrean sinkronisasi, atau belum tersimpan sama sekali. Jangan mengulang transaksi tanpa memeriksa nomor referensi karena pengulangan dapat menghasilkan data ganda. Setelah berhasil, catat status akhir dan pihak yang menerima pekerjaan berikutnya."
+          ]
+        },
+        {
+          "title": "Pemeriksaan sebelum menyimpan atau menyetujui",
+          "paragraphs": [
+            "Gunakan daftar pemeriksaan berikut sebagai kebiasaan: lokasi dan batch benar, petugas hitung dan pemeriksa berbeda, selisih besar dihitung ulang, alasan wajib terisi, barang karantina tidak dianggap stok jual, posting hanya sekali, dan dokumen mempunyai waktu dan pengguna. Pemeriksaan tidak perlu memakan waktu lama jika dilakukan pada setiap transaksi. Fokus pada identitas pihak, tanggal, mata uang, satuan, jumlah, harga, pajak, potongan, batch, jatuh tempo, dan status. Untuk transaksi bernilai besar atau berisiko, lakukan prinsip empat mata: satu orang menyiapkan dan orang lain memeriksa. Pemisahan ini melindungi pegawai sekaligus perusahaan dari kesalahan yang tidak disengaja.",
+            "Setelah tombol simpan ditekan, cari tanda keberhasilan yang nyata, misalnya nomor dokumen, status tersimpan, waktu sinkronisasi, atau perubahan pada daftar. Pesan singkat saja tidak cukup jika layar kemudian menunjukkan status gagal. Pada perangkat Android, bedakan antara tersimpan di perangkat dan sudah diterima server. Pada Web atau Desktop, jangan menutup jendela saat proses masih berjalan. Bila hasil tidak sesuai, jangan membuat koreksi diam-diam; gunakan prosedur edit, pembatalan, retur, atau penyesuaian yang menyediakan alasan dan jejak audit."
+          ]
+        },
+        {
+          "title": "Kesalahan umum dan cara mencegahnya",
+          "paragraphs": [
+            "Kesalahan yang paling sering terjadi pada alur ini adalah menghitung saat barang masih bergerak, menggabungkan batch, menyesuaikan tanpa pemeriksaan, menghapus bukti selisih, menjual batch yang ditarik, dan mengubah tanggal kedaluwarsa agar lolos. Sebagian besar bukan disebabkan oleh kerusakan sistem, melainkan karena konteks tidak diperiksa, pekerjaan terburu-buru, atau tanggung jawab tidak jelas. Cara pencegahannya adalah menggunakan akun sendiri, memulai dari dokumen sumber, membaca ringkasan, dan menyelesaikan satu transaksi sebelum pindah ke transaksi lain. Hindari membuka banyak tab untuk pekerjaan yang sama karena pengguna dapat menyimpan versi yang berbeda.",
+            "Jika kesalahan sudah terjadi, hentikan proses berikutnya dan catat fakta apa adanya: nomor dokumen, waktu, pengguna, nilai, status, dan dampak. Jangan menghapus bukti atau mengganti data agar tampak benar. Laporkan kepada penanggung jawab, pilih mekanisme koreksi yang tersedia, lalu periksa laporan setelah koreksi diposting. Sikap terbuka terhadap kesalahan mempercepat pemulihan dan membuat aturan kerja dapat diperbaiki. Sistem menyimpan jejak perubahan untuk membantu penelusuran, bukan untuk menyalahkan pengguna yang mengikuti prosedur."
+          ]
+        },
+        {
+          "title": "Pembagian tanggung jawab antarperan",
+          "paragraphs": [
+            "Pada Stok Opname, Penyesuaian, FEFO, dan Penarikan Produk, pembuat data bertanggung jawab terhadap kelengkapan informasi awal; pemeriksa bertanggung jawab terhadap kesesuaian dokumen; penyetuju bertanggung jawab terhadap keputusan bisnis; dan administrator bertanggung jawab terhadap ketersediaan sistem serta hak akses. Pemilik usaha menggunakan hasil untuk mengarahkan bisnis, tetapi tidak seharusnya mengambil alih seluruh pekerjaan operasional. Pembagian tugas yang jelas mempercepat proses karena setiap orang mengetahui kapan harus bertindak dan kapan harus menyerahkan pekerjaan.",
+            "Gunakan kolom catatan, status, dan penanggung jawab untuk melakukan serah terima. Instruksi lisan tetap boleh digunakan untuk mempercepat komunikasi, tetapi keputusan penting harus dicatat di sistem atau dokumen resmi. Jika seorang pegawai tidak hadir, atasan menunjuk pengganti melalui hak akses sementara yang terdokumentasi. Jangan memberikan kata sandi pegawai yang tidak hadir. Setelah tugas selesai, cabut hak sementara dan tinjau aktivitas yang dilakukan selama masa penggantian."
+          ]
+        },
+        {
+          "title": "Perbedaan penggunaan Web, Windows, dan Android",
+          "paragraphs": [
+            "Web, Desktop Windows, dan Android Flutter menyediakan kemampuan yang sama pada inti data, tetapi cara berinteraksinya dapat berbeda. Web dan Desktop cocok untuk tabel lebar, pemeriksaan banyak dokumen, rekonsiliasi, ekspor, serta persetujuan. Android cocok untuk pekerjaan lapangan, pencarian cepat, pemindaian, pengambilan bukti, dan pekerjaan yang perlu tetap berjalan ketika koneksi tidak stabil. Pengguna tidak perlu memaksakan semua pekerjaan ke satu perangkat. Pilih perangkat berdasarkan risiko, jumlah data, dan kondisi tempat kerja.",
+            "Pada layar kecil, bagian informasi dapat disusun vertikal dan beberapa kolom diringkas menjadi kartu. Gulir sampai akhir dan buka detail sebelum menyimpulkan bahwa data tidak tersedia. Pada layar besar, jangan mengabaikan kolom di sebelah kanan; gunakan pengguliran horizontal bila diperlukan. Perubahan yang dibuat di satu perangkat baru terlihat di perangkat lain setelah sinkronisasi berhasil. Karena itu, indikator pembaruan terakhir harus menjadi bagian dari pemeriksaan, terutama sebelum menyetujui stok, kredit, pembayaran, atau penutupan periode."
+          ]
+        },
+        {
+          "title": "Contoh kasus sederhana",
+          "paragraphs": [
+            "Tim gudang menemukan stok fisik Bodrex berbeda dua kotak dari sistem. Mereka menghitung ulang, memeriksa transaksi terakhir, menemukan kesalahan satuan, lalu mengajukan penyesuaian dengan bukti. Dalam contoh ini, pengguna tidak langsung mengejar kecepatan. Ia memeriksa identitas, konteks, dokumen, dan status. Ketika menemukan peringatan, ia membuka rincian dan menentukan apakah pekerjaan dapat dilanjutkan sendiri atau membutuhkan persetujuan. Seluruh tindakan diberi nomor referensi sehingga pihak berikutnya tidak perlu menebak asal informasi. Cara kerja seperti ini membuat pelayanan pelanggan tetap cepat tanpa mengorbankan pengendalian.",
+            "Setelah kasus selesai, pengguna membandingkan hasil dengan tujuan awal. Ia memastikan tidak ada draft tertinggal, antrean sinkronisasi kosong atau diketahui, dan laporan terkait telah berubah sesuai transaksi. Bila hasil belum muncul, ia tidak langsung mengulangi input; ia memeriksa status dan log lebih dahulu. Contoh ini dapat dipakai sebagai latihan. Gunakan data demo, lakukan langkah dari awal sampai akhir, lalu minta peserta lain menjelaskan apa yang terjadi dengan bahasa mereka sendiri."
+          ]
+        },
+        {
+          "title": "Bukti, audit, dan keamanan informasi",
+          "paragraphs": [
+            "Setiap pekerjaan pada Stok Opname, Penyesuaian, FEFO, dan Penarikan Produk menghasilkan bukti. Bukti dapat berupa nomor dokumen, waktu pembuatan, pengguna, status, foto, tanda terima, file ekspor, atau catatan persetujuan. Bukti harus cukup untuk menjawab siapa, apa, kapan, di mana, mengapa, dan berapa nilainya. Simpan bukti pada fasilitas yang disediakan sistem atau lokasi resmi perusahaan. Jangan menggunakan foto pribadi, penyimpanan umum, atau aplikasi pesan sebagai arsip utama.",
+            "Hak akses mengikuti kebutuhan kerja minimum. Data harga beli, laba, saldo piutang, nomor rekening, dan identitas pelanggan hanya boleh dibuka oleh peran yang memerlukannya. Ketika menampilkan layar kepada pihak luar, gunakan mode demo atau samarkan data. Saat mengekspor laporan, periksa penerima dan masa simpan. Jika perangkat hilang, segera laporkan agar sesi dapat dicabut. Audit log tidak boleh dihapus untuk menyembunyikan kesalahan; justru catatan tersebut membantu perusahaan memahami dan memperbaiki proses."
+          ]
+        },
+        {
+          "title": "Checklist penyelesaian pekerjaan",
+          "paragraphs": [
+            "Sebelum meninggalkan layar, tanyakan: apakah tujuan sudah tercapai, apakah nomor dokumen sudah terbentuk, apakah status akhir benar, apakah data sudah tersinkron, apakah dokumen pendukung tersimpan, apakah pihak berikutnya sudah menerima tugas, dan apakah terdapat peringatan yang belum ditangani. Jika satu jawaban masih tidak jelas, pekerjaan belum benar-benar selesai. Tuliskan catatan singkat agar pergantian shift atau pemeriksaan berikutnya tidak dimulai dari nol.",
+            "Pada akhir hari, supervisor meninjau daftar transaksi gagal, draft, pembatalan, penyesuaian, dan persetujuan tertunda. Tinjauan harian lebih ringan daripada menunggu akhir bulan. Gunakan laporan pengecualian untuk mencari hal yang tidak biasa, bukan hanya laporan total. Apabila seluruh pemeriksaan telah lulus, pengguna dapat menutup tugas dan melanjutkan pekerjaan lain. Kebiasaan menyelesaikan satu siklus penuh adalah dasar data yang akurat dan laporan pemilik yang dapat dipercaya."
+          ]
+        },
+        {
+          "title": "Cara melatih pengguna baru",
+          "paragraphs": [
+            "Pelatihan dimulai dengan menjelaskan tujuan bisnis, bukan nama tombol. Tunjukkan ilustrasi, sebutkan peran Gudang, supervisor, quality control, dan auditor, lalu minta peserta menunjuk lokasi dan sesi opname, stok sistem, hasil hitung fisik, selisih dan nilai, alasan penyesuaian, dan status persetujuan serta posting. Setelah itu demonstrasikan satu kasus normal dan satu kasus yang menghasilkan peringatan. Peserta kemudian mengulang menggunakan data demo sambil menjelaskan alasan setiap langkah. Pendamping hanya membantu ketika peserta berhenti, sehingga pemahaman tidak bergantung pada hafalan.",
+            "Pengguna dinyatakan siap ketika mampu menyelesaikan kasus, menemukan kesalahan yang sengaja disisipkan, menjelaskan bukti yang harus disimpan, dan mengetahui kapan harus meminta persetujuan. Catat hasil latihan dan topik yang perlu diulang. Jangan melatih langsung dengan data produksi yang sensitif. Setelah pengguna mulai bekerja, lakukan pendampingan pada transaksi pertama dan tinjau hasilnya. Pelatihan yang baik membuat orang nonteknis percaya diri karena mereka memahami maksud proses, bukan sekadar mengikuti layar."
+          ]
+        }
+      ],
+      "wordCount": 1816
+    },
+    {
+      "id": "piutang-penagihan",
+      "title": "Piutang, Pembayaran, dan Nota yang Dibawa Sales",
+      "image": "07-piutang-penagihan.png",
+      "alt": "Ilustrasi layar Piutang, Pembayaran, dan Nota yang Dibawa Sales pada eBisnis Inventory / Sales.",
+      "platform": "Web, Desktop Windows, dan Android Flutter",
+      "role": "Sales penagihan, kasir, keuangan, dan pemilik",
+      "summary": "Menentukan tagihan yang harus dibawa sales, mencatat pembayaran dengan bukti, mengalokasikan pembayaran ke invoice, dan memantau umur piutang secara akurat.",
+      "steps": [
+        "pilih pelanggan atau wilayah",
+        "urutkan invoice menurut jatuh tempo",
+        "tentukan nota yang dibawa",
+        "serahkan daftar kepada sales",
+        "catat hasil penagihan",
+        "unggah atau simpan bukti",
+        "alokasikan pembayaran",
+        "rekonsiliasi dengan kas atau bank",
+        "tutup tugas penagihan"
+      ],
+      "validations": [
+        "invoice belum lunas",
+        "jumlah dibawa sesuai saldo",
+        "pembayaran tidak melebihi tagihan tanpa alasan",
+        "metode pembayaran jelas",
+        "bukti dapat dibaca",
+        "tanggal penerimaan benar",
+        "alokasi dan saldo akhir seimbang"
+      ],
+      "sections": [
+        {
+          "title": "Tujuan layar dan hasil yang diharapkan",
+          "paragraphs": [
+            "Ilustrasi Piutang, Pembayaran, dan Nota yang Dibawa Sales menggambarkan ruang kerja yang dipakai untuk menentukan tagihan yang harus dibawa sales, mencatat pembayaran dengan bukti, mengalokasikan pembayaran ke invoice, dan memantau umur piutang secara akurat. Layar ini tidak dimaksudkan sebagai kumpulan angka yang hanya dilihat sekilas. Setiap bagian membantu pengguna menjawab pertanyaan operasional: apa yang sudah terjadi, apa yang belum selesai, siapa yang harus menindaklanjuti, dan bukti apa yang harus disimpan. Pengguna utama adalah Sales penagihan, kasir, keuangan, dan pemilik, sedangkan media yang digunakan adalah Web, Desktop Windows, dan Android Flutter. Tampilan nyata dapat menyesuaikan ukuran perangkat dan hak akses, tetapi urutan berpikirnya tetap sama.",
+            "Hasil terbaik diperoleh ketika pengguna membuka layar dengan tujuan yang jelas. Sebelum menekan tombol apa pun, tentukan keputusan yang ingin dibuat dan periode data yang ingin diperiksa. Setelah pekerjaan selesai, hasil yang diharapkan adalah: Pemilik mengetahui uang yang seharusnya diterima, yang benar-benar diterima, yang masih dibawa sales, dan alasan invoice belum selesai. Dengan pendekatan ini, sistem bukan sekadar tempat mengetik, melainkan catatan bersama yang menghubungkan sales, gudang, administrasi, keuangan, dan pemilik. Setiap orang membaca sumber data yang sama sesuai batas kewenangannya."
+          ]
+        },
+        {
+          "title": "Cara membaca ilustrasi dari atas ke bawah",
+          "paragraphs": [
+            "Mulailah dari bagian paling atas. Di sana biasanya terdapat nama perusahaan, identitas pengguna, periode kerja, lokasi atau cabang, serta waktu pembaruan terakhir. Informasi ini wajib dibaca agar pengguna tidak mengolah data milik tenant, periode, atau gudang yang salah. Setelah identitas benar, lanjutkan ke bagian utama yang terdiri atas daftar pelanggan, invoice dan jatuh tempo, umur piutang, nota yang dibawa, penerimaan pembayaran, dan rekonsiliasi serta persetujuan. Susunan tersebut dibuat agar pengguna melihat ringkasan lebih dulu, kemudian beralih ke rincian dan tindakan.",
+            "Warna pada ilustrasi berfungsi sebagai petunjuk, bukan hiasan. Hijau menunjukkan kondisi selesai atau aman, kuning menunjukkan keadaan yang perlu diperiksa, merah menunjukkan risiko atau pekerjaan yang tertahan, dan abu-abu menunjukkan informasi pendukung. Jangan mengambil keputusan hanya berdasarkan warna; buka rincian yang mendasarinya. Angka pada ilustrasi adalah contoh pembelajaran dan bukan data produksi Caruban Medika Nusantara. Pada aplikasi asli, pengguna harus memeriksa nomor dokumen, tanggal, pihak terkait, dan status sebelum melanjutkan."
+          ]
+        },
+        {
+          "title": "Persiapan sebelum memulai pekerjaan",
+          "paragraphs": [
+            "Sebelum menggunakan Piutang, Pembayaran, dan Nota yang Dibawa Sales, pastikan akun yang dipakai adalah akun pribadi dan peran yang tampil sesuai pekerjaan. Jangan berbagi akun karena sistem mencatat siapa yang membuat, mengubah, menyetujui, atau membatalkan data. Periksa koneksi, indikator sinkronisasi, tanggal serta jam perangkat, dan cabang aktif. Untuk pekerjaan yang memengaruhi stok atau uang, siapkan dokumen pendukung seperti pesanan, invoice, bukti penerimaan, bukti transfer, atau berita acara. Persiapan sederhana ini mencegah kesalahan yang sulit dilacak kemudian.",
+            "Pengguna juga perlu memahami batas kewenangan. Sales penagihan, kasir, keuangan, dan pemilik tidak selalu mempunyai hak yang sama. Bila tombol tidak terlihat atau tidak aktif, jangan mencari cara untuk melewati pengendalian. Catat nomor dokumen dan minta bantuan atasan atau admin hak akses. Data sensitif tidak boleh dikirim melalui grup umum. Ketika bekerja menggunakan Web, Desktop Windows, dan Android Flutter, pastikan layar terkunci saat ditinggalkan dan berkas hasil ekspor disimpan pada tempat yang disetujui perusahaan."
+          ]
+        },
+        {
+          "title": "Langkah kerja utama",
+          "paragraphs": [
+            "Urutan kerja yang disarankan adalah pilih pelanggan atau wilayah, urutkan invoice menurut jatuh tempo, tentukan nota yang dibawa, serahkan daftar kepada sales, catat hasil penagihan, unggah atau simpan bukti, alokasikan pembayaran, rekonsiliasi dengan kas atau bank, dan tutup tugas penagihan. Jalankan urutan tersebut secara tertib karena setiap langkah menyiapkan informasi bagi langkah berikutnya. Misalnya, pemilihan pelanggan atau supplier menentukan alamat, syarat bayar, harga, dan batas kredit; pemilihan produk menentukan satuan, batch, HPP, dan ketersediaan. Jika data awal salah, hasil akhir juga salah meskipun perhitungan sistem benar. Gunakan pencarian dan filter untuk mempersempit data, lalu buka satu catatan yang benar sebelum melakukan tindakan.",
+            "Sesudah memasukkan data, baca kembali ringkasan sebelum menyimpan. Sistem dapat memberikan peringatan, menahan proses, atau meminta persetujuan. Peringatan bukan gangguan; peringatan menjelaskan risiko yang harus diselesaikan. Jika jaringan terputus, periksa apakah pekerjaan tersimpan sebagai draft lokal, antrean sinkronisasi, atau belum tersimpan sama sekali. Jangan mengulang transaksi tanpa memeriksa nomor referensi karena pengulangan dapat menghasilkan data ganda. Setelah berhasil, catat status akhir dan pihak yang menerima pekerjaan berikutnya."
+          ]
+        },
+        {
+          "title": "Pemeriksaan sebelum menyimpan atau menyetujui",
+          "paragraphs": [
+            "Gunakan daftar pemeriksaan berikut sebagai kebiasaan: invoice belum lunas, jumlah dibawa sesuai saldo, pembayaran tidak melebihi tagihan tanpa alasan, metode pembayaran jelas, bukti dapat dibaca, tanggal penerimaan benar, dan alokasi dan saldo akhir seimbang. Pemeriksaan tidak perlu memakan waktu lama jika dilakukan pada setiap transaksi. Fokus pada identitas pihak, tanggal, mata uang, satuan, jumlah, harga, pajak, potongan, batch, jatuh tempo, dan status. Untuk transaksi bernilai besar atau berisiko, lakukan prinsip empat mata: satu orang menyiapkan dan orang lain memeriksa. Pemisahan ini melindungi pegawai sekaligus perusahaan dari kesalahan yang tidak disengaja.",
+            "Setelah tombol simpan ditekan, cari tanda keberhasilan yang nyata, misalnya nomor dokumen, status tersimpan, waktu sinkronisasi, atau perubahan pada daftar. Pesan singkat saja tidak cukup jika layar kemudian menunjukkan status gagal. Pada perangkat Android, bedakan antara tersimpan di perangkat dan sudah diterima server. Pada Web atau Desktop, jangan menutup jendela saat proses masih berjalan. Bila hasil tidak sesuai, jangan membuat koreksi diam-diam; gunakan prosedur edit, pembatalan, retur, atau penyesuaian yang menyediakan alasan dan jejak audit."
+          ]
+        },
+        {
+          "title": "Kesalahan umum dan cara mencegahnya",
+          "paragraphs": [
+            "Kesalahan yang paling sering terjadi pada alur ini adalah membawa nota tanpa serah terima, mencatat pembayaran ke pelanggan salah, menunda setoran, menghapus pembayaran yang sudah direkonsiliasi, menganggap transfer masuk tanpa verifikasi bank, dan menutup invoice dengan potongan tanpa persetujuan. Sebagian besar bukan disebabkan oleh kerusakan sistem, melainkan karena konteks tidak diperiksa, pekerjaan terburu-buru, atau tanggung jawab tidak jelas. Cara pencegahannya adalah menggunakan akun sendiri, memulai dari dokumen sumber, membaca ringkasan, dan menyelesaikan satu transaksi sebelum pindah ke transaksi lain. Hindari membuka banyak tab untuk pekerjaan yang sama karena pengguna dapat menyimpan versi yang berbeda.",
+            "Jika kesalahan sudah terjadi, hentikan proses berikutnya dan catat fakta apa adanya: nomor dokumen, waktu, pengguna, nilai, status, dan dampak. Jangan menghapus bukti atau mengganti data agar tampak benar. Laporkan kepada penanggung jawab, pilih mekanisme koreksi yang tersedia, lalu periksa laporan setelah koreksi diposting. Sikap terbuka terhadap kesalahan mempercepat pemulihan dan membuat aturan kerja dapat diperbaiki. Sistem menyimpan jejak perubahan untuk membantu penelusuran, bukan untuk menyalahkan pengguna yang mengikuti prosedur."
+          ]
+        },
+        {
+          "title": "Pembagian tanggung jawab antarperan",
+          "paragraphs": [
+            "Pada Piutang, Pembayaran, dan Nota yang Dibawa Sales, pembuat data bertanggung jawab terhadap kelengkapan informasi awal; pemeriksa bertanggung jawab terhadap kesesuaian dokumen; penyetuju bertanggung jawab terhadap keputusan bisnis; dan administrator bertanggung jawab terhadap ketersediaan sistem serta hak akses. Pemilik usaha menggunakan hasil untuk mengarahkan bisnis, tetapi tidak seharusnya mengambil alih seluruh pekerjaan operasional. Pembagian tugas yang jelas mempercepat proses karena setiap orang mengetahui kapan harus bertindak dan kapan harus menyerahkan pekerjaan.",
+            "Gunakan kolom catatan, status, dan penanggung jawab untuk melakukan serah terima. Instruksi lisan tetap boleh digunakan untuk mempercepat komunikasi, tetapi keputusan penting harus dicatat di sistem atau dokumen resmi. Jika seorang pegawai tidak hadir, atasan menunjuk pengganti melalui hak akses sementara yang terdokumentasi. Jangan memberikan kata sandi pegawai yang tidak hadir. Setelah tugas selesai, cabut hak sementara dan tinjau aktivitas yang dilakukan selama masa penggantian."
+          ]
+        },
+        {
+          "title": "Perbedaan penggunaan Web, Windows, dan Android",
+          "paragraphs": [
+            "Web, Desktop Windows, dan Android Flutter menyediakan kemampuan yang sama pada inti data, tetapi cara berinteraksinya dapat berbeda. Web dan Desktop cocok untuk tabel lebar, pemeriksaan banyak dokumen, rekonsiliasi, ekspor, serta persetujuan. Android cocok untuk pekerjaan lapangan, pencarian cepat, pemindaian, pengambilan bukti, dan pekerjaan yang perlu tetap berjalan ketika koneksi tidak stabil. Pengguna tidak perlu memaksakan semua pekerjaan ke satu perangkat. Pilih perangkat berdasarkan risiko, jumlah data, dan kondisi tempat kerja.",
+            "Pada layar kecil, bagian informasi dapat disusun vertikal dan beberapa kolom diringkas menjadi kartu. Gulir sampai akhir dan buka detail sebelum menyimpulkan bahwa data tidak tersedia. Pada layar besar, jangan mengabaikan kolom di sebelah kanan; gunakan pengguliran horizontal bila diperlukan. Perubahan yang dibuat di satu perangkat baru terlihat di perangkat lain setelah sinkronisasi berhasil. Karena itu, indikator pembaruan terakhir harus menjadi bagian dari pemeriksaan, terutama sebelum menyetujui stok, kredit, pembayaran, atau penutupan periode."
+          ]
+        },
+        {
+          "title": "Contoh kasus sederhana",
+          "paragraphs": [
+            "Tohirin menerima daftar nota untuk wilayah C2, menagih tiga pelanggan, memperoleh dua pembayaran transfer dan satu janji bayar, lalu admin mencocokkan bukti dengan mutasi bank. Dalam contoh ini, pengguna tidak langsung mengejar kecepatan. Ia memeriksa identitas, konteks, dokumen, dan status. Ketika menemukan peringatan, ia membuka rincian dan menentukan apakah pekerjaan dapat dilanjutkan sendiri atau membutuhkan persetujuan. Seluruh tindakan diberi nomor referensi sehingga pihak berikutnya tidak perlu menebak asal informasi. Cara kerja seperti ini membuat pelayanan pelanggan tetap cepat tanpa mengorbankan pengendalian.",
+            "Setelah kasus selesai, pengguna membandingkan hasil dengan tujuan awal. Ia memastikan tidak ada draft tertinggal, antrean sinkronisasi kosong atau diketahui, dan laporan terkait telah berubah sesuai transaksi. Bila hasil belum muncul, ia tidak langsung mengulangi input; ia memeriksa status dan log lebih dahulu. Contoh ini dapat dipakai sebagai latihan. Gunakan data demo, lakukan langkah dari awal sampai akhir, lalu minta peserta lain menjelaskan apa yang terjadi dengan bahasa mereka sendiri."
+          ]
+        },
+        {
+          "title": "Bukti, audit, dan keamanan informasi",
+          "paragraphs": [
+            "Setiap pekerjaan pada Piutang, Pembayaran, dan Nota yang Dibawa Sales menghasilkan bukti. Bukti dapat berupa nomor dokumen, waktu pembuatan, pengguna, status, foto, tanda terima, file ekspor, atau catatan persetujuan. Bukti harus cukup untuk menjawab siapa, apa, kapan, di mana, mengapa, dan berapa nilainya. Simpan bukti pada fasilitas yang disediakan sistem atau lokasi resmi perusahaan. Jangan menggunakan foto pribadi, penyimpanan umum, atau aplikasi pesan sebagai arsip utama.",
+            "Hak akses mengikuti kebutuhan kerja minimum. Data harga beli, laba, saldo piutang, nomor rekening, dan identitas pelanggan hanya boleh dibuka oleh peran yang memerlukannya. Ketika menampilkan layar kepada pihak luar, gunakan mode demo atau samarkan data. Saat mengekspor laporan, periksa penerima dan masa simpan. Jika perangkat hilang, segera laporkan agar sesi dapat dicabut. Audit log tidak boleh dihapus untuk menyembunyikan kesalahan; justru catatan tersebut membantu perusahaan memahami dan memperbaiki proses."
+          ]
+        },
+        {
+          "title": "Checklist penyelesaian pekerjaan",
+          "paragraphs": [
+            "Sebelum meninggalkan layar, tanyakan: apakah tujuan sudah tercapai, apakah nomor dokumen sudah terbentuk, apakah status akhir benar, apakah data sudah tersinkron, apakah dokumen pendukung tersimpan, apakah pihak berikutnya sudah menerima tugas, dan apakah terdapat peringatan yang belum ditangani. Jika satu jawaban masih tidak jelas, pekerjaan belum benar-benar selesai. Tuliskan catatan singkat agar pergantian shift atau pemeriksaan berikutnya tidak dimulai dari nol.",
+            "Pada akhir hari, supervisor meninjau daftar transaksi gagal, draft, pembatalan, penyesuaian, dan persetujuan tertunda. Tinjauan harian lebih ringan daripada menunggu akhir bulan. Gunakan laporan pengecualian untuk mencari hal yang tidak biasa, bukan hanya laporan total. Apabila seluruh pemeriksaan telah lulus, pengguna dapat menutup tugas dan melanjutkan pekerjaan lain. Kebiasaan menyelesaikan satu siklus penuh adalah dasar data yang akurat dan laporan pemilik yang dapat dipercaya."
+          ]
+        },
+        {
+          "title": "Cara melatih pengguna baru",
+          "paragraphs": [
+            "Pelatihan dimulai dengan menjelaskan tujuan bisnis, bukan nama tombol. Tunjukkan ilustrasi, sebutkan peran Sales penagihan, kasir, keuangan, dan pemilik, lalu minta peserta menunjuk daftar pelanggan, invoice dan jatuh tempo, umur piutang, nota yang dibawa, penerimaan pembayaran, dan rekonsiliasi serta persetujuan. Setelah itu demonstrasikan satu kasus normal dan satu kasus yang menghasilkan peringatan. Peserta kemudian mengulang menggunakan data demo sambil menjelaskan alasan setiap langkah. Pendamping hanya membantu ketika peserta berhenti, sehingga pemahaman tidak bergantung pada hafalan.",
+            "Pengguna dinyatakan siap ketika mampu menyelesaikan kasus, menemukan kesalahan yang sengaja disisipkan, menjelaskan bukti yang harus disimpan, dan mengetahui kapan harus meminta persetujuan. Catat hasil latihan dan topik yang perlu diulang. Jangan melatih langsung dengan data produksi yang sensitif. Setelah pengguna mulai bekerja, lakukan pendampingan pada transaksi pertama dan tinjau hasilnya. Pelatihan yang baik membuat orang nonteknis percaya diri karena mereka memahami maksud proses, bukan sekadar mengikuti layar."
+          ]
+        }
+      ],
+      "wordCount": 1818
+    },
+    {
+      "id": "laporan-tutup-periode",
+      "title": "Laporan, Laba, Audit, Sinkronisasi, dan Tutup Periode",
+      "image": "08-laporan-tutup-periode.png",
+      "alt": "Ilustrasi layar Laporan, Laba, Audit, Sinkronisasi, dan Tutup Periode pada eBisnis Inventory / Sales.",
+      "platform": "Web dan Desktop Windows",
+      "role": "Pemilik, keuangan, auditor, dan administrator",
+      "summary": "Menghasilkan laporan yang dapat dijelaskan, memastikan seluruh perangkat tersinkron, melakukan rekonsiliasi, serta menutup periode tanpa menghapus sejarah transaksi.",
+      "steps": [
+        "tentukan periode laporan",
+        "pastikan semua perangkat tersinkron",
+        "periksa transaksi draft dan gagal",
+        "rekonsiliasi stok",
+        "rekonsiliasi piutang dan hutang",
+        "tinjau laba per produk dan sales",
+        "ekspor laporan",
+        "buat backup",
+        "minta persetujuan",
+        "kunci periode"
+      ],
+      "validations": [
+        "tidak ada transaksi tertunda",
+        "saldo subledger sama dengan laporan utama",
+        "stok negatif telah dijelaskan",
+        "retur masuk pada periode benar",
+        "laba menggunakan HPP yang disetujui",
+        "backup berhasil diuji",
+        "penguncian tercatat dalam audit log"
+      ],
+      "sections": [
+        {
+          "title": "Tujuan layar dan hasil yang diharapkan",
+          "paragraphs": [
+            "Ilustrasi Laporan, Laba, Audit, Sinkronisasi, dan Tutup Periode menggambarkan ruang kerja yang dipakai untuk menghasilkan laporan yang dapat dijelaskan, memastikan seluruh perangkat tersinkron, melakukan rekonsiliasi, serta menutup periode tanpa menghapus sejarah transaksi. Layar ini tidak dimaksudkan sebagai kumpulan angka yang hanya dilihat sekilas. Setiap bagian membantu pengguna menjawab pertanyaan operasional: apa yang sudah terjadi, apa yang belum selesai, siapa yang harus menindaklanjuti, dan bukti apa yang harus disimpan. Pengguna utama adalah Pemilik, keuangan, auditor, dan administrator, sedangkan media yang digunakan adalah Web dan Desktop Windows. Tampilan nyata dapat menyesuaikan ukuran perangkat dan hak akses, tetapi urutan berpikirnya tetap sama.",
+            "Hasil terbaik diperoleh ketika pengguna membuka layar dengan tujuan yang jelas. Sebelum menekan tombol apa pun, tentukan keputusan yang ingin dibuat dan periode data yang ingin diperiksa. Setelah pekerjaan selesai, hasil yang diharapkan adalah: Laporan bulan tersebut stabil, dapat dibandingkan dengan bulan berikutnya, dan setiap perubahan setelah penutupan memerlukan prosedur yang jelas serta dapat diaudit. Dengan pendekatan ini, sistem bukan sekadar tempat mengetik, melainkan catatan bersama yang menghubungkan sales, gudang, administrasi, keuangan, dan pemilik. Setiap orang membaca sumber data yang sama sesuai batas kewenangannya."
+          ]
+        },
+        {
+          "title": "Cara membaca ilustrasi dari atas ke bawah",
+          "paragraphs": [
+            "Mulailah dari bagian paling atas. Di sana biasanya terdapat nama perusahaan, identitas pengguna, periode kerja, lokasi atau cabang, serta waktu pembaruan terakhir. Informasi ini wajib dibaca agar pengguna tidak mengolah data milik tenant, periode, atau gudang yang salah. Setelah identitas benar, lanjutkan ke bagian utama yang terdiri atas filter periode dan dimensi, ringkasan laba kotor, rekap per sales, rekonsiliasi stok dan keuangan, status sinkronisasi, dan checklist persetujuan tutup periode. Susunan tersebut dibuat agar pengguna melihat ringkasan lebih dulu, kemudian beralih ke rincian dan tindakan.",
+            "Warna pada ilustrasi berfungsi sebagai petunjuk, bukan hiasan. Hijau menunjukkan kondisi selesai atau aman, kuning menunjukkan keadaan yang perlu diperiksa, merah menunjukkan risiko atau pekerjaan yang tertahan, dan abu-abu menunjukkan informasi pendukung. Jangan mengambil keputusan hanya berdasarkan warna; buka rincian yang mendasarinya. Angka pada ilustrasi adalah contoh pembelajaran dan bukan data produksi Caruban Medika Nusantara. Pada aplikasi asli, pengguna harus memeriksa nomor dokumen, tanggal, pihak terkait, dan status sebelum melanjutkan."
+          ]
+        },
+        {
+          "title": "Persiapan sebelum memulai pekerjaan",
+          "paragraphs": [
+            "Sebelum menggunakan Laporan, Laba, Audit, Sinkronisasi, dan Tutup Periode, pastikan akun yang dipakai adalah akun pribadi dan peran yang tampil sesuai pekerjaan. Jangan berbagi akun karena sistem mencatat siapa yang membuat, mengubah, menyetujui, atau membatalkan data. Periksa koneksi, indikator sinkronisasi, tanggal serta jam perangkat, dan cabang aktif. Untuk pekerjaan yang memengaruhi stok atau uang, siapkan dokumen pendukung seperti pesanan, invoice, bukti penerimaan, bukti transfer, atau berita acara. Persiapan sederhana ini mencegah kesalahan yang sulit dilacak kemudian.",
+            "Pengguna juga perlu memahami batas kewenangan. Pemilik, keuangan, auditor, dan administrator tidak selalu mempunyai hak yang sama. Bila tombol tidak terlihat atau tidak aktif, jangan mencari cara untuk melewati pengendalian. Catat nomor dokumen dan minta bantuan atasan atau admin hak akses. Data sensitif tidak boleh dikirim melalui grup umum. Ketika bekerja menggunakan Web dan Desktop Windows, pastikan layar terkunci saat ditinggalkan dan berkas hasil ekspor disimpan pada tempat yang disetujui perusahaan."
+          ]
+        },
+        {
+          "title": "Langkah kerja utama",
+          "paragraphs": [
+            "Urutan kerja yang disarankan adalah tentukan periode laporan, pastikan semua perangkat tersinkron, periksa transaksi draft dan gagal, rekonsiliasi stok, rekonsiliasi piutang dan hutang, tinjau laba per produk dan sales, ekspor laporan, buat backup, minta persetujuan, dan kunci periode. Jalankan urutan tersebut secara tertib karena setiap langkah menyiapkan informasi bagi langkah berikutnya. Misalnya, pemilihan pelanggan atau supplier menentukan alamat, syarat bayar, harga, dan batas kredit; pemilihan produk menentukan satuan, batch, HPP, dan ketersediaan. Jika data awal salah, hasil akhir juga salah meskipun perhitungan sistem benar. Gunakan pencarian dan filter untuk mempersempit data, lalu buka satu catatan yang benar sebelum melakukan tindakan.",
+            "Sesudah memasukkan data, baca kembali ringkasan sebelum menyimpan. Sistem dapat memberikan peringatan, menahan proses, atau meminta persetujuan. Peringatan bukan gangguan; peringatan menjelaskan risiko yang harus diselesaikan. Jika jaringan terputus, periksa apakah pekerjaan tersimpan sebagai draft lokal, antrean sinkronisasi, atau belum tersimpan sama sekali. Jangan mengulang transaksi tanpa memeriksa nomor referensi karena pengulangan dapat menghasilkan data ganda. Setelah berhasil, catat status akhir dan pihak yang menerima pekerjaan berikutnya."
+          ]
+        },
+        {
+          "title": "Pemeriksaan sebelum menyimpan atau menyetujui",
+          "paragraphs": [
+            "Gunakan daftar pemeriksaan berikut sebagai kebiasaan: tidak ada transaksi tertunda, saldo subledger sama dengan laporan utama, stok negatif telah dijelaskan, retur masuk pada periode benar, laba menggunakan HPP yang disetujui, backup berhasil diuji, dan penguncian tercatat dalam audit log. Pemeriksaan tidak perlu memakan waktu lama jika dilakukan pada setiap transaksi. Fokus pada identitas pihak, tanggal, mata uang, satuan, jumlah, harga, pajak, potongan, batch, jatuh tempo, dan status. Untuk transaksi bernilai besar atau berisiko, lakukan prinsip empat mata: satu orang menyiapkan dan orang lain memeriksa. Pemisahan ini melindungi pegawai sekaligus perusahaan dari kesalahan yang tidak disengaja.",
+            "Setelah tombol simpan ditekan, cari tanda keberhasilan yang nyata, misalnya nomor dokumen, status tersimpan, waktu sinkronisasi, atau perubahan pada daftar. Pesan singkat saja tidak cukup jika layar kemudian menunjukkan status gagal. Pada perangkat Android, bedakan antara tersimpan di perangkat dan sudah diterima server. Pada Web atau Desktop, jangan menutup jendela saat proses masih berjalan. Bila hasil tidak sesuai, jangan membuat koreksi diam-diam; gunakan prosedur edit, pembatalan, retur, atau penyesuaian yang menyediakan alasan dan jejak audit."
+          ]
+        },
+        {
+          "title": "Kesalahan umum dan cara mencegahnya",
+          "paragraphs": [
+            "Kesalahan yang paling sering terjadi pada alur ini adalah menutup periode sebelum sinkronisasi, menghapus transaksi lama, mengubah laporan di luar sistem, mengabaikan selisih kecil berulang, membagikan file laporan tanpa perlindungan, dan membuka kembali periode tanpa persetujuan. Sebagian besar bukan disebabkan oleh kerusakan sistem, melainkan karena konteks tidak diperiksa, pekerjaan terburu-buru, atau tanggung jawab tidak jelas. Cara pencegahannya adalah menggunakan akun sendiri, memulai dari dokumen sumber, membaca ringkasan, dan menyelesaikan satu transaksi sebelum pindah ke transaksi lain. Hindari membuka banyak tab untuk pekerjaan yang sama karena pengguna dapat menyimpan versi yang berbeda.",
+            "Jika kesalahan sudah terjadi, hentikan proses berikutnya dan catat fakta apa adanya: nomor dokumen, waktu, pengguna, nilai, status, dan dampak. Jangan menghapus bukti atau mengganti data agar tampak benar. Laporkan kepada penanggung jawab, pilih mekanisme koreksi yang tersedia, lalu periksa laporan setelah koreksi diposting. Sikap terbuka terhadap kesalahan mempercepat pemulihan dan membuat aturan kerja dapat diperbaiki. Sistem menyimpan jejak perubahan untuk membantu penelusuran, bukan untuk menyalahkan pengguna yang mengikuti prosedur."
+          ]
+        },
+        {
+          "title": "Pembagian tanggung jawab antarperan",
+          "paragraphs": [
+            "Pada Laporan, Laba, Audit, Sinkronisasi, dan Tutup Periode, pembuat data bertanggung jawab terhadap kelengkapan informasi awal; pemeriksa bertanggung jawab terhadap kesesuaian dokumen; penyetuju bertanggung jawab terhadap keputusan bisnis; dan administrator bertanggung jawab terhadap ketersediaan sistem serta hak akses. Pemilik usaha menggunakan hasil untuk mengarahkan bisnis, tetapi tidak seharusnya mengambil alih seluruh pekerjaan operasional. Pembagian tugas yang jelas mempercepat proses karena setiap orang mengetahui kapan harus bertindak dan kapan harus menyerahkan pekerjaan.",
+            "Gunakan kolom catatan, status, dan penanggung jawab untuk melakukan serah terima. Instruksi lisan tetap boleh digunakan untuk mempercepat komunikasi, tetapi keputusan penting harus dicatat di sistem atau dokumen resmi. Jika seorang pegawai tidak hadir, atasan menunjuk pengganti melalui hak akses sementara yang terdokumentasi. Jangan memberikan kata sandi pegawai yang tidak hadir. Setelah tugas selesai, cabut hak sementara dan tinjau aktivitas yang dilakukan selama masa penggantian."
+          ]
+        },
+        {
+          "title": "Perbedaan penggunaan Web, Windows, dan Android",
+          "paragraphs": [
+            "Web dan Desktop Windows menyediakan kemampuan yang sama pada inti data, tetapi cara berinteraksinya dapat berbeda. Web dan Desktop cocok untuk tabel lebar, pemeriksaan banyak dokumen, rekonsiliasi, ekspor, serta persetujuan. Android cocok untuk pekerjaan lapangan, pencarian cepat, pemindaian, pengambilan bukti, dan pekerjaan yang perlu tetap berjalan ketika koneksi tidak stabil. Pengguna tidak perlu memaksakan semua pekerjaan ke satu perangkat. Pilih perangkat berdasarkan risiko, jumlah data, dan kondisi tempat kerja.",
+            "Pada layar kecil, bagian informasi dapat disusun vertikal dan beberapa kolom diringkas menjadi kartu. Gulir sampai akhir dan buka detail sebelum menyimpulkan bahwa data tidak tersedia. Pada layar besar, jangan mengabaikan kolom di sebelah kanan; gunakan pengguliran horizontal bila diperlukan. Perubahan yang dibuat di satu perangkat baru terlihat di perangkat lain setelah sinkronisasi berhasil. Karena itu, indikator pembaruan terakhir harus menjadi bagian dari pemeriksaan, terutama sebelum menyetujui stok, kredit, pembayaran, atau penutupan periode."
+          ]
+        },
+        {
+          "title": "Contoh kasus sederhana",
+          "paragraphs": [
+            "Pada akhir bulan, admin memastikan semua order sales telah masuk, keuangan mencocokkan pembayaran, gudang menyelesaikan penyesuaian, lalu Muklis menyetujui penguncian setelah membaca laporan laba dan piutang. Dalam contoh ini, pengguna tidak langsung mengejar kecepatan. Ia memeriksa identitas, konteks, dokumen, dan status. Ketika menemukan peringatan, ia membuka rincian dan menentukan apakah pekerjaan dapat dilanjutkan sendiri atau membutuhkan persetujuan. Seluruh tindakan diberi nomor referensi sehingga pihak berikutnya tidak perlu menebak asal informasi. Cara kerja seperti ini membuat pelayanan pelanggan tetap cepat tanpa mengorbankan pengendalian.",
+            "Setelah kasus selesai, pengguna membandingkan hasil dengan tujuan awal. Ia memastikan tidak ada draft tertinggal, antrean sinkronisasi kosong atau diketahui, dan laporan terkait telah berubah sesuai transaksi. Bila hasil belum muncul, ia tidak langsung mengulangi input; ia memeriksa status dan log lebih dahulu. Contoh ini dapat dipakai sebagai latihan. Gunakan data demo, lakukan langkah dari awal sampai akhir, lalu minta peserta lain menjelaskan apa yang terjadi dengan bahasa mereka sendiri."
+          ]
+        },
+        {
+          "title": "Bukti, audit, dan keamanan informasi",
+          "paragraphs": [
+            "Setiap pekerjaan pada Laporan, Laba, Audit, Sinkronisasi, dan Tutup Periode menghasilkan bukti. Bukti dapat berupa nomor dokumen, waktu pembuatan, pengguna, status, foto, tanda terima, file ekspor, atau catatan persetujuan. Bukti harus cukup untuk menjawab siapa, apa, kapan, di mana, mengapa, dan berapa nilainya. Simpan bukti pada fasilitas yang disediakan sistem atau lokasi resmi perusahaan. Jangan menggunakan foto pribadi, penyimpanan umum, atau aplikasi pesan sebagai arsip utama.",
+            "Hak akses mengikuti kebutuhan kerja minimum. Data harga beli, laba, saldo piutang, nomor rekening, dan identitas pelanggan hanya boleh dibuka oleh peran yang memerlukannya. Ketika menampilkan layar kepada pihak luar, gunakan mode demo atau samarkan data. Saat mengekspor laporan, periksa penerima dan masa simpan. Jika perangkat hilang, segera laporkan agar sesi dapat dicabut. Audit log tidak boleh dihapus untuk menyembunyikan kesalahan; justru catatan tersebut membantu perusahaan memahami dan memperbaiki proses."
+          ]
+        },
+        {
+          "title": "Checklist penyelesaian pekerjaan",
+          "paragraphs": [
+            "Sebelum meninggalkan layar, tanyakan: apakah tujuan sudah tercapai, apakah nomor dokumen sudah terbentuk, apakah status akhir benar, apakah data sudah tersinkron, apakah dokumen pendukung tersimpan, apakah pihak berikutnya sudah menerima tugas, dan apakah terdapat peringatan yang belum ditangani. Jika satu jawaban masih tidak jelas, pekerjaan belum benar-benar selesai. Tuliskan catatan singkat agar pergantian shift atau pemeriksaan berikutnya tidak dimulai dari nol.",
+            "Pada akhir hari, supervisor meninjau daftar transaksi gagal, draft, pembatalan, penyesuaian, dan persetujuan tertunda. Tinjauan harian lebih ringan daripada menunggu akhir bulan. Gunakan laporan pengecualian untuk mencari hal yang tidak biasa, bukan hanya laporan total. Apabila seluruh pemeriksaan telah lulus, pengguna dapat menutup tugas dan melanjutkan pekerjaan lain. Kebiasaan menyelesaikan satu siklus penuh adalah dasar data yang akurat dan laporan pemilik yang dapat dipercaya."
+          ]
+        },
+        {
+          "title": "Cara melatih pengguna baru",
+          "paragraphs": [
+            "Pelatihan dimulai dengan menjelaskan tujuan bisnis, bukan nama tombol. Tunjukkan ilustrasi, sebutkan peran Pemilik, keuangan, auditor, dan administrator, lalu minta peserta menunjuk filter periode dan dimensi, ringkasan laba kotor, rekap per sales, rekonsiliasi stok dan keuangan, status sinkronisasi, dan checklist persetujuan tutup periode. Setelah itu demonstrasikan satu kasus normal dan satu kasus yang menghasilkan peringatan. Peserta kemudian mengulang menggunakan data demo sambil menjelaskan alasan setiap langkah. Pendamping hanya membantu ketika peserta berhenti, sehingga pemahaman tidak bergantung pada hafalan.",
+            "Pengguna dinyatakan siap ketika mampu menyelesaikan kasus, menemukan kesalahan yang sengaja disisipkan, menjelaskan bukti yang harus disimpan, dan mengetahui kapan harus meminta persetujuan. Catat hasil latihan dan topik yang perlu diulang. Jangan melatih langsung dengan data produksi yang sensitif. Setelah pengguna mulai bekerja, lakukan pendampingan pada transaksi pertama dan tinjau hasilnya. Pelatihan yang baik membuat orang nonteknis percaya diri karena mereka memahami maksud proses, bukan sekadar mengikuti layar."
+          ]
+        }
+      ],
+      "wordCount": 1819
+    }
+  ]
+}
