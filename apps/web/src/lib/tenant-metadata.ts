@@ -17,7 +17,7 @@ export interface TenantMetadata {
 const DEFAULT_IMAGE =
   'https://images.unsplash.com/photo-1556745757-8d76bdb6984b?auto=format&fit=crop&w=1200&q=80';
 const INVENTORY_IMAGE =
-  'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80';
+  'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80';
 const SALON_IMAGE =
   'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80';
 const APOTIK_IMAGE =
@@ -74,23 +74,23 @@ export function metadataForTenant(hostname = window.location.hostname): TenantMe
     const isDemo = host === 'demo-inventory.ebisnis.id';
     const isCmn = isCmnInventoryHost(host);
     const title = isRoot
-      ? 'eBisnis Inventory — Sales dan Stok Obat Terintegrasi'
+      ? 'eBisnis Sales & Inventory - Distribusi dan Sales Keliling'
       : isCmn
-        ? 'Caruban Medika Nusantara — Sales Obat Cirebon'
-      : `${tenantName} — Inventory Obat Terintegrasi`;
+        ? 'Caruban Medika Nusantara - Sales Obat Cirebon'
+        : `${tenantName} - Sales dan Inventory Terintegrasi`;
     const description = isRoot
-      ? 'Aplikasi inventory untuk sales lapangan, admin gudang, batch, expiry, piutang, hutang, dan dashboard pemilik.'
+      ? 'Aplikasi umum untuk kunjungan sales, order toko, harga pelanggan, stok gudang, penagihan, piutang, pembelian, dan dashboard pemilik.'
       : isCmn
         ? 'Company profile dan katalog display Caruban Medika Nusantara, sales obat untuk Cirebon dan sekitarnya. Pemesanan hanya untuk pelanggan terdaftar melalui aplikasi.'
-      : `Inventory obat terintegrasi untuk sales, admin gudang, piutang, batch, expiry, dan dashboard pemilik ${tenantName}.`;
+        : `Sales dan inventory terintegrasi untuk kunjungan toko, order, stok, penagihan, dan dashboard pemilik ${tenantName}.`;
     return {
       title,
       description,
       siteName: tenantName,
-      appName: isDemo ? 'Demo Inventory Obat' : tenantName,
+      appName: isDemo ? 'Demo Sales & Inventory' : tenantName,
       iconText: isRoot ? 'eI' : initials(tenantName),
       themeColor: '#0f766e',
-      imageUrl: INVENTORY_IMAGE,
+      imageUrl: isCmn ? APOTIK_IMAGE : INVENTORY_IMAGE,
     };
   }
 

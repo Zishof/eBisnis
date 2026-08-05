@@ -5,8 +5,11 @@ import {
   BadgeCheck,
   Barcode,
   Beaker,
+  BookOpen,
   ClipboardCheck,
   Clock3,
+  Download,
+  ExternalLink,
   Factory,
   Layers3,
   MapPin,
@@ -29,6 +32,11 @@ const photo = {
     'https://images.unsplash.com/photo-1576671081837-49000212a370?auto=format&fit=crop&w=900&q=80',
   lab:
     'https://images.unsplash.com/photo-1582719471384-894fbb16e074?auto=format&fit=crop&w=900&q=80',
+};
+
+const manualApotik = {
+  pdf: '/panduan/apotik/manual-pengguna-sistem-apotik-emedik.pdf',
+  word: '/panduan/apotik/manual-pengguna-sistem-apotik-emedik.docx',
 };
 
 const pharmacyFlows = [
@@ -177,8 +185,8 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
         tone="emerald"
         links={
           tenantProfile
-            ? ['Profil', 'Katalog', 'Layanan', 'Keamanan', 'Dokumen']
-            : ['Farmasi', 'POS Apotik', 'Racikan', 'Keamanan', 'Dokumen', 'Demo']
+            ? ['Profil', 'Katalog', 'Layanan', 'Keamanan', 'Panduan', 'Dokumen']
+            : ['Farmasi', 'POS Apotik', 'Racikan', 'Keamanan', 'Panduan', 'Dokumen', 'Demo']
         }
       />
 
@@ -400,6 +408,8 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
           </div>
         </section>
 
+        <PublicManualSection />
+
         <OfferDocumentSection tone="emerald" />
 
         <LandingCta
@@ -412,6 +422,86 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
         />
       </main>
     </div>
+  );
+}
+
+function PublicManualSection() {
+  return (
+    <section id="Panduan" className="bg-emerald-950 py-14 text-white sm:py-16">
+      <div className="container-page grid gap-8 xl:grid-cols-[0.78fr_1.22fr] xl:items-start">
+        <div className="xl:sticky xl:top-24">
+          <p className="section-eyebrow bg-white/10 text-emerald-200">Panduan publik</p>
+          <h2 className="mt-4 text-3xl font-black leading-tight sm:text-4xl">
+            Baca tata penggunaan Sistem Apotik dari awal sampai tutup hari.
+          </h2>
+          <p className="mt-4 max-w-2xl leading-7 text-emerald-50">
+            Manual 28 halaman ini mencakup Web, Android, dan Windows Desktop:
+            persiapan tenant, master obat, PBF, resep, telaah, penyerahan, racikan,
+            batch-expiry, FEFO, POS, printer, laporan, keamanan, dan troubleshooting.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row xl:flex-col 2xl:flex-row">
+            <a
+              href={manualApotik.pdf}
+              target="_blank"
+              rel="noreferrer"
+              className="btn bg-white px-5 py-3 text-emerald-900 hover:bg-emerald-50"
+            >
+              <BookOpen className="h-4 w-4" aria-hidden />
+              Baca manual PDF
+              <ExternalLink className="h-4 w-4" aria-hidden />
+            </a>
+            <a
+              href={manualApotik.word}
+              download
+              className="btn border border-white/40 px-5 py-3 text-white hover:bg-white/10"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Unduh versi Word
+            </a>
+          </div>
+          <div className="mt-6 grid gap-2 text-sm text-emerald-100 sm:grid-cols-2 xl:grid-cols-1">
+            {[
+              'Langkah operasional menurut peran',
+              'Ilustrasi layar Web dan Flutter',
+              'Pintasan POS dan konfigurasi printer',
+              'Checklist implementasi dan go-live',
+            ].map((item) => (
+              <p key={item} className="flex items-center gap-2">
+                <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden />
+                {item}
+              </p>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-lg border border-white/15 bg-white shadow-2xl">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-slate-950">
+            <div>
+              <p className="text-xs font-bold uppercase text-emerald-700">Pembaca dokumen</p>
+              <p className="text-sm font-semibold">Manual Pengguna Sistem Apotik eMedik</p>
+            </div>
+            <a
+              href={manualApotik.pdf}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-50"
+            >
+              Buka penuh
+              <ExternalLink className="h-4 w-4" aria-hidden />
+            </a>
+          </div>
+          <iframe
+            src={`${manualApotik.pdf}#view=FitH`}
+            title="Manual Pengguna Sistem Apotik eMedik"
+            className="h-[70vh] min-h-[32rem] w-full bg-slate-100"
+            loading="lazy"
+          />
+          <p className="border-t border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+            Jika pratinjau PDF tidak didukung perangkat, gunakan tombol Baca manual PDF.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 

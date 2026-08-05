@@ -31,13 +31,13 @@ export function inventoryRootRedirectFor(
 ): string | null {
   if (!isInventoryHost(hostname)) return null;
   const path = pathname.replace(/\/+$/, '') || '/';
-  return path === '/' || path === '/a' || path === '/ebisnis/a' ? '/contoh-usaha/inventory' : null;
+  return path === '/' || path === '/a' || path === '/ebisnis/a' ? '/inventory' : null;
 }
 
 export function inventoryTenantLabelFromHost(hostname: string = window.location.hostname): string {
   const host = cleanHost(hostname);
-  if (host === 'inventory.ebisnis.id' || host === 'nventory.ebisnis.id') return 'eBisnis Inventory';
-  if (host === 'demo-inventory.ebisnis.id') return 'Demo Inventory Obat';
+  if (host === 'inventory.ebisnis.id' || host === 'nventory.ebisnis.id') return 'eBisnis Sales & Inventory';
+  if (host === 'demo-inventory.ebisnis.id') return 'Demo Sales & Inventory';
   if (host === 'cmnmedika-inventory.ebisnis.id') return 'Caruban Medika Nusantara';
 
   const tenantSlug = host.endsWith('.inventory.ebisnis.id')

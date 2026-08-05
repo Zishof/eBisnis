@@ -44,11 +44,11 @@ const AKUN_SALON_DEMO = [
 
 const AKUN_INVENTORY_DEMO = [
   {
-    label: 'Sales Obat',
+    label: 'Sales Lapangan',
     roleCode: 'SALES_OBAT',
     username: 'sales.inventory',
     password: 'InventoryDemo#2026',
-    description: 'Entry order lapangan, cek stok per batch, invoice, dan status piutang customer.',
+    description: 'Catat kunjungan dan order toko, cek stok, invoice, serta status piutang pelanggan.',
     icon: Route,
   },
   {
@@ -232,7 +232,7 @@ export function LoginPage() {
                   : inventory
                     ? cmnInventory
                       ? 'Masuk ke Caruban Medika Nusantara Inventory'
-                      : 'Masuk ke Demo Inventory Obat'
+                      : 'Masuk ke Demo Sales & Inventory'
                   : emedikBrand
                     ? emedikBrand.loginTitle
                     : t('auth.loginTitle')}
@@ -245,7 +245,7 @@ export function LoginPage() {
                 : inventory
                   ? cmnInventory
                     ? 'Gunakan akun Muklis, sales, atau admin Caruban Medika Nusantara.'
-                    : 'Gunakan akun sales, manajemen inventory, atau pemilik untuk mencoba alur inventory obat.'
+                    : 'Gunakan akun sales lapangan, manajemen inventory, atau pemilik untuk mencoba alur distribusi barang.'
                 : emedikBrand
                   ? emedikBrand.loginSubtitle
               : t('auth.loginSubtitle')}

@@ -142,10 +142,10 @@ function PublicLayoutEBisnis({
     : inventoryHost
       ? {
           logoText: null,
-          name: inventoryTenantName ?? 'eBisnis Inventory',
+          name: inventoryTenantName ?? 'eBisnis Sales & Inventory',
           homeUrl: inventoryHomeUrl,
           description:
-            'Aplikasi inventory terintegrasi untuk sales obat, gudang, pembelian, piutang, hutang, dan monitoring pemilik usaha.',
+            'Aplikasi umum untuk sales keliling, order toko, stok gudang, pembelian, penagihan, piutang, dan monitoring pemilik usaha.',
         }
     : {
         logoText: 'eB',

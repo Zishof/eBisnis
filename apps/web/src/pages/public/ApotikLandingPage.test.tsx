@@ -30,6 +30,18 @@ describe('ApotikLandingPage', () => {
     expect(screen.getAllByRole('link', { name: /Buka POS Apotik/i })).toEqual(
       expect.arrayContaining([expect.objectContaining({ href: expect.stringContaining('/app/apotik/pos') })]),
     );
+    expect(screen.getByRole('link', { name: /Baca manual PDF/i })).toHaveAttribute(
+      'href',
+      '/panduan/apotik/manual-pengguna-sistem-apotik-emedik.pdf',
+    );
+    expect(screen.getByRole('link', { name: /Unduh versi Word/i })).toHaveAttribute(
+      'href',
+      '/panduan/apotik/manual-pengguna-sistem-apotik-emedik.docx',
+    );
+    expect(screen.getByTitle('Manual Pengguna Sistem Apotik eMedik')).toHaveAttribute(
+      'src',
+      '/panduan/apotik/manual-pengguna-sistem-apotik-emedik.pdf#view=FitH',
+    );
     expect(screen.queryByText('Katalog produk tenant')).not.toBeInTheDocument();
   });
 
@@ -52,6 +64,7 @@ describe('ApotikLandingPage', () => {
     expect(screen.getByText('Dikelola admin tenant')).toBeInTheDocument();
     expect(screen.getByText('OTC dan checkout POS')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Kelola katalog produk/i })).toHaveAttribute('href', '/app/products');
+    expect(screen.getByRole('link', { name: /Baca manual PDF/i })).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: /Lihat katalog/i })).toEqual(
       expect.arrayContaining([expect.objectContaining({ href: expect.stringContaining('#Katalog') })]),
     );

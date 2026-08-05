@@ -15,6 +15,7 @@ import {
   Banknote,
   Barcode,
   Beaker,
+  BookOpen,
   CheckCircle2,
   ClipboardCheck,
   Factory,
@@ -263,6 +264,15 @@ export function PharmacyPosPage() {
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
+            <a
+              href="/panduan/apotik/manual-pengguna-sistem-apotik-emedik.pdf"
+              target="_blank"
+              rel="noreferrer"
+              className="btn-outline px-3 py-2 text-xs"
+            >
+              <BookOpen className="h-3.5 w-3.5" aria-hidden />
+              Panduan pengguna
+            </a>
             <Link to="/app/pos/kasir" className="btn-outline px-3 py-2 text-xs">
               POS penjualan biasa
             </Link>

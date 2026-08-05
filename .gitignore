@@ -85,6 +85,8 @@ apps/web/src/api/generated/
 .DS_Store
 Thumbs.db
 desktop.ini
+__pycache__/
+*.py[cod]
 
 # ---------------------------------------------------------------------------
 # Subversion — repository ini Git-only sejak cutover Versi 7

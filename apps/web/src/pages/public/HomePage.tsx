@@ -116,7 +116,7 @@ export const DOMAIN_CONTOH_USAHA: Record<string, string> = {
   'Bengkel Mobil': 'bengkelmobil.ebisnis.id',
   'Bengkel Sepeda': 'bengkelsepeda.ebisnis.id',
   Apotek: 'apotik.emedik.id',
-  'Inventory Obat': 'inventory.ebisnis.id',
+  'Sales & Inventory': 'inventory.ebisnis.id',
   Restoran: 'restoran.ebisnis.id',
   Kuliner: 'kuliner.ebisnis.id',
   Kafe: 'cafe.ebisnis.id',
@@ -277,13 +277,13 @@ export const CONTOH_USAHA = [
     imageAlt: 'Rak obat dan layanan apotek',
   },
   {
-    label: 'Inventory Obat',
-    detail: 'Sales, batch, expiry, piutang',
+    label: 'Sales & Inventory',
+    detail: 'Sales keliling, stok, order, piutang',
     href: 'https://inventory.ebisnis.id',
     icon: PackageSearch,
     status: 'Siap dicoba',
-    imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=900&q=80',
-    imageAlt: 'Rak obat dan pengelolaan inventory farmasi',
+    imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=900&q=80',
+    imageAlt: 'Gudang distribusi dan pengelolaan inventory barang',
   },
   {
     label: 'Restoran',
@@ -726,7 +726,7 @@ const UNIT_USAHA_HERO = [
   'Bengkel Motor',
   'Bengkel Mobil',
   'Apotek',
-  'Inventory Obat',
+  'Sales & Inventory',
 ] as const;
 
 export function HomePage() {

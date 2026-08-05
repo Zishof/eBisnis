@@ -20,3 +20,21 @@ describe('metadataForTenant untuk eMedik', () => {
     expect(metadata.themeColor).toBe('#0f766e');
   });
 });
+
+describe('metadataForTenant untuk Sales dan Inventory', () => {
+  it('memakai positioning lintas industri pada domain produk utama', () => {
+    const metadata = metadataForTenant('inventory.ebisnis.id');
+
+    expect(metadata.title).toBe('eBisnis Sales & Inventory - Distribusi dan Sales Keliling');
+    expect(metadata.description).toContain('kunjungan sales');
+    expect(metadata.description).not.toContain('obat');
+  });
+
+  it('mempertahankan positioning farmasi khusus Caruban Medika Nusantara', () => {
+    const metadata = metadataForTenant('cmnmedika-inventory.ebisnis.id');
+
+    expect(metadata.title).toBe('Caruban Medika Nusantara - Sales Obat Cirebon');
+    expect(metadata.description).toContain('sales obat');
+    expect(metadata.siteName).toBe('Caruban Medika Nusantara');
+  });
+});

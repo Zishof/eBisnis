@@ -25,17 +25,17 @@ describe('host inventory eBisnis', () => {
   });
 
   it('mengalihkan root host inventory ke landing inventory', () => {
-    expect(inventoryRootRedirectFor('demo-inventory.ebisnis.id', '/')).toBe('/contoh-usaha/inventory');
-    expect(inventoryRootRedirectFor('demo-inventory.ebisnis.id', '/a/')).toBe('/contoh-usaha/inventory');
-    expect(inventoryRootRedirectFor('demo-inventory.ebisnis.id', '/ebisnis/a')).toBe('/contoh-usaha/inventory');
+    expect(inventoryRootRedirectFor('demo-inventory.ebisnis.id', '/')).toBe('/inventory');
+    expect(inventoryRootRedirectFor('demo-inventory.ebisnis.id', '/a/')).toBe('/inventory');
+    expect(inventoryRootRedirectFor('demo-inventory.ebisnis.id', '/ebisnis/a')).toBe('/inventory');
     expect(inventoryRootRedirectFor('demo-inventory.ebisnis.id', '/masuk')).toBeNull();
     expect(inventoryRootRedirectFor('demo-inventory.ebisnis.id', '/app')).toBeNull();
   });
 
   it('membuat label tenant dari host', () => {
-    expect(inventoryTenantLabelFromHost('inventory.ebisnis.id')).toBe('eBisnis Inventory');
-    expect(inventoryTenantLabelFromHost('nventory.ebisnis.id')).toBe('eBisnis Inventory');
-    expect(inventoryTenantLabelFromHost('demo-inventory.ebisnis.id')).toBe('Demo Inventory Obat');
+    expect(inventoryTenantLabelFromHost('inventory.ebisnis.id')).toBe('eBisnis Sales & Inventory');
+    expect(inventoryTenantLabelFromHost('nventory.ebisnis.id')).toBe('eBisnis Sales & Inventory');
+    expect(inventoryTenantLabelFromHost('demo-inventory.ebisnis.id')).toBe('Demo Sales & Inventory');
     expect(inventoryTenantLabelFromHost('cmnmedika-inventory.ebisnis.id')).toBe('Caruban Medika Nusantara');
     expect(inventoryTenantLabelFromHost('toko-obat-jaya-inventory.ebisnis.id')).toBe('Toko Obat Jaya');
     expect(inventoryTenantLabelFromHost('apotek-sehat.inventory.ebisnis.id')).toBe('Apotek Sehat');

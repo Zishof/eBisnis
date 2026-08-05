@@ -25,7 +25,7 @@ import {
 import { inventoryTenantLabelFromHost, isCmnInventoryHost } from './inventory-host';
 
 const photos = {
-  hero: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1600&q=82',
+  hero: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1600&q=82',
   warehouse:
     'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=82',
   sales: 'https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?auto=format&fit=crop&w=1200&q=82',
@@ -38,22 +38,22 @@ const photos = {
     'https://images.unsplash.com/photo-1580674285054-bed31e145f59?auto=format&fit=crop&w=1200&q=82',
 };
 
-const legacyMetrics = [
-  ['626', 'master barang obat'],
-  ['94.072', 'baris penjualan lama'],
-  ['60.269', 'baris pembelian lama'],
-  ['2.875', 'batch dan expiry'],
-  ['334', 'customer aktif'],
-  ['101', 'supplier'],
+const productCapabilities = [
+  ['Multi-industri', 'barang dagang dan distribusi'],
+  ['3 platform', 'web, Android, dan Windows'],
+  ['Per sales', 'order, tagihan, dan kinerja'],
+  ['Per gudang', 'stok, mutasi, dan opname'],
+  ['Per pelanggan', 'harga, limit, dan piutang'],
+  ['Terintegrasi', 'pembelian sampai laporan pemilik'],
 ];
 
 const personaAccounts = [
   {
     icon: Route,
-    title: 'Sales Obat',
+    title: 'Sales Lapangan',
     username: 'sales.inventory',
     password: 'InventoryDemo#2026',
-    body: 'Entry order lapangan, cek stok per batch, pilih customer, cetak invoice, dan pantau piutang customer.',
+    body: 'Catat kunjungan dan order toko, cek stok, pilih harga pelanggan, kirim invoice, serta pantau tagihan.',
   },
   {
     icon: ClipboardList,
@@ -71,25 +71,16 @@ const personaAccounts = [
   },
 ];
 
-const cmnAccounts = [
-  ['Pemilik', 'muklis', 'muklis123!!'],
-  ['Sales Masrukin', 'masrukin', 'masrukin123!!'],
-  ['Sales Tohirin', 'tohirin', 'tohirin123!!'],
-  ['Sales Nofal', 'nofal', 'nofal123!!'],
-  ['Sales Agung', 'agung', 'agung123!!'],
-  ['Admin', 'cmnmedika', 'cmnmedika123!!'],
-] as const;
-
 const flows = [
   {
     icon: Smartphone,
     title: 'Sales mobile dan desktop',
-    body: 'Sales dapat mencatat penjualan obat dari lapangan, memilih customer, melihat harga jual, stok tersedia, dan status piutang.',
+    body: 'Sales mencatat kunjungan dan penjualan dari lapangan, memilih toko, melihat harga berlaku, stok tersedia, dan status piutang.',
   },
   {
     icon: Boxes,
-    title: 'Inventory batch-aware',
-    body: 'Setiap obat bisa dilacak berdasarkan nomor batch, tanggal expired, stok awal, masuk, keluar, harga beli, dan harga jual.',
+    title: 'Inventory lintas produk',
+    body: 'Barang dilacak menurut SKU, satuan, gudang, stok awal, barang masuk-keluar, harga beli-jual, serta batch atau serial bila diperlukan.',
   },
   {
     icon: ReceiptText,
@@ -104,9 +95,9 @@ const flows = [
 ];
 
 const dashboards = [
-  ['Omzet harian', 'Grafik penjualan obat per sales, outlet, customer, dan kategori.'],
+  ['Omzet harian', 'Grafik penjualan per sales, wilayah, toko pelanggan, kategori, dan kanal order.'],
   ['Laba kotor', 'Perbandingan harga beli rata-rata dan harga jual per transaksi.'],
-  ['Expiry risk', 'Daftar batch yang mendekati tanggal kedaluwarsa agar cepat diprioritaskan.'],
+  ['Risiko persediaan', 'Daftar stok lambat, stok minimum, batch kedaluwarsa, atau serial yang perlu ditindaklanjuti.'],
   ['Aging piutang', 'Piutang customer dikelompokkan 0-30, 31-60, 61-90, dan lebih dari 90 hari.'],
   ['Restock planner', 'Saran pembelian berdasarkan stok minimum dan pergerakan barang.'],
   ['Investor view', 'Ringkasan modal barang, omzet, laba, arus kas, dan bagi hasil.'],
@@ -120,8 +111,8 @@ const dailyWorkflow = [
   },
   {
     icon: PackageSearch,
-    title: 'Katalog obat dan stok tersedia',
-    body: 'Produk ditampilkan dengan harga, batch, expiry, stok gudang, stok sales, dan catatan substitusi agar order tidak salah barang.',
+    title: 'Katalog barang dan stok tersedia',
+    body: 'Produk ditampilkan dengan harga pelanggan, satuan, stok gudang, stok sales, promo, serta batch atau serial bila digunakan.',
   },
   {
     icon: ClipboardCheck,
@@ -136,17 +127,17 @@ const dailyWorkflow = [
 ];
 
 const readinessChecks = [
-  ['Schema tenant sendiri', 'cmnmedika_inventory', 'Data CMN tidak bercampur dengan tenant lain.'],
-  ['Akun kerja awal', '6 akun', 'Pemilik, admin, dan empat sales sudah didefinisikan untuk uji.'],
-  ['Data legacy', '222.944+ baris', 'DBF lama dipetakan ke produk, transaksi, pembelian, piutang, hutang, dan harga.'],
-  ['Dashboard', 'Owner-ready', 'KPI, sales ranking, customer ranking, expiry risk, dan rekonsiliasi impor.'],
+  ['Isolasi data', 'Schema tenant', 'Setiap perusahaan memakai schema sendiri agar transaksi tidak bercampur dengan tenant lain.'],
+  ['Peran pengguna', 'Role-based', 'Menu sales, admin, supervisor, pemilik, gudang, dan penagihan mengikuti tanggung jawab.'],
+  ['Migrasi data', 'Import-ready', 'Master barang, toko, supplier, harga, stok, transaksi, piutang, dan hutang dapat dipetakan dari sistem lama.'],
+  ['Dashboard', 'Owner-ready', 'KPI omzet, margin, sales ranking, customer ranking, stok, piutang, dan arus kas siap dipantau.'],
 ];
 
 const editableAssets = [
   {
     icon: Camera,
     title: 'Gambar hero dan kartu industri',
-    body: 'Admin dapat mengganti foto obat, gudang, sales, armada, atau aktivitas toko agar sesuai brand tenant.',
+    body: 'Admin dapat mengganti foto produk, gudang, sales, armada, atau aktivitas toko agar sesuai industri dan brand tenant.',
   },
   {
     icon: Settings2,
@@ -240,20 +231,20 @@ export function InventoryLandingPage() {
         <div className="container-page grid gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:items-center lg:py-16">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-              <Pill className="h-3.5 w-3.5" aria-hidden />
-              Produk baru eBisnis untuk sales dan inventory obat
+              <Route className="h-3.5 w-3.5" aria-hidden />
+              Sales keliling dan distribusi lintas industri
             </p>
             <h1 className="mt-5 max-w-4xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl dark:text-white">
-              {tenantName}: inventory obat terintegrasi dari sales lapangan sampai pemilik.
+              {tenantName}: satu alur dari kunjungan sales, order toko, stok, penagihan, sampai dashboard pemilik.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 dark:text-slate-300">
-              Dibangun dari pola aplikasi inventory lama berbasis DBF: master obat, customer, supplier, pembelian,
-              penjualan sales, batch, expiry, piutang, hutang, dan jurnal. Versi baru disiapkan untuk web, Android,
-              dan desktop Windows.
+              Cocok untuk distributor sembako, FMCG, kosmetik, alat teknik, bahan bangunan, perlengkapan usaha,
+              produk pertanian, suku cadang, dan barang dagang lainnya. Sales bekerja dari Android, admin memakai
+              web atau Windows, sementara pemilik memantau usaha secara terpusat.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link to={cmnHost ? '/masuk?produk=inventory&role=PEMILIK_USAHA' : '/masuk?produk=inventory&role=SALES_OBAT'} className="btn-primary px-5 py-3">
-                {cmnHost ? 'Masuk Caruban Medika Nusantara' : 'Masuk demo inventory'}
+              <Link to="/masuk?produk=inventory" className="btn-primary px-5 py-3">
+                Coba demo Sales & Inventory
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
               <a href="#download" className="btn-outline px-5 py-3">
@@ -267,7 +258,7 @@ export function InventoryLandingPage() {
               </a>
             </div>
             <dl className="mt-8 grid gap-3 sm:grid-cols-3">
-              {legacyMetrics.map(([value, label]) => (
+              {productCapabilities.map(([value, label]) => (
                 <div key={label} className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
                   <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</dt>
                   <dd className="mt-1 text-2xl font-black">{value}</dd>
@@ -279,14 +270,14 @@ export function InventoryLandingPage() {
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950 shadow-xl dark:border-slate-800">
             <img
               src={photos.hero}
-              alt="Rak obat apotek dan proses pengelolaan inventory farmasi"
+              alt="Gudang distribusi untuk mendukung sales keliling dan pengelolaan persediaan"
               className="h-72 w-full object-cover sm:h-80"
             />
             <div className="grid gap-3 p-4 sm:grid-cols-3">
               {[
-                ['Batch', 'expiry tracked'],
-                ['Sales', 'order lapangan'],
-                ['Owner', 'monitor laba'],
+                ['Sales', 'kunjungan dan order'],
+                ['Inventory', 'stok lintas gudang'],
+                ['Owner', 'omzet dan margin'],
               ].map(([title, body]) => (
                 <div key={title} className="rounded-lg bg-white/10 p-3 text-white">
                   <p className="text-sm font-bold">{title}</p>
@@ -336,7 +327,7 @@ export function InventoryLandingPage() {
               </div>
             </div>
             <div>
-              <p className="section-eyebrow">Alur kerja sales obat</p>
+              <p className="section-eyebrow">Alur kerja sales keliling</p>
               <h2 className="text-3xl font-black text-slate-950 dark:text-white">
                 Dibuat mengikuti ritme lapangan: sales cepat entry, admin tetap bisa mengontrol, pemilik melihat hasil.
               </h2>
@@ -389,17 +380,17 @@ export function InventoryLandingPage() {
       <section id="kesiapan" className="border-y border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">
         <div className="container-page grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)] lg:items-start">
           <div>
-            <p className="section-eyebrow">Kesiapan CMN</p>
+            <p className="section-eyebrow">Siap untuk beragam usaha distribusi</p>
             <h2 className="text-3xl font-black text-slate-950 dark:text-white">
-              Caruban Medika Nusantara ditampilkan lengkap, nama perusahaan tidak disingkat.
+              Konfigurasi mengikuti cara kerja bisnis Anda, bukan memaksa semua industri memakai proses yang sama.
             </h2>
             <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
-              Domain tetap ringkas sebagai <strong>cmnmedika-inventory.ebisnis.id</strong>, tetapi seluruh identitas
-              publik dan dashboard memakai nama lengkap Caruban Medika Nusantara.
+              Data, peran, harga, wilayah, gudang, metode penagihan, dan laporan dipisahkan per tenant. Fitur batch,
+              tanggal kedaluwarsa, nomor serial, ukuran, warna, atau varian dapat digunakan hanya ketika relevan.
             </p>
             <img
-              src={photos.pharmacy}
-              alt="Layanan farmasi dan obat-obatan Caruban Medika Nusantara"
+              src={photos.delivery}
+              alt="Aktivitas pengiriman barang dari distributor ke toko pelanggan"
               className="mt-6 h-52 w-full rounded-xl object-cover"
             />
           </div>
@@ -429,8 +420,8 @@ export function InventoryLandingPage() {
               <article key={account.username} className="card overflow-hidden">
                 <div className="h-36 bg-slate-900">
                   <img
-                    src={account.title === 'Sales Obat' ? photos.sales : account.title === 'Manajemen Inventory' ? photos.warehouse : photos.owner}
-                    alt={`${account.title} inventory obat`}
+                    src={account.title === 'Sales Lapangan' ? photos.sales : account.title === 'Manajemen Inventory' ? photos.warehouse : photos.owner}
+                    alt={`${account.title} pada aplikasi Sales dan Inventory`}
                     className="h-full w-full object-cover opacity-85"
                   />
                 </div>
@@ -449,23 +440,6 @@ export function InventoryLandingPage() {
             );
           })}
         </div>
-        {cmnHost && (
-          <div className="mt-7 rounded-xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/40">
-            <h3 className="font-bold text-emerald-950 dark:text-emerald-100">
-              Akun awal Caruban Medika Nusantara
-            </h3>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {cmnAccounts.map(([label, username, password]) => (
-                <div key={username} className="rounded-lg bg-white p-3 text-sm shadow-sm dark:bg-slate-900">
-                  <p className="font-semibold">{label}</p>
-                  <p className="mt-1 font-mono text-xs text-slate-600 dark:text-slate-300">
-                    {username} / {password}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </section>
 
       <section id="download" className="border-t border-slate-200 bg-white py-12 dark:border-slate-800 dark:bg-slate-900">
@@ -537,7 +511,7 @@ export function InventoryLandingPage() {
       <section className="container-page pb-12">
         <div className="grid gap-5 md:grid-cols-3">
           {[
-            [PackageSearch, 'Migrasi DBF lama', 'STOK, JUAL, BELI, CUSTOMER, SUPPLIER, SALES, batch, piutang, dan hutang dipetakan sebagai data awal.'],
+            [PackageSearch, 'Migrasi sistem lama', 'Master barang, stok, penjualan, pembelian, pelanggan, supplier, sales, piutang, dan hutang dapat dipetakan sebagai data awal.'],
             [CalendarClock, 'Data demo selalu segar', 'Transaksi contoh akan digeser mengikuti tanggal deploy supaya dashboard tidak tampak basi.'],
             [ShieldCheck, 'Private code, public release', 'Kode tetap di GitHub private; update aplikasi diambil dari server release eBisnis atau GitHub Release privat.'],
           ].map(([Icon, title, body]) => (

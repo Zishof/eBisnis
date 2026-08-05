@@ -27,7 +27,7 @@ describe('tautan kartu contoh unit usaha di beranda', () => {
     expect(tautan['Cuci Motor']).toBe('https://cucimotor.ebisnis.id');
     expect(tautan['Rental Kendaraan']).toBe('https://rentalkendaraan.ebisnis.id');
     expect(tautan['Rental Sepeda']).toBe('https://rentalsepeda.ebisnis.id');
-    expect(tautan['Inventory Obat']).toBe('https://inventory.ebisnis.id');
+    expect(tautan['Sales & Inventory']).toBe('https://inventory.ebisnis.id');
     expect(tautan.Apotek).toBe('https://apotik.emedik.id');
   });
 
