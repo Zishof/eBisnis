@@ -4,6 +4,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import { createHash, randomBytes } from 'crypto';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import {
@@ -12,6 +13,8 @@ import {
   MasukanNilai,
   MasukanSkalaHuruf,
   cariHurufMutu,
+  hitungRingkasanRapor,
+  validasiAlasanPembatalanRapor,
   validasiKomponenNilai,
   validasiMataPelajaran,
   validasiNilai,
@@ -50,6 +53,28 @@ export interface BarisNilaiRapor {
   huruf_mutu: string | null;
 }
 
+export interface BarisRaporFinalisasi {
+  id: string;
+  santri_id: string;
+  tahun_ajaran_id: string;
+  status: 'FINALIZED' | 'VOID';
+  snapshot: BarisNilaiRapor[];
+  summary: Record<string, unknown>;
+  checksum: string;
+  verification_code: string;
+  qr_payload: string;
+  catatan_finalisasi: string | null;
+  wali_kelas_user_id: string | null;
+  wali_kelas_signed_at: string | null;
+  kepala_user_id: string | null;
+  kepala_signed_at: string | null;
+  finalized_at: string;
+  finalized_by: string | null;
+  voided_at: string | null;
+  voided_by: string | null;
+  void_reason: string | null;
+}
+
 export interface BarisNilai {
   id: string;
   santri_id: string;
@@ -64,6 +89,12 @@ export interface BarisTahunAjaran {
   tanggal_mulai: string;
   tanggal_selesai: string;
   status: string;
+}
+
+export interface MasukanFinalisasiRapor {
+  catatanFinalisasi?: string | null;
+  waliKelasUserId?: string | null;
+  kepalaUserId?: string | null;
 }
 
 @Injectable()
@@ -260,6 +291,14 @@ export class PesantrenNilaiService {
     if (!komponen) {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Komponen nilai tidak ditemukan.');
     }
+    const final = await this.finalisasiAktif(schemaName, masukan.santriId!, masukan.tahunAjaranId!);
+    if (final) {
+      throw AppError.conflict(
+        ErrorCodes.CONFLICT,
+        'Rapor santri pada tahun ajaran ini sudah difinalisasi. Batalkan finalisasi terlebih dahulu sebelum mengubah nilai.',
+        { finalisasiId: final.id, verificationCode: final.verification_code },
+      );
+    }
 
     // Guru memperbaiki nilai lewat UPSERT -- indeks unik menegakkan satu
     // baris per (santri, komponen, tahun ajaran); mencatat ulang berarti
@@ -329,6 +368,129 @@ export class PesantrenNilaiService {
       };
     });
   }
+
+  async finalisasiAktif(schemaName: string, santriId: string, tahunAjaranId: string): Promise<BarisRaporFinalisasi | null> {
+    const S = `"${schemaName}"`;
+    const row = await this.tenantDb.queryOne<BarisRaporFinalisasi>(
+      schemaName,
+      `SELECT id::text, santri_id::text, tahun_ajaran_id::text, status,
+              snapshot, summary, checksum, verification_code, qr_payload, catatan_finalisasi,
+              wali_kelas_user_id::text, wali_kelas_signed_at::text,
+              kepala_user_id::text, kepala_signed_at::text,
+              finalized_at::text, finalized_by::text, voided_at::text, voided_by::text, void_reason
+         FROM ${S}.pesantren_rapor_finalisasi
+        WHERE santri_id = $1 AND tahun_ajaran_id = $2 AND status = 'FINALIZED' AND deleted_at IS NULL
+        ORDER BY finalized_at DESC
+        LIMIT 1`,
+      [santriId, tahunAjaranId],
+    );
+    return row;
+  }
+
+  async finalisasiRapor(
+    schemaName: string,
+    santriId: string,
+    tahunAjaranId: string,
+    masukan: MasukanFinalisasiRapor,
+    finalizedBy: string,
+  ): Promise<BarisRaporFinalisasi> {
+    const S = `"${schemaName}"`;
+    const santri = await this.tenantDb.queryOne(
+      schemaName,
+      `SELECT id FROM ${S}.pesantren_santri WHERE id = $1 AND deleted_at IS NULL`,
+      [santriId],
+    );
+    if (!santri) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Santri tidak ditemukan.');
+    const tahun = await this.tenantDb.queryOne(
+      schemaName,
+      `SELECT id FROM ${S}.pesantren_tahun_ajaran WHERE id = $1 AND deleted_at IS NULL`,
+      [tahunAjaranId],
+    );
+    if (!tahun) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Tahun ajaran tidak ditemukan.');
+
+    const snapshot = await this.rapor(schemaName, santriId, tahunAjaranId);
+    if (snapshot.length === 0) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Rapor belum memiliki nilai. Isi nilai terlebih dahulu sebelum finalisasi.',
+      );
+    }
+    const summary = hitungRingkasanRapor(snapshot);
+    const checksum = checksumRapor({ santriId, tahunAjaranId, snapshot, summary });
+    const verificationCode = randomBytes(16).toString('hex');
+    const qrPayload = `ebisnis://rapor/${verificationCode}?checksum=${checksum.slice(0, 16)}`;
+
+    try {
+      const rows = await this.tenantDb.query<BarisRaporFinalisasi>(
+        schemaName,
+        `INSERT INTO ${S}.pesantren_rapor_finalisasi (
+           santri_id, tahun_ajaran_id, snapshot, summary, checksum, verification_code, qr_payload,
+           catatan_finalisasi, wali_kelas_user_id, wali_kelas_signed_at, kepala_user_id, kepala_signed_at,
+           finalized_by, created_by, updated_by
+         )
+         VALUES (
+           $1, $2, $3::jsonb, $4::jsonb, $5, $6, $7,
+           $8, $9, CASE WHEN $9::uuid IS NULL THEN NULL ELSE now() END,
+           $10, CASE WHEN $10::uuid IS NULL THEN NULL ELSE now() END,
+           $11, $11, $11
+         )
+         RETURNING id::text, santri_id::text, tahun_ajaran_id::text, status,
+                   snapshot, summary, checksum, verification_code, qr_payload, catatan_finalisasi,
+                   wali_kelas_user_id::text, wali_kelas_signed_at::text,
+                   kepala_user_id::text, kepala_signed_at::text,
+                   finalized_at::text, finalized_by::text, voided_at::text, voided_by::text, void_reason`,
+        [
+          santriId,
+          tahunAjaranId,
+          JSON.stringify(snapshot),
+          JSON.stringify(summary),
+          checksum,
+          verificationCode,
+          qrPayload,
+          bersihkan(masukan.catatanFinalisasi),
+          bersihkan(masukan.waliKelasUserId),
+          bersihkan(masukan.kepalaUserId),
+          finalizedBy,
+        ],
+      );
+      return rows[0];
+    } catch (error) {
+      if (isUniqueViolation(error, 'ux_pesantren_rapor_finalisasi_aktif')) {
+        throw AppError.conflict(ErrorCodes.CONFLICT, 'Rapor santri pada tahun ajaran ini sudah difinalisasi.');
+      }
+      throw error;
+    }
+  }
+
+  async batalkanFinalisasi(schemaName: string, finalisasiId: string, reason: string, voidedBy: string): Promise<BarisRaporFinalisasi> {
+    const galat = validasiAlasanPembatalanRapor(reason);
+    if (galat.length) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Ada isian yang belum benar.', { errors: galat });
+    }
+    const S = `"${schemaName}"`;
+    const rows = await this.tenantDb.query<BarisRaporFinalisasi>(
+      schemaName,
+      `UPDATE ${S}.pesantren_rapor_finalisasi
+          SET status = 'VOID',
+              voided_at = now(),
+              voided_by = $2,
+              void_reason = $3,
+              updated_at = now(),
+              updated_by = $2,
+              version = version + 1
+        WHERE id = $1 AND status = 'FINALIZED' AND deleted_at IS NULL
+        RETURNING id::text, santri_id::text, tahun_ajaran_id::text, status,
+                  snapshot, summary, checksum, verification_code, qr_payload, catatan_finalisasi,
+                  wali_kelas_user_id::text, wali_kelas_signed_at::text,
+                  kepala_user_id::text, kepala_signed_at::text,
+                  finalized_at::text, finalized_by::text, voided_at::text, voided_by::text, void_reason`,
+      [finalisasiId, voidedBy, reason.trim()],
+    );
+    if (!rows[0]) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Finalisasi rapor aktif tidak ditemukan.');
+    }
+    return rows[0];
+  }
 }
 
 function bersihkan(nilai?: string | null): string | null {
@@ -344,4 +506,19 @@ function isUniqueViolation(error: unknown, constraintName: string): boolean {
 function isExclusionViolation(error: unknown, constraintName: string): boolean {
   const e = error as { code?: string; constraint?: string } | null;
   return e?.code === '23P01' && e?.constraint === constraintName;
+}
+
+function checksumRapor(value: unknown): string {
+  return createHash('sha256').update(stableStringify(value)).digest('hex');
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, val]) => `${JSON.stringify(key)}:${stableStringify(val)}`);
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(value);
 }

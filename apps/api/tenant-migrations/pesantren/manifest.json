@@ -251,6 +251,12 @@
       "file": "20260806T020000__pesantren__dapodik_import_audit_final.sql",
       "name": "Audit final import DAPODIK dan rollback UPDATE",
       "description": "Menambah metadata file sumber, snapshot before/after, dan diff per field pada baris import DAPODIK sehingga rollback final dapat membalik CREATE maupun UPDATE secara terukur."
+    },
+    {
+      "id": "20260806T030000__pesantren__rapor_finalisasi",
+      "file": "20260806T030000__pesantren__rapor_finalisasi.sql",
+      "name": "Finalisasi rapor, verifikasi QR, dan tanda tangan digital",
+      "description": "Menambah pesantren_rapor_finalisasi sebagai snapshot dokumen rapor final per santri/tahun ajaran, lengkap dengan checksum, kode verifikasi QR, penanda tanda tangan wali kelas/kepala satuan, dan pembatalan finalisasi terjejak."
     }
   ]
 }

@@ -79,6 +79,7 @@ const PORTAL_WALI_AKSI = ['READ'];
 const KIOSK_AKSI = ['READ'];
 const PSB_AKSI = ['READ', 'CREATE', 'UPDATE', 'REVIEW', 'APPROVE', 'REJECT', 'CANCEL', 'PRINT', 'EXPORT'];
 const KURIKULUM_AKSI = ['READ', 'CREATE', 'CANCEL', 'PRINT', 'EXPORT'];
+const NILAI_AKSI = ['READ', 'CREATE', 'UPDATE', 'REVIEW', 'APPROVE', 'CANCEL', 'PRINT', 'EXPORT'];
 const LAPORAN_AKSI = ['READ', 'PRINT', 'EXPORT'];
 const PELANGGARAN_AKSI = ['READ', 'CREATE', 'UPDATE', 'CANCEL', 'PRINT', 'EXPORT'];
 const GURU_AKSI = ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'];
@@ -321,7 +322,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
     icon: 'GraduationCap',
     moduleCode: PESANTREN_PREFIX,
     sortOrder: 3,
-    actions: CATAT,
+    actions: NILAI_AKSI,
   },
   {
     code: 'EPESANTREN_ABSENSI_GURU',

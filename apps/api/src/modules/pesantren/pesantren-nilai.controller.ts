@@ -91,6 +91,26 @@ class CatatNilaiDto {
   catatan?: string;
 }
 
+class FinalisasiRaporDto {
+  @ApiPropertyOptional()
+  @IsOptional() @IsString() @MaxLength(1000)
+  catatanFinalisasi?: string;
+
+  @ApiPropertyOptional({ description: 'User subject wali kelas yang menandatangani rapor.' })
+  @IsOptional() @IsString()
+  waliKelasUserId?: string;
+
+  @ApiPropertyOptional({ description: 'User subject kepala satuan pendidikan yang menandatangani rapor.' })
+  @IsOptional() @IsString()
+  kepalaUserId?: string;
+}
+
+class BatalkanFinalisasiRaporDto {
+  @ApiProperty({ example: 'Koreksi nilai UAS Fikih setelah verifikasi wali kelas.' })
+  @IsString() @MaxLength(1000)
+  reason!: string;
+}
+
 @ApiTags('pesantren')
 @ApiBearerAuth('access-token')
 @Controller('pesantren/nilai')
@@ -174,5 +194,40 @@ export class PesantrenNilaiController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.nilai.rapor(schemaWajib(user), santriId, tahunAjaranId);
+  }
+
+  @Permissions('EPESANTREN_NILAI.READ')
+  @Get('rapor/:santriId/:tahunAjaranId/finalisasi')
+  @ApiOperation({ summary: 'Status finalisasi rapor aktif satu santri/tahun ajaran' })
+  finalisasiAktif(
+    @Param('santriId') santriId: string,
+    @Param('tahunAjaranId') tahunAjaranId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.nilai.finalisasiAktif(schemaWajib(user), santriId, tahunAjaranId);
+  }
+
+  @Permissions('EPESANTREN_NILAI.APPROVE')
+  @Post('rapor/:santriId/:tahunAjaranId/finalisasi')
+  @HttpCode(201)
+  @ApiOperation({ summary: 'Finalisasi rapor dengan snapshot, checksum, dan QR verifikasi' })
+  finalisasiRapor(
+    @Param('santriId') santriId: string,
+    @Param('tahunAjaranId') tahunAjaranId: string,
+    @Body() dto: FinalisasiRaporDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.nilai.finalisasiRapor(schemaWajib(user), santriId, tahunAjaranId, dto, user.userId);
+  }
+
+  @Permissions('EPESANTREN_NILAI.CANCEL')
+  @Post('rapor/finalisasi/:id/batalkan')
+  @ApiOperation({ summary: 'Membatalkan finalisasi rapor agar nilai dapat dikoreksi' })
+  batalkanFinalisasiRapor(
+    @Param('id') id: string,
+    @Body() dto: BatalkanFinalisasiRaporDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.nilai.batalkanFinalisasi(schemaWajib(user), id, dto.reason, user.userId);
   }
 }
