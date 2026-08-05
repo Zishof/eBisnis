@@ -6,7 +6,19 @@ import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decora
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { PesantrenDapodikService } from './pesantren-dapodik.service';
 
-const DATASET = ['santri', 'guru', 'mata-pelajaran', 'rombongan', 'kurikulum', 'jadwal', 'komponen-nilai', 'nilai'] as const;
+const DATASET = [
+  'unit-pendidikan',
+  'tahun-ajaran',
+  'santri',
+  'guru',
+  'mata-pelajaran',
+  'rombongan',
+  'anggota-rombel',
+  'kurikulum',
+  'jadwal',
+  'komponen-nilai',
+  'nilai',
+] as const;
 
 function schemaWajib(user: AuthenticatedUser): string {
   if (!user.schemaName) {

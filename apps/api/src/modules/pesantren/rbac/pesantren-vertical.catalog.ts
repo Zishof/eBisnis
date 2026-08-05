@@ -282,7 +282,7 @@ export const PESANTREN_MENUS: MenuNodeSeed[] = [
   {
     code: 'EPESANTREN_DAPODIK',
     parentCode: 'EPESANTREN_GRP_MASTER',
-    label: 'Impor/Ekspor Dapodik',
+    label: 'Impor Data Dapodik',
     translationKey: 'menu.epesantren.dapodik',
     route: '/app/pesantren/dapodik',
     icon: 'FileSpreadsheet',
