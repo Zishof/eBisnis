@@ -14,7 +14,7 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 | Santri, wali, biodata, alumni, BK | `SiswaAction`, `BiodataSiswaAction`, `SiswaWaliAction`, `AlumniSiswaAction`, `SiswaBkAction` | Sebagian besar selesai: santri, wali, Dapodik, portal wali, status aktif/keluar | Riwayat alumni/BK sebagai workflow khusus masih perlu pendalaman |
 | Referensi biodata keluarga | `PekerjaanOrtuSiswaAction`, `PendidikanOrangTuaSiswaAction`, `PenghasilanOrangTuaSiswaAction`, `KebutuhanKhususSiswaAction`, `AlatTransportasiSiswaAction`, `JenisTinggalSiswaAction` | Sebagian selesai: kolom Dapodik sudah tersedia, agama sudah referensi | Master referensi formal untuk pilihan Dapodik belum seluruhnya menjadi tabel CRUD |
 | PSB/PPDB | `CalonSiswaAction`, `GelombangPendaftaranPsbAction`, `PaketPsbAction`, `KelompokPendaftaranPsbAction`, `KelasSiswaPSBAction`, `RuangPSBAction`, `JadwalUjianPSBAction`, `JadwalPertemuanPSBAction`, `InterviewCalonSiswaAction`, `UjianPSBAction`, `VerifikasiKelengkapanCalonSiswaAction`, `PPDB*.java` | Ditingkatkan: gelombang, portal daftar/login, schema tambahan JSON, unit tujuan, daftar ulang, agenda jadwal seleksi lintas pendaftar, ruang/lokasi, penguji, nilai, catatan hasil | Builder PSB drag-drop lebih lanjut, verifikasi multi-parameter, paket biaya/ujian khusus, kartu peserta/cetak jadwal belum penuh |
-| Kelas, kurikulum, mapel, jadwal | `KelasSiswaAction`, `KurikulumSekolahAction`, `MatapelajaranAction`, `SubMatapelajaranAction`, `KelompokMatapelajaranAction`, `JadwalPelajaranAction`, `JamPelajaranAction`, `PertemuanJadwalPelajaranAction`, `MasaJadwalPelajaranAction`, `TimetableJadwalPelajaranWindow` | Sebagian selesai: rombongan, kurikulum, mapel, jadwal dengan validasi bentrok | Timetable visual drag-drop, copy jadwal, substitusi guru, pertemuan belajar detail, dan ekspor jadwal belum penuh |
+| Kelas, kurikulum, mapel, jadwal | `KelasSiswaAction`, `KurikulumSekolahAction`, `MatapelajaranAction`, `SubMatapelajaranAction`, `KelompokMatapelajaranAction`, `JadwalPelajaranAction`, `JamPelajaranAction`, `PertemuanJadwalPelajaranAction`, `MasaJadwalPelajaranAction`, `TimetableJadwalPelajaranWindow` | Ditingkatkan: rombongan, kurikulum, mapel, jadwal dengan validasi bentrok, timetable visual per hari, filter rombongan, metrik kepadatan, dan cetak browser | Drag-drop/copy jadwal, substitusi guru, pertemuan belajar detail, dan ekspor Excel jadwal belum penuh |
 | Guru dan penugasan | `GuruAction`, `JenisGuruAction`, `JenisSKGuruAction`, `GuruMengajarAction`, `PenugasanGuruMengajarAction`, `AbsenGuruPiketAction` | Sebagian besar selesai: master guru, penugasan, absensi guru, piket | SK guru, jenis guru typed, evaluasi guru, dan dokumen penugasan cetak belum penuh |
 | Presensi santri | `AbsensiAction`, `AbsenPiketAction`, `AbsensiSiswaHelper` | Operasional dasar: presensi massal, jenis presensi, integrasi jadwal | FK fisik jadwal/piket dan rekap presensi formal belum penuh |
 | Aktivitas harian dan buku penghubung | `AktiftasHarianSiswaAction`, `DaftarAktifitasHarianSiswaAction`, `DashboardAktifitasHarianSiswaAction`, `JenisAktiftasHarianDefaultAction`, `JenisMateriHarianDefaultAction`, `CatatanOrangTuaAktiftasHarianAction`, `BukuPenghubungSiswa` | Dilengkapi batch ini: buku penghubung kini punya jenis `AKTIVITAS_HARIAN` dan `MATERI_HARIAN`, notifikasi wali, status tindak lanjut | Template aktivitas/materi default dan dashboard tren harian per asrama/kelas belum penuh |
@@ -30,7 +30,7 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 ## Modul yang Paling Belum Ada
 
 1. **PSB lanjutan:** verifikasi parameter, kartu peserta/cetak jadwal, paket ujian/biaya khusus, dan builder formulir visual tingkat lanjut.
-2. **Timetable visual:** drag-drop jadwal, copy minggu, substitusi pengajar, ekspor jadwal.
+2. **Timetable lanjutan:** drag-drop jadwal, copy minggu, substitusi pengajar, ekspor Excel jadwal.
 3. **Rapor resmi:** template PDF per jenjang, leger, ranking, kenaikan kelas/promosi.
 4. **Posting akuntansi sekolah:** piutang, cicilan, deposit, denda, dibayar di muka, diskon.
 5. **Master referensi Dapodik/AIS:** pekerjaan, pendidikan, penghasilan, transportasi, tinggal, kebutuhan khusus sebagai CRUD referensi.
@@ -43,6 +43,7 @@ Audit ini membaca 142 file Java utama di folder AIS `master\sekolah` dan mengelo
 - UI buku penghubung menjadi `Buku Penghubung dan Aktivitas Harian`, dengan metrik aktivitas/materi, header form yang lebih jelas, dan default input untuk catatan harian.
 - Migrasi tenant baru disiapkan agar constraint database menerima jenis baru.
 - PSB diperluas dengan agenda `Jadwal Seleksi` lintas pendaftar: filter tanggal/jenis/status, metrik agenda, ruang/lokasi, penguji, nilai, catatan hasil, dan aksi cepat selesai/tidak hadir.
+- Jadwal pelajaran dipoles: enum hari UI diselaraskan dengan backend (`MINGGU`), ditambah filter rombongan, metrik timetable, grid responsif per hari, dan tombol cetak browser.
 
 ## Prinsip UI/UX yang Dipakai
 

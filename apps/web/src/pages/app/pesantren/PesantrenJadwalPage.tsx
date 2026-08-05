@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Clock3, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { CalendarDays, Clock3, DoorOpen, Layers3, Plus, Printer, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { DataGrid, PageHeader, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -27,13 +27,14 @@ interface MataPelajaranRow {
   nama: string;
 }
 
-const HARI = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'AHAD'];
+const HARI = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
 
 export function PesantrenJadwalPage() {
   const toast = useToast();
   const toMessage = useErrorMessage();
   const queryClient = useQueryClient();
   const [hari, setHari] = useState('');
+  const [rombonganId, setRombonganId] = useState('');
   const [membuat, setMembuat] = useState(false);
   const [form, setForm] = useState({
     rombonganId: '',
@@ -45,8 +46,14 @@ export function PesantrenJadwalPage() {
   });
 
   const jadwal = useQuery({
-    queryKey: ['pesantren-jadwal', hari],
-    queryFn: () => api.get<JadwalRow[]>(`/pesantren/kurikulum/jadwal${hari ? `?hari=${hari}` : ''}`),
+    queryKey: ['pesantren-jadwal', hari, rombonganId],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (hari) params.set('hari', hari);
+      if (rombonganId) params.set('rombonganId', rombonganId);
+      const query = params.toString();
+      return api.get<JadwalRow[]>(`/pesantren/kurikulum/jadwal${query ? `?${query}` : ''}`);
+    },
   });
 
   const rombongan = useQuery({
@@ -90,6 +97,10 @@ export function PesantrenJadwalPage() {
       .filter((row) => row.hari === item)
       .sort((a, b) => a.waktu_mulai.localeCompare(b.waktu_mulai)),
   }));
+  const totalSesi = jadwal.data?.length ?? 0;
+  const totalRombongan = new Set((jadwal.data ?? []).map((row) => row.rombongan_id)).size;
+  const totalRuang = new Set((jadwal.data ?? []).map((row) => row.ruangan).filter(Boolean)).size;
+  const hariTerisi = jadwalPerHari.filter((kolom) => kolom.items.length > 0).length;
 
   const columns: Array<GridColumn<JadwalRow>> = [
     { key: 'hari', header: 'Hari', render: (row) => <StatusBadge status={row.hari} /> },
@@ -117,6 +128,10 @@ export function PesantrenJadwalPage() {
         breadcrumbs={[{ label: 'Beranda', href: '/app' }, { label: 'Pesantren' }, { label: 'Jadwal' }]}
         actions={
           <>
+            <button type="button" className="btn-outline" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" aria-hidden />
+              Cetak
+            </button>
             <button type="button" className="btn-outline" onClick={() => void jadwal.refetch()}>
               <RefreshCw className="h-4 w-4" aria-hidden />
               Muat Ulang
@@ -129,15 +144,44 @@ export function PesantrenJadwalPage() {
         }
       />
 
-      <div className="card mb-4 max-w-xs p-4">
-        <label className="field-label" htmlFor="jadwal-hari">Hari</label>
-        <select id="jadwal-hari" className="field-input" value={hari} onChange={(e) => setHari(e.target.value)}>
-          <option value="">Semua</option>
-          {HARI.map((item) => <option key={item} value={item}>{item}</option>)}
-        </select>
+      <div className="mb-4 grid gap-3 md:grid-cols-4">
+        <Metric icon={<CalendarDays className="h-4 w-4" aria-hidden />} label="Total sesi" value={totalSesi} />
+        <Metric icon={<Layers3 className="h-4 w-4" aria-hidden />} label="Rombongan" value={totalRombongan} />
+        <Metric icon={<DoorOpen className="h-4 w-4" aria-hidden />} label="Ruang dipakai" value={totalRuang} />
+        <Metric icon={<Clock3 className="h-4 w-4" aria-hidden />} label="Hari terisi" value={hariTerisi} />
       </div>
 
-      <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="card mb-4 p-4">
+        <div className="grid gap-3 md:grid-cols-[220px_minmax(220px,1fr)_auto]">
+          <Field label="Hari">
+            <select id="jadwal-hari" className="field-input" value={hari} onChange={(e) => setHari(e.target.value)}>
+              <option value="">Semua</option>
+              {HARI.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </Field>
+          <Field label="Rombongan belajar">
+            <select className="field-input" value={rombonganId} onChange={(e) => setRombonganId(e.target.value)}>
+              <option value="">Semua rombongan</option>
+              {(rombongan.data?.items ?? []).map((item) => <option key={item.id} value={item.id}>{item.tingkat} {item.nama}</option>)}
+            </select>
+          </Field>
+          <div className="flex items-end">
+            <button
+              type="button"
+              className="btn-outline w-full justify-center"
+              onClick={() => {
+                setHari('');
+                setRombonganId('');
+              }}
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-sky-50 px-4 py-3 dark:border-slate-800 dark:from-emerald-950/30 dark:to-sky-950/20">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold text-slate-900 dark:text-white">Timetable Visual</h2>
@@ -147,7 +191,8 @@ export function PesantrenJadwalPage() {
             {(jadwal.data ?? []).length} sesi
           </span>
         </div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-7">
+        </div>
+        <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-7">
           {jadwalPerHari.filter((kolom) => !hari || kolom.hari === hari).map((kolom) => (
             <div key={kolom.hari} className="min-h-32 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{kolom.hari}</p>
@@ -235,6 +280,18 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <label className="field-label">{label}</label>
       {children}
+    </div>
+  );
+}
+
+function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  return (
+    <div className="card flex items-center gap-3 p-4">
+      <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{icon}</span>
+      <span>
+        <p className="text-sm text-slate-500">{label}</p>
+        <p className="text-xl font-semibold text-slate-900 dark:text-white">{value}</p>
+      </span>
     </div>
   );
 }
