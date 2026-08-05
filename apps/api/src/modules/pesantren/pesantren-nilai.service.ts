@@ -47,6 +47,8 @@ export interface BarisSkalaHuruf {
 }
 
 export interface BarisNilaiRapor {
+  mata_pelajaran_code?: string | null;
+  kode_mapel_dapodik?: string | null;
   mata_pelajaran: string;
   komponen: { nama: string; nilai: number; bobot_persen: number }[];
   nilai_akhir: number | null;
@@ -56,12 +58,35 @@ export interface BarisNilaiRapor {
 export interface BarisLegerRapor {
   santri_id: string;
   nis: string | null;
+  nisn?: string | null;
+  nik?: string | null;
   nama_lengkap: string;
   rombongan_id: string | null;
   rombongan: string | null;
   jumlah_mapel: number;
   rata_rata: number | null;
   predikat_dominan: string | null;
+  status_rapor: 'FINAL' | 'DRAFT';
+  peringkat: number | null;
+  verification_code: string | null;
+  checksum: string | null;
+  finalized_at: string | null;
+}
+
+export interface BarisLegerNasional {
+  standar: 'DAPODIK' | 'EMIS';
+  tahun_ajaran_id: string;
+  santri_id: string;
+  nis: string | null;
+  nisn: string | null;
+  nik: string | null;
+  nama_lengkap: string;
+  rombongan: string | null;
+  kode_mapel_lokal: string | null;
+  kode_mapel_nasional: string | null;
+  mata_pelajaran: string;
+  nilai_akhir: number | null;
+  predikat: string | null;
   status_rapor: 'FINAL' | 'DRAFT';
   peringkat: number | null;
   verification_code: string | null;
@@ -342,13 +367,15 @@ export class PesantrenNilaiService {
   async rapor(schemaName: string, santriId: string, tahunAjaranId: string): Promise<BarisNilaiRapor[]> {
     const S = `"${schemaName}"`;
     const baris = await this.tenantDb.query<{
+      mata_pelajaran_code: string | null;
+      kode_mapel_dapodik: string | null;
       mata_pelajaran: string;
       komponen_nama: string;
       nilai_angka: string;
       bobot_persen: string;
     }>(
       schemaName,
-      `SELECT mp.nama AS mata_pelajaran, kn.nama AS komponen_nama,
+      `SELECT mp.code AS mata_pelajaran_code, mp.kode_mapel_dapodik, mp.nama AS mata_pelajaran, kn.nama AS komponen_nama,
               n.nilai_angka::text, kn.bobot_persen::text
          FROM ${S}.pesantren_nilai n
          JOIN ${S}.pesantren_komponen_nilai kn ON kn.id = n.komponen_id
@@ -360,24 +387,42 @@ export class PesantrenNilaiService {
 
     const skala = await this.daftarSkalaHuruf(schemaName);
 
-    const perMapel = new Map<string, { komponen: { nama: string; nilai: number; bobot_persen: number }[] }>();
+    const perMapel = new Map<
+      string,
+      {
+        mata_pelajaran_code: string | null;
+        kode_mapel_dapodik: string | null;
+        mata_pelajaran: string;
+        komponen: { nama: string; nilai: number; bobot_persen: number }[];
+      }
+    >();
     for (const b of baris) {
-      if (!perMapel.has(b.mata_pelajaran)) perMapel.set(b.mata_pelajaran, { komponen: [] });
-      perMapel.get(b.mata_pelajaran)!.komponen.push({
+      const key = b.mata_pelajaran_code ?? b.mata_pelajaran;
+      if (!perMapel.has(key)) {
+        perMapel.set(key, {
+          mata_pelajaran_code: b.mata_pelajaran_code,
+          kode_mapel_dapodik: b.kode_mapel_dapodik,
+          mata_pelajaran: b.mata_pelajaran,
+          komponen: [],
+        });
+      }
+      perMapel.get(key)!.komponen.push({
         nama: b.komponen_nama,
         nilai: Number(b.nilai_angka),
         bobot_persen: Number(b.bobot_persen),
       });
     }
 
-    return [...perMapel.entries()].map(([mataPelajaran, data]) => {
+    return [...perMapel.values()].map((data) => {
       const totalBobot = data.komponen.reduce((t, k) => t + k.bobot_persen, 0);
       const nilaiAkhir =
         totalBobot > 0
           ? Math.round((data.komponen.reduce((t, k) => t + k.nilai * k.bobot_persen, 0) / totalBobot) * 100) / 100
           : null;
       return {
-        mata_pelajaran: mataPelajaran,
+        mata_pelajaran_code: data.mata_pelajaran_code,
+        kode_mapel_dapodik: data.kode_mapel_dapodik,
+        mata_pelajaran: data.mata_pelajaran,
         komponen: data.komponen,
         nilai_akhir: nilaiAkhir,
         huruf_mutu: nilaiAkhir !== null ? cariHurufMutu(nilaiAkhir, skala) : null,
@@ -390,12 +435,14 @@ export class PesantrenNilaiService {
     const rows = await this.tenantDb.query<{
       santri_id: string;
       nis: string | null;
+      nisn: string | null;
+      nik: string | null;
       nama_lengkap: string;
       rombongan_id: string | null;
       rombongan: string | null;
     }>(
       schemaName,
-      `SELECT DISTINCT s.id::text AS santri_id, s.nis, s.nama_lengkap,
+      `SELECT DISTINCT s.id::text AS santri_id, s.nis, s.nisn, s.nik, s.nama_lengkap,
               r.id::text AS rombongan_id,
               CASE WHEN r.id IS NULL THEN NULL ELSE concat_ws(' - ', r.tingkat, r.nama) END AS rombongan
          FROM ${S}.pesantren_santri s
@@ -421,6 +468,8 @@ export class PesantrenNilaiService {
       leger.push({
         santri_id: row.santri_id,
         nis: row.nis,
+        nisn: row.nisn,
+        nik: row.nik,
         nama_lengkap: row.nama_lengkap,
         rombongan_id: row.rombongan_id,
         rombongan: row.rombongan,
@@ -435,6 +484,43 @@ export class PesantrenNilaiService {
       });
     }
     return beriPeringkatLeger(leger);
+  }
+
+  async legerNasional(
+    schemaName: string,
+    tahunAjaranId: string,
+    standar: 'DAPODIK' | 'EMIS',
+    rombonganId?: string | null,
+  ): Promise<BarisLegerNasional[]> {
+    const leger = await this.legerRapor(schemaName, tahunAjaranId, rombonganId);
+    const rows: BarisLegerNasional[] = [];
+    for (const santri of leger) {
+      const final = await this.finalisasiAktif(schemaName, santri.santri_id, tahunAjaranId);
+      const snapshot = final?.snapshot ?? await this.rapor(schemaName, santri.santri_id, tahunAjaranId);
+      for (const nilai of snapshot) {
+        rows.push({
+          standar,
+          tahun_ajaran_id: tahunAjaranId,
+          santri_id: santri.santri_id,
+          nis: santri.nis,
+          nisn: santri.nisn ?? null,
+          nik: santri.nik ?? null,
+          nama_lengkap: santri.nama_lengkap,
+          rombongan: santri.rombongan,
+          kode_mapel_lokal: nilai.mata_pelajaran_code ?? null,
+          kode_mapel_nasional: nilai.kode_mapel_dapodik ?? nilai.mata_pelajaran_code ?? null,
+          mata_pelajaran: nilai.mata_pelajaran,
+          nilai_akhir: nilai.nilai_akhir,
+          predikat: nilai.huruf_mutu,
+          status_rapor: santri.status_rapor,
+          peringkat: santri.peringkat,
+          verification_code: santri.verification_code,
+          checksum: santri.checksum,
+          finalized_at: santri.finalized_at,
+        });
+      }
+    }
+    return rows;
   }
 
   async finalisasiAktif(schemaName: string, santriId: string, tahunAjaranId: string): Promise<BarisRaporFinalisasi | null> {

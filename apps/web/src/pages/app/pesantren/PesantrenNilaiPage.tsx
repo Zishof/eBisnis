@@ -50,6 +50,8 @@ interface TahunAjaranRow {
 }
 
 interface RaporRow {
+  mata_pelajaran_code?: string | null;
+  kode_mapel_dapodik?: string | null;
   mata_pelajaran: string;
   komponen: Array<{ nama: string; nilai: number; bobot_persen: number }>;
   nilai_akhir: number | null;
@@ -77,12 +79,35 @@ interface RaporFinalisasi {
 interface LegerRaporRow {
   santri_id: string;
   nis: string | null;
+  nisn?: string | null;
+  nik?: string | null;
   nama_lengkap: string;
   rombongan_id: string | null;
   rombongan: string | null;
   jumlah_mapel: number;
   rata_rata: number | null;
   predikat_dominan: string | null;
+  status_rapor: 'FINAL' | 'DRAFT';
+  peringkat: number | null;
+  verification_code: string | null;
+  checksum: string | null;
+  finalized_at: string | null;
+}
+
+interface LegerNasionalRow {
+  standar: 'DAPODIK' | 'EMIS';
+  tahun_ajaran_id: string;
+  santri_id: string;
+  nis: string | null;
+  nisn: string | null;
+  nik: string | null;
+  nama_lengkap: string;
+  rombongan: string | null;
+  kode_mapel_lokal: string | null;
+  kode_mapel_nasional: string | null;
+  mata_pelajaran: string;
+  nilai_akhir: number | null;
+  predikat: string | null;
   status_rapor: 'FINAL' | 'DRAFT';
   peringkat: number | null;
   verification_code: string | null;
@@ -502,6 +527,66 @@ export function PesantrenNilaiPage() {
     doc.save(`leger-rapor-${tahunLeger?.code ?? 'tahun-ajaran'}.pdf`);
   };
 
+  const unduhCsvLegerNasional = async (standar: 'DAPODIK' | 'EMIS') => {
+    if (!selectedTahunLegerId) return;
+    const suffixRombongan = filterLeger.rombonganId ? `&rombonganId=${filterLeger.rombonganId}` : '';
+    const rows = await api.get<LegerNasionalRow[]>(
+      `/pesantren/nilai/leger/${selectedTahunLegerId}/nasional?standar=${standar}${suffixRombongan}`,
+    );
+    if (!rows.length) {
+      toast.push(`Belum ada baris leger ${standar} pada filter ini.`, 'info');
+      return;
+    }
+    const csvRows = [
+      [
+        'standar',
+        'tahun_ajaran_id',
+        'nisn',
+        'nik',
+        'nis',
+        'nama_lengkap',
+        'rombongan',
+        'kode_mapel_lokal',
+        'kode_mapel_nasional',
+        'mata_pelajaran',
+        'nilai_akhir',
+        'predikat',
+        'status_rapor',
+        'peringkat',
+        'verification_code',
+        'checksum',
+        'finalized_at',
+      ],
+      ...rows.map((row) => [
+        row.standar,
+        row.tahun_ajaran_id,
+        row.nisn ?? '',
+        row.nik ?? '',
+        row.nis ?? '',
+        row.nama_lengkap,
+        row.rombongan ?? '',
+        row.kode_mapel_lokal ?? '',
+        row.kode_mapel_nasional ?? '',
+        row.mata_pelajaran,
+        row.nilai_akhir ?? '',
+        row.predikat ?? '',
+        row.status_rapor,
+        row.peringkat ?? '',
+        row.verification_code ?? '',
+        row.checksum ?? '',
+        row.finalized_at ?? '',
+      ]),
+    ];
+    const csv = csvRows.map((row) => row.map(formatCsv).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `leger-${standar.toLowerCase()}-${tahunLeger?.code ?? 'tahun-ajaran'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <PageHeader
@@ -919,6 +1004,14 @@ export function PesantrenNilaiPage() {
                 <button type="button" className="btn-outline" disabled={!legerRows.length} onClick={() => void unduhPdfLeger()}>
                   <Printer className="h-4 w-4" aria-hidden />
                   PDF Leger
+                </button>
+                <button type="button" className="btn-outline" disabled={!selectedTahunLegerId} onClick={() => void unduhCsvLegerNasional('DAPODIK')}>
+                  <Download className="h-4 w-4" aria-hidden />
+                  DAPODIK
+                </button>
+                <button type="button" className="btn-outline" disabled={!selectedTahunLegerId} onClick={() => void unduhCsvLegerNasional('EMIS')}>
+                  <Download className="h-4 w-4" aria-hidden />
+                  EMIS
                 </button>
               </div>
             </div>
