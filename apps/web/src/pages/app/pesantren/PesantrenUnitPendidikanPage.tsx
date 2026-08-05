@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Edit2, Image, Plus, Trash2, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { api } from '../../../lib/api';
 import { DataGrid, PageHeader, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
+import { CrudActionBar, CrudDashboard } from '../../../components/crud-actions';
 import { useErrorMessage } from '../../../app/auth-context';
 
 interface UnitPendidikanRow extends Record<string, unknown> {
@@ -158,6 +160,23 @@ export function PesantrenUnitPendidikanPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menghapus.'), 'error'),
   });
 
+  const uploadExcel = useMutation({
+    mutationFn: (rows: Array<Record<string, unknown>>) => {
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const content = XLSX.utils.sheet_to_csv(worksheet);
+      return api.post<{ created: number; updated: number; skipped: number }>('/pesantren/dapodik/unit-pendidikan/import', {
+        format: 'csv',
+        content,
+        dryRun: false,
+      });
+    },
+    onSuccess: (payload) => {
+      toast.push(`Upload unit selesai: ${payload.created} dibuat, ${payload.updated} diperbarui, ${payload.skipped} dilewati.`, 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-unit-pendidikan'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Upload Excel unit pendidikan gagal.'), 'error'),
+  });
+
   const columns: Array<GridColumn<UnitPendidikanRow>> = [
     { key: 'code', header: 'Kode' },
     {
@@ -229,6 +248,10 @@ export function PesantrenUnitPendidikanPage() {
 
   const menyimpan = create.isPending || update.isPending;
   const formTerbuka = creating || editing;
+  const rows = list.data ?? [];
+  const aktifCount = rows.filter((row) => row.is_active).length;
+  const websiteCount = rows.filter((row) => row.website_enabled).length;
+  const domainCount = rows.filter((row) => row.santri_subdomain || row.custom_domain).length;
 
   return (
     <>
@@ -237,19 +260,40 @@ export function PesantrenUnitPendidikanPage() {
         description="Kelola MI, madrasah diniyah, tahfiz, BLK, atau unit lain di pondok."
         breadcrumbs={[{ label: 'Beranda', href: '/app' }, { label: 'Pesantren' }, { label: 'Unit Pendidikan' }]}
         actions={
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => {
-              setCreating(true);
-              setEditing(null);
-              setForm(FORM_KOSONG);
-            }}
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            Tambah Unit
-          </button>
+          <>
+            <CrudActionBar
+              title="Unit Pendidikan"
+              rows={rows}
+              columns={columns}
+              filename="unit-pendidikan"
+              uploadLabel={uploadExcel.isPending ? 'Mengupload...' : 'Upload Excel'}
+              onUploadRows={async (uploadedRows) => {
+                await uploadExcel.mutateAsync(uploadedRows);
+              }}
+            />
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                setCreating(true);
+                setEditing(null);
+                setForm(FORM_KOSONG);
+              }}
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Tambah Unit
+            </button>
+          </>
         }
+      />
+
+      <CrudDashboard
+        metrics={[
+          { label: 'Total Unit', value: rows.length, tone: 'emerald' },
+          { label: 'Aktif', value: aktifCount, tone: 'sky' },
+          { label: 'Website Terbit', value: websiteCount, tone: 'amber' },
+          { label: 'Domain Terisi', value: domainCount, tone: 'slate' },
+        ]}
       />
 
       <div className="card mb-4 p-4">
@@ -275,7 +319,7 @@ export function PesantrenUnitPendidikanPage() {
 
       <DataGrid
         columns={columns}
-        rows={list.data ?? []}
+        rows={rows}
         loading={list.isLoading}
         error={list.isError ? toMessage(list.error, (_key, fallback) => fallback ?? 'Gagal memuat.') : undefined}
         rowKey={(row) => row.id}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { api, formatDate } from '../../../lib/api';
 import {
   DataGrid,
@@ -10,6 +11,7 @@ import {
   useToast,
   type GridColumn,
 } from '../../../components/ui';
+import { CrudActionBar, CrudDashboard } from '../../../components/crud-actions';
 import { useErrorMessage } from '../../../app/auth-context';
 
 interface SantriRow extends Record<string, unknown> {
@@ -252,6 +254,23 @@ export function PesantrenSantriPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal memperbarui status santri.'), 'error'),
   });
 
+  const uploadExcel = useMutation({
+    mutationFn: (rows: Array<Record<string, unknown>>) => {
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const content = XLSX.utils.sheet_to_csv(worksheet);
+      return api.post<{ created: number; updated: number; skipped: number }>('/pesantren/dapodik/santri/import', {
+        format: 'csv',
+        content,
+        dryRun: false,
+      });
+    },
+    onSuccess: (payload) => {
+      toast.push(`Upload selesai: ${payload.created} dibuat, ${payload.updated} diperbarui, ${payload.skipped} dilewati.`, 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-santri'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Upload Excel gagal.'), 'error'),
+  });
+
   const columns: Array<GridColumn<SantriRow>> = [
     { key: 'nis', header: 'NIS' },
     { key: 'nisn', header: 'NISN', render: (row) => row.nisn ?? '-' },
@@ -301,7 +320,11 @@ export function PesantrenSantriPage() {
   ];
 
   const total = list.data?.total ?? 0;
+  const rows = list.data?.items ?? [];
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const aktif = rows.filter((item) => item.status === 'AKTIF').length;
+  const mukim = rows.filter((item) => item.status_tinggal === 'MUKIM').length;
+  const nonmukim = rows.filter((item) => item.status_tinggal === 'NONMUKIM').length;
   const pilihanKebutuhanKhusus = pilihanReferensi(refKebutuhanKhusus.data, KEBUTUHAN_KHUSUS);
   const pilihanTransportasi = pilihanReferensi(refTransportasi.data, ALAT_TRANSPORTASI);
   const pilihanPendidikan = pilihanReferensi(refPendidikan.data, PENDIDIKAN_TERAKHIR);
@@ -315,11 +338,32 @@ export function PesantrenSantriPage() {
         description="Daftar santri dan pencatatan santri baru."
         breadcrumbs={[{ label: 'Beranda', href: '/app' }, { label: 'Pesantren' }, { label: 'Data Santri' }]}
         actions={
-          <button type="button" className="btn-primary" onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Catat Santri Baru
-          </button>
+          <>
+            <CrudActionBar
+              title="Data Santri"
+              rows={rows}
+              columns={columns}
+              filename="data-santri"
+              uploadLabel={uploadExcel.isPending ? 'Mengupload...' : 'Upload Excel'}
+              onUploadRows={async (uploadedRows) => {
+                await uploadExcel.mutateAsync(uploadedRows);
+              }}
+            />
+            <button type="button" className="btn-primary" onClick={() => setCreating(true)}>
+              <Plus className="h-4 w-4" aria-hidden />
+              Catat Santri Baru
+            </button>
+          </>
         }
+      />
+
+      <CrudDashboard
+        metrics={[
+          { label: 'Total Data', value: total, tone: 'emerald' },
+          { label: 'Aktif di halaman ini', value: aktif, tone: 'sky' },
+          { label: 'Mukim', value: mukim, tone: 'amber' },
+          { label: 'Nonmukim', value: nonmukim, tone: 'slate' },
+        ]}
       />
 
       <div className="card mb-4 p-4">
@@ -363,7 +407,7 @@ export function PesantrenSantriPage() {
 
       <DataGrid
         columns={columns}
-        rows={list.data?.items ?? []}
+        rows={rows}
         loading={list.isLoading}
         error={list.isError ? toMessage(list.error, (_key, fallback) => fallback ?? 'Gagal memuat.') : undefined}
         rowKey={(row) => row.id}

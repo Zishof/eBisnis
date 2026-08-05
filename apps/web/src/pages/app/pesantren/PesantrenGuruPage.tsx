@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, RefreshCw } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { api } from '../../../lib/api';
 import { DataGrid, PageHeader, Pagination, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
+import { CrudActionBar, CrudDashboard } from '../../../components/crud-actions';
 import { useErrorMessage } from '../../../app/auth-context';
 
 interface GuruRow extends Record<string, unknown> {
@@ -64,6 +66,23 @@ export function PesantrenGuruPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menonaktifkan guru.'), 'error'),
   });
 
+  const uploadExcel = useMutation({
+    mutationFn: (rows: Array<Record<string, unknown>>) => {
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const content = XLSX.utils.sheet_to_csv(worksheet);
+      return api.post<{ created: number; updated: number; skipped: number }>('/pesantren/dapodik/guru/import', {
+        format: 'csv',
+        content,
+        dryRun: false,
+      });
+    },
+    onSuccess: (payload) => {
+      toast.push(`Upload guru selesai: ${payload.created} dibuat, ${payload.updated} diperbarui, ${payload.skipped} dilewati.`, 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-guru'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Upload Excel guru gagal.'), 'error'),
+  });
+
   const columns: Array<GridColumn<GuruRow>> = [
     { key: 'nip', header: 'NIP', render: (row) => row.nip ?? '-' },
     { key: 'nama', header: 'Nama' },
@@ -83,6 +102,10 @@ export function PesantrenGuruPage() {
     },
   ];
   const total = guru.data?.total ?? 0;
+  const rows = guru.data?.items ?? [];
+  const aktif = rows.filter((row) => row.status === 'AKTIF').length;
+  const formal = rows.filter((row) => row.jenis === 'FORMAL').length;
+  const diniyah = rows.filter((row) => row.jenis === 'DINIYAH').length;
 
   return (
     <>
@@ -91,11 +114,31 @@ export function PesantrenGuruPage() {
         description="Master guru formal, ustadz diniyah, tahfiz, dan pengasuh."
         breadcrumbs={[{ label: 'Beranda', href: '/app' }, { label: 'Pesantren' }, { label: 'Guru' }]}
         actions={
-          <button type="button" className="btn-outline" onClick={() => void guru.refetch()}>
-            <RefreshCw className="h-4 w-4" aria-hidden />
-            Muat Ulang
-          </button>
+          <>
+            <CrudActionBar
+              title="Guru dan Ustadz"
+              rows={rows}
+              columns={columns}
+              filename="data-guru"
+              uploadLabel={uploadExcel.isPending ? 'Mengupload...' : 'Upload Excel'}
+              onUploadRows={async (uploadedRows) => {
+                await uploadExcel.mutateAsync(uploadedRows);
+              }}
+            />
+            <button type="button" className="btn-outline" onClick={() => void guru.refetch()}>
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Muat Ulang
+            </button>
+          </>
         }
+      />
+      <CrudDashboard
+        metrics={[
+          { label: 'Total Data', value: total, tone: 'emerald' },
+          { label: 'Aktif di halaman ini', value: aktif, tone: 'sky' },
+          { label: 'Formal', value: formal, tone: 'amber' },
+          { label: 'Diniyah', value: diniyah, tone: 'slate' },
+        ]}
       />
       <div className="card mb-4 p-4">
         <div className="grid gap-3 md:grid-cols-[130px_minmax(200px,1fr)_150px_170px_220px_auto]">
@@ -120,7 +163,7 @@ export function PesantrenGuruPage() {
       </div>
       <DataGrid
         columns={columns}
-        rows={guru.data?.items ?? []}
+        rows={rows}
         loading={guru.isLoading}
         error={guru.isError ? toMessage(guru.error, (_key, fallback) => fallback ?? 'Gagal memuat guru.') : undefined}
         rowKey={(row) => row.id}

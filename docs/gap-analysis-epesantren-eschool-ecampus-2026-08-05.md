@@ -146,6 +146,24 @@ Yang masih tersisa setelah batch ini:
 - Snapshot before/after per field untuk rollback UPDATE penuh.
 - Detail view baris batch di UI bila operator perlu audit seluruh baris, bukan hanya ringkasan batch.
 
+## Status Implementasi Batch 2026-08-06 CRUD Action Template
+
+Batch lanjutan memulai standardisasi semua halaman CRUD agar tidak lagi berbeda-beda antar modul.
+
+Yang sudah ditambahkan:
+
+- Komponen reusable `CrudActionBar` untuk Download Excel, Upload Excel, dan Cetak PDF dari kolom data yang sedang tampil.
+- Komponen reusable `CrudDashboard` untuk ringkasan metrik cepat di atas daftar.
+- Halaman `Data Santri`, `Guru dan Ustadz`, dan `Unit Pendidikan` sudah memakai pola ini.
+- Upload Excel pada tiga halaman tersebut memakai mesin DAPODIK sesuai dataset: `santri`, `guru`, dan `unit-pendidikan`.
+- Export Excel/PDF membaca kolom tabel UI yang sedang aktif dan otomatis mengecualikan kolom aksi.
+
+Yang masih tersisa setelah batch ini:
+
+- Rollout komponen `CrudActionBar`/`CrudDashboard` ke seluruh halaman pesantren lain: asrama, kartu, rombongan, kurikulum, jadwal, presensi, nilai, PSB, perizinan, pembinaan, tagihan, dompet, katering, media, dakwah, dan laporan.
+- Template upload Excel khusus untuk modul yang bukan dataset DAPODIK perlu mapping endpoint masing-masing.
+- Metadata kolom dari database/backend perlu dibuat sebagai API generik agar template Excel dapat benar-benar membaca struktur tabel tenant secara server-side, bukan hanya kolom UI.
+
 ## Skala Status
 
 - `Selesai`: alur utama sudah ada di backend dan frontend.
