@@ -56,6 +56,13 @@ export class PesantrenPublicController {
     return this.situs.beritaSatu(host, id);
   }
 
+  @Public()
+  @Get('rapor/verifikasi/:code')
+  @ApiOperation({ summary: 'Verifikasi publik dokumen rapor final' })
+  verifikasiRapor(@Headers('host') host: string, @Param('code') code: string) {
+    return this.situs.verifikasiRapor(host, code);
+  }
+
   /**
    * Logo/gambar latar situs pondok. Disajikan dari BLOB tersimpan di skema
    * penyewa (bukan folder server) -- lihat `TenantFileBlobService`.

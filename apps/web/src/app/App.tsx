@@ -353,6 +353,9 @@ const PsbLoginPage = lazy(() =>
 const PsbDashboardPage = lazy(() =>
   import('../verticals/pesantren/PsbDashboardPage').then((m) => ({ default: m.PsbDashboardPage })),
 );
+const RaporVerificationPage = lazy(() =>
+  import('../verticals/pesantren/RaporVerificationPage').then((m) => ({ default: m.RaporVerificationPage })),
+);
 const DaftarPesantrenPage = lazy(() =>
   import('../verticals/pesantren/DaftarPesantrenPage').then((m) => ({
     default: m.DaftarPesantrenPage,
@@ -542,6 +545,7 @@ export function App() {
           <Route path="/santri/pondok/psb/masuk" element={<PsbLoginPage />} />
           <Route path="/santri/pondok/psb/status" element={<PsbDashboardPage />} />
           <Route path="/santri/pondok/berita/:id" element={<BeritaDetailPage />} />
+          <Route path="/santri/pondok/rapor/verifikasi/:code" element={<RaporVerificationPage />} />
         </Route>
 
         {/*

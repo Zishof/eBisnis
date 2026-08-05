@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, LockKeyhole, Plus, Printer, RefreshCw, RotateCcw, Save, ShieldCheck } from 'lucide-react';
+import { Download, FileCheck2, LockKeyhole, Plus, Printer, RefreshCw, RotateCcw, Save, ShieldCheck } from 'lucide-react';
+import QRCode from 'qrcode';
 import { api } from '../../../lib/api';
 import { DataGrid, PageHeader, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -73,6 +74,14 @@ interface RaporFinalisasi {
   void_reason: string | null;
 }
 
+interface PublicSite {
+  profil: {
+    nama_tampilan?: string | null;
+    logo_url?: string | null;
+    alamat_publik?: string | null;
+  };
+}
+
 export function PesantrenNilaiPage() {
   const toast = useToast();
   const toMessage = useErrorMessage();
@@ -133,6 +142,12 @@ export function PesantrenNilaiPage() {
     queryKey: ['pesantren-nilai-rapor-finalisasi', filterRapor.santriId, selectedTahunRaporId],
     enabled: Boolean(filterRapor.santriId && selectedTahunRaporId),
     queryFn: () => api.get<RaporFinalisasi | null>(`/pesantren/nilai/rapor/${filterRapor.santriId}/${selectedTahunRaporId}/finalisasi`),
+  });
+
+  const situsPublik = useQuery({
+    queryKey: ['pesantren-nilai-public-site'],
+    queryFn: () => api.get<PublicSite>('/pesantren/public/site', { skipRefresh: true }),
+    retry: false,
   });
 
   const tambahMapel = useMutation({
@@ -282,6 +297,99 @@ export function PesantrenNilaiPage() {
     a.download = `rapor-${santriTerpilih.nis || santriTerpilih.id}-${tahunRapor?.code ?? 'tahun-ajaran'}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const unduhPdfRaporResmi = async () => {
+    if (!finalisasi.data || !santriTerpilih || !tahunRapor) return;
+    const profil = situsPublik.data?.profil;
+    const namaInstitusi = profil?.nama_tampilan || 'Pondok Pesantren';
+    const verificationUrl = `${window.location.origin}/santri/pondok/rapor/verifikasi/${finalisasi.data.verification_code}`;
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
+    const qrDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 180 });
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const marginX = 16;
+
+    const logoDataUrl = await gambarKeDataUrl(profil?.logo_url);
+    if (logoDataUrl) {
+      doc.addImage(logoDataUrl, logoDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', marginX, 10, 18, 18);
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text(namaInstitusi, logoDataUrl ? 38 : marginX, 15);
+    doc.setFontSize(11);
+    doc.text('RAPOR HASIL BELAJAR SANTRI', logoDataUrl ? 38 : marginX, 22);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    if (profil?.alamat_publik) doc.text(profil.alamat_publik, logoDataUrl ? 38 : marginX, 27, { maxWidth: 118 });
+    doc.setDrawColor(5, 150, 105);
+    doc.line(marginX, 32, 194, 32);
+
+    doc.setFontSize(9);
+    const identitas = [
+      ['Nama Santri', santriTerpilih.nama_lengkap, 'Tahun Ajaran', tahunRapor.name],
+      ['NIS', santriTerpilih.nis || '-', 'Status Dokumen', 'FINAL'],
+      ['Kode Verifikasi', finalisasi.data.verification_code, 'Tanggal Final', formatDateTime(finalisasi.data.finalized_at)],
+      ['Checksum', finalisasi.data.checksum.slice(0, 32), 'Sumber Data', 'Snapshot finalisasi'],
+    ];
+    autoTable(doc, {
+      startY: 38,
+      theme: 'plain',
+      body: identitas,
+      styles: { fontSize: 8, cellPadding: 1.4 },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 30 },
+        1: { cellWidth: 68 },
+        2: { fontStyle: 'bold', cellWidth: 30 },
+        3: { cellWidth: 46 },
+      },
+      margin: { left: marginX, right: marginX },
+    });
+
+    autoTable(doc, {
+      startY: (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY
+        ? (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6
+        : 66,
+      head: [['Mata Pelajaran', 'Komponen Nilai', 'Nilai Akhir', 'Huruf']],
+      body: finalisasi.data.snapshot.map((row) => [
+        row.mata_pelajaran,
+        row.komponen.map((item) => `${item.nama}: ${item.nilai} (${item.bobot_persen}%)`).join('\n') || '-',
+        row.nilai_akhir == null ? '-' : String(row.nilai_akhir),
+        row.huruf_mutu ?? '-',
+      ]),
+      styles: { fontSize: 8, cellPadding: 2, valign: 'top' },
+      headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255] },
+      columnStyles: {
+        0: { cellWidth: 48 },
+        1: { cellWidth: 82 },
+        2: { cellWidth: 24, halign: 'center' },
+        3: { cellWidth: 16, halign: 'center' },
+      },
+      margin: { left: marginX, right: marginX },
+    });
+
+    const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 135;
+    const summary = hitungRingkasanRapor(finalisasi.data.snapshot);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(`Ringkasan: ${summary.jumlahMapel} mapel, rata-rata ${summary.rataRata ?? '-'}, predikat ${summary.predikatDominan ?? '-'}`, marginX, finalY + 8);
+
+    const signY = Math.max(finalY + 24, 226);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('Wali Kelas', 28, signY);
+    doc.text('Kepala Satuan Pendidikan', 126, signY);
+    doc.line(24, signY + 26, 70, signY + 26);
+    doc.line(124, signY + 26, 178, signY + 26);
+    doc.setFontSize(7);
+    doc.text(finalisasi.data.wali_kelas_signed_at ? `Ditandatangani ${formatDateTime(finalisasi.data.wali_kelas_signed_at)}` : 'Tanda tangan digital belum ditautkan', 24, signY + 31);
+    doc.text(finalisasi.data.kepala_signed_at ? `Ditandatangani ${formatDateTime(finalisasi.data.kepala_signed_at)}` : 'Tanda tangan digital belum ditautkan', 124, signY + 31);
+
+    doc.addImage(qrDataUrl, 'PNG', 162, 8, 28, 28);
+    doc.setFontSize(6.5);
+    doc.text('Pindai untuk verifikasi', 160, 38);
+    doc.text(verificationUrl, marginX, 287, { maxWidth: 178 });
+    doc.save(`rapor-final-${santriTerpilih.nis || santriTerpilih.id}-${tahunRapor.code}.pdf`);
   };
 
   return (
@@ -531,6 +639,12 @@ export function PesantrenNilaiPage() {
                   Cetak / PDF
                 </button>
               </div>
+              <div className="flex items-end">
+                <button type="button" className="btn-outline" disabled={!finalisasi.data} onClick={() => void unduhPdfRaporResmi()}>
+                  <FileCheck2 className="h-4 w-4" aria-hidden />
+                  PDF Resmi
+                </button>
+              </div>
             </div>
           </div>
 
@@ -761,4 +875,22 @@ function formatDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+async function gambarKeDataUrl(url?: string | null): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const absolute = new URL(url, window.location.origin).toString();
+    const response = await fetch(absolute);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
 }
