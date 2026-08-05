@@ -1481,7 +1481,7 @@ function sanitizeLegacyJson(value: unknown): unknown {
 }
 
 function cleanLegacyString(value: string): string {
-  return value.replace(/\u0000/g, '').replace(/[\uD800-\uDFFF]/g, '').trim();
+  return value.replaceAll(String.fromCharCode(0), '').replace(/[\uD800-\uDFFF]/g, '').trim();
 }
 
 function text(value: unknown): string {

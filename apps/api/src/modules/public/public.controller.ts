@@ -295,7 +295,25 @@ function inventoryTenantName(host: string): string {
   return titleizeTenantSlug(slug);
 }
 
-function metadataForHost(hostname: string): PreviewMetadata {
+function apotikTenantName(host: string): string {
+  if (host === 'apotik.emedik.id' || host === 'www.apotik.emedik.id') return 'Apotik eMedik';
+  if (host === 'demo-apotik.emedik.id') return 'Demo Apotik eMedik';
+  if (host.endsWith('-apotik.emedik.id')) {
+    return `${titleizeTenantSlug(host.replace(/-apotik\.emedik\.id$/, ''))} Apotik`;
+  }
+  return 'Apotik eMedik';
+}
+
+function emedikTenantName(host: string): string {
+  if (host === 'emedik.id' || host === 'www.emedik.id') return 'eMedik.id';
+  if (host === 'demo.emedik.id') return 'Demo eMedik';
+  if (host.endsWith('.emedik.id')) {
+    return `${titleizeTenantSlug(host.replace(/\.emedik\.id$/, ''))} eMedik`;
+  }
+  return 'eMedik.id';
+}
+
+export function metadataForHost(hostname: string): PreviewMetadata {
   const host = cleanHost(hostname);
   const inventoryHost =
     host === 'inventory.ebisnis.id' ||
@@ -353,11 +371,12 @@ function metadataForHost(hostname: string): PreviewMetadata {
     host === 'demo-apotik.emedik.id' ||
     /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?-apotik\.emedik\.id$/.test(host)
   ) {
+    const siteName = apotikTenantName(host);
     return {
-      title: 'Apotik eMedik — Farmasi dan POS Apotik',
+      title: `${siteName} - Farmasi dan POS Apotik`,
       description:
         'Landing dan akses apotik eMedik untuk pelayanan farmasi, stok obat, resep, pembelian, dan penjualan obat.',
-      siteName: 'Apotik eMedik',
+      siteName,
       themeColor: '#0f766e',
       iconDataUri: svgIcon('Rx', '#0f766e'),
       imageUrl: PREVIEW_IMAGES.apotik,
@@ -365,13 +384,14 @@ function metadataForHost(hostname: string): PreviewMetadata {
   }
 
   if (host === 'emedik.id' || host === 'www.emedik.id' || host.endsWith('.emedik.id')) {
+    const siteName = emedikTenantName(host);
     return {
-      title: 'eMedik.id — Sistem Operasional Kesehatan',
+      title: `${siteName} - Sistem Operasional Kesehatan`,
       description:
         'Sistem operasional terpadu untuk rumah sakit, klinik, puskesmas, posyandu, dan apotik.',
-      siteName: 'eMedik.id',
-      themeColor: '#2563eb',
-      iconDataUri: svgIcon('eM', '#2563eb'),
+      siteName,
+      themeColor: '#0891b2',
+      iconDataUri: svgIcon('eM', '#0891b2'),
       imageUrl: PREVIEW_IMAGES.emedik,
     };
   }
