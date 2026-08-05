@@ -278,9 +278,9 @@ export const EDUCATION_GAP_MODULES: EducationGapModule[] = [
     product: 'epesantren',
     status: 'SEBAGIAN',
     priority: 'P0',
-    summary: 'Rombel, kurikulum, jadwal, komponen nilai, skala huruf, input nilai, finalisasi snapshot rapor, PDF resmi ber-QR, verifikasi publik, dan keputusan akademik.',
+    summary: 'Rombel, kurikulum, jadwal, komponen nilai, skala huruf, input nilai, finalisasi snapshot rapor, PDF resmi ber-QR, verifikasi publik, leger/ranking, dan keputusan akademik.',
     implementedBy: 'PesantrenKelasKurikulumPage, PesantrenJadwalPage, PesantrenNilaiPage, PesantrenAkademikPage, RaporVerificationPage, pesantren_rapor_finalisasi, pesantren_keputusan_akademik.',
-    nextAction: 'Tambah leger, ranking, template rapor per jenjang, dan validasi bentrok jadwal lanjutan.',
+    nextAction: 'Tambah template rapor per jenjang, format leger nasional DAPODIK/EMIS, dan validasi bentrok jadwal lanjutan.',
     href: '/app/pesantren/akademik',
   },
   {
@@ -460,7 +460,7 @@ export const EDUCATION_ROADMAP: EducationRoadmapItem[] = [
     priority: 'P0',
     title: 'Sempurnakan ePesantren yang sudah paling dekat produksi',
     items: [
-      'Leger nilai, ranking, template rapor per jenjang, dan export format nasional di atas snapshot finalisasi.',
+      'Template rapor per jenjang dan export format nasional di atas snapshot finalisasi.',
       'PSB/PPDB: form dinamis, kartu peserta, verifikasi dokumen, hasil seleksi, ekspor.',
       'Gerbang: QR scanner tablet/PC, log kunjungan, penjemput, paket, mode offline ringan.',
       'Keuangan: rekonsiliasi pembayaran, export tagihan/piutang, posting jurnal.',

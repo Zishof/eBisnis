@@ -3,7 +3,7 @@
  * `pesantren-santri.controller.ts`.
  */
 
-import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { PesantrenNilaiService } from './pesantren-nilai.service';
@@ -194,6 +194,17 @@ export class PesantrenNilaiController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.nilai.rapor(schemaWajib(user), santriId, tahunAjaranId);
+  }
+
+  @Permissions('EPESANTREN_NILAI.READ')
+  @Get('leger/:tahunAjaranId')
+  @ApiOperation({ summary: 'Leger rapor dan ranking santri per tahun ajaran/rombongan' })
+  legerRapor(
+    @Param('tahunAjaranId') tahunAjaranId: string,
+    @Query('rombonganId') rombonganId: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.nilai.legerRapor(schemaWajib(user), tahunAjaranId, rombonganId);
   }
 
   @Permissions('EPESANTREN_NILAI.READ')
