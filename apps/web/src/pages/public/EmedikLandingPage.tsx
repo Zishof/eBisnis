@@ -535,11 +535,15 @@ export function LandingCta({
   title,
   primary,
   secondary,
+  primaryTo = '/daftar',
+  secondaryTo = '/demo',
   tone = 'teal',
 }: {
   title: string;
   primary: string;
   secondary: string;
+  primaryTo?: string;
+  secondaryTo?: string;
   tone?: LandingTone;
 }) {
   const sectionClass = tone === 'emerald' ? 'bg-emerald-700' : 'bg-teal-700';
@@ -558,10 +562,10 @@ export function LandingCta({
           </p>
         </div>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <Link to="/daftar" className={`btn bg-white px-5 py-3 ${primaryClass}`}>
+          <Link to={primaryTo} className={`btn bg-white px-5 py-3 ${primaryClass}`}>
             {primary}
           </Link>
-          <Link to="/demo" className="btn border border-white/40 px-5 py-3 text-white hover:bg-white/10">
+          <Link to={secondaryTo} className="btn border border-white/40 px-5 py-3 text-white hover:bg-white/10">
             {secondary}
           </Link>
         </div>

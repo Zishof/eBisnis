@@ -6,13 +6,18 @@ import {
   Barcode,
   Beaker,
   ClipboardCheck,
+  Clock3,
   Factory,
   Layers3,
+  MapPin,
   PackageCheck,
   Pill,
   ScanLine,
+  Search,
   ShieldAlert,
   ShoppingCart,
+  Star,
+  Truck,
 } from 'lucide-react';
 import { LandingHeader, LandingCta, LandingImage, OfferDocumentSection } from './EmedikLandingPage';
 import { emedikPublicBrandFor } from './emedik-host';
@@ -73,9 +78,66 @@ const posSteps = [
   ['04', 'Bayar di POS Apotik', 'Pembayaran memakai mesin POS, tetapi guardrail farmasi tetap terlihat.'],
 ];
 
+const tenantProducts = [
+  {
+    category: 'Obat bebas',
+    name: 'Paracetamol 500 mg',
+    detail: 'Tablet, 10 strip tersedia',
+    price: 'Rp 12.500',
+    badge: 'Stok aman',
+  },
+  {
+    category: 'Vitamin',
+    name: 'Vitamin B Complex',
+    detail: 'Tablet, 24 botol tersedia',
+    price: 'Rp 28.000',
+    badge: 'Populer',
+  },
+  {
+    category: 'Alat kesehatan',
+    name: 'Masker medis 3 ply',
+    detail: 'Box 50 pcs, siap antar',
+    price: 'Rp 35.000',
+    badge: 'Siap kirim',
+  },
+  {
+    category: 'Resep dokter',
+    name: 'Antibiotik sesuai resep',
+    detail: 'Wajib telaah apoteker',
+    price: 'Per resep',
+    badge: 'Resep wajib',
+  },
+  {
+    category: 'Racikan',
+    name: 'Racikan puyer anak',
+    detail: 'Dosis mengikuti resep',
+    price: 'Dihitung otomatis',
+    badge: 'Racikan',
+  },
+  {
+    category: 'Perawatan',
+    name: 'Salep antiseptik',
+    detail: 'Tube, batch-expiry tercatat',
+    price: 'Rp 18.500',
+    badge: 'Expiry aman',
+  },
+];
+
+const tenantServices = [
+  ['Telaah resep', 'Resep diperiksa alergi, interaksi, dosis, dan substitusi.'],
+  ['Pesan dan ambil', 'Produk dapat disiapkan lebih dulu sebelum pasien datang.'],
+  ['Pengantaran lokal', 'Pengiriman sekitar area layanan apotik sesuai jam operasional.'],
+  ['Konsultasi apoteker', 'Edukasi penggunaan obat dan pengingat kepatuhan terapi.'],
+];
+
+function isTenantApotikProfile(title: string, demo: boolean): boolean {
+  return demo || title !== 'Apotik eMedik';
+}
+
 export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
   const brand = emedikPublicBrandFor();
   const title = demo ? 'Demo Apotik eMedik' : brand?.kind === 'apotik' ? brand.name : 'Apotik eMedik';
+  const tenantProfile = isTenantApotikProfile(title, demo);
   const host =
     brand?.kind === 'apotik'
       ? brand.homeUrl.replace(/^https?:\/\//, '')
@@ -89,7 +151,11 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
         brand={title}
         logoText={brand?.logoText ?? 'Rx'}
         tone="emerald"
-        links={['Farmasi', 'POS Apotik', 'Racikan', 'Keamanan', 'Dokumen', 'Demo']}
+        links={
+          tenantProfile
+            ? ['Profil', 'Katalog', 'Layanan', 'Keamanan', 'Dokumen']
+            : ['Farmasi', 'POS Apotik', 'Racikan', 'Keamanan', 'Dokumen', 'Demo']
+        }
       />
 
       <main>
@@ -97,26 +163,42 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
           <div className="container-page grid min-h-[calc(100vh-4rem)] gap-10 py-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:py-16">
             <div>
               <p className="section-eyebrow bg-emerald-100 text-emerald-800">
-                Landing khusus apotik, farmasi klinis, dan POS obat
+                {tenantProfile
+                  ? 'Profil apotik, katalog produk, dan layanan kefarmasian'
+                  : 'Landing khusus apotik, farmasi klinis, dan POS obat'}
               </p>
               <h1 className="max-w-3xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl lg:text-6xl">
-                {demo ? 'Demo apotik modern siap dicoba.' : 'Apotik modern untuk resep, racikan, stok, dan POS obat.'}
+                {tenantProfile
+                  ? `${title}: profil, stok, dan produk apotik yang siap dilayani.`
+                  : 'Apotik modern untuk resep, racikan, stok, dan POS obat.'}
               </h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-                eMedik memisahkan POS Apotik dari POS penjualan biasa karena obat
-                bukan barang retail biasa. Kasir tetap cepat, tetapi resep dokter,
-                batch-expiry, racikan, obat terkendali, dan audit pasien ikut terlihat.
+                {tenantProfile
+                  ? 'Halaman ini menampilkan identitas tenant, layanan apotik, dan contoh katalog produk yang dijual. Produk resep tetap melewati telaah apoteker; stok, batch, expiry, dan transaksi terhubung ke POS Apotik.'
+                  : 'eMedik memisahkan POS Apotik dari POS penjualan biasa karena obat bukan barang retail biasa. Kasir tetap cepat, tetapi resep dokter, batch-expiry, racikan, obat terkendali, dan audit pasien ikut terlihat.'}
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link to={demo ? '/demo' : '/daftar'} className="btn-primary bg-emerald-700 px-6 py-3 text-base hover:bg-emerald-800">
-                  {demo ? 'Masuk demo apotik' : 'Daftarkan apotik'}
+                <Link to={tenantProfile ? '/masuk' : '/daftar'} className="btn-primary bg-emerald-700 px-6 py-3 text-base hover:bg-emerald-800">
+                  {tenantProfile ? 'Masuk tenant' : 'Daftarkan apotik'}
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
-                <Link to="/app/apotik/pos" className="btn-outline px-6 py-3 text-base">
-                  Buka POS Apotik
+                <Link to={tenantProfile ? '#Katalog' : '/app/apotik/pos'} className="btn-outline px-6 py-3 text-base">
+                  {tenantProfile ? 'Lihat katalog' : 'Buka POS Apotik'}
                 </Link>
               </div>
-              <p className="mt-6 font-mono text-sm text-emerald-800">{host}</p>
+              <div className="mt-6 flex flex-wrap gap-2 text-sm text-emerald-900">
+                <span className="rounded-full bg-emerald-50 px-3 py-1 font-mono ring-1 ring-emerald-100">{host}</span>
+                {tenantProfile && (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 ring-1 ring-emerald-100">
+                      <MapPin className="h-4 w-4" aria-hidden /> Area layanan lokal
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 ring-1 ring-emerald-100">
+                      <Clock3 className="h-4 w-4" aria-hidden /> 08.00-21.00
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[0.72fr_0.28fr]">
@@ -168,6 +250,10 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
             </div>
           </div>
         </section>
+
+        {tenantProfile && (
+          <TenantApotikProfile title={title} host={host} />
+        )}
 
         <section id="Farmasi" className="bg-[#f6fbf8] py-16">
           <div className="container-page">
@@ -293,13 +379,155 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
         <OfferDocumentSection tone="emerald" />
 
         <LandingCta
-          title={demo ? 'Buka demo apotik sekarang' : `Bangun kanal apotik di ${title}`}
-          primary={demo ? 'Masuk demo' : 'Mulai daftar'}
-          secondary="Hubungi tim"
+          title={tenantProfile ? `Kelola katalog dan POS ${title}` : `Bangun kanal apotik di ${title}`}
+          primary={tenantProfile ? 'Masuk tenant' : 'Mulai daftar'}
+          secondary={tenantProfile ? 'Lihat katalog' : 'Hubungi tim'}
+          primaryTo={tenantProfile ? '/masuk' : '/daftar'}
+          secondaryTo={tenantProfile ? '#Katalog' : '/demo'}
           tone="emerald"
         />
       </main>
     </div>
+  );
+}
+
+function TenantApotikProfile({ title, host }: { title: string; host: string }) {
+  return (
+    <>
+      <section id="Profil" className="bg-emerald-950 py-14 text-white sm:py-16">
+        <div className="container-page grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <div>
+            <p className="section-eyebrow bg-white/10 text-emerald-200">Profil tenant apotik</p>
+            <h2 className="text-3xl font-black leading-tight sm:text-4xl">
+              {title} menampilkan layanan, jam operasional, dan produk yang dapat dibeli.
+            </h2>
+            <p className="mt-4 max-w-2xl leading-7 text-emerald-50">
+              Subdomain tenant dipakai sebagai etalase apotik: pasien dapat melihat
+              kategori produk, status stok ringkas, layanan resep, pengantaran lokal,
+              dan kanal masuk untuk transaksi di POS Apotik.
+            </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {[
+                ['4.8/5', 'rating layanan'],
+                ['120+', 'produk aktif'],
+                ['2 jam', 'estimasi siap ambil'],
+              ].map(([value, label]) => (
+                <div key={label} className="rounded-lg bg-white/10 p-4 ring-1 ring-white/10">
+                  <p className="text-2xl font-black">{value}</p>
+                  <p className="mt-1 text-xs text-emerald-100">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl bg-white p-5 text-slate-950 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-emerald-700">Etalase aktif</p>
+                <h3 className="mt-1 text-2xl font-black">{host}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Produk resep, OTC, alat kesehatan, vitamin, dan racikan tampil sebagai katalog publik,
+                  sedangkan transaksi penuh tetap lewat akun tenant.
+                </p>
+              </div>
+              <Star className="h-7 w-7 text-amber-500" aria-hidden />
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {tenantServices.map(([service, body]) => (
+                <article key={service} className="rounded-lg bg-emerald-50 p-4 ring-1 ring-emerald-100">
+                  <h4 className="font-bold text-emerald-950">{service}</h4>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="Katalog" className="bg-white py-14 sm:py-16">
+        <div className="container-page">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="section-eyebrow bg-emerald-50 text-emerald-800">Katalog produk tenant</p>
+              <h2 className="section-heading text-slate-950">Produk yang dijual terlihat jelas sebelum pasien datang.</h2>
+              <p className="mt-3 text-base leading-8 text-slate-700">
+                Katalog memakai kategori yang mudah dipahami, kartu produk ringkas, harga,
+                status stok, dan penanda resep agar pengunjung cepat mengambil keputusan.
+              </p>
+            </div>
+            <div className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+              <Search className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate">Cari obat, vitamin, alat kesehatan, atau racikan</span>
+            </div>
+          </div>
+
+          <div className="mt-7 flex gap-2 overflow-x-auto pb-2">
+            {['Semua', 'Obat bebas', 'Resep dokter', 'Vitamin', 'Alat kesehatan', 'Racikan'].map((category, index) => (
+              <span
+                key={category}
+                className={
+                  index === 0
+                    ? 'whitespace-nowrap rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white'
+                    : 'whitespace-nowrap rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700'
+                }
+              >
+                {category}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {tenantProducts.map((product) => (
+              <article key={product.name} className="flex min-h-52 flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-emerald-700">{product.category}</p>
+                    <h3 className="mt-2 text-lg font-black text-slate-950">{product.name}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{product.detail}</p>
+                  </div>
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+                    <Pill className="h-5 w-5" aria-hidden />
+                  </span>
+                </div>
+                <div className="mt-auto flex items-end justify-between gap-3 pt-5">
+                  <div>
+                    <p className="text-xs text-slate-500">Harga</p>
+                    <p className="text-lg font-black text-slate-950">{product.price}</p>
+                  </div>
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 ring-1 ring-emerald-100">
+                    {product.badge}
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
+            Produk resep dan obat tertentu tidak dijual bebas dari halaman publik. Katalog
+            menampilkan ketersediaan dan kanal layanan; validasi resep, telaah apoteker,
+            dan pembayaran tetap dilakukan di POS Apotik tenant.
+          </div>
+        </div>
+      </section>
+
+      <section id="Layanan" className="bg-[#f6fbf8] py-14 sm:py-16">
+        <div className="container-page grid gap-6 lg:grid-cols-3">
+          {[
+            [Truck, 'Ambil di apotik', 'Pesanan disiapkan dan dikonfirmasi sebelum pasien datang.'],
+            [ClipboardCheck, 'Resep dan racikan', 'Resep dokter, racikan, dan etiket diproses sebagai pekerjaan farmasi.'],
+            [ShieldAlert, 'Keselamatan obat', 'High-alert, LASA, expiry, controlled drug, dan alergi dinaikkan ke prioritas.'],
+          ].map(([Icon, heading, body]) => {
+            const IconComponent = Icon as typeof Truck;
+            return (
+              <article key={heading as string} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <IconComponent className="h-6 w-6 text-emerald-700" aria-hidden />
+                <h3 className="mt-4 font-black text-slate-950">{heading as string}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{body as string}</p>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    </>
   );
 }
 
