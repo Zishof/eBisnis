@@ -24,6 +24,7 @@ export interface BarisSantri {
   status_tinggal: string;
   tanggal_masuk: string;
   tanggal_keluar: string | null;
+  alasan_keluar: string | null;
   alamat_asal: string | null;
   golongan_darah: string | null;
   catatan_alergi: string | null;
@@ -73,7 +74,7 @@ export interface BarisSantri {
 const KOLOM_SANTRI = `
   id::text, nis, nama_lengkap, nama_panggilan, jenis_kelamin,
   tempat_lahir, tanggal_lahir::text, unit_pendidikan_id::text,
-  status, status_tinggal, tanggal_masuk::text, tanggal_keluar::text,
+  status, status_tinggal, tanggal_masuk::text, tanggal_keluar::text, alasan_keluar,
   alamat_asal, golongan_darah, catatan_alergi, catatan, created_at::text,
   nik, nisn, nipd, agama, kewarganegaraan, kebutuhan_khusus, anak_ke,
   jumlah_saudara, alat_transportasi, jarak_tempat_tinggal_km::text,
@@ -136,6 +137,51 @@ export class PesantrenSantriService {
         WHERE id = $1 AND deleted_at IS NULL`,
       [id],
     );
+  }
+
+  async ubahStatus(
+    schemaName: string,
+    id: string,
+    masukan: { status: string; tanggalKeluar?: string | null; alasanKeluar?: string | null },
+    actorUserId: string,
+  ): Promise<BarisSantri> {
+    if (!['AKTIF', 'LULUS', 'KELUAR', 'PINDAH'].includes(masukan.status)) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Status santri tidak dikenali.');
+    }
+    const santri = await this.satu(schemaName, id);
+    if (!santri) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Santri tidak ditemukan.');
+    }
+
+    const tanggalKeluar = masukan.status === 'AKTIF' ? null : (masukan.tanggalKeluar ? new Date(masukan.tanggalKeluar) : new Date());
+    if (tanggalKeluar && Number.isNaN(tanggalKeluar.getTime())) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Tanggal keluar tidak sah.');
+    }
+    if (tanggalKeluar && new Date(santri.tanggal_masuk).getTime() > tanggalKeluar.getTime()) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Tanggal keluar tidak boleh sebelum tanggal masuk.');
+    }
+
+    const S = `"${schemaName}"`;
+    const rows = await this.tenantDb.query<BarisSantri>(
+      schemaName,
+      `UPDATE ${S}.pesantren_santri
+          SET status = $2,
+              tanggal_keluar = $3,
+              alasan_keluar = $4,
+              updated_at = now(),
+              updated_by = $5,
+              version = version + 1
+        WHERE id = $1 AND deleted_at IS NULL
+        RETURNING ${KOLOM_SANTRI}`,
+      [
+        id,
+        masukan.status,
+        tanggalKeluar,
+        masukan.status === 'AKTIF' ? null : bersihkan(masukan.alasanKeluar),
+        actorUserId,
+      ],
+    );
+    return rows[0];
   }
 
   /**

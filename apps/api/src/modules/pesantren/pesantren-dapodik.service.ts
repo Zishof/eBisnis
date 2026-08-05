@@ -82,6 +82,11 @@ const DATASETS: DatasetDef[] = [
       'nama_lengkap',
       'nama_panggilan',
       'jenis_kelamin',
+      'status',
+      'status_tinggal',
+      'tanggal_masuk',
+      'tanggal_keluar',
+      'alasan_keluar',
       'tempat_lahir',
       'tanggal_lahir',
       'agama',
@@ -264,6 +269,11 @@ const DATASET_ALIASES: Partial<Record<DatasetCode, Partial<Record<string, string
     nama_lengkap: ['nama', 'nama peserta didik', 'nama siswa', 'nama santri'],
     nama_panggilan: ['nama panggilan'],
     jenis_kelamin: ['jk', 'kelamin', 'jenis kelamin'],
+    status: ['status peserta didik', 'status siswa', 'status santri'],
+    status_tinggal: ['status tinggal', 'jenis tinggal'],
+    tanggal_masuk: ['tanggal masuk', 'tgl masuk', 'tanggal diterima'],
+    tanggal_keluar: ['tanggal keluar', 'tgl keluar', 'tanggal lulus'],
+    alasan_keluar: ['alasan keluar', 'keterangan keluar', 'catatan keluar'],
     tempat_lahir: ['tempat lahir'],
     tanggal_lahir: ['tanggal lahir', 'tgl lahir', 'tgl_lahir'],
     kebutuhan_khusus: ['berkebutuhan khusus', 'kebutuhan khusus peserta didik'],
@@ -479,16 +489,26 @@ export class PesantrenDapodikService {
       case 'santri':
         return upsertByExists(this.tenantDb, schemaName, `SELECT id FROM ${S}.pesantren_santri WHERE nis = $1 AND deleted_at IS NULL`, [row.nis], async (exists) => {
           const santriRow = withDefaults(row, {
+            status: 'AKTIF',
+            status_tinggal: 'MUKIM',
+            tanggal_masuk: new Date().toISOString().slice(0, 10),
             kewarganegaraan: 'WNI',
             kebutuhan_khusus: 'TIDAK_ADA',
             penerima_kip: 'false',
             penerima_kks: 'false',
           });
+          if (santriRow.status !== 'AKTIF' && !santriRow.tanggal_keluar) {
+            santriRow.tanggal_keluar = new Date().toISOString().slice(0, 10);
+          }
+          if (santriRow.status === 'AKTIF') {
+            santriRow.tanggal_keluar = '';
+            santriRow.alasan_keluar = '';
+          }
           const columns = this.def('santri').columns;
           if (exists) {
             await this.tenantDb.query(schemaName, `UPDATE ${S}.pesantren_santri SET ${columns.filter((c) => c !== 'nis').map((c, i) => `${c} = $${i + 2}`).join(', ')}, updated_at = now(), updated_by = $${columns.length + 1}, version = version + 1 WHERE nis = $1 AND deleted_at IS NULL`, [row.nis, ...columns.filter((c) => c !== 'nis').map((c) => sqlValue(santriRow[c], c)), actorUserId]);
           } else {
-            await this.tenantDb.query(schemaName, `INSERT INTO ${S}.pesantren_santri (${columns.join(', ')}, status_tinggal, tanggal_masuk, created_by, updated_by) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}, 'NONMUKIM', CURRENT_DATE, $${columns.length + 1}, $${columns.length + 1})`, [...columns.map((c) => sqlValue(santriRow[c], c)), actorUserId]);
+            await this.tenantDb.query(schemaName, `INSERT INTO ${S}.pesantren_santri (${columns.join(', ')}, created_by, updated_by) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}, $${columns.length + 1}, $${columns.length + 1})`, [...columns.map((c) => sqlValue(santriRow[c], c)), actorUserId]);
           }
         });
       case 'psb-pendaftar':

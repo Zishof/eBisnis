@@ -187,6 +187,20 @@ class CatatSantriDto {
   wali?: DataOrangTuaDto;
 }
 
+class UbahStatusSantriDto {
+  @ApiProperty({ enum: STATUS_SANTRI })
+  @IsIn(STATUS_SANTRI as unknown as string[])
+  status!: string;
+
+  @ApiPropertyOptional({ example: '2026-06-30' })
+  @IsOptional() @IsISO8601()
+  tanggalKeluar?: string;
+
+  @ApiPropertyOptional({ example: 'Lulus akhir tahun ajaran.' })
+  @IsOptional() @IsString() @MaxLength(1000)
+  alasanKeluar?: string;
+}
+
 @ApiTags('pesantren')
 @ApiBearerAuth('access-token')
 @Controller('pesantren/santri')
@@ -225,5 +239,13 @@ export class PesantrenSantriController {
   @ApiOperation({ summary: 'Mendaftarkan santri baru' })
   async catat(@Body() dto: CatatSantriDto, @CurrentUser() user: AuthenticatedUser) {
     return this.santri.catat(schemaWajib(user), dto, user.userId);
+  }
+
+  @Permissions('EPESANTREN_SANTRI.UPDATE')
+  @Post(':id/status')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mengubah status santri aktif, lulus, keluar, atau pindah' })
+  async ubahStatus(@Param('id') id: string, @Body() dto: UbahStatusSantriDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.santri.ubahStatus(schemaWajib(user), id, dto, user.userId);
   }
 }

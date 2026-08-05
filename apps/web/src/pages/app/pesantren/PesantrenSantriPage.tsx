@@ -21,6 +21,8 @@ interface SantriRow extends Record<string, unknown> {
   status: string;
   status_tinggal: string;
   tanggal_masuk: string;
+  tanggal_keluar: string | null;
+  alasan_keluar: string | null;
 }
 
 interface OrangTuaForm {
@@ -55,6 +57,7 @@ const RENTANG_PENGHASILAN = [
   'TIDAK_BERPENGHASILAN', 'KURANG_500RB', '500RB_1JT', '1JT_2JT', '2JT_5JT', '5JT_20JT', 'LEBIH_20JT',
 ];
 const PAGE_SIZE = 25;
+const STATUS_AKHIR = ['LULUS', 'KELUAR', 'PINDAH'] as const;
 
 const ORANG_TUA_KOSONG: OrangTuaForm = {
   nama: '', nik: '', tahunLahir: '', pendidikan: '', pekerjaan: '', penghasilan: '',
@@ -96,6 +99,14 @@ const FORM_KOSONG = {
 };
 
 type FormState = typeof FORM_KOSONG;
+type StatusAkhir = (typeof STATUS_AKHIR)[number];
+
+interface StatusForm {
+  santri: SantriRow;
+  status: StatusAkhir;
+  tanggalKeluar: string;
+  alasanKeluar: string;
+}
 
 /** Payload orang tua/wali -- hanya disertakan bila minimal satu field terisi. */
 function payloadOrangTua(data: OrangTuaForm): Record<string, unknown> | undefined {
@@ -156,11 +167,8 @@ function pilihanReferensi(rows: ReferensiDapodikRow[] | undefined, fallback: str
 }
 
 /**
- * Data Santri (EP-A) -- List + pendaftaran santri baru lewat
- * `POST /pesantren/santri` yang sudah ada. Tidak ada endpoint UPDATE pada
- * modul ini (hanya List/Detail/Create) -- layar ini karena itu tidak
- * menawarkan sunting, sesuai kemampuan API sesungguhnya, bukan janji fitur
- * yang belum ada.
+ * Data Santri (EP-A) -- List, pendaftaran santri baru, dan perubahan status
+ * akhir santri (lulus/keluar/pindah) untuk menutup alur alumni sederhana.
  *
  * Formulir mencakup seluruh atribut setara Dapodik ("Data Rinci Peserta
  * Didik") -- identitas kependudukan, kontak, program bantuan, dan data
@@ -177,6 +185,7 @@ export function PesantrenSantriPage() {
   const [status, setStatus] = useState('');
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<FormState>(FORM_KOSONG);
+  const [statusForm, setStatusForm] = useState<StatusForm | null>(null);
 
   const setOrangTua = (jenis: 'ayah' | 'ibu' | 'wali', field: keyof OrangTuaForm, value: string) =>
     setForm((f) => ({ ...f, [jenis]: { ...f[jenis], [field]: value } }));
@@ -229,6 +238,20 @@ export function PesantrenSantriPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan.'), 'error'),
   });
 
+  const updateStatus = useMutation({
+    mutationFn: (payload: StatusForm) => api.post(`/pesantren/santri/${payload.santri.id}/status`, {
+      status: payload.status,
+      tanggalKeluar: payload.tanggalKeluar,
+      alasanKeluar: payload.alasanKeluar.trim() || undefined,
+    }),
+    onSuccess: () => {
+      toast.push('Status santri diperbarui.', 'success');
+      setStatusForm(null);
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-santri'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal memperbarui status santri.'), 'error'),
+  });
+
   const columns: Array<GridColumn<SantriRow>> = [
     { key: 'nis', header: 'NIS' },
     { key: 'nisn', header: 'NISN', render: (row) => row.nisn ?? '-' },
@@ -244,6 +267,36 @@ export function PesantrenSantriPage() {
       key: 'tanggal_masuk',
       header: 'Tanggal Masuk',
       render: (row) => formatDate(row.tanggal_masuk),
+    },
+    {
+      key: 'tanggal_keluar',
+      header: 'Tanggal Keluar',
+      render: (row) => row.tanggal_keluar ? formatDate(row.tanggal_keluar) : '-',
+    },
+    {
+      key: 'aksi',
+      header: 'Aksi',
+      render: (row) => row.status === 'AKTIF' ? (
+        <div className="flex flex-wrap gap-2">
+          {STATUS_AKHIR.map((item) => (
+            <button
+              key={item}
+              type="button"
+              className="btn-outline px-2 py-1 text-xs"
+              onClick={() => setStatusForm({
+                santri: row,
+                status: item,
+                tanggalKeluar: new Date().toISOString().slice(0, 10),
+                alasanKeluar: '',
+              })}
+            >
+              {item === 'LULUS' ? 'Lulus' : item === 'KELUAR' ? 'Keluar' : 'Pindah'}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <span className="text-xs text-slate-500">{row.alasan_keluar || 'Arsip'}</span>
+      ),
     },
   ];
 
@@ -487,6 +540,59 @@ export function PesantrenSantriPage() {
                 onClick={() => create.mutate(bangunPayload(form))}
               >
                 Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {statusForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="card w-full max-w-lg p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Ubah Status Santri</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {statusForm.santri.nama_lengkap} akan dipindahkan dari daftar aktif menjadi arsip {statusForm.status.toLowerCase()}.
+            </p>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <Field label="Status Baru">
+                <select
+                  className="field-input"
+                  value={statusForm.status}
+                  onChange={(event) => setStatusForm({ ...statusForm, status: event.target.value as StatusAkhir })}
+                >
+                  <option value="LULUS">Lulus</option>
+                  <option value="KELUAR">Keluar</option>
+                  <option value="PINDAH">Pindah</option>
+                </select>
+              </Field>
+              <Field label="Tanggal Keluar">
+                <input
+                  type="date"
+                  className="field-input"
+                  value={statusForm.tanggalKeluar}
+                  onChange={(event) => setStatusForm({ ...statusForm, tanggalKeluar: event.target.value })}
+                />
+              </Field>
+            </div>
+            <div className="mt-3">
+              <Field label="Alasan / Catatan BK">
+                <textarea
+                  className="field-input min-h-24"
+                  value={statusForm.alasanKeluar}
+                  onChange={(event) => setStatusForm({ ...statusForm, alasanKeluar: event.target.value })}
+                  placeholder="Contoh: lulus tahun ajaran 2025/2026, pindah domisili, atau catatan pembinaan."
+                />
+              </Field>
+            </div>
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button type="button" className="btn-outline" onClick={() => setStatusForm(null)}>Batal</button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!statusForm.tanggalKeluar || updateStatus.isPending}
+                onClick={() => updateStatus.mutate(statusForm)}
+              >
+                Simpan Status
               </button>
             </div>
           </div>
