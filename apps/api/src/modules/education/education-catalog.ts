@@ -278,9 +278,9 @@ export const EDUCATION_GAP_MODULES: EducationGapModule[] = [
     product: 'epesantren',
     status: 'SEBAGIAN',
     priority: 'P0',
-    summary: 'Rombel, kurikulum, jadwal, komponen nilai, skala huruf, input nilai, dan rapor dasar.',
-    implementedBy: 'PesantrenKelasKurikulumPage, PesantrenJadwalPage, PesantrenNilaiPage.',
-    nextAction: 'Cetak rapor PDF, leger, ranking, kenaikan kelas, dan validasi bentrok jadwal.',
+    summary: 'Rombel, kurikulum, jadwal, komponen nilai, skala huruf, input nilai, rapor, dan finalisasi snapshot.',
+    implementedBy: 'PesantrenKelasKurikulumPage, PesantrenJadwalPage, PesantrenNilaiPage, pesantren_rapor_finalisasi.',
+    nextAction: 'Cetak rapor PDF resmi, leger, ranking, kenaikan kelas, kelulusan, dan validasi bentrok jadwal lanjutan.',
     href: '/app/pesantren/nilai',
   },
   {
@@ -345,8 +345,8 @@ export const EDUCATION_GAP_MODULES: EducationGapModule[] = [
     status: 'FONDASI',
     priority: 'P1',
     summary: 'Mapel, kurikulum, jadwal, nilai, rapor, ujian, kelulusan, dan PPDB sekolah.',
-    implementedBy: 'Shell eSchool akademik, pola rombel, kurikulum, jadwal, nilai, dan PSB sudah tersedia di ePesantren.',
-    nextAction: 'Tambah rapor sekolah resmi, kartu PPDB sekolah, dan finalisasi export DAPODIK khusus sekolah formal.',
+    implementedBy: 'Shell eSchool akademik, pola rombel, kurikulum, jadwal, nilai, PSB, dan finalisasi rapor tersedia di ePesantren.',
+    nextAction: 'Tambah rapor sekolah resmi, leger, kenaikan/kelulusan, kartu PPDB sekolah, dan finalisasi export DAPODIK khusus sekolah formal.',
     href: '/app/eschool/akademik',
   },
   {
@@ -460,7 +460,7 @@ export const EDUCATION_ROADMAP: EducationRoadmapItem[] = [
     priority: 'P0',
     title: 'Sempurnakan ePesantren yang sudah paling dekat produksi',
     items: [
-      'Rapor PDF, leger nilai, ranking, dan kenaikan kelas.',
+      'Rapor PDF resmi, leger nilai, ranking, kenaikan kelas, dan kelulusan di atas snapshot finalisasi.',
       'PSB/PPDB: form dinamis, kartu peserta, verifikasi dokumen, hasil seleksi, ekspor.',
       'Gerbang: QR scanner tablet/PC, log kunjungan, penjemput, paket, mode offline ringan.',
       'Keuangan: rekonsiliasi pembayaran, export tagihan/piutang, posting jurnal.',

@@ -4,6 +4,8 @@
 
 import {
   cariHurufMutu,
+  hitungRingkasanRapor,
+  validasiAlasanPembatalanRapor,
   validasiKomponenNilai,
   validasiMataPelajaran,
   validasiNilai,
@@ -90,5 +92,24 @@ describe('cariHurufMutu', () => {
 
   it('mengembalikan null bila tidak ada skala yang cocok', () => {
     expect(cariHurufMutu(50, skala)).toBeNull();
+  });
+});
+
+describe('ringkasan dan pembatalan rapor', () => {
+  it('menghitung rata-rata dan predikat dominan', () => {
+    const ringkasan = hitungRingkasanRapor([
+      { nilai_akhir: 90, huruf_mutu: 'A' },
+      { nilai_akhir: 80, huruf_mutu: 'B' },
+      { nilai_akhir: 85, huruf_mutu: 'B' },
+    ]);
+    expect(ringkasan.rataRata).toBe(85);
+    expect(ringkasan.predikatDominan).toBe('B');
+    expect(ringkasan.sebaranHuruf).toEqual({ A: 1, B: 2 });
+  });
+
+  it('alasan pembatalan finalisasi wajib cukup jelas', () => {
+    expect(validasiAlasanPembatalanRapor('')[0].code).toBe('WAJIB');
+    expect(validasiAlasanPembatalanRapor('salah')[0].code).toBe('TERLALU_PENDEK');
+    expect(validasiAlasanPembatalanRapor('Koreksi nilai UAS Fikih')).toEqual([]);
   });
 });
