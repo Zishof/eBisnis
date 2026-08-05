@@ -404,6 +404,16 @@ const MitrainapHomePage = lazy(() =>
     default: m.MitrainapHomePage,
   })),
 );
+const MitrainapSolusiPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapSolusiPage').then((m) => ({
+    default: m.MitrainapSolusiPage,
+  })),
+);
+const MitrainapFaqPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapFaqPage').then((m) => ({
+    default: m.MitrainapFaqPage,
+  })),
+);
 
 /**
  * Apa yang dilihat pengunjung di akar situs, menurut alamat yang ia ketik.
@@ -546,6 +556,8 @@ export function App() {
         {/* Portal MitraInap.id (Hospitality) */}
         <Route path="/mitrainap" element={<MitrainapLayout />}>
           <Route index element={<MitrainapHomePage />} />
+          <Route path="solusi" element={<MitrainapSolusiPage />} />
+          <Route path="faq" element={<MitrainapFaqPage />} />
           {/*
             Masuk BERBEDA dari `/masuk` global: `LoginPage` yang sama, dibungkus
             `MitrainapLayout` alih-alih `PublicLayout` supaya pengunjung

@@ -1,5 +1,32 @@
 # Changelog — Hospitality (MitraInap.id)
 
+## 2026-08-06 — MI-2: Homepage MitraInap dan marketing pages
+
+- `MitrainapSolusiPage` (`/mitrainap/solusi`) dan `MitrainapFaqPage`
+  (`/mitrainap/faq`) ditambahkan, dirutekan di `App.tsx`, ditaut dari nav
+  header dan footer `MitrainapLayout`.
+- Perintah master MI-2 secara harfiah meminta "seluruh section BRD/UI"
+  (100+ layar: solution pages, feature pages, blog, dst). Itu TIDAK
+  dibangun sepenuhnya di sini -- membangun 100+ halaman statis yang
+  sebagian besar menjelaskan fitur yang belum ada backend-nya akan jadi
+  halaman pemasaran yang menyesatkan, bukan cakupan yang jujur. Yang
+  dibangun: peta modul nyata (10 area dari BRD, ditandai sebagai
+  "direncanakan" bukan "aktif"), FAQ yang jujur soal harga
+  (`PRICE_CONFIGURATION_REQUIRED`, tidak mengarang angka), dan lead
+  capture yang memakai `/kontak` yang sudah ada (bukan formulir baru).
+- SEO: meta description, `<link rel="canonical">`, dan JSON-LD
+  (`SoftwareApplication`) ditambahkan ke `MitrainapLayout`, mengikuti pola
+  `usePondokSeo` (pesantren) tapi statis, sebab portal ini satu-satunya
+  (bukan per-penyewa). Sitemap.xml SENGAJA tidak dibangun -- tidak ada
+  portal LAIN di kodebase ini (termasuk santri.info) yang punya sitemap
+  generator; membangunnya khusus untuk MitraInap berarti infrastruktur
+  baru yang tidak diminta prioritas mana pun, bukan pekerjaan MI-2 yang
+  proporsional.
+- Diverifikasi nyata: `pnpm test` (150 suite API/3963 test, 42 berkas
+  web/510 test) LULUS, `tsc --noEmit` LULUS, `pnpm lint` bersih dari
+  perubahan ini, kedua halaman dan tag SEO diverifikasi lewat peramban
+  sungguhan (Vite dev + API lokal).
+
 ## 2026-08-06 — MI-1: Portal registry, brand, dan routing publik
 
 - **Koreksi temuan MI-0**: Portal Registry NYATA sudah ada di kodebase
