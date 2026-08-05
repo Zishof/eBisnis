@@ -42,6 +42,14 @@ describe('ApotikLandingPage', () => {
       'src',
       '/panduan/apotik/manual-pengguna-sistem-apotik-emedik.pdf#view=FitH',
     );
+    expect(screen.getByRole('link', { name: /Unduh installer Windows/i })).toHaveAttribute(
+      'href',
+      '/update/pos-apotik-windows.exe',
+    );
+    expect(screen.getByRole('link', { name: /Unduh APK Android/i })).toHaveAttribute(
+      'href',
+      '/update/pos-apotik-android.apk',
+    );
     expect(screen.queryByText('Katalog produk tenant')).not.toBeInTheDocument();
   });
 

@@ -50,6 +50,7 @@ class LayarKasir extends StatefulWidget {
     this.shift,
     this.koneksi,
     this.namaPengguna,
+    this.onKeluar,
     this.pembaruan,
     this.pembukuan,
     this.mode = ModeKasir.penjualan,
@@ -72,6 +73,7 @@ class LayarKasir extends StatefulWidget {
   final String? shift;
   final KeadaanKoneksi? koneksi;
   final String? namaPengguna;
+  final VoidCallback? onKeluar;
   final PengelolaPembaruan? pembaruan;
   final PembukuanKasir? pembukuan;
   final ModeKasir mode;
@@ -742,6 +744,33 @@ class _LayarKasirState extends State<LayarKasir> {
 
   // --- Tampilan -------------------------------------------------------------
 
+  Future<void> _konfirmasiKeluar() async {
+    if (widget.onKeluar == null) return;
+    final setuju = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Keluar dari POS Apotik?'),
+        content: Text(
+          _baris.isEmpty
+              ? 'Sesi akun pada perangkat ini akan ditutup.'
+              : 'Keranjang saat ini belum diselesaikan dan akan dikosongkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.logout),
+            label: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    if (setuju == true) widget.onKeluar?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = _total;
@@ -779,6 +808,8 @@ class _LayarKasirState extends State<LayarKasir> {
                     namaPengguna: widget.namaPengguna,
                     pembaruan: widget.pembaruan,
                     onCekPembaruan: _cekPembaruan,
+                    onKeluar:
+                        widget.onKeluar == null ? null : _konfirmasiKeluar,
                   ),
                   Expanded(child: _isiMenu(t)),
                 ],

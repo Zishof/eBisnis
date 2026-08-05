@@ -8,7 +8,7 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { rawResponse } from '../../common/interceptors/response-envelope.interceptor';
 
 type PlatformAsset = 'windows' | 'android';
-type UpdateProduct = 'pos' | 'inventory';
+type UpdateProduct = 'pos' | 'inventory' | 'apotik';
 
 interface PosAsset {
   name: string;
@@ -22,6 +22,7 @@ interface PosAsset {
 const UPDATE_DIR = process.env.POS_UPDATE_DIR || '/opt/ebisnis/updates/pos';
 const FILE_PATTERN = /^ebisnis-pos-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)(?:-windows)?\.(exe|apk)$/;
 const INVENTORY_FILE_PATTERN = /^ebisnis-inventory-sales-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)(?:-windows)?\.(exe|apk)$/;
+const APOTIK_FILE_PATTERN = /^emedik-pos-apotik-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)(?:-windows)?\.(exe|apk)$/;
 
 @ApiTags('public')
 @Controller('update')
@@ -85,6 +86,33 @@ export class PosUpdateController {
   }
 
   @Public()
+  @Get(['apotik/latest', 'apotik/latest.json'])
+  @ApiOperation({ summary: 'Metadata rilis terakhir POS Apotik eMedik' })
+  latestApotik(@Headers('host') host: string, @Headers('x-forwarded-proto') proto?: string) {
+    const assets = this.assets('apotik');
+    if (!assets.length) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Belum ada berkas POS Apotik eMedik.');
+    }
+
+    const latestVersion = assets.map((a) => a.version).sort(compareVersion).at(-1)!;
+    const latestAssets = assets.filter((a) => a.version === latestVersion);
+    const base = `${proto === 'http' ? 'http' : 'https'}://${host}`;
+
+    return rawResponse({
+      tag_name: `apotik-pos-v${latestVersion}`,
+      name: `POS Apotik eMedik ${latestVersion}`,
+      draft: false,
+      prerelease: latestVersion.includes('-'),
+      body: 'POS Apotik eMedik untuk Windows 64-bit dan Android.',
+      assets: latestAssets.map((a) => ({
+        name: a.name,
+        size: a.size,
+        browser_download_url: `${base}/update/apotik/${a.name}`,
+      })),
+    });
+  }
+
+  @Public()
   @Get('ebisnis-pelanggan-demo.apk')
   @ApiOperation({ summary: 'Unduh APK pelanggan demo' })
   downloadDemoCustomerApk(@Res({ passthrough: true }) res: Response) {
@@ -110,6 +138,32 @@ export class PosUpdateController {
   @ApiOperation({ summary: 'Unduh EXE sales inventory demo' })
   downloadInventorySalesExe(@Res({ passthrough: true }) res: Response) {
     return this.downloadExplicitApp('ebisnis-inventory-sales.exe', res, 'EXE inventory sales belum tersedia.', 'inventory', 'windows');
+  }
+
+  @Public()
+  @Get('pos-apotik-windows.exe')
+  @ApiOperation({ summary: 'Unduh installer Windows POS Apotik terbaru' })
+  downloadApotikWindows(@Res({ passthrough: true }) res: Response) {
+    return this.downloadLatestAlias(
+      'pos-apotik-windows.exe',
+      'apotik',
+      'windows',
+      res,
+      'Installer Windows POS Apotik belum tersedia.',
+    );
+  }
+
+  @Public()
+  @Get('pos-apotik-android.apk')
+  @ApiOperation({ summary: 'Unduh APK Android POS Apotik terbaru' })
+  downloadApotikAndroid(@Res({ passthrough: true }) res: Response) {
+    return this.downloadLatestAlias(
+      'pos-apotik-android.apk',
+      'apotik',
+      'android',
+      res,
+      'APK Android POS Apotik belum tersedia.',
+    );
   }
 
   @Public()
@@ -150,9 +204,33 @@ export class PosUpdateController {
     return this.streamFile(path, safe, res, 'immutable');
   }
 
+  @Public()
+  @Get('apotik/:file')
+  @ApiOperation({ summary: 'Unduh rilis bernomor POS Apotik eMedik' })
+  downloadApotikVersioned(@Param('file') file: string, @Res({ passthrough: true }) res: Response) {
+    const safe = basename(file);
+    if (safe !== file || !APOTIK_FILE_PATTERN.test(file)) {
+      this.noStore(res);
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas POS Apotik tidak ditemukan.');
+    }
+
+    const path = this.updateFilePath(safe);
+    if (!path) {
+      this.noStore(res);
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Berkas POS Apotik tidak ditemukan.');
+    }
+
+    return this.streamFile(path, safe, res, 'immutable');
+  }
+
   private assets(product: UpdateProduct): PosAsset[] {
     if (!existsSync(UPDATE_DIR)) return [];
-    const pattern = product === 'inventory' ? INVENTORY_FILE_PATTERN : FILE_PATTERN;
+    const pattern =
+      product === 'inventory'
+        ? INVENTORY_FILE_PATTERN
+        : product === 'apotik'
+          ? APOTIK_FILE_PATTERN
+          : FILE_PATTERN;
     return readdirSync(UPDATE_DIR)
       .map((name) => {
         const match = pattern.exec(name);
@@ -215,6 +293,21 @@ export class PosUpdateController {
       ErrorCodes.NOT_FOUND,
       `${message} Unggah berkas ${aliasName} ke folder pembaruan POS atau GitHub Release.`,
     );
+  }
+
+  private downloadLatestAlias(
+    aliasName: string,
+    product: UpdateProduct,
+    platform: PlatformAsset,
+    res: Response,
+    message: string,
+  ) {
+    const asset = this.latestAsset(product, platform);
+    if (!asset) {
+      this.noStore(res);
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, message);
+    }
+    return this.streamFile(asset.path, aliasName, res, 'latest');
   }
 
   private updateFilePath(file: string): string | null {

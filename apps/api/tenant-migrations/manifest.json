@@ -806,6 +806,13 @@
       "file": "H069__health__menu_truth_w8_portal_reports_security.sql",
       "name": "eMedik: menu berlayar W-8 portal, laporan, keamanan",
       "description": "Membuka menu akun portal, pelepasan hasil, website, data contoh, laporan, akuntansi, rekonsiliasi, investor, waterfall, zona data, dan penjaga AI. Layar menyatakan penghalang ekspor dokumen, HEALTH_* Core, dan privasi investor secara eksplisit."
+    },
+    {
+      "version": "H070",
+      "sequence": 1070,
+      "file": "H070__health__pharmacy_trade.sql",
+      "name": "eMedik: transaksi POS apotik, racikan, dan produksi",
+      "description": "Menghubungkan transaksi POS dengan resep yang telah ditelaah, menyimpan formula/etiket racikan dan snapshot komponennya, serta membuka ruang kerja Penjualan Obat, Pembelian PBF, dan Racikan/Produksi. Mesin harga, stok, pembayaran, jurnal, dan reversal tetap milik POS/Inventory; H070 hanya menambah kontrak klinis yang tidak dikenal kasir retail."
     }
   ]
 }

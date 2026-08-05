@@ -29,6 +29,7 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { TenantPermissionService } from '../auth/tenant-permission.service';
 import { HealthPharmacyService } from './health-pharmacy.service';
 import { CoreIdentityAdapter } from './adapters/core.adapters';
+import { PosSaleService } from '../pos/pos-sale.service';
 import type { KonteksAkses } from './health-patient.service';
 import type { PurposeOfUse } from './ports';
 
@@ -315,6 +316,42 @@ class LewatiDto {
   note?: string;
 }
 
+class KonteksPosApotikDto {
+  @ApiProperty({ enum: ['OTC', 'PRESCRIPTION', 'COMPOUND', 'PRODUCTION'] })
+  @IsIn(['OTC', 'PRESCRIPTION', 'COMPOUND', 'PRODUCTION'])
+  mode!: 'OTC' | 'PRESCRIPTION' | 'COMPOUND' | 'PRODUCTION';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  prescriptionNumber?: string;
+
+  @ApiPropertyOptional({ description: 'Nomor work order atau batch produksi.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(96)
+  referenceNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(180)
+  formulaName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  dosageForm?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  labelInstruction?: string;
+}
+
 // --- Controller --------------------------------------------------------------
 
 @ApiTags('eMedik — Farmasi')
@@ -324,6 +361,7 @@ export class HealthPharmacyController {
     private readonly farmasi: HealthPharmacyService,
     private readonly identity: CoreIdentityAdapter,
     private readonly izin: TenantPermissionService,
+    private readonly posSale: PosSaleService,
   ) {}
 
   /**
@@ -398,6 +436,83 @@ export class HealthPharmacyController {
   ) {
     const schema = requireSchema(user);
     return this.farmasi.periksaCalonResep(schema, dto, await this.konteks(schema, user, { purpose, facilityId }));
+  }
+
+  // --- Penjualan, racikan, dan produksi pada POS Apotik --------------------
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.READ')
+  @Get('pos-sales')
+  @ApiOperation({ summary: 'Daftar transaksi POS Apotik beserta konteks farmasinya' })
+  daftarTransaksiPos(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('mode') mode?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.farmasi.daftarTransaksiPos(requireSchema(user), mode, Number(limit) || 100);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.READ')
+  @Get('pos-sales/:id/context')
+  @ApiOperation({ summary: 'Konteks resep/racikan satu transaksi POS Apotik' })
+  konteksPos(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.farmasi.konteksTransaksiPos(requireSchema(user), id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.SELL')
+  @Post('pos-sales/:id/context')
+  @ApiOperation({ summary: 'Menyimpan konteks klinis atau produksi transaksi POS Apotik' })
+  async simpanKonteksPos(
+    @Param('id') id: string,
+    @Body() dto: KonteksPosApotikDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    return this.farmasi.simpanKonteksTransaksiPos(
+      schema,
+      id,
+      dto,
+      await this.identity.subjectId(schema, user.userId),
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.SELL')
+  @Post('pos-sales/:id/validate')
+  @ApiOperation({
+    summary: 'Memeriksa resep, item, formula, dan snapshot racikan sebelum menerima pembayaran',
+  })
+  validasiPos(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.farmasi.validasiTransaksiPos(requireSchema(user), id);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.SELL')
+  @Post('pos-sales/:id/complete')
+  @ApiOperation({
+    summary: 'Validasi aturan farmasi lalu selesaikan transaksi POS secara atomik',
+    description:
+      'Menolak obat resep tanpa resep ditelaah dan obat yang tidak tercantum pada resep. ' +
+      'Pembayaran, stok, jurnal, dan struk tetap diselesaikan mesin POS.',
+  })
+  async selesaikanPos(
+    @Param('id') id: string,
+    @Headers('idempotency-key') idempotencyKey: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    await this.farmasi.validasiTransaksiPos(schema, id);
+    const hasil = await this.posSale.selesaikan(
+      schema,
+      id,
+      idempotencyKey?.trim() || id,
+      user,
+      await this.identity.subjectId(schema, user.userId),
+    );
+    await this.farmasi.tandaiTransaksiPosSelesai(schema, id);
+    return hasil;
   }
 
   @ApiBearerAuth('access-token')

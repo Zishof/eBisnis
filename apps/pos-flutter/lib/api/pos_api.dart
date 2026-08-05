@@ -36,6 +36,9 @@ class PosApiClient {
   final String? password;
   final String? tenantCode;
   final HttpClient _http;
+  String? displayName;
+  String? authenticatedUsername;
+  String? authenticatedTenantName;
 
   Future<void> pastikanMasuk() async {
     if (accessToken?.isNotEmpty == true) return;
@@ -59,6 +62,38 @@ class PosApiClient {
       throw const PosApiException(
           'Login berhasil tetapi access token tidak diterima.');
     }
+    if (data['mustChangePassword'] == true) {
+      accessToken = null;
+      throw const PosApiException(
+        'Kata sandi wajib diganti. Masuk melalui apotik.emedik.id terlebih dahulu untuk membuat kata sandi baru.',
+      );
+    }
+    final user = data['user'] as Map<String, Object?>?;
+    final tenant = data['tenant'] as Map<String, Object?>?;
+    if (tenant == null) {
+      accessToken = null;
+      throw const PosApiException(
+        'Akun belum terhubung ke tenant. Hubungi admin Apotik eMedik.',
+      );
+    }
+    authenticatedUsername = user?['username']?.toString();
+    displayName = user?['displayName']?.toString();
+    authenticatedTenantName = tenant['tenantName']?.toString();
+  }
+
+  Future<void> keluar() async {
+    if (accessToken?.isNotEmpty == true) {
+      try {
+        await _request<Map<String, Object?>>('POST', '/auth/logout',
+            body: const {});
+      } on Object {
+        // Token lokal tetap harus dibuang walaupun server sedang tidak terjangkau.
+      }
+    }
+    accessToken = null;
+    displayName = null;
+    authenticatedUsername = null;
+    authenticatedTenantName = null;
   }
 
   Future<BootstrapKasir> bootstrap() async {
@@ -72,7 +107,7 @@ class PosApiClient {
     final shift = konteks['openShift'] as Map<String, Object?>?;
     if (shift == null) {
       throw const PosApiException(
-          'Belum ada shift terbuka. Buka shift dari aplikasi web lebih dulu.');
+          'Login berhasil, tetapi belum ada shift terbuka. Buka shift POS untuk akun ini dari aplikasi web, lalu masuk kembali.');
     }
 
     final sumber = SumberKatalogApi(snapshot);

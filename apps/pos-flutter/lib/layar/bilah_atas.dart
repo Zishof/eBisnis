@@ -27,6 +27,7 @@ class BilahAtas extends StatelessWidget {
     this.peranPengguna,
     this.pembaruan,
     this.onCekPembaruan,
+    this.onKeluar,
     super.key,
   });
 
@@ -45,6 +46,7 @@ class BilahAtas extends StatelessWidget {
 
   final PengelolaPembaruan? pembaruan;
   final VoidCallback? onCekPembaruan;
+  final VoidCallback? onKeluar;
 
   @override
   Widget build(BuildContext context) {
@@ -101,9 +103,21 @@ class BilahAtas extends StatelessWidget {
                       warnaUtama: _warnaKoneksi(koneksi),
                     ),
                     const SizedBox(width: 8),
-                    _TombolPembaruan(pembaruan: pembaruan, onTekan: onCekPembaruan),
+                    _TombolPembaruan(
+                        pembaruan: pembaruan, onTekan: onCekPembaruan),
                     const SizedBox(width: 8),
                     _Pengguna(nama: namaPengguna, peran: peranPengguna),
+                    if (onKeluar != null) ...[
+                      const SizedBox(width: 8),
+                      Tooltip(
+                        message: 'Keluar akun',
+                        child: IconButton.filledTonal(
+                          key: const Key('tombol-keluar-akun'),
+                          onPressed: onKeluar,
+                          icon: const Icon(Icons.logout, size: 18),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -165,7 +179,8 @@ class _TombolPembaruan extends StatelessWidget {
               onTap: sedang ? null : onTekan,
               borderRadius: BorderRadius.circular(9),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -173,7 +188,8 @@ class _TombolPembaruan extends StatelessWidget {
                       const SizedBox(
                         width: 15,
                         height: 15,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     else
                       Icon(
@@ -236,7 +252,8 @@ class _Kapsul extends StatelessWidget {
             children: [
               if (atas != null)
                 Text(atas!,
-                    style: const TextStyle(color: Warna.teksAtasGelap, fontSize: 10.5)),
+                    style: const TextStyle(
+                        color: Warna.teksAtasGelap, fontSize: 10.5)),
               Text(
                 utama,
                 style: TextStyle(
@@ -288,7 +305,8 @@ class _Pengguna extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(peran ?? 'Kasir',
-                style: const TextStyle(color: Warna.teksAtasGelap, fontSize: 10.5)),
+                style: const TextStyle(
+                    color: Warna.teksAtasGelap, fontSize: 10.5)),
             Text(
               tampil,
               style: TextStyle(

@@ -58,7 +58,22 @@ flutter build apk --release --flavor apotik --dart-define=POS_MODE=apotik
 flutter build windows --release --dart-define=POS_MODE=apotik
 ```
 
-Mode ini mengganti brand menjadi **POS Apotik**, memakai katalog demo obat, dan
+Build Apotik menampilkan login server dan secara bawaan terhubung ke
+`https://apotik.emedik.id/api/v1/`. Alamat dapat ditimpa untuk staging/lokal:
+
+```bash
+flutter run -d windows --dart-define=POS_MODE=apotik --dart-define=POS_API_BASE=http://localhost:3000/api/v1/
+```
+
+Pengguna memasukkan akun resmi server pada layar login. `POS_USERNAME`,
+`POS_PASSWORD`, dan token tidak ditanam ke artefak rilis. Kode tenant pada form
+bersifat opsional; isi kode/slug tenant bila satu akun memiliki beberapa
+membership. Sesudah login, katalog, outlet, register, shift, dan metode bayar
+diambil dari server. Transaksi dibukukan ke server ketika pembayaran selesai.
+Pemeriksaan pembaruan POS Apotik memakai kanal publik khusus
+`https://apotik.emedik.id/update/apotik/latest`, bukan kanal POS retail.
+
+Mode ini mengganti brand menjadi **POS Apotik**, memakai katalog obat tenant, dan
 menampilkan konteks kerja farmasi: nomor resep/e-resep, pasien, resep dokter,
 obat bebas, antar, racikan, produksi farmasi, high-alert, batch, dan kedaluwarsa.
 

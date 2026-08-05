@@ -39,7 +39,9 @@ void main() {
 }
 
 class AplikasiKasir extends StatefulWidget {
-  const AplikasiKasir({super.key});
+  const AplikasiKasir({super.key, this.modeApotikOverride});
+
+  final bool? modeApotikOverride;
 
   @override
   State<AplikasiKasir> createState() => _AplikasiKasirState();
@@ -47,7 +49,10 @@ class AplikasiKasir extends StatefulWidget {
 
 class _AplikasiKasirState extends State<AplikasiKasir> {
   _PersonaSalon? _persona;
+  PosApiClient? _clientApotik;
+  _SumberKasir? _sumberApotik;
   bool get _modeApotik {
+    if (widget.modeApotikOverride != null) return widget.modeApotikOverride!;
     const mode = String.fromEnvironment('POS_MODE');
     const apotik = bool.fromEnvironment('POS_APOTIK');
     return apotik || mode == 'apotik';
@@ -111,10 +116,12 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
   /// Alamat penuh disediakan supaya rilis dapat diperantarai peladen eBisnis
   /// kelak — bentuk jawabannya sama, dan penguraiannya tidak perlu berubah.
   SumberPembaruan _pilihSumberPembaruan() {
-    const alamatPenuh = String.fromEnvironment(
-      'PEMBARUAN_URL',
-      defaultValue: 'https://ebisnis.id/update/pos/latest',
-    );
+    const alamatDikonfigurasi = String.fromEnvironment('PEMBARUAN_URL');
+    final alamatPenuh = alamatDikonfigurasi.isNotEmpty
+        ? alamatDikonfigurasi
+        : _modeApotik
+            ? 'https://apotik.emedik.id/update/apotik/latest'
+            : 'https://ebisnis.id/update/pos/latest';
     final akhiran = akhiranPemasang();
 
     if (alamatPenuh.isNotEmpty) {
@@ -198,28 +205,24 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
   Widget _beranda() {
     final persona = _persona;
     if (_modeApotik) {
-      return FutureBuilder<_SumberKasir>(
-        future: _sumber,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const _MemuatKasir();
-          }
-          final sumber = snap.data ?? _SumberKasir.contoh(apotik: true);
-          return LayarKasir(
-            katalog: sumber.katalog,
-            metode: sumber.metode,
-            pencetak: _pencetak,
-            namaToko: sumber.namaToko,
-            pelanggan: _pelanggan,
-            namaOutlet: sumber.namaOutlet,
-            shift: sumber.shift,
-            koneksi: sumber.koneksi,
-            namaPengguna: sumber.namaPengguna ?? 'apoteker',
-            pembaruan: _pembaruan,
-            pembukuan: sumber.pembukuan,
-            mode: ModeKasir.apotik,
-          );
-        },
+      final sumber = _sumberApotik;
+      if (sumber == null) {
+        return _LoginApotik(onMasuk: _masukApotik);
+      }
+      return LayarKasir(
+        katalog: sumber.katalog,
+        metode: sumber.metode,
+        pencetak: _pencetak,
+        namaToko: sumber.namaToko,
+        pelanggan: _pelanggan,
+        namaOutlet: sumber.namaOutlet,
+        shift: sumber.shift,
+        koneksi: sumber.koneksi,
+        namaPengguna: sumber.namaPengguna ?? 'apoteker',
+        pembaruan: _pembaruan,
+        pembukuan: sumber.pembukuan,
+        mode: ModeKasir.apotik,
+        onKeluar: _keluarApotik,
       );
     }
     if (persona == null) {
@@ -255,6 +258,53 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
     );
   }
 
+  Future<void> _masukApotik({
+    required String username,
+    required String password,
+    required String tenantCode,
+  }) async {
+    const configuredBase = String.fromEnvironment(
+      'POS_API_BASE',
+      defaultValue: 'https://apotik.emedik.id/api/v1/',
+    );
+    final client = PosApiClient(
+      baseUrl: Uri.parse(
+        configuredBase.endsWith('/') ? configuredBase : '$configuredBase/',
+      ),
+      username: username,
+      password: password,
+      tenantCode: tenantCode.trim().isEmpty ? null : tenantCode.trim(),
+    );
+    final boot = await client.bootstrap();
+    final sesi = boot.sesi;
+    final sumber = _SumberKasir(
+      katalog: boot.katalog,
+      metode: boot.metode,
+      namaToko: client.authenticatedTenantName ?? 'Apotik eMedik',
+      namaOutlet: sesi.outletName,
+      shift: sesi.shiftNumber ?? sesi.businessDate,
+      koneksi: KeadaanKoneksi.daring,
+      namaPengguna:
+          client.displayName ?? client.authenticatedUsername ?? username,
+      pembukuan: (transaksi) =>
+          client.bukukan(sesi: sesi, transaksi: transaksi),
+    );
+    if (!mounted) return;
+    setState(() {
+      _clientApotik = client;
+      _sumberApotik = sumber;
+    });
+  }
+
+  void _keluarApotik() {
+    final client = _clientApotik;
+    setState(() {
+      _clientApotik = null;
+      _sumberApotik = null;
+    });
+    if (client != null) unawaited(client.keluar());
+  }
+
   Future<_SumberKasir> _pilihSumberKasir() async {
     const apiBase = String.fromEnvironment('POS_API_BASE');
     if (apiBase.isEmpty) return _SumberKasir.contoh(apotik: _modeApotik);
@@ -279,6 +329,286 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
           const String.fromEnvironment('POS_USERNAME', defaultValue: 'demo'),
       pembukuan: (transaksi) =>
           client.bukukan(sesi: sesi, transaksi: transaksi),
+    );
+  }
+}
+
+typedef _MasukApotik = Future<void> Function({
+  required String username,
+  required String password,
+  required String tenantCode,
+});
+
+class _LoginApotik extends StatefulWidget {
+  const _LoginApotik({required this.onMasuk});
+
+  final _MasukApotik onMasuk;
+
+  @override
+  State<_LoginApotik> createState() => _LoginApotikState();
+}
+
+class _LoginApotikState extends State<_LoginApotik> {
+  final _username = TextEditingController();
+  final _password = TextEditingController();
+  final _tenant = TextEditingController();
+  bool _sibuk = false;
+  bool _lihatPassword = false;
+  String? _galat;
+
+  @override
+  void dispose() {
+    _username.dispose();
+    _password.dispose();
+    _tenant.dispose();
+    super.dispose();
+  }
+
+  Future<void> _masuk() async {
+    if (_username.text.trim().isEmpty || _password.text.isEmpty) {
+      setState(() => _galat = 'Nama pengguna dan kata sandi wajib diisi.');
+      return;
+    }
+    setState(() {
+      _sibuk = true;
+      _galat = null;
+    });
+    try {
+      await widget.onMasuk(
+        username: _username.text.trim(),
+        password: _password.text,
+        tenantCode: _tenant.text,
+      );
+    } on Object catch (error) {
+      if (mounted) setState(() => _galat = error.toString());
+    } finally {
+      if (mounted) setState(() => _sibuk = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF2F8F6),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 960),
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  final form = _form();
+                  const hero = _HeroLoginApotik();
+                  if (box.maxWidth < 760) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [hero, const SizedBox(height: 18), form],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Expanded(child: hero),
+                      const SizedBox(width: 34),
+                      Expanded(child: form),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _form() {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFD6E5E1)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: AutofillGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Masuk POS Apotik',
+                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              const Text(
+                  'Gunakan akun yang telah diaktifkan oleh admin tenant.'),
+              const SizedBox(height: 22),
+              TextField(
+                key: const Key('login-apotik-username'),
+                controller: _username,
+                autofillHints: const [AutofillHints.username],
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Nama pengguna atau email',
+                  prefixIcon: Icon(Icons.person_outline),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('login-apotik-password'),
+                controller: _password,
+                autofillHints: const [AutofillHints.password],
+                obscureText: !_lihatPassword,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: 'Kata sandi',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    tooltip: _lihatPassword
+                        ? 'Sembunyikan kata sandi'
+                        : 'Tampilkan kata sandi',
+                    onPressed: () =>
+                        setState(() => _lihatPassword = !_lihatPassword),
+                    icon: Icon(_lihatPassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined),
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('login-apotik-tenant'),
+                controller: _tenant,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _sibuk ? null : _masuk(),
+                decoration: const InputDecoration(
+                  labelText: 'Kode tenant (opsional)',
+                  helperText:
+                      'Isi hanya bila akun terhubung ke lebih dari satu tenant.',
+                  prefixIcon: Icon(Icons.apartment_outlined),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (_galat != null) ...[
+                const SizedBox(height: 14),
+                Container(
+                  key: const Key('login-apotik-error'),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1F2),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFDA4AF)),
+                  ),
+                  child: Text(_galat!,
+                      style: const TextStyle(color: Color(0xFF9F1239))),
+                ),
+              ],
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                key: const Key('login-apotik-submit'),
+                onPressed: _sibuk ? null : _masuk,
+                icon: _sibuk
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.login),
+                label: Text(_sibuk ? 'Menghubungkan...' : 'Masuk'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  backgroundColor: const Color(0xFF087F73),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.cloud_done_outlined,
+                      size: 19, color: Color(0xFF087F73)),
+                  SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      'Katalog, shift, pembayaran, dan transaksi dibaca dari server tenant. Aplikasi tidak memakai data contoh setelah login.',
+                      style: TextStyle(color: Color(0xFF475569), height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroLoginApotik extends StatelessWidget {
+  const _HeroLoginApotik();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Color(0xFF087F73),
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+              ),
+              child: SizedBox(
+                width: 46,
+                height: 46,
+                child: Icon(Icons.medication_outlined,
+                    color: Colors.white, size: 27),
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Apotik eMedik',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        SizedBox(height: 28),
+        Text('Kasir farmasi yang terhubung ke tenant Anda.',
+            style: TextStyle(
+                fontSize: 38, fontWeight: FontWeight.w900, height: 1.12)),
+        SizedBox(height: 14),
+        Text(
+          'Masuk dengan akun server untuk mengambil katalog obat, outlet, register, shift aktif, dan metode pembayaran yang benar.',
+          style:
+              TextStyle(fontSize: 16, color: Color(0xFF475569), height: 1.55),
+        ),
+        SizedBox(height: 24),
+        _ButirLogin(Icons.verified_user_outlined, 'Akses mengikuti peran akun'),
+        SizedBox(height: 10),
+        _ButirLogin(
+            Icons.sync_outlined, 'Transaksi dikirim ke server saat pembayaran'),
+        SizedBox(height: 10),
+        _ButirLogin(
+            Icons.inventory_2_outlined, 'Katalog berasal dari tenant aktif'),
+      ],
+    );
+  }
+}
+
+class _ButirLogin extends StatelessWidget {
+  const _ButirLogin(this.icon, this.label);
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFF087F73), size: 21),
+        const SizedBox(width: 10),
+        Expanded(
+            child: Text(label,
+                style: const TextStyle(fontWeight: FontWeight.w600))),
+      ],
     );
   }
 }

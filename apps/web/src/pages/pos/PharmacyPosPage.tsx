@@ -40,7 +40,7 @@ import { PosShiftBar } from './PosShiftBar';
 import type { KeranjangPos, KonteksPos, ProdukPos } from './pos-types';
 import { emedikPublicBrandFor } from '../public/emedik-host';
 
-type ModeTransaksi = 'OTC' | 'RESEP' | 'RACIKAN' | 'PRODUKSI';
+type ModeTransaksi = 'OTC' | 'PRESCRIPTION' | 'COMPOUND' | 'PRODUCTION';
 
 const modeTransaksi: Array<{
   key: ModeTransaksi;
@@ -49,9 +49,9 @@ const modeTransaksi: Array<{
   helper: string;
 }> = [
   { key: 'OTC', label: 'OTC', icon: Pill, helper: 'Penjualan obat bebas dan produk kesehatan.' },
-  { key: 'RESEP', label: 'Resep dokter', icon: ClipboardCheck, helper: 'Wajib telaah sebelum obat diserahkan.' },
-  { key: 'RACIKAN', label: 'Racikan', icon: Beaker, helper: 'Bahan, takaran, etiket, dan HPP perlu dicatat.' },
-  { key: 'PRODUKSI', label: 'Produksi farmasi', icon: Factory, helper: 'Gunakan BOM/work order untuk hasil jadi dan batch.' },
+  { key: 'PRESCRIPTION', label: 'Resep dokter', icon: ClipboardCheck, helper: 'Wajib telaah sebelum obat diserahkan.' },
+  { key: 'COMPOUND', label: 'Racikan', icon: Beaker, helper: 'Bahan, takaran, etiket, dan HPP dicatat sebagai satu formula.' },
+  { key: 'PRODUCTION', label: 'Produksi farmasi', icon: Factory, helper: 'Nomor work order dan komponen disimpan bersama batch hasil jadi.' },
 ];
 
 const guardrails = [
@@ -75,8 +75,12 @@ export function PharmacyPosPage() {
   const [kataKunci, setKataKunci] = useState('');
   const [pindai, setPindai] = useState('');
   const [bukaBayar, setBukaBayar] = useState(false);
-  const [mode, setMode] = useState<ModeTransaksi>('RESEP');
+  const [mode, setMode] = useState<ModeTransaksi>('PRESCRIPTION');
   const [nomorResep, setNomorResep] = useState('');
+  const [namaFormula, setNamaFormula] = useState('');
+  const [bentukSediaan, setBentukSediaan] = useState('');
+  const [etiket, setEtiket] = useState('');
+  const [nomorProduksi, setNomorProduksi] = useState('');
 
   const galat = useCallback((e: unknown) => toast.push(pesanGalat(e, (k, f) => f ?? k), 'error'), [toast, pesanGalat]);
   const fokusPindai = useCallback(() => window.setTimeout(() => kotakPindai.current?.focus(), 0), []);
@@ -177,6 +181,22 @@ export function PharmacyPosPage() {
     onError: galat,
   });
 
+  const simpanKonteks = useMutation({
+    mutationFn: async () => {
+      await api.post(`/health/pharmacy/pos-sales/${saleId}/context`, {
+        mode,
+        prescriptionNumber: nomorResep.trim() || undefined,
+        referenceNumber: nomorProduksi.trim() || undefined,
+        formulaName: namaFormula.trim() || undefined,
+        dosageForm: bentukSediaan.trim() || undefined,
+        labelInstruction: etiket.trim() || undefined,
+      });
+      return api.post(`/health/pharmacy/pos-sales/${saleId}/validate`, {});
+    },
+    onSuccess: () => setBukaBayar(true),
+    onError: galat,
+  });
+
   const denganBarcode = useMutation({
     mutationFn: async (kode: string) => {
       const p = await api.get<ProdukPos>(`/pos/products/by-barcode?code=${encodeURIComponent(kode)}`);
@@ -198,8 +218,11 @@ export function PharmacyPosPage() {
   const baris = keranjang.data?.lines ?? [];
   const daftarProduk = kataKunci.trim().length >= 2 ? cari.data : favorit.data;
   const modeAktif = modeTransaksi.find((m) => m.key === mode)!;
-  const butuhKonteksKlinis = mode !== 'OTC';
-  const konteksKlinisTerisi = !butuhKonteksKlinis || nomorResep.trim().length >= 3;
+  const butuhResep = mode === 'PRESCRIPTION' || mode === 'COMPOUND';
+  const konteksKlinisTerisi = !butuhResep || nomorResep.trim().length >= 3;
+  const formulaTerisi = mode !== 'COMPOUND' ||
+    (namaFormula.trim().length >= 3 && etiket.trim().length >= 3);
+  const produksiTerisi = mode !== 'PRODUCTION' || nomorProduksi.trim().length >= 3;
   const butuhApproval = baris.some((l) => l.requires_approval && !l.approved_by);
   const siapBayar = useMemo(
     () =>
@@ -207,12 +230,14 @@ export function PharmacyPosPage() {
       baris.length > 0 &&
       Number(keranjang.data?.grand_total ?? 0) > 0 &&
       konteksKlinisTerisi &&
+      formulaTerisi &&
+      produksiTerisi &&
       !butuhApproval,
-    [saleId, baris.length, keranjang.data, konteksKlinisTerisi, butuhApproval],
+    [saleId, baris.length, keranjang.data, konteksKlinisTerisi, formulaTerisi, produksiTerisi, butuhApproval],
   );
   const safetyChecklist = [
     {
-      label: butuhKonteksKlinis ? 'Nomor resep/pasien terisi' : 'Mode OTC dipilih',
+      label: butuhResep ? 'Nomor resep terisi' : mode === 'PRODUCTION' ? 'Nomor produksi terisi' : 'Mode OTC dipilih',
       ok: konteksKlinisTerisi,
     },
     {
@@ -279,8 +304,11 @@ export function PharmacyPosPage() {
             <Link to="/app/emedik/resep" className="btn-outline px-3 py-2 text-xs">
               Resep dokter
             </Link>
-            <Link to="/app/boms" className="btn-outline px-3 py-2 text-xs">
-              BOM racikan
+            <Link to="/app/apotik/pembelian" className="btn-outline px-3 py-2 text-xs">
+              Pembelian PBF
+            </Link>
+            <Link to="/app/apotik/racikan" className="btn-outline px-3 py-2 text-xs">
+              Racikan &amp; produksi
             </Link>
           </div>
         </div>
@@ -320,20 +348,40 @@ export function PharmacyPosPage() {
             })}
           </div>
 
-          <label className="field-label mt-4" htmlFor="nomor-resep">
-            Nomor resep / pasien
-          </label>
-          <input
-            id="nomor-resep"
-            value={nomorResep}
-            onChange={(e) => setNomorResep(e.target.value)}
-            placeholder="mis. RSP-0826-0142"
-            className={butuhKonteksKlinis && !konteksKlinisTerisi ? 'field-input border-amber-400 bg-amber-50' : 'field-input'}
-          />
-          {butuhKonteksKlinis && !konteksKlinisTerisi && (
+          {butuhResep && (
+            <>
+              <label className="field-label mt-4" htmlFor="nomor-resep">Nomor resep</label>
+              <input
+                id="nomor-resep"
+                value={nomorResep}
+                onChange={(e) => setNomorResep(e.target.value)}
+                placeholder="mis. RX-KLN01-20260806-0012"
+                className={!konteksKlinisTerisi ? 'field-input border-amber-400 bg-amber-50' : 'field-input'}
+              />
+            </>
+          )}
+          {butuhResep && !konteksKlinisTerisi && (
             <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs leading-5 text-amber-900">
-              Mode {modeAktif.label} perlu konteks resep atau pasien sebelum pembayaran.
+              Mode {modeAktif.label} perlu nomor resep yang sudah ditelaah sebelum pembayaran.
             </p>
+          )}
+
+          {mode === 'COMPOUND' && (
+            <div className="mt-3 grid gap-2">
+              <label className="field-label" htmlFor="nama-formula">Nama formula racikan</label>
+              <input id="nama-formula" className="field-input" value={namaFormula} onChange={(e) => setNamaFormula(e.target.value)} placeholder="mis. Puyer batuk anak" />
+              <label className="field-label" htmlFor="bentuk-sediaan">Bentuk sediaan</label>
+              <input id="bentuk-sediaan" className="field-input" value={bentukSediaan} onChange={(e) => setBentukSediaan(e.target.value)} placeholder="puyer, kapsul, salep" />
+              <label className="field-label" htmlFor="etiket-racikan">Instruksi etiket</label>
+              <textarea id="etiket-racikan" className="field-input min-h-20" value={etiket} onChange={(e) => setEtiket(e.target.value)} placeholder="Aturan pakai pada etiket" />
+            </div>
+          )}
+
+          {mode === 'PRODUCTION' && (
+            <div className="mt-3">
+              <label className="field-label" htmlFor="nomor-produksi">Nomor work order / batch</label>
+              <input id="nomor-produksi" className="field-input" value={nomorProduksi} onChange={(e) => setNomorProduksi(e.target.value)} placeholder="mis. WO-FRM-2026-0042" />
+            </div>
           )}
 
           <div className="mt-4 space-y-2">
@@ -539,7 +587,7 @@ export function PharmacyPosPage() {
               type="button"
               className="btn-primary mt-3 w-full justify-center bg-emerald-700 py-3 text-base hover:bg-emerald-800"
               disabled={!siapBayar}
-              onClick={() => setBukaBayar(true)}
+              onClick={() => simpanKonteks.mutate()}
             >
               <Banknote className="h-5 w-5" aria-hidden />
               Bayar POS Apotik
@@ -553,6 +601,8 @@ export function PharmacyPosPage() {
           saleId={saleId}
           total={Number(keranjang.data.grand_total)}
           currencyCode={keranjang.data.currency_code ?? 'IDR'}
+          completePath={`/health/pharmacy/pos-sales/${saleId}/complete`}
+          completeHeaders={{ 'X-Purpose-Of-Use': 'PAYMENT' }}
           onTutup={() => {
             setBukaBayar(false);
             fokusPindai();
