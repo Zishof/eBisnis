@@ -126,9 +126,9 @@ const MODULES: EducationModule[] = [
     product: 'epesantren',
     status: 'SEBAGIAN',
     priority: 'P0',
-    summary: 'Rombel, kurikulum, jadwal, komponen nilai, skala huruf, input nilai, finalisasi rapor, dan keputusan akademik.',
-    implementedBy: 'PesantrenKelasKurikulumPage, PesantrenJadwalPage, PesantrenNilaiPage, PesantrenAkademikPage.',
-    nextAction: 'Cetak rapor PDF, leger, ranking, QR verifikasi publik, dan validasi bentrok jadwal.',
+    summary: 'Rombel, kurikulum, jadwal, komponen nilai, skala huruf, input nilai, finalisasi snapshot rapor, PDF resmi ber-QR, verifikasi publik, dan keputusan akademik.',
+    implementedBy: 'PesantrenKelasKurikulumPage, PesantrenJadwalPage, PesantrenNilaiPage, PesantrenAkademikPage, RaporVerificationPage.',
+    nextAction: 'Tambah leger, ranking, template rapor per jenjang, dan validasi bentrok jadwal lanjutan.',
     href: '/app/pesantren/akademik',
   },
   {

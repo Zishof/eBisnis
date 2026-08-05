@@ -151,6 +151,63 @@ export class PesantrenPublicService {
     return row;
   }
 
+  async verifikasiRapor(host: string | undefined, code: string) {
+    const verificationCode = code.trim().toLowerCase();
+    if (!/^[a-f0-9]{32}$/.test(verificationCode)) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Dokumen rapor tidak ditemukan.');
+    }
+
+    const konteks = await this.resolver.resolve(host, VERTIKAL);
+    const S = konteks.schemaName;
+    const row = await this.tenantDb.queryOne<Record<string, unknown>>(
+      S,
+      `SELECT r.verification_code, r.checksum, r.summary, r.finalized_at::text,
+              r.wali_kelas_signed_at::text, r.kepala_signed_at::text,
+              s.nis, s.nisn, s.nama_lengkap, s.status AS status_santri,
+              ta.code AS tahun_ajaran_code, ta.name AS tahun_ajaran_name,
+              ws.nama_tampilan, ws.logo_url
+         FROM "${S}".pesantren_rapor_finalisasi r
+         JOIN "${S}".pesantren_santri s ON s.id = r.santri_id
+         JOIN "${S}".pesantren_tahun_ajaran ta ON ta.id = r.tahun_ajaran_id
+         LEFT JOIN "${S}".pesantren_website_setting ws ON ws.singleton = TRUE
+        WHERE r.verification_code = $1
+          AND r.status = 'FINALIZED'
+          AND r.deleted_at IS NULL
+        LIMIT 1`,
+      [verificationCode],
+    );
+    if (!row) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Dokumen rapor tidak ditemukan.');
+    }
+
+    return {
+      valid: true,
+      verificationCode: row.verification_code,
+      checksum: row.checksum,
+      checksumShort: String(row.checksum).slice(0, 24),
+      finalizedAt: row.finalized_at,
+      signed: {
+        waliKelas: Boolean(row.wali_kelas_signed_at),
+        kepalaSatuan: Boolean(row.kepala_signed_at),
+      },
+      institusi: {
+        nama: row.nama_tampilan ?? 'Pondok Pesantren',
+        logoUrl: row.logo_url ?? null,
+      },
+      santri: {
+        nis: row.nis,
+        nisn: row.nisn,
+        namaLengkap: row.nama_lengkap,
+        status: row.status_santri,
+      },
+      tahunAjaran: {
+        code: row.tahun_ajaran_code,
+        name: row.tahun_ajaran_name,
+      },
+      ringkasan: row.summary ?? {},
+    };
+  }
+
   private async unitDariHost(schemaName: string, host: string) {
     const labelSantri = host.endsWith('.santri.info') ? host.slice(0, -'.santri.info'.length) : null;
     return this.tenantDb.queryOne(
