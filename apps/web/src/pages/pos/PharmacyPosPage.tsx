@@ -37,6 +37,7 @@ import { LoadingState, useToast } from '../../components/ui';
 import { PosPaymentDialog } from './PosPaymentDialog';
 import { PosShiftBar } from './PosShiftBar';
 import type { KeranjangPos, KonteksPos, ProdukPos } from './pos-types';
+import { emedikPublicBrandFor } from '../public/emedik-host';
 
 type ModeTransaksi = 'OTC' | 'RESEP' | 'RACIKAN' | 'PRODUKSI';
 
@@ -64,6 +65,7 @@ export function PharmacyPosPage() {
   const qc = useQueryClient();
   const pesanGalat = useErrorMessage();
   const kotakPindai = useRef<HTMLInputElement>(null);
+  const brand = emedikPublicBrandFor();
 
   const [outletId, setOutletId] = useState<string | null>(null);
   const [terminalId, setTerminalId] = useState<string | null>(null);
@@ -225,7 +227,7 @@ export function PharmacyPosPage() {
   if (konteks.isLoading) return <LoadingState />;
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-emerald-50 dark:bg-slate-950">
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-emerald-50 dark:bg-slate-950">
       <PosShiftBar
         konteks={konteks.data}
         outletId={outletId}
@@ -245,6 +247,9 @@ export function PharmacyPosPage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">POS Apotik</p>
             <h1 className="text-lg font-black">Kasir obat, resep, racikan, dan produksi farmasi</h1>
+            {brand?.kind === 'apotik' && (
+              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{brand.name}</p>
+            )}
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-800 ring-1 ring-emerald-100">
@@ -271,8 +276,8 @@ export function PharmacyPosPage() {
         </div>
       </header>
 
-      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 xl:grid-cols-[21rem_1fr_26rem]">
-        <aside className="min-h-0 overflow-y-auto rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900">
+      <div className="grid flex-1 grid-cols-1 gap-3 overflow-visible p-3 xl:grid-cols-[21rem_1fr_26rem] xl:overflow-hidden">
+        <aside className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 xl:min-h-0 xl:overflow-y-auto">
           <div className="rounded-lg bg-emerald-950 p-4 text-white">
             <div className="flex items-center gap-3">
               <ShieldAlert className="h-7 w-7 text-emerald-200" aria-hidden />
@@ -331,7 +336,7 @@ export function PharmacyPosPage() {
           </div>
         </aside>
 
-        <section className="flex min-h-0 flex-col rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900">
+        <section className="flex min-h-[24rem] flex-col rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 xl:min-h-0">
           <div className="flex flex-wrap gap-2">
             <div className="relative min-w-[15rem] flex-1">
               <input
@@ -408,7 +413,7 @@ export function PharmacyPosPage() {
           )}
         </section>
 
-        <section className="flex min-h-0 flex-col rounded-xl bg-white shadow-sm dark:bg-slate-900">
+        <section className="flex min-h-[24rem] flex-col rounded-xl bg-white shadow-sm dark:bg-slate-900 xl:min-h-0">
           <header className="flex items-center justify-between border-b border-slate-200 p-3 dark:border-slate-800">
             <h2 className="flex items-center gap-2 font-semibold">
               <ShoppingCart className="h-4 w-4" aria-hidden />
