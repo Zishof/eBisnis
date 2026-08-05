@@ -42,8 +42,11 @@ const manualApotik = {
 };
 
 const aplikasiApotik = {
-  windows: '/update/pos-apotik-windows.exe',
-  android: '/update/pos-apotik-android.apk',
+  // Jalur /api sengaja dipakai untuk unduhan dari browser. Service worker lama
+  // sudah mengecualikan /api dari navigation fallback, sedangkan /update baru
+  // dikecualikan mulai rilis web berikutnya.
+  windows: '/api/v1/update/pos-apotik-windows.exe',
+  android: '/api/v1/update/pos-apotik-android.apk',
 };
 
 const pharmacyFlows = [

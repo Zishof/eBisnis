@@ -78,7 +78,7 @@ export default defineConfig({
          * menyadarinya. Data luring ditangani `pos-offline` yang tahu mana yang
          * boleh basi dan mana yang tidak.
          */
-        navigateFallbackDenylist: [/^\/api/, /^\/health/],
+        navigateFallbackDenylist: [/^\/api/, /^\/health/, /^\/update(?:\/|$)/],
         runtimeCaching: [],
         cleanupOutdatedCaches: true,
       },

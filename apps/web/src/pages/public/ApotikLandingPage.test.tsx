@@ -44,7 +44,7 @@ describe('ApotikLandingPage', () => {
     );
     expect(screen.getByRole('link', { name: /Unduh installer Windows/i })).toHaveAttribute(
       'href',
-      '/update/pos-apotik-windows.exe',
+      '/api/v1/update/pos-apotik-windows.exe',
     );
     expect(screen.getByRole('link', { name: /Unduh installer Windows/i })).toHaveAttribute(
       'download',
@@ -52,7 +52,7 @@ describe('ApotikLandingPage', () => {
     );
     expect(screen.getByRole('link', { name: /Unduh APK Android/i })).toHaveAttribute(
       'href',
-      '/update/pos-apotik-android.apk',
+      '/api/v1/update/pos-apotik-android.apk',
     );
     expect(screen.getByRole('link', { name: /Unduh APK Android/i })).toHaveAttribute(
       'download',
