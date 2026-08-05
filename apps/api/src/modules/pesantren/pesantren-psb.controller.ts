@@ -125,6 +125,9 @@ export class DaftarkanPendaftarDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(160)
   asalSekolah?: string;
 
+  @ApiPropertyOptional({ example: 'REGULER' }) @IsOptional() @IsString() @MaxLength(40)
+  jalurMasuk?: string;
+
   @ApiPropertyOptional() @IsOptional() @IsString()
   unitPendidikanTujuanId?: string;
 

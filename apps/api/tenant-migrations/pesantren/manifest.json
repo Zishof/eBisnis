@@ -233,6 +233,12 @@
       "file": "20260805T020000__pesantren__referensi_dapodik.sql",
       "name": "Referensi biodata Dapodik/AIS",
       "description": "Menambah pesantren_referensi_dapodik untuk master pekerjaan, pendidikan, penghasilan, transportasi, jenis tinggal, dan kebutuhan khusus. Ini menutup gugus AIS PekerjaanOrtuSiswaAction, PendidikanOrangTuaSiswaAction, PenghasilanOrangTuaSiswaAction, AlatTransportasiSiswaAction, JenisTinggalSiswaAction, dan KebutuhanKhususSiswaAction sebagai dataset impor/ekspor Dapodik tanpa memaksa FK pada data lama."
+    },
+    {
+      "id": "20260805T030000__pesantren__psb_jalur_masuk",
+      "file": "20260805T030000__pesantren__psb_jalur_masuk.sql",
+      "name": "Jalur masuk PSB",
+      "description": "Menambah jalur_masuk pada pesantren_psb_pendaftar untuk menutup pola AIS RekapJalurMasukMultiTahunPsb tanpa mengubah alur status PSB yang sudah berjalan."
     }
   ]
 }

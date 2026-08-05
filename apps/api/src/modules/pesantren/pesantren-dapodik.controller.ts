@@ -10,6 +10,7 @@ const DATASET = [
   'unit-pendidikan',
   'tahun-ajaran',
   'santri',
+  'psb-pendaftar',
   'guru',
   'mata-pelajaran',
   'rombongan',

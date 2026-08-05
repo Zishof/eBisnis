@@ -6,6 +6,7 @@ export type DatasetCode =
   | 'unit-pendidikan'
   | 'tahun-ajaran'
   | 'santri'
+  | 'psb-pendaftar'
   | 'guru'
   | 'mata-pelajaran'
   | 'rombongan'
@@ -111,6 +112,27 @@ const DATASETS: DatasetDef[] = [
       'pendidikan_wali',
       'pekerjaan_wali',
       'penghasilan_wali',
+    ],
+  },
+  {
+    code: 'psb-pendaftar',
+    name: 'Pendaftar PSB / Calon Santri',
+    description: 'Data calon santri sebelum daftar ulang, termasuk asal sekolah dan jalur masuk.',
+    required: ['tahun_ajaran_code', 'gelombang_kode', 'nama_lengkap', 'jenis_kelamin'],
+    columns: [
+      'tahun_ajaran_code',
+      'gelombang_kode',
+      'nomor_pendaftaran',
+      'nama_lengkap',
+      'jenis_kelamin',
+      'tempat_lahir',
+      'tanggal_lahir',
+      'nama_orang_tua',
+      'no_hp_orang_tua',
+      'alamat',
+      'asal_sekolah',
+      'jalur_masuk',
+      'status',
     ],
   },
   {
@@ -275,6 +297,20 @@ const DATASET_ALIASES: Partial<Record<DatasetCode, Partial<Record<string, string
     no_hp: ['no hp', 'nomor hp', 'handphone', 'telepon'],
     alamat: ['alamat jalan', 'alamat lengkap'],
   },
+  'psb-pendaftar': {
+    gelombang_kode: ['kode gelombang', 'gelombang', 'gelombang psb'],
+    tahun_ajaran_code: ['tahun ajaran', 'tahun pelajaran', 'periode'],
+    nomor_pendaftaran: ['nomor pendaftaran', 'no pendaftaran', 'no registrasi'],
+    nama_lengkap: ['nama', 'nama peserta didik', 'nama calon santri', 'nama pendaftar'],
+    jenis_kelamin: ['jk', 'jenis kelamin', 'kelamin'],
+    tempat_lahir: ['tempat lahir'],
+    tanggal_lahir: ['tanggal lahir', 'tgl lahir'],
+    nama_orang_tua: ['nama orang tua', 'orang tua', 'nama wali'],
+    no_hp_orang_tua: ['no hp orang tua', 'hp orang tua', 'nomor hp orang tua'],
+    alamat: ['alamat jalan', 'alamat lengkap'],
+    asal_sekolah: ['sekolah asal', 'asal sekolah'],
+    jalur_masuk: ['jalur', 'jalur pendaftaran', 'jalur masuk'],
+  },
   'mata-pelajaran': {
     code: ['kode', 'kode mata pelajaran', 'kode mapel'],
     nama: ['mata pelajaran', 'nama mapel', 'nama mata pelajaran'],
@@ -382,6 +418,8 @@ export class PesantrenDapodikService {
         return this.tenantDb.query(schemaName, `SELECT code, name, tanggal_mulai::text, tanggal_selesai::text, status FROM ${S}.pesantren_tahun_ajaran WHERE deleted_at IS NULL ORDER BY tanggal_mulai DESC`);
       case 'santri':
         return this.tenantDb.query(schemaName, `SELECT ${this.def('santri').columns.join(', ')} FROM ${S}.pesantren_santri WHERE deleted_at IS NULL ORDER BY nama_lengkap ASC`);
+      case 'psb-pendaftar':
+        return this.tenantDb.query(schemaName, `SELECT ta.code AS tahun_ajaran_code, g.kode AS gelombang_kode, p.nomor_pendaftaran, p.nama_lengkap, p.jenis_kelamin, p.tempat_lahir, p.tanggal_lahir::text, p.nama_orang_tua, p.no_hp_orang_tua, p.alamat, p.asal_sekolah, p.jalur_masuk, p.status FROM ${S}.pesantren_psb_pendaftar p JOIN ${S}.pesantren_psb_gelombang g ON g.id = p.gelombang_id JOIN ${S}.pesantren_tahun_ajaran ta ON ta.id = g.tahun_ajaran_id WHERE p.deleted_at IS NULL ORDER BY p.created_at DESC`);
       case 'guru':
         return this.tenantDb.query(schemaName, `SELECT nip, nama, jenis, no_hp, email, alamat, status FROM ${S}.pesantren_guru WHERE deleted_at IS NULL ORDER BY nama ASC`);
       case 'mata-pelajaran':
@@ -430,6 +468,8 @@ export class PesantrenDapodikService {
             await this.tenantDb.query(schemaName, `INSERT INTO ${S}.pesantren_santri (${columns.join(', ')}, status_tinggal, tanggal_masuk, created_by, updated_by) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}, 'NONMUKIM', CURRENT_DATE, $${columns.length + 1}, $${columns.length + 1})`, [...columns.map((c) => sqlValue(santriRow[c], c)), actorUserId]);
           }
         });
+      case 'psb-pendaftar':
+        return upsertSimple(this.tenantDb, schemaName, S, 'pesantren_psb_pendaftar', ['gelombang_id', 'nomor_pendaftaran'], ['gelombang_id', 'nomor_pendaftaran', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nama_orang_tua', 'no_hp_orang_tua', 'alamat', 'asal_sekolah', 'jalur_masuk', 'status'], await this.resolvePsbPendaftar(schemaName, row), actorUserId);
       case 'guru':
         return upsertSimple(this.tenantDb, schemaName, S, 'pesantren_guru', ['nama'], ['nip', 'nama', 'jenis', 'no_hp', 'email', 'alamat', 'status'], withDefaults(row, { jenis: 'HONORER', status: 'AKTIF' }), actorUserId);
       case 'mata-pelajaran':
@@ -493,6 +533,23 @@ export class PesantrenDapodikService {
       nama: row.nama,
       wali_kelas_user_id: row.wali_kelas_user_id,
       kapasitas: row.kapasitas,
+    };
+  }
+
+  private async resolvePsbPendaftar(schemaName: string, row: Record<string, string>): Promise<Record<string, string>> {
+    return {
+      gelombang_id: await this.gelombangPsbId(schemaName, row.gelombang_kode, row.tahun_ajaran_code),
+      nomor_pendaftaran: row.nomor_pendaftaran || nomorPsbImpor(row.gelombang_kode, row.nama_lengkap, row.tanggal_lahir),
+      nama_lengkap: row.nama_lengkap,
+      jenis_kelamin: row.jenis_kelamin,
+      tempat_lahir: row.tempat_lahir,
+      tanggal_lahir: row.tanggal_lahir,
+      nama_orang_tua: row.nama_orang_tua,
+      no_hp_orang_tua: row.no_hp_orang_tua,
+      alamat: row.alamat,
+      asal_sekolah: row.asal_sekolah,
+      jalur_masuk: row.jalur_masuk,
+      status: row.status || 'TERDAFTAR',
     };
   }
 
@@ -574,6 +631,20 @@ export class PesantrenDapodikService {
       [nama, tahunAjaranCode],
     );
     if (!row) throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, `Rombongan "${nama}" tahun "${tahunAjaranCode}" tidak ditemukan.`);
+    return row.id;
+  }
+
+  private async gelombangPsbId(schemaName: string, kode: string, tahunAjaranCode: string): Promise<string> {
+    const S = `"${schemaName}"`;
+    const row = await this.tenantDb.queryOne<{ id: string }>(
+      schemaName,
+      `SELECT g.id::text
+         FROM ${S}.pesantren_psb_gelombang g
+         JOIN ${S}.pesantren_tahun_ajaran ta ON ta.id = g.tahun_ajaran_id
+        WHERE g.kode = $1 AND ta.code = $2 AND g.deleted_at IS NULL`,
+      [kode, tahunAjaranCode],
+    );
+    if (!row) throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, `Gelombang PSB "${kode}" tahun "${tahunAjaranCode}" tidak ditemukan.`);
     return row.id;
   }
 
@@ -717,4 +788,13 @@ function csvCell(value: unknown): string {
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return 'Baris tidak dapat diimpor.';
+}
+
+function nomorPsbImpor(gelombangKode: string, nama: string, tanggalLahir: string): string {
+  const basis = `${nama}-${tanggalLahir || 'tanpa-tanggal'}`
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 24);
+  return `IMP-${gelombangKode}-${basis || 'PENDAFTAR'}`;
 }

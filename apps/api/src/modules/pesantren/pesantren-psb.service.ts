@@ -58,6 +58,7 @@ export interface BarisPendaftar {
   no_hp_orang_tua: string | null;
   alamat: string | null;
   asal_sekolah: string | null;
+  jalur_masuk: string | null;
   unit_pendidikan_tujuan_id: string | null;
   status: string;
   catatan_verifikasi: string | null;
@@ -107,7 +108,7 @@ export interface BarisPendaftar {
 
 const KOLOM_PENDAFTAR = `id::text, gelombang_id::text, nomor_pendaftaran, nama_lengkap, jenis_kelamin,
   tempat_lahir, tanggal_lahir::text, nama_orang_tua, no_hp_orang_tua, alamat, asal_sekolah,
-  unit_pendidikan_tujuan_id::text, status, catatan_verifikasi, catatan_keputusan, santri_id::text,
+  jalur_masuk, unit_pendidikan_tujuan_id::text, status, catatan_verifikasi, catatan_keputusan, santri_id::text,
   jawaban_tambahan, created_at::text,
   nik, nisn, nipd, agama, kewarganegaraan, kebutuhan_khusus, anak_ke,
   jumlah_saudara, alat_transportasi, jarak_tempat_tinggal_km::text,
@@ -511,7 +512,7 @@ export class PesantrenPsbService {
       const rows = await client.query<BarisPendaftar>(
         `INSERT INTO ${S}.pesantren_psb_pendaftar
            (gelombang_id, nomor_pendaftaran, nama_lengkap, jenis_kelamin, tempat_lahir, tanggal_lahir,
-            nama_orang_tua, no_hp_orang_tua, alamat, asal_sekolah, unit_pendidikan_tujuan_id,
+            nama_orang_tua, no_hp_orang_tua, alamat, asal_sekolah, jalur_masuk, unit_pendidikan_tujuan_id,
             nik, nisn, nipd, agama, kewarganegaraan, kebutuhan_khusus,
             anak_ke, jumlah_saudara, alat_transportasi, jarak_tempat_tinggal_km,
             telepon, hp, email, penerima_kip, nomor_kip, penerima_kks, nomor_kks,
@@ -520,15 +521,15 @@ export class PesantrenPsbService {
             nama_ibu, nik_ibu, tahun_lahir_ibu, pendidikan_ibu, pekerjaan_ibu, penghasilan_ibu,
             nama_wali, nik_wali, tahun_lahir_wali, pendidikan_wali, pekerjaan_wali, penghasilan_wali,
             jawaban_tambahan, created_by, updated_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-                 $12, $13, $14, $15, COALESCE($16, 'WNI'), COALESCE($17, 'TIDAK_ADA'),
-                 $18, $19, $20, $21,
-                 $22, $23, $24, COALESCE($25, FALSE), $26, COALESCE($27, FALSE), $28,
-                 $29,
-                 $30, $31, $32, $33, $34, $35,
-                 $36, $37, $38, $39, $40, $41,
-                 $42, $43, $44, $45, $46, $47,
-                 COALESCE($48::jsonb, '{}'::jsonb), $49, $49)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+                 $13, $14, $15, $16, COALESCE($17, 'WNI'), COALESCE($18, 'TIDAK_ADA'),
+                 $19, $20, $21, $22,
+                 $23, $24, $25, COALESCE($26, FALSE), $27, COALESCE($28, FALSE), $29,
+                 $30,
+                 $31, $32, $33, $34, $35, $36,
+                 $37, $38, $39, $40, $41, $42,
+                 $43, $44, $45, $46, $47, $48,
+                 COALESCE($49::jsonb, '{}'::jsonb), $50, $50)
          RETURNING ${KOLOM_PENDAFTAR}`,
         [
           gelombang.id,
@@ -541,6 +542,7 @@ export class PesantrenPsbService {
           bersihkan(masukan.noHpOrangTua),
           bersihkan(masukan.alamat),
           bersihkan(masukan.asalSekolah),
+          bersihkan(masukan.jalurMasuk)?.toUpperCase() ?? null,
           unitPendidikanTujuanId || null,
           bersihkan(masukan.nik),
           bersihkan(masukan.nisn),

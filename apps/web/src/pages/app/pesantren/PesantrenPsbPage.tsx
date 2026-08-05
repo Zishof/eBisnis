@@ -28,6 +28,7 @@ interface PendaftarRow extends Record<string, unknown> {
   jenis_kelamin: string;
   nama_orang_tua: string | null;
   no_hp_orang_tua: string | null;
+  jalur_masuk: string | null;
   unit_pendidikan_tujuan_id: string | null;
   status: string;
   created_at: string;
@@ -269,6 +270,7 @@ export function PesantrenPsbPage() {
     { key: 'jenis_kelamin', header: 'JK', render: (row) => (row.jenis_kelamin === 'L' ? 'L' : 'P') },
     { key: 'nama_orang_tua', header: 'Orang Tua', render: (row) => row.nama_orang_tua ?? '-' },
     { key: 'no_hp_orang_tua', header: 'HP', render: (row) => row.no_hp_orang_tua ?? '-' },
+    { key: 'jalur_masuk', header: 'Jalur', render: (row) => row.jalur_masuk ?? 'REGULER' },
     { key: 'status', header: 'Status', render: (row) => <StatusBadge status={row.status} /> },
     {
       key: 'id',

@@ -243,6 +243,25 @@ export class PesantrenLaporanService {
           [req.gelombangId || null],
         );
 
+      case 'PSB_JALUR_MASUK_MULTI_TAHUN':
+        return this.tenantDb.query(
+          schemaName,
+          `SELECT ta.code AS tahun_ajaran,
+                  COALESCE(NULLIF(TRIM(pd.jalur_masuk), ''), 'REGULER') AS jalur_masuk,
+                  pd.status,
+                  COUNT(*)::int AS jumlah,
+                  COUNT(*) FILTER (WHERE pd.status IN ('DITERIMA', 'DAFTAR_ULANG'))::int AS diterima,
+                  COUNT(*) FILTER (WHERE pd.status = 'DAFTAR_ULANG')::int AS daftar_ulang
+             FROM ${S}.pesantren_psb_pendaftar pd
+             JOIN ${S}.pesantren_psb_gelombang g ON g.id = pd.gelombang_id
+             JOIN ${S}.pesantren_tahun_ajaran ta ON ta.id = g.tahun_ajaran_id
+            WHERE pd.deleted_at IS NULL
+              AND ($1::uuid IS NULL OR pd.gelombang_id = $1)
+            GROUP BY ta.code, COALESCE(NULLIF(TRIM(pd.jalur_masuk), ''), 'REGULER'), pd.status
+            ORDER BY ta.code DESC, jalur_masuk ASC, pd.status ASC`,
+          [req.gelombangId || null],
+        );
+
       case 'ASRAMA_HUNIAN':
         return this.tenantDb.query(
           schemaName,
@@ -280,7 +299,7 @@ export class PesantrenLaporanService {
    * `PosReportService.dasbor()`.
    */
   async dasbor(schemaName: string): Promise<Record<string, unknown>> {
-    const [santri, santriPerTahunMasuk, santriPerTahunLulus, statusDetail, tagihan, piutangSantri, asrama, rombongan, psb, psbBulanan] =
+    const [santri, santriPerTahunMasuk, santriPerTahunLulus, statusDetail, tagihan, piutangSantri, asrama, rombongan, psb, psbBulanan, psbJalurMasuk] =
       await Promise.all([
         this.jalankan(schemaName, 'SANTRI_RINGKASAN', {}),
         this.jalankan(schemaName, 'SANTRI_PER_TAHUN_MASUK', {}),
@@ -292,8 +311,9 @@ export class PesantrenLaporanService {
         this.jalankan(schemaName, 'ROMBONGAN_HUNIAN', {}),
         this.jalankan(schemaName, 'PSB_FUNNEL', {}),
         this.jalankan(schemaName, 'PSB_REGISTRASI_BULANAN', {}),
+        this.jalankan(schemaName, 'PSB_JALUR_MASUK_MULTI_TAHUN', {}),
       ]);
-    return { santri, santriPerTahunMasuk, santriPerTahunLulus, statusDetail, tagihan, piutangSantri, asrama, rombongan, psb, psbBulanan };
+    return { santri, santriPerTahunMasuk, santriPerTahunLulus, statusDetail, tagihan, piutangSantri, asrama, rombongan, psb, psbBulanan, psbJalurMasuk };
   }
 
   private rentangWajib(req: PermintaanLaporan) {

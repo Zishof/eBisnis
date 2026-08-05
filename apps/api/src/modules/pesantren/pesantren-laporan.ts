@@ -94,6 +94,7 @@ export const LAPORAN_PESANTREN = [
   { code: 'PSB_FUNNEL', name: 'Corong Penerimaan Santri Baru', description: 'Jumlah pendaftar PSB menurut gelombang dan status.' },
   { code: 'PSB_REGISTRASI_BULANAN', name: 'Registrasi PSB per Bulan', description: 'Tren pendaftaran PSB bulanan setara dashboard registrasi AIS.' },
   { code: 'PSB_ASAL_SEKOLAH', name: 'Asal Sekolah Pendaftar PSB', description: 'Sekolah asal pendaftar dan hasil seleksinya.' },
+  { code: 'PSB_JALUR_MASUK_MULTI_TAHUN', name: 'Jalur Masuk PSB Multi-Tahun', description: 'Rekap jalur masuk per tahun ajaran setara RekapJalurMasukMultiTahunPsb AIS.' },
   { code: 'ASRAMA_HUNIAN', name: 'Hunian Asrama', description: 'Kapasitas dan keterisian kamar asrama.' },
   { code: 'ROMBONGAN_HUNIAN', name: 'Hunian Rombongan Belajar', description: 'Kapasitas dan jumlah anggota aktif per rombongan belajar.' },
 ] as const;

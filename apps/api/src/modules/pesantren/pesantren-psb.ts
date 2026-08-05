@@ -131,6 +131,7 @@ export interface MasukanPendaftar {
   noHpOrangTua?: string | null;
   alamat?: string | null;
   asalSekolah?: string | null;
+  jalurMasuk?: string | null;
   unitPendidikanTujuanId?: string | null;
 
   // -- Kelengkapan setara Dapodik, sama persis dengan `MasukanSantri` -------
@@ -165,6 +166,9 @@ export function validasiPendaftar(masukan: MasukanPendaftar): Galat[] {
 
   if (!(masukan.gelombangId ?? '').trim()) {
     galat.push({ field: 'gelombangId', code: 'WAJIB', message: 'Gelombang wajib dipilih.' });
+  }
+  if ((masukan.jalurMasuk ?? '').trim().length > 40) {
+    galat.push({ field: 'jalurMasuk', code: 'TERLALU_PANJANG', message: 'Jalur masuk maksimal 40 karakter.' });
   }
 
   const nama = (masukan.namaLengkap ?? '').trim();
