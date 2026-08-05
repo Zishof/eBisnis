@@ -324,6 +324,7 @@ export function PesantrenUnitPendidikanPage() {
         error={list.isError ? toMessage(list.error, (_key, fallback) => fallback ?? 'Gagal memuat.') : undefined}
         rowKey={(row) => row.id}
         onRetry={() => void list.refetch()}
+        showCrudTools={false}
       />
 
       {formTerbuka && (

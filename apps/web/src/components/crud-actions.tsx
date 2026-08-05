@@ -1,7 +1,6 @@
-import { useRef } from 'react';
-import { BarChart3, Download, FileText, UploadCloud } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { BarChart3, Download, FileSpreadsheet, FileText, UploadCloud, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import type { GridColumn } from './ui';
 
 interface CrudMetric {
   label: string;
@@ -9,13 +8,20 @@ interface CrudMetric {
   tone?: 'emerald' | 'sky' | 'amber' | 'slate';
 }
 
+interface CrudColumn {
+  key: string;
+  header: string;
+}
+
 interface CrudActionBarProps<T extends Record<string, unknown>> {
   title: string;
   rows: T[];
-  columns?: Array<GridColumn<T>>;
+  columns?: CrudColumn[];
   filename: string;
   onUploadRows?: (rows: Array<Record<string, unknown>>, file: File) => Promise<void> | void;
   uploadLabel?: string;
+  showUpload?: boolean;
+  compact?: boolean;
 }
 
 export function CrudDashboard({ metrics }: { metrics: CrudMetric[] }) {
@@ -41,45 +47,77 @@ export function CrudActionBar<T extends Record<string, unknown>>({
   filename,
   onUploadRows,
   uploadLabel = 'Upload Excel',
+  showUpload = true,
+  compact = false,
 }: CrudActionBarProps<T>) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [preview, setPreview] = useState<{ fileName: string; rows: Array<Record<string, unknown>> } | null>(null);
   const exportColumns = resolveColumns(rows, columns);
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-      <button type="button" className="btn-outline" onClick={() => downloadExcel(rows, exportColumns, filename)}>
-        <Download className="h-4 w-4" aria-hidden />
-        Download Excel
-      </button>
-      {onUploadRows && (
-        <>
-          <button type="button" className="btn-outline" onClick={() => inputRef.current?.click()}>
-            <UploadCloud className="h-4 w-4" aria-hidden />
-            {uploadLabel}
-          </button>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
-            className="sr-only"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.currentTarget.value = '';
-              if (!file) return;
-              void readSheetRows(file).then((sheetRows) => onUploadRows(sheetRows, file));
-            }}
-          />
-        </>
+    <div className={`rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950 ${compact ? 'p-2' : 'p-3'}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" className="btn-outline" onClick={() => downloadExcel(rows, exportColumns, filename)}>
+          <Download className="h-4 w-4" aria-hidden />
+          Download Excel
+        </button>
+        {showUpload && (
+          <>
+            <button type="button" className="btn-outline" onClick={() => inputRef.current?.click()}>
+              <UploadCloud className="h-4 w-4" aria-hidden />
+              {uploadLabel}
+            </button>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = '';
+                if (!file) return;
+                void readSheetRows(file).then(async (sheetRows) => {
+                  if (onUploadRows) {
+                    await onUploadRows(sheetRows, file);
+                    return;
+                  }
+                  setPreview({ fileName: file.name, rows: sheetRows });
+                });
+              }}
+            />
+          </>
+        )}
+        <button type="button" className="btn-outline" onClick={() => printPdf(title, rows, exportColumns, filename)}>
+          <FileText className="h-4 w-4" aria-hidden />
+          Cetak PDF
+        </button>
+      </div>
+      {preview && (
+        <div className="mt-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <FileSpreadsheet className="mt-0.5 h-4 w-4 text-brand-700 dark:text-brand-300" aria-hidden />
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">{preview.fileName}</p>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                  {preview.rows.length} baris terbaca. Kolom: {Object.keys(preview.rows[0] ?? {}).join(', ') || '-'}.
+                </p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Endpoint import khusus belum dipasang pada halaman ini, jadi data belum disimpan ke server.
+                </p>
+              </div>
+            </div>
+            <button type="button" className="rounded p-1 hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => setPreview(null)} aria-label="Tutup preview upload">
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        </div>
       )}
-      <button type="button" className="btn-outline" onClick={() => printPdf(title, rows, exportColumns, filename)}>
-        <FileText className="h-4 w-4" aria-hidden />
-        Cetak PDF
-      </button>
     </div>
   );
 }
 
-function resolveColumns<T extends Record<string, unknown>>(rows: T[], columns?: Array<GridColumn<T>>) {
+function resolveColumns<T extends Record<string, unknown>>(rows: T[], columns?: CrudColumn[]) {
   if (columns?.length) {
     return columns
       .filter((column) => column.key !== 'aksi')

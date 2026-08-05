@@ -169,6 +169,7 @@ export function PesantrenGuruPage() {
         rowKey={(row) => row.id}
         onRetry={() => void guru.refetch()}
         emptyTitle="Belum ada guru."
+        showCrudTools={false}
       />
       <Pagination page={page} totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))} total={total} onChange={setPage} />
     </>
