@@ -13,12 +13,14 @@ import {
   Factory,
   Layers3,
   MapPin,
+  MonitorDown,
   PackageCheck,
   Pill,
   ScanLine,
   Search,
   ShieldAlert,
   ShoppingCart,
+  Smartphone,
   Star,
   Truck,
 } from 'lucide-react';
@@ -37,6 +39,11 @@ const photo = {
 const manualApotik = {
   pdf: '/panduan/apotik/manual-pengguna-sistem-apotik-emedik.pdf',
   word: '/panduan/apotik/manual-pengguna-sistem-apotik-emedik.docx',
+};
+
+const aplikasiApotik = {
+  windows: '/update/pos-apotik-windows.exe',
+  android: '/update/pos-apotik-android.apk',
 };
 
 const pharmacyFlows = [
@@ -185,8 +192,8 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
         tone="emerald"
         links={
           tenantProfile
-            ? ['Profil', 'Katalog', 'Layanan', 'Keamanan', 'Panduan', 'Dokumen']
-            : ['Farmasi', 'POS Apotik', 'Racikan', 'Keamanan', 'Panduan', 'Dokumen', 'Demo']
+            ? ['Profil', 'Katalog', 'Layanan', 'Keamanan', 'Unduh', 'Panduan', 'Dokumen']
+            : ['Farmasi', 'POS Apotik', 'Racikan', 'Keamanan', 'Unduh', 'Panduan', 'Dokumen', 'Demo']
         }
       />
 
@@ -408,6 +415,8 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
           </div>
         </section>
 
+        <PublicAppDownloadSection />
+
         <PublicManualSection />
 
         <OfferDocumentSection tone="emerald" />
@@ -422,6 +431,81 @@ export function ApotikLandingPage({ demo = false }: { demo?: boolean }) {
         />
       </main>
     </div>
+  );
+}
+
+function PublicAppDownloadSection() {
+  const platforms = [
+    {
+      icon: MonitorDown,
+      eyebrow: 'Windows 64-bit',
+      title: 'Installer POS Apotik',
+      body: 'Pemasang lengkap untuk komputer kasir Windows. Shortcut, pembaruan, dan uninstaller disiapkan otomatis.',
+      action: 'Unduh installer Windows',
+      href: aplikasiApotik.windows,
+      downloadName: 'emedik-pos-apotik-windows.exe',
+      note: 'Format .exe',
+    },
+    {
+      icon: Smartphone,
+      eyebrow: 'Android 5.0+',
+      title: 'APK POS Apotik',
+      body: 'Aplikasi kasir farmasi untuk tablet atau ponsel Android dengan akun dan katalog tenant yang sama.',
+      action: 'Unduh APK Android',
+      href: aplikasiApotik.android,
+      downloadName: 'emedik-pos-apotik-android.apk',
+      note: 'Format .apk',
+    },
+  ];
+
+  return (
+    <section id="Unduh" className="bg-[#eef8f4] py-14 sm:py-16">
+      <div className="container-page">
+        <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+          <div>
+            <p className="section-eyebrow bg-emerald-100 text-emerald-800">Aplikasi POS Apotik</p>
+            <h2 className="section-heading text-slate-950">Pasang pada perangkat kasir yang dipakai sehari-hari.</h2>
+          </div>
+          <p className="text-base leading-8 text-slate-700">
+            Windows dan Android memakai akun server, tenant, katalog obat, outlet, register,
+            shift, dan metode pembayaran yang sama. Tidak ada kredensial yang ditanam di paket aplikasi.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          {platforms.map((platform) => {
+            const Icon = platform.icon;
+            return (
+              <article key={platform.title} className="flex min-h-64 flex-col rounded-lg border border-emerald-200 bg-white p-6 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="grid h-12 w-12 place-items-center rounded-lg bg-emerald-100 text-emerald-800">
+                    <Icon className="h-6 w-6" aria-hidden />
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{platform.note}</span>
+                </div>
+                <p className="mt-5 text-xs font-black uppercase tracking-wide text-emerald-700">{platform.eyebrow}</p>
+                <h3 className="mt-2 text-2xl font-black text-slate-950">{platform.title}</h3>
+                <p className="mt-3 flex-1 text-sm leading-7 text-slate-600">{platform.body}</p>
+                <a
+                  href={platform.href}
+                  download={platform.downloadName}
+                  className="btn-primary mt-6 bg-emerald-700 px-5 py-3 hover:bg-emerald-800"
+                >
+                  <Download className="h-4 w-4" aria-hidden />
+                  {platform.action}
+                </a>
+              </article>
+            );
+          })}
+        </div>
+
+        <p className="mt-5 flex items-start gap-2 text-sm leading-6 text-slate-600">
+          <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" aria-hidden />
+          Unduhan selalu menunjuk versi terbaru yang tersedia di server eMedik. Setelah dipasang,
+          masuk menggunakan akun yang telah diaktifkan admin tenant.
+        </p>
+      </div>
+    </section>
   );
 }
 

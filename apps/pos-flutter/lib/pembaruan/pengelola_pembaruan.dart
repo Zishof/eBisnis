@@ -2,14 +2,9 @@
 ///
 /// ## Aturan yang menentukan bentuknya
 ///
-/// **Pemeriksaan otomatis tidak pernah membuka dialog.** Ia hanya menyalakan
-/// tanda pada tombol. Dialog hanya terbuka ketika kasir menekannya sendiri.
-///
-/// Alasannya bukan estetika. Mesin kasir dipakai berdiri, dengan antrean di
-/// depan meja, dan jendela yang muncul sendiri akan ditutup dengan tekanan
-/// tombol yang sedang dituju jari — tombol yang mungkin "Pasang sekarang".
-/// Pembaruan yang berjalan di tengah transaksi menghentikan penjualan pada saat
-/// yang paling mahal.
+/// Pengelola hanya mengambil dan menilai rilis. Layar mengumumkan hasilnya dan
+/// membatasi dialog otomatis agar satu versi tidak mengganggu kasir berulang
+/// kali dalam sesi yang sama.
 library;
 
 import 'package:flutter/foundation.dart';

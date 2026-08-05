@@ -144,3 +144,36 @@ export function cariHurufMutu(
   );
   return cocok?.huruf ?? null;
 }
+
+export interface BarisRaporUntukRingkasan {
+  nilai_akhir: number | null;
+  huruf_mutu: string | null;
+}
+
+export function hitungRingkasanRapor(rows: BarisRaporUntukRingkasan[]) {
+  const nilai = rows.map((row) => row.nilai_akhir).filter((value): value is number => value !== null);
+  const rataRata = nilai.length ? Math.round((nilai.reduce((total, value) => total + value, 0) / nilai.length) * 100) / 100 : null;
+  const sebaranHuruf = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.huruf_mutu) continue;
+    sebaranHuruf.set(row.huruf_mutu, (sebaranHuruf.get(row.huruf_mutu) ?? 0) + 1);
+  }
+  const predikatDominan = [...sebaranHuruf.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null;
+  return {
+    jumlahMapel: rows.length,
+    rataRata,
+    predikatDominan,
+    sebaranHuruf: Object.fromEntries(sebaranHuruf),
+  };
+}
+
+export function validasiAlasanPembatalanRapor(reason?: string | null): Galat[] {
+  const alasan = (reason ?? '').trim();
+  if (!alasan) {
+    return [{ field: 'reason', code: 'WAJIB', message: 'Alasan pembatalan finalisasi rapor wajib diisi.' }];
+  }
+  if (alasan.length < 10) {
+    return [{ field: 'reason', code: 'TERLALU_PENDEK', message: 'Alasan pembatalan minimal 10 karakter.' }];
+  }
+  return [];
+}

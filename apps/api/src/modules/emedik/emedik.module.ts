@@ -28,6 +28,7 @@ import {
 } from 'class-validator';
 import { InfrastructureModule } from '../../infrastructure/infrastructure.module';
 import { AuthModule } from '../auth/auth.module';
+import { PosModule } from '../pos/pos.module';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { HealthFacilityService } from './health-facility.service';
@@ -420,7 +421,7 @@ export class HealthController {
 // --- Module ------------------------------------------------------------------
 
 @Module({
-  imports: [InfrastructureModule, AuthModule],
+  imports: [InfrastructureModule, AuthModule, PosModule],
   controllers: [HealthController, HealthClinicalController, HealthPharmacyController, HealthLabController, HealthInpatientController, HealthAcuteController, HealthCommunityController, HealthHimController, HealthMasterDataController, HealthAccountingController, HealthTariffController, HealthFeeController, HealthSettlementController, HealthFeeContractController, HealthClaimController, HealthDeviceController, HealthDeviceMaintenanceController, HealthInvestorController, HealthDeviceAdapterController, HealthSatusehatController, HealthBpjsController, HealthKfaController, HealthPortalController, HealthPortalAdminController, HealthPublicWebController, HealthSampleController, HealthSecurityController],
   providers: [
     HealthFacilityService,

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Plus, Printer, RefreshCw, Save } from 'lucide-react';
+import { Download, LockKeyhole, Plus, Printer, RefreshCw, RotateCcw, Save, ShieldCheck } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { DataGrid, PageHeader, StatusBadge, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
@@ -53,6 +53,24 @@ interface RaporRow {
   komponen: Array<{ nama: string; nilai: number; bobot_persen: number }>;
   nilai_akhir: number | null;
   huruf_mutu: string | null;
+}
+
+interface RaporFinalisasi {
+  id: string;
+  santri_id: string;
+  tahun_ajaran_id: string;
+  status: 'FINALIZED' | 'VOID';
+  snapshot: RaporRow[];
+  summary: Record<string, unknown>;
+  checksum: string;
+  verification_code: string;
+  qr_payload: string;
+  catatan_finalisasi: string | null;
+  wali_kelas_signed_at: string | null;
+  kepala_signed_at: string | null;
+  finalized_at: string;
+  voided_at: string | null;
+  void_reason: string | null;
 }
 
 export function PesantrenNilaiPage() {
@@ -109,6 +127,12 @@ export function PesantrenNilaiPage() {
     queryKey: ['pesantren-nilai-rapor', filterRapor.santriId, selectedTahunRaporId],
     enabled: Boolean(filterRapor.santriId && selectedTahunRaporId),
     queryFn: () => api.get<RaporRow[]>(`/pesantren/nilai/rapor/${filterRapor.santriId}/${selectedTahunRaporId}`),
+  });
+
+  const finalisasi = useQuery({
+    queryKey: ['pesantren-nilai-rapor-finalisasi', filterRapor.santriId, selectedTahunRaporId],
+    enabled: Boolean(filterRapor.santriId && selectedTahunRaporId),
+    queryFn: () => api.get<RaporFinalisasi | null>(`/pesantren/nilai/rapor/${filterRapor.santriId}/${selectedTahunRaporId}/finalisasi`),
   });
 
   const tambahMapel = useMutation({
@@ -183,6 +207,29 @@ export function PesantrenNilaiPage() {
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan nilai massal.'), 'error'),
   });
 
+  const finalisasiRapor = useMutation({
+    mutationFn: () =>
+      api.post<RaporFinalisasi>(`/pesantren/nilai/rapor/${filterRapor.santriId}/${selectedTahunRaporId}/finalisasi`, {
+        catatanFinalisasi: `Difinalisasi dari halaman rapor pada ${new Date().toLocaleString('id-ID')}`,
+      }),
+    onSuccess: () => {
+      toast.push('Rapor difinalisasi dan dikunci.', 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-nilai-rapor-finalisasi'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal finalisasi rapor.'), 'error'),
+  });
+
+  const batalkanFinalisasi = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api.post<RaporFinalisasi>(`/pesantren/nilai/rapor/finalisasi/${id}/batalkan`, { reason }),
+    onSuccess: () => {
+      toast.push('Finalisasi rapor dibatalkan. Nilai bisa dikoreksi kembali.', 'success');
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-nilai-rapor-finalisasi'] });
+      void queryClient.invalidateQueries({ queryKey: ['pesantren-nilai-rapor'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal membatalkan finalisasi.'), 'error'),
+  });
+
   const santriMassal: SantriRow[] = rombonganNilaiId
     ? (anggotaRombongan.data ?? []).map((item) => ({
         id: item.santri_id,
@@ -194,7 +241,8 @@ export function PesantrenNilaiPage() {
   const santriTerpilih = (santri.data?.items ?? []).find((item) => item.id === filterRapor.santriId);
   const tahunInput = tahunAjaran.data?.find((item) => item.id === selectedTahunInputId);
   const tahunRapor = tahunAjaran.data?.find((item) => item.id === selectedTahunRaporId);
-  const ringkasanRapor = hitungRingkasanRapor(rapor.data ?? []);
+  const raporDitampilkan = finalisasi.data?.snapshot ?? rapor.data ?? [];
+  const ringkasanRapor = hitungRingkasanRapor(raporDitampilkan);
 
   const columns: Array<GridColumn<MataPelajaranRow>> = [
     { key: 'code', header: 'Kode' },
@@ -212,14 +260,14 @@ export function PesantrenNilaiPage() {
   };
 
   const unduhCsvRapor = () => {
-    if (!rapor.data?.length || !santriTerpilih) return;
+    if (!raporDitampilkan.length || !santriTerpilih) return;
     const rows = [
       ['Santri', santriTerpilih.nama_lengkap],
       ['NIS', santriTerpilih.nis],
       ['Tahun Ajaran', tahunRapor?.name ?? selectedTahunRaporId],
       [],
       ['Mata Pelajaran', 'Komponen', 'Nilai Akhir', 'Huruf'],
-      ...rapor.data.map((row) => [
+      ...raporDitampilkan.map((row) => [
         row.mata_pelajaran,
         row.komponen.map((komponen) => `${komponen.nama}: ${komponen.nilai} (${komponen.bobot_persen}%)`).join('; '),
         row.nilai_akhir ?? '',
@@ -472,19 +520,68 @@ export function PesantrenNilaiPage() {
                 </select>
               </Field>
               <div className="flex items-end">
-                <button type="button" className="btn-outline" disabled={!rapor.data?.length} onClick={unduhCsvRapor}>
+                <button type="button" className="btn-outline" disabled={!raporDitampilkan.length} onClick={unduhCsvRapor}>
                   <Download className="h-4 w-4" aria-hidden />
                   CSV
                 </button>
               </div>
               <div className="flex items-end">
-                <button type="button" className="btn-outline" disabled={!rapor.data?.length} onClick={() => window.print()}>
+                <button type="button" className="btn-outline" disabled={!raporDitampilkan.length} onClick={() => window.print()}>
                   <Printer className="h-4 w-4" aria-hidden />
                   Cetak / PDF
                 </button>
               </div>
             </div>
           </div>
+
+          {filterRapor.santriId && selectedTahunRaporId && (
+            <section className="card p-4 print:hidden">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="max-w-3xl">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-emerald-700" aria-hidden />
+                    <h3 className="font-semibold text-slate-950 dark:text-white">Finalisasi rapor</h3>
+                    {finalisasi.data ? <StatusBadge status="FINAL" tone="success" /> : <StatusBadge status="DRAFT" tone="warning" />}
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    Finalisasi menyimpan snapshot rapor, checksum, dan kode verifikasi QR. Setelah final, nilai santri pada tahun ajaran ini terkunci sampai finalisasi dibatalkan dengan alasan.
+                  </p>
+                  {finalisasi.data && (
+                    <div className="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300 md:grid-cols-3">
+                      <Info label="Kode verifikasi" value={finalisasi.data.verification_code} />
+                      <Info label="Checksum" value={finalisasi.data.checksum.slice(0, 24)} />
+                      <Info label="Finalisasi" value={formatDateTime(finalisasi.data.finalized_at)} />
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={!raporDitampilkan.length || Boolean(finalisasi.data) || finalisasiRapor.isPending}
+                    onClick={() => finalisasiRapor.mutate()}
+                  >
+                    <LockKeyhole className="h-4 w-4" aria-hidden />
+                    Finalisasi
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    disabled={!finalisasi.data || batalkanFinalisasi.isPending}
+                    onClick={() => {
+                      if (!finalisasi.data) return;
+                      const reason = window.prompt('Alasan pembatalan finalisasi rapor:');
+                      if (!reason) return;
+                      batalkanFinalisasi.mutate({ id: finalisasi.data.id, reason });
+                    }}
+                  >
+                    <RotateCcw className="h-4 w-4" aria-hidden />
+                    Batalkan
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
 
           <section className="card overflow-hidden p-0 print:border-0 print:shadow-none">
             <div className="border-b border-slate-200 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900 print:border-slate-300">
@@ -518,7 +615,7 @@ export function PesantrenNilaiPage() {
               <div className="p-6 text-sm text-slate-500">Memuat rapor...</div>
             ) : rapor.isError ? (
               <div className="p-6 text-sm text-rose-600">{toMessage(rapor.error, (_key, fallback) => fallback ?? 'Gagal memuat rapor.')}</div>
-            ) : !rapor.data?.length ? (
+            ) : !raporDitampilkan.length ? (
               <div className="p-6 text-sm text-slate-500">Belum ada nilai untuk santri dan tahun ajaran ini.</div>
             ) : (
               <>
@@ -538,7 +635,7 @@ export function PesantrenNilaiPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
-                    {rapor.data.map((row) => (
+                    {raporDitampilkan.map((row) => (
                       <tr key={row.mata_pelajaran}>
                         <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">{row.mata_pelajaran}</td>
                         <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
@@ -555,7 +652,7 @@ export function PesantrenNilaiPage() {
                 </div>
               </>
             )}
-            {rapor.data?.length ? (
+            {raporDitampilkan.length ? (
               <div className="grid gap-8 border-t border-slate-100 bg-white p-6 text-center text-sm dark:border-slate-800 dark:bg-slate-950 print:grid-cols-3">
                 <div>
                   <p className="text-slate-600">Mengetahui,</p>
@@ -635,6 +732,15 @@ function Summary({ label, value }: { label: string; value: string }) {
   );
 }
 
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+      <p className="font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 break-all font-mono text-[11px] text-slate-900 dark:text-slate-100">{value}</p>
+    </div>
+  );
+}
+
 function hitungRingkasanRapor(rows: RaporRow[]) {
   const nilai = rows.map((row) => row.nilai_akhir).filter((value): value is number => value !== null);
   const rataRata = nilai.length ? nilai.reduce((total, value) => total + value, 0) / nilai.length : null;
@@ -649,4 +755,10 @@ function hitungRingkasanRapor(rows: RaporRow[]) {
 
 function formatCsv(value: unknown) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
 }

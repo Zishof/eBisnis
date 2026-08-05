@@ -52,6 +52,11 @@ import { PesantrenKateringPage } from '../pages/app/pesantren/PesantrenKateringP
 import { PesantrenSkalaHurufPage } from '../pages/app/pesantren/PesantrenSkalaHurufPage';
 import { PesantrenLaporanPage } from '../pages/app/pesantren/PesantrenLaporanPage';
 import { PesantrenPortalWaliPage } from '../pages/app/pesantren/PesantrenPortalWaliPage';
+import { PesantrenDapodikPage } from '../pages/app/pesantren/PesantrenDapodikPage';
+import { PesantrenAkademikPage } from '../pages/app/pesantren/PesantrenAkademikPage';
+import { EducationGapImplementationPage } from '../pages/app/education/EducationGapImplementationPage';
+import { EschoolDashboardPage } from '../pages/app/eschool/EschoolDashboardPage';
+import { EschoolOperationalPage } from '../pages/app/eschool/EschoolOperationalPage';
 import { MasterListPage } from '../pages/app/MasterListPage';
 import { StockTreePage } from '../pages/app/StockTreePage';
 import { RequestOrderPage } from '../pages/app/RequestOrderPage';
@@ -270,6 +275,9 @@ const HealthDeviceAdapterPage = lazy(() =>
 const PosPage = lazy(() => import('../pages/pos/PosPage').then((m) => ({ default: m.PosPage })));
 const PharmacyPosPage = lazy(() =>
   import('../pages/pos/PharmacyPosPage').then((m) => ({ default: m.PharmacyPosPage })),
+);
+const PharmacyTradePage = lazy(() =>
+  import('../pages/pos/PharmacyTradePage').then((m) => ({ default: m.PharmacyTradePage })),
 );
 const PosReportPage = lazy(() =>
   import('../pages/pos/PosReportPage').then((m) => ({ default: m.PosReportPage })),
@@ -657,6 +665,9 @@ export function App() {
           <Route path="pos/kasir" element={<PosPage />} />
           <Route path="pos/apotik" element={<PharmacyPosPage />} />
           <Route path="apotik/pos" element={<PharmacyPosPage />} />
+          <Route path="apotik/penjualan" element={<PharmacyTradePage area="sales" />} />
+          <Route path="apotik/pembelian" element={<PharmacyTradePage area="purchasing" />} />
+          <Route path="apotik/racikan" element={<PharmacyTradePage area="compound" />} />
           <Route path="pos/laporan" element={<PosReportPage />} />
           <Route path="pos/aturan-diskon" element={<PosPromotionPage />} />
           <Route path="portal-pelanggan" element={<PortalPelangganAdminPage />} />
@@ -771,6 +782,7 @@ export function App() {
           <Route path="pesantren/presensi" element={<PesantrenPresensiPage />} />
           <Route path="pesantren/tahfiz" element={<PesantrenDakwahPage initialTab="tahfiz" />} />
           <Route path="pesantren/nilai" element={<PesantrenNilaiPage />} />
+          <Route path="pesantren/akademik" element={<PesantrenAkademikPage />} />
           <Route path="pesantren/nilai/skala-huruf" element={<PesantrenSkalaHurufPage />} />
           <Route path="pesantren/absensi-guru" element={<PesantrenAbsensiGuruPage />} />
           <Route path="pesantren/ekstrakurikuler" element={<PesantrenPembinaanPage initialTab="ekskul" />} />
@@ -781,9 +793,14 @@ export function App() {
           <Route path="pesantren/dompet" element={<PesantrenDompetPage />} />
           <Route path="pesantren/katering" element={<PesantrenKateringPage />} />
           <Route path="pesantren/laporan" element={<PesantrenLaporanPage />} />
+          <Route path="pesantren/dapodik" element={<PesantrenDapodikPage />} />
           <Route path="pesantren/gerbang" element={<PesantrenGerbangPage />} />
           <Route path="pesantren/portal-wali" element={<PesantrenPortalWaliPage />} />
           <Route path="pesantren/kiosk" element={<PesantrenKioskPage />} />
+          <Route path="eschool" element={<EschoolDashboardPage />} />
+          <Route path="eschool/dapodik" element={<PesantrenDapodikPage mode="eschool" />} />
+          <Route path="eschool/:moduleCode" element={<EschoolOperationalPage />} />
+          <Route path="ecampus" element={<EducationGapImplementationPage />} />
           <Route path="*" element={<OperationalModulePage />} />
         </Route>
 

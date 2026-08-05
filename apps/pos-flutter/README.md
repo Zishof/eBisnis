@@ -22,10 +22,11 @@ git push origin pos-v1.2.0
 ```
 
 Aplikasi memeriksa pembaruan sendiri saat dibuka dan setiap enam jam, dan dapat
-diperiksa kapan saja lewat tombol **Cek pembaruan** di bilah atas. Ia
-memberitahu, lalu berhenti di situ — tidak mengunduh dan tidak memasang apa pun.
-Mengganti berkas aplikasi kasir di tengah hari kerja adalah tindakan yang harus
-dipilih manusia, pada saat yang ia pilih sendiri.
+diperiksa kapan saja lewat tombol **Cek pembaruan** di bilah atas. Ketika versi
+baru tersedia, dialog otomatis tampil satu kali untuk versi tersebut dalam satu
+sesi. Tombol **Unduh sekarang** membuka APK atau installer Windows di browser
+sistem; pembaruan biasa dapat ditunda, sedangkan rilis bertanda `[WAJIB]` tidak
+dapat ditutup dengan mengetuk area di luar dialog.
 
 ## Menjalankannya di mesin kasir
 
@@ -58,7 +59,22 @@ flutter build apk --release --flavor apotik --dart-define=POS_MODE=apotik
 flutter build windows --release --dart-define=POS_MODE=apotik
 ```
 
-Mode ini mengganti brand menjadi **POS Apotik**, memakai katalog demo obat, dan
+Build Apotik menampilkan login server dan secara bawaan terhubung ke
+`https://apotik.emedik.id/api/v1/`. Alamat dapat ditimpa untuk staging/lokal:
+
+```bash
+flutter run -d windows --dart-define=POS_MODE=apotik --dart-define=POS_API_BASE=http://localhost:3000/api/v1/
+```
+
+Pengguna memasukkan akun resmi server pada layar login. `POS_USERNAME`,
+`POS_PASSWORD`, dan token tidak ditanam ke artefak rilis. Kode tenant pada form
+bersifat opsional; isi kode/slug tenant bila satu akun memiliki beberapa
+membership. Sesudah login, katalog, outlet, register, shift, dan metode bayar
+diambil dari server. Transaksi dibukukan ke server ketika pembayaran selesai.
+Pemeriksaan pembaruan POS Apotik memakai kanal publik khusus
+`https://apotik.emedik.id/update/apotik/latest`, bukan kanal POS retail.
+
+Mode ini mengganti brand menjadi **POS Apotik**, memakai katalog obat tenant, dan
 menampilkan konteks kerja farmasi: nomor resep/e-resep, pasien, resep dokter,
 obat bebas, antar, racikan, produksi farmasi, high-alert, batch, dan kedaluwarsa.
 

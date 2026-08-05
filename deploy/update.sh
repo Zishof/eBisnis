@@ -362,7 +362,7 @@ log "10/10  Apache"
 POS_UPDATE_DIR=/opt/ebisnis/updates/pos
 install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$POS_UPDATE_DIR"
 
-# Asset POS/Inventory Flutter boleh hidup publik di server, sementara repository
+# Asset POS/Inventory/Apotik Flutter boleh hidup publik di server, sementara repository
 # tetap private. Artefak yang ikut dalam repository private disalin dulu ke
 # folder publik update, supaya server yang belum punya token GitHub Release pun
 # tetap dapat melayani /update/ebisnis-inventory-sales.apk dan .exe.
@@ -395,6 +395,19 @@ if [[ -d "$LOCAL_INVENTORY_RELEASE_DIR" ]]; then
     install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_exe" \
       "$POS_UPDATE_DIR/ebisnis-inventory-sales.exe"
   fi
+  shopt -u nullglob
+fi
+
+# Rilis POS Apotik memakai namespace berkas sendiri supaya tidak pernah terpilih
+# sebagai pembaruan POS retail. Endpoint publik memilih versi terbaru dari
+# `emedik-pos-apotik-<versi>-windows.exe` dan `.apk` di folder yang sama.
+LOCAL_APOTIK_RELEASE_DIR="$APP_DIR/artifacts/apotik-release"
+if [[ -d "$LOCAL_APOTIK_RELEASE_DIR" ]]; then
+  shopt -s nullglob
+  for asset in "$LOCAL_APOTIK_RELEASE_DIR"/emedik-pos-apotik-*.apk \
+               "$LOCAL_APOTIK_RELEASE_DIR"/emedik-pos-apotik-*-windows.exe; do
+    install -m 644 -o "$APP_USER" -g "$APP_USER" "$asset" "$POS_UPDATE_DIR/$(basename "$asset")"
+  done
   shopt -u nullglob
 fi
 

@@ -817,6 +817,217 @@ export class HealthPharmacyService {
     return { ...detail, lines };
   }
 
+  // --- Perdagangan apotik ---------------------------------------------------
+
+  async daftarTransaksiPos(schema: string, mode?: string, limit = 100) {
+    const batas = Math.min(Math.max(limit, 1), 250);
+    return this.tenantDb.query(
+      schema,
+      `SELECT c.pos_sale_id::text, c.transaction_mode, c.reference_number,
+              c.formula_name, c.dosage_form, c.label_instruction,
+              c.workflow_status, c.validated_at::text, c.completed_at::text,
+              c.updated_at::text, p.prescription_number,
+              s.status AS sale_status, s.receipt_number, s.business_date::text,
+              s.grand_total::text, s.currency_code, count(l.id)::int AS line_count
+         FROM "${schema}".rx_pos_sale_context c
+         JOIN "${schema}".pos_sale s ON s.id = c.pos_sale_id
+         LEFT JOIN "${schema}".rx_prescription p ON p.id = c.prescription_id
+         LEFT JOIN "${schema}".pos_sale_line l ON l.pos_sale_id = s.id
+        WHERE ($1::text IS NULL OR c.transaction_mode = $1)
+        GROUP BY c.pos_sale_id, p.prescription_number, s.id
+        ORDER BY c.updated_at DESC LIMIT ${batas}`,
+      [mode?.trim() || null],
+    );
+  }
+
+  async konteksTransaksiPos(schema: string, saleId: string) {
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schema,
+      `SELECT c.pos_sale_id::text, c.transaction_mode, c.reference_number,
+              c.formula_name, c.dosage_form, c.label_instruction,
+              c.workflow_status, c.validated_at::text, c.completed_at::text,
+              p.id::text AS prescription_id, p.prescription_number,
+              p.status AS prescription_status
+         FROM "${schema}".rx_pos_sale_context c
+         LEFT JOIN "${schema}".rx_prescription p ON p.id = c.prescription_id
+        WHERE c.pos_sale_id = $1`,
+      [saleId],
+    );
+    return rows[0] ?? null;
+  }
+
+  async simpanKonteksTransaksiPos(
+    schema: string,
+    saleId: string,
+    input: {
+      mode: 'OTC' | 'PRESCRIPTION' | 'COMPOUND' | 'PRODUCTION';
+      prescriptionNumber?: string | null;
+      referenceNumber?: string | null;
+      formulaName?: string | null;
+      dosageForm?: string | null;
+      labelInstruction?: string | null;
+    },
+    actorUserId: string,
+  ) {
+    const sale = await this.tenantDb.query<{ status: string }>(
+      schema,
+      `SELECT status FROM "${schema}".pos_sale WHERE id = $1`,
+      [saleId],
+    );
+    if (!sale.length) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Transaksi POS tidak ditemukan.');
+    if (!['DRAFT', 'HELD'].includes(sale[0].status)) {
+      throw AppError.conflict(
+        ErrorCodes.INVALID_STATE_TRANSITION,
+        `Konteks farmasi tidak dapat diubah saat transaksi berstatus ${sale[0].status}.`,
+      );
+    }
+
+    let prescriptionId: string | null = null;
+    if (input.mode === 'PRESCRIPTION' || input.mode === 'COMPOUND') {
+      if (!input.prescriptionNumber?.trim()) {
+        throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Nomor resep wajib diisi.');
+      }
+      const resep = await this.tenantDb.query<{ id: string; status: string }>(
+        schema,
+        `SELECT id::text, status FROM "${schema}".rx_prescription
+          WHERE upper(prescription_number) = upper($1)`,
+        [input.prescriptionNumber.trim()],
+      );
+      if (!resep.length) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Nomor resep tidak ditemukan.');
+      if (!['REVIEWED', 'PARTIALLY_DISPENSED'].includes(resep[0].status)) {
+        throw AppError.conflict(
+          ErrorCodes.INVALID_STATE_TRANSITION,
+          `Resep berstatus ${resep[0].status}; gunakan resep yang sudah ditelaah.`,
+        );
+      }
+      prescriptionId = resep[0].id;
+    }
+
+    const rows = await this.tenantDb.query<Record<string, unknown>>(
+      schema,
+      `INSERT INTO "${schema}".rx_pos_sale_context
+         (pos_sale_id, transaction_mode, prescription_id, reference_number,
+          formula_name, dosage_form, label_instruction, created_by, updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8)
+       ON CONFLICT (pos_sale_id) DO UPDATE SET
+         transaction_mode = EXCLUDED.transaction_mode,
+         prescription_id = EXCLUDED.prescription_id,
+         reference_number = EXCLUDED.reference_number,
+         formula_name = EXCLUDED.formula_name,
+         dosage_form = EXCLUDED.dosage_form,
+         label_instruction = EXCLUDED.label_instruction,
+         workflow_status = 'DRAFT', validated_at = NULL,
+         updated_by = EXCLUDED.updated_by, updated_at = now(),
+         version = rx_pos_sale_context.version + 1
+       RETURNING pos_sale_id::text, transaction_mode, workflow_status`,
+      [saleId, input.mode, prescriptionId, input.referenceNumber?.trim() || null,
+       input.formulaName?.trim() || null, input.dosageForm?.trim() || null,
+       input.labelInstruction?.trim() || null, actorUserId],
+    );
+    return rows[0];
+  }
+
+  async validasiTransaksiPos(schema: string, saleId: string) {
+    return this.tenantDb.transaction(schema, async (client) => {
+      const konteks = await client.query<{
+        transaction_mode: string;
+        prescription_id: string | null;
+        prescription_status: string | null;
+      }>(
+        `SELECT c.transaction_mode, c.prescription_id::text,
+                p.status AS prescription_status
+           FROM "${schema}".rx_pos_sale_context c
+           LEFT JOIN "${schema}".rx_prescription p ON p.id = c.prescription_id
+          WHERE c.pos_sale_id = $1 FOR UPDATE OF c`,
+        [saleId],
+      );
+      if (!konteks.rows.length) {
+        throw AppError.badRequest(
+          ErrorCodes.VALIDATION_FAILED,
+          'Konteks POS Apotik belum disimpan.',
+        );
+      }
+      const c = konteks.rows[0];
+      if (['PRESCRIPTION', 'COMPOUND'].includes(c.transaction_mode) &&
+          !['REVIEWED', 'PARTIALLY_DISPENSED'].includes(c.prescription_status ?? '')) {
+        throw AppError.conflict(
+          ErrorCodes.INVALID_STATE_TRANSITION,
+          'Resep belum ditelaah atau sudah tidak dapat digunakan.',
+        );
+      }
+
+      const tanpaResep = await client.query<{ product_name: string }>(
+        `SELECT p.name AS product_name
+           FROM "${schema}".pos_sale_line l
+           JOIN "${schema}".product p ON p.id = l.product_id
+           JOIN "${schema}".rx_drug_master d ON d.product_id = l.product_id AND d.deleted_at IS NULL
+          WHERE l.pos_sale_id = $1 AND d.requires_prescription = TRUE
+            AND $2::uuid IS NULL LIMIT 1`,
+        [saleId, c.prescription_id],
+      );
+      if (tanpaResep.rows.length) {
+        throw AppError.unprocessable(
+          ErrorCodes.VALIDATION_FAILED,
+          `${tanpaResep.rows[0].product_name} memerlukan resep yang sudah ditelaah.`,
+        );
+      }
+
+      if (c.prescription_id) {
+        const tidakSesuai = await client.query<{ product_name: string }>(
+          `SELECT p.name AS product_name
+             FROM "${schema}".pos_sale_line sl
+             JOIN "${schema}".product p ON p.id = sl.product_id
+             JOIN "${schema}".rx_drug_master d ON d.product_id = sl.product_id AND d.deleted_at IS NULL
+            WHERE sl.pos_sale_id = $1 AND d.requires_prescription = TRUE
+              AND NOT EXISTS (
+                SELECT 1 FROM "${schema}".rx_prescription_line rl
+                 WHERE rl.prescription_id = $2 AND rl.drug_id = d.id
+              ) LIMIT 1`,
+          [saleId, c.prescription_id],
+        );
+        if (tidakSesuai.rows.length) {
+          throw AppError.unprocessable(
+            ErrorCodes.VALIDATION_FAILED,
+            `${tidakSesuai.rows[0].product_name} tidak tercantum pada resep yang dipilih.`,
+          );
+        }
+      }
+
+      if (c.transaction_mode === 'COMPOUND' || c.transaction_mode === 'PRODUCTION') {
+        await client.query(
+          `INSERT INTO "${schema}".rx_pos_compound_component
+             (pos_sale_id, pos_sale_line_id, product_id, quantity, uom_id, unit_cost_snapshot)
+           SELECT $1, l.id, l.product_id, l.quantity, l.uom_id, COALESCE(l.cost_snapshot, 0)
+             FROM "${schema}".pos_sale_line l WHERE l.pos_sale_id = $1
+           ON CONFLICT (pos_sale_id, pos_sale_line_id) DO UPDATE SET
+             quantity = EXCLUDED.quantity, uom_id = EXCLUDED.uom_id,
+             unit_cost_snapshot = EXCLUDED.unit_cost_snapshot`,
+          [saleId],
+        );
+      }
+
+      await client.query(
+        `UPDATE "${schema}".rx_pos_sale_context
+            SET workflow_status = 'VALIDATED', validated_at = now(),
+                updated_at = now(), version = version + 1
+          WHERE pos_sale_id = $1`,
+        [saleId],
+      );
+      return { saleId, validated: true };
+    });
+  }
+
+  async tandaiTransaksiPosSelesai(schema: string, saleId: string) {
+    await this.tenantDb.query(
+      schema,
+      `UPDATE "${schema}".rx_pos_sale_context
+          SET workflow_status = 'COMPLETED', completed_at = now(),
+              updated_at = now(), version = version + 1
+        WHERE pos_sale_id = $1 AND workflow_status = 'VALIDATED'`,
+      [saleId],
+    );
+  }
+
   // --- Bagian dalam ----------------------------------------------------------
 
   private async ambilObat(schema: string, drugId: string): Promise<Obat & { productId: string }> {

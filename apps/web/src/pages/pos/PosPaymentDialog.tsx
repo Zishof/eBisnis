@@ -34,12 +34,16 @@ export function PosPaymentDialog({
   currencyCode,
   onTutup,
   onSelesai,
+  completePath,
+  completeHeaders,
 }: {
   saleId: string;
   total: number;
   currencyCode: string;
   onTutup: () => void;
   onSelesai: (nomorStruk: string) => void;
+  completePath?: string;
+  completeHeaders?: Record<string, string>;
 }) {
   const { t } = useTranslation();
   const toast = useToast();
@@ -92,9 +96,9 @@ export function PosPaymentDialog({
   const selesaikan = useMutation({
     mutationFn: () =>
       api.post<{ receiptNumber: string; duplicate: boolean }>(
-        `/pos/sales/${saleId}/complete`,
+        completePath ?? `/pos/sales/${saleId}/complete`,
         {},
-        { headers: { 'Idempotency-Key': kunciSelesai.current } },
+        { headers: { 'Idempotency-Key': kunciSelesai.current, ...completeHeaders } },
       ),
     onSuccess: (h) => onSelesai(h.receiptNumber),
     onError: galat,
