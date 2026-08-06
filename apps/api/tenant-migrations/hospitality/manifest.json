@@ -17,6 +17,12 @@
       "file": "20260806T090000__hospitality__inventory_availability.sql",
       "name": "MI-6: Room Inventory dan Availability",
       "description": "hospitality_room_block (ledger pengecualian ketersediaan per kamar per malam, BLOCKED/OUT_OF_ORDER/OUT_OF_SERVICE), overbooking_limit pada hospitality_room_type, features pada hospitality_room. UNIQUE (room_id, stay_date) adalah penjaga kondisi pacu sesungguhnya -- dua blokir bersamaan untuk kamar+tanggal yang sama tidak menghasilkan baris ganda, ditegakkan lewat ON CONFLICT DO UPDATE di sisi layanan, diuji dengan permintaan bersamaan sungguhan terhadap basis data nyata (lihat docs/changelog/hospitality.md)."
+    },
+    {
+      "id": "20260806T120000__hospitality__guest_crm",
+      "file": "20260806T120000__hospitality__guest_crm.sql",
+      "name": "MI-7: Guest Identity, CRM, Consent, Privacy",
+      "description": "hospitality_guest (profil tunggal tamu -- identitas, kontak, alamat, preferensi, consent pemasaran, do-not-rent, merged_into_id untuk penggabungan) dan hospitality_guest_privacy_request (catatan permintaan ekspor/penghapusan data). Indeks unik parsial pada (identifier_type, identifier_number) adalah penjaga duplikat keras; kemiripan nama/telepon tanpa nomor identitas sama diperiksa di sisi layanan, bukan basis data. Companion/relationship dan tautan perusahaan/travel agent SENGAJA belum ada -- menyusul MI-18 (grup/korporat) begitu ada pemakainya."
     }
   ]
 }

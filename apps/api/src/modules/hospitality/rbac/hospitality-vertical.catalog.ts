@@ -2,7 +2,7 @@
  * Katalog vertikal Hospitality (MitraInap.id) — menu dan peran, mengikuti
  * pola IR-004 yang sudah dipakai `pesantren-vertical.catalog.ts`.
  *
- * ## Mengapa hanya SATU menu untuk MI-5
+ * ## Mengapa hanya SATU menu untuk tiap fase
  *
  * Perintah master §14/§Struktur Menu Role Permission meminta puluhan menu
  * hospitality (reservasi, front office, housekeeping, folio, dst).
@@ -43,6 +43,17 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
     icon: 'Building2',
     moduleCode: HOSPITALITY_PREFIX,
     sortOrder: 1,
+    actions: ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'],
+  },
+  {
+    code: 'HOSPITALITY_TAMU',
+    parentCode: 'HOSPITALITY_GROUP',
+    label: 'Tamu (CRM)',
+    translationKey: 'menu.hospitality.tamu',
+    route: '/app/hospitality/tamu',
+    icon: 'UsersRound',
+    moduleCode: HOSPITALITY_PREFIX,
+    sortOrder: 2,
     actions: ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'],
   },
 ];

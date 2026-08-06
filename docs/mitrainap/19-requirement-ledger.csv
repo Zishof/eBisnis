@@ -1,5 +1,6 @@
 
 
+
 requirement_id,module,requirement,source,source_location,evidence_label,current_status,target_phase,model_evidence,migration_evidence,api_evidence,ui_evidence,permission_evidence,test_evidence,uat_evidence,owner,notes
 "MI-PORTAL-001","Portal","Register MITRAINAP portal and hosts","MASTER","§8.1","SRC-MASTER","MISSING","MI-1","","","","","","","","Portal",""
 MI-PORTAL-002,Portal,"Reuse one auth/CMS/platform",BRD,"§7.2-7.3",SRC-BRD,FOUNDATION_READY,MI-1,"portal catalog/CMS/auth",platform migrations,,,portal specs,,,Platform,"must not duplicate"
