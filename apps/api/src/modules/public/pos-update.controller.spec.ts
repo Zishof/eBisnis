@@ -1,4 +1,4 @@
-import { parseUpdateAssetFilename } from './pos-update.controller';
+import { latestAssetsForPlatform, parseUpdateAssetFilename } from './pos-update.controller';
 
 describe('parseUpdateAssetFilename', () => {
   it.each([
@@ -14,5 +14,24 @@ describe('parseUpdateAssetFilename', () => {
   it('menolak nama aset produk lain atau format tanpa versi semver', () => {
     expect(parseUpdateAssetFilename('apotik', 'ebisnis-pos-0.1.8.apk')).toBeNull();
     expect(parseUpdateAssetFilename('apotik', 'emedik-pos-apotik-terbaru.apk')).toBeNull();
+  });
+});
+
+describe('latestAssetsForPlatform', () => {
+  const assets = [
+    { version: '0.1.12', platform: 'android' as const },
+    { version: '0.1.15', platform: 'windows' as const },
+    { version: '0.1.16', platform: 'windows' as const },
+  ];
+
+  it('memisahkan versi terbaru Android dari rilis Windows yang lebih baru', () => {
+    expect(latestAssetsForPlatform(assets, 'android')).toEqual({
+      version: '0.1.12',
+      assets: [assets[0]],
+    });
+    expect(latestAssetsForPlatform(assets, 'windows')).toEqual({
+      version: '0.1.16',
+      assets: [assets[2]],
+    });
   });
 });

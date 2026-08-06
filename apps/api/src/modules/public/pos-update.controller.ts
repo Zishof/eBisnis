@@ -1,4 +1,4 @@
-import { Controller, Get, Headers, Param, Res, StreamableFile } from '@nestjs/common';
+import { Controller, Get, Headers, Param, Query, Res, StreamableFile } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { createReadStream, existsSync, readdirSync, statSync } from 'node:fs';
@@ -17,6 +17,18 @@ interface PosAsset {
   platform: PlatformAsset;
   version: string;
   product: UpdateProduct;
+}
+
+export function latestAssetsForPlatform<T extends Pick<PosAsset, 'version' | 'platform'>>(
+  assets: T[],
+  platform?: string,
+) {
+  const selected = platform === 'windows' || platform === 'android'
+    ? assets.filter((asset) => asset.platform === platform)
+    : assets;
+  if (!selected.length) return { version: null, assets: [] as T[] };
+  const version = selected.map((asset) => asset.version).sort(compareVersion).at(-1)!;
+  return { version, assets: selected.filter((asset) => asset.version === version) };
 }
 
 const UPDATE_DIR = process.env.POS_UPDATE_DIR || '/opt/ebisnis/updates/pos';
@@ -108,14 +120,22 @@ export class PosUpdateController {
   @Public()
   @Get(['apotik/latest', 'apotik/latest.json'])
   @ApiOperation({ summary: 'Metadata rilis terakhir POS Apotik eMedik' })
-  latestApotik(@Headers('host') host: string, @Headers('x-forwarded-proto') proto?: string) {
+  latestApotik(
+    @Headers('host') host: string,
+    @Headers('x-forwarded-proto') proto?: string,
+    @Query('platform') platform?: string,
+  ) {
     const assets = this.assets('apotik');
     if (!assets.length) {
       throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Belum ada berkas POS Apotik eMedik.');
     }
 
-    const latestVersion = assets.map((a) => a.version).sort(compareVersion).at(-1)!;
-    const latestAssets = assets.filter((a) => a.version === latestVersion);
+    const latest = latestAssetsForPlatform(assets, platform);
+    if (!latest.version) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Belum ada berkas POS Apotik untuk platform ini.');
+    }
+    const latestVersion = latest.version;
+    const latestAssets = latest.assets;
     const base = `${proto === 'http' ? 'http' : 'https'}://${host}`;
 
     return rawResponse({

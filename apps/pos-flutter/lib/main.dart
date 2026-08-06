@@ -11,6 +11,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
@@ -127,8 +128,20 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
     final akhiran = akhiranPemasang();
 
     if (alamatPenuh.isNotEmpty) {
+      final uri = Uri.parse(alamatPenuh);
+      final platform = Platform.isAndroid
+          ? 'android'
+          : Platform.isWindows
+              ? 'windows'
+              : null;
       return SumberRilisGitHub(
-          alamat: Uri.parse(alamatPenuh), akhiranBerkas: akhiran);
+          alamat: platform == null
+              ? uri
+              : uri.replace(queryParameters: {
+                  ...uri.queryParameters,
+                  'platform': platform,
+                }),
+          akhiranBerkas: akhiran);
     }
 
     const repo = String.fromEnvironment('PEMBARUAN_REPO',
