@@ -64,9 +64,9 @@ const MODUL_UTAMA: Modul[] = [
 export function MitrainapHomePage() {
   return (
     <div>
-      <section className="border-b border-slate-200 bg-gradient-to-b from-violet-50 to-white dark:border-slate-800 dark:from-violet-950/20 dark:to-slate-950">
+      <section className="border-b border-slate-200 bg-gradient-to-b from-indigo-50 to-white dark:border-slate-800 dark:from-indigo-950/20 dark:to-slate-950">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
             <Sparkles className="h-3.5 w-3.5" />
             Bagian dari ekosistem eBisnis.id
           </span>
@@ -81,14 +81,14 @@ export function MitrainapHomePage() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               to="/kontak"
-              className="inline-flex items-center gap-2 rounded-lg bg-violet-700 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-800"
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
             >
               Hubungi Kami
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               to="/mitrainap/masuk"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 hover:border-violet-400 dark:border-slate-700 dark:text-slate-200"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-400 dark:border-slate-700 dark:text-slate-200"
             >
               Masuk
             </Link>
@@ -110,7 +110,7 @@ export function MitrainapHomePage() {
               key={m.judul}
               className="rounded-xl border border-slate-200 p-5 dark:border-slate-800"
             >
-              <m.ikon className="h-6 w-6 text-violet-700 dark:text-violet-400" />
+              <m.ikon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
               <h3 className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">
                 {m.judul}
               </h3>
@@ -125,7 +125,7 @@ export function MitrainapHomePage() {
       <section className="border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto flex max-w-6xl flex-col items-start gap-4 px-4 py-14 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <BookOpenCheck className="mt-1 h-6 w-6 shrink-0 text-violet-700 dark:text-violet-400" />
+            <BookOpenCheck className="mt-1 h-6 w-6 shrink-0 text-indigo-600 dark:text-indigo-400" />
             <div>
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                 Ingin tahu lebih lanjut?
@@ -138,7 +138,7 @@ export function MitrainapHomePage() {
           </div>
           <Link
             to="/kontak"
-            className="inline-flex items-center gap-2 rounded-lg bg-violet-700 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-800"
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
           >
             Hubungi Kami
             <ArrowRight className="h-4 w-4" />

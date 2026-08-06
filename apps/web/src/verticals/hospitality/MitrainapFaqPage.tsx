@@ -58,7 +58,7 @@ export function MitrainapFaqPage() {
         Pertanyaan yang sering diajukan
       </h1>
       <p className="mt-3 text-slate-600 dark:text-slate-400">
-        Tidak menemukan jawabannya? <Link to="/kontak" className="text-violet-700 hover:underline dark:text-violet-400">Hubungi kami langsung</Link>.
+        Tidak menemukan jawabannya? <Link to="/kontak" className="text-indigo-600 hover:underline dark:text-indigo-400">Hubungi kami langsung</Link>.
       </p>
 
       <div className="mt-8 divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-800 dark:border-slate-800">

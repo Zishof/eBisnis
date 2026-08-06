@@ -188,7 +188,7 @@ export const KATALOG_PORTAL: PortalKatalog[] = [
     tagline: 'PMS, booking engine, dan operasional hotel/properti dalam satu platform.',
     verticalCode: 'HOSPITALITY',
     brandPrimary: '#1E1B4B',
-    brandAccent: '#7C3AED',
+    brandAccent: '#4F46E5',
     sortOrder: 7,
     crossLinkDescription: 'PMS, Booking Engine, Front Office, Housekeeping',
     domains: [

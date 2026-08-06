@@ -98,7 +98,7 @@ const RINCIAN: RincianModul[] = [
 export function MitrainapSolusiPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-16">
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
         <Sparkles className="h-3.5 w-3.5" />
         Peta modul
       </span>
@@ -115,13 +115,13 @@ export function MitrainapSolusiPage() {
       <div className="mt-10 grid gap-6 sm:grid-cols-2">
         {RINCIAN.map((m) => (
           <div key={m.judul} className="rounded-xl border border-slate-200 p-6 dark:border-slate-800">
-            <m.ikon className="h-7 w-7 text-violet-700 dark:text-violet-400" />
+            <m.ikon className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
             <h2 className="mt-3 text-base font-semibold text-slate-900 dark:text-white">{m.judul}</h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{m.keterangan}</p>
             <ul className="mt-3 space-y-1.5">
               {m.cakupan.map((c) => (
                 <li key={c} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-500" />
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-indigo-500" />
                   {c}
                 </li>
               ))}
@@ -130,14 +130,14 @@ export function MitrainapSolusiPage() {
         ))}
       </div>
 
-      <div className="mt-12 rounded-xl border border-violet-200 bg-violet-50 p-6 dark:border-violet-900 dark:bg-violet-950/20">
+      <div className="mt-12 rounded-xl border border-indigo-200 bg-indigo-50 p-6 dark:border-indigo-900 dark:bg-indigo-950/20">
         <p className="text-sm text-slate-700 dark:text-slate-300">
           Punya kebutuhan properti yang spesifik? Sampaikan kepada kami --
           kami akan menjelaskan modul mana yang relevan dan kapan tersedia.
         </p>
         <Link
           to="/kontak"
-          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-violet-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-800"
+          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
         >
           Hubungi Kami
           <ArrowRight className="h-4 w-4" />

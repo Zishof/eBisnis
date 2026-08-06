@@ -62,6 +62,19 @@ export function isMitrainapPortalHost(hostname: string = window.location.hostnam
 }
 
 /**
+ * Benar untuk seluruh host ekosistem mitrainap.id (portal maupun
+ * `app.mitrainap.id`, pintu aplikasi bersama).
+ *
+ * Dipakai `AppLayout` untuk menukar lambang dan nama merek pada cangkang
+ * aplikasi terautentikasi -- pola yang sama dengan `emedikPublicBrandFor()`.
+ * BUKAN kontrol keamanan, sama seperti fungsi host lain pada berkas ini.
+ */
+export function isMitrainapAppHost(hostname: string = window.location.hostname): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '').split(':')[0];
+  return host === `app.${DOMAIN_MITRAINAP}`;
+}
+
+/**
  * Slug properti bila host berbentuk `<slug>.mitrainap.id`, atau null.
  *
  * Mengembalikan null untuk apex, untuk label terpesan platform, dan untuk

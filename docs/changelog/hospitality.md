@@ -1,5 +1,52 @@
 # Changelog — Hospitality (MitraInap.id)
 
+## 2026-08-06 — Kesesuaian merek dengan mockup UI yang diberikan pengguna
+
+Pengguna melampirkan 10 mockup UI MitraInap (portal publik, dashboard,
+reservasi, front office, housekeeping, POS, channel manager, CRM,
+pengaturan multi-property) dan meminta seluruh tampilan mengikutinya, serta
+menanyakan apakah seluruh MI-* sudah selesai.
+
+**Koreksi diberikan langsung**: belum. Hanya MI-1, MI-2, MI-5 nyata; MI-3
+dan MI-4 diblokir (lihat entri di bawah); MI-6..MI-24 -- yaitu HAMPIR
+SELURUH layar pada mockup (reservasi, front office, housekeeping, POS,
+channel manager, CRM, pengaturan multi-property) -- belum dibangun sama
+sekali. Membuat tampilan visualnya tanpa data/backend sungguhan di
+baliknya akan jadi UI palsu, melanggar kebiasaan sesi ini.
+
+Yang DIKERJAKAN dari permintaan ini: menyelaraskan identitas merek pada
+bagian yang SUDAH nyata dengan mockup --
+- Lambang portal diganti dari kotak "MI" menjadi lambang huruf kecil "in"
+  (persis mockup) pada `MitrainapLayout`.
+- Palet warna digeser dari violet (`#7C3AED`) ke indigo (`#4F46E5`),
+  sesuai warna tombol utama pada mockup, di seluruh halaman portal
+  (`MitrainapLayout`, `MitrainapHomePage`, `MitrainapSolusiPage`,
+  `MitrainapFaqPage`) dan pada `KATALOG_PORTAL`/metadata SEO backend.
+- `AppLayout` (cangkang aplikasi terautentikasi BERSAMA seluruh vertikal)
+  ditambah deteksi host `app.mitrainap.id` yang menukar lambang/nama
+  merek jadi "in"/"MitraInap.id" -- mengikuti pola yang SUDAH ada untuk
+  eMedik (`emedikPublicBrandFor`), bukan infrastruktur baru.
+
+Yang TIDAK dikerjakan, dan alasannya: mockup menunjukkan sidebar gelap
+navy bercabang penuh (Dashboard/Reservasi/Kalender/Tamu/Front
+Office/Housekeeping/POS/Laporan/CRM/Channel Manager/Booking
+Engine/Pengaturan) khusus untuk hospitality -- TIDAK ADA vertikal lain di
+kodebase ini (termasuk eMedik) yang punya sidebar ter-reskin penuh
+semacam itu; seluruhnya memakai SATU `AppLayout` bersama dengan menu yang
+berbeda per hak akses, bukan cangkang visual terpisah per vertikal.
+Membangun sidebar bespoke hanya untuk MitraInap berarti pola arsitektur
+baru yang belum disepakati (dan berlawanan dengan prinsip "satu aplikasi
+melayani seluruh merek", §54, yang mendasari MI-1). Layar-layar
+fungsional pada mockup (reservasi, front office, dst) akan mengikuti
+kerangka visual yang sama (warna indigo, lambang "in") saat masing-masing
+benar-benar dibangun di MI-6 dan seterusnya -- bukan dibuatkan tampilan
+kosongnya lebih dulu.
+
+Diverifikasi nyata: `pnpm test` (152 suite API/3980 test, 42 berkas
+web/510 test) LULUS, `tsc --noEmit` LULUS, `pnpm lint` bersih dari
+perubahan ini, lambang dan warna baru diverifikasi lewat peramban
+sungguhan pada `/mitrainap`.
+
 ## 2026-08-06 — MI-3/MI-4: dinyatakan diblokir, bukan dikerjakan
 
 MI-3 (Tenant Website/Subdomain) butuh tenant hospitality yang benar-benar
