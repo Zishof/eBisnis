@@ -122,6 +122,7 @@ class _InventorySalesOrderWorkspaceState
   final List<TransactionLineDraft> _lines = [];
   String? _partyId;
   String _paymentTerm = 'Kredit 30 hari';
+  String _productFilter = 'Semua';
   double _taxPercent = 11;
   bool _saving = false;
   String? _message;
@@ -142,16 +143,21 @@ class _InventorySalesOrderWorkspaceState
 
   List<TransactionProduct> get _filteredProducts {
     final q = _search.text.trim().toLowerCase();
-    if (q.isEmpty) return widget.products.take(12).toList();
     return widget.products
         .where((p) =>
-            p.name.toLowerCase().contains(q) ||
-            p.code.toLowerCase().contains(q))
+            (q.isEmpty ||
+                p.name.toLowerCase().contains(q) ||
+                p.code.toLowerCase().contains(q)) &&
+            (_productFilter != 'Stok Tersedia' || p.stock > 0) &&
+            (_productFilter != 'Stok Menipis' ||
+                (p.stock > 0 && p.stock <= 10)))
         .take(24)
         .toList();
   }
 
+  double get _gross => _lines.fold(0, (sum, line) => sum + line.gross);
   double get _subtotal => _lines.fold(0, (sum, line) => sum + line.subtotal);
+  double get _discount => _gross - _subtotal;
   double get _tax => _subtotal * _taxPercent / 100;
   double get _total => _subtotal + _tax;
 
@@ -203,7 +209,7 @@ class _InventorySalesOrderWorkspaceState
         final desktop = box.maxWidth >= 1080;
         final center =
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const _WorkspaceHeading(
+          _WorkspaceHeading(
             title: 'Sales Order',
             subtitle: 'Buat order lapangan dengan cepat dan mudah',
             steps: [
@@ -212,6 +218,18 @@ class _InventorySalesOrderWorkspaceState
               'Tambahkan ke Keranjang',
               'Review & Kirim'
             ],
+            actions: _WorkspaceToolbar(
+              primaryLabel: 'Kirim Order',
+              primaryIcon: Icons.send_outlined,
+              primaryEnabled: _partyId != null && _lines.isNotEmpty,
+              busy: _saving,
+              onPrimary: _submit,
+              onDraft: _lines.isEmpty
+                  ? null
+                  : () => setState(() =>
+                      _message = 'Draft tetap tersimpan pada perangkat ini.'),
+              secondary: const ['Riwayat Draft', 'Sinkronkan'],
+            ),
           ),
           const SizedBox(height: 12),
           _PartySelector(
@@ -225,6 +243,12 @@ class _InventorySalesOrderWorkspaceState
                     _MetricChip('Limit Kredit', _money(_party!.creditLimit)),
                     _MetricChip('Saldo Piutang', _money(_party!.balance),
                         warning: true),
+                    _MetricChip(
+                        'Sisa Kredit',
+                        _money((_party!.creditLimit - _party!.balance)
+                            .clamp(0, double.infinity)
+                            .toDouble()),
+                        success: true),
                     _MetricChip('Sales', widget.salesName),
                     const _MetricChip('Status', 'Aktif', success: true),
                   ]),
@@ -246,6 +270,7 @@ class _InventorySalesOrderWorkspaceState
           party: _party,
           lineCount: _lines.length,
           subtotal: _subtotal,
+          discount: _discount,
           taxPercent: _taxPercent,
           tax: _tax,
           total: _total,
@@ -283,7 +308,34 @@ class _InventorySalesOrderWorkspaceState
               suffixIcon: Icon(Icons.qr_code_scanner),
             ),
           ),
+          const SizedBox(height: 9),
+          _TransactionFilters(
+            selected: _productFilter,
+            values: const [
+              'Semua',
+              'Favorit',
+              'Stok Tersedia',
+              'Stok Menipis',
+              'Promo',
+              'Sering Dibeli'
+            ],
+            onSelected: (value) => setState(() => _productFilter = value),
+          ),
+          if (_lines.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _RecentProductStrip(
+                title: 'Terakhir Dipilih',
+                products: _lines.reversed
+                    .map((line) => line.product)
+                    .take(3)
+                    .toList(),
+                onAdd: _add),
+          ],
           const SizedBox(height: 10),
+          const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Rekomendasi Produk',
+                  style: TextStyle(fontWeight: FontWeight.w900))),
           SizedBox(
             height: 260,
             child: ListView.separated(
@@ -345,6 +397,7 @@ class _InventoryPurchaseWorkspaceState
   final _search = TextEditingController();
   final _note = TextEditingController();
   final List<TransactionLineDraft> _lines = [];
+  String _productFilter = 'Semua';
   String? _supplierId;
   String? _warehouseId;
   DateTime _expected = DateTime.now().add(const Duration(days: 14));
@@ -370,14 +423,19 @@ class _InventoryPurchaseWorkspaceState
     final q = _search.text.trim().toLowerCase();
     return widget.products
         .where((p) =>
-            q.isEmpty ||
-            p.name.toLowerCase().contains(q) ||
-            p.code.toLowerCase().contains(q))
+            (q.isEmpty ||
+                p.name.toLowerCase().contains(q) ||
+                p.code.toLowerCase().contains(q)) &&
+            (_productFilter != 'Stok Tersedia' || p.stock > 0) &&
+            (_productFilter != 'Stok Menipis' ||
+                (p.stock > 0 && p.stock <= 10)))
         .take(12)
         .toList();
   }
 
+  double get _gross => _lines.fold(0, (sum, line) => sum + line.gross);
   double get _subtotal => _lines.fold(0, (sum, line) => sum + line.subtotal);
+  double get _discount => _gross - _subtotal;
   double get _tax => _subtotal * _taxPercent / 100;
 
   void _add(TransactionProduct product) => setState(() {
@@ -433,7 +491,7 @@ class _InventoryPurchaseWorkspaceState
         final desktop = box.maxWidth >= 1080;
         final content =
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const _WorkspaceHeading(
+          _WorkspaceHeading(
             title: 'Transaksi Pembelian',
             subtitle: 'Input pembelian dari supplier dengan cepat dan akurat',
             steps: [
@@ -442,6 +500,20 @@ class _InventoryPurchaseWorkspaceState
               'Review Pembelian',
               'Simpan / Ajukan'
             ],
+            actions: _WorkspaceToolbar(
+              primaryLabel: 'Posting Pembelian',
+              primaryIcon: Icons.send_outlined,
+              primaryEnabled: _supplierId != null &&
+                  _warehouseId != null &&
+                  _lines.isNotEmpty,
+              busy: _saving,
+              onPrimary: _submit,
+              onDraft: _lines.isEmpty
+                  ? null
+                  : () => setState(() =>
+                      _message = 'Draft pembelian tersimpan pada perangkat.'),
+              secondary: const ['Cetak', 'Export', 'Audit Trail'],
+            ),
           ),
           const SizedBox(height: 12),
           _PartySelector(
@@ -455,12 +527,37 @@ class _InventoryPurchaseWorkspaceState
                     _MetricChip('Saldo Hutang', _money(_supplier!.balance),
                         warning: true),
                     _MetricChip('Termin', '${_supplier!.paymentTermDays} hari'),
+                    const _MetricChip('Peringkat', 'Terverifikasi',
+                        success: true),
                     const _MetricChip('Status', 'Aktif', success: true),
                   ]),
           ),
           const SizedBox(height: 12),
+          _PurchaseTransactionInfo(
+            warehouses: widget.warehouses,
+            warehouseId: _warehouseId,
+            onWarehouseChanged: (value) => setState(() => _warehouseId = value),
+            expectedDate: _expected,
+            onExpectedChanged: (value) => setState(() => _expected = value),
+            taxPercent: _taxPercent,
+            onTaxChanged: (value) => setState(() => _taxPercent = value),
+            noteController: _note,
+          ),
+          const SizedBox(height: 12),
           _WorkspacePanel(
               title: 'Cari / Tambah Barang',
+              action: Wrap(spacing: 4, children: [
+                TextButton.icon(
+                    onPressed: () =>
+                        _showWorkspaceNotice(context, 'Riwayat Supplier'),
+                    icon: const Icon(Icons.history, size: 17),
+                    label: const Text('Riwayat Supplier')),
+                TextButton.icon(
+                    onPressed: () =>
+                        _showWorkspaceNotice(context, 'Katalog Supplier'),
+                    icon: const Icon(Icons.menu_book_outlined, size: 17),
+                    label: const Text('Katalog Supplier')),
+              ]),
               child: Column(children: [
                 TextField(
                     controller: _search,
@@ -469,6 +566,18 @@ class _InventoryPurchaseWorkspaceState
                         prefixIcon: Icon(Icons.search),
                         hintText: 'Cari nama barang, SKU, barcode...',
                         suffixIcon: Icon(Icons.qr_code_scanner))),
+                const SizedBox(height: 9),
+                _TransactionFilters(
+                  selected: _productFilter,
+                  values: const [
+                    'Semua',
+                    'Stok Tersedia',
+                    'Stok Menipis',
+                    'Fast Moving',
+                    'Promo'
+                  ],
+                  onSelected: (value) => setState(() => _productFilter = value),
+                ),
                 const SizedBox(height: 10),
                 SizedBox(
                     height: 132,
@@ -499,6 +608,8 @@ class _InventoryPurchaseWorkspaceState
                                 setState(() => _lines.remove(line))))
                         .toList()),
           ),
+          const SizedBox(height: 12),
+          const _PurchaseSupportingPanels(),
         ]);
         final summary = _PurchaseSummary(
           supplier: _supplier,
@@ -509,11 +620,11 @@ class _InventoryPurchaseWorkspaceState
           onExpectedChanged: (v) => setState(() => _expected = v),
           lineCount: _lines.length,
           subtotal: _subtotal,
+          discount: _discount,
           tax: _tax,
           total: _subtotal + _tax,
           taxPercent: _taxPercent,
           onTaxChanged: (value) => setState(() => _taxPercent = value),
-          noteController: _note,
           saving: _saving,
           message: _message,
           onSubmit:
@@ -537,21 +648,46 @@ class _InventoryPurchaseWorkspaceState
 
 class _WorkspaceHeading extends StatelessWidget {
   const _WorkspaceHeading(
-      {required this.title, required this.subtitle, required this.steps});
+      {required this.title,
+      required this.subtitle,
+      required this.steps,
+      this.actions});
   final String title;
   final String subtitle;
   final List<String> steps;
+  final Widget? actions;
 
   @override
   Widget build(BuildContext context) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title,
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(fontWeight: FontWeight.w900)),
-        const SizedBox(height: 2),
-        Text(subtitle, style: const TextStyle(color: Color(0xFF64748B))),
+        LayoutBuilder(builder: (context, box) {
+          final heading =
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 2),
+            Text(subtitle, style: const TextStyle(color: Color(0xFF64748B))),
+          ]);
+          if (actions == null || box.maxWidth < 1100) {
+            return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  heading,
+                  if (actions != null) ...[
+                    const SizedBox(height: 10),
+                    actions!,
+                  ]
+                ]);
+          }
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: heading),
+            const SizedBox(width: 12),
+            actions!,
+          ]);
+        }),
         const SizedBox(height: 12),
         LayoutBuilder(builder: (context, box) {
           if (box.maxWidth < 680) {
@@ -576,6 +712,58 @@ class _WorkspaceHeading extends StatelessWidget {
           ]);
         }),
       ]);
+}
+
+class _WorkspaceToolbar extends StatelessWidget {
+  const _WorkspaceToolbar({
+    required this.primaryLabel,
+    required this.primaryIcon,
+    required this.primaryEnabled,
+    required this.busy,
+    required this.onPrimary,
+    required this.onDraft,
+    required this.secondary,
+  });
+  final String primaryLabel;
+  final IconData primaryIcon;
+  final bool primaryEnabled;
+  final bool busy;
+  final VoidCallback onPrimary;
+  final VoidCallback? onDraft;
+  final List<String> secondary;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+        spacing: 7,
+        runSpacing: 7,
+        alignment: WrapAlignment.end,
+        children: [
+          for (final label in secondary)
+            OutlinedButton.icon(
+              onPressed: () => _showWorkspaceNotice(context, label),
+              icon: Icon(
+                  label == 'Sinkronkan'
+                      ? Icons.sync
+                      : label == 'Cetak'
+                          ? Icons.print_outlined
+                          : label == 'Export'
+                              ? Icons.file_download_outlined
+                              : label == 'Audit Trail'
+                                  ? Icons.policy_outlined
+                                  : Icons.history,
+                  size: 17),
+              label: Text(label),
+            ),
+          OutlinedButton.icon(
+              onPressed: onDraft,
+              icon: const Icon(Icons.save_outlined, size: 17),
+              label: const Text('Simpan Draft')),
+          FilledButton.icon(
+              onPressed: !primaryEnabled || busy ? null : onPrimary,
+              icon: Icon(busy ? Icons.sync : primaryIcon, size: 17),
+              label: Text(busy ? 'Menyimpan...' : primaryLabel)),
+        ],
+      );
 }
 
 class _StepTile extends StatelessWidget {
@@ -633,18 +821,251 @@ class _WorkspacePanel extends StatelessWidget {
             color: Colors.white,
             border: Border.all(color: const Color(0xFFE2E8F0)),
             borderRadius: BorderRadius.circular(8)),
-        child:
-            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            Expanded(
-                child: Text(title,
-                    style: const TextStyle(fontWeight: FontWeight.w900))),
-            if (action != null) action!
-          ]),
-          const SizedBox(height: 10),
-          child,
-        ]),
+        child: LayoutBuilder(builder: (context, box) {
+          final titleWidget =
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w900));
+          final header = action == null
+              ? titleWidget
+              : box.maxWidth < 560
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                          titleWidget,
+                          const SizedBox(height: 6),
+                          Align(alignment: Alignment.centerLeft, child: action!)
+                        ])
+                  : Row(children: [
+                      Expanded(child: titleWidget),
+                      action!,
+                    ]);
+          return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [header, const SizedBox(height: 10), child]);
+        }),
       );
+}
+
+class _TransactionFilters extends StatelessWidget {
+  const _TransactionFilters(
+      {required this.selected, required this.values, required this.onSelected});
+  final String selected;
+  final List<String> values;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 36,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: values.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 6),
+          itemBuilder: (_, index) {
+            final value = values[index];
+            return FilterChip(
+              selected: selected == value,
+              label: Text(value),
+              onSelected: (_) => onSelected(value),
+              visualDensity: VisualDensity.compact,
+            );
+          },
+        ),
+      );
+}
+
+class _RecentProductStrip extends StatelessWidget {
+  const _RecentProductStrip(
+      {required this.title, required this.products, required this.onAdd});
+  final String title;
+  final List<TransactionProduct> products;
+  final ValueChanged<TransactionProduct> onAdd;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 76,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: products.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 7),
+              itemBuilder: (_, index) {
+                final product = products[index];
+                return InkWell(
+                  onTap: () => onAdd(product),
+                  borderRadius: BorderRadius.circular(7),
+                  child: Container(
+                    width: 190,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Row(children: [
+                      _ProductThumb(product: product),
+                      const SizedBox(width: 7),
+                      Expanded(
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                            Text(product.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 12)),
+                            Text('Stok ${_qty(product.stock)}',
+                                style: const TextStyle(
+                                    color: Color(0xFF64748B), fontSize: 11)),
+                            Text(_money(product.price),
+                                style: const TextStyle(
+                                    color: Color(0xFF047857),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11)),
+                          ])),
+                    ]),
+                  ),
+                );
+              },
+            ),
+          )
+        ],
+      );
+}
+
+class _PurchaseTransactionInfo extends StatelessWidget {
+  const _PurchaseTransactionInfo({
+    required this.warehouses,
+    required this.warehouseId,
+    required this.onWarehouseChanged,
+    required this.expectedDate,
+    required this.onExpectedChanged,
+    required this.taxPercent,
+    required this.onTaxChanged,
+    required this.noteController,
+  });
+  final List<TransactionParty> warehouses;
+  final String? warehouseId;
+  final ValueChanged<String?> onWarehouseChanged;
+  final DateTime expectedDate;
+  final ValueChanged<DateTime> onExpectedChanged;
+  final double taxPercent;
+  final ValueChanged<double> onTaxChanged;
+  final TextEditingController noteController;
+
+  @override
+  Widget build(BuildContext context) => _WorkspacePanel(
+        title: 'Informasi Transaksi',
+        child: LayoutBuilder(builder: (context, box) {
+          final fields = <Widget>[
+            TextFormField(
+                initialValue: 'Otomatis saat posting',
+                readOnly: true,
+                decoration: const InputDecoration(labelText: 'No. Pembelian')),
+            DropdownButtonFormField<String>(
+                value: warehouseId,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Gudang'),
+                items: warehouses
+                    .map((w) => DropdownMenuItem(
+                        value: w.id,
+                        child: Text('${w.code} - ${w.name}',
+                            overflow: TextOverflow.ellipsis)))
+                    .toList(),
+                onChanged: onWarehouseChanged),
+            OutlinedButton.icon(
+                onPressed: () async {
+                  final date = await showDatePicker(
+                      context: context,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      initialDate: expectedDate);
+                  if (date != null) onExpectedChanged(date);
+                },
+                icon: const Icon(Icons.event_outlined, size: 17),
+                label: Text('Jatuh tempo ${_date(expectedDate)}')),
+            DropdownButtonFormField<double>(
+                value: taxPercent,
+                decoration: const InputDecoration(labelText: 'Pajak'),
+                items: const [
+                  DropdownMenuItem(value: 0, child: Text('Tanpa pajak')),
+                  DropdownMenuItem(value: 11, child: Text('PPN 11%')),
+                ],
+                onChanged: (value) => onTaxChanged(value ?? 0)),
+            TextField(
+                controller: noteController,
+                decoration: const InputDecoration(
+                    labelText: 'Referensi / Catatan',
+                    hintText: 'No. PO, faktur supplier, atau catatan')),
+          ];
+          if (box.maxWidth < 680) {
+            return Column(
+                children: fields
+                    .expand((field) => [field, const SizedBox(height: 8)])
+                    .toList());
+          }
+          return Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: fields
+                  .map((field) => SizedBox(width: 230, child: field))
+                  .toList());
+        }),
+      );
+}
+
+class _PurchaseSupportingPanels extends StatelessWidget {
+  const _PurchaseSupportingPanels();
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        final panels = <Widget>[
+          _WorkspacePanel(
+              title: 'Lampiran',
+              action: TextButton.icon(
+                  onPressed: () => _showWorkspaceNotice(context, 'Lampiran'),
+                  icon: const Icon(Icons.attach_file, size: 17),
+                  label: const Text('Pilih File')),
+              child: const Text(
+                  'PDF, JPG, atau PNG dapat dilampirkan setelah nomor pembelian terbentuk.',
+                  style: TextStyle(color: Color(0xFF64748B), fontSize: 12))),
+          const _WorkspacePanel(
+              title: 'Riwayat Pembelian Supplier',
+              child: _EmptyOperationalData(
+                  text:
+                      'Pilih supplier untuk menampilkan transaksi sebelumnya.')),
+          const _WorkspacePanel(
+              title: 'Ringkasan Supplier YTD',
+              child: _EmptyOperationalData(
+                  text:
+                      'Ringkasan mengikuti data pembelian yang telah diposting.')),
+        ];
+        if (box.maxWidth < 760) {
+          return Column(
+              children: panels
+                  .expand((panel) => [panel, const SizedBox(height: 10)])
+                  .toList());
+        }
+        return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: panels
+                .expand((panel) =>
+                    [Expanded(child: panel), const SizedBox(width: 10)])
+                .toList()
+              ..removeLast());
+      });
+}
+
+class _EmptyOperationalData extends StatelessWidget {
+  const _EmptyOperationalData({required this.text});
+  final String text;
+  @override
+  Widget build(BuildContext context) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Text(text,
+          style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)));
 }
 
 class _PartySelector extends StatelessWidget {
@@ -971,6 +1392,7 @@ class _SalesSummary extends StatelessWidget {
     required this.party,
     required this.lineCount,
     required this.subtotal,
+    required this.discount,
     required this.taxPercent,
     required this.tax,
     required this.total,
@@ -985,6 +1407,7 @@ class _SalesSummary extends StatelessWidget {
   final TransactionParty? party;
   final int lineCount;
   final double subtotal;
+  final double discount;
   final double taxPercent;
   final double tax;
   final double total;
@@ -1003,6 +1426,7 @@ class _SalesSummary extends StatelessWidget {
         _SummaryRow('Customer', party?.name ?? '-'),
         const Divider(),
         _SummaryRow('Total Item', '$lineCount item'),
+        _SummaryRow('Diskon', _money(discount)),
         _SummaryRow('Subtotal', _money(subtotal)),
         DropdownButtonFormField<double>(
           value: taxPercent,
@@ -1047,7 +1471,9 @@ class _SalesSummary extends StatelessWidget {
         ),
         const SizedBox(height: 7),
         OutlinedButton.icon(
-            onPressed: lineCount == 0 ? null : () {},
+            onPressed: lineCount == 0
+                ? null
+                : () => _showWorkspaceNotice(context, 'Simpan Draft'),
             icon: const Icon(Icons.save_outlined),
             label: const Text('Simpan Draft')),
         if (message != null) ...[
@@ -1067,10 +1493,10 @@ class _PurchaseSummary extends StatelessWidget {
     required this.onExpectedChanged,
     required this.lineCount,
     required this.subtotal,
+    required this.discount,
     required this.taxPercent,
     required this.tax,
     required this.total,
-    required this.noteController,
     required this.saving,
     required this.message,
     required this.onTaxChanged,
@@ -1084,10 +1510,10 @@ class _PurchaseSummary extends StatelessWidget {
   final ValueChanged<DateTime> onExpectedChanged;
   final int lineCount;
   final double subtotal;
+  final double discount;
   final double taxPercent;
   final double tax;
   final double total;
-  final TextEditingController noteController;
   final bool saving;
   final String? message;
   final ValueChanged<double> onTaxChanged;
@@ -1099,6 +1525,7 @@ class _PurchaseSummary extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _SummaryRow('Supplier', supplier?.name ?? '-'),
         _SummaryRow('Total Item', '$lineCount item'),
+        _SummaryRow('Diskon Total', _money(discount)),
         _SummaryRow('Subtotal', _money(subtotal)),
         DropdownButtonFormField<double>(
           value: taxPercent,
@@ -1113,6 +1540,8 @@ class _PurchaseSummary extends StatelessWidget {
         _SummaryRow('Pajak', _money(tax)),
         const Divider(),
         _SummaryRow('Grand Total', _money(total), strong: true),
+        _SummaryRow('Uang Muka / Pembayaran', _money(0)),
+        _SummaryRow('Sisa Hutang', _money(total)),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
           value: warehouseId,
@@ -1138,22 +1567,18 @@ class _PurchaseSummary extends StatelessWidget {
             },
             icon: const Icon(Icons.event_outlined),
             label: Text('Jatuh tempo ${_date(expectedDate)}')),
-        const SizedBox(height: 8),
-        TextField(
-            controller: noteController,
-            minLines: 2,
-            maxLines: 3,
-            decoration: const InputDecoration(labelText: 'Catatan Pembelian')),
         const SizedBox(height: 12),
         FilledButton.icon(
           key: const Key('submit-purchase-order'),
           onPressed: saving ? null : onSubmit,
           icon: Icon(saving ? Icons.sync : Icons.send_outlined),
-          label: Text(saving ? 'Menyimpan...' : 'Simpan Pembelian'),
+          label: Text(saving ? 'Menyimpan...' : 'Posting Pembelian'),
         ),
         const SizedBox(height: 7),
         OutlinedButton.icon(
-            onPressed: lineCount == 0 ? null : () {},
+            onPressed: lineCount == 0
+                ? null
+                : () => _showWorkspaceNotice(context, 'Simpan Draft'),
             icon: const Icon(Icons.save_outlined),
             label: const Text('Simpan Draft')),
         if (message != null) ...[
@@ -1206,6 +1631,14 @@ class _StatusMessage extends StatelessWidget {
               color: Color(0xFF047857),
               fontWeight: FontWeight.w800,
               fontSize: 12)));
+}
+
+void _showWorkspaceNotice(BuildContext context, String action) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(
+        content: Text('$action tersedia setelah dokumen transaksi tersimpan.'),
+        behavior: SnackBarBehavior.floating));
 }
 
 String _money(double value) {

@@ -112,7 +112,7 @@ void main() {
 
     expect(find.text('1 item'), findsWidgets);
     expect(find.text('Rp 49.000'), findsWidgets);
-    expect(find.text('Kirim Order'), findsOneWidget);
+    expect(find.text('Kirim Order'), findsWidgets);
   });
 
   testWidgets('panduan inventory dapat dibaca dari aplikasi', (tester) async {
