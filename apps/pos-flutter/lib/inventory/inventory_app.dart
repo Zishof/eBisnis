@@ -12,6 +12,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'inventory_local_database.dart';
+import 'inventory_transaction_workspaces.dart';
 
 class AplikasiInventory extends StatefulWidget {
   const AplikasiInventory({
@@ -1577,6 +1578,54 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
   }
 
   Widget _buildOrder(BuildContext context, InventoryCatalog catalog) {
+    return InventorySalesOrderWorkspace(
+      customers: catalog.customers
+          .map((customer) => TransactionParty(
+                id: customer.id,
+                code: customer.code,
+                name: customer.name,
+              ))
+          .toList(),
+      products: catalog.products
+          .map((product) => TransactionProduct(
+                id: product.id,
+                uomId: product.uomId,
+                code: product.code,
+                name: product.name,
+                uom: 'PCS',
+                price: product.price,
+                stock: product.stock.toDouble(),
+                imageUrl: product.imageUrl,
+              ))
+          .toList(),
+      salesName: widget.persona.label,
+      onSubmit: (submission) async {
+        final order = await widget.client.createOrder(
+          customerId: submission.customerId,
+          taxPercent: submission.taxPercent,
+          paymentTerm: submission.paymentTerm,
+          note: submission.note,
+          lines: submission.lines
+              .map((line) => {
+                    'productId': line.product.id,
+                    'uomId': line.product.uomId,
+                    'qty': line.quantity,
+                    'unitPrice': line.unitPrice,
+                    'discountPercent': line.discountPercent,
+                  })
+              .toList(),
+        );
+        final number = (order['order_number'] ?? '-').toString();
+        return order['queued'] == true
+            ? '$number (antrean sinkronisasi)'
+            : number;
+      },
+    );
+  }
+
+  // Kept temporarily as a migration reference until the parity rollout closes.
+  // ignore: unused_element
+  Widget _buildOrderLegacy(BuildContext context, InventoryCatalog catalog) {
     return LayoutBuilder(
       builder: (context, box) {
         final wide = box.maxWidth >= 880;
@@ -2890,6 +2939,43 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
     }
   }
 
+  Widget _purchaseWorkspace(InventoryOperationsData data) {
+    return InventoryPurchaseWorkspace(
+      suppliers: data.suppliers
+          .map((supplier) => TransactionParty(
+                id: supplier.id,
+                code: supplier.code,
+                name: supplier.name,
+              ))
+          .toList(),
+      warehouses: data.warehouses
+          .map((warehouse) => TransactionParty(
+                id: warehouse.id,
+                code: warehouse.code,
+                name: warehouse.name,
+              ))
+          .toList(),
+      products: data.products
+          .map((product) => TransactionProduct(
+                id: product.id,
+                uomId: product.uomId,
+                code: product.code,
+                name: product.name,
+                uom: 'PCS',
+                price: product.price,
+                stock: product.stock.toDouble(),
+                imageUrl: product.imageUrl,
+              ))
+          .toList(),
+      onSubmit: (submission) async {
+        final number =
+            await widget.client.createPurchaseOrderWorkspace(submission);
+        if (mounted) _refresh();
+        return number;
+      },
+    );
+  }
+
   Future<void> _createPurchaseOrder(InventoryOperationsData data) async {
     if (data.suppliers.isEmpty ||
         data.products.isEmpty ||
@@ -3353,125 +3439,139 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
                 label: Text('Pembelian')),
         ];
         if (!_canSeePayables && _segment == 1) _segment = 0;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _PartyMasterLauncher(client: widget.client),
-            const SizedBox(height: 12),
-            _SectionCard(
-              title: 'Operasional Lapangan',
-              icon: Icons.sync_alt_outlined,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Pembayaran, penerimaan, dan nota memakai command idempoten yang sama dengan Web. Nominal penuh ditampilkan sebelum posting.',
-                    style: TextStyle(color: Color(0xFF475569), height: 1.45),
+        return ColoredBox(
+          color: const Color(0xFFF8FAFC),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _PartyMasterLauncher(client: widget.client),
+                const SizedBox(height: 12),
+                _SectionCard(
+                  title: 'Operasional Lapangan',
+                  icon: Icons.sync_alt_outlined,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Pembayaran, penerimaan, dan nota memakai command idempoten yang sama dengan Web. Nominal penuh ditampilkan sebelum posting.',
+                        style:
+                            TextStyle(color: Color(0xFF475569), height: 1.45),
+                      ),
+                      const SizedBox(height: 12),
+                      SegmentedButton<int>(
+                        segments: segments,
+                        selected: {_segment},
+                        onSelectionChanged: (value) =>
+                            setState(() => _segment = value.first),
+                      ),
+                      if (_canSeePayables && _segment == 1) ...[
+                        const SizedBox(height: 10),
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          title:
+                              const Text('Tampilkan hutang yang sudah lunas'),
+                          value: _includeSettled,
+                          onChanged: (value) {
+                            setState(() {
+                              _includeSettled = value;
+                              _data = _load();
+                            });
+                          },
+                        ),
+                      ],
+                      if (_segment == 0) ...[
+                        const SizedBox(height: 10),
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          title:
+                              const Text('Tampilkan piutang yang sudah lunas'),
+                          value: _includeReceivableSettled,
+                          onChanged: (value) {
+                            setState(() {
+                              _includeReceivableSettled = value;
+                              _data = _load();
+                            });
+                          },
+                        ),
+                      ],
+                      if (_message != null) ...[
+                        const SizedBox(height: 12),
+                        Text(_message!,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  SegmentedButton<int>(
-                    segments: segments,
-                    selected: {_segment},
-                    onSelectionChanged: (value) =>
-                        setState(() => _segment = value.first),
-                  ),
-                  if (_canSeePayables && _segment == 1) ...[
-                    const SizedBox(height: 10),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Tampilkan hutang yang sudah lunas'),
-                      value: _includeSettled,
-                      onChanged: (value) {
-                        setState(() {
-                          _includeSettled = value;
-                          _data = _load();
-                        });
-                      },
+                ),
+                const SizedBox(height: 12),
+                if (_segment == 0)
+                  Column(children: [
+                    _SettlementList(
+                      title: _includeReceivableSettled
+                          ? 'Piutang Customer - Semua Status'
+                          : 'Piutang Customer - Belum Lunas',
+                      documents: data.receivables,
+                      busyId: _busyId,
+                      primaryLabel: 'Terima penuh',
+                      onPrimary: _settle,
+                      onSecondary: _carry,
                     ),
-                  ],
-                  if (_segment == 0) ...[
-                    const SizedBox(height: 10),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Tampilkan piutang yang sudah lunas'),
-                      value: _includeReceivableSettled,
-                      onChanged: (value) {
-                        setState(() {
-                          _includeReceivableSettled = value;
-                          _data = _load();
-                        });
-                      },
-                    ),
-                  ],
-                  if (_message != null) ...[
                     const SizedBox(height: 12),
-                    Text(_message!,
-                        style: const TextStyle(fontWeight: FontWeight.w800)),
-                  ],
-                ],
-              ),
+                    _ReceivableReportActions(
+                      onReceipts: () => _receivablePdf(data, 'RECEIPT'),
+                      onCustomerAging: () =>
+                          _receivablePdf(data, 'AGING_CUSTOMER'),
+                      onSalesAging: () => _receivablePdf(data, 'AGING_SALES'),
+                      onOutstanding: () => _receivablePdf(data, 'OUTSTANDING'),
+                      onNotes: () => _receivablePdf(data, 'NOTES'),
+                    ),
+                    const SizedBox(height: 12),
+                    _ArReceiptHistoryList(receipts: data.arReceipts),
+                  ])
+                else if (_segment == 1)
+                  Column(children: [
+                    _SettlementList(
+                      title: _includeSettled
+                          ? 'Hutang Supplier - Semua Status'
+                          : 'Hutang Supplier - Belum Lunas',
+                      documents: data.payables,
+                      busyId: _busyId,
+                      primaryLabel: 'Bayar penuh',
+                      onPrimary: _settle,
+                    ),
+                    const SizedBox(height: 12),
+                    _PurchaseReportActions(
+                        onPayments: () => _purchasePdf(data, 'PAYMENT'),
+                        onAging: () => _purchasePdf(data, 'AGING'),
+                        onPurchases: () => _purchasePdf(data, 'PURCHASE')),
+                    const SizedBox(height: 12),
+                    _ApPaymentHistoryList(payments: data.apPayments),
+                  ])
+                else if (_segment == 2)
+                  _HandoverList(
+                    handovers: data.handovers,
+                    busyId: _busyId,
+                    onReturnAndClose: _returnAndClose,
+                    onReport: () => _receivablePdf(data, 'NOTES'),
+                  )
+                else
+                  Column(children: [
+                    _purchaseWorkspace(data),
+                    const SizedBox(height: 12),
+                    _PurchaseList(
+                      data: data,
+                      busyId: _busyId,
+                      onCreate: () => _createPurchaseOrder(data),
+                      onCommand: _purchaseCommand,
+                      onReceive: _receivePurchase,
+                      onInvoice: _purchaseInvoicePdf,
+                      onReport: () => _purchasePdf(data, 'PURCHASE'),
+                    ),
+                  ]),
+              ],
             ),
-            const SizedBox(height: 12),
-            if (_segment == 0)
-              Column(children: [
-                _SettlementList(
-                  title: _includeReceivableSettled
-                      ? 'Piutang Customer - Semua Status'
-                      : 'Piutang Customer - Belum Lunas',
-                  documents: data.receivables,
-                  busyId: _busyId,
-                  primaryLabel: 'Terima penuh',
-                  onPrimary: _settle,
-                  onSecondary: _carry,
-                ),
-                const SizedBox(height: 12),
-                _ReceivableReportActions(
-                  onReceipts: () => _receivablePdf(data, 'RECEIPT'),
-                  onCustomerAging: () => _receivablePdf(data, 'AGING_CUSTOMER'),
-                  onSalesAging: () => _receivablePdf(data, 'AGING_SALES'),
-                  onOutstanding: () => _receivablePdf(data, 'OUTSTANDING'),
-                  onNotes: () => _receivablePdf(data, 'NOTES'),
-                ),
-                const SizedBox(height: 12),
-                _ArReceiptHistoryList(receipts: data.arReceipts),
-              ])
-            else if (_segment == 1)
-              Column(children: [
-                _SettlementList(
-                  title: _includeSettled
-                      ? 'Hutang Supplier - Semua Status'
-                      : 'Hutang Supplier - Belum Lunas',
-                  documents: data.payables,
-                  busyId: _busyId,
-                  primaryLabel: 'Bayar penuh',
-                  onPrimary: _settle,
-                ),
-                const SizedBox(height: 12),
-                _PurchaseReportActions(
-                    onPayments: () => _purchasePdf(data, 'PAYMENT'),
-                    onAging: () => _purchasePdf(data, 'AGING'),
-                    onPurchases: () => _purchasePdf(data, 'PURCHASE')),
-                const SizedBox(height: 12),
-                _ApPaymentHistoryList(payments: data.apPayments),
-              ])
-            else if (_segment == 2)
-              _HandoverList(
-                handovers: data.handovers,
-                busyId: _busyId,
-                onReturnAndClose: _returnAndClose,
-                onReport: () => _receivablePdf(data, 'NOTES'),
-              )
-            else
-              _PurchaseList(
-                data: data,
-                busyId: _busyId,
-                onCreate: () => _createPurchaseOrder(data),
-                onCommand: _purchaseCommand,
-                onReceive: _receivePurchase,
-                onInvoice: _purchaseInvoicePdf,
-                onReport: () => _purchasePdf(data, 'PURCHASE'),
-              ),
-          ],
+          ),
         );
       },
     );
@@ -5392,6 +5492,56 @@ class InventoryApiClient {
         .toString();
   }
 
+  Future<String> createPurchaseOrderWorkspace(
+      PurchaseWorkspaceSubmission submission) async {
+    if (submission.supplierId.isEmpty ||
+        submission.warehouseId.isEmpty ||
+        submission.lines.isEmpty ||
+        submission.lines.any((line) =>
+            line.product.id.isEmpty ||
+            line.product.uomId.isEmpty ||
+            line.quantity <= 0 ||
+            line.unitPrice < 0)) {
+      throw const InventoryApiException('Data purchase order belum lengkap.');
+    }
+    final created = await _request<Map<String, Object?>>(
+      'POST',
+      '/purchase-orders',
+      headers: {
+        'Idempotency-Key':
+            'PO_${DateTime.now().microsecondsSinceEpoch}_${submission.lines.length}'
+      },
+      body: {
+        'supplierId': submission.supplierId,
+        'warehouseId': submission.warehouseId,
+        'expectedDate':
+            submission.expectedDate.toIso8601String().substring(0, 10),
+        'note': submission.note.isEmpty
+            ? 'Dibuat dari Flutter Inventory'
+            : submission.note,
+        'taxPercent': submission.taxPercent,
+        'lines': submission.lines
+            .map((line) => {
+                  'productId': line.product.id,
+                  'uomId': line.product.uomId,
+                  'orderedQty': line.quantity,
+                  'unitPrice': line.unitPrice,
+                  'discountPercent': line.discountPercent,
+                  'batchNumber':
+                      line.batch.trim().isEmpty ? null : line.batch.trim(),
+                  'expiryDate':
+                      line.expiryDate?.toIso8601String().substring(0, 10),
+                })
+            .toList(),
+      },
+    );
+    return (created['purchase_order_number'] ??
+            created['purchaseOrderNumber'] ??
+            created['id'] ??
+            '-')
+        .toString();
+  }
+
   Future<void> transitionPurchaseOrder(String id, String action) async {
     if (!const ['submit', 'approve', 'send'].contains(action)) {
       throw const InventoryApiException('Transisi purchase order tidak valid.');
@@ -5532,6 +5682,9 @@ class InventoryApiClient {
   Future<Map<String, Object?>> createOrder({
     required String customerId,
     required List<Map<String, Object?>> lines,
+    double taxPercent = 0,
+    String? paymentTerm,
+    String? note,
   }) async {
     final deviceId = await _localDatabase?.getOrCreateDeviceId() ?? tenantCode;
     final eventId =
@@ -5540,6 +5693,10 @@ class InventoryApiClient {
       'deviceId': deviceId,
       'deviceEventId': eventId,
       'customerId': customerId,
+      'taxPercent': taxPercent,
+      if (paymentTerm != null && paymentTerm.trim().isNotEmpty)
+        'paymentTerm': paymentTerm.trim(),
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
       'lines': lines,
     };
     await _localDatabase?.enqueue(

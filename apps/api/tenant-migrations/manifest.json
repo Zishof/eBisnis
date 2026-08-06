@@ -353,6 +353,13 @@
         "description": "Kolom kontak, termin pembayaran, bank, dan diskon pada master ERP pemasok/pelanggan serta profil sales operasional yang dapat ditautkan ke akun. Mencakup kebutuhan layar legacy 01-07 tanpa membuat master pemasok atau pelanggan kedua."
       },
       {
+        "version": "V051",
+        "sequence": 51,
+        "file": "V051__inventory_transaction_workspace.sql",
+        "name": "Konteks transaksi Sales dan Inventory",
+        "description": "Menyimpan termin dan catatan Sales Order serta rencana batch/kedaluwarsa Purchase Order dari workspace responsif. Nilai harga, diskon, pajak, dan total tetap memakai kolom moneter ERP yang telah ada."
+      },
+      {
         "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

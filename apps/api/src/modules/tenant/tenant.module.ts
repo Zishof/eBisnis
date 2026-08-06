@@ -72,6 +72,21 @@ class MobileSalesOrderLineDto {
   @IsNumber()
   @Min(0.000001)
   qty!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  unitPrice?: number;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  discountPercent?: number;
 }
 
 class CreateMobileSalesOrderDto {
@@ -97,6 +112,26 @@ class CreateMobileSalesOrderDto {
   @IsString()
   @MaxLength(32)
   deliveryDate?: string;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  taxPercent?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  paymentTerm?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 
   @ApiProperty({ type: [MobileSalesOrderLineDto] })
   @IsArray()
@@ -218,6 +253,26 @@ class PurchaseOrderLineDto {
   @Min(0)
   unitPrice!: number;
 
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  discountPercent?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  batchNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  expiryDate?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
@@ -244,6 +299,14 @@ class CreatePurchaseOrderDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  taxPercent?: number;
 
   @ApiProperty({ type: [PurchaseOrderLineDto] })
   @IsArray()
@@ -1670,27 +1733,49 @@ export class ErpController {
       if (productMap.size !== productIds.length) {
         throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Satu atau lebih produk tidak tersedia untuk dijual.');
       }
-      const subtotal = body.lines.reduce((sum, line) => sum + line.qty * Number(productMap.get(line.productId)?.default_sale_price ?? 0), 0);
+      const calculatedLines = body.lines.map((line) => {
+        const product = productMap.get(line.productId)!;
+        const unitPrice = line.unitPrice ?? Number(product.default_sale_price);
+        const gross = line.qty * unitPrice;
+        const discountAmount = gross * (line.discountPercent ?? 0) / 100;
+        const net = gross - discountAmount;
+        const taxAmount = net * (body.taxPercent ?? 0) / 100;
+        return { line, product, unitPrice, discountAmount, taxAmount, lineTotal: net + taxAmount };
+      });
+      const subtotal = calculatedLines.reduce((sum, item) => sum + item.line.qty * item.unitPrice, 0);
+      const discountTotal = calculatedLines.reduce((sum, item) => sum + item.discountAmount, 0);
+      const taxTotal = calculatedLines.reduce((sum, item) => sum + item.taxAmount, 0);
+      const grandTotal = subtotal - discountTotal + taxTotal;
       const orderNumber = `MOB-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${body.deviceEventId.replace(/[^a-zA-Z0-9]/g, '').slice(-16)}`.slice(0, 48);
       const outlet = await client.query<{ id: string }>(`SELECT id::text FROM ${S}.outlet WHERE deleted_at IS NULL ORDER BY created_at LIMIT 1`);
       const order = await client.query<{ id: string; order_number: string }>(
         `INSERT INTO ${S}.sales_order
-           (customer_id, outlet_id, order_number, order_date, delivery_date, channel, subtotal, grand_total, status, created_by, source_event_id)
-         VALUES ($1::uuid, $2::uuid, $3, CURRENT_DATE, $4::date, 'FIELD_SALES', $5, $5, 'CONFIRMED', $6::uuid, $7)
+           (customer_id, outlet_id, order_number, order_date, delivery_date, channel,
+            subtotal, discount_total, tax_total, grand_total, payment_term_label, note,
+            status, created_by, source_event_id)
+         VALUES ($1::uuid, $2::uuid, $3, CURRENT_DATE, $4::date, 'FIELD_SALES',
+                 $5, $6, $7, $8, $9, $10, 'CONFIRMED', $11::uuid, $12)
          RETURNING id::text, order_number`,
-        [body.customerId, outlet.rows[0]?.id ?? null, orderNumber, body.deliveryDate ?? null, subtotal, subjectId, body.deviceEventId],
+        [body.customerId, outlet.rows[0]?.id ?? null, orderNumber, body.deliveryDate ?? null,
+          subtotal, discountTotal, taxTotal, grandTotal, body.paymentTerm?.trim() || null,
+          body.note?.trim() || null, subjectId, body.deviceEventId],
       );
-      for (const [index, line] of body.lines.entries()) {
-        const product = productMap.get(line.productId)!;
-        const price = Number(product.default_sale_price);
+      for (const [index, item] of calculatedLines.entries()) {
+        const { line, product, unitPrice, discountAmount, taxAmount, lineTotal } = item;
         await client.query(
           `INSERT INTO ${S}.sales_order_line
-             (sales_order_id, product_id, uom_id, line_no, ordered_qty, unit_price, line_total, legacy_unit_cost)
-           VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8)`,
-          [order.rows[0].id, line.productId, line.uomId, index + 1, line.qty, price, line.qty * price, Number(product.standard_cost)],
+             (sales_order_id, product_id, uom_id, line_no, ordered_qty, unit_price,
+              discount_amount, tax_amount, line_total, legacy_unit_cost)
+           VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9, $10)`,
+          [order.rows[0].id, line.productId, line.uomId, index + 1, line.qty,
+            unitPrice, discountAmount, taxAmount, lineTotal, Number(product.standard_cost)],
         );
       }
-      const result = { ...order.rows[0], idempotent: false, subtotal: subtotal.toString() };
+      const result = {
+        ...order.rows[0], idempotent: false,
+        subtotal: subtotal.toString(), discountTotal: discountTotal.toString(),
+        taxTotal: taxTotal.toString(), grandTotal: grandTotal.toString(),
+      };
       await client.query(
         `UPDATE ${S}.inventory_mobile_command
             SET status = 'PROCESSED', result_payload = $3::jsonb, processed_at = now()

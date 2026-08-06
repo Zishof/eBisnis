@@ -471,12 +471,16 @@ export class ErpPurchasingService {
       warehouseId: string;
       expectedDate?: string;
       note?: string;
+      taxPercent?: number;
       sourceBackorderId?: string;
       lines: Array<{
         productId: string;
         uomId?: string;
         orderedQty: number;
         unitPrice: number;
+        discountPercent?: number;
+        batchNumber?: string;
+        expiryDate?: string;
         requestOrderLineId?: string;
       }>;
     },
@@ -520,6 +524,7 @@ export class ErpPurchasingService {
         );
 
         let subtotal = new Decimal(0);
+        let discountTotal = new Decimal(0);
         const header = await client.query<{ id: string }>(
           `INSERT INTO ${S}.purchase_order
              (purchase_order_number, supplier_id, legal_entity_id, warehouse_id, order_date,
@@ -562,14 +567,18 @@ export class ErpPurchasingService {
             );
           }
 
-          const lineTotal = new Decimal(line.orderedQty).mul(new Decimal(line.unitPrice));
-          subtotal = subtotal.plus(lineTotal);
+          const gross = new Decimal(line.orderedQty).mul(new Decimal(line.unitPrice));
+          const discountAmount = gross.mul(new Decimal(line.discountPercent ?? 0)).div(100);
+          const lineTotal = gross.minus(discountAmount);
+          subtotal = subtotal.plus(gross);
+          discountTotal = discountTotal.plus(discountAmount);
 
           const insertedLine = await client.query<{ id: string }>(
             `INSERT INTO ${S}.purchase_order_line
-               (purchase_order_id, product_id, uom_id, line_no, ordered_qty, unit_price, line_total)
+               (purchase_order_id, product_id, uom_id, line_no, ordered_qty, unit_price,
+                discount_amount, line_total, planned_batch_number, planned_expiry_date)
              VALUES ($1, $2, COALESCE($3, (SELECT base_uom_id FROM ${S}.product WHERE id = $2)),
-                     $4, $5, $6, $7)
+                     $4, $5, $6, $7, $8, $9, $10::date)
              RETURNING id::text AS id`,
             [
               purchaseOrderId,
@@ -578,7 +587,10 @@ export class ErpPurchasingService {
               index + 1,
               line.orderedQty,
               line.unitPrice,
+              discountAmount.toFixed(4),
               lineTotal.toFixed(4),
+              line.batchNumber?.trim() || null,
+              line.expiryDate ?? null,
             ],
           );
 
@@ -599,9 +611,15 @@ export class ErpPurchasingService {
           }
         }
 
+        const taxable = subtotal.minus(discountTotal);
+        const taxTotal = taxable.mul(new Decimal(input.taxPercent ?? 0)).div(100);
+        const grandTotal = taxable.plus(taxTotal);
         await client.query(
-          `UPDATE ${S}.purchase_order SET subtotal = $2, grand_total = $2 WHERE id = $1`,
-          [purchaseOrderId, subtotal.toFixed(4)],
+          `UPDATE ${S}.purchase_order
+              SET subtotal = $2, discount_total = $3, tax_total = $4, grand_total = $5
+            WHERE id = $1`,
+          [purchaseOrderId, subtotal.toFixed(4), discountTotal.toFixed(4),
+            taxTotal.toFixed(4), grandTotal.toFixed(4)],
         );
 
         if (input.sourceBackorderId) {

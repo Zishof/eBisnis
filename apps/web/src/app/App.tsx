@@ -67,6 +67,7 @@ import { InternalTransferPage } from '../pages/app/InternalTransferPage';
 import { StockAlertsPage, StockMovementsPage } from '../pages/app/InventoryLedgerPage';
 import { JournalEntriesPage } from '../pages/app/JournalEntriesPage';
 import { InventoryControlPage } from '../pages/app/InventoryControlPage';
+import { InventoryTransactionWorkspacePage } from '../pages/app/InventoryTransactionWorkspacePage';
 import { InventoryPartyMasterPage } from '../pages/app/InventoryPartyMasterPage';
 import { SalesOrdersPage, SalesReportsPage } from '../pages/app/SalesPages';
 import { SampleDataPage } from '../pages/app/SampleDataPage';
@@ -639,10 +640,10 @@ export function App() {
           <Route path="inventory/stock" element={<InventoryControlPage />} />
           <Route path="inventory/stock-opnames" element={<InventoryControlPage />} />
           <Route path="inventory/pricing" element={<InventoryControlPage />} />
-          <Route path="purchasing/invoices" element={<InventoryControlPage />} />
+          <Route path="purchasing/invoices" element={<InventoryTransactionWorkspacePage mode="purchase" />} />
           <Route path="purchasing/payables" element={<InventoryControlPage />} />
           <Route path="purchasing/reports" element={<InventoryControlPage />} />
-          <Route path="sales/invoices" element={<InventoryControlPage />} />
+          <Route path="sales/invoices" element={<InventoryTransactionWorkspacePage mode="sales" />} />
           <Route path="sales/receivables" element={<InventoryControlPage />} />
           <Route path="sales/note-custody" element={<InventoryControlPage />} />
           <Route path="sales/receivable-reports" element={<InventoryControlPage />} />
@@ -664,6 +665,7 @@ export function App() {
           <Route path="stock-movements" element={<StockMovementsPage />} />
           <Route path="stock-alerts" element={<StockAlertsPage />} />
           <Route path="sales/orders" element={<SalesOrdersPage />} />
+          <Route path="sales/orders/new" element={<InventoryTransactionWorkspacePage mode="sales" />} />
           <Route path="sales/reports" element={<SalesReportsPage />} />
           <Route path="pos" element={<Navigate to="/app/pos/kasir" replace />} />
           <Route path="pos/kasir" element={<PosPage />} />
