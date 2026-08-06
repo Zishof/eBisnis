@@ -5,9 +5,21 @@ import { HospitalityRoomBlockController } from './hospitality-room-block.control
 import { HospitalityRoomBlockService } from './hospitality-room-block.service';
 import { HospitalityGuestController } from './hospitality-guest.controller';
 import { HospitalityGuestService } from './hospitality-guest.service';
+import { HospitalityReservationController } from './hospitality-reservation.controller';
+import { HospitalityReservationService } from './hospitality-reservation.service';
 
 @Module({
-  controllers: [HospitalityPropertiController, HospitalityRoomBlockController, HospitalityGuestController],
-  providers: [HospitalityPropertiService, HospitalityRoomBlockService, HospitalityGuestService],
+  controllers: [
+    HospitalityPropertiController,
+    HospitalityRoomBlockController,
+    HospitalityGuestController,
+    HospitalityReservationController,
+  ],
+  providers: [
+    HospitalityPropertiService,
+    HospitalityRoomBlockService,
+    HospitalityGuestService,
+    HospitalityReservationService,
+  ],
 })
 export class HospitalityModule {}

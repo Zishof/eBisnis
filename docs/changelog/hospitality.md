@@ -1,5 +1,101 @@
 # Changelog — Hospitality (MitraInap.id)
 
+## 2026-08-06 — MI-8: Reservation dan CRS
+
+- Migrasi tenant baru `20260806T150000__hospitality__reservation.sql`:
+  - `hospitality_reservation` -- kepala reservasi (tamu utama, sumber,
+    segmen pasar, status HOLD/CONFIRMED/CANCELLED/NO_SHOW,
+    `idempotency_key` unik per penyewa).
+  - `hospitality_reservation_room_stay` -- satu baris per kamar per
+    reservasi (mendukung multi-kamar). `room_id` SENGAJA nullable --
+    penunjukan kamar fisik adalah pekerjaan front office (MI-12) saat/
+    menjelang check-in, reservasi menjual TIPE kamar. `rate_snapshot`
+    dan `restriction_snapshot` (JSONB) WAJIB dan tidak pernah berubah
+    sesudah dibuat -- MI-10 (Rate Management) belum ada, jadi tarif
+    dimasukkan staf secara manual hari ini; MEKANISME snapshot sudah
+    terbangun dan teruji sehingga MI-10 hanya perlu mengganti sumber
+    datanya nanti, bukan mekanismenya.
+  - Waitlist SENGAJA belum ada -- alur kerja terpisah di luar siklus
+    hidup inti (hold/confirm/modify/cancel/no-show/reinstate) yang
+    diminta fase ini. `source = 'WALK_IN'` sudah mencakup kebutuhan
+    walk-in sebagai nilai sumber, bukan struktur terpisah.
+- Backend: `HospitalityReservationService`/`.controller.ts` --
+  `catatReservasi` (multi-kamar, satu transaksi), `ubahStatus` (generik
+  untuk konfirmasi/batalkan/no-show/pulihkan, transisi diperiksa lewat
+  peta `TRANSISI_DIIZINKAN`). Terhubung dengan MI-7: tamu berstatus
+  do-not-rent DITOLAK saat mencoba membuat reservasi baru (FORBIDDEN),
+  bukan sekadar penanda yang tidak pernah diperiksa.
+- **Idempotensi** -- kunci dari tajuk HTTP `Idempotency-Key`
+  (`meta.idempotencyKey`, pola YANG SUDAH ADA di `pos-sale.service.ts`
+  dkk, BUKAN `IdempotencyService` platform yang ternyata belum dipakai
+  modul manapun) diperiksa DI DALAM transaksi yang sama dengan
+  penulisan -- permintaan yang diulang dengan kunci sama mengembalikan
+  reservasi yang SAMA.
+- **Kunci optimistik** -- `expectedVersion` ditegakkan SUNGGUHAN lewat
+  `WHERE version = $N` pada setiap transisi status (bukan hanya
+  dinaikkan tanpa diperiksa seperti MI-5/6/7); nol baris terpengaruh
+  menghasilkan `VERSION_CONFLICT` (409).
+- **Kondisi pacu -- kapasitas tipe kamar** -- WAJIB menurut perintah
+  master. Setiap tipe kamar yang diminta dikunci
+  (`SELECT ... FOR UPDATE` pada `hospitality_room_type`) di dalam
+  transaksi yang sama dengan penghitungan kapasitas (kamar aktif tanpa
+  blokir MI-6 + alotmen lebih MI-6, dikurangi reservasi HOLD/CONFIRMED
+  yang tumpang tindih tanggal) dan penulisan baris `room_stay` --
+  permintaan bersamaan untuk tipe kamar yang sama diserialkan basis
+  data.
+- Web: `HospitalityReservasiPage` (baru, `/app/hospitality/reservasi`)
+  -- daftar + filter status, formulir tambah multi-kamar, panel detail
+  dengan tombol aksi status yang mengirim `version` yang sedang
+  ditampilkan (409 memuat ulang detail, bukan mencoba lagi diam-diam).
+- RBAC: menu `HOSPITALITY_RESERVASI` ditambahkan sebagai anak
+  `HOSPITALITY_GROUP`, otomatis terwarisi `HOSPITALITY_ADMIN`.
+- **Bug ditemukan dan diperbaiki saat verifikasi**: query `UPDATE` pada
+  `ubahStatus()` gagal dengan galat Postgres "inconsistent types deduced
+  for parameter $3" -- parameter yang sama (`$3`, nilai status baru)
+  dipakai dua kali dalam konteks tipe yang berbeda (`SET status = $3`
+  dan `CASE WHEN $3 = 'CANCELLED'`) tanpa cast eksplisit, dan Postgres
+  gagal menyatukan tipenya saat fase Parse. Diperbaiki dengan
+  `$3::varchar`/`$4::text` eksplisit. Ditemukan lewat pengujian HTTP
+  sungguhan (percobaan konfirmasi reservasi nyata gagal), bukan dari
+  membaca kode -- galat tipe seperti ini tidak pernah muncul pada
+  `tsc`/lint sebab murni masalah SQL saat dieksekusi Postgres.
+- **Diverifikasi NYATA** (bukan hanya `tsc`/test) terhadap Postgres
+  lokal dan tenant nyata (`admin_raudlatululum` via
+  `migrate:tenants --schema`):
+  - Constraint basis data: `idempotency_key` duplikat ditolak, `CANCELLED`
+    tanpa `cancel_reason` ditolak, `checkout_date <= checkin_date` ditolak.
+  - **Kondisi pacu kapasitas, diuji sungguhan**: tipe kamar dengan
+    kapasitas 2 (2 kamar fisik, alotmen lebih 0) menerima 10 permintaan
+    reservasi BERSAMAAN (`Promise.all`, permintaan HTTP nyata lewat
+    `fetch`, bukan panggilan langsung ke layanan) untuk tanggal yang
+    sama -- TEPAT 2 berhasil (201), 8 sisanya ditolak CONFLICT (409).
+    Tidak ada yang lolos melebihi kapasitas, tidak ada yang gagal
+    karena deadlock.
+  - **Idempotensi, diuji sungguhan**: `POST` dengan `Idempotency-Key`
+    yang sama dua kali menghasilkan `id` dan `code` yang PERSIS sama
+    pada respons kedua (`_diulangDariPermintaanSebelumnya: true`), dan
+    daftar reservasi hanya menunjukkan satu baris untuk kode itu.
+  - **Kunci optimistik, diuji sungguhan**: `expectedVersion` yang sudah
+    basi (setelah reservasi diubah pihak lain) ditolak `VERSION_CONFLICT`
+    (409); `expectedVersion` yang benar berhasil dan menaikkan `version`.
+  - **Siklus hidup penuh, diuji sungguhan**: HOLD -> CONFIRMED -> NO_SHOW
+    -> (invalid: langsung ke CANCELLED ditolak) -> pulihkan ke CONFIRMED
+    -> CANCELLED (dengan alasan) -> pulihkan lagi ke CONFIRMED. Setiap
+    transisi TIDAK SAH ditolak `VALIDATION_FAILED` dengan pesan yang
+    menyebut status asal dan tujuan.
+  - **Integrasi MI-7/MI-8, diuji sungguhan**: tamu yang ditandai
+    do-not-rent (MI-7) benar-benar ditolak (`FORBIDDEN`) saat dicoba
+    dibuatkan reservasi baru -- bukan sekadar dua modul yang tidak
+    saling mengenal.
+  - Halaman `/app/hospitality/reservasi` diverifikasi peramban
+    sungguhan dengan login nyata: daftar, formulir tambah multi-kamar,
+    dan aksi ubah status (klik "Tandai No-Show" mengubah tampilan dari
+    v6 ke v7 seketika, tombol aksi berganti sesuai status baru) semuanya
+    memakai data API yang sama persis dengan hasil curl di atas.
+- `pnpm test` (155 suite API/4025 test, 42 berkas web/510 test) LULUS
+  penuh setelah perbaikan; `tsc --noEmit` LULUS; `pnpm lint` bersih dari
+  perubahan ini.
+
 ## 2026-08-06 — MI-7: Guest Identity, CRM, Consent, Privacy
 
 - Migrasi tenant baru `20260806T120000__hospitality__guest_crm.sql`:

@@ -56,6 +56,17 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
     sortOrder: 2,
     actions: ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'],
   },
+  {
+    code: 'HOSPITALITY_RESERVASI',
+    parentCode: 'HOSPITALITY_GROUP',
+    label: 'Reservasi',
+    translationKey: 'menu.hospitality.reservasi',
+    route: '/app/hospitality/reservasi',
+    icon: 'CalendarRange',
+    moduleCode: HOSPITALITY_PREFIX,
+    sortOrder: 3,
+    actions: ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'],
+  },
 ];
 
 export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [

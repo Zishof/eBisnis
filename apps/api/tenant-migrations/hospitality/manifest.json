@@ -23,6 +23,12 @@
       "file": "20260806T120000__hospitality__guest_crm.sql",
       "name": "MI-7: Guest Identity, CRM, Consent, Privacy",
       "description": "hospitality_guest (profil tunggal tamu -- identitas, kontak, alamat, preferensi, consent pemasaran, do-not-rent, merged_into_id untuk penggabungan) dan hospitality_guest_privacy_request (catatan permintaan ekspor/penghapusan data). Indeks unik parsial pada (identifier_type, identifier_number) adalah penjaga duplikat keras; kemiripan nama/telepon tanpa nomor identitas sama diperiksa di sisi layanan, bukan basis data. Companion/relationship dan tautan perusahaan/travel agent SENGAJA belum ada -- menyusul MI-18 (grup/korporat) begitu ada pemakainya."
+    },
+    {
+      "id": "20260806T150000__hospitality__reservation",
+      "file": "20260806T150000__hospitality__reservation.sql",
+      "name": "MI-8: Reservation dan CRS",
+      "description": "hospitality_reservation (kepala reservasi -- tamu, sumber, segmen pasar, status HOLD/CONFIRMED/CANCELLED/NO_SHOW, idempotency_key unik) dan hospitality_reservation_room_stay (satu baris per kamar per reservasi -- room_id nullable, ditunjuk belakangan oleh front office MI-12; rate_snapshot dan restriction_snapshot JSONB WAJIB, tidak pernah berubah sesudah dibuat). Kondisi pacu kapasitas tipe kamar ditegakkan SELECT ... FOR UPDATE pada baris room_type di dalam transaksi yang sama dengan penghitungan dan penulisan (bukan indeks unik -- yang dijaga adalah HITUNGAN lintas baris), diuji dengan permintaan bersamaan sungguhan (lihat docs/changelog/hospitality.md). Kunci optimistik (version) ditegakkan sungguhan pada seluruh transisi status. Waitlist SENGAJA belum ada -- alur kerja terpisah di luar siklus hidup inti fase ini."
     }
   ]
 }
