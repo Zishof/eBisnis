@@ -17,8 +17,11 @@ import { PesantrenDashboardPage } from './pesantren/PesantrenDashboardPage';
  * santri, asrama, atau tagihan pondok.
  */
 export function AppHomePage() {
-  const { user } = useAuth();
-  if (user?.tenant?.schemaName === 'cmnmedika_inventory' && user.username.toLowerCase() === 'muklis') {
+  const { user, hasPermission } = useAuth();
+  if (
+    user?.tenant?.schemaName.endsWith('_inventory') &&
+    hasPermission('SALES_REPORT.VIEW_PROFIT')
+  ) {
     return <CmnInventoryOwnerDashboardPage />;
   }
   if (user?.tenant?.verticalCode === VERTIKAL_PESANTREN) {

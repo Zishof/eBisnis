@@ -2,41 +2,53 @@ import { useMemo, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  Banknote,
   Boxes,
-  CalendarCheck,
-  ClipboardList,
-  Coins,
-  FileText,
-  MapPinned,
-  PackageCheck,
-  Route,
-  ShieldCheck,
+  ChevronDown,
+  Download,
+  FileClock,
+  Filter,
+  Landmark,
+  Plus,
+  ReceiptText,
+  ShoppingCart,
   TrendingUp,
-  UsersRound,
   WalletCards,
 } from 'lucide-react';
-import { api, formatMoney, formatNumber } from '../../lib/api';
-import { PageHeader, StatusBadge } from '../../components/ui';
 import { useAuth } from '../../app/auth-context';
+import { PageHeader } from '../../components/ui';
+import { api, formatMoney, formatNumber } from '../../lib/api';
 
 interface SalesInventoryDashboard {
   summary: {
     products?: number;
     customers?: number;
-    suppliers?: number;
     orders_today?: number;
     revenue_today?: string;
-    orders_month?: number;
+    purchases_today?: string;
     revenue_month?: string;
-    on_hand_qty?: string;
-    available_qty?: string;
+    purchases_month?: string;
+    cogs_month?: string;
+    gross_profit_month?: string;
+    inventory_value?: string;
+    low_stock_products?: number;
     expired_lots?: number;
     expiring_lots?: number;
   };
-  topSales: Array<{ sales_name: string; orders: number; revenue: string }>;
-  topProducts: Array<{ product_code: string; product_name: string; qty: string; revenue: string }>;
-  topCustomers: Array<{ customer_name: string; orders: number; revenue: string }>;
-  expiringLots: Array<{ product_code: string; product_name: string; lot_number: string; expiry_date: string }>;
+  salesTrend: Array<{ date: string; total: string }>;
+  purchaseTrend: Array<{ date: string; total: string }>;
+  topProducts: Array<{
+    product_code: string;
+    product_name: string;
+    qty: string;
+    revenue: string;
+  }>;
+  expiringLots: Array<{
+    product_code: string;
+    product_name: string;
+    lot_number: string;
+    expiry_date: string;
+  }>;
   recentOrders: Array<{
     id: string;
     order_number: string;
@@ -48,373 +60,230 @@ interface SalesInventoryDashboard {
   }>;
 }
 
-type SalesOwnerRow = {
-  name: string;
-  area: string;
-  orders: number;
-  customers: number;
-  revenue: number;
-  grossProfit: number;
-  target: number;
-  receivable: number;
-  visits: number;
-};
-
-const FALLBACK_SALES: SalesOwnerRow[] = [
-  { name: 'Masrukin', area: 'Cirebon Kota - Kedawung', orders: 214, customers: 86, revenue: 127_800_000, grossProfit: 30_672_000, target: 180_000_000, receivable: 42_350_000, visits: 92 },
-  { name: 'Tohirin', area: 'Sumber - Palimanan', orders: 188, customers: 73, revenue: 109_450_000, grossProfit: 25_721_000, target: 160_000_000, receivable: 33_900_000, visits: 85 },
-  { name: 'Nofal', area: 'Indramayu - Jatibarang', orders: 176, customers: 68, revenue: 96_720_000, grossProfit: 21_278_400, target: 145_000_000, receivable: 28_150_000, visits: 79 },
-  { name: 'Agung', area: 'Majalengka - Kuningan', orders: 159, customers: 61, revenue: 88_360_000, grossProfit: 19_439_200, target: 135_000_000, receivable: 24_875_000, visits: 74 },
-];
-
-const TREND = [
-  { label: 'Sen', value: 31_200_000 },
-  { label: 'Sel', value: 36_800_000 },
-  { label: 'Rab', value: 29_500_000 },
-  { label: 'Kam', value: 42_100_000 },
-  { label: 'Jum', value: 47_900_000 },
-  { label: 'Sab', value: 22_400_000 },
-  { label: 'Min', value: 12_700_000 },
-];
-
-const RECEIVABLE_BUCKETS = [
-  { label: 'Belum jatuh tempo', value: 82_500_000, tone: 'success' as const },
-  { label: '1-14 hari', value: 31_250_000, tone: 'warning' as const },
-  { label: '15-30 hari', value: 12_850_000, tone: 'warning' as const },
-  { label: '>30 hari', value: 4_675_000, tone: 'danger' as const },
-];
+interface LegacyReconciliation {
+  totals?: {
+    receivable_amount?: string;
+    payable_amount?: string;
+  };
+}
 
 export function CmnInventoryOwnerDashboardPage() {
   const { user } = useAuth();
   const dashboard = useQuery({
-    queryKey: ['cmn-owner-inventory-sales-dashboard'],
+    queryKey: ['inventory-executive-dashboard'],
     queryFn: () => api.get<SalesInventoryDashboard>('/inventory/sales-dashboard'),
     retry: false,
   });
+  const reconciliation = useQuery({
+    queryKey: ['inventory-executive-reconciliation'],
+    queryFn: () => api.get<LegacyReconciliation>('/inventory/legacy-import-reconciliation'),
+    retry: false,
+  });
 
-  const salesRows = useMemo(() => buildSalesRows(dashboard.data), [dashboard.data]);
-  const totals = useMemo(() => summarizeSales(salesRows, dashboard.data), [salesRows, dashboard.data]);
-  const maxTrend = Math.max(...TREND.map((row) => row.value), 1);
+  const data = dashboard.data;
+  const summary = data?.summary;
+  const receivable = numberOf(reconciliation.data?.totals?.receivable_amount);
+  const payable = numberOf(reconciliation.data?.totals?.payable_amount);
+  const revenueToday = numberOf(summary?.revenue_today);
+  const purchaseToday = numberOf(summary?.purchases_today);
+  const revenueMonth = numberOf(summary?.revenue_month);
+  const purchaseMonth = numberOf(summary?.purchases_month);
+  const grossProfit = numberOf(summary?.gross_profit_month);
+  const inventoryValue = numberOf(summary?.inventory_value);
+  const products = useMemo(() => (data?.topProducts ?? []).slice(0, 5), [data]);
+  const orders = data?.recentOrders.slice(0, 5) ?? [];
+  const stockWarnings = data?.expiringLots.slice(0, 5) ?? [];
 
   return (
-    <>
+    <div className="pb-4">
       <PageHeader
-        title="Dashboard Pemilik"
-        description={`Selamat datang, ${user?.displayName ?? 'Pemilik'}. Ringkasan kendali Caruban Medika Nusantara.`}
+        title={`Selamat datang, ${user?.displayName ?? 'Pemilik'}`}
+        description={new Intl.DateTimeFormat('id-ID', {
+          weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        }).format(new Date()) + ' WIB'}
+        actions={
+          <>
+            <a href="/app/sales/orders" className="btn-primary inline-flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Buat Transaksi <ChevronDown className="h-4 w-4" />
+            </a>
+            <button type="button" className="btn-secondary inline-flex items-center gap-2">
+              <Filter className="h-4 w-4" /> Filter Dashboard
+            </button>
+            <button type="button" aria-label="Unduh dashboard" className="btn-secondary px-3">
+              <Download className="h-4 w-4" />
+            </button>
+          </>
+        }
       />
 
-      <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100">
-        Mode pemilik hanya menampilkan menu yang relevan untuk keputusan usaha: penjualan, performa sales,
-        pelanggan, stok obat, piutang, laporan, dan risiko operasional.
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+        <Metric icon={<Banknote />} label="Penjualan Hari Ini" value={formatMoney(revenueToday)} note="naik dari kemarin" tone="green" />
+        <Metric icon={<ShoppingCart />} label="Pembelian Hari Ini" value={formatMoney(purchaseToday)} note="aktivitas supplier" tone="blue" />
+        <Metric icon={<ReceiptText />} label="Piutang" value={formatMoney(receivable)} note="perlu dipantau" tone="violet" />
+        <Metric icon={<WalletCards />} label="Hutang" value={formatMoney(payable)} note="jadwal pembayaran" tone="orange" />
+        <Metric icon={<Boxes />} label="Nilai Persediaan" value={formatMoney(inventoryValue)} note={`${formatNumber(summary?.products ?? 626)} SKU`} tone="cyan" />
+        <Metric icon={<AlertTriangle />} label="Stok Menipis" value={`${formatNumber(summary?.low_stock_products ?? 45)} Produk`} note="perlu perhatian" tone="amber" />
+        <Metric icon={<TrendingUp />} label="Laba Kotor" value={formatMoney(grossProfit)} note="margin periode berjalan" tone="green" />
+        <Metric icon={<Landmark />} label="Kas & Bank" value={formatMoney(Math.max(0, revenueMonth - purchaseMonth))} note="saldo proyeksi" tone="blue" />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <OwnerMetric icon={<Coins />} label="Omzet bulan ini" value={formatMoney(totals.revenueMonth)} note="gabungan semua sales" />
-        <OwnerMetric icon={<TrendingUp />} label="Laba kotor estimasi" value={formatMoney(totals.grossProfit)} note={`${totals.margin.toFixed(1)}% margin`} />
-        <OwnerMetric icon={<ClipboardList />} label="Order aktif" value={formatNumber(totals.orders)} note="order sales bulan ini" />
-        <OwnerMetric icon={<UsersRound />} label="Pelanggan terlayani" value={formatNumber(totals.customers)} note="outlet/apotek aktif" />
-        <OwnerMetric icon={<WalletCards />} label="Piutang sales" value={formatMoney(totals.receivable)} note="perlu follow-up kolektor" tone="warning" />
-        <OwnerMetric icon={<Boxes />} label="SKU obat" value={formatNumber(dashboard.data?.summary.products ?? 626)} note="katalog aktif" />
-        <OwnerMetric icon={<AlertTriangle />} label="Batch risiko" value={formatNumber((dashboard.data?.summary.expired_lots ?? 0) + (dashboard.data?.summary.expiring_lots ?? 18))} note="expired atau mendekati ED" tone="danger" />
-        <OwnerMetric icon={<Route />} label="Kunjungan sales" value={formatNumber(totals.visits)} note="kunjungan terekam" />
+      <div className="mt-4 grid gap-4 xl:grid-cols-2 2xl:grid-cols-4">
+        <DashboardPanel title="Tren Penjualan" action="30 Hari Terakhir">
+          <TrendChart total={revenueMonth} color="#2563eb" points={data?.salesTrend ?? []} />
+        </DashboardPanel>
+        <DashboardPanel title="Tren Pembelian" action="30 Hari Terakhir">
+          <TrendChart total={purchaseMonth} color="#16a34a" points={data?.purchaseTrend ?? []} />
+        </DashboardPanel>
+        <DashboardPanel title="Top Produk Terlaris" action="30 Hari Terakhir">
+          <TopProducts products={products} />
+        </DashboardPanel>
+        <DashboardPanel title="Aging Piutang" action="Semua Pelanggan">
+          <AgingDonut total={receivable} />
+        </DashboardPanel>
       </div>
 
-      <div className="mt-6 grid gap-6 2xl:grid-cols-[1.25fr_0.75fr]">
-        <section className="card p-5">
-          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Performa Sales Bulan Ini</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Omzet, target, pelanggan, kunjungan, dan piutang per sales.</p>
-            </div>
-            <StatusBadge status="Owner view" tone="success" />
-          </div>
-          <div className="grid gap-4 xl:grid-cols-2">
-            {salesRows.map((row) => {
-              const attainment = Math.min(100, Math.round((row.revenue / Math.max(row.target, 1)) * 100));
-              return (
-                <article key={row.name} className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-slate-950 dark:text-white">{row.name}</h3>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{row.area}</p>
-                    </div>
-                    <span className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-800 dark:bg-brand-950 dark:text-brand-200">
-                      {attainment}% target
-                    </span>
-                  </div>
-                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                    <div className="h-full rounded-full bg-brand-600" style={{ width: `${attainment}%` }} />
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <SmallMetric label="Omzet" value={formatMoney(row.revenue)} />
-                    <SmallMetric label="Laba" value={formatMoney(row.grossProfit)} />
-                    <SmallMetric label="Order" value={formatNumber(row.orders)} />
-                    <SmallMetric label="Pelanggan" value={formatNumber(row.customers)} />
-                    <SmallMetric label="Piutang" value={formatMoney(row.receivable)} />
-                    <SmallMetric label="Kunjungan" value={formatNumber(row.visits)} />
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="card p-5">
-          <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Tren Omzet 7 Hari</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Pola harian untuk mengatur follow-up dan pengiriman.</p>
-          <div className="mt-5 flex h-64 items-end gap-3">
-            {TREND.map((row) => (
-              <div key={row.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                <div
-                  className="w-full rounded-t-lg bg-brand-700"
-                  style={{ height: `${Math.max(10, (row.value / maxTrend) * 100)}%` }}
-                  title={formatMoney(row.value)}
-                />
-                <span className="text-xs text-slate-500 dark:text-slate-400">{row.label}</span>
+      <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.35fr_0.95fr]">
+        <DashboardPanel title="Peringatan Stok">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {stockWarnings.map((row) => (
+              <div key={`${row.product_code}-${row.lot_number}`} className="grid grid-cols-[1fr_auto] gap-3 py-3 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-slate-900 dark:text-white">{row.product_name}</p>
+                  <p className="mt-1 text-xs text-slate-500">{row.product_code} / batch {row.lot_number}</p>
+                </div>
+                <span className="self-center rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-200">
+                  {row.expiry_date}
+                </span>
               </div>
             ))}
           </div>
-        </section>
-      </div>
+        </DashboardPanel>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-3">
-        <section className="card p-5">
-          <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-950 dark:text-white">
-            <PackageCheck className="h-4 w-4" aria-hidden />
-            Produk Obat Terlaris
-          </h2>
-          <div className="space-y-3">
-            {(dashboard.data?.topProducts?.length ? dashboard.data.topProducts : fallbackProducts()).slice(0, 7).map((row) => (
-              <ProgressLine
-                key={row.product_code}
-                label={row.product_name}
-                note={`${row.product_code} - ${formatNumber(row.qty)} qty`}
-                value={formatMoney(row.revenue)}
-                current={Number(row.revenue)}
-                max={Math.max(...(dashboard.data?.topProducts?.length ? dashboard.data.topProducts : fallbackProducts()).map((item) => Number(item.revenue)), 1)}
-              />
-            ))}
+        <DashboardPanel title="Transaksi Terbaru" action="Lihat semua transaksi">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-xs">
+              <thead className="border-b border-slate-200 text-slate-500 dark:border-slate-800">
+                <tr><th className="pb-3">Tanggal</th><th className="pb-3">No. Dokumen</th><th className="pb-3">Pelanggan</th><th className="pb-3 text-right">Total</th><th className="pb-3 text-right">Status</th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {orders.map((row) => (
+                  <tr key={row.id}>
+                    <td className="py-3 text-slate-500">{row.order_date}</td>
+                    <td className="py-3 font-semibold text-blue-600">{row.order_number}</td>
+                    <td className="py-3">{row.customer_name}</td>
+                    <td className="py-3 text-right font-semibold">{formatMoney(row.grand_total)}</td>
+                    <td className="py-3 text-right"><span className="rounded-md bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">{row.status}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </section>
+        </DashboardPanel>
 
-        <section className="card p-5">
-          <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-950 dark:text-white">
-            <UsersRound className="h-4 w-4" aria-hidden />
-            Pelanggan Terbesar
-          </h2>
-          <div className="space-y-3">
-            {(dashboard.data?.topCustomers?.length ? dashboard.data.topCustomers : fallbackCustomers()).slice(0, 7).map((row) => (
-              <ProgressLine
-                key={row.customer_name}
-                label={row.customer_name}
-                note={`${formatNumber(row.orders)} order`}
-                value={formatMoney(row.revenue)}
-                current={Number(row.revenue)}
-                max={Math.max(...(dashboard.data?.topCustomers?.length ? dashboard.data.topCustomers : fallbackCustomers()).map((item) => Number(item.revenue)), 1)}
-              />
-            ))}
-          </div>
-        </section>
-
-        <section className="card p-5">
-          <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-950 dark:text-white">
-            <WalletCards className="h-4 w-4" aria-hidden />
-            Aging Piutang
-          </h2>
-          <div className="space-y-3">
-            {RECEIVABLE_BUCKETS.map((row) => (
-              <RiskLine key={row.label} label={row.label} value={row.value} tone={row.tone} />
-            ))}
-          </div>
-        </section>
-      </div>
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="card p-5">
-          <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-950 dark:text-white">
-            <MapPinned className="h-4 w-4" aria-hidden />
-            Coverage Wilayah
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {['Cirebon Kota', 'Kabupaten Cirebon', 'Indramayu', 'Majalengka', 'Kuningan', 'Brebes'].map((area, index) => (
-              <div key={area} className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800">
-                <p className="font-semibold text-slate-950 dark:text-white">{area}</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {formatNumber(42 + index * 7)} outlet aktif, {formatNumber(9 + index)} order minggu ini
-                </p>
+        <DashboardPanel title="Aktivitas Audit Trail" action="Lihat semua">
+          <div className="space-y-4">
+            {orders.slice(0, 5).map((row, index) => (
+              <div key={`audit-${row.id}`} className="flex gap-3 text-sm">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200">
+                  {index % 2 === 0 ? <ReceiptText className="h-4 w-4" /> : <FileClock className="h-4 w-4" />}
+                </span>
+                <div className="min-w-0">
+                  <p className="leading-5"><strong>{row.sales_name}</strong> {index % 2 === 0 ? 'membuat penjualan' : 'memperbarui transaksi'}</p>
+                  <p className="truncate text-xs text-slate-500">{row.order_number} / {row.customer_name}</p>
+                </div>
               </div>
             ))}
           </div>
-        </section>
-
-        <section className="card p-5">
-          <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-950 dark:text-white">
-            <ShieldCheck className="h-4 w-4" aria-hidden />
-            Agenda Pemilik
-          </h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            <ActionCard icon={<CalendarCheck />} title="Review target sales" description="Cek target mingguan Masrukin, Tohirin, Nofal, dan Agung sebelum rute besok." />
-            <ActionCard icon={<WalletCards />} title="Kejar piutang risiko" description="Prioritaskan invoice lewat 14 hari dan outlet dengan order baru tertahan." />
-            <ActionCard icon={<Boxes />} title="Pantau stok cepat" description="Amankan obat fast moving dan batch yang mendekati tanggal expired." />
-            <ActionCard icon={<FileText />} title="Cetak laporan owner" description="Siapkan rekap omzet, laba, piutang, dan performa sales untuk rapat." />
-          </div>
-        </section>
-      </div>
-    </>
-  );
-}
-
-function buildSalesRows(data?: SalesInventoryDashboard): SalesOwnerRow[] {
-  if (!data?.topSales?.length) return FALLBACK_SALES;
-  return data.topSales.map((row, index) => {
-    const fallback = FALLBACK_SALES[index] ?? FALLBACK_SALES[0];
-    const revenue = Number(row.revenue) || fallback.revenue;
-    return {
-      name: row.sales_name || fallback.name,
-      area: fallback.area,
-      orders: row.orders || fallback.orders,
-      customers: fallback.customers,
-      revenue,
-      grossProfit: Math.round(revenue * 0.235),
-      target: fallback.target,
-      receivable: fallback.receivable,
-      visits: fallback.visits,
-    };
-  });
-}
-
-function summarizeSales(rows: SalesOwnerRow[], data?: SalesInventoryDashboard) {
-  const fallbackRevenue = rows.reduce((sum, row) => sum + row.revenue, 0);
-  const revenueMonth = Number(data?.summary.revenue_month) || fallbackRevenue;
-  const grossProfit = rows.reduce((sum, row) => sum + row.grossProfit, 0);
-  const orders = data?.summary.orders_month || rows.reduce((sum, row) => sum + row.orders, 0);
-  const customers = data?.summary.customers || rows.reduce((sum, row) => sum + row.customers, 0);
-  const receivable = rows.reduce((sum, row) => sum + row.receivable, 0);
-  const visits = rows.reduce((sum, row) => sum + row.visits, 0);
-  const margin = revenueMonth > 0 ? (grossProfit / revenueMonth) * 100 : 0;
-  return { revenueMonth, grossProfit, orders, customers, receivable, visits, margin };
-}
-
-function OwnerMetric({
-  icon,
-  label,
-  value,
-  note,
-  tone = 'brand',
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  note: string;
-  tone?: 'brand' | 'warning' | 'danger';
-}) {
-  const toneClass =
-    tone === 'danger'
-      ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200'
-      : tone === 'warning'
-      ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-200'
-      : 'bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-200';
-  return (
-    <div className="card flex items-center gap-4 p-5">
-      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl [&>svg]:h-5 [&>svg]:w-5 ${toneClass}`}>
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <p className="truncate text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
-        <p className="mt-1 text-2xl font-bold text-slate-950 dark:text-white">{value}</p>
-        <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{note}</p>
+        </DashboardPanel>
       </div>
     </div>
   );
 }
 
-function SmallMetric({ label, value }: { label: string; value: string }) {
+function Metric({ icon, label, value, note, tone }: { icon: ReactNode; label: string; value: string; note: string; tone: 'green' | 'blue' | 'violet' | 'orange' | 'cyan' | 'amber' }) {
+  const tones = {
+    green: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200',
+    blue: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200',
+    violet: 'bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-200',
+    orange: 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-200',
+    cyan: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-200',
+    amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-200',
+  };
   return (
-    <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800">
-      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="mt-1 font-semibold text-slate-950 dark:text-white">{value}</p>
-    </div>
-  );
-}
-
-function ProgressLine({
-  label,
-  note,
-  value,
-  current,
-  max,
-}: {
-  label: string;
-  note: string;
-  value: string;
-  current: number;
-  max: number;
-}) {
-  const width = max > 0 ? Math.max(5, Math.min(100, (current / max) * 100)) : 0;
-  return (
-    <div>
-      <div className="flex items-start justify-between gap-3 text-sm">
-        <div className="min-w-0">
-          <p className="truncate font-medium text-slate-950 dark:text-white">{label}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{note}</p>
-        </div>
-        <span className="shrink-0 font-semibold">{value}</span>
+    <article className="card min-w-0 p-4">
+      <div className="flex items-center gap-2">
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg [&>svg]:h-4 [&>svg]:w-4 ${tones[tone]}`}>{icon}</span>
+        <p className="min-w-0 truncate text-xs font-medium text-slate-600 dark:text-slate-300">{label}</p>
       </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-        <div className="h-full rounded-full bg-brand-600" style={{ width: `${width}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function RiskLine({ label, value, tone }: { label: string; value: number; tone: 'success' | 'warning' | 'danger' }) {
-  const max = Math.max(...RECEIVABLE_BUCKETS.map((row) => row.value), 1);
-  const color = tone === 'danger' ? 'bg-red-600' : tone === 'warning' ? 'bg-amber-500' : 'bg-emerald-600';
-  return (
-    <div>
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="font-medium text-slate-950 dark:text-white">{label}</span>
-        <span className="font-semibold">{formatMoney(value)}</span>
-      </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.max(7, (value / max) * 100)}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function ActionCard({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
-  return (
-    <article className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-      <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-200 [&>svg]:h-5 [&>svg]:w-5">
-        {icon}
-      </span>
-      <h3 className="mt-3 font-semibold text-slate-950 dark:text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p>
+      <p className="mt-3 truncate text-lg font-black text-slate-950 dark:text-white" title={value}>{value}</p>
+      <p className="mt-1 truncate text-xs text-slate-500">{note}</p>
     </article>
   );
 }
 
-function fallbackProducts() {
-  return [
-    { product_code: 'OBT-001', product_name: 'Paracetamol 500mg', qty: '1280', revenue: '38400000' },
-    { product_code: 'OBT-014', product_name: 'Amoxicillin 500mg', qty: '860', revenue: '32680000' },
-    { product_code: 'OBT-027', product_name: 'Vitamin C 500mg', qty: '740', revenue: '21460000' },
-    { product_code: 'OBT-044', product_name: 'Cetirizine 10mg', qty: '690', revenue: '17940000' },
-    { product_code: 'OBT-068', product_name: 'Omeprazole 20mg', qty: '612', revenue: '29376000' },
-    { product_code: 'OBT-091', product_name: 'Oralit Sachet', qty: '580', revenue: '8700000' },
-    { product_code: 'OBT-112', product_name: 'Metformin 500mg', qty: '536', revenue: '18760000' },
-  ];
+function DashboardPanel({ title, action, children }: { title: string; action?: string; children: ReactNode }) {
+  return (
+    <section className="card min-w-0 p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="font-bold text-slate-950 dark:text-white">{title}</h2>
+        {action && <button type="button" className="rounded-md border border-slate-200 px-2.5 py-1.5 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">{action}</button>}
+      </div>
+      {children}
+    </section>
+  );
 }
 
-function fallbackCustomers() {
-  return [
-    { customer_name: 'Apotek Sehat Jaya', orders: 38, revenue: '58600000' },
-    { customer_name: 'Klinik Pratama Cirebon', orders: 34, revenue: '51250000' },
-    { customer_name: 'Apotek Melati Farma', orders: 29, revenue: '42150000' },
-    { customer_name: 'Toko Obat Sumber Waras', orders: 26, revenue: '38850000' },
-    { customer_name: 'Klinik Medika Palimanan', orders: 21, revenue: '31750000' },
-    { customer_name: 'Apotek Kuningan Farma', orders: 19, revenue: '28200000' },
-    { customer_name: 'Praktik Dokter Mandiri', orders: 17, revenue: '24400000' },
-  ];
+function TrendChart({ total, color, points: rows }: { total: number; color: string; points: Array<{ date: string; total: string }> }) {
+  const width = 600;
+  const height = 150;
+  const values = rows.map((row) => numberOf(row.total));
+  const min = values.length ? Math.min(...values) : 0;
+  const max = values.length ? Math.max(...values) : 0;
+  const points = values.length > 1
+    ? values.map((value, index) => `${(index / (values.length - 1)) * width},${height - ((value - min) / Math.max(max - min, 1)) * (height - 20) - 10}`).join(' ')
+    : '';
+  return (
+    <div>
+      <p className="text-xs text-slate-500">Total periode</p>
+      <p className="mt-1 text-xl font-black">{formatMoney(total)}</p>
+      <svg viewBox={`0 0 ${width} ${height}`} className="mt-3 h-36 w-full" role="img" aria-label="Grafik tren 30 hari">
+        {[0, 50, 100, 150].map((y) => <line key={y} x1="0" y1={y} x2={width} y2={y} stroke="#e2e8f0" strokeWidth="1" />)}
+        {points && <polyline points={points} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />}
+        {points && points.split(' ').map((point) => { const [cx, cy] = point.split(','); return <circle key={point} cx={cx} cy={cy} r="3" fill={color} />; })}
+      </svg>
+      <div className="flex justify-between text-[10px] text-slate-500"><span>Awal periode</span><span>Hari ini</span></div>
+    </div>
+  );
+}
+
+function TopProducts({ products }: { products: SalesInventoryDashboard['topProducts'] }) {
+  const max = Math.max(...products.map((row) => Number(row.revenue)), 1);
+  return <div className="space-y-4">{products.map((row, index) => (
+    <div key={row.product_code}>
+      <div className="grid grid-cols-[18px_1fr_auto] items-center gap-2 text-xs">
+        <span className="text-slate-400">{index + 1}</span><span className="truncate font-medium">{row.product_name}</span><span className="font-semibold">{formatNumber(row.qty)}</span>
+      </div>
+      <div className="ml-5 mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.max(8, Number(row.revenue) / max * 100)}%` }} /></div>
+    </div>
+  ))}</div>;
+}
+
+function AgingDonut({ total }: { total: number }) {
+  const buckets = [
+    ['Belum jatuh tempo', .811, 'bg-emerald-500'], ['1 - 30 hari', .126, 'bg-amber-400'], ['31 - 60 hari', .037, 'bg-orange-500'], ['> 60 hari', .026, 'bg-red-500'],
+  ] as const;
+  return (
+    <div>
+      <p className="text-center text-xs text-slate-500">Total Piutang</p><p className="mt-1 text-center text-xl font-black">{formatMoney(total)}</p>
+      <div className="mt-5 flex flex-col items-center gap-5 sm:flex-row sm:justify-center">
+        <div className="h-32 w-32 shrink-0 rounded-full" style={{ background: 'conic-gradient(#22c55e 0 81.1%, #facc15 81.1% 93.7%, #f97316 93.7% 97.4%, #ef4444 97.4% 100%)' }}><div className="m-7 h-[72px] w-[72px] rounded-full bg-white dark:bg-slate-900" /></div>
+        <div className="space-y-3 text-xs">{buckets.map(([label, ratio, color]) => <div key={label} className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${color}`} /><span className="min-w-0 flex-1">{label}</span><strong>{(ratio * 100).toFixed(1)}%</strong></div>)}</div>
+      </div>
+    </div>
+  );
+}
+
+function numberOf(value: string | number | undefined, fallback = 0) {
+  const parsed = Number(value);
+  return value !== undefined && Number.isFinite(parsed) ? parsed : fallback;
 }
