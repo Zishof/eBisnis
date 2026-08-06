@@ -1,5 +1,63 @@
 # Changelog — Hospitality (MitraInap.id)
 
+## 2026-08-06 — MI-7: Guest Identity, CRM, Consent, Privacy
+
+- Migrasi tenant baru `20260806T120000__hospitality__guest_crm.sql`:
+  - `hospitality_guest` -- profil tunggal tamu (identitas, kontak, alamat,
+    preferensi bebas teks, consent pemasaran, do-not-rent, `merged_into_id`
+    untuk penggabungan). Kode `GST-000001` dst dibuat otomatis lewat
+    `SEQUENCE` per skema tenant.
+  - `hospitality_guest_privacy_request` -- catatan permintaan ekspor/
+    penghapusan data dan status penyelesaiannya.
+  - Deteksi duplikat KERAS: indeks unik parsial pada
+    `(identifier_type, identifier_number)` -- satu nomor identitas hanya
+    satu profil aktif. Kemiripan nama/telepon tanpa nomor identitas yang
+    sama TIDAK ditegakkan basis data (tidak bisa) -- ditangani
+    `cariKemiripan()` di sisi layanan sebagai anjuran, bukan penolakan.
+  - Sengaja BELUM ADA: companion/relationship dan tautan perusahaan/travel
+    agent -- baru berguna begitu reservasi grup/korporat (MI-18) ada
+    tempat memakainya.
+- Backend: `HospitalityGuestService`/`.controller.ts` -- CRUD tamu,
+  `cariKemiripan()`, `aturConsent()`, `aturDoNotRent()` (alasan wajib saat
+  diaktifkan, ditegakkan CHECK constraint DAN validasi layanan),
+  `gabungkan()` (soft-delete sumber + `merged_into_id`, status do-not-rent
+  digabung dengan OR supaya larangan keamanan tidak hilang lewat
+  penggabungan administratif), `ajukanPermintaanPrivasi()` +
+  `prosesPermintaanPrivasi()` (ERASURE+COMPLETED benar-benar
+  menganonimkan nama/kontak/identitas, TAPI mempertahankan status dan
+  alasan do-not-rent -- tamu tidak boleh "menghapus jalan keluar" dari
+  larangan menginap lewat hak penghapusan data; alasan didokumentasikan
+  di komentar kode).
+- Web: `HospitalityTamuPage` (baru, `/app/hospitality/tamu`) -- daftar +
+  pencarian, formulir tambah dengan peringatan kemiripan real-time,
+  panel detail (toggle consent, toggle do-not-rent, penggabungan,
+  riwayat + aksi permintaan privasi).
+- RBAC: menu `HOSPITALITY_TAMU` ditambahkan sebagai anak
+  `HOSPITALITY_GROUP` -- otomatis terwarisi peran `HOSPITALITY_ADMIN`
+  yang sudah ada (P7 pada grup), tidak perlu menyunting definisi peran.
+- Diverifikasi NYATA (bukan hanya `tsc`/test) terhadap Postgres lokal dan
+  tenant nyata (`admin_raudlatululum` via `migrate:tenants --schema`):
+  - Duplikat nomor identitas ditolak (409); `do_not_rent` tanpa alasan
+    ditolak (400 di API, CHECK constraint di basis data); nomor identitas
+    kosong TIDAK ikut diperiksa unik (anak tanpa identitas boleh
+    berulang).
+  - Alur lengkap consent -> do-not-rent -> ajukan ERASURE -> proses
+    COMPLETED -> detail tamu, membuktikan anonimisasi benar-benar terjadi
+    (nama jadi "Tamu Dihapus", kontak/identitas NULL) SEKALIGUS do-not-rent
+    dan alasannya tetap ada.
+  - Penggabungan dua profil: profil sumber menjadi 404 (soft-deleted),
+    tidak lagi muncul di daftar/pencarian, `merged_into_id` terisi.
+  - Halaman `/app/hospitality/tamu` diverifikasi peramban sungguhan
+    dengan login nyata -- daftar, badge Do-Not-Rent, dan panel detail
+    (identitas teranonimkan, riwayat permintaan privasi) menampilkan data
+    API yang sama persis dengan hasil curl di atas.
+- `pnpm test` (154 suite API/4008 test, 42 berkas web/510 test) LULUS;
+  satu kegagalan flaky tak terkait (`him-pages.spec.tsx`, timeout 5000ms
+  di bawah beban paralel penuh, vertikal eMedik) dikonfirmasi BUKAN
+  regresi -- lulus 24/24 saat dijalankan sendiri, dan lulus lagi saat
+  suite penuh diulang. `tsc --noEmit` LULUS, `pnpm lint` bersih dari
+  perubahan ini.
+
 ## 2026-08-06 — MI-6: Room Inventory dan Availability
 
 - Migrasi tenant baru `20260806T090000__hospitality__inventory_availability.sql`:
