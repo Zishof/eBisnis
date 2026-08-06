@@ -990,6 +990,142 @@ export class SalesInventoryOperationsController {
     );
   }
 
+  @Get('inventory/supplier-workspace')
+  @Permissions('PURCHASE_ORDER.READ')
+  @ApiOperation({ summary: 'Workspace supplier terintegrasi untuk Web dan Flutter' })
+  async supplierWorkspace(@CurrentUser() user: AuthenticatedUser) {
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    const [suppliers, purchases, payables, payments, topProducts] = await Promise.all([
+      this.tenantDb.query<Record<string, unknown>>(
+        schema,
+        `SELECT s.id::text, s.code, s.name, s.tax_number, s.contact_person, s.phone, s.email,
+                s.currency_code, s.lead_time_days, s.rating::text, s.is_blacklisted, s.is_active,
+                s.legacy_payment_days, s.address_text, s.region_name, s.bank_account_number,
+                s.bank_account_name, s.bank_name, s.bank_address, s.updated_at::text,
+                COALESCE(debt.outstanding, 0)::text AS payable_balance,
+                COALESCE(debt.document_count, 0)::int AS payable_document_count,
+                COALESCE(po.purchase_count, 0)::int AS purchase_count,
+                COALESCE(po.purchase_ytd, 0)::text AS purchase_ytd,
+                po.last_purchase::text,
+                COALESCE(pay.payment_ytd, 0)::text AS payment_ytd
+           FROM ${S}.supplier s
+           LEFT JOIN LATERAL (
+             SELECT sum(GREATEST(abs(l.amount) - COALESCE(a.allocated, 0), 0)) AS outstanding,
+                    count(*) FILTER (WHERE GREATEST(abs(l.amount) - COALESCE(a.allocated, 0), 0) > 0) AS document_count
+               FROM ${S}.legacy_payable_ledger l
+               LEFT JOIN LATERAL (
+                 SELECT sum(pa.allocated_amount) AS allocated
+                   FROM ${S}.inventory_ap_payment_allocation pa
+                   JOIN ${S}.inventory_ap_payment p ON p.id = pa.payment_id AND p.status = 'POSTED'
+                  WHERE pa.payable_ledger_id = l.id
+               ) a ON TRUE
+              WHERE l.supplier_id = s.id
+           ) debt ON TRUE
+           LEFT JOIN LATERAL (
+             SELECT count(*) AS purchase_count,
+                    sum(po.grand_total) FILTER (WHERE po.order_date >= date_trunc('year', CURRENT_DATE)) AS purchase_ytd,
+                    max(po.order_date) AS last_purchase
+               FROM ${S}.purchase_order po
+              WHERE po.supplier_id = s.id AND po.deleted_at IS NULL
+           ) po ON TRUE
+           LEFT JOIN LATERAL (
+             SELECT sum(p.total_amount) FILTER (WHERE p.payment_date >= date_trunc('year', CURRENT_DATE)
+                                                AND p.status = 'POSTED') AS payment_ytd
+               FROM ${S}.inventory_ap_payment p WHERE p.supplier_id = s.id
+           ) pay ON TRUE
+          WHERE s.deleted_at IS NULL
+          ORDER BY s.name`,
+      ),
+      this.tenantDb.query<Record<string, unknown>>(
+        schema,
+        `SELECT po.id::text, po.supplier_id::text, s.code AS supplier_code, s.name AS supplier_name,
+                po.purchase_order_number, po.order_date::text, po.expected_date::text,
+                po.subtotal::text, po.discount_total::text, po.tax_total::text,
+                po.grand_total::text, po.status, w.name AS warehouse_name
+           FROM ${S}.purchase_order po
+           JOIN ${S}.supplier s ON s.id = po.supplier_id
+           JOIN ${S}.warehouse w ON w.id = po.warehouse_id
+          WHERE po.deleted_at IS NULL
+          ORDER BY po.order_date DESC, po.created_at DESC LIMIT 1000`,
+      ),
+      this.tenantDb.query<Record<string, unknown>>(
+        schema,
+        `SELECT l.id::text, l.supplier_id::text, s.code AS supplier_code, s.name AS supplier_name,
+                l.legacy_invoice_number, l.transaction_date::text, l.due_date::text, l.paid_at::text,
+                abs(l.amount)::text AS original_amount,
+                GREATEST(abs(l.amount) - COALESCE(a.allocated, 0), 0)::text AS outstanding_amount,
+                l.payment_note, l.bank_name,
+                CASE
+                  WHEN GREATEST(abs(l.amount) - COALESCE(a.allocated, 0), 0) <= 0 THEN 'LUNAS'
+                  WHEN l.due_date IS NULL OR l.due_date >= CURRENT_DATE THEN 'BELUM JATUH TEMPO'
+                  WHEN CURRENT_DATE - l.due_date <= 30 THEN '1-30 HARI'
+                  WHEN CURRENT_DATE - l.due_date <= 60 THEN '31-60 HARI'
+                  ELSE '> 60 HARI'
+                END AS aging_bucket,
+                CASE WHEN l.due_date IS NULL THEN NULL ELSE (CURRENT_DATE - l.due_date)::int END AS age_days
+           FROM ${S}.legacy_payable_ledger l
+           LEFT JOIN ${S}.supplier s ON s.id = l.supplier_id
+           LEFT JOIN LATERAL (
+             SELECT sum(pa.allocated_amount) AS allocated
+               FROM ${S}.inventory_ap_payment_allocation pa
+               JOIN ${S}.inventory_ap_payment p ON p.id = pa.payment_id AND p.status = 'POSTED'
+              WHERE pa.payable_ledger_id = l.id
+           ) a ON TRUE
+          ORDER BY l.transaction_date DESC NULLS LAST, l.created_at DESC LIMIT 2000`,
+      ),
+      this.tenantDb.query<Record<string, unknown>>(
+        schema,
+        `SELECT p.id::text, p.supplier_id::text, s.code AS supplier_code, s.name AS supplier_name,
+                p.payment_number, p.payment_date::text, p.method, p.total_amount::text,
+                p.status, p.reference_number, p.bank_name, p.created_at::text
+           FROM ${S}.inventory_ap_payment p
+           JOIN ${S}.supplier s ON s.id = p.supplier_id
+          ORDER BY p.payment_date DESC, p.created_at DESC LIMIT 1000`,
+      ),
+      this.tenantDb.query<Record<string, unknown>>(
+        schema,
+        `SELECT po.supplier_id::text, s.name AS supplier_name, p.id::text AS product_id,
+                p.code AS product_code, p.name AS product_name, u.code AS uom,
+                sum(pol.ordered_qty)::text AS total_qty, sum(pol.line_total)::text AS total_value,
+                max(po.order_date)::text AS last_purchase
+           FROM ${S}.purchase_order_line pol
+           JOIN ${S}.purchase_order po ON po.id = pol.purchase_order_id AND po.deleted_at IS NULL
+           JOIN ${S}.supplier s ON s.id = po.supplier_id
+           JOIN ${S}.product p ON p.id = pol.product_id
+           JOIN ${S}.uom u ON u.id = pol.uom_id
+          GROUP BY po.supplier_id, s.name, p.id, u.code
+          ORDER BY sum(pol.line_total) DESC LIMIT 500`,
+      ),
+    ]);
+    const numberOf = (row: Record<string, unknown>, key: string) => Number(row[key] ?? 0);
+    const outstanding = payables.reduce((sum, row) => sum + numberOf(row, 'outstanding_amount'), 0);
+    const purchasesMonth = purchases
+      .filter((row) => String(row.order_date ?? '').slice(0, 7) === new Date().toISOString().slice(0, 7))
+      .reduce((sum, row) => sum + numberOf(row, 'grand_total'), 0);
+    const paymentsMonth = payments
+      .filter((row) => row.status === 'POSTED'
+        && String(row.payment_date ?? '').slice(0, 7) === new Date().toISOString().slice(0, 7))
+      .reduce((sum, row) => sum + numberOf(row, 'total_amount'), 0);
+    return {
+      generatedAt: new Date().toISOString(),
+      summary: {
+        total: suppliers.length,
+        active: suppliers.filter((row) => row.is_active !== false).length,
+        inactive: suppliers.filter((row) => row.is_active === false).length,
+        withPayables: suppliers.filter((row) => numberOf(row, 'payable_balance') > 0).length,
+        outstanding: outstanding.toString(),
+        purchasesMonth: purchasesMonth.toString(),
+        paymentsMonth: paymentsMonth.toString(),
+      },
+      suppliers,
+      purchases,
+      payables,
+      payments,
+      topProducts,
+    };
+  }
+
   @Post('ap/payments')
   @HttpCode(201)
   @BlockDemo()

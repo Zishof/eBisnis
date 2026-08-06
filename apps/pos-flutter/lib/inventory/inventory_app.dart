@@ -13,6 +13,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'inventory_local_database.dart';
+import 'inventory_supplier_workspace.dart';
 import 'inventory_transaction_workspaces.dart';
 
 class AplikasiInventory extends StatefulWidget {
@@ -1208,7 +1209,6 @@ class _InventoryDashboard extends StatelessWidget {
       ],
     );
   }
-
 }
 
 class _RangeChip extends StatelessWidget {
@@ -1995,8 +1995,19 @@ class _PartyMasterLauncher extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         ),
         onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) =>
-              InventoryPartyMasterPage(client: client, initialKind: kind),
+          builder: (_) => kind == 'suppliers'
+              ? InventorySupplierWorkspacePage(
+                  load: client.supplierWorkspace,
+                  onManage: (pageContext) => Navigator.of(pageContext).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => InventoryPartyMasterPage(
+                        client: client,
+                        initialKind: 'suppliers',
+                      ),
+                    ),
+                  ),
+                )
+              : InventoryPartyMasterPage(client: client, initialKind: kind),
         )),
         icon: Icon(icon),
         label: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -5561,6 +5572,22 @@ class InventoryApiClient {
         (cached['rows'] as List?) ?? const [],
         (cached['balances'] as List?) ?? const [],
       );
+    }
+  }
+
+  Future<Map<String, Object?>> supplierWorkspace() async {
+    const cacheKey = 'supplier-workspace-v1';
+    try {
+      final value = await _request<Map<String, Object?>>(
+        'GET',
+        '/inventory/supplier-workspace',
+      );
+      await _localDatabase?.putCache(cacheKey, value);
+      return value;
+    } on Object {
+      final cached = await _localDatabase?.getCache(cacheKey);
+      if (cached == null) rethrow;
+      return cached;
     }
   }
 

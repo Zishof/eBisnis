@@ -69,6 +69,7 @@ import { JournalEntriesPage } from '../pages/app/JournalEntriesPage';
 import { InventoryControlPage } from '../pages/app/InventoryControlPage';
 import { InventoryTransactionWorkspacePage } from '../pages/app/InventoryTransactionWorkspacePage';
 import { InventoryPartyMasterPage } from '../pages/app/InventoryPartyMasterPage';
+import { InventorySupplierWorkspacePage } from '../pages/app/InventorySupplierWorkspacePage';
 import { SalesOrdersPage, SalesReportsPage } from '../pages/app/SalesPages';
 import { SampleDataPage } from '../pages/app/SampleDataPage';
 import { SubscriptionPage } from '../pages/app/SubscriptionPage';
@@ -634,7 +635,8 @@ export function App() {
           <Route path="chart-of-accounts" element={<MasterListPage resource="chart-of-accounts" />} />
           <Route path="journal-entries" element={<JournalEntriesPage />} />
           <Route path="inventory-control" element={<InventoryControlPage />} />
-            <Route path="master/suppliers" element={<InventoryPartyMasterPage kind="suppliers" />} />
+            <Route path="master/suppliers" element={<InventorySupplierWorkspacePage />} />
+            <Route path="master/suppliers/manage" element={<InventoryPartyMasterPage kind="suppliers" />} />
             <Route path="master/customers" element={<InventoryPartyMasterPage kind="customers" />} />
             <Route path="master/salespeople" element={<InventoryPartyMasterPage kind="salespeople" />} />
           <Route path="inventory/stock" element={<InventoryControlPage />} />
