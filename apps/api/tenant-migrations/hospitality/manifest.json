@@ -35,6 +35,12 @@
       "file": "20260806T180000__hospitality__booking_engine.sql",
       "name": "MI-9: Direct Booking Engine",
       "description": "published_rate_amount pada hospitality_room_type -- satu tarif per malam yang dipublikasikan staf secara manual (MI-10 rate plan belum ada), NULL berarti tipe kamar tidak muncul di pencarian publik. Booking engine publik menerima schemaName eksplisit pada jalur URL karena MI-3 (subdomain properti) masih diblokir -- transaksi pemesanannya sendiri sudah nyata dan teruji, hanya cara pengunjung tiba di URL yang menyusul MI-3."
+    },
+    {
+      "id": "20260806T210000__hospitality__rate_management",
+      "file": "20260806T210000__hospitality__rate_management.sql",
+      "name": "MI-10: Rate, Restriction, dan Revenue Management",
+      "description": "hospitality_rate_plan (rencana harga bernama per tipe kamar) dan hospitality_rate_calendar (harga + MinLOS/MaxLOS/CTA/CTD/stop-sell, satu baris per rate plan per malam, status DRAFT/PUBLISHED -- booking engine publik MI-9 HANYA membaca PUBLISHED). Menggantikan published_rate_amount MI-9 sebagai sumber harga sesungguhnya bila rate plan tersedia, jatuh ke published_rate_amount bila tidak (kompatibel mundur). BAR/derived rate otomatis, pickup/pace/forecast, dan rekomendasi SENGAJA belum ada -- lihat komentar migrasi."
     }
   ]
 }

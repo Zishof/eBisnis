@@ -47,6 +47,29 @@ interface Ketersediaan {
   per_malam: Array<{ tanggal: string; tersedia: number }>;
 }
 
+interface RatePlanRow extends Record<string, unknown> {
+  id: string;
+  room_type_id: string;
+  code: string;
+  nama: string;
+  is_refundable: boolean;
+  default_min_los: number;
+  default_max_los: number | null;
+  status: string;
+}
+
+interface KalenderRow extends Record<string, unknown> {
+  id: string;
+  stay_date: string;
+  amount: string;
+  min_los: number | null;
+  max_los: number | null;
+  closed_to_arrival: boolean;
+  closed_to_departure: boolean;
+  stop_sell: boolean;
+  status: string;
+}
+
 /**
  * Properti, tipe kamar, dan kamar (MI-5) — fondasi seluruh modul hospitality
  * lain (ketersediaan, reservasi, front office, dst, MI-6 dan seterusnya).
@@ -72,6 +95,20 @@ export function HospitalityPropertiPage() {
   const [kamarDiblokir, setKamarDiblokir] = useState<KamarRow | null>(null);
   const [formBlokir, setFormBlokir] = useState({ checkin: '', checkout: '', status: 'OUT_OF_ORDER', alasan: '' });
   const [rentangKetersediaan, setRentangKetersediaan] = useState({ checkin: '', checkout: '' });
+  const [ratePlanDipilih, setRatePlanDipilih] = useState<RatePlanRow | null>(null);
+  const [tambahRatePlan, setTambahRatePlan] = useState(false);
+  const [formRatePlan, setFormRatePlan] = useState({ code: '', nama: '', isRefundable: true, defaultMinLos: '1', defaultMaxLos: '' });
+  const [rentangKalender, setRentangKalender] = useState({ checkin: '', checkout: '' });
+  const [formHarga, setFormHarga] = useState({
+    checkin: '',
+    checkout: '',
+    amount: '',
+    minLos: '',
+    maxLos: '',
+    closedToArrival: false,
+    closedToDeparture: false,
+    stopSell: false,
+  });
 
   const daftarProperti = useQuery({
     queryKey: ['hospitality-properti'],
@@ -100,6 +137,22 @@ export function HospitalityPropertiPage() {
           `?checkin=${rentangKetersediaan.checkin}&checkout=${rentangKetersediaan.checkout}`,
       ),
     enabled: !!tipeKamarDipilih && !!rentangKetersediaan.checkin && !!rentangKetersediaan.checkout,
+  });
+
+  const daftarRatePlan = useQuery({
+    queryKey: ['hospitality-rate-plan', tipeKamarDipilih?.id],
+    queryFn: () => api.get<RatePlanRow[]>(`/hospitality/tipe-kamar/${tipeKamarDipilih!.id}/rate-plan`),
+    enabled: !!tipeKamarDipilih,
+  });
+
+  const daftarKalender = useQuery({
+    queryKey: ['hospitality-rate-kalender', ratePlanDipilih?.id, rentangKalender.checkin, rentangKalender.checkout],
+    queryFn: () =>
+      api.get<KalenderRow[]>(
+        `/hospitality/tipe-kamar/${tipeKamarDipilih!.id}/rate-plan/${ratePlanDipilih!.id}/kalender` +
+          `?checkin=${rentangKalender.checkin}&checkout=${rentangKalender.checkout}`,
+      ),
+    enabled: !!ratePlanDipilih && !!rentangKalender.checkin && !!rentangKalender.checkout,
   });
 
   const catatProperti = useMutation({
@@ -164,6 +217,60 @@ export function HospitalityPropertiPage() {
       void queryClient.invalidateQueries({ queryKey: ['hospitality-ketersediaan'] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal memblokir kamar.'), 'error'),
+  });
+
+  const catatRatePlan = useMutation({
+    mutationFn: () =>
+      api.post<RatePlanRow>(`/hospitality/tipe-kamar/${tipeKamarDipilih!.id}/rate-plan`, {
+        code: formRatePlan.code,
+        nama: formRatePlan.nama,
+        isRefundable: formRatePlan.isRefundable,
+        defaultMinLos: Number(formRatePlan.defaultMinLos),
+        defaultMaxLos: formRatePlan.defaultMaxLos ? Number(formRatePlan.defaultMaxLos) : undefined,
+      }),
+    onSuccess: () => {
+      toast.push('Rate plan berhasil dicatat.', 'success');
+      setTambahRatePlan(false);
+      setFormRatePlan({ code: '', nama: '', isRefundable: true, defaultMinLos: '1', defaultMaxLos: '' });
+      void queryClient.invalidateQueries({ queryKey: ['hospitality-rate-plan', tipeKamarDipilih?.id] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan rate plan.'), 'error'),
+  });
+
+  const aturHargaMutasi = useMutation({
+    mutationFn: () =>
+      api.post(`/hospitality/tipe-kamar/${tipeKamarDipilih!.id}/rate-plan/${ratePlanDipilih!.id}/kalender`, {
+        checkin: formHarga.checkin,
+        checkout: formHarga.checkout,
+        amount: Number(formHarga.amount),
+        minLos: formHarga.minLos ? Number(formHarga.minLos) : undefined,
+        maxLos: formHarga.maxLos ? Number(formHarga.maxLos) : undefined,
+        closedToArrival: formHarga.closedToArrival,
+        closedToDeparture: formHarga.closedToDeparture,
+        stopSell: formHarga.stopSell,
+      }),
+    onSuccess: () => {
+      toast.push('Harga dan restriksi berhasil disimpan (berstatus DRAFT untuk tanggal baru).', 'success');
+      setRentangKalender({ checkin: formHarga.checkin, checkout: formHarga.checkout });
+      void queryClient.invalidateQueries({ queryKey: ['hospitality-rate-kalender', ratePlanDipilih?.id] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan harga.'), 'error'),
+  });
+
+  const terbitkanMutasi = useMutation({
+    mutationFn: (status: 'terbitkan' | 'tarik') =>
+      api.post<{ jumlah: number }>(
+        `/hospitality/tipe-kamar/${tipeKamarDipilih!.id}/rate-plan/${ratePlanDipilih!.id}/${status}`,
+        { checkin: rentangKalender.checkin, checkout: rentangKalender.checkout },
+      ),
+    onSuccess: (hasil, status) => {
+      toast.push(
+        `${hasil.jumlah} tanggal berhasil di${status === 'terbitkan' ? 'terbitkan' : 'tarik'}.`,
+        'success',
+      );
+      void queryClient.invalidateQueries({ queryKey: ['hospitality-rate-kalender', ratePlanDipilih?.id] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal mengubah status kalender.'), 'error'),
   });
 
   const kolomProperti: Array<GridColumn<PropertiRow>> = [
@@ -373,6 +480,243 @@ export function HospitalityPropertiPage() {
         </div>
       )}
 
+      {tipeKamarDipilih && (
+        <div className="card mt-6 p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Rate Plan — {tipeKamarDipilih.nama}
+            </h2>
+            <button type="button" className="btn-primary" onClick={() => setTambahRatePlan(true)}>
+              <Plus className="h-4 w-4" aria-hidden />
+              Tambah Rate Plan
+            </button>
+          </div>
+
+          {daftarRatePlan.isLoading && <p className="text-sm text-slate-500 dark:text-slate-400">Memuat...</p>}
+          {daftarRatePlan.isError && (
+            <p className="text-sm text-rose-600 dark:text-rose-400">
+              {toMessage(daftarRatePlan.error, (_key, fallback) => fallback ?? 'Gagal memuat rate plan.')}
+            </p>
+          )}
+          {!daftarRatePlan.isLoading && (daftarRatePlan.data ?? []).length === 0 && (
+            <p className="text-sm text-slate-500 dark:text-slate-400">Belum ada rate plan pada tipe kamar ini.</p>
+          )}
+          {!!(daftarRatePlan.data ?? []).length && (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-start text-xs uppercase text-slate-500 dark:text-slate-400">
+                  <th className="py-1 text-start">Kode</th>
+                  <th className="py-1 text-start">Nama</th>
+                  <th className="py-1 text-start">Refundable</th>
+                  <th className="py-1 text-start">Min/Max LOS</th>
+                  <th className="py-1 text-start">Status</th>
+                  <th className="py-1" />
+                </tr>
+              </thead>
+              <tbody>
+                {(daftarRatePlan.data ?? []).map((rp) => (
+                  <tr key={rp.id} className="border-t border-slate-100 dark:border-slate-800">
+                    <td className="py-1">{rp.code}</td>
+                    <td className="py-1">{rp.nama}</td>
+                    <td className="py-1">{rp.is_refundable ? 'Ya' : 'Tidak'}</td>
+                    <td className="py-1">
+                      {rp.default_min_los} / {rp.default_max_los ?? '—'}
+                    </td>
+                    <td className="py-1">{rp.status}</td>
+                    <td className="py-1">
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        onClick={() => {
+                          setRatePlanDipilih(rp);
+                          setRentangKalender({ checkin: '', checkout: '' });
+                        }}
+                      >
+                        {ratePlanDipilih?.id === rp.id ? 'Dipilih' : 'Kelola Harga'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {ratePlanDipilih && (
+            <div className="mt-6 border-t border-slate-100 pt-4 dark:border-slate-800">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Kalender Harga &amp; Restriksi — {ratePlanDipilih.code}
+              </h3>
+
+              <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                <div>
+                  <p className="field-label">Susun harga untuk rentang tanggal</p>
+                  <div className="mt-1 flex flex-wrap items-end gap-2">
+                    <Field label="Check-in">
+                      <input
+                        type="date"
+                        className="field-input"
+                        value={formHarga.checkin}
+                        onChange={(e) => setFormHarga({ ...formHarga, checkin: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Check-out">
+                      <input
+                        type="date"
+                        className="field-input"
+                        value={formHarga.checkout}
+                        onChange={(e) => setFormHarga({ ...formHarga, checkout: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Harga/malam *">
+                      <input
+                        type="number"
+                        min="0"
+                        className="field-input"
+                        value={formHarga.amount}
+                        onChange={(e) => setFormHarga({ ...formHarga, amount: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <Field label="Min LOS">
+                      <input
+                        type="number"
+                        min="1"
+                        className="field-input"
+                        value={formHarga.minLos}
+                        onChange={(e) => setFormHarga({ ...formHarga, minLos: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Max LOS">
+                      <input
+                        type="number"
+                        min="1"
+                        className="field-input"
+                        value={formHarga.maxLos}
+                        onChange={(e) => setFormHarga({ ...formHarga, maxLos: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-4 text-sm">
+                    <label className="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={formHarga.closedToArrival}
+                        onChange={(e) => setFormHarga({ ...formHarga, closedToArrival: e.target.checked })}
+                      />
+                      CTA (tutup kedatangan)
+                    </label>
+                    <label className="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={formHarga.closedToDeparture}
+                        onChange={(e) => setFormHarga({ ...formHarga, closedToDeparture: e.target.checked })}
+                      />
+                      CTD (tutup keberangkatan)
+                    </label>
+                    <label className="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={formHarga.stopSell}
+                        onChange={(e) => setFormHarga({ ...formHarga, stopSell: e.target.checked })}
+                      />
+                      Stop sell
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-primary mt-3"
+                    disabled={!formHarga.checkin || !formHarga.checkout || !formHarga.amount || aturHargaMutasi.isPending}
+                    onClick={() => aturHargaMutasi.mutate()}
+                  >
+                    Simpan Harga
+                  </button>
+                </div>
+
+                <div>
+                  <p className="field-label">Lihat/terbitkan rentang tanggal</p>
+                  <div className="mt-1 flex flex-wrap items-end gap-2">
+                    <Field label="Check-in">
+                      <input
+                        type="date"
+                        className="field-input"
+                        value={rentangKalender.checkin}
+                        onChange={(e) => setRentangKalender({ ...rentangKalender, checkin: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Check-out">
+                      <input
+                        type="date"
+                        className="field-input"
+                        value={rentangKalender.checkout}
+                        onChange={(e) => setRentangKalender({ ...rentangKalender, checkout: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      disabled={!rentangKalender.checkin || !rentangKalender.checkout || terbitkanMutasi.isPending}
+                      onClick={() => terbitkanMutasi.mutate('terbitkan')}
+                    >
+                      Terbitkan
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      disabled={!rentangKalender.checkin || !rentangKalender.checkout || terbitkanMutasi.isPending}
+                      onClick={() => terbitkanMutasi.mutate('tarik')}
+                    >
+                      Tarik
+                    </button>
+                  </div>
+
+                  {daftarKalender.isLoading && <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Memuat...</p>}
+                  {daftarKalender.isError && (
+                    <p className="mt-3 text-sm text-rose-600 dark:text-rose-400">
+                      {toMessage(daftarKalender.error, (_key, fallback) => fallback ?? 'Gagal memuat kalender.')}
+                    </p>
+                  )}
+                  {daftarKalender.data && (
+                    <table className="mt-3 w-full text-sm">
+                      <thead>
+                        <tr className="text-start text-xs uppercase text-slate-500 dark:text-slate-400">
+                          <th className="py-1 text-start">Tanggal</th>
+                          <th className="py-1 text-start">Harga</th>
+                          <th className="py-1 text-start">Restriksi</th>
+                          <th className="py-1 text-start">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {daftarKalender.data.map((k) => (
+                          <tr key={k.id} className="border-t border-slate-100 dark:border-slate-800">
+                            <td className="py-1">{formatDate(k.stay_date)}</td>
+                            <td className="py-1">Rp {Number(k.amount).toLocaleString('id-ID')}</td>
+                            <td className="py-1 text-xs">
+                              {[
+                                k.min_los ? `Min ${k.min_los}` : null,
+                                k.max_los ? `Max ${k.max_los}` : null,
+                                k.closed_to_arrival ? 'CTA' : null,
+                                k.closed_to_departure ? 'CTD' : null,
+                                k.stop_sell ? 'STOP SELL' : null,
+                              ]
+                                .filter(Boolean)
+                                .join(', ') || '—'}
+                            </td>
+                            <td className="py-1">{k.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {tambahProperti && (
         <Modal judul="Tambah Properti" onClose={() => setTambahProperti(false)}>
           <Field label="Kode *">
@@ -437,6 +781,58 @@ export function HospitalityPropertiPage() {
             onBatal={() => setTambahKamar(false)}
             onSimpan={() => catatKamar.mutate()}
             simpanDisabled={!formKamar.nomorKamar || catatKamar.isPending}
+          />
+        </Modal>
+      )}
+
+      {tambahRatePlan && tipeKamarDipilih && (
+        <Modal judul={`Tambah Rate Plan — ${tipeKamarDipilih.nama}`} onClose={() => setTambahRatePlan(false)}>
+          <Field label="Kode *">
+            <input
+              className="field-input"
+              placeholder="BAR"
+              value={formRatePlan.code}
+              onChange={(e) => setFormRatePlan({ ...formRatePlan, code: e.target.value })}
+            />
+          </Field>
+          <Field label="Nama *">
+            <input
+              className="field-input"
+              placeholder="Best Flexible Rate"
+              value={formRatePlan.nama}
+              onChange={(e) => setFormRatePlan({ ...formRatePlan, nama: e.target.value })}
+            />
+          </Field>
+          <Field label="Min LOS Default">
+            <input
+              type="number"
+              min="1"
+              className="field-input"
+              value={formRatePlan.defaultMinLos}
+              onChange={(e) => setFormRatePlan({ ...formRatePlan, defaultMinLos: e.target.value })}
+            />
+          </Field>
+          <Field label="Max LOS Default">
+            <input
+              type="number"
+              min="1"
+              className="field-input"
+              value={formRatePlan.defaultMaxLos}
+              onChange={(e) => setFormRatePlan({ ...formRatePlan, defaultMaxLos: e.target.value })}
+            />
+          </Field>
+          <label className="flex items-center gap-1.5 text-sm">
+            <input
+              type="checkbox"
+              checked={formRatePlan.isRefundable}
+              onChange={(e) => setFormRatePlan({ ...formRatePlan, isRefundable: e.target.checked })}
+            />
+            Refundable
+          </label>
+          <ModalFooter
+            onBatal={() => setTambahRatePlan(false)}
+            onSimpan={() => catatRatePlan.mutate()}
+            simpanDisabled={!formRatePlan.code || !formRatePlan.nama || catatRatePlan.isPending}
           />
         </Modal>
       )}

@@ -33,6 +33,13 @@ export interface MasukanRoomStay {
   children?: number;
   rateAmount?: number;
   guestId?: string;
+  /**
+   * Kode rate plan (MI-10) yang menjadi sumber `rateAmount`, bila ada --
+   * murni untuk jejak pada `rate_snapshot`, bukan kolom relasi (tidak ada
+   * migrasi tambahan). Kosong berarti tarif dimasukkan manual staf,
+   * seperti sebelum MI-10 ada.
+   */
+  ratePlanCode?: string;
 }
 
 export interface MasukanReservasi {
