@@ -135,6 +135,7 @@ jobs:
             "${{ env.JALUR }}\windows\pemasang.iss"
 
           flutter build windows --release `
+            --target=lib/main_inventory.dart `
             --dart-define=VERSI=${{ steps.versi.outputs.nilai }} `
             --dart-define=APP_PRODUCT=inventory
           & $iscc `
@@ -234,12 +235,13 @@ jobs:
           mkdir -p "${GITHUB_WORKSPACE}/keluaran"
           cp build/app/outputs/flutter-apk/app-penjualan-release.apk \
              "${GITHUB_WORKSPACE}/keluaran/ebisnis-pos-${{ steps.versi.outputs.nilai }}.apk"
-          flutter build apk --release --flavor penjualan \
+          flutter build apk --release --flavor inventory \
+            --target=lib/main_inventory.dart \
             --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
             --dart-define=APP_PRODUCT=inventory \
             --build-name=${{ steps.versi.outputs.nilai }} \
             --build-number=${{ github.run_number }}
-          cp build/app/outputs/flutter-apk/app-penjualan-release.apk \
+          cp build/app/outputs/flutter-apk/app-inventory-release.apk \
              "${GITHUB_WORKSPACE}/keluaran/ebisnis-inventory-sales-${{ steps.versi.outputs.nilai }}.apk"
           flutter build apk --release --flavor apotik \
             --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
