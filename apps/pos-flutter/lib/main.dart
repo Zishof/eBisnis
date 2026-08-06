@@ -260,7 +260,6 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
   Future<void> _masukApotik({
     required String username,
     required String password,
-    required String tenantCode,
   }) async {
     const configuredBase = String.fromEnvironment(
       'POS_API_BASE',
@@ -272,7 +271,6 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
       ),
       username: username,
       password: password,
-      tenantCode: tenantCode.trim().isEmpty ? null : tenantCode.trim(),
     );
     final boot = await client.bootstrap();
     final sesi = boot.sesi;
@@ -313,7 +311,6 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
       accessToken: const String.fromEnvironment('POS_ACCESS_TOKEN'),
       username: const String.fromEnvironment('POS_USERNAME'),
       password: const String.fromEnvironment('POS_PASSWORD'),
-      tenantCode: const String.fromEnvironment('POS_TENANT'),
     );
     final boot = await client.bootstrap();
     final sesi = boot.sesi;
@@ -335,7 +332,6 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
 typedef _MasukApotik = Future<void> Function({
   required String username,
   required String password,
-  required String tenantCode,
 });
 
 class _LoginApotik extends StatefulWidget {
@@ -350,7 +346,6 @@ class _LoginApotik extends StatefulWidget {
 class _LoginApotikState extends State<_LoginApotik> {
   final _username = TextEditingController();
   final _password = TextEditingController();
-  final _tenant = TextEditingController();
   bool _sibuk = false;
   bool _lihatPassword = false;
   String? _galat;
@@ -359,7 +354,6 @@ class _LoginApotikState extends State<_LoginApotik> {
   void dispose() {
     _username.dispose();
     _password.dispose();
-    _tenant.dispose();
     super.dispose();
   }
 
@@ -376,7 +370,6 @@ class _LoginApotikState extends State<_LoginApotik> {
       await widget.onMasuk(
         username: _username.text.trim(),
         password: _password.text,
-        tenantCode: _tenant.text,
       );
     } on Object catch (error) {
       if (mounted) setState(() => _galat = error.toString());
@@ -458,7 +451,8 @@ class _LoginApotikState extends State<_LoginApotik> {
                 controller: _password,
                 autofillHints: const [AutofillHints.password],
                 obscureText: !_lihatPassword,
-                textInputAction: TextInputAction.next,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _sibuk ? null : _masuk(),
                 decoration: InputDecoration(
                   labelText: 'Kata sandi',
                   prefixIcon: const Icon(Icons.lock_outline),
@@ -473,20 +467,6 @@ class _LoginApotikState extends State<_LoginApotik> {
                         : Icons.visibility_outlined),
                   ),
                   border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const Key('login-apotik-tenant'),
-                controller: _tenant,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _sibuk ? null : _masuk(),
-                decoration: const InputDecoration(
-                  labelText: 'Kode tenant (opsional)',
-                  helperText:
-                      'Isi hanya bila akun terhubung ke lebih dari satu tenant.',
-                  prefixIcon: Icon(Icons.apartment_outlined),
-                  border: OutlineInputBorder(),
                 ),
               ),
               if (_galat != null) ...[

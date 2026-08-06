@@ -26,7 +26,6 @@ class PosApiClient {
     this.accessToken,
     this.username,
     this.password,
-    this.tenantCode,
     HttpClient? http,
   }) : _http = http ?? HttpClient();
 
@@ -34,7 +33,6 @@ class PosApiClient {
   String? accessToken;
   final String? username;
   final String? password;
-  final String? tenantCode;
   final HttpClient _http;
   String? displayName;
   String? authenticatedUsername;
@@ -53,7 +51,6 @@ class PosApiClient {
       body: {
         'username': username,
         'password': password,
-        if ((tenantCode ?? '').isNotEmpty) 'tenantCode': tenantCode,
       },
       tanpaToken: true,
     );

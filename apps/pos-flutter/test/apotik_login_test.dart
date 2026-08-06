@@ -13,7 +13,8 @@ void main() {
     expect(find.text('Masuk POS Apotik'), findsOneWidget);
     expect(find.byKey(const Key('login-apotik-username')), findsOneWidget);
     expect(find.byKey(const Key('login-apotik-password')), findsOneWidget);
-    expect(find.byKey(const Key('login-apotik-tenant')), findsOneWidget);
+    expect(find.byKey(const Key('login-apotik-tenant')), findsNothing);
+    expect(find.textContaining('Kode tenant'), findsNothing);
     expect(find.text('POS Apotik'), findsNothing);
   });
 
