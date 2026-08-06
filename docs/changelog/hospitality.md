@@ -1,5 +1,73 @@
 # Changelog — Hospitality (MitraInap.id)
 
+## 2026-08-06 — MI-3/MI-4: dinyatakan diblokir, bukan dikerjakan
+
+MI-3 (Tenant Website/Subdomain) butuh tenant hospitality yang benar-benar
+ada -- belum ada satu pun, dan MI-3 sendiri bukan yang menciptakannya.
+MI-4 (Product/Package/Entitlement/Pricing) butuh (a) keputusan harga
+komersial yang BRD sendiri secara eksplisit belum berikan
+(`PRICE_CONFIGURATION_REQUIRED`) dan (b) kolom/skema harga "belum
+dikonfigurasi" yang TIDAK ADA di `platform.plan`/`platform.subscription`
+saat ini (dicek: `grep priceStatus` kosong di seluruh kodebase) --
+membangunnya berarti mengubah skema billing bersama tanpa keputusan
+komersial nyata yang mendasarinya, persis larangan §5 perintah master.
+Keduanya dilewati, dilanjutkan ke MI-5 yang tidak punya blocker serupa.
+
+## 2026-08-06 — MI-5: Fondasi Properti, Tipe Kamar, dan Kamar
+
+- Migrasi tenant baru `apps/api/tenant-migrations/hospitality/` (modul baru,
+  `dependsOn: ["core"]`): `hospitality_property`, `hospitality_room_type`,
+  `hospitality_room`. Sengaja HANYA tiga tabel ini -- portofolio/badan
+  hukum/gedung/lantai/zona penuh BRD ditunda sampai tenant multi-properti
+  sungguhan on-board (lihat komentar migrasi).
+- RBAC baru (`apps/api/src/modules/hospitality/rbac/hospitality-vertical.catalog.ts`,
+  didaftarkan ke `vertical-catalogs.ts`, pola IR-004): menu
+  `HOSPITALITY_GROUP` > `HOSPITALITY_PROPERTI`, peran `HOSPITALITY_ADMIN`
+  (profil P7, diberikan ke pemilik properti saat provisioning nanti --
+  belum ada alur provisioning hospitality, jadi belum ada pemberian
+  otomatis). Default visibility menu ditambahkan ke
+  `MENU_AKAR_BAWAAN_PER_VERTIKAL` (`tenant-permission.service.ts`) untuk
+  `verticalCode: 'HOSPITALITY'` -- BELUM diverifikasi lewat login tenant
+  hospitality sungguhan (belum ada), dicatat sebagai risiko casing yang
+  sama seperti kasus PESANTREN di MI-1.
+- Backend: `HospitalityPropertiService`/`.controller.ts`/`.module.ts` --
+  CRUD properti, tipe kamar (per properti), dan kamar (per tipe kamar),
+  pola sama persis dengan `pesantren-asrama.service.ts`.
+- Web: `HospitalityPropertiPage.tsx` (`/app/hospitality/properti`) -- tiga
+  kolom bertingkat (properti -> tipe kamar -> kamar), pola sama dengan
+  `PesantrenAsramaPage`.
+- Diverifikasi nyata, bukan hanya `tsc`/test:
+  - Migrasi DDL diterapkan pada schema uji terisolasi
+    (`hospitality_smoketest`, dibuat lalu dihapus) -- constraint (kode
+    unik per penyewa/properti, okupansi > 0, nomor kamar unik per
+    properti dengan penggunaan ulang setelah soft-delete) diuji dengan
+    INSERT sungguhan, bukan dibaca dari DDL saja.
+  - `pnpm migrate:tenants --schema admin_raudlatululum` (tenant pesantren
+    nyata dari sesi sebelumnya) diterapkan sungguhan -- tabel dan
+    menu/role RBAC baru muncul di schema itu.
+  - Login sungguhan + `POST/GET /hospitality/properti/**` lewat curl:
+    create/list properti, tipe kamar, kamar; konflik kode (409) dan
+    validasi okupansi (400) sama-sama diuji dan berhasil. Peran
+    `HOSPITALITY_ADMIN` diberikan sementara ke pengguna uji untuk
+    membuktikan alur CREATE, lalu DICABUT setelah verifikasi (bukan
+    perubahan permanen pada data pengguna nyata).
+  - Halaman `/app/hospitality/properti` diverifikasi lewat peramban
+    sungguhan (login sungguhan, bukan token langsung) -- tiga kolom
+    tampil dan cascading pilih properti -> tipe kamar berfungsi dengan
+    data yang sama dibuat lewat API.
+  - `pnpm test` (152 suite API/3980 test, 42 berkas web/510 test) LULUS
+    penuh; `tsc --noEmit` LULUS; `pnpm lint` bersih dari perubahan ini.
+- Insiden selama verifikasi: Postgres lokal (port 5433) sempat masuk mode
+  recovery selama `pnpm migrate:tenants` tanpa `--schema` (menyasar
+  puluhan tenant sekaligus, kemungkinan kehabisan resource) -- pulih
+  sendiri setelah ditunggu, tidak ada tindakan destruktif diambil.
+  Verifikasi dilanjutkan dengan `--schema` dipersempit ke satu tenant.
+
+Belum diverifikasi: tenant hospitality PERTAMA yang sesungguhnya
+di-provision dari nol (mengunci vertical code, default menu visibility,
+dan pemberian `HOSPITALITY_ADMIN` otomatis) -- menunggu MI-3/MI-4
+(provisioning) yang sengaja ditunda di atas.
+
 ## 2026-08-06 — MI-2: Homepage MitraInap dan marketing pages
 
 - `MitrainapSolusiPage` (`/mitrainap/solusi`) dan `MitrainapFaqPage`
