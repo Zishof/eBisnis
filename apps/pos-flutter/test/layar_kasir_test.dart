@@ -114,6 +114,7 @@ Future<ValueNotifier<KeadaanPelanggan>> pasang(
   List<MetodeBayar>? metode,
   PengelolaPembaruan? pembaruan,
   ModeKasir mode = ModeKasir.penjualan,
+  Size ukuran = const Size(1600, 960),
 }) async {
   /*
    * Ukuran meja kasir, bukan ukuran bawaan uji (800x600).
@@ -123,7 +124,7 @@ Future<ValueNotifier<KeadaanPelanggan>> pasang(
    * disasar hanya akan menghasilkan kegagalan tata letak yang tidak pernah
    * dialami siapa pun.
    */
-  tester.view.physicalSize = const Size(1600, 960);
+  tester.view.physicalSize = ukuran;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -190,6 +191,29 @@ void main() {
     expect(find.text('Bebas'), findsOneWidget);
     expect(find.text('Antar'), findsOneWidget);
     expect(find.textContaining('Pindai barcode obat'), findsOneWidget);
+  });
+
+  testWidgets('mode apotik ponsel memakai navigasi bawah dan sheet keranjang',
+      (tester) async {
+    await pasang(
+      tester,
+      mode: ModeKasir.apotik,
+      ukuran: const Size(412, 915),
+    );
+
+    expect(find.byKey(const Key('bilah-samping')), findsNothing);
+    expect(find.byKey(const Key('ringkasan-keranjang-mobile')), findsOneWidget);
+    expect(find.text('Kasir'), findsOneWidget);
+    expect(find.text('Resep'), findsOneWidget);
+    expect(find.text('Riwayat'), findsOneWidget);
+
+    await pindai(tester, '8991234567890');
+    await tester.tap(find.byKey(const Key('ringkasan-keranjang-mobile')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('daftar-keranjang')), findsOneWidget);
+    expect(diKeranjang('Kopi Susu Gula Aren'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('barcode alternatif ditemukan sama saja', (tester) async {

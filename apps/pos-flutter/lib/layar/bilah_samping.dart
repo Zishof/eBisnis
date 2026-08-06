@@ -62,10 +62,15 @@ class BilahSamping extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final apotik = judul == 'POS Apotik';
     return Container(
       key: const Key('bilah-samping'),
       width: 214,
-      color: Warna.gelap,
+      decoration: BoxDecoration(
+        color: apotik ? Colors.white : Warna.gelap,
+        border:
+            apotik ? const Border(right: BorderSide(color: Warna.garis)) : null,
+      ),
       child: SafeArea(
         right: false,
         child: Column(
@@ -91,7 +96,7 @@ class BilahSamping extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: apotik ? Warna.teks : Colors.white,
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                       ),
@@ -108,6 +113,7 @@ class BilahSamping extends StatelessWidget {
                     _BarisMenu(
                       item: m,
                       aktif: m.kunci == terpilih,
+                      terang: apotik,
                       onTekan: () => onPilih(m),
                     ),
                 ],
@@ -149,21 +155,27 @@ class _BarisMenu extends StatelessWidget {
   const _BarisMenu({
     required this.item,
     required this.aktif,
+    required this.terang,
     required this.onTekan,
   });
 
   final ItemMenu item;
   final bool aktif;
+  final bool terang;
   final VoidCallback onTekan;
 
   @override
   Widget build(BuildContext context) {
-    final warnaTeks = aktif ? Colors.white : const Color(0xFFCBD5E1);
+    final warnaTeks = terang
+        ? (aktif ? const Color(0xFF006B68) : Warna.teksRedup)
+        : (aktif ? Colors.white : const Color(0xFFCBD5E1));
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
       child: Material(
-        color: aktif ? Warna.utama : Colors.transparent,
+        color: aktif
+            ? (terang ? const Color(0xFFDDF4EF) : Warna.utama)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(9),
         child: InkWell(
           key: Key('menu-${item.kunci}'),

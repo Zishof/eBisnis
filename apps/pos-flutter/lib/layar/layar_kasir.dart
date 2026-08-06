@@ -125,6 +125,7 @@ class _LayarKasirState extends State<LayarKasir> {
   @override
   void initState() {
     super.initState();
+    if (_apotik) _jenis = JenisPesanan.takeAway;
     widget.pembaruan?.addListener(_pembaruanBerubah);
     _perbaruiPelanggan();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -853,92 +854,166 @@ class _LayarKasirState extends State<LayarKasir> {
   @override
   Widget build(BuildContext context) {
     final t = _total;
+    final ringkasLayar = MediaQuery.sizeOf(context).width < 760;
 
     return Focus(
       focusNode: _fokusLayar,
       onKeyEvent: _tangkapTombol,
       child: Scaffold(
         backgroundColor: Warna.halaman,
-        body: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            BilahSamping(
-              terpilih: _menu,
-              judul: _apotik ? 'POS Apotik' : 'eBisnis POS',
-              ikon: _apotik ? Icons.medication_outlined : Icons.bolt,
-              menu: _apotik ? daftarMenuApotik : daftarMenu,
-              onPilih: (m) {
-                setState(() {
-                  _menu = m.kunci;
-                  _pesan = null;
-                });
-                if (m.kunci == 'kasir') _kembalikanFokus(bersihkanCari: false);
-              },
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  BilahAtas(
-                    namaOutlet: widget.namaOutlet ?? widget.namaToko,
-                    printerSiap: widget.pencetak.siap,
-                    shift: widget.shift,
-                    koneksi: widget.koneksi,
-                    namaPengguna: widget.namaPengguna,
-                    pembaruan: widget.pembaruan,
-                    onCekPembaruan: _cekPembaruan,
-                    onKeluar:
-                        widget.onKeluar == null ? null : _konfirmasiKeluar,
-                  ),
-                  Expanded(child: _isiMenu(t)),
+        bottomNavigationBar: ringkasLayar && _apotik
+            ? NavigationBar(
+                height: 64,
+                selectedIndex: _menu == 'riwayat-pembayaran'
+                    ? 2
+                    : _menu == 'dashboard'
+                        ? 3
+                        : _jenis == JenisPesanan.dineIn
+                            ? 1
+                            : 0,
+                onDestinationSelected: (i) {
+                  setState(() {
+                    _menu = switch (i) {
+                      2 => 'riwayat-pembayaran',
+                      3 => 'dashboard',
+                      _ => 'kasir',
+                    };
+                    if (i == 0) _jenis = JenisPesanan.takeAway;
+                    if (i == 1) _jenis = JenisPesanan.dineIn;
+                  });
+                  if (i < 2) _kembalikanFokus(bersihkanCari: false);
+                },
+                destinations: const [
+                  NavigationDestination(
+                      icon: Icon(Icons.shopping_bag_outlined), label: 'Kasir'),
+                  NavigationDestination(
+                      icon: Icon(Icons.assignment_outlined), label: 'Resep'),
+                  NavigationDestination(
+                      icon: Icon(Icons.history), label: 'Riwayat'),
+                  NavigationDestination(
+                      icon: Icon(Icons.grid_view_outlined), label: 'Lainnya'),
                 ],
-              ),
-            ),
-          ],
+              )
+            : null,
+        body: LayoutBuilder(
+          builder: (context, batas) {
+            final ringkas = batas.maxWidth < 760;
+            final isi = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                BilahAtas(
+                  namaOutlet: widget.namaOutlet ?? widget.namaToko,
+                  printerSiap: widget.pencetak.siap,
+                  shift: widget.shift,
+                  koneksi: widget.koneksi,
+                  namaPengguna: widget.namaPengguna,
+                  pembaruan: widget.pembaruan,
+                  onCekPembaruan: _cekPembaruan,
+                  onKeluar: widget.onKeluar == null ? null : _konfirmasiKeluar,
+                  ringkas: ringkas,
+                  apotik: _apotik,
+                ),
+                Expanded(child: _isiMenu(t, ringkas: ringkas)),
+              ],
+            );
+            if (ringkas) return isi;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                BilahSamping(
+                  terpilih: _menu,
+                  judul: _apotik ? 'POS Apotik' : 'eBisnis POS',
+                  ikon: _apotik ? Icons.medication_outlined : Icons.bolt,
+                  menu: _apotik ? daftarMenuApotik : daftarMenu,
+                  onPilih: (m) {
+                    setState(() {
+                      _menu = m.kunci;
+                      _pesan = null;
+                    });
+                    if (m.kunci == 'kasir') {
+                      _kembalikanFokus(bersihkanCari: false);
+                    }
+                  },
+                ),
+                Expanded(child: isi),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _isiMenu(HasilKeranjang t) {
+  Widget _isiMenu(HasilKeranjang t, {required bool ringkas}) {
     if (_menu != 'kasir') return _halamanMenu();
     return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: _tengah(t)),
-          const SizedBox(width: 12),
-          PanelKeranjang(
-            hasil: t,
-            metode: widget.metode,
-            uang: _uang,
-            jenis: _jenis,
-            labelJenis: _apotik ? _labelJenisApotik : namaJenisPesanan,
-            ikonJenis: _apotik ? _ikonJenisApotik : ikonJenisPesanan,
-            labelPelanggan: _apotik ? 'Pasien umum' : 'Pelanggan Umum',
-            labelMeja: _apotik ? 'Resep / racikan' : 'Tanpa meja',
-            pesanKosong: _apotik
-                ? 'Pindai barcode obat, cari nama generik/dagang,\natau pilih item racikan dari katalog.'
-                : 'Pindai barang atau tekan produk di sebelah kiri\nuntuk mulai melayani pembeli.',
-            labelCatatan: _apotik
-                ? 'Catatan Farmasi (Opsional)'
-                : 'Catatan Pesanan (Opsional)',
-            hintCatatan: _apotik
-                ? 'Contoh: aturan pakai, alergi, nomor batch, konseling'
-                : 'Contoh: tanpa gula, pisah saus, dll',
-            onJenis: (j) {
-              setState(() => _jenis = j);
-              _kembalikanFokus(bersihkanCari: false);
-            },
-            onUbahJumlah: _ubahJumlah,
-            onHapus: _hapusBaris,
-            onBayar: _bayar,
-            kendaliCatatan: _catatan,
-          ),
-        ],
+      padding: EdgeInsets.all(ringkas ? 8 : 12),
+      child: ringkas
+          ? Column(
+              children: [
+                Expanded(child: _tengah(t, ringkas: true)),
+                const SizedBox(height: 8),
+                _RingkasanKeranjangMobile(
+                  jumlah: t.itemCount,
+                  total: _uang(t.grandTotal),
+                  onTekan: () => _bukaKeranjangMobile(t),
+                ),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _tengah(t)),
+                const SizedBox(width: 12),
+                _panelKeranjang(t),
+              ],
+            ),
+    );
+  }
+
+  Widget _panelKeranjang(HasilKeranjang t) => PanelKeranjang(
+        hasil: t,
+        metode: widget.metode,
+        uang: _uang,
+        jenis: _jenis,
+        labelJenis: _apotik ? _labelJenisApotik : namaJenisPesanan,
+        ikonJenis: _apotik ? _ikonJenisApotik : ikonJenisPesanan,
+        labelPelanggan: _apotik ? 'Pasien umum' : 'Pelanggan Umum',
+        labelMeja: _apotik ? 'Resep / racikan' : 'Tanpa meja',
+        pesanKosong: _apotik
+            ? 'Pindai barcode obat, cari nama generik/dagang,\natau pilih item racikan dari katalog.'
+            : 'Pindai barang atau tekan produk di sebelah kiri\nuntuk mulai melayani pembeli.',
+        labelCatatan: _apotik
+            ? 'Catatan Farmasi (Opsional)'
+            : 'Catatan Pesanan (Opsional)',
+        hintCatatan: _apotik
+            ? 'Contoh: aturan pakai, alergi, nomor batch, konseling'
+            : 'Contoh: tanpa gula, pisah saus, dll',
+        onJenis: (j) {
+          setState(() => _jenis = j);
+          _kembalikanFokus(bersihkanCari: false);
+        },
+        onUbahJumlah: _ubahJumlah,
+        onHapus: _hapusBaris,
+        onBayar: _bayar,
+        kendaliCatatan: _catatan,
+      );
+
+  Future<void> _bukaKeranjangMobile(HasilKeranjang t) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: 0.92,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          child: _panelKeranjang(t),
+        ),
       ),
     );
+    _kembalikanFokus(bersihkanCari: false);
   }
 
   Widget _halamanMenu() {
@@ -1040,7 +1115,7 @@ class _LayarKasirState extends State<LayarKasir> {
     };
   }
 
-  Widget _tengah(HasilKeranjang t) {
+  Widget _tengah(HasilKeranjang t, {bool ringkas = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1072,6 +1147,7 @@ class _LayarKasirState extends State<LayarKasir> {
             nomorResep: _nomorResep,
             namaPasien: _namaPasien,
             onFokusSelesai: () => _kembalikanFokus(bersihkanCari: false),
+            ringkas: ringkas,
           ),
         ],
         if (_pesan != null) ...[
@@ -1117,9 +1193,99 @@ class _LayarKasirState extends State<LayarKasir> {
             uang: _uang,
           ),
         ),
-        const SizedBox(height: 10),
-        const _BilahPintasan(),
+        if (!ringkas) ...[
+          const SizedBox(height: 10),
+          const _BilahPintasan(),
+        ],
       ],
+    );
+  }
+}
+
+class _RingkasanKeranjangMobile extends StatelessWidget {
+  const _RingkasanKeranjangMobile({
+    required this.jumlah,
+    required this.total,
+    required this.onTekan,
+  });
+
+  final int jumlah;
+  final String total;
+  final VoidCallback onTekan;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        key: const Key('ringkasan-keranjang-mobile'),
+        onTap: onTekan,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: hiasanKartu(garis: Warna.utama),
+          child: Row(
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.shopping_cart_outlined,
+                      size: 28, color: Warna.utama),
+                  if (jumlah > 0)
+                    Positioned(
+                      right: -8,
+                      top: -8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: const BoxDecoration(
+                          color: Warna.utama,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '$jumlah',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Keranjang',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
+                    Text('Lihat detail transaksi',
+                        style: TextStyle(fontSize: 11, color: Warna.teksRedup)),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Total',
+                      style: TextStyle(fontSize: 11, color: Warna.teksRedup)),
+                  Text(total,
+                      style: const TextStyle(
+                          color: Warna.utama,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900)),
+                ],
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: Warna.utama),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1141,11 +1307,13 @@ class _PanelKonteksApotik extends StatelessWidget {
     required this.nomorResep,
     required this.namaPasien,
     required this.onFokusSelesai,
+    this.ringkas = false,
   });
 
   final TextEditingController nomorResep;
   final TextEditingController namaPasien;
   final VoidCallback onFokusSelesai;
+  final bool ringkas;
 
   @override
   Widget build(BuildContext context) {
@@ -1156,77 +1324,110 @@ class _PanelKonteksApotik extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.health_and_safety_outlined,
-                  color: Warna.utama, size: 20),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                const Icon(Icons.health_and_safety_outlined,
+                    color: Warna.utama, size: 20),
+                const SizedBox(width: 8),
+                const Text(
                   'Konteks farmasi',
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
-              ),
-              _ChipFarmasi(label: 'Resep dokter', warna: Warna.utama),
-              const SizedBox(width: 6),
-              _ChipFarmasi(label: 'Racikan', warna: Color(0xFF0891B2)),
-              const SizedBox(width: 6),
-              _ChipFarmasi(label: 'Produksi', warna: Color(0xFF7C3AED)),
-            ],
+                const SizedBox(width: 12),
+                _ChipFarmasi(label: 'OTC', warna: Color(0xFF047857)),
+                const SizedBox(width: 6),
+                _ChipFarmasi(label: 'Resep dokter', warna: Warna.utama),
+                const SizedBox(width: 6),
+                _ChipFarmasi(label: 'Racikan', warna: Color(0xFF0891B2)),
+                const SizedBox(width: 6),
+                _ChipFarmasi(label: 'Produksi', warna: Color(0xFF7C3AED)),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  key: const Key('nomor-resep-apotik'),
-                  controller: nomorResep,
-                  style: const TextStyle(fontSize: 12.5),
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    labelText: 'No. resep / e-resep',
-                    prefixIcon: Icon(Icons.receipt_long_outlined, size: 18),
-                    border: OutlineInputBorder(),
+          if (ringkas) ...[
+            TextField(
+              key: const Key('nomor-resep-apotik'),
+              controller: nomorResep,
+              style: const TextStyle(fontSize: 12.5),
+              decoration: const InputDecoration(
+                isDense: true,
+                labelText: 'No. resep / e-resep',
+                prefixIcon: Icon(Icons.receipt_long_outlined, size: 18),
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => onFokusSelesai(),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              key: const Key('nama-pasien-apotik'),
+              controller: namaPasien,
+              style: const TextStyle(fontSize: 12.5),
+              decoration: const InputDecoration(
+                isDense: true,
+                labelText: 'Pasien / penanggung jawab',
+                prefixIcon: Icon(Icons.person_search_outlined, size: 18),
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => onFokusSelesai(),
+            ),
+          ] else
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const Key('nomor-resep-apotik'),
+                    controller: nomorResep,
+                    style: const TextStyle(fontSize: 12.5),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      labelText: 'No. resep / e-resep',
+                      prefixIcon: Icon(Icons.receipt_long_outlined, size: 18),
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => onFokusSelesai(),
                   ),
-                  onSubmitted: (_) => onFokusSelesai(),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  key: const Key('nama-pasien-apotik'),
-                  controller: namaPasien,
-                  style: const TextStyle(fontSize: 12.5),
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    labelText: 'Pasien / penanggung jawab',
-                    prefixIcon: Icon(Icons.person_search_outlined, size: 18),
-                    border: OutlineInputBorder(),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    key: const Key('nama-pasien-apotik'),
+                    controller: namaPasien,
+                    style: const TextStyle(fontSize: 12.5),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      labelText: 'Pasien / penanggung jawab',
+                      prefixIcon: Icon(Icons.person_search_outlined, size: 18),
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => onFokusSelesai(),
                   ),
-                  onSubmitted: (_) => onFokusSelesai(),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _GuardrailFarmasi(
-                ikon: Icons.warning_amber_outlined,
-                teks: 'High-alert dan obat keras ditandai sebelum bayar.',
-              ),
-              _GuardrailFarmasi(
-                ikon: Icons.science_outlined,
-                teks: 'Racikan memakai item formula, bahan, dan jasa.',
-              ),
-              _GuardrailFarmasi(
-                ikon: Icons.event_available_outlined,
-                teks: 'Batch dan kedaluwarsa dicatat pada catatan farmasi.',
-              ),
-            ],
-          ),
+              ],
+            ),
+          if (!ringkas) ...[
+            const SizedBox(height: 10),
+            const Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _GuardrailFarmasi(
+                  ikon: Icons.warning_amber_outlined,
+                  teks: 'High-alert dan obat keras ditandai sebelum bayar.',
+                ),
+                _GuardrailFarmasi(
+                  ikon: Icons.science_outlined,
+                  teks: 'Racikan memakai item formula, bahan, dan jasa.',
+                ),
+                _GuardrailFarmasi(
+                  ikon: Icons.event_available_outlined,
+                  teks: 'Batch dan kedaluwarsa dicatat pada catatan farmasi.',
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
