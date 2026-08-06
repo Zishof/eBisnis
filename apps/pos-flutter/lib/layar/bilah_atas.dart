@@ -28,6 +28,8 @@ class BilahAtas extends StatelessWidget {
     this.pembaruan,
     this.onCekPembaruan,
     this.onKeluar,
+    this.ringkas = false,
+    this.apotik = false,
     super.key,
   });
 
@@ -47,12 +49,87 @@ class BilahAtas extends StatelessWidget {
   final PengelolaPembaruan? pembaruan;
   final VoidCallback? onCekPembaruan;
   final VoidCallback? onKeluar;
+  final bool ringkas;
+  final bool apotik;
 
   @override
   Widget build(BuildContext context) {
+    if (ringkas) {
+      return Container(
+        key: const Key('bilah-atas'),
+        color: apotik ? const Color(0xFF006B68) : Warna.gelap,
+        padding: const EdgeInsets.fromLTRB(14, 8, 8, 10),
+        child: SafeArea(
+          bottom: false,
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  apotik
+                      ? Icons.medication_outlined
+                      : Icons.shopping_bag_outlined,
+                  color: Warna.utama,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      apotik ? 'eMedik POS Apotik' : namaOutlet,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '$namaOutlet  •  ${shift ?? 'Shift belum dibuka'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Warna.teksAtasGelap,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _IndikatorRingkas(
+                ikon: Icons.cloud_done_outlined,
+                aktif: koneksi == KeadaanKoneksi.daring,
+                tooltip: _kataKoneksi(koneksi),
+              ),
+              _IndikatorRingkas(
+                ikon: Icons.print_outlined,
+                aktif: printerSiap,
+                tooltip: printerSiap
+                    ? 'Printer terhubung'
+                    : 'Printer tidak terpasang',
+              ),
+              if (onKeluar != null)
+                IconButton(
+                  tooltip: 'Keluar akun',
+                  onPressed: onKeluar,
+                  icon: const Icon(Icons.more_vert, color: Colors.white),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
     return Container(
       key: const Key('bilah-atas'),
-      color: Warna.gelap,
+      color: apotik ? const Color(0xFF006B68) : Warna.gelap,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: SafeArea(
         bottom: false,
@@ -127,6 +204,31 @@ class BilahAtas extends StatelessWidget {
       ),
     );
   }
+}
+
+class _IndikatorRingkas extends StatelessWidget {
+  const _IndikatorRingkas({
+    required this.ikon,
+    required this.aktif,
+    required this.tooltip,
+  });
+
+  final IconData ikon;
+  final bool aktif;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: tooltip,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          child: Icon(
+            ikon,
+            size: 20,
+            color: aktif ? const Color(0xFF86EFAC) : Warna.teksAtasGelap,
+          ),
+        ),
+      );
 }
 
 String _kataKoneksi(KeadaanKoneksi? k) => switch (k) {
@@ -234,6 +336,28 @@ class _Kapsul extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final label = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (atas != null)
+          Text(atas!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  const TextStyle(color: Warna.teksAtasGelap, fontSize: 10.5)),
+        Text(
+          utama,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: warnaUtama,
+            fontSize: lebar ? 14 : 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
     return Container(
       padding: EdgeInsets.symmetric(horizontal: lebar ? 14 : 12, vertical: 7),
       decoration: BoxDecoration(
@@ -246,24 +370,7 @@ class _Kapsul extends StatelessWidget {
         children: [
           Icon(ikon, size: 17, color: Warna.teksAtasGelap),
           const SizedBox(width: 9),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (atas != null)
-                Text(atas!,
-                    style: const TextStyle(
-                        color: Warna.teksAtasGelap, fontSize: 10.5)),
-              Text(
-                utama,
-                style: TextStyle(
-                  color: warnaUtama,
-                  fontSize: lebar ? 14 : 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+          if (lebar) Flexible(child: label) else label,
           if (lebar) ...[
             const SizedBox(width: 8),
             const Icon(Icons.expand_more, size: 18, color: Warna.teksAtasGelap),
