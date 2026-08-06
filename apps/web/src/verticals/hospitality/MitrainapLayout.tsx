@@ -106,7 +106,7 @@ export function MitrainapLayout() {
     <div className="flex min-h-screen flex-col bg-white dark:bg-slate-950">
       <a
         href="#isi-utama"
-        className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded focus:bg-violet-700 focus:px-4 focus:py-2 focus:text-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded focus:bg-indigo-600 focus:px-4 focus:py-2 focus:text-white"
       >
         Lewati ke konten utama
       </a>
@@ -117,8 +117,8 @@ export function MitrainapLayout() {
             to="/mitrainap"
             className="flex items-center gap-2 font-bold text-slate-900 dark:text-white"
           >
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-violet-700 text-sm font-black text-white">
-              MI
+            <span className="grid h-9 w-9 place-items-center rounded-lg bg-indigo-600 text-sm font-black lowercase text-white">
+              in
             </span>
             <span>MitraInap.id</span>
           </Link>
@@ -153,8 +153,8 @@ export function MitrainapLayout() {
       <footer className="border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto max-w-6xl px-4 py-10">
           <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-700 text-xs font-black text-white">
-              MI
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-600 text-xs font-black lowercase text-white">
+              in
             </span>
             MitraInap.id
           </div>
@@ -173,7 +173,7 @@ export function MitrainapLayout() {
                   <li key={t.code}>
                     <a
                       href={t.url!}
-                      className="text-sm text-slate-600 hover:text-violet-700 dark:text-slate-400 dark:hover:text-violet-400"
+                      className="text-sm text-slate-600 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
                     >
                       {t.label ?? t.code}
                       {t.description && (
@@ -189,19 +189,19 @@ export function MitrainapLayout() {
           )}
 
           <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-200 pt-6 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
-            <Link to="/mitrainap/solusi" className="hover:text-violet-700 dark:hover:text-violet-400">
+            <Link to="/mitrainap/solusi" className="hover:text-indigo-600 dark:hover:text-indigo-400">
               Solusi
             </Link>
-            <Link to="/mitrainap/faq" className="hover:text-violet-700 dark:hover:text-violet-400">
+            <Link to="/mitrainap/faq" className="hover:text-indigo-600 dark:hover:text-indigo-400">
               FAQ
             </Link>
-            <Link to="/kontak" className="hover:text-violet-700 dark:hover:text-violet-400">
+            <Link to="/kontak" className="hover:text-indigo-600 dark:hover:text-indigo-400">
               Kontak
             </Link>
-            <Link to="/syarat" className="hover:text-violet-700 dark:hover:text-violet-400">
+            <Link to="/syarat" className="hover:text-indigo-600 dark:hover:text-indigo-400">
               Syarat dan Ketentuan
             </Link>
-            <Link to="/privasi" className="hover:text-violet-700 dark:hover:text-violet-400">
+            <Link to="/privasi" className="hover:text-indigo-600 dark:hover:text-indigo-400">
               Kebijakan Privasi
             </Link>
             <span className="ms-auto">© {new Date().getFullYear()} MitraInap.id</span>

@@ -34,7 +34,7 @@ describe('metadataForHost MitraInap', () => {
     for (const host of ['mitrainap.id', 'www.mitrainap.id']) {
       const metadata = metadataForHost(host);
       expect(metadata.siteName).toBe('MitraInap.id');
-      expect(metadata.themeColor).toBe('#7c3aed');
+      expect(metadata.themeColor).toBe('#4f46e5');
       expect(metadata.title).toContain('MitraInap.id');
       expect(metadata.title).not.toContain('eBisnis');
     }

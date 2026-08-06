@@ -403,8 +403,8 @@ export function metadataForHost(hostname: string): PreviewMetadata {
       description:
         'Property management system, booking engine langsung, front office, housekeeping, dan folio untuk hotel, homestay, dan properti sewa.',
       siteName: 'MitraInap.id',
-      themeColor: '#7c3aed',
-      iconDataUri: svgIcon('MI', '#7c3aed'),
+      themeColor: '#4f46e5',
+      iconDataUri: svgIcon('in', '#4f46e5'),
       imageUrl: PREVIEW_IMAGES.mitrainap,
     };
   }
