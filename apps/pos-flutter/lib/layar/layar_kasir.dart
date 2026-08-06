@@ -27,6 +27,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../aturan/harga_luring.dart';
 import '../aturan/koneksi.dart';
+import '../api/pos_api.dart';
+import '../inventory/inventory_app.dart';
 import '../pembaruan/pengelola_pembaruan.dart';
 import '../pembaruan/versi.dart';
 import '../perangkat/escpos.dart';
@@ -35,6 +37,7 @@ import 'bilah_samping.dart';
 import 'halaman_menu.dart';
 import 'kisi_produk.dart';
 import 'panel_keranjang.dart';
+import 'operasi_apotik.dart';
 import 'pintasan.dart';
 import 'sumber.dart';
 import 'tampilan_pelanggan.dart';
@@ -57,6 +60,7 @@ class LayarKasir extends StatefulWidget {
     this.pembaruan,
     this.pembukuan,
     this.mode = ModeKasir.penjualan,
+    this.apiClient,
     super.key,
   });
 
@@ -80,6 +84,7 @@ class LayarKasir extends StatefulWidget {
   final PengelolaPembaruan? pembaruan;
   final PembukuanKasir? pembukuan;
   final ModeKasir mode;
+  final PosApiClient? apiClient;
 
   @override
   State<LayarKasir> createState() => _LayarKasirState();
@@ -111,6 +116,7 @@ class _LayarKasirState extends State<LayarKasir> {
   final List<RiwayatPembayaranKasir> _riwayatPembayaran = [];
   String? _versiPembaruanDitampilkan;
   bool _dialogPembaruanTerbuka = false;
+  InventoryApiClient? _inventoryClient;
 
   bool get _apotik => widget.mode == ModeKasir.apotik;
 
@@ -131,6 +137,13 @@ class _LayarKasirState extends State<LayarKasir> {
   void initState() {
     super.initState();
     if (_apotik) _jenis = JenisPesanan.takeAway;
+    final token = widget.apiClient?.accessToken;
+    if (_apotik && token?.isNotEmpty == true) {
+      _inventoryClient = InventoryApiClient(
+        baseUrl: widget.apiClient!.baseUrl,
+        tenantCode: '',
+      )..useAccessToken(token!);
+    }
     widget.pembaruan?.addListener(_pembaruanBerubah);
     _perbaruiPelanggan();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1063,26 +1076,42 @@ class _LayarKasirState extends State<LayarKasir> {
           riwayat: _riwayatPembayaran,
           uang: _uang,
         ),
-      'produk' => HalamanProduk(
-          produk: produk,
-          uang: _uang,
-          onProdukDiunggah: (baru) {
-            setState(() {
-              _produkUnggahan = baru;
-              _kategori = kategoriSemua;
-              _kunciCari = '';
-              _baris.clear();
-              _terakhir = null;
-            });
-            _perbaruiPelanggan();
-          },
-        ),
+      'produk' => _apotik && _inventoryClient != null
+          ? InventoryStockPricingPage(client: _inventoryClient!)
+          : HalamanProduk(
+              produk: produk,
+              uang: _uang,
+              onProdukDiunggah: (baru) {
+                setState(() {
+                  _produkUnggahan = baru;
+                  _kategori = kategoriSemua;
+                  _kunciCari = '';
+                  _baris.clear();
+                  _terakhir = null;
+                });
+                _perbaruiPelanggan();
+              },
+            ),
       'riwayat-pembayaran' => HalamanRiwayatPembayaran(
           riwayat: _riwayatPembayaran,
           uang: _uang,
           printerSiap: widget.pencetak.siap,
           onCetakStruk: (riwayat) => _cetakByteStruk(riwayat.byteStruk),
         ),
+      'riwayat-server' ||
+      'retur-apotik' ||
+      'void-apotik' ||
+      'sinkronisasi' ||
+      'shift-apotik' =>
+        widget.apiClient == null
+            ? const HalamanRingkas(
+                judul: 'Server Apotik',
+                ikon: Icons.cloud_off_outlined,
+                keterangan:
+                    'Masuk dengan akun server untuk membuka ruang kerja ini.',
+                angka: [(label: 'Status', nilai: 'Belum terhubung')],
+              )
+            : OperasiApotikPage(area: _menu, client: widget.apiClient!),
       'pelanggan' => const HalamanRingkas(
           judul: 'Pelanggan',
           ikon: Icons.person_outline,
@@ -1092,30 +1121,41 @@ class _LayarKasirState extends State<LayarKasir> {
             (label: 'Member hari ini', nilai: '0'),
           ],
         ),
-      'stok' => HalamanRingkas(
-          judul: 'Stok',
-          ikon: Icons.warehouse_outlined,
-          keterangan: 'Pantau ketersediaan barang pada salinan katalog.',
-          angka: [
-            (
-              label: 'Stok diketahui',
-              nilai: '${produk.where((p) => p.stok != null).length}'
+      'stok' => _apotik && _inventoryClient != null
+          ? InventoryStockPricingPage(client: _inventoryClient!)
+          : HalamanRingkas(
+              judul: 'Stok',
+              ikon: Icons.warehouse_outlined,
+              keterangan: 'Pantau ketersediaan barang pada salinan katalog.',
+              angka: [
+                (
+                  label: 'Stok diketahui',
+                  nilai: '${produk.where((p) => p.stok != null).length}'
+                ),
+                (
+                  label: 'Habis',
+                  nilai: '${produk.where((p) => p.stok == 0).length}'
+                ),
+              ],
             ),
-            (
-              label: 'Habis',
-              nilai: '${produk.where((p) => p.stok == 0).length}'
+      'pembelian' => _apotik && _inventoryClient != null
+          ? InventoryOperationsPage(
+              client: _inventoryClient!,
+              persona: PersonaInventory(
+                username: widget.apiClient?.authenticatedUsername ?? 'apoteker',
+                label: widget.namaPengguna ?? 'Apoteker',
+                role: 'Admin',
+              ),
+            )
+          : const HalamanRingkas(
+              judul: 'Pembelian',
+              ikon: Icons.shopping_bag_outlined,
+              keterangan: 'Ruang kerja pembelian dan penerimaan barang.',
+              angka: [
+                (label: 'Draft pembelian', nilai: '0'),
+                (label: 'Menunggu terima', nilai: '0'),
+              ],
             ),
-          ],
-        ),
-      'pembelian' => const HalamanRingkas(
-          judul: 'Pembelian',
-          ikon: Icons.shopping_bag_outlined,
-          keterangan: 'Ruang kerja pembelian dan penerimaan barang.',
-          angka: [
-            (label: 'Draft pembelian', nilai: '0'),
-            (label: 'Menunggu terima', nilai: '0'),
-          ],
-        ),
       'promo' => const HalamanRingkas(
           judul: 'Promo',
           ikon: Icons.local_offer_outlined,

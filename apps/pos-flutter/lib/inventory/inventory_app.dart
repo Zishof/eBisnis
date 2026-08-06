@@ -5284,6 +5284,14 @@ class InventoryApiClient {
   final InventoryLocalDatabase? _localDatabase;
   String? _token;
 
+  /// Reuses the authenticated session from another client on the same tenant.
+  void useAccessToken(String token) {
+    if (token.trim().isEmpty) {
+      throw const InventoryApiException('Token sesi inventory tidak valid.');
+    }
+    _token = token.trim();
+  }
+
   Future<PersonaInventory> login({
     required String username,
     required String password,

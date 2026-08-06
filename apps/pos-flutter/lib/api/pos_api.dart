@@ -135,6 +135,87 @@ class PosApiClient {
     );
   }
 
+  Future<Map<String, Object?>> konteks() async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>>('GET', '/pos/context');
+  }
+
+  Future<Map<String, Object?>> bukaShift({
+    required String terminalId,
+    required num openingCash,
+    String? note,
+  }) async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>>(
+      'POST',
+      '/pos/shifts/open',
+      body: {
+        'terminalId': terminalId,
+        'openingCash': openingCash,
+        if ((note ?? '').trim().isNotEmpty) 'note': note!.trim(),
+      },
+    );
+  }
+
+  Future<List<Map<String, Object?>>> daftarPenjualanApotik() async {
+    await pastikanMasuk();
+    final data = await _request<List<Object?>>(
+        'GET', '/health/pharmacy/pos-sales?limit=200');
+    return data.whereType<Map<String, Object?>>().toList();
+  }
+
+  Future<Map<String, Object?>> detailPenjualan(String saleId) async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>>('GET', '/pos/sales/$saleId');
+  }
+
+  Future<Map<String, Object?>> cetakUlang(String saleId, String reason) async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>>(
+      'POST',
+      '/pos/sales/$saleId/receipt/reprint',
+      body: {
+        'reason':
+            reason.trim().isEmpty ? 'Cetak ulang POS Apotik' : reason.trim()
+      },
+    );
+  }
+
+  Future<Map<String, Object?>> ajukanVoid(String saleId, String reason) async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>>(
+      'POST',
+      '/pos/sales/$saleId/void-request',
+      body: {'reason': reason.trim()},
+    );
+  }
+
+  Future<Map<String, Object?>> setujuiVoid(String saleId, String reason) async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>>(
+      'POST',
+      '/pos/sales/$saleId/void-approve',
+      body: {'reason': reason.trim()},
+    );
+  }
+
+  Future<Map<String, Object?>> ajukanRetur({
+    required String saleId,
+    required String reason,
+    required List<Map<String, Object?>> lines,
+  }) async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>>(
+      'POST',
+      '/pos/sales/$saleId/returns',
+      headers: {
+        'Idempotency-Key':
+            'flutter-return-$saleId-${DateTime.now().microsecondsSinceEpoch}'
+      },
+      body: {'reason': reason.trim(), 'lines': lines},
+    );
+  }
+
   Future<String> bukukan({
     required SesiKasirApi sesi,
     required TransaksiKasir transaksi,

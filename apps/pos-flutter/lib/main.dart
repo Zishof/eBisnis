@@ -19,6 +19,7 @@ import 'aturan/harga_luring.dart';
 import 'aturan/koneksi.dart';
 import 'inventory/inventory_app.dart';
 import 'layar/layar_kasir.dart';
+import 'layar/operasi_apotik.dart';
 import 'layar/sumber.dart';
 import 'layar/tampilan_pelanggan.dart';
 import 'layar/tema.dart';
@@ -51,6 +52,7 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
   _PersonaSalon? _persona;
   PosApiClient? _clientApotik;
   _SumberKasir? _sumberApotik;
+  Map<String, Object?>? _konteksApotik;
   bool get _modeApotik {
     if (widget.modeApotikOverride != null) return widget.modeApotikOverride!;
     const mode = String.fromEnvironment('POS_MODE');
@@ -206,6 +208,16 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
     if (_modeApotik) {
       final sumber = _sumberApotik;
       if (sumber == null) {
+        final client = _clientApotik;
+        final konteks = _konteksApotik;
+        if (client != null && konteks != null) {
+          return BukaShiftApotikPage(
+            client: client,
+            contextData: konteks,
+            onShiftOpened: () => _aktifkanApotik(client),
+            onLogout: _keluarApotik,
+          );
+        }
         return _LoginApotik(onMasuk: _masukApotik);
       }
       return LayarKasir(
@@ -221,6 +233,7 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
         pembaruan: _pembaruan,
         pembukuan: sumber.pembukuan,
         mode: ModeKasir.apotik,
+        apiClient: _clientApotik,
         onKeluar: _keluarApotik,
       );
     }
@@ -272,6 +285,20 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
       username: username,
       password: password,
     );
+    await client.pastikanMasuk();
+    final konteks = await client.konteks();
+    if (konteks['openShift'] == null) {
+      if (!mounted) return;
+      setState(() {
+        _clientApotik = client;
+        _konteksApotik = konteks;
+      });
+      return;
+    }
+    await _aktifkanApotik(client);
+  }
+
+  Future<void> _aktifkanApotik(PosApiClient client) async {
     final boot = await client.bootstrap();
     final sesi = boot.sesi;
     final sumber = _SumberKasir(
@@ -282,13 +309,14 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
       shift: sesi.shiftNumber ?? sesi.businessDate,
       koneksi: KeadaanKoneksi.daring,
       namaPengguna:
-          client.displayName ?? client.authenticatedUsername ?? username,
+          client.displayName ?? client.authenticatedUsername ?? 'apoteker',
       pembukuan: (transaksi) =>
           client.bukukan(sesi: sesi, transaksi: transaksi),
     );
     if (!mounted) return;
     setState(() {
       _clientApotik = client;
+      _konteksApotik = null;
       _sumberApotik = sumber;
     });
   }
@@ -297,6 +325,7 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
     final client = _clientApotik;
     setState(() {
       _clientApotik = null;
+      _konteksApotik = null;
       _sumberApotik = null;
     });
     if (client != null) unawaited(client.keluar());

@@ -281,6 +281,9 @@ const PharmacyPosPage = lazy(() =>
 const PharmacyTradePage = lazy(() =>
   import('../pages/pos/PharmacyTradePage').then((m) => ({ default: m.PharmacyTradePage })),
 );
+const PharmacyOperationsPage = lazy(() =>
+  import('../pages/pos/PharmacyOperationsPage').then((m) => ({ default: m.PharmacyOperationsPage })),
+);
 const PosReportPage = lazy(() =>
   import('../pages/pos/PosReportPage').then((m) => ({ default: m.PosReportPage })),
 );
@@ -676,6 +679,11 @@ export function App() {
           <Route path="apotik/penjualan" element={<PharmacyTradePage area="sales" />} />
           <Route path="apotik/pembelian" element={<PharmacyTradePage area="purchasing" />} />
           <Route path="apotik/racikan" element={<PharmacyTradePage area="compound" />} />
+          <Route path="apotik/riwayat" element={<PharmacyOperationsPage area="history" />} />
+          <Route path="apotik/retur" element={<PharmacyOperationsPage area="return" />} />
+          <Route path="apotik/void" element={<PharmacyOperationsPage area="void" />} />
+          <Route path="apotik/perangkat" element={<PharmacyOperationsPage area="devices" />} />
+          <Route path="apotik/shift" element={<PharmacyOperationsPage area="shift" />} />
           <Route path="pos/laporan" element={<PosReportPage />} />
           <Route path="pos/aturan-diskon" element={<PosPromotionPage />} />
           <Route path="portal-pelanggan" element={<PortalPelangganAdminPage />} />
