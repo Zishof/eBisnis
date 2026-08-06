@@ -1,5 +1,61 @@
 # Changelog — Hospitality (MitraInap.id)
 
+## 2026-08-06 — MI-6: Room Inventory dan Availability
+
+- Migrasi tenant baru `20260806T090000__hospitality__inventory_availability.sql`:
+  - `hospitality_room_block` -- ledger PENGECUALIAN ketersediaan per kamar
+    per malam (BLOCKED/OUT_OF_ORDER/OUT_OF_SERVICE). Hanya malam yang TIDAK
+    tersedia disimpan sebagai baris -- ketiadaan baris berarti tersedia.
+    `UNIQUE (room_id, stay_date) WHERE deleted_at IS NULL` adalah penjaga
+    kondisi pacu.
+  - `overbooking_limit` pada `hospitality_room_type` -- kebijakan alotmen;
+    penegakannya sendiri (menolak reservasi melebihi limit) menyusul MI-8.
+  - `features` (TEXT[]) pada `hospitality_room` -- tag bebas
+    aksesibilitas/merokok/pemandangan, bukan tabel katalog (BRD belum
+    menetapkan daftar baku).
+- Backend: `HospitalityRoomBlockService`/`.controller.ts` --
+  `POST .../kamar/:id/blok` (upsert per malam dalam satu transaksi lewat
+  `INSERT ... ON CONFLICT ... DO UPDATE`), `POST .../buka-blokir`,
+  `GET .../tipe-kamar/:id/ketersediaan` (dihitung langsung dari baris
+  blokir yang ada, bukan penghitung tersimpan -- tidak perlu rekonsiliasi
+  terpisah). `hospitality-properti.service.ts` diperluas menerima
+  `features` saat mencatat kamar.
+- Web: `HospitalityPropertiPage` diperluas -- kolom Fitur pada tabel
+  kamar, tombol "Blokir" per kamar (modal rentang tanggal + status +
+  alasan), dan panel "Ketersediaan" (pemilih tanggal + tabel per malam)
+  untuk tipe kamar yang dipilih.
+- **Kondisi pacu dan rekonsiliasi diverifikasi NYATA** (perintah master
+  §MI-6 mewajibkan ini) -- bukan uji Jest tiruan, sebab `pnpm test` di
+  kodebase ini TIDAK PERNAH menyentuh basis data sesungguhnya (diperiksa:
+  seluruh spec lain memakai `TenantConnectionService` tiruan). Verifikasi
+  dilakukan lewat skrip nyata terhadap Postgres lokal:
+  - 10 permintaan blokir BERSAMAAN (`Promise.all`, masing-masing koneksi
+    dan transaksi terpisah, meniru 10 permintaan HTTP paralel) untuk
+    kamar+tanggal yang SAMA menghasilkan TEPAT SATU baris ledger (bukan
+    10, bukan gagal) -- constraint unik + `ON CONFLICT DO UPDATE`
+    terbukti benar di bawah beban konkuren sungguhan.
+  - Ketersediaan dihitung ulang dari status LIVE, bukan penghitung
+    tersimpan: memblokir 1 kamar menurunkan `tersedia` seketika,
+    menghapus 1 kamar (soft-delete) menurunkan `total_kamar` seketika --
+    tanpa langkah rekonsiliasi terpisah, sebab tidak ada nilai yang
+    di-cache untuk basi.
+  - Migrasi diterapkan ke tenant nyata (`admin_raudlatululum`) via
+    `migrate:tenants --schema`; endpoint blok/buka-blokir/ketersediaan
+    diuji lewat login sungguhan + curl (ketersediaan turun dari 1 ke 0
+    setelah blokir, kembali ke 1 setelah dibuka; validasi checkout<=checkin
+    ditolak 400).
+  - Halaman `/app/hospitality/properti` diverifikasi peramban sungguhan:
+    kolom Fitur, tombol Blokir, dan panel Ketersediaan menampilkan data
+    nyata dari API (2 kamar, ketersediaan 2 pada rentang netral).
+- Diverifikasi: `pnpm test` (153 suite API/3991 test, 42 berkas web/510
+  test) LULUS, `tsc --noEmit` LULUS, `pnpm lint` bersih dari perubahan ini.
+
+Belum dikerjakan dan sengaja ditunda: penegakan `overbooking_limit`
+(baru konfigurasi, belum ada reservasi yang bisa ditolak/diterima
+olehnya -- menyusul MI-8); status `SOLD` pada `hospitality_room_block`
+(hanya MANUAL hari ini; `source: 'RESERVATION'` sudah disiapkan di
+CHECK constraint supaya MI-8 tidak perlu migrasi lagi).
+
 ## 2026-08-06 — Kesesuaian merek dengan mockup UI yang diberikan pengguna
 
 Pengguna melampirkan 10 mockup UI MitraInap (portal publik, dashboard,

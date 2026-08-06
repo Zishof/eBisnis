@@ -5,7 +5,7 @@
 
 import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
 import { HospitalityPropertiService } from './hospitality-properti.service';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
@@ -63,6 +63,10 @@ class CatatKamarDto {
   @ApiPropertyOptional({ example: '1' })
   @IsOptional() @IsString() @MaxLength(16)
   lantai?: string;
+
+  @ApiPropertyOptional({ example: ['CITY_VIEW', 'NON_SMOKING'] })
+  @IsOptional() @IsArray() @IsString({ each: true })
+  features?: string[];
 }
 
 @ApiTags('hospitality')

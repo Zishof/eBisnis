@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Ban, Plus } from 'lucide-react';
 import { api, formatDate } from '../../../lib/api';
 import { DataGrid, PageHeader, useToast, type GridColumn } from '../../../components/ui';
 import { useErrorMessage } from '../../../app/auth-context';
+
+const STATUS_BLOKIR = ['BLOCKED', 'OUT_OF_ORDER', 'OUT_OF_SERVICE'];
 
 interface PropertiRow extends Record<string, unknown> {
   id: string;
@@ -33,7 +35,16 @@ interface KamarRow extends Record<string, unknown> {
   nomor_kamar: string;
   lantai: string | null;
   status: string;
+  features: string[];
   created_at: string;
+}
+
+interface Ketersediaan {
+  room_type_id: string;
+  total_kamar: number;
+  overbooking_limit: number;
+  tersedia: number;
+  per_malam: Array<{ tanggal: string; tersedia: number }>;
 }
 
 /**
@@ -57,7 +68,10 @@ export function HospitalityPropertiPage() {
   const [tambahKamar, setTambahKamar] = useState(false);
   const [formProperti, setFormProperti] = useState({ code: '', nama: '', timezone: 'Asia/Jakarta', alamat: '' });
   const [formTipeKamar, setFormTipeKamar] = useState({ code: '', nama: '', okupansiMaks: '2', deskripsi: '' });
-  const [formKamar, setFormKamar] = useState({ nomorKamar: '', lantai: '' });
+  const [formKamar, setFormKamar] = useState({ nomorKamar: '', lantai: '', features: '' });
+  const [kamarDiblokir, setKamarDiblokir] = useState<KamarRow | null>(null);
+  const [formBlokir, setFormBlokir] = useState({ checkin: '', checkout: '', status: 'OUT_OF_ORDER', alasan: '' });
+  const [rentangKetersediaan, setRentangKetersediaan] = useState({ checkin: '', checkout: '' });
 
   const daftarProperti = useQuery({
     queryKey: ['hospitality-properti'],
@@ -77,6 +91,16 @@ export function HospitalityPropertiPage() {
   });
 
   const kamarTipeIni = (daftarKamar.data ?? []).filter((k) => k.room_type_id === tipeKamarDipilih?.id);
+
+  const ketersediaan = useQuery({
+    queryKey: ['hospitality-ketersediaan', tipeKamarDipilih?.id, rentangKetersediaan.checkin, rentangKetersediaan.checkout],
+    queryFn: () =>
+      api.get<Ketersediaan>(
+        `/hospitality/properti/${propertiDipilih!.id}/tipe-kamar/${tipeKamarDipilih!.id}/ketersediaan` +
+          `?checkin=${rentangKetersediaan.checkin}&checkout=${rentangKetersediaan.checkout}`,
+      ),
+    enabled: !!tipeKamarDipilih && !!rentangKetersediaan.checkin && !!rentangKetersediaan.checkout,
+  });
 
   const catatProperti = useMutation({
     mutationFn: () => api.post<PropertiRow>('/hospitality/properti', formProperti),
@@ -112,14 +136,34 @@ export function HospitalityPropertiPage() {
         roomTypeId: tipeKamarDipilih!.id,
         nomorKamar: formKamar.nomorKamar,
         lantai: formKamar.lantai || undefined,
+        features: formKamar.features
+          ? formKamar.features.split(',').map((f) => f.trim().toUpperCase()).filter(Boolean)
+          : undefined,
       }),
     onSuccess: () => {
       toast.push('Kamar berhasil dicatat.', 'success');
       setTambahKamar(false);
-      setFormKamar({ nomorKamar: '', lantai: '' });
+      setFormKamar({ nomorKamar: '', lantai: '', features: '' });
       void queryClient.invalidateQueries({ queryKey: ['hospitality-kamar', propertiDipilih?.id] });
     },
     onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal menyimpan.'), 'error'),
+  });
+
+  const blokirMutasi = useMutation({
+    mutationFn: () =>
+      api.post(`/hospitality/properti/${propertiDipilih!.id}/kamar/${kamarDiblokir!.id}/blok`, {
+        checkin: formBlokir.checkin,
+        checkout: formBlokir.checkout,
+        status: formBlokir.status,
+        alasan: formBlokir.alasan || undefined,
+      }),
+    onSuccess: () => {
+      toast.push('Kamar berhasil diblokir untuk rentang tanggal tersebut.', 'success');
+      setKamarDiblokir(null);
+      setFormBlokir({ checkin: '', checkout: '', status: 'OUT_OF_ORDER', alasan: '' });
+      void queryClient.invalidateQueries({ queryKey: ['hospitality-ketersediaan'] });
+    },
+    onError: (error) => toast.push(toMessage(error, (_key, fallback) => fallback ?? 'Gagal memblokir kamar.'), 'error'),
   });
 
   const kolomProperti: Array<GridColumn<PropertiRow>> = [
@@ -163,7 +207,25 @@ export function HospitalityPropertiPage() {
     { key: 'nomor_kamar', header: 'Nomor Kamar' },
     { key: 'lantai', header: 'Lantai', render: (row) => row.lantai ?? '—' },
     { key: 'status', header: 'Status' },
-    { key: 'created_at', header: 'Dicatat', render: (row) => formatDate(row.created_at) },
+    {
+      key: 'features',
+      header: 'Fitur',
+      render: (row) => (row.features?.length ? row.features.join(', ') : '—'),
+    },
+    {
+      key: 'aksi',
+      header: '',
+      render: (row) => (
+        <button
+          type="button"
+          className="btn-outline inline-flex items-center gap-1"
+          onClick={() => setKamarDiblokir(row)}
+        >
+          <Ban className="h-3.5 w-3.5" aria-hidden />
+          Blokir
+        </button>
+      ),
+    },
   ];
 
   return (
@@ -245,6 +307,72 @@ export function HospitalityPropertiPage() {
         </div>
       </div>
 
+      {tipeKamarDipilih && (
+        <div className="card mt-6 p-5">
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            Ketersediaan — {tipeKamarDipilih.nama}
+          </h2>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <Field label="Check-in">
+              <input
+                type="date"
+                className="field-input"
+                value={rentangKetersediaan.checkin}
+                onChange={(e) => setRentangKetersediaan({ ...rentangKetersediaan, checkin: e.target.value })}
+              />
+            </Field>
+            <Field label="Check-out">
+              <input
+                type="date"
+                className="field-input"
+                value={rentangKetersediaan.checkout}
+                onChange={(e) => setRentangKetersediaan({ ...rentangKetersediaan, checkout: e.target.value })}
+              />
+            </Field>
+          </div>
+
+          {ketersediaan.isLoading && rentangKetersediaan.checkin && (
+            <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">Menghitung...</p>
+          )}
+          {ketersediaan.isError && (
+            <p className="mt-4 text-sm text-rose-600 dark:text-rose-400">
+              {toMessage(ketersediaan.error, (_key, fallback) => fallback ?? 'Gagal menghitung ketersediaan.')}
+            </p>
+          )}
+          {ketersediaan.data && (
+            <div className="mt-4">
+              <div className="flex flex-wrap gap-6 text-sm">
+                <span>
+                  Total kamar: <strong>{ketersediaan.data.total_kamar}</strong>
+                </span>
+                <span>
+                  Alotmen tambahan: <strong>{ketersediaan.data.overbooking_limit}</strong>
+                </span>
+                <span>
+                  Tersedia untuk seluruh rentang: <strong>{ketersediaan.data.tersedia}</strong>
+                </span>
+              </div>
+              <table className="mt-3 w-full text-sm">
+                <thead>
+                  <tr className="text-start text-xs uppercase text-slate-500 dark:text-slate-400">
+                    <th className="py-1 text-start">Tanggal</th>
+                    <th className="py-1 text-start">Tersedia (malam itu)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ketersediaan.data.per_malam.map((m) => (
+                    <tr key={m.tanggal} className="border-t border-slate-100 dark:border-slate-800">
+                      <td className="py-1">{formatDate(m.tanggal)}</td>
+                      <td className="py-1">{m.tersedia}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {tambahProperti && (
         <Modal judul="Tambah Properti" onClose={() => setTambahProperti(false)}>
           <Field label="Kode *">
@@ -297,10 +425,65 @@ export function HospitalityPropertiPage() {
           <Field label="Lantai">
             <input className="field-input" value={formKamar.lantai} onChange={(e) => setFormKamar({ ...formKamar, lantai: e.target.value })} />
           </Field>
+          <Field label="Fitur (pisahkan dengan koma)">
+            <input
+              className="field-input"
+              placeholder="CITY_VIEW, NON_SMOKING, BALCONY"
+              value={formKamar.features}
+              onChange={(e) => setFormKamar({ ...formKamar, features: e.target.value })}
+            />
+          </Field>
           <ModalFooter
             onBatal={() => setTambahKamar(false)}
             onSimpan={() => catatKamar.mutate()}
             simpanDisabled={!formKamar.nomorKamar || catatKamar.isPending}
+          />
+        </Modal>
+      )}
+
+      {kamarDiblokir && (
+        <Modal judul={`Blokir Kamar — ${kamarDiblokir.nomor_kamar}`} onClose={() => setKamarDiblokir(null)}>
+          <Field label="Check-in *">
+            <input
+              type="date"
+              className="field-input"
+              value={formBlokir.checkin}
+              onChange={(e) => setFormBlokir({ ...formBlokir, checkin: e.target.value })}
+            />
+          </Field>
+          <Field label="Check-out *">
+            <input
+              type="date"
+              className="field-input"
+              value={formBlokir.checkout}
+              onChange={(e) => setFormBlokir({ ...formBlokir, checkout: e.target.value })}
+            />
+          </Field>
+          <Field label="Status *">
+            <select
+              className="field-input"
+              value={formBlokir.status}
+              onChange={(e) => setFormBlokir({ ...formBlokir, status: e.target.value })}
+            >
+              {STATUS_BLOKIR.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Alasan">
+            <textarea
+              className="field-input"
+              rows={2}
+              value={formBlokir.alasan}
+              onChange={(e) => setFormBlokir({ ...formBlokir, alasan: e.target.value })}
+            />
+          </Field>
+          <ModalFooter
+            onBatal={() => setKamarDiblokir(null)}
+            onSimpan={() => blokirMutasi.mutate()}
+            simpanDisabled={!formBlokir.checkin || !formBlokir.checkout || blokirMutasi.isPending}
           />
         </Modal>
       )}
