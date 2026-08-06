@@ -417,6 +417,16 @@ const MitrainapFaqPage = lazy(() =>
     default: m.MitrainapFaqPage,
   })),
 );
+const MitrainapPesanPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapPesanPage').then((m) => ({
+    default: m.MitrainapPesanPage,
+  })),
+);
+const MitrainapKelolaPesananPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapKelolaPesananPage').then((m) => ({
+    default: m.MitrainapKelolaPesananPage,
+  })),
+);
 
 /**
  * Apa yang dilihat pengunjung di akar situs, menurut alamat yang ia ketik.
@@ -561,6 +571,13 @@ export function App() {
           <Route index element={<MitrainapHomePage />} />
           <Route path="solusi" element={<MitrainapSolusiPage />} />
           <Route path="faq" element={<MitrainapFaqPage />} />
+          {/*
+            Booking engine publik (MI-9). schemaName/propertyId eksplisit pada
+            jalur URL -- lihat catatan di hospitality-booking-engine.controller.ts
+            (MI-3/subdomain properti belum ada).
+          */}
+          <Route path="pesan/:schemaName/:propertyId" element={<MitrainapPesanPage />} />
+          <Route path="kelola-pesanan/:schemaName" element={<MitrainapKelolaPesananPage />} />
           {/*
             Masuk BERBEDA dari `/masuk` global: `LoginPage` yang sama, dibungkus
             `MitrainapLayout` alih-alih `PublicLayout` supaya pengunjung

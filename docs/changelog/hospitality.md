@@ -1,5 +1,94 @@
 # Changelog — Hospitality (MitraInap.id)
 
+## 2026-08-06 — MI-9: Direct Booking Engine
+
+- Migrasi tenant baru `20260806T180000__hospitality__booking_engine.sql`:
+  satu kolom, `published_rate_amount` pada `hospitality_room_type` --
+  MI-10 (Rate Management) belum ada, jadi tarif publik ditetapkan staf
+  secara manual per tipe kamar (`NULL` berarti tidak dijual lewat kanal
+  langsung). Mekanisme sudah ada; MI-10 nanti mengganti sumbernya, bukan
+  mekanismenya (pola sama dengan `rate_amount` MI-8 dan
+  `overbooking_limit` MI-6).
+- **Endpoint publik menerima `schemaName` eksplisit pada jalur URL**
+  (`/public/hospitality/:schemaName/...`), BUKAN resolusi host/subdomain
+  (`PublicTenantResolver`, pola `pesantren-public.service.ts`) --
+  MI-3 (subdomain properti) masih diblokir, belum ada satu pun penyewa
+  hospitality yang di-provision dengan domain publik. Transaksinya
+  sendiri (pencarian, validasi, pemesanan, kelola) sudah nyata dan
+  teruji; yang menyusul MI-3 hanyalah cara pengunjung tiba di URL yang
+  benar.
+- Backend: `HospitalityBookingEngineService`/`.controller.ts` (seluruhnya
+  `@Public()`) -- `cariKetersediaan` (tipe kamar terpublikasi + tersedia,
+  dihitung ulang dari state MI-6/MI-8 yang sama, bukan cache),
+  `pesanPublik` (mencari/menyatukan profil tamu lewat email ATAU
+  telepon, menolak tamu do-not-rent dengan pesan yang SENGAJA tidak
+  menjelaskan alasan ke layar publik, lalu memanggil ULANG
+  `HospitalityReservationService.catatReservasi()` -- bukan implementasi
+  kedua, supaya jalur publik mewarisi jaminan kapasitas/idempotensi yang
+  SAMA persis dengan jalur staf), `lihatPemesanan`/`batalkanPemesanan`
+  (verifikasi kontak, bukan kode saja -- kode mudah diterka berurutan;
+  ketidakcocokan dijawab NOT_FOUND yang sama dengan kode yang tidak ada,
+  supaya tebakan tidak dapat membedakan keduanya).
+- `hospitality-properti.service.ts` diperluas: `aturTarifPublik()` (staf
+  menetapkan/membuka tarif publik tipe kamar).
+- Web: `MitrainapPesanPage` (`/mitrainap/pesan/:schemaName/:propertyId`)
+  -- cari, hasil dengan total transparan (tidak ada biaya tersembunyi),
+  formulir data pemesan, konfirmasi. `MitrainapKelolaPesananPage`
+  (`/mitrainap/kelola-pesanan/:schemaName`) -- lihat dan batalkan mandiri.
+  Idempotency-Key dibuat lewat `crypto.randomUUID()` di klien.
+- **Tanpa dark pattern, tanpa pemesanan/pembayaran ganda** (WAJIB
+  menurut perintah master): total selalu ditampilkan utuh sebelum
+  memesan (rate x malam, bukan angka yang muncul belakangan); tidak ada
+  indikator urgensi palsu ("X orang sedang melihat ini") -- "kamar
+  tersisa" yang ditampilkan adalah hitungan ketersediaan NYATA, bukan
+  angka rekaan; pembayaran HANYA "bayar di properti" -- tidak ada
+  gerbang pembayaran daring yang dikarang (kredensial provider
+  pembayaran untuk hospitality tidak dimiliki sesi ini, sama seperti
+  OTA/GDS, lihat §Blocker perintah master); tanpa pemesanan ganda
+  ditegakkan lewat Idempotency-Key WAJIB (bukan opsional seperti jalur
+  staf) + kondisi pacu kapasitas MI-8 yang diwarisi otomatis.
+- Sengaja BELUM ADA: add-on/layanan tambahan (dipakai `permintaanKhusus`
+  bebas teks sebagai jalan sementara -- katalog add-on terstruktur
+  menyusul saat benar-benar ada modulnya); alur pemulihan keranjang
+  ditinggalkan ("abandoned/recovery flow", butuh infrastruktur
+  notifikasi/email yang belum diputuskan); waitlist (sudah ditunda sejak
+  MI-8).
+- **Bug ditemukan dan diperbaiki saat verifikasi peramban sungguhan**:
+  `HospitalityBookingEngineController.pesan()` mengembalikan
+  `{ reservasi, diulang }` bersarang, sedangkan halaman
+  `MitrainapPesanPage` mengharapkan objek reservasi rata (pola yang sama
+  dengan `HospitalityReservationController.catat()` sisi staf) --
+  akibatnya `konfirmasi.room_stays.map(...)` gagal dengan
+  "Cannot read properties of undefined". Diperbaiki dengan meratakan
+  respons di controller publik, mengikuti pola yang SAMA dengan
+  controller staf. Ditemukan lewat pengujian peramban sungguhan (bukan
+  `tsc`/lint -- keduanya tidak menangkap ketidakcocokan bentuk data
+  runtime seperti ini).
+- **Diverifikasi NYATA** terhadap Postgres lokal, tenant nyata
+  (`admin_raudlatululum` via `migrate:tenants --schema`), dan peramban
+  sungguhan:
+  - Tipe kamar tanpa `published_rate_amount` TIDAK muncul di pencarian
+    publik; setelah staf menetapkan tarif, muncul dengan total yang
+    benar (tarif x malam).
+  - Pemesanan publik (tanpa token/login) berhasil membuat reservasi
+    `CONFIRMED`, sumber `WEBSITE`, memakai ULANG mesin MI-8 sepenuhnya.
+  - Idempotency-Key yang sama diulang mengembalikan kode reservasi yang
+    PERSIS sama; permintaan tanpa Idempotency-Key ditolak 400; percobaan
+    kedua untuk kamar yang sudah penuh ditolak CONFLICT.
+  - Lihat pemesanan dengan kontak SALAH dan kode yang TIDAK ADA
+    keduanya menjawab 404 yang sama (tidak ada kebocoran informasi).
+    Pembatalan mandiri dengan kontak benar berhasil, dan ketersediaan
+    pulih seketika (rekonsiliasi live yang sama dengan MI-6/MI-8).
+  - Tamu yang ditandai do-not-rent (MI-7) lewat layar staf DITOLAK saat
+    mencoba memesan lewat booking engine PUBLIK dengan kontak yang sama
+    -- integrasi lintas modul teruji dari sisi publik, bukan cuma staf.
+  - Alur penuh (cari -> pilih -> isi data -> pesan -> konfirmasi) dan
+    kelola pemesanan (cari kode+kontak -> lihat -> batalkan) diuji lewat
+    peramban sungguhan setelah perbaikan bug di atas, keduanya
+    menampilkan data API yang sama persis dengan hasil curl.
+- `pnpm test` (156 suite API/4037 test, 42 berkas web/510 test) LULUS
+  penuh; `tsc --noEmit` LULUS; `pnpm lint` bersih dari perubahan ini.
+
 ## 2026-08-06 — MI-8: Reservation dan CRS
 
 - Migrasi tenant baru `20260806T150000__hospitality__reservation.sql`:

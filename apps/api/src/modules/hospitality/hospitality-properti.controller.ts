@@ -5,7 +5,7 @@
 
 import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { IsArray, IsInt, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsInt, IsNumber, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
 import { HospitalityPropertiService } from './hospitality-properti.service';
 import { AuthenticatedUser, CurrentUser, Permissions } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
@@ -49,6 +49,15 @@ class CatatTipeKamarDto {
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000)
   deskripsi?: string;
+}
+
+class AturTarifPublikDto {
+  @ApiPropertyOptional({
+    description: 'Tarif per malam yang dipublikasikan ke booking engine. Kosongkan (null) untuk membuka publikasi.',
+    example: 850000,
+  })
+  @IsOptional() @IsNumber()
+  amount?: number | null;
 }
 
 class CatatKamarDto {
@@ -107,6 +116,18 @@ export class HospitalityPropertiController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.properti.catatTipeKamar(schemaWajib(user), propertyId, dto, user.userId);
+  }
+
+  @Permissions('HOSPITALITY_PROPERTI.UPDATE')
+  @Post(':id/tipe-kamar/:roomTypeId/tarif-publik')
+  @ApiOperation({ summary: 'Menetapkan atau membuka tarif publik tipe kamar (booking engine, MI-9)' })
+  aturTarifPublik(
+    @Param('id') propertyId: string,
+    @Param('roomTypeId') roomTypeId: string,
+    @Body() dto: AturTarifPublikDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.properti.aturTarifPublik(schemaWajib(user), propertyId, roomTypeId, dto.amount ?? null, user.userId);
   }
 
   @Permissions('HOSPITALITY_PROPERTI.READ')

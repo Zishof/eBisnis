@@ -33,6 +33,7 @@ export interface BarisTipeKamar {
   nama: string;
   okupansi_maks: number;
   deskripsi: string | null;
+  published_rate_amount: string | null;
   created_at: string;
 }
 
@@ -98,12 +99,49 @@ export class HospitalityPropertiService {
     return this.tenantDb.query<BarisTipeKamar>(
       schemaName,
       `SELECT id::text, property_id::text, code, name AS nama, max_occupancy AS okupansi_maks,
-              description AS deskripsi, created_at::text
+              description AS deskripsi, published_rate_amount::text, created_at::text
          FROM ${S}.hospitality_room_type
         WHERE property_id = $1 AND deleted_at IS NULL
         ORDER BY sort_order ASC, name ASC`,
       [propertyId],
     );
+  }
+
+  /**
+   * Menetapkan (atau membuka) tarif publik tipe kamar (MI-9).
+   *
+   * `null` berarti tipe kamar ini TIDAK muncul di pencarian booking engine
+   * publik -- staf sengaja belum ingin menjualnya lewat kanal langsung.
+   */
+  async aturTarifPublik(
+    schemaName: string,
+    propertyId: string,
+    roomTypeId: string,
+    amount: number | null,
+    actorUserId: string,
+  ): Promise<BarisTipeKamar> {
+    const S = `"${schemaName}"`;
+    const existing = await this.tenantDb.queryOne(
+      schemaName,
+      `SELECT id FROM ${S}.hospitality_room_type WHERE id = $1 AND property_id = $2 AND deleted_at IS NULL`,
+      [roomTypeId, propertyId],
+    );
+    if (!existing) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Tipe kamar tidak ditemukan pada properti ini.');
+    }
+    if (amount !== null && (typeof amount !== 'number' || Number.isNaN(amount) || amount < 0)) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Tarif publik harus angka, tidak boleh negatif.');
+    }
+    const rows = await this.tenantDb.query<BarisTipeKamar>(
+      schemaName,
+      `UPDATE ${S}.hospitality_room_type
+          SET published_rate_amount = $3, updated_at = now(), updated_by = $4, version = version + 1
+        WHERE id = $1 AND property_id = $2
+        RETURNING id::text, property_id::text, code, name AS nama, max_occupancy AS okupansi_maks,
+                  description AS deskripsi, published_rate_amount::text, created_at::text`,
+      [roomTypeId, propertyId, amount, actorUserId],
+    );
+    return rows[0];
   }
 
   async catatTipeKamar(
@@ -132,7 +170,7 @@ export class HospitalityPropertiService {
            (property_id, code, name, max_occupancy, description, created_by, updated_by)
          VALUES ($1, $2, $3, $4, $5, $6, $6)
          RETURNING id::text, property_id::text, code, name AS nama, max_occupancy AS okupansi_maks,
-                   description AS deskripsi, created_at::text`,
+                   description AS deskripsi, published_rate_amount::text, created_at::text`,
         [
           propertyId,
           masukan.code!.trim(),
