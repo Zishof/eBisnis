@@ -176,12 +176,13 @@ export const KATALOG_PORTAL: PortalKatalog[] = [
      * vertical yang sudah ada. §8.1 perintah master MitraInap V14 menetapkan
      * kode portal, kode vertical, dan host apex/app persis seperti di bawah.
      *
-     * `demo.mitrainap.id` SENGAJA belum didaftarkan di sini. Perintah master
-     * memintanya sandboxed dan resettable -- perilaku yang belum ada
-     * implementasinya (menyusul fase demo/sample data). Mendaftarkan hostnya
-     * sekarang tanpa perilaku di baliknya berarti domain yang aktif tapi tidak
-     * menjawab apa-apa secara berarti; lebih jujur menunda pendaftarannya ke
-     * fase yang benar-benar membangun perilaku itu.
+     * `demo.mitrainap.id` (MI-3): didaftarkan sebagai domain portal supaya
+     * `resolveDemoSchema()` (auth.service.ts) mencocokkannya ke `demoSchema`
+     * di bawah -- persis mekanisme yang sudah dipakai `ponpes_demo` untuk
+     * santri.info, TIDAK ditulis ulang. Tenant `mitrainap_demo` sendiri
+     * disiapkan `deploy/ensure-demo-mitrainap.sh` (pola sama dengan
+     * `ensure-demo-pesantren.sh`) lewat endpoint pendaftaran publik yang
+     * sama yang dipakai penyewa sungguhan -- bukan jalur/skema khusus.
      */
     code: 'MITRAINAP',
     name: 'MitraInap.id',
@@ -195,7 +196,12 @@ export const KATALOG_PORTAL: PortalKatalog[] = [
       { host: 'mitrainap.id', kind: 'PUBLIC', isCanonical: true },
       { host: 'www.mitrainap.id', kind: 'PUBLIC', isCanonical: false },
       { host: 'app.mitrainap.id', kind: 'APP', isCanonical: true },
+      { host: 'demo.mitrainap.id', kind: 'PUBLIC', isCanonical: false },
     ],
+    demoSchema: 'mitrainap_demo',
+    // String literal, bukan impor -- alasan sama dengan `demoDefaultRole:
+    // 'EPESANTREN_ADMIN'` pada entri SANTRI_INFO di atas.
+    demoDefaultRole: 'HOSPITALITY_ADMIN',
   },
   {
     code: 'EKOPERASI',

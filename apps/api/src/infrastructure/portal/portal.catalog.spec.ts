@@ -14,6 +14,7 @@ import {
 import { LABEL_TERPESAN, bolehMencariPortal } from './portal-host';
 import { normalkanHost } from '../tenant/public-host';
 import { PESANTREN_ROLES } from '../../modules/pesantren/rbac/pesantren-vertical.catalog';
+import { HOSPITALITY_ROLES } from '../../modules/hospitality/rbac/hospitality-vertical.catalog';
 
 describe('katalog portal', () => {
   it('memuat tepat portal yang diminta', () => {
@@ -157,10 +158,13 @@ describe('katalog portal', () => {
      * Uji ini mengikat literalnya ke katalog peran sungguhan supaya galat
      * ketik semacam itu gagal di sini, bukan di produksi.
      */
-    const kodePeranPesantren = new Set(PESANTREN_ROLES.map((r) => r.code));
+    const kodePeranDikenal = new Set([
+      ...PESANTREN_ROLES.map((r) => r.code),
+      ...HOSPITALITY_ROLES.map((r) => r.code),
+    ]);
     for (const p of KATALOG_PORTAL) {
       if (!p.demoDefaultRole) continue;
-      expect(kodePeranPesantren.has(p.demoDefaultRole)).toBe(true);
+      expect(kodePeranDikenal.has(p.demoDefaultRole)).toBe(true);
     }
   });
 

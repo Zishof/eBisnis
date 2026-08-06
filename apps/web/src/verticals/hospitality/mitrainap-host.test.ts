@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   LABEL_TERPESAN_MITRAINAP,
+  isMitrainapDemoHost,
   isMitrainapPortalHost,
   slugPropertiDariHost,
 } from './mitrainap-host';
@@ -32,6 +33,23 @@ describe('host portal', () => {
     for (const h of ['ebisnis.id', 'mitrainap.id.evil.com', 'notmitrainap.id', 'mitrainap.idmedia.id']) {
       expect(isMitrainapPortalHost(h)).toBe(false);
     }
+  });
+});
+
+describe('host demo', () => {
+  it('demo.mitrainap.id adalah host demo', () => {
+    expect(isMitrainapDemoHost('demo.mitrainap.id')).toBe(true);
+    expect(isMitrainapDemoHost('DEMO.MITRAINAP.ID')).toBe(true);
+  });
+
+  it('bukan portal maupun properti', () => {
+    expect(isMitrainapPortalHost('demo.mitrainap.id')).toBe(false);
+    expect(slugPropertiDariHost('demo.mitrainap.id')).toBeNull();
+  });
+
+  it('host lain bukan host demo', () => {
+    expect(isMitrainapDemoHost('mitrainap.id')).toBe(false);
+    expect(isMitrainapDemoHost('hotel-demo.mitrainap.id')).toBe(false);
   });
 });
 

@@ -1,12 +1,14 @@
 /**
  * Halaman utama mitrainap.id, portal Hospitality.
  *
- * MI-1 hanya membangun portal registry, merek, dan routing publik -- BUKAN
- * modul reservasi/booking/folio itu sendiri (menyusul MI-5 dan seterusnya).
- * Karena itu halaman ini sengaja tidak menjanjikan tombol "Coba Demo" atau
- * "Daftarkan Properti" yang mengarah ke alur yang belum ada; CTA yang
- * ditampilkan (Hubungi Kami, Masuk) adalah satu-satunya yang sungguhan
- * berfungsi hari ini.
+ * MI-3 menambahkan "Daftarkan Properti" (menuju `/mitrainap/daftar`,
+ * `HospitalityRegistrationService` sungguhan -- membuat schema, akun
+ * pemilik, dan situs `<slug>.mitrainap.id`) dan "Coba Demo" (menuju
+ * `/demo`, `DemoEntryPage` yang sudah ada, dipilihkan tenant
+ * `mitrainap_demo` oleh `resolveDemoSchema()` karena host ini terdaftar
+ * pada katalog portal). Keduanya CTA yang sebelumnya SENGAJA belum ada
+ * (MI-1: "menjanjikan alur yang belum dibangun") -- sekarang sungguhan
+ * berfungsi.
  */
 
 import { Link } from 'react-router-dom';
@@ -80,11 +82,17 @@ export function MitrainapHomePage() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
-              to="/kontak"
+              to="/mitrainap/daftar"
               className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
             >
-              Hubungi Kami
+              Daftarkan Properti
               <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              to="/demo"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-400 dark:border-slate-700 dark:text-slate-200"
+            >
+              Coba Demo
             </Link>
             <Link
               to="/mitrainap/masuk"
