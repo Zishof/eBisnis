@@ -64,6 +64,7 @@ void main() {
       salesName: 'Muklis',
       onSubmit: (_) async => 'SO-2026-0001',
     )));
+    await tester.ensureVisible(find.byTooltip('Tambah item').first);
     await tester.tap(find.byTooltip('Tambah item').first);
     await tester.pumpAndSettle();
 
@@ -87,6 +88,7 @@ void main() {
       ],
       onSubmit: (_) async => 'PO-2026-0001',
     )));
+    await tester.ensureVisible(find.byTooltip('Tambah item').first);
     await tester.tap(find.byTooltip('Tambah item').first);
     await tester.pumpAndSettle();
 
@@ -153,6 +155,7 @@ void main() {
     )));
     expect(find.text('Transaksi Pembelian'), findsOneWidget);
     expect(find.text('Pilih Supplier'), findsWidgets);
+    await tester.ensureVisible(find.byTooltip('Tambah item').first);
     await tester.tap(find.byTooltip('Tambah item').first);
     await tester.pump();
     expect(find.text('Item Pembelian (1)'), findsOneWidget);
