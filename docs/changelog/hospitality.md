@@ -1,5 +1,89 @@
 # Changelog — Hospitality (MitraInap.id)
 
+## 2026-08-06 — MI-10: Rate, Restriction, dan Revenue Management
+
+- Migrasi tenant baru `20260806T210000__hospitality__rate_management.sql`:
+  `hospitality_rate_plan` (rencana harga bernama per tipe kamar -- kode,
+  refundable, biaya tambahan per orang, MinLOS/MaxLOS default) dan
+  `hospitality_rate_calendar` (harga + MinLOS/MaxLOS/CTA/CTD/stop-sell,
+  satu baris per rate plan per malam, status DRAFT/PUBLISHED). Harga dan
+  restriksi sengaja SATU tabel bukan dua -- keduanya selalu dibaca dan
+  ditulis bersamaan sebagai satu "kalender". `ux_hospitality_rate_plan_code`
+  (unik per tipe kamar) dan `ux_hospitality_rate_calendar_malam` (unik per
+  rate plan per malam) adalah indeks unik parsial `WHERE deleted_at IS
+  NULL`, dipasangkan dengan `INSERT ... ON CONFLICT ... DO UPDATE` untuk
+  upsert per malam yang idempoten (pola sama dengan `hospitality_room_block`
+  MI-6).
+- **Ganti SUMBER, bukan mekanisme** -- pola yang sama dipakai berulang di
+  MI-6/MI-8/MI-9: `HospitalityBookingEngineService.cariKetersediaan()` dan
+  `pesanPublik()` sekarang memanggil `HospitalityRateService.kutipanTersedia()`
+  lebih dulu (ambil rate plan ACTIVE termurah yang PUBLISHED penuh untuk
+  seluruh rentang menginap), jatuh ke `published_rate_amount` (MI-9) hanya
+  bila tipe kamar itu belum punya rate plan -- kompatibel mundur, tidak ada
+  perubahan perilaku untuk tipe kamar yang belum mengadopsi rate plan.
+  `pesanPublik()` menghitung ULANG kutipan pada saat pemesanan (bukan
+  memercayai hasil pencarian sebelumnya) -- harga yang dipesan harus harga
+  yang benar SAAT ITU.
+- Publish adalah gerbang untuk tanggal BARU, bukan persetujuan ulang setiap
+  kali harga diedit: baris kalender baru selalu dibuat DRAFT (tersembunyi
+  dari booking engine publik); mengubah harga tanggal yang SUDAH PUBLISHED
+  mempertahankan status itu (revenue manager sering menyesuaikan harga
+  langsung tanpa harus menerbitkan ulang).
+- `kutipanTersedia()` menolak menawarkan rate plan bila kalender PUBLISHED
+  tidak menutupi SELURUH malam pada rentang (satu malam hilang = harga tidak
+  diketahui, lebih berbahaya menawarkan harga tidak lengkap daripada tidak
+  menawarkan sama sekali). CTA diperiksa pada malam pertama, CTD pada malam
+  TERAKHIR (checkout - 1 hari, sebab tanggal checkout sendiri tidak punya
+  baris kalender).
+- Traceability tanpa migrasi tambahan: `MasukanRoomStay.ratePlanCode?`
+  (MI-8) mengalir ke `rate_snapshot.source`/`ratePlanCode` pada
+  `hospitality_reservation_room_stay` -- `'RATE_PLAN'` bila berasal dari
+  MI-10, `'MANUAL'` seperti sebelumnya bila staf memasukkan tarif langsung.
+- Backend: `HospitalityRateService`/`.controller.ts` -- CRUD rate plan,
+  upsert kalender per rentang, terbitkan/tarik per rentang. Endpoint
+  staf-saja memakai izin `HOSPITALITY_PROPERTI` yang sudah ada (bukan menu
+  RBAC baru -- rate plan adalah bagian dari kelola tipe kamar, bukan area
+  terpisah).
+- Web: panel "Rate Plan" dan "Kalender Harga & Restriksi" ditambahkan ke
+  `HospitalityPropertiPage.tsx` di bawah tipe kamar terpilih (pola sama
+  dengan panel Ketersediaan MI-6) -- tambah rate plan, susun harga+restriksi
+  untuk rentang tanggal, lihat kalender, terbitkan/tarik.
+- **SENGAJA belum dibangun** (lihat komentar migrasi untuk alasan penuh):
+  BAR/derived rate otomatis (staf memasukkan harga tiap rate plan langsung;
+  formula dapat dilapis kemudian tanpa migrasi baru), pickup/pace/forecast/
+  rekomendasi revenue management (volume reservasi nyata belum cukup untuk
+  dianalisis -- pola sama dengan waitlist MI-8 dan abandoned-cart MI-9).
+- Diverifikasi nyata:
+  - Migrasi DDL diterapkan pada schema uji terisolasi
+    (`hospitality_smoketest10`, dibuat lalu dihapus) dengan INSERT
+    sungguhan: kode rate plan unik per tipe kamar (23505), CHECK
+    `default_max_los >= default_min_los` (23514), upsert kalender per
+    malam mengembalikan baris yang SAMA dengan version bertambah, CHECK
+    `amount >= 0` dan `status IN (DRAFT,PUBLISHED)`, harga baru pada
+    tanggal yang sudah PUBLISHED mempertahankan status PUBLISHED (bukan
+    kembali ke DRAFT), dan baris yang di-soft-delete lalu tanggal yang
+    sama diinsert ulang berhasil (indeks unik parsial, bukan unik penuh)
+    -- 7/7 skenario sesuai perilaku yang didesain.
+  - `pnpm migrate:tenants --schema admin_raudlatululum` diterapkan
+    sungguhan -- `hospitality_rate_plan`/`hospitality_rate_calendar`
+    terkonfirmasi ada di schema itu lewat `information_schema.tables`.
+  - `pnpm test -- hospitality` (87 test/7 suite, termasuk
+    `hospitality-rate.spec.ts` baru 13 test) LULUS penuh, tidak ada
+    regresi pada `hospitality-reservation.spec.ts` atau
+    `hospitality-booking-engine.spec.ts` akibat perubahan
+    `MasukanRoomStay`/`rate_snapshot`/booking-engine. `tsc --noEmit`
+    (apps/api dan apps/web) LULUS. `pnpm lint` bersih dari perubahan ini
+    (satu warning pra-ada pada `EschoolOperationalPage.tsx`, tidak
+    tersentuh perubahan ini).
+- **Belum diverifikasi (berbeda dari MI-5 sampai MI-9)**: exercise HTTP
+  langsung terhadap endpoint rate-plan/kalender pada tenant nyata, dan
+  pengecekan panel Rate Plan baru lewat peramban sungguhan. Verifikasi
+  kredensial pengguna (reset password atau pembuatan akun uji lewat SQL
+  langsung) DITOLAK oleh classifier keamanan sesi ini sebagai tindakan
+  mengubah kredensial akun -- bukan sesuatu yang aman untuk dilewati begitu
+  saja. Menunggu token akses sungguhan dari pemilik repository untuk
+  menyelesaikan langkah ini pada sesi berikutnya.
+
 ## 2026-08-06 — MI-9: Direct Booking Engine
 
 - Migrasi tenant baru `20260806T180000__hospitality__booking_engine.sql`:

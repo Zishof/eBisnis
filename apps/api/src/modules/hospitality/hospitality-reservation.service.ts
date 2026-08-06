@@ -266,7 +266,8 @@ export class HospitalityReservationService {
         dipesanDalamPermintaanIni.set(rs.roomTypeId!, (dipesanDalamPermintaanIni.get(rs.roomTypeId!) ?? 0) + 1);
 
         const rateSnapshot = {
-          source: 'MANUAL',
+          source: rs.ratePlanCode ? 'RATE_PLAN' : 'MANUAL',
+          ratePlanCode: rs.ratePlanCode ?? null,
           currency: 'IDR',
           amount: rs.rateAmount,
           capturedAt: new Date().toISOString(),

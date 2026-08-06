@@ -12,6 +12,7 @@ import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { HospitalityReservationService, type DetailReservasi } from './hospitality-reservation.service';
+import { HospitalityRateService } from './hospitality-rate.service';
 import {
   MasukanPemesananPublik,
   MasukanPencarian,
@@ -30,6 +31,8 @@ export interface HasilPencarianTipeKamar {
   malam: number;
   total: number;
   tersedia: number;
+  /** Kode rate plan (MI-10) bila harga berasal dari sana, bukan tarif datar. */
+  rate_plan_code: string | null;
 }
 
 @Injectable()
@@ -37,16 +40,23 @@ export class HospitalityBookingEngineService {
   constructor(
     private readonly tenantDb: TenantConnectionService,
     private readonly reservasi: HospitalityReservationService,
+    private readonly rate: HospitalityRateService,
   ) {}
 
   /**
-   * Mencari tipe kamar yang TERSEDIA dan TERPUBLIKASI (`published_rate_amount`
-   * terisi) untuk rentang menginap yang diminta.
+   * Mencari tipe kamar yang TERSEDIA dan bisa diberi harga untuk rentang
+   * menginap yang diminta.
+   *
+   * Sumber harga (MI-10): rate plan PUBLISHED yang mencakup SELURUH
+   * malam dan lolos restriksi (MinLOS/MaxLOS/CTA/CTD/stop-sell) --
+   * dipilih yang termurah bila lebih dari satu cocok. Tipe kamar TANPA
+   * rate plan yang cocok jatuh ke `published_rate_amount` (tarif datar
+   * MI-9), dan tipe kamar tanpa keduanya tidak ditawarkan sama sekali.
    *
    * Perhitungan ketersediaan sama persis dengan MI-6/MI-8: kamar aktif
    * tanpa blokir (MI-6) yang tumpang tindih rentang, dikurangi reservasi
    * HOLD/CONFIRMED (MI-8) yang tumpang tindih, ditambah alotmen lebih.
-   * Transparan -- total ditampilkan sebagai rate x malam, bukan angka
+   * Transparan -- total ditampilkan sebagai harga penuh, bukan angka
    * tersembunyi yang baru muncul di langkah berikutnya.
    */
   async cariKetersediaan(
@@ -77,21 +87,38 @@ export class HospitalityBookingEngineService {
       name: string;
       description: string | null;
       max_occupancy: number;
-      published_rate_amount: string;
+      published_rate_amount: string | null;
       overbooking_limit: number;
     }>(
       schemaName,
       `SELECT id, code, name, description, max_occupancy, published_rate_amount, overbooking_limit
          FROM ${S}.hospitality_room_type
         WHERE property_id = $1 AND deleted_at IS NULL
-          AND published_rate_amount IS NOT NULL
           AND max_occupancy >= $2
-        ORDER BY published_rate_amount ASC`,
+        ORDER BY name ASC`,
       [propertyId, okupansiDiminta],
     );
 
     const hasil: HasilPencarianTipeKamar[] = [];
     for (const rt of tipeKamar) {
+      const kutipan = await this.rate.kutipanTersedia(schemaName, rt.id, masukan.checkin!, masukan.checkout!);
+      const termurah = kutipan.sort((a, b) => a.total - b.total)[0];
+
+      let ratePerMalam: number;
+      let total: number;
+      let ratePlanCode: string | null;
+      if (termurah) {
+        total = Math.round(termurah.total);
+        ratePerMalam = Math.round(termurah.total / malam);
+        ratePlanCode = termurah.code;
+      } else if (rt.published_rate_amount !== null) {
+        ratePerMalam = Number(rt.published_rate_amount);
+        total = Math.round(ratePerMalam * malam);
+        ratePlanCode = null;
+      } else {
+        continue; // tidak ada harga sama sekali -- tidak ditawarkan
+      }
+
       const bebasRow = await this.tenantDb.queryOne<{ n: string }>(
         schemaName,
         `SELECT COUNT(*)::text AS n
@@ -124,10 +151,11 @@ export class HospitalityBookingEngineService {
         nama: rt.name,
         deskripsi: rt.description,
         okupansi_maks: rt.max_occupancy,
-        rate_per_malam: rt.published_rate_amount,
+        rate_per_malam: String(ratePerMalam),
         malam,
-        total: Math.round(Number(rt.published_rate_amount) * malam),
+        total,
         tersedia,
+        rate_plan_code: ratePlanCode,
       });
     }
     return hasil;
@@ -172,8 +200,19 @@ export class HospitalityBookingEngineService {
         WHERE id = $1 AND property_id = $2 AND deleted_at IS NULL`,
       [masukan.roomTypeId, masukan.propertyId],
     );
-    if (!roomType || roomType.published_rate_amount === null) {
-      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Tipe kamar tidak ditemukan atau tidak dijual lewat booking engine.');
+    if (!roomType) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Tipe kamar tidak ditemukan.');
+    }
+    // Sumber harga SAMA dengan `cariKetersediaan` -- rate plan PUBLISHED
+    // termurah yang mencakup seluruh rentang dan lolos restriksi, jatuh
+    // ke tarif datar bila tidak ada. Dihitung ULANG di sini (bukan
+    // dipercaya dari kutipan `cariKetersediaan` yang mungkin sudah lewat
+    // beberapa menit) -- harga yang dipesan harus harga yang BENAR
+    // SAAT INI, bukan harga saat pengunjung mulai mencari.
+    const kutipan = await this.rate.kutipanTersedia(schemaName, masukan.roomTypeId!, masukan.checkin!, masukan.checkout!);
+    const termurah = kutipan.sort((a, b) => a.total - b.total)[0];
+    if (!termurah && roomType.published_rate_amount === null) {
+      throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Tipe kamar ini tidak dijual lewat booking engine untuk tanggal tersebut.');
     }
 
     let guest = await this.tenantDb.queryOne<{ id: string; do_not_rent: boolean }>(
@@ -204,7 +243,9 @@ export class HospitalityBookingEngineService {
     }
 
     const malam = jumlahMalam(masukan.checkin!, masukan.checkout!);
-    const rateTotal = Math.round(Number(roomType.published_rate_amount) * malam);
+    const rateTotal = termurah
+      ? Math.round(termurah.total)
+      : Math.round(Number(roomType.published_rate_amount) * malam);
 
     const { reservasi, diulang } = await this.reservasi.catatReservasi(
       schemaName,
@@ -222,6 +263,7 @@ export class HospitalityBookingEngineService {
             adults: masukan.dewasa ?? 1,
             children: masukan.anak ?? 0,
             rateAmount: rateTotal,
+            ratePlanCode: termurah?.code,
           },
         ],
       },
