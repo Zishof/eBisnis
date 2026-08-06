@@ -29,6 +29,12 @@
       "file": "20260806T150000__hospitality__reservation.sql",
       "name": "MI-8: Reservation dan CRS",
       "description": "hospitality_reservation (kepala reservasi -- tamu, sumber, segmen pasar, status HOLD/CONFIRMED/CANCELLED/NO_SHOW, idempotency_key unik) dan hospitality_reservation_room_stay (satu baris per kamar per reservasi -- room_id nullable, ditunjuk belakangan oleh front office MI-12; rate_snapshot dan restriction_snapshot JSONB WAJIB, tidak pernah berubah sesudah dibuat). Kondisi pacu kapasitas tipe kamar ditegakkan SELECT ... FOR UPDATE pada baris room_type di dalam transaksi yang sama dengan penghitungan dan penulisan (bukan indeks unik -- yang dijaga adalah HITUNGAN lintas baris), diuji dengan permintaan bersamaan sungguhan (lihat docs/changelog/hospitality.md). Kunci optimistik (version) ditegakkan sungguhan pada seluruh transisi status. Waitlist SENGAJA belum ada -- alur kerja terpisah di luar siklus hidup inti fase ini."
+    },
+    {
+      "id": "20260806T180000__hospitality__booking_engine",
+      "file": "20260806T180000__hospitality__booking_engine.sql",
+      "name": "MI-9: Direct Booking Engine",
+      "description": "published_rate_amount pada hospitality_room_type -- satu tarif per malam yang dipublikasikan staf secara manual (MI-10 rate plan belum ada), NULL berarti tipe kamar tidak muncul di pencarian publik. Booking engine publik menerima schemaName eksplisit pada jalur URL karena MI-3 (subdomain properti) masih diblokir -- transaksi pemesanannya sendiri sudah nyata dan teruji, hanya cara pengunjung tiba di URL yang menyusul MI-3."
     }
   ]
 }

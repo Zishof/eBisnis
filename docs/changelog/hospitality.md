@@ -4,6 +4,7 @@
 
 
 
+
 # Hospitality / MitraInap changelog
 
 ## 2026-08-09 — MI-0 audit
