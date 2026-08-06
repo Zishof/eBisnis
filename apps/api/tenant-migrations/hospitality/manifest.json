@@ -1,0 +1,16 @@
+{
+  "$comment": "Manifest migrasi modul Hospitality (MitraInap.id, MI-5+). Ditemukan otomatis oleh TenantMigrationService.discoverModuleManifests() -- setiap tenant baru maupun yang sudah ada menerima tabel ini lewat 'pnpm migrate:tenants', terlepas dari vertikal yang dipakainya. Belum ada tenant hospitality sungguhan on-board -- migrasi ini disiapkan lebih dulu supaya provisioning tenant pertama tidak menunggu langkah manual.",
+  "module": "hospitality",
+  "schemaVersion": 1,
+  "dependsOn": [
+    "core"
+  ],
+  "migrations": [
+    {
+      "id": "20260806T060000__hospitality__foundation",
+      "file": "20260806T060000__hospitality__foundation.sql",
+      "name": "Fondasi Hospitality: properti, tipe kamar, dan kamar",
+      "description": "hospitality_property, hospitality_room_type, hospitality_room. Prasyarat mutlak seluruh modul hospitality lain (MI-6 ketersediaan, MI-8 reservasi, MI-12 front office, dst). Sengaja HANYA properti/tipe kamar/kamar -- portofolio/badan hukum/gedung/lantai/zona penuh BRD ditunda sampai tenant multi-properti sungguhan on-board (MISSING, lihat komentar migrasi). Kode properti unik per penyewa, kode tipe kamar dan nomor kamar unik per properti, ditegakkan indeks unik parsial."
+    }
+  ]
+}

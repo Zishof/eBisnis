@@ -67,6 +67,21 @@ const MENU_AKAR_BAWAAN_PER_VERTIKAL: Record<string, ReadonlySet<string>> = {
     'ADMIN',
     'SUPPORT',
   ]),
+  // "HOSPITALITY" -- nilai `Tenant.verticalCode` untuk penyewa MitraInap.id
+  // (lihat docs/mitrainap/PERINTAH_MASTER...md §6). Belum ada penyewa
+  // hospitality sungguhan untuk memverifikasi casing ini lewat login nyata
+  // (beda dengan PESANTREN, yang tertangkap salah lewat pengujian nyata) --
+  // ditulis konsisten dengan casing yang sama sekarang, WAJIB diverifikasi
+  // ulang begitu tenant hospitality pertama benar-benar login.
+  HOSPITALITY: new Set([
+    'HOSPITALITY_GROUP',
+    'HOME',
+    'FINANCE',
+    'SUBSCRIPTION',
+    'MASTER_DATA',
+    'ADMIN',
+    'SUPPORT',
+  ]),
 };
 
 /**
