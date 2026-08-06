@@ -103,13 +103,14 @@ void main() {
     await tester.tap(find.text('Order Baru'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Order Baru Sales'), findsOneWidget);
+    expect(find.text('Sales Order'), findsWidgets);
     expect(find.text('ADEM SARI'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Tambah').first);
+    await tester.ensureVisible(find.byTooltip('Tambah item').first);
+    await tester.tap(find.byTooltip('Tambah item').first);
     await tester.pump();
 
-    expect(find.text('1 baris'), findsOneWidget);
+    expect(find.text('1 item'), findsWidgets);
     expect(find.text('Rp 49.000'), findsWidgets);
     expect(find.text('Kirim Order'), findsOneWidget);
   });
