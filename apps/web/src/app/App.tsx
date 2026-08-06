@@ -20,7 +20,7 @@ import { inventoryRootRedirectFor } from '../pages/inventory/inventory-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
 import { isSantriPortalHost, slugPondokDariHost } from '../verticals/pesantren/santri-host';
 import { PondokChrome } from '../verticals/pesantren/PondokChrome';
-import { isMitrainapPortalHost } from '../verticals/hospitality/mitrainap-host';
+import { isMitrainapDemoHost, isMitrainapPortalHost, slugPropertiDariHost } from '../verticals/hospitality/mitrainap-host';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
@@ -427,6 +427,24 @@ const MitrainapKelolaPesananPage = lazy(() =>
     default: m.MitrainapKelolaPesananPage,
   })),
 );
+const MitrainapDaftarPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapDaftarPage').then((m) => ({
+    default: m.MitrainapDaftarPage,
+  })),
+);
+const MitrainapDaftarBerhasilPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapDaftarBerhasilPage').then((m) => ({
+    default: m.MitrainapDaftarBerhasilPage,
+  })),
+);
+// Situs properti publik (`<slug>.mitrainap.id`, MI-3) -- di luar
+// `MitrainapLayout` sengaja, pola sama dengan `SitusPondokPage`/
+// `/santri/pondok` (subdomain penyewa bukan halaman portal platform).
+const MitrainapPropertiSitusPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapPesanPage').then((m) => ({
+    default: m.MitrainapPropertiSitusPage,
+  })),
+);
 
 /**
  * Apa yang dilihat pengunjung di akar situs, menurut alamat yang ia ketik.
@@ -457,7 +475,15 @@ function AkarMenurutHost() {
    */
   if (isSantriPortalHost()) return <Navigate to="/santri" replace />;
   if (slugPondokDariHost()) return <Navigate to="/santri/pondok" replace />;
+  /*
+   * Tiga cabang untuk mitrainap.id (MI-3), urutannya penting sama seperti
+   * santri.info di atas: `demo.mitrainap.id` adalah SANDBOX (bukan portal,
+   * bukan properti), apex adalah PORTAL, dan `<slug>.mitrainap.id` adalah
+   * SITUS PROPERTI.
+   */
+  if (isMitrainapDemoHost()) return <Navigate to="/demo" replace />;
   if (isMitrainapPortalHost()) return <Navigate to="/mitrainap" replace />;
+  if (slugPropertiDariHost()) return <Navigate to="/mitrainap/properti" replace />;
   return <HomePage />;
 }
 
@@ -578,6 +604,9 @@ export function App() {
           */}
           <Route path="pesan/:schemaName/:propertyId" element={<MitrainapPesanPage />} />
           <Route path="kelola-pesanan/:schemaName" element={<MitrainapKelolaPesananPage />} />
+          {/* Pendaftaran properti sungguhan (MI-3) -- lihat komentar di berkasnya. */}
+          <Route path="daftar" element={<MitrainapDaftarPage />} />
+          <Route path="daftar/berhasil" element={<MitrainapDaftarBerhasilPage />} />
           {/*
             Masuk BERBEDA dari `/masuk` global: `LoginPage` yang sama, dibungkus
             `MitrainapLayout` alih-alih `PublicLayout` supaya pengunjung
@@ -587,6 +616,15 @@ export function App() {
         </Route>
         {/* Di luar kerangka portal: subdomain pondok bukan halaman platform. */}
         <Route path="/santri/pondok" element={<SitusPondokPage />} />
+        {/*
+          Situs properti publik (`<slug>.mitrainap.id`, MI-3) -- di luar
+          `MitrainapLayout` dengan alasan yang sama persis dengan
+          `/santri/pondok` di atas: subdomain penyewa bukan halaman portal
+          platform (tautan "Daftarkan Properti"/"Coba Demo" di sana tidak
+          relevan bagi pengunjung yang sudah berada di situs properti
+          seorang PELANGGAN).
+        */}
+        <Route path="/mitrainap/properti" element={<MitrainapPropertiSitusPage />} />
         {/*
           Formulir PSB dibungkus PondokChrome (nama/logo pondok di header,
           bukan bingkai kosong) -- rute ini hanya pernah dicapai lewat

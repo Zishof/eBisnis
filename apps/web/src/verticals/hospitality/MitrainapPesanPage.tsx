@@ -2,11 +2,20 @@
  * Booking engine publik MitraInap (MI-9) -- cari, pesan, dan kelola
  * pemesanan TANPA login staf.
  *
- * `schemaName`/`propertyId` diambil dari jalur URL (bukan subdomain) --
- * lihat catatan di `hospitality-booking-engine.controller.ts` untuk
- * alasannya (MI-3 belum ada). Halaman ini nanti tinggal dipasang di
- * bawah subdomain properti begitu MI-3 selesai; transaksinya sendiri
- * sudah sungguhan.
+ * Dua titik masuk, satu isi:
+ *
+ *   `MitrainapPesanPage`     -- `schemaName`/`propertyId` dari jalur URL
+ *                                (dipertahankan untuk tautan lama/uji manual).
+ *   `MitrainapPropertiSitusPage` (MI-3) -- `schemaName`/`propertyId`
+ *                                diresolusi dari SUBDOMAIN permintaan lewat
+ *                                `/public/hospitality-site/context`
+ *                                (`PublicTenantResolver`, IR-005), dipasang
+ *                                di `<slug>.mitrainap.id`.
+ *
+ * Keduanya merender `IsiPesan` yang SAMA begitu schemaName/propertyId
+ * diketahui -- mekanisme pencarian/pemesanan (MI-9) tidak disalin ulang,
+ * pola yang sama dengan "ganti sumber bukan mekanisme" yang dipakai
+ * berulang di modul hospitality.
  */
 
 import { useState } from 'react';
@@ -14,6 +23,12 @@ import { useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { AlertTriangle, CalendarRange, CheckCircle2, Users } from 'lucide-react';
 import { api, formatDate } from '../../lib/api';
+
+interface KonteksSitus {
+  schemaName: string;
+  propertyId: string;
+  propertyName: string;
+}
 
 interface HasilTipeKamar {
   room_type_id: string;
@@ -47,7 +62,56 @@ function formatRupiah(nilai: number | string) {
 
 export function MitrainapPesanPage() {
   const { schemaName, propertyId } = useParams<{ schemaName: string; propertyId: string }>();
+  if (!schemaName || !propertyId) return null;
+  return <IsiPesan schemaName={schemaName} propertyId={propertyId} />;
+}
 
+/**
+ * Situs properti publik di `<slug>.mitrainap.id` (MI-3).
+ *
+ * Memanggil `/public/hospitality-site/context` -- tanpa sesi, tanpa hak
+ * akses. Properti mana yang ditampilkan ditentukan HOST PERMINTAAN,
+ * dicocokkan ke baris terdaftar di control plane (IR-005) -- pola sama
+ * dengan `SitusPondokPage.tsx`.
+ */
+export function MitrainapPropertiSitusPage() {
+  const konteks = useQuery({
+    queryKey: ['mitrainap-situs-konteks'],
+    queryFn: () => api.get<KonteksSitus>('/public/hospitality-site/context'),
+  });
+
+  if (konteks.isLoading) {
+    return <p className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-slate-500 dark:text-slate-400">Memuat...</p>;
+  }
+  if (konteks.isError || !konteks.data) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Situs Belum Tersedia</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+          Properti ini belum menyiapkan situs pemesanannya. Silakan hubungi properti secara langsung.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <IsiPesan
+      schemaName={konteks.data.schemaName}
+      propertyId={konteks.data.propertyId}
+      namaProperti={konteks.data.propertyName}
+    />
+  );
+}
+
+function IsiPesan({
+  schemaName,
+  propertyId,
+  namaProperti,
+}: {
+  schemaName: string;
+  propertyId: string;
+  namaProperti?: string;
+}) {
   const besok = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
   const lusa = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
 
@@ -131,7 +195,9 @@ export function MitrainapPesanPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Cari dan Pesan Kamar</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+        {namaProperti ? `Cari dan Pesan Kamar — ${namaProperti}` : 'Cari dan Pesan Kamar'}
+      </h1>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
         Harga yang tampil adalah total untuk seluruh malam menginap -- tidak ada biaya tersembunyi.
       </p>

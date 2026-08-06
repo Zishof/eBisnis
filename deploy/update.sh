@@ -313,7 +313,7 @@ printf '%s
 ' "$NEW" > "$DEPLOY_STAMP"
 
 # ---------------------------------------------------------------------------
-log "7/10  Sandbox demo ePesantren"
+log "7/11  Sandbox demo ePesantren"
 # ---------------------------------------------------------------------------
 # Mendaftarkan ponpes_demo (bila belum ada) lewat alur publik yang sama
 # dengan pendaftar asli, lalu menyemai data contoh besar TEPAT SEKALI --
@@ -327,7 +327,18 @@ APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:
   || warn "Penyiapan sandbox demo ePesantren gagal — periksa manual bila perlu."
 
 # ---------------------------------------------------------------------------
-log "8/10  Pelanggan pertama: Raudlatul Ulum"
+log "8/11  Sandbox demo MitraInap.id"
+# ---------------------------------------------------------------------------
+# Mendaftarkan mitrainap_demo (bila belum ada) lewat alur publik yang sama
+# dengan pendaftar asli -- lihat deploy/ensure-demo-mitrainap.sh (MI-3)
+# untuk jaminan idempotensinya. Kegagalan di sini tidak pernah menggagalkan
+# deploy.
+APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:-psql}" \
+  bash "$APP_DIR/deploy/ensure-demo-mitrainap.sh" \
+  || warn "Penyiapan sandbox demo MitraInap.id gagal — periksa manual bila perlu."
+
+# ---------------------------------------------------------------------------
+log "9/11  Pelanggan pertama: Raudlatul Ulum"
 # ---------------------------------------------------------------------------
 # Mendaftarkan raudlatul-ulum.santri.info (bila belum ada) lewat alur publik
 # yang sama dengan pendaftar asli, lalu menyiapkan profil situs, unit
@@ -340,7 +351,7 @@ APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:
   || warn "Penyiapan tenant Raudlatul Ulum gagal — periksa manual bila perlu."
 
 # ---------------------------------------------------------------------------
-log "9/10  Pelanggan inventory: Caruban Medika Nusantara"
+log "10/11  Pelanggan inventory: Caruban Medika Nusantara"
 # ---------------------------------------------------------------------------
 # Membuat schema `cmnmedika_inventory`, akun pemilik/sales/admin, domain
 # cmnmedika-inventory.ebisnis.id, serta impor DBF legacy bila foldernya tersedia.
@@ -357,7 +368,7 @@ APP_DIR="$APP_DIR" APP_USER="$APP_USER" \
   || warn "Penyiapan tenant Caruban Medika Nusantara gagal -- periksa manual bila perlu."
 
 # ---------------------------------------------------------------------------
-log "10/10  Apache"
+log "11/11  Apache"
 # ---------------------------------------------------------------------------
 POS_UPDATE_DIR=/opt/ebisnis/updates/pos
 install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$POS_UPDATE_DIR"

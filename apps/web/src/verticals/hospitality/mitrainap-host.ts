@@ -62,6 +62,21 @@ export function isMitrainapPortalHost(hostname: string = window.location.hostnam
 }
 
 /**
+ * Benar hanya untuk `demo.mitrainap.id` (MI-3).
+ *
+ * Dituju ke `/demo` (`DemoEntryPage`, sudah ada dan sudah dipakai
+ * `demo.ebisnis.id`/`demo.emedik.id`) -- BUKAN halaman/mekanisme baru.
+ * Skema demo sungguhan (`mitrainap_demo`) dipilihkan sisi API lewat
+ * `resolveDemoSchema()` yang mencocokkan host ini ke `demoSchema` pada
+ * `portal.catalog.ts`, tidak ada apa pun yang perlu diketahui di sini
+ * selain host-nya sendiri.
+ */
+export function isMitrainapDemoHost(hostname: string = window.location.hostname): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '').split(':')[0];
+  return host === `demo.${DOMAIN_MITRAINAP}`;
+}
+
+/**
  * Benar untuk seluruh host ekosistem mitrainap.id (portal maupun
  * `app.mitrainap.id`, pintu aplikasi bersama).
  *

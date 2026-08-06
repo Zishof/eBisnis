@@ -1,5 +1,134 @@
 # Changelog — Hospitality (MitraInap.id)
 
+## 2026-08-06 — MI-3: Subdomain Provisioning (Pendaftaran Properti Sungguhan)
+
+- **Sebelumnya dinyatakan diblokir** (lihat entri "2026-08-06 — MI-3/MI-4:
+  dinyatakan diblokir" di bawah) -- "MI-3 butuh tenant hospitality yang
+  benar-benar ada, belum ada satu pun". Diminta ulang secara eksplisit oleh
+  pemilik produk dengan aturan penamaan yang sebelumnya belum ada (username
+  unik di SELURUH ekosistem eBisnis.id, bukan hanya per-vertikal) -- blocker
+  itu hilang begitu aturan ini dinyatakan, sehingga fase ini dibangun.
+- Backend: `HospitalityRegistrationController`/`.service.ts`
+  (`apps/api/src/modules/public/hospitality-registration.*`), pola SAMA
+  PERSIS dengan `PesantrenRegistrationController`/`.service.ts` (jalur
+  pendaftaran tersendiri, bukan cabang di `RegistrationService` -- lihat
+  komentar berkasnya). Endpoint: `registration-config`, `site-slug/check`,
+  `site-slug/suggest`, `POST registrations`. Password SELALU dibuat
+  peladen (tidak pernah dari formulir). Dua nama yang tidak boleh
+  tertukar: `slugSitus` (label DNS, `<slug>.mitrainap.id`, tanpa garis
+  bawah) dan `desiredUsername` (nama schema, boleh garis bawah).
+- **SENGAJA tidak ada tabel profil properti terpisah** (bandingkan
+  `registration_pesantren`): pendaftaran ini hanya menyiapkan ruang kerja
+  (schema, akun pemilik, situs). Properti/tipe kamar/kamar tetap dicatat
+  pengurus SESUDAH masuk lewat `HospitalityPropertiService` (MI-5) yang
+  sudah ada -- tidak diulang di formulir pendaftaran.
+- Resolusi subdomain -> tenant: `HospitalityPublicSiteService`/
+  `.controller.ts` (`GET /public/hospitality-site/context`), memakai
+  `PublicTenantResolver` (IR-005) yang SAMA dipakai
+  `PesantrenPublicService` -- BUKAN mekanisme baru. Properti yang
+  ditampilkan adalah yang PALING AWAL dibuat pada tenant itu (properti
+  implisit aktif untuk tenant satu-properti, bukan pemilih multi-properti
+  -- keterbatasan yang sama sudah dicatat pada ledger MI-5).
+  `HospitalityBookingEngineController` (MI-9) TIDAK ditulis ulang --
+  begitu web mengetahui `schemaName`+`propertyId` dari context, ia
+  memanggil endpoint `:schemaName` yang sudah ada seperti biasa ("ganti
+  sumber, bukan mekanisme", pola yang sama dipakai berulang di modul ini).
+- Web: `MitrainapDaftarPage.tsx` (formulir, usulan slug/username
+  live dari nama, cek ketersediaan live) + `MitrainapDaftarBerhasilPage.tsx`
+  (kata sandi ditampilkan SEKALI, pola sama dengan
+  `DaftarPesantrenBerhasilPage`) + `MitrainapPropertiSitusPage.tsx`
+  (situs properti publik di `<slug>.mitrainap.id`, merender ulang `IsiPesan`
+  yang sama dipakai `MitrainapPesanPage` -- MI-9 tidak disalin ulang).
+  CTA "Daftarkan Properti" dan "Coba Demo" ditambahkan ke beranda
+  (sebelumnya SENGAJA tidak ada -- lihat entri MI-1 di bawah).
+- Routing host (`App.tsx`/`mitrainap-host.ts`): tiga cabang untuk
+  ekosistem mitrainap.id -- `demo.mitrainap.id` -> `/demo`
+  (`DemoEntryPage`, sudah ada, dipakai ulang dari `demo.ebisnis.id`/
+  `demo.emedik.id`), apex/`www` -> portal, `<slug>.mitrainap.id` -> situs
+  properti (`slugPropertiDariHost()`, ditulis sejak MI-1 tapi baru
+  sekarang punya pemanggil).
+- `portal.catalog.ts`: `demoSchema: 'mitrainap_demo'` +
+  `demoDefaultRole: 'HOSPITALITY_ADMIN'` + domain `demo.mitrainap.id`
+  ditambahkan ke entri MITRAINAP -- memakai `resolveDemoSchema()` yang
+  SAMA dipakai `ponpes_demo`/santri.info, bukan mekanisme baru.
+  `deploy/ensure-demo-mitrainap.sh` (pola sama dengan
+  `ensure-demo-pesantren.sh`) disambungkan ke `update.sh` (langkah baru
+  8/11) -- mendaftarkan `mitrainap_demo` lewat endpoint publik yang sama
+  dipakai pendaftar sungguhan. BERBEDA dari sandbox demo ePesantren:
+  SENGAJA tidak ada skrip data contoh besar (belum ada volume reservasi
+  nyata untuk dianalisis polanya) -- sandbox ini hanya ruang kerja kosong
+  siap pakai.
+- Apache (`deploy/apache/ebisnis.conf`): `ServerAlias mitrainap.id
+  www.mitrainap.id app.mitrainap.id` ditambahkan -- BUG NYATA ditemukan
+  dan diperbaiki lewat deploy sungguhan sebelum fase ini: tanpa
+  ServerAlias ini, permintaan ke mitrainap.id tidak pernah sampai ke
+  aplikasi sama sekali (jatuh ke vhost default server bersama, yang
+  ternyata melayani situs eCampus/AFI Yogyakarta lain -- bukan 404
+  aplikasi yang jujur).
+- **BUG NYATA ditemukan dan diperbaiki lewat pendaftaran sungguhan**
+  (bukan tsc/lint/test tiruan): `platform.tenant.vertical_code` punya
+  CHECK constraint (`ck_tenant_vertical_code`) berisi daftar tetap kode
+  vertikal yang belum pernah diperbarui sejak `HOSPITALITY` didaftarkan
+  di `portal.catalog.ts` (MI-1). Pendaftaran hospitality PERTAMA yang
+  dicoba sungguhan gagal pada langkah penandaan vertikal dengan
+  `PROVISIONING_FAILED` (skema, akun, dan credential SUDAH terlanjur
+  dibuat -- tidak dibatalkan, sesuai penanganan error yang sama dengan
+  `PesantrenRegistrationService`). Diperbaiki lewat migrasi platform
+  aditif baru, `20260806220000_tenant_vertical_hospitality` (drop lalu
+  buat ulang constraint dengan satu nilai tambahan, `'HOSPITALITY'`) --
+  diuji ulang dengan pendaftaran KEDUA yang berhasil penuh sampai
+  `status: READY`.
+- Diverifikasi nyata:
+  - Migrasi platform baru diterapkan sungguhan (`prisma migrate deploy`)
+    ke basis data pengembangan lokal.
+  - `POST /public/hospitality/registrations` diuji curl sungguhan DUA
+    kali: percobaan pertama menemukan bug CHECK constraint di atas,
+    percobaan kedua (setelah migrasi platform diterapkan) berhasil penuh
+    -- `tenant.vertical_code = 'HOSPITALITY'`, baris
+    `vertical_site_domain` (`host`, `vertical: 'hospitality'`,
+    `status: 'ACTIVE'`) terkonfirmasi lewat kueri langsung, peran `OWNER`
+    + `HOSPITALITY_ADMIN` sama-sama diberikan ke pemilik.
+  - Login sungguhan dengan akun yang baru terdaftar (kata sandi
+    sementara dari response, wajib ganti kata sandi diuji dan berhasil),
+    membuat properti sungguhan lewat `POST /hospitality/properti` (MI-5),
+    lalu `GET /public/hospitality-site/context` dengan header `Host:
+    <slug>.mitrainap.id` mengembalikan `schemaName`/`propertyId` yang
+    TEPAT -- rantai penuh subdomain -> tenant -> properti diuji sungguhan
+    ujung ke ujung. Host yang belum terdaftar dan tenant yang belum
+    punya properti sama-sama menjawab 404 yang sama (tidak membocorkan
+    keberadaan).
+  - `POST /public/demo/session` dengan header `Host: mitrainap.id`
+    dicoba sungguhan -- jatuh wajar ke schema `demo` bersama sebab
+    `mitrainap_demo` belum ter-provision di basis data lokal ini (perilaku
+    yang benar; di produksi `ensure-demo-mitrainap.sh` menyediakannya).
+  - Halaman `/mitrainap/daftar` diverifikasi lewat peramban sungguhan
+    (Vite dev + API lokal): usulan slug/username live dari nama, isi
+    formulir, kirim, mendarat di halaman berhasil dengan username/kata
+    sandi/alamat situs yang benar dari response API sungguhan (bukan
+    data tiruan).
+  - `pnpm test` (158 suite API/4065 test, 42 berkas web/513 test) LULUS
+    penuh -- termasuk perbaikan `portal.catalog.spec.ts` (uji
+    `demoDefaultRole` sebelumnya hanya memeriksa terhadap katalog peran
+    pesantren, sekarang juga memeriksa katalog peran hospitality).
+    `tsc --noEmit` (apps/api dan apps/web) LULUS. `pnpm lint` bersih dari
+    perubahan ini (satu warning pra-ada pada `EschoolOperationalPage.tsx`,
+    tidak tersentuh perubahan ini).
+  - Dua tenant uji (`mi3-verify-hotel-dua`, `browser-verify-hotel`)
+    dibuat lewat jalur pendaftaran publik sungguhan selama verifikasi ini
+    -- sengaja TIDAK dihapus penuh: percobaan `DROP SCHEMA ... CASCADE`
+    sempat menghasilkan `out of shared memory` pada Postgres lokal
+    (insiden serupa yang sudah dicatat pada entri MI-5 di bawah), dan
+    percobaan berulang berisiko mengulang insiden itu. Kedua schema uji
+    dibiarkan sebagai data pengembangan lokal yang tidak berbahaya,
+    dicatat di sini supaya tidak mengejutkan siapa pun yang melihatnya.
+- **Belum diverifikasi**: resolusi subdomain sungguhan lewat DNS asli
+  (`<slug>.mitrainap.id` sungguhan di peramban) -- diverifikasi lewat
+  header `Host` manual pada permintaan lokal, bukan lewat domain yang
+  benar-benar di-resolve DNS (menunggu deploy produksi). Sertifikat HTTPS
+  untuk `mitrainap.id` belum mencakup subdomain dinamis -- dicatat pada
+  commit `fix(deploy): route mitrainap.id traffic to the app via Apache
+  ServerAlias`.
+
 ## 2026-08-06 — MI-10: Rate, Restriction, dan Revenue Management
 
 - Migrasi tenant baru `20260806T210000__hospitality__rate_management.sql`:
