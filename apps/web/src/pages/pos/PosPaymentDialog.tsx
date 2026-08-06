@@ -19,7 +19,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Banknote, Loader2, Printer, X } from 'lucide-react';
+import { Banknote, Building2, CreditCard, Loader2, Printer, QrCode, ReceiptText, X } from 'lucide-react';
 import { api, formatMoney } from '../../lib/api';
 import { useErrorMessage } from '../../app/auth-context';
 import { useToast } from '../../components/ui';
@@ -53,6 +53,10 @@ export function PosPaymentDialog({
   const [diserahkan, setDiserahkan] = useState<number>(total);
   const [rujukan, setRujukan] = useState('');
   const [sudahBayar, setSudahBayar] = useState(false);
+  const [dibayar, setDibayar] = useState(0);
+  const [nominal, setNominal] = useState(total);
+  const [cetakStruk, setCetakStruk] = useState(true);
+  const [buktiDigital, setBuktiDigital] = useState(false);
 
   // Kunci idempotensi dibuat sekali saat dialog dibuka. Klik ganda karena layar
   // lambat karena itu mengirim kunci yang sama, dan peladen mengenalinya
@@ -74,8 +78,8 @@ export function PosPaymentDialog({
 
   const kembalian = useMemo(() => {
     if (!terpilih?.allowsChange) return 0;
-    return Math.max(0, diserahkan - total);
-  }, [terpilih, diserahkan, total]);
+    return Math.max(0, diserahkan - nominal);
+  }, [terpilih, diserahkan, nominal]);
 
   const bayar = useMutation({
     mutationFn: () =>
@@ -83,13 +87,24 @@ export function PosPaymentDialog({
         `/pos/sales/${saleId}/payments`,
         {
           paymentMethodId: metodeId,
-          amount: total,
-          tenderedAmount: terpilih?.allowsChange ? diserahkan : total,
+          amount: nominal,
+          tenderedAmount: terpilih?.allowsChange ? diserahkan : nominal,
           reference: rujukan.trim() || undefined,
         },
         { headers: { 'Idempotency-Key': kunciBayar.current } },
       ),
-    onSuccess: () => setSudahBayar(true),
+    onSuccess: () => {
+      const next = dibayar + nominal;
+      setDibayar(next);
+      if (next >= total) setSudahBayar(true);
+      else {
+        setMetodeId(null);
+        setNominal(total - next);
+        setDiserahkan(total - next);
+        setRujukan('');
+        kunciBayar.current = `bayar-${saleId}-${Date.now()}-${next}`;
+      }
+    },
     onError: galat,
   });
 
@@ -104,7 +119,8 @@ export function PosPaymentDialog({
     onError: galat,
   });
 
-  const kurang = terpilih && !terpilih.allowsChange ? 0 : Math.max(0, total - diserahkan);
+  const kurang = terpilih && !terpilih.allowsChange ? 0 : Math.max(0, nominal - diserahkan);
+  const sisa = Math.max(0, total - dibayar);
 
   return (
     <div
@@ -113,7 +129,7 @@ export function PosPaymentDialog({
       aria-modal="true"
       aria-label="Pembayaran"
     >
-      <div className="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl dark:bg-slate-900">
+      <div className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-lg bg-white p-5 shadow-xl dark:bg-slate-900">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold">Pembayaran</h2>
@@ -131,6 +147,17 @@ export function PosPaymentDialog({
           </button>
         </div>
 
+        <div className="mt-5 grid gap-5 lg:grid-cols-[18rem_1fr]">
+          <aside className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+            <p className="flex items-center gap-2 font-bold"><ReceiptText className="h-5 w-5 text-emerald-700" />Ringkasan transaksi</p>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div className="flex justify-between"><dt className="text-slate-500">Total</dt><dd className="font-bold">{formatMoney(total, currencyCode)}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Sudah dibayar</dt><dd>{formatMoney(dibayar, currencyCode)}</dd></div>
+              <div className="flex justify-between border-t border-slate-200 pt-3 text-lg"><dt className="font-bold">Sisa</dt><dd className="font-black text-emerald-800">{formatMoney(sisa, currencyCode)}</dd></div>
+            </dl>
+            <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Pembayaran dapat dipecah ke beberapa metode. Setiap bagian disimpan server dengan kunci idempotensi berbeda.</div>
+          </aside>
+          <section>
         {!sudahBayar && (
           <>
             <fieldset className="mt-4">
@@ -142,7 +169,8 @@ export function PosPaymentDialog({
                     type="button"
                     onClick={() => {
                       setMetodeId(m.id);
-                      setDiserahkan(m.allowsChange ? total : total);
+                      setNominal(sisa);
+                      setDiserahkan(sisa);
                       setRujukan('');
                     }}
                     className={
@@ -151,7 +179,7 @@ export function PosPaymentDialog({
                         : 'rounded-lg border border-slate-300 p-3 text-sm hover:border-brand-400 dark:border-slate-700'
                     }
                   >
-                    {m.name}
+                    {m.methodType === 'CASH' ? <Banknote className="mx-auto mb-1 h-5 w-5" /> : m.methodType.includes('QR') ? <QrCode className="mx-auto mb-1 h-5 w-5" /> : m.methodType.includes('CARD') ? <CreditCard className="mx-auto mb-1 h-5 w-5" /> : <Building2 className="mx-auto mb-1 h-5 w-5" />}{m.name}
                   </button>
                 ))}
               </div>
@@ -175,11 +203,11 @@ export function PosPaymentDialog({
                   <button
                     type="button"
                     className="rounded border border-slate-300 px-2.5 py-1 text-xs dark:border-slate-700"
-                    onClick={() => setDiserahkan(total)}
+                  onClick={() => setDiserahkan(nominal)}
                   >
                     Uang pas
                   </button>
-                  {PECAHAN.filter((p) => p >= total).slice(0, 4).map((p) => (
+                  {PECAHAN.filter((p) => p >= nominal).slice(0, 4).map((p) => (
                     <button
                       key={p}
                       type="button"
@@ -201,6 +229,13 @@ export function PosPaymentDialog({
                     Kurang {formatMoney(kurang, currencyCode)}.
                   </p>
                 )}
+              </div>
+            )}
+
+            {terpilih && (
+              <div className="mt-4">
+                <label className="field-label" htmlFor="nominal-bayar">Nominal metode ini</label>
+                <input id="nominal-bayar" type="number" min={1} max={sisa} inputMode="numeric" className="field-input text-end text-xl tabular-nums" value={nominal} onChange={(e) => { const value = Math.min(sisa, Math.max(0, Number(e.target.value))); setNominal(value); if (!terpilih.allowsChange) setDiserahkan(value); }} />
               </div>
             )}
 
@@ -262,6 +297,10 @@ export function PosPaymentDialog({
                 Tekan Selesaikan untuk memotong stok, membentuk jurnal, dan menerbitkan struk.
               </p>
             </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <label className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"><input type="checkbox" checked={cetakStruk} onChange={(e) => setCetakStruk(e.target.checked)} /><Printer className="h-5 w-5 text-emerald-700" /><span><strong className="block">Cetak struk</strong><span className="text-xs text-slate-500">Printer kasir yang terhubung</span></span></label>
+              <label className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"><input type="checkbox" checked={buktiDigital} onChange={(e) => setBuktiDigital(e.target.checked)} /><ReceiptText className="h-5 w-5 text-emerald-700" /><span><strong className="block">Bukti digital</strong><span className="text-xs text-slate-500">Kirim dari riwayat transaksi setelah selesai</span></span></label>
+            </div>
             <button
               type="button"
               className="btn-primary mt-4 w-full justify-center py-3 text-base"
@@ -273,10 +312,13 @@ export function PosPaymentDialog({
               ) : (
                 <Printer className="h-5 w-5" aria-hidden />
               )}
-              Selesaikan dan cetak struk
+              {cetakStruk ? 'Selesaikan dan cetak struk' : 'Selesaikan pembayaran'}
             </button>
+            {buktiDigital && <p className="mt-2 text-center text-xs text-slate-500">Bukti digital tersedia pada riwayat transaksi; data kontak pasien tidak ditampilkan di layar kasir.</p>}
           </div>
         )}
+          </section>
+        </div>
       </div>
     </div>
   );

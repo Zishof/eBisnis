@@ -461,6 +461,18 @@ export class HealthPharmacyController {
   }
 
   @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.READ')
+  @Get('pos-sales/:id/products/:productId/lots')
+  @ApiOperation({ summary: 'Daftar batch layak dan tidak layak untuk pilihan FEFO POS Apotik' })
+  lotPos(
+    @Param('id') id: string,
+    @Param('productId') productId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.farmasi.daftarLotPos(requireSchema(user), id, productId);
+  }
+
+  @ApiBearerAuth('access-token')
   @Permissions('POS_SALE.SELL')
   @Post('pos-sales/:id/context')
   @ApiOperation({ summary: 'Menyimpan konteks klinis atau produksi transaksi POS Apotik' })

@@ -23,6 +23,7 @@ import {
   Factory,
   FileText,
   Loader2,
+  ListRestart,
   Pause,
   Pill,
   Printer,
@@ -43,6 +44,8 @@ import { useErrorMessage } from '../../app/auth-context';
 import { LoadingState, useToast } from '../../components/ui';
 import { PosPaymentDialog } from './PosPaymentDialog';
 import { PosShiftBar } from './PosShiftBar';
+import { PharmacyLotDialog } from './PharmacyLotDialog';
+import { PharmacyHeldDrawer, type TransaksiPosApotik } from './PharmacyHeldDrawer';
 import type { KeranjangPos, KonteksPos, ProdukPos } from './pos-types';
 import { emedikPublicBrandFor } from '../public/emedik-host';
 
@@ -87,6 +90,8 @@ export function PharmacyPosPage() {
   const [bentukSediaan, setBentukSediaan] = useState('');
   const [etiket, setEtiket] = useState('');
   const [nomorProduksi, setNomorProduksi] = useState('');
+  const [produkPilihBatch, setProdukPilihBatch] = useState<ProdukPos | null>(null);
+  const [bukaTertahan, setBukaTertahan] = useState(false);
 
   const galat = useCallback((e: unknown) => toast.push(pesanGalat(e, (k, f) => f ?? k), 'error'), [toast, pesanGalat]);
   const fokusPindai = useCallback(() => window.setTimeout(() => kotakPindai.current?.focus(), 0), []);
@@ -138,7 +143,7 @@ export function PharmacyPosPage() {
   });
 
   const tambah = useMutation({
-    mutationFn: (v: { productId: string; quantity: number }) =>
+    mutationFn: (v: { productId: string; quantity: number; lotId?: string | null }) =>
       api.post<KeranjangPos>(`/pos/sales/${saleId}/items`, v),
     onSuccess: (k) => {
       qc.setQueryData(['pharmacy-pos', 'sale', saleId], k);
@@ -174,6 +179,26 @@ export function PharmacyPosPage() {
     onSuccess: () => {
       toast.push('Transaksi apotik ditahan. Resep atau racikan dapat dilanjutkan dari daftar tertahan.', 'success');
       setSaleId(null);
+    },
+    onError: galat,
+  });
+
+  const lanjutkan = useMutation({
+    mutationFn: async (row: TransaksiPosApotik) => {
+      const cart = await api.post<KeranjangPos>(`/pos/sales/${row.pos_sale_id}/resume`, {});
+      return { row, cart };
+    },
+    onSuccess: ({ row, cart }) => {
+      setSaleId(row.pos_sale_id);
+      setMode(row.transaction_mode);
+      setNomorResep(row.prescription_number ?? '');
+      setNomorProduksi(row.reference_number ?? '');
+      setNamaFormula(row.formula_name ?? '');
+      setBentukSediaan(row.dosage_form ?? '');
+      setEtiket(row.label_instruction ?? '');
+      qc.setQueryData(['pharmacy-pos', 'sale', row.pos_sale_id], cart);
+      setBukaTertahan(false);
+      fokusPindai();
     },
     onError: galat,
   });
@@ -288,6 +313,9 @@ export function PharmacyPosPage() {
               <CircleHelp className="h-4 w-4" aria-hidden /> Bantuan
             </a>
           </div>
+          <button type="button" className="ms-auto flex items-center gap-2 rounded-lg border border-white/25 px-3 py-2 text-sm font-bold hover:bg-white/10 xl:ms-0" onClick={() => setBukaTertahan(true)}>
+            <ListRestart className="h-4 w-4" /> Ditahan
+          </button>
         </div>
       </header>
 
@@ -453,12 +481,13 @@ export function PharmacyPosPage() {
                 <button
                   key={p.productId}
                   type="button"
-                  onClick={() => tambah.mutate({ productId: p.productId, quantity: 1 })}
+                  onClick={() => setProdukPilihBatch(p)}
                   disabled={tambah.isPending}
                   className="group grid min-h-[8.5rem] grid-cols-[4.5rem_1fr] gap-3 rounded-lg border border-slate-200 p-3 text-start transition hover:border-[#56bdb4] hover:bg-[#f0faf7] dark:border-slate-700 dark:hover:bg-emerald-950/30"
                 >
-                  <span className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-lg bg-emerald-50 text-[#00877e] group-hover:bg-white">
+                  <span className="relative grid h-[4.5rem] w-[4.5rem] place-items-center overflow-hidden rounded-lg bg-emerald-50 text-[#00877e] group-hover:bg-white">
                     <PackageCheck className="h-8 w-8" aria-hidden />
+                    {p.imageUrl && <img src={p.imageUrl} alt="" className="absolute inset-0 h-full w-full bg-white object-contain p-1" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none'; }} />}
                   </span>
                   <span className="min-w-0">
                     <span className="line-clamp-2 text-sm font-bold">{p.name}</span>
@@ -518,6 +547,7 @@ export function PharmacyPosPage() {
                         Butuh persetujuan sebelum dibayar
                       </p>
                     )}
+                    {l.lot_number && <p className="mt-1 text-[11px] font-medium text-emerald-700">Batch {l.lot_number}{l.expiry_date ? ` · ED ${l.expiry_date}` : ''}</p>}
                   </div>
                   <button
                     type="button"
@@ -628,6 +658,23 @@ export function PharmacyPosPage() {
             toast.push(`Transaksi apotik selesai. Struk ${nomorStruk}.`, 'success');
             fokusPindai();
           }}
+        />
+      )}
+      {produkPilihBatch && saleId && (
+        <PharmacyLotDialog
+          saleId={saleId}
+          product={produkPilihBatch}
+          onClose={() => setProdukPilihBatch(null)}
+          onSelect={(lotId) => {
+            tambah.mutate({ productId: produkPilihBatch.productId, quantity: 1, lotId });
+            setProdukPilihBatch(null);
+          }}
+        />
+      )}
+      {bukaTertahan && (
+        <PharmacyHeldDrawer
+          onClose={() => setBukaTertahan(false)}
+          onResume={async (row) => { await lanjutkan.mutateAsync(row); }}
         />
       )}
     </div>

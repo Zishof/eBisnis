@@ -827,6 +827,13 @@
       "file": "H070__health__pharmacy_trade.sql",
       "name": "eMedik: transaksi POS apotik, racikan, dan produksi",
       "description": "Menghubungkan transaksi POS dengan resep yang telah ditelaah, menyimpan formula/etiket racikan dan snapshot komponennya, serta membuka ruang kerja Penjualan Obat, Pembelian PBF, dan Racikan/Produksi. Mesin harga, stok, pembayaran, jurnal, dan reversal tetap milik POS/Inventory; H070 hanya menambah kontrak klinis yang tidak dikenal kasir retail."
+    },
+    {
+      "version": "H071",
+      "sequence": 1071,
+      "file": "H071__health__pharmacy_pos_lot.sql",
+      "name": "eMedik: batch FEFO pada baris POS Apotik",
+      "description": "Membawa lot yang dipilih kasir dari baris penjualan ke reservasi, pengeluaran stok, pergerakan stok, dan struk transaksi. Produk tanpa saldo per lot tetap dapat memakai saldo umum; batch kedaluwarsa atau karantina terlihat tetapi tidak dapat dipilih oleh UI farmasi."
     }
   ]
 }

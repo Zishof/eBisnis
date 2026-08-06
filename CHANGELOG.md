@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-08-06 - POS Apotik 0.1.15
+
+- Menambahkan pemilihan batch FEFO operasional pada POS Apotik; lot terpilih kini
+  mengikuti reservasi, pengeluaran stok, pergerakan persediaan, dan struk.
+- Menyelaraskan katalog obat Web, Android, dan Windows dengan stok outlet, harga,
+  gambar produk, status kedaluwarsa, karantina, dan rekomendasi FEFO dari server.
+- Melengkapi alur resep dokter, racikan, dan produksi farmasi pada klien Flutter,
+  termasuk validasi farmasi sebelum pembayaran serta penyelesaian khusus apotik.
+- Menambahkan daftar transaksi ditahan, pembayaran multi-metode, opsi struk, dan
+  rekonsiliasi denominasi saat tutup shift pada POS Web.
+- Menaikkan versi klien menjadi 0.1.15 agar Android dan Windows menawarkan
+  pembaruan melalui kanal publik Apotik eMedik.
+
 ## 2026-08-06 - Inventory parity wave 5
 
 - Memperbaiki relasi tipe akun pada workspace keuangan tenant.

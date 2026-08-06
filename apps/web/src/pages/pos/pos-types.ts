@@ -51,6 +51,9 @@ export interface BarisKeranjang {
   product_id: string;
   product_name: string;
   uom_id: string | null;
+  lot_id?: string | null;
+  lot_number?: string | null;
+  expiry_date?: string | null;
   quantity: string;
   unit_price: string;
   discount_amount: string;
@@ -91,6 +94,7 @@ export interface ProdukPos {
   price: string | null;
   currencyCode: string | null;
   availableQty: string | null;
+  imageUrl?: string | null;
 }
 
 export interface MetodePembayaran {

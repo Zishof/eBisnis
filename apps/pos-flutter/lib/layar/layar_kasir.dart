@@ -91,6 +91,10 @@ class _LayarKasirState extends State<LayarKasir> {
   final TextEditingController _catatan = TextEditingController();
   final TextEditingController _nomorResep = TextEditingController();
   final TextEditingController _namaPasien = TextEditingController();
+  final TextEditingController _namaFormula = TextEditingController();
+  final TextEditingController _bentukSediaan = TextEditingController();
+  final TextEditingController _etiket = TextEditingController();
+  final TextEditingController _nomorProduksi = TextEditingController();
   final FocusNode _fokusPindai = FocusNode();
   final FocusNode _fokusLayar = FocusNode();
 
@@ -102,6 +106,7 @@ class _LayarKasirState extends State<LayarKasir> {
   String _kunciCari = '';
   JenisPesanan _jenis = JenisPesanan.dineIn;
   String _menu = 'kasir';
+  String _modeFarmasi = 'OTC';
   List<ProdukLokal>? _produkUnggahan;
   final List<RiwayatPembayaranKasir> _riwayatPembayaran = [];
   String? _versiPembaruanDitampilkan;
@@ -150,6 +155,10 @@ class _LayarKasirState extends State<LayarKasir> {
     _catatan.dispose();
     _nomorResep.dispose();
     _namaPasien.dispose();
+    _namaFormula.dispose();
+    _bentukSediaan.dispose();
+    _etiket.dispose();
+    _nomorProduksi.dispose();
     _fokusPindai.dispose();
     _fokusLayar.dispose();
     super.dispose();
@@ -690,6 +699,29 @@ class _LayarKasirState extends State<LayarKasir> {
       _kembalikanFokus();
       return;
     }
+    if (_apotik &&
+        ['PRESCRIPTION', 'COMPOUND'].contains(_modeFarmasi) &&
+        _nomorResep.text.trim().length < 3) {
+      _kabar('Nomor resep yang sudah ditelaah wajib diisi.', galat: true);
+      _kembalikanFokus();
+      return;
+    }
+    if (_apotik &&
+        _modeFarmasi == 'COMPOUND' &&
+        (_namaFormula.text.trim().length < 3 ||
+            _etiket.text.trim().length < 3)) {
+      _kabar('Nama formula dan instruksi etiket racikan wajib diisi.',
+          galat: true);
+      _kembalikanFokus();
+      return;
+    }
+    if (_apotik &&
+        _modeFarmasi == 'PRODUCTION' &&
+        _nomorProduksi.text.trim().length < 3) {
+      _kabar('Nomor work order / batch produksi wajib diisi.', galat: true);
+      _kembalikanFokus();
+      return;
+    }
     final t = _total;
     final metode =
         pilihan ?? (widget.metode.isEmpty ? null : widget.metode.first);
@@ -752,6 +784,13 @@ class _LayarKasirState extends State<LayarKasir> {
             kembalian: kembalian,
             jenisPesanan: namaJenisPesanan[_jenis]!,
             catatan: _catatan.text.trim(),
+            modeFarmasi: _apotik ? _modeFarmasi : null,
+            nomorResep: _nomorResep.text.trim(),
+            namaPasien: _namaPasien.text.trim(),
+            namaFormula: _namaFormula.text.trim(),
+            bentukSediaan: _bentukSediaan.text.trim(),
+            instruksiEtiket: _etiket.text.trim(),
+            nomorProduksi: _nomorProduksi.text.trim(),
           ),
         );
       } catch (e) {
@@ -1144,8 +1183,14 @@ class _LayarKasirState extends State<LayarKasir> {
         if (_apotik) ...[
           const SizedBox(height: 10),
           _PanelKonteksApotik(
+            mode: _modeFarmasi,
+            onMode: (value) => setState(() => _modeFarmasi = value),
             nomorResep: _nomorResep,
             namaPasien: _namaPasien,
+            namaFormula: _namaFormula,
+            bentukSediaan: _bentukSediaan,
+            etiket: _etiket,
+            nomorProduksi: _nomorProduksi,
             onFokusSelesai: () => _kembalikanFokus(bersihkanCari: false),
             ringkas: ringkas,
           ),
@@ -1306,12 +1351,24 @@ class _PanelKonteksApotik extends StatelessWidget {
   const _PanelKonteksApotik({
     required this.nomorResep,
     required this.namaPasien,
+    required this.mode,
+    required this.onMode,
+    required this.namaFormula,
+    required this.bentukSediaan,
+    required this.etiket,
+    required this.nomorProduksi,
     required this.onFokusSelesai,
     this.ringkas = false,
   });
 
   final TextEditingController nomorResep;
   final TextEditingController namaPasien;
+  final String mode;
+  final ValueChanged<String> onMode;
+  final TextEditingController namaFormula;
+  final TextEditingController bentukSediaan;
+  final TextEditingController etiket;
+  final TextEditingController nomorProduksi;
   final VoidCallback onFokusSelesai;
   final bool ringkas;
 
@@ -1336,13 +1393,29 @@ class _PanelKonteksApotik extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(width: 12),
-                _ChipFarmasi(label: 'OTC', warna: Color(0xFF047857)),
+                _ChipFarmasi(
+                    label: 'OTC',
+                    warna: Color(0xFF047857),
+                    selected: mode == 'OTC',
+                    onTap: () => onMode('OTC')),
                 const SizedBox(width: 6),
-                _ChipFarmasi(label: 'Resep dokter', warna: Warna.utama),
+                _ChipFarmasi(
+                    label: 'Resep dokter',
+                    warna: Warna.utama,
+                    selected: mode == 'PRESCRIPTION',
+                    onTap: () => onMode('PRESCRIPTION')),
                 const SizedBox(width: 6),
-                _ChipFarmasi(label: 'Racikan', warna: Color(0xFF0891B2)),
+                _ChipFarmasi(
+                    label: 'Racikan',
+                    warna: Color(0xFF0891B2),
+                    selected: mode == 'COMPOUND',
+                    onTap: () => onMode('COMPOUND')),
                 const SizedBox(width: 6),
-                _ChipFarmasi(label: 'Produksi', warna: Color(0xFF7C3AED)),
+                _ChipFarmasi(
+                    label: 'Produksi',
+                    warna: Color(0xFF7C3AED),
+                    selected: mode == 'PRODUCTION',
+                    onTap: () => onMode('PRODUCTION')),
               ],
             ),
           ),
@@ -1428,6 +1501,39 @@ class _PanelKonteksApotik extends StatelessWidget {
               ],
             ),
           ],
+          if (mode == 'COMPOUND') ...[
+            const SizedBox(height: 8),
+            TextField(
+                controller: namaFormula,
+                decoration: const InputDecoration(
+                    isDense: true,
+                    labelText: 'Nama formula racikan',
+                    border: OutlineInputBorder())),
+            const SizedBox(height: 8),
+            TextField(
+                controller: bentukSediaan,
+                decoration: const InputDecoration(
+                    isDense: true,
+                    labelText: 'Bentuk sediaan',
+                    border: OutlineInputBorder())),
+            const SizedBox(height: 8),
+            TextField(
+                controller: etiket,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                    isDense: true,
+                    labelText: 'Instruksi etiket',
+                    border: OutlineInputBorder())),
+          ],
+          if (mode == 'PRODUCTION') ...[
+            const SizedBox(height: 8),
+            TextField(
+                controller: nomorProduksi,
+                decoration: const InputDecoration(
+                    isDense: true,
+                    labelText: 'No. work order / batch produksi',
+                    border: OutlineInputBorder())),
+          ],
         ],
       ),
     );
@@ -1435,23 +1541,34 @@ class _PanelKonteksApotik extends StatelessWidget {
 }
 
 class _ChipFarmasi extends StatelessWidget {
-  const _ChipFarmasi({required this.label, required this.warna});
+  const _ChipFarmasi(
+      {required this.label,
+      required this.warna,
+      required this.selected,
+      required this.onTap});
 
   final String label;
   final Color warna;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: warna.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(7),
-      ),
-      child: Text(
-        label,
-        style:
-            TextStyle(color: warna, fontSize: 11, fontWeight: FontWeight.w800),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(7),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: warna.withValues(alpha: selected ? 0.2 : 0.08),
+          border: Border.all(color: selected ? warna : Colors.transparent),
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+              color: warna, fontSize: 11, fontWeight: FontWeight.w800),
+        ),
       ),
     );
   }

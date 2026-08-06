@@ -139,6 +139,7 @@ export class PosSaleService {
     input: {
       productId: string;
       uomId?: string;
+      lotId?: string;
       quantity: number;
       priceOverride?: number | null;
       manualDiscount?: { type: 'PERCENT' | 'AMOUNT'; value: number; label?: string } | null;
@@ -179,16 +180,17 @@ export class PosSaleService {
 
       const baris = await client.query<{ id: string }>(
         `INSERT INTO "${schemaName}".pos_sale_line
-           (pos_sale_id, product_id, uom_id, warehouse_id, line_no, quantity, unit_price,
+           (pos_sale_id, product_id, uom_id, warehouse_id, lot_id, line_no, quantity, unit_price,
             discount_amount, tax_amount, line_total, cost_snapshot, price_book_id,
             requires_approval)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING id`,
         [
           saleId,
           kuotasi.productId,
           kuotasi.uomId,
           warehouseId,
+          input.lotId ?? null,
           Number(nomor.rows[0].n),
           kuotasi.quantity,
           kuotasi.unitPrice,
@@ -215,6 +217,7 @@ export class PosSaleService {
           {
             warehouseId: hasil.warehouseId,
             productId: input.productId,
+            lotId: input.lotId ?? null,
             quantity: input.quantity,
             saleId,
             lineId: hasil.lineId,
@@ -246,9 +249,9 @@ export class PosSaleService {
     const sale = await this.ambilKepala(schemaName, saleId);
     this.pastikanBolehDisunting(sale.status);
 
-    const baris = await this.tenantDb.query<{ product_id: string; uom_id: string; warehouse_id: string }>(
+    const baris = await this.tenantDb.query<{ product_id: string; uom_id: string; warehouse_id: string; lot_id: string | null }>(
       schemaName,
-      `SELECT product_id, uom_id, warehouse_id FROM "${schemaName}".pos_sale_line
+      `SELECT product_id, uom_id, warehouse_id, lot_id FROM "${schemaName}".pos_sale_line
         WHERE id = $1 AND pos_sale_id = $2`,
       [lineId, saleId],
     );
@@ -271,6 +274,7 @@ export class PosSaleService {
       {
         warehouseId: baris[0].warehouse_id,
         productId: baris[0].product_id,
+        lotId: baris[0].lot_id,
         quantity,
         saleId,
         lineId,
@@ -687,7 +691,7 @@ export class PosSaleService {
       }
 
       const baris = await client.query<Record<string, string>>(
-        `SELECT id, product_id, uom_id, warehouse_id, quantity::text, cost_snapshot::text,
+        `SELECT id, product_id, uom_id, warehouse_id, lot_id, quantity::text, cost_snapshot::text,
                 line_total::text, tax_amount::text, discount_amount::text
            FROM "${schemaName}".pos_sale_line WHERE pos_sale_id = $1 ORDER BY line_no`,
         [saleId],
@@ -760,6 +764,7 @@ export class PosSaleService {
           warehouseId: b.warehouse_id ?? s.warehouse_id,
           productId: b.product_id,
           uomId: b.uom_id,
+          lotId: b.lot_id,
           quantity: Number(b.quantity),
           unitCost: Number(b.cost_snapshot ?? 0),
         })),
@@ -1018,11 +1023,13 @@ export class PosSaleService {
       this.tenantDb.query<Record<string, unknown>>(
         schemaName,
         `SELECT l.id, l.line_no, l.product_id, p.name AS product_name, l.uom_id,
+                l.lot_id, lot.lot_number, lot.expiry_date::text AS expiry_date,
                 l.quantity::text, l.unit_price::text, l.discount_amount::text,
                 l.tax_amount::text, l.line_total::text, l.requires_approval,
                 l.approved_by, l.returned_qty::text
            FROM "${schemaName}".pos_sale_line l
       LEFT JOIN "${schemaName}".product p ON p.id = l.product_id
+      LEFT JOIN "${schemaName}".inventory_lot lot ON lot.id = l.lot_id
           WHERE l.pos_sale_id = $1 ORDER BY l.line_no`,
         [saleId],
       ),

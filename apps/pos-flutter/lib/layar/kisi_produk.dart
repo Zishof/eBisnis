@@ -319,7 +319,7 @@ class _KotakGambar extends StatelessWidget {
   Widget build(BuildContext context) {
     final huruf =
         produk.nama.trim().isEmpty ? '?' : produk.nama.trim()[0].toUpperCase();
-    return Container(
+    final fallback = Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: warnaKotakProduk(produk.productId),
@@ -333,6 +333,18 @@ class _KotakGambar extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: Warna.teks.withValues(alpha: 0.35),
         ),
+      ),
+    );
+    final url = produk.imageUrl;
+    if (url == null || url.isEmpty) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(9),
+      child: Image.network(
+        url,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => fallback,
+        loadingBuilder: (_, child, progress) =>
+            progress == null ? child : fallback,
       ),
     );
   }

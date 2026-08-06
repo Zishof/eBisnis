@@ -823,18 +823,19 @@ export class HealthPharmacyService {
     const batas = Math.min(Math.max(limit, 1), 250);
     return this.tenantDb.query(
       schema,
-      `SELECT c.pos_sale_id::text, c.transaction_mode, c.reference_number,
+      `SELECT s.id::text AS pos_sale_id, COALESCE(c.transaction_mode, 'OTC') AS transaction_mode, c.reference_number,
               c.formula_name, c.dosage_form, c.label_instruction,
-              c.workflow_status, c.validated_at::text, c.completed_at::text,
-              c.updated_at::text, p.prescription_number,
+              COALESCE(c.workflow_status, 'DRAFT') AS workflow_status,
+              c.validated_at::text, c.completed_at::text,
+              COALESCE(c.updated_at, s.updated_at)::text AS updated_at, p.prescription_number,
               s.status AS sale_status, s.receipt_number, s.business_date::text,
               s.grand_total::text, s.currency_code, count(l.id)::int AS line_count
-         FROM "${schema}".rx_pos_sale_context c
-         JOIN "${schema}".pos_sale s ON s.id = c.pos_sale_id
+         FROM "${schema}".pos_sale s
+         LEFT JOIN "${schema}".rx_pos_sale_context c ON c.pos_sale_id = s.id
          LEFT JOIN "${schema}".rx_prescription p ON p.id = c.prescription_id
          LEFT JOIN "${schema}".pos_sale_line l ON l.pos_sale_id = s.id
-        WHERE ($1::text IS NULL OR c.transaction_mode = $1)
-        GROUP BY c.pos_sale_id, p.prescription_number, s.id
+        WHERE ($1::text IS NULL OR COALESCE(c.transaction_mode, 'OTC') = $1)
+        GROUP BY s.id, c.pos_sale_id, p.prescription_number
         ORDER BY c.updated_at DESC LIMIT ${batas}`,
       [mode?.trim() || null],
     );
@@ -854,6 +855,52 @@ export class HealthPharmacyService {
       [saleId],
     );
     return rows[0] ?? null;
+  }
+
+  async daftarLotPos(schema: string, saleId: string, productId: string) {
+    const sale = await this.tenantDb.query<{ warehouse_id: string | null }>(
+      schema,
+      `SELECT warehouse_id::text FROM "${schema}".pos_sale WHERE id = $1`,
+      [saleId],
+    );
+    if (!sale.length) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Transaksi POS tidak ditemukan.');
+    if (!sale[0].warehouse_id) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Transaksi belum memiliki gudang outlet.');
+    }
+
+    const rows = await this.tenantDb.query<{
+      id: string; lot_number: string; expiry_date: string | null; quality_status: string;
+      available_qty: string; location_name: string | null;
+    }>(
+      schema,
+      `SELECT l.id::text, l.lot_number, l.expiry_date::text, l.quality_status,
+              b.available_qty::text, bin.name AS location_name
+         FROM "${schema}".stock_balance b
+         JOIN "${schema}".inventory_lot l ON l.id = b.lot_id
+         LEFT JOIN "${schema}".warehouse_bin bin ON bin.id = b.bin_id
+        WHERE b.warehouse_id = $1 AND b.product_id = $2 AND b.available_qty > 0
+          AND l.deleted_at IS NULL AND l.is_active = TRUE
+        ORDER BY CASE WHEN l.quality_status = 'GOOD'
+                           AND (l.expiry_date IS NULL OR l.expiry_date > CURRENT_DATE)
+                      THEN 0 ELSE 1 END,
+                 l.expiry_date NULLS LAST, l.lot_number`,
+      [sale[0].warehouse_id, productId],
+    );
+
+    return rows.map((row, index) => {
+      const expired = Boolean(row.expiry_date && row.expiry_date <= new Date().toISOString().slice(0, 10));
+      const eligible = row.quality_status === 'GOOD' && !expired;
+      return {
+        id: row.id,
+        lotNumber: row.lot_number,
+        expiryDate: row.expiry_date,
+        qualityStatus: row.quality_status,
+        availableQty: row.available_qty,
+        locationName: row.location_name,
+        eligible,
+        recommended: eligible && index === 0,
+      };
+    });
   }
 
   async simpanKonteksTransaksiPos(

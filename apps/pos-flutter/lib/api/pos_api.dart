@@ -107,7 +107,7 @@ class PosApiClient {
           'Login berhasil, tetapi belum ada shift terbuka. Buka shift POS untuk akun ini dari aplikasi web, lalu masuk kembali.');
     }
 
-    final sumber = SumberKatalogApi(snapshot);
+    final sumber = SumberKatalogApi(snapshot, baseUrl);
     final metode = ((snapshot['paymentMethods'] as List?) ?? const [])
         .whereType<Map<String, Object?>>()
         .map(
@@ -153,14 +153,59 @@ class PosApiClient {
     final saleId = sale['id'] as String;
 
     for (final baris in transaksi.baris) {
+      String? lotId;
+      if (transaksi.modeFarmasi != null) {
+        final lots = await _request<List<Object?>>(
+          'GET',
+          '/health/pharmacy/pos-sales/$saleId/products/${baris.productId}/lots',
+        );
+        final eligible = lots
+            .whereType<Map<String, Object?>>()
+            .where((lot) => lot['eligible'] == true)
+            .toList();
+        if (eligible.isNotEmpty) {
+          final recommended =
+              eligible.where((lot) => lot['recommended'] == true);
+          lotId = (recommended.isNotEmpty
+                  ? recommended.first
+                  : eligible.first)['id']
+              ?.toString();
+        }
+      }
       await _request<Map<String, Object?>>(
         'POST',
         '/pos/sales/$saleId/items',
         body: {
           'productId': baris.productId,
           if (baris.uomId != null) 'uomId': baris.uomId,
+          if (lotId != null) 'lotId': lotId,
           'quantity': baris.quantity,
         },
+      );
+    }
+
+    if (transaksi.modeFarmasi != null) {
+      await _request<Map<String, Object?>>(
+        'POST',
+        '/health/pharmacy/pos-sales/$saleId/context',
+        body: {
+          'mode': transaksi.modeFarmasi,
+          if ((transaksi.nomorResep ?? '').isNotEmpty)
+            'prescriptionNumber': transaksi.nomorResep,
+          if ((transaksi.nomorProduksi ?? '').isNotEmpty)
+            'referenceNumber': transaksi.nomorProduksi,
+          if ((transaksi.namaFormula ?? '').isNotEmpty)
+            'formulaName': transaksi.namaFormula,
+          if ((transaksi.bentukSediaan ?? '').isNotEmpty)
+            'dosageForm': transaksi.bentukSediaan,
+          if ((transaksi.instruksiEtiket ?? '').isNotEmpty)
+            'labelInstruction': transaksi.instruksiEtiket,
+        },
+      );
+      await _request<Map<String, Object?>>(
+        'POST',
+        '/health/pharmacy/pos-sales/$saleId/validate',
+        body: const {},
       );
     }
 
@@ -182,7 +227,9 @@ class PosApiClient {
 
     final selesai = await _request<Map<String, Object?>>(
       'POST',
-      '/pos/sales/$saleId/complete',
+      transaksi.modeFarmasi == null
+          ? '/pos/sales/$saleId/complete'
+          : '/health/pharmacy/pos-sales/$saleId/complete',
       headers: {'Idempotency-Key': 'flutter-selesai-$saleId'},
       body: const {},
     );
@@ -276,7 +323,7 @@ class SesiKasirApi {
 }
 
 class SumberKatalogApi extends SumberKatalog {
-  SumberKatalogApi(Map<String, Object?> snapshot)
+  SumberKatalogApi(Map<String, Object?> snapshot, Uri baseUrl)
       : mataUang = (snapshot['currency'] ?? 'IDR').toString(),
         generatedAt = (snapshot['generatedAt'] ?? '').toString(),
         productCount = NumberConverter.toInt(snapshot['productCount']),
@@ -286,7 +333,7 @@ class SumberKatalogApi extends SumberKatalog {
             .whereType<Map<String, Object?>>()
             .map(_tarifDariJson)
             .toList(),
-        _produk = _produkDariSnapshot(snapshot);
+        _produk = _produkDariSnapshot(snapshot, baseUrl);
 
   final List<ProdukLokal> _produk;
   final List<TarifLuring> _tarif;
@@ -322,7 +369,8 @@ class SumberKatalogApi extends SumberKatalog {
   List<TarifLuring> get tarif => List.unmodifiable(_tarif);
 }
 
-List<ProdukLokal> _produkDariSnapshot(Map<String, Object?> snapshot) {
+List<ProdukLokal> _produkDariSnapshot(
+    Map<String, Object?> snapshot, Uri baseUrl) {
   final taxRateByCategory = <String, String>{};
   for (final r in ((snapshot['taxRates'] as List?) ?? const [])
       .whereType<Map<String, Object?>>()) {
@@ -350,7 +398,12 @@ List<ProdukLokal> _produkDariSnapshot(Map<String, Object?> snapshot) {
               taxCategoryId == null ? null : taxRateByCategory[taxCategoryId],
           kategori: p['categoryName']?.toString(),
           varian: p['code']?.toString(),
-          stok: null,
+          stok: p['availableQty'] == null
+              ? null
+              : NumberConverter.toInt(p['availableQty']),
+          imageUrl: p['imageUrl'] == null
+              ? null
+              : baseUrl.resolve(p['imageUrl'].toString()).toString(),
         );
       })
       .where((p) => NumberConverter.toNumber(p.harga) > 0)

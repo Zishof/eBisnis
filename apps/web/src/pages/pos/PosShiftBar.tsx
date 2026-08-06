@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Loader2, LockKeyhole, Store, Unlock } from 'lucide-react';
 import { api, formatMoney } from '../../lib/api';
@@ -38,6 +38,8 @@ export function PosShiftBar({
   const [kasAwal, setKasAwal] = useState<number>(0);
   const [kasAkhir, setKasAkhir] = useState<number>(0);
   const [bukaTutup, setBukaTutup] = useState(false);
+  const [catatan, setCatatan] = useState('');
+  const [pecahan, setPecahan] = useState<Record<number, number>>({});
 
   const galat = (e: unknown) => toast.push(pesanGalat(e, (k, f) => t(k, f ?? k)), 'error');
   const mata = konteks?.currency ?? 'IDR';
@@ -59,7 +61,11 @@ export function PosShiftBar({
     mutationFn: () =>
       api.post<{ expectedCash: string; countedCash: string; variance: string }>(
         `/pos/shifts/${shiftId}/close`,
-        { countedCash: kasAkhir },
+        {
+          countedCash: kasAkhir,
+          note: catatan.trim() || undefined,
+          denominations: Object.entries(pecahan).filter(([, qty]) => qty > 0).map(([value, qty]) => ({ value: Number(value), qty })),
+        },
       ),
     onSuccess: (h) => {
       const selisih = Number(h.variance);
@@ -74,6 +80,21 @@ export function PosShiftBar({
     },
     onError: galat,
   });
+
+  const ringkasan = useQuery({
+    queryKey: ['pos', 'shift', shiftId, 'cash-summary'],
+    queryFn: () => api.get<{
+      openingCash: string; cashSales: string; cashIn: string; cashOut: string;
+      changeGiven: string; expectedCash: string;
+    }>(`/pos/shifts/${shiftId}/cash-summary`),
+    enabled: bukaTutup && Boolean(shiftId),
+  });
+
+  const ubahPecahan = (nilai: number, jumlah: number) => {
+    const next = { ...pecahan, [nilai]: Math.max(0, jumlah) };
+    setPecahan(next);
+    setKasAkhir(Object.entries(next).reduce((total, [value, qty]) => total + Number(value) * qty, 0));
+  };
 
   const shift = konteks?.openShift;
   const registerTerpakai = (konteks?.registers ?? []).filter(
@@ -175,12 +196,30 @@ export function PosShiftBar({
           aria-modal="true"
           aria-label="Tutup shift"
         >
-          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl dark:bg-slate-900">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-5 shadow-xl dark:bg-slate-900">
             <h2 className="text-lg font-bold">Tutup shift</h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               Hitung uang di laci, lalu masukkan jumlahnya. Kas yang diharapkan dihitung peladen
               dari kas awal, penjualan tunai, dan pergerakan kas — bukan dari angka ini.
             </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {[
+                ['Kas awal', ringkasan.data?.openingCash], ['Penjualan tunai', ringkasan.data?.cashSales],
+                ['Kas masuk', ringkasan.data?.cashIn], ['Kas keluar', ringkasan.data?.cashOut],
+                ['Kembalian', ringkasan.data?.changeGiven], ['Seharusnya', ringkasan.data?.expectedCash],
+              ].map(([label, value]) => <div key={label} className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800"><p className="text-[11px] uppercase text-slate-500">{label}</p><p className="mt-1 font-bold tabular-nums">{formatMoney(Number(value ?? 0), mata)}</p></div>)}
+            </div>
+
+            <h3 className="mt-5 font-bold">Hitung denominasi</h3>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {[100000, 50000, 20000, 10000, 5000, 2000, 1000].map((nilai) => (
+                <label key={nilai} className="rounded-lg border border-slate-200 p-3 text-xs dark:border-slate-700">
+                  <span className="font-semibold">{formatMoney(nilai, mata)}</span>
+                  <input type="number" min={0} inputMode="numeric" className="field-input mt-2" value={pecahan[nilai] ?? 0} onChange={(e) => ubahPecahan(nilai, Number(e.target.value))} />
+                </label>
+              ))}
+            </div>
+
             <label className="field-label mt-4" htmlFor="kas-akhir">
               Kas yang dihitung
             </label>
@@ -194,6 +233,13 @@ export function PosShiftBar({
               className="field-input text-end text-2xl tabular-nums"
               autoFocus
             />
+            <div className="mt-3 flex items-center justify-between rounded-lg bg-emerald-50 p-3 dark:bg-emerald-950/30">
+              <span className="font-medium">Selisih sementara</span>
+              <strong className={kasAkhir - Number(ringkasan.data?.expectedCash ?? 0) === 0 ? 'text-emerald-700' : 'text-amber-700'}>{formatMoney(kasAkhir - Number(ringkasan.data?.expectedCash ?? 0), mata)}</strong>
+            </div>
+            <label className="field-label mt-4" htmlFor="catatan-shift">Catatan rekonsiliasi / serah terima</label>
+            <textarea id="catatan-shift" className="field-input min-h-20" value={catatan} onChange={(e) => setCatatan(e.target.value)} placeholder="Catat selisih, kendala printer, resep tertahan, atau informasi untuk petugas berikutnya." />
+            <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">Server akan menolak penutupan bila masih ada transaksi DRAFT, PAYMENT_PENDING, atau PAID yang belum diselesaikan.</p>
             <div className="mt-5 flex gap-2">
               <button
                 type="button"

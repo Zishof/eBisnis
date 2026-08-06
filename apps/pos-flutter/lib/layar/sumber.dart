@@ -26,6 +26,7 @@ class ProdukLokal {
     this.penanda = const [],
     this.stok,
     this.favorit = false,
+    this.imageUrl,
   });
 
   final String productId;
@@ -58,6 +59,7 @@ class ProdukLokal {
 
   /// Ditandai kasir atau gerai sebagai barang yang paling sering terjual.
   final bool favorit;
+  final String? imageUrl;
 }
 
 /// Salinan katalog di mesin kasir.
@@ -177,6 +179,13 @@ class TransaksiKasir {
     required this.kembalian,
     required this.jenisPesanan,
     required this.catatan,
+    this.modeFarmasi,
+    this.nomorResep,
+    this.namaPasien,
+    this.namaFormula,
+    this.bentukSediaan,
+    this.instruksiEtiket,
+    this.nomorProduksi,
   });
 
   final List<BarisLuring> baris;
@@ -186,6 +195,13 @@ class TransaksiKasir {
   final String kembalian;
   final String jenisPesanan;
   final String catatan;
+  final String? modeFarmasi;
+  final String? nomorResep;
+  final String? namaPasien;
+  final String? namaFormula;
+  final String? bentukSediaan;
+  final String? instruksiEtiket;
+  final String? nomorProduksi;
 
   String get total => hasil.grandTotal;
 }

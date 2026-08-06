@@ -56,4 +56,22 @@ describe('HealthPharmacyService POS Apotik', () => {
     expect(client.query.mock.calls[3][0]).toContain('rx_pos_compound_component');
     expect(client.query.mock.calls[4][0]).toContain("workflow_status = 'VALIDATED'");
   });
+
+  it('mengurutkan lot layak sebagai rekomendasi FEFO tanpa menyembunyikan lot karantina', async () => {
+    const tenantDb = {
+      query: jest.fn()
+        .mockResolvedValueOnce([{ warehouse_id: 'warehouse-1' }])
+        .mockResolvedValueOnce([
+          { id: 'lot-good', lot_number: 'B-2026-01', expiry_date: '2027-01-01', quality_status: 'GOOD', available_qty: '12', location_name: 'A-01' },
+          { id: 'lot-quarantine', lot_number: 'B-2026-02', expiry_date: '2027-02-01', quality_status: 'QUARANTINE', available_qty: '4', location_name: 'Q-01' },
+        ]),
+    };
+    const service = new HealthPharmacyService(tenantDb as never, audit as never, inventory as never);
+
+    await expect(service.daftarLotPos('demo', 'sale-1', 'product-1')).resolves.toEqual([
+      expect.objectContaining({ id: 'lot-good', eligible: true, recommended: true }),
+      expect.objectContaining({ id: 'lot-quarantine', eligible: false, recommended: false }),
+    ]);
+    expect(tenantDb.query.mock.calls[1][1]).toContain('ORDER BY CASE');
+  });
 });

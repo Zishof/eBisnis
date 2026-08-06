@@ -42,6 +42,10 @@ export interface ProdukKasir {
   allowNegativeStock: boolean;
   defaultSalePrice: string | null;
   imageFileId: string | null;
+  price: string | null;
+  currencyCode: string | null;
+  availableQty: string | null;
+  imageUrl: string;
 }
 
 /**
@@ -114,20 +118,26 @@ export class PosCatalogService {
   async cariProduk(
     schemaName: string,
     kueri: string,
-    opsi: { categoryId?: string; limit?: number } = {},
+    opsi: { categoryId?: string; outletId?: string; limit?: number } = {},
   ): Promise<ProdukKasir[]> {
     const limit = Math.min(Math.max(opsi.limit ?? 30, 1), 100);
     const teks = kueri.trim();
 
-    const rows = await this.tenantDb.query<Record<string, unknown>>(
+    const [rows, setelan] = await Promise.all([this.tenantDb.query<Record<string, unknown>>(
       schemaName,
       `SELECT p.id, p.code, p.name, p.sku, p.barcode, p.category_id, p.tax_category_id,
               p.tracking_type, p.allow_negative_stock, p.default_sale_price::text AS default_sale_price,
               p.base_uom_id AS uom_id, u.code AS uom_code,
-              c.name AS category_name
+              c.name AS category_name, COALESCE(stock.available_qty, 0)::text AS available_qty
          FROM "${schemaName}".product p
          JOIN "${schemaName}".uom u ON u.id = p.base_uom_id
     LEFT JOIN "${schemaName}".product_category c ON c.id = p.category_id
+    LEFT JOIN LATERAL (
+              SELECT sum(sb.available_qty) AS available_qty
+                FROM "${schemaName}".stock_balance sb
+                JOIN "${schemaName}".warehouse w ON w.id = sb.warehouse_id
+               WHERE sb.product_id = p.id AND ($4::uuid IS NULL OR w.outlet_id = $4::uuid)
+              ) stock ON TRUE
         WHERE p.deleted_at IS NULL
           AND p.is_active = TRUE
           AND p.is_sellable = TRUE
@@ -150,10 +160,10 @@ export class PosCatalogService {
           (p.code = $1::text OR p.sku = $1::text OR p.barcode = $1::text) DESC,
           p.name
         LIMIT $3`,
-      [teks, opsi.categoryId ?? null, limit],
-    );
+      [teks, opsi.categoryId ?? null, limit, opsi.outletId ?? null],
+    ), this.setelanPos(schemaName)]);
 
-    return rows.map((r) => this.petakanProduk(r));
+    return rows.map((r) => ({ ...this.petakanProduk(r), currencyCode: setelan.currency }));
   }
 
   /** Pencarian menurut barcode; utama maupun alternatif. */
@@ -613,6 +623,10 @@ export class PosCatalogService {
       allowNegativeStock: Boolean(r.allow_negative_stock),
       defaultSalePrice: (r.default_sale_price as string) ?? null,
       imageFileId: null,
+      price: (r.default_sale_price as string) ?? null,
+      currencyCode: (r.currency_code as string) ?? null,
+      availableQty: (r.available_qty as string) ?? null,
+      imageUrl: `/api/v1/inventory/public/products/${String(r.id)}/image`,
     };
   }
 
@@ -677,6 +691,7 @@ export class PosCatalogService {
               p.category_id, c.name AS category_name,
               p.tax_category_id, p.tracking_type, p.allow_negative_stock,
               p.default_sale_price::text AS default_sale_price,
+              COALESCE(stock.available_qty, 0)::text AS available_qty,
               -- Barcode utama dan alternatif digabung menjadi satu larik supaya
               -- pencarian luring memakai satu tempat, sebagaimana peladen.
               COALESCE(
@@ -696,6 +711,10 @@ export class PosCatalogService {
          FROM "${schemaName}".product p
          JOIN "${schemaName}".uom u ON u.id = p.base_uom_id
     LEFT JOIN "${schemaName}".product_category c ON c.id = p.category_id
+    LEFT JOIN LATERAL (
+              SELECT sum(sb.available_qty) AS available_qty
+                FROM "${schemaName}".stock_balance sb WHERE sb.product_id = p.id
+              ) stock ON TRUE
         WHERE p.deleted_at IS NULL AND p.is_active = TRUE AND p.is_sellable = TRUE
         ORDER BY p.name
         LIMIT $1`,

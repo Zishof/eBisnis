@@ -212,6 +212,11 @@ class TambahBarisDto {
   @IsUUID()
   uomId?: string;
 
+  @ApiPropertyOptional({ description: 'Batch/lot farmasi yang dipilih dengan FEFO.' })
+  @IsOptional()
+  @IsUUID()
+  lotId?: string;
+
   @ApiProperty({ example: 1 })
   @IsNumber()
   @IsPositive()
@@ -610,10 +615,12 @@ export class PosController {
     @CurrentUser() user: AuthenticatedUser,
     @Query('q') q?: string,
     @Query('categoryId') categoryId?: string,
+    @Query('outletId') outletId?: string,
     @Query('limit') limit?: string,
   ) {
     return this.katalog.cariProduk(requireSchema(user), q ?? '', {
       categoryId: categoryId || undefined,
+      outletId: outletId || undefined,
       limit: limit ? Number(limit) : undefined,
     });
   }
