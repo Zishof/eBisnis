@@ -11,6 +11,12 @@
       "file": "20260806T060000__hospitality__foundation.sql",
       "name": "Fondasi Hospitality: properti, tipe kamar, dan kamar",
       "description": "hospitality_property, hospitality_room_type, hospitality_room. Prasyarat mutlak seluruh modul hospitality lain (MI-6 ketersediaan, MI-8 reservasi, MI-12 front office, dst). Sengaja HANYA properti/tipe kamar/kamar -- portofolio/badan hukum/gedung/lantai/zona penuh BRD ditunda sampai tenant multi-properti sungguhan on-board (MISSING, lihat komentar migrasi). Kode properti unik per penyewa, kode tipe kamar dan nomor kamar unik per properti, ditegakkan indeks unik parsial."
+    },
+    {
+      "id": "20260806T090000__hospitality__inventory_availability",
+      "file": "20260806T090000__hospitality__inventory_availability.sql",
+      "name": "MI-6: Room Inventory dan Availability",
+      "description": "hospitality_room_block (ledger pengecualian ketersediaan per kamar per malam, BLOCKED/OUT_OF_ORDER/OUT_OF_SERVICE), overbooking_limit pada hospitality_room_type, features pada hospitality_room. UNIQUE (room_id, stay_date) adalah penjaga kondisi pacu sesungguhnya -- dua blokir bersamaan untuk kamar+tanggal yang sama tidak menghasilkan baris ganda, ditegakkan lewat ON CONFLICT DO UPDATE di sisi layanan, diuji dengan permintaan bersamaan sungguhan terhadap basis data nyata (lihat docs/changelog/hospitality.md)."
     }
   ]
 }

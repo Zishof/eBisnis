@@ -43,6 +43,7 @@ export interface BarisKamar {
   nomor_kamar: string;
   lantai: string | null;
   status: string;
+  features: string[];
   created_at: string;
 }
 
@@ -155,7 +156,7 @@ export class HospitalityPropertiService {
     return this.tenantDb.query<BarisKamar>(
       schemaName,
       `SELECT id::text, property_id::text, room_type_id::text, room_number AS nomor_kamar,
-              floor AS lantai, status, created_at::text
+              floor AS lantai, status, features, created_at::text
          FROM ${S}.hospitality_room
         WHERE property_id = $1 AND deleted_at IS NULL
         ORDER BY sort_order ASC, room_number ASC`,
@@ -192,11 +193,18 @@ export class HospitalityPropertiService {
       const rows = await this.tenantDb.query<BarisKamar>(
         schemaName,
         `INSERT INTO ${S}.hospitality_room
-           (property_id, room_type_id, room_number, floor, created_by, updated_by)
-         VALUES ($1, $2, $3, $4, $5, $5)
+           (property_id, room_type_id, room_number, floor, features, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $6)
          RETURNING id::text, property_id::text, room_type_id::text, room_number AS nomor_kamar,
-                   floor AS lantai, status, created_at::text`,
-        [propertyId, masukan.roomTypeId, masukan.nomorKamar!.trim(), bersihkan(masukan.lantai), createdBy],
+                   floor AS lantai, status, features, created_at::text`,
+        [
+          propertyId,
+          masukan.roomTypeId,
+          masukan.nomorKamar!.trim(),
+          bersihkan(masukan.lantai),
+          masukan.features?.length ? masukan.features : [],
+          createdBy,
+        ],
       );
       return rows[0];
     } catch (error) {

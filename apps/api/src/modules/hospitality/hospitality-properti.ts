@@ -26,10 +26,26 @@ export interface MasukanTipeKamar {
   deskripsi?: string;
 }
 
+/**
+ * Tag bebas (MI-6) -- BRD belum menetapkan daftar baku, jadi ini catatan
+ * yang lazim dipakai (aksesibilitas, merokok, pemandangan), bukan daftar
+ * tertutup yang ditegakkan server. Ditampilkan sebagai anjuran di
+ * formulir, bukan validasi keras -- tag lain tetap diterima.
+ */
+export const FITUR_KAMAR_SARAN = [
+  'ACCESSIBLE',
+  'SMOKING',
+  'NON_SMOKING',
+  'CITY_VIEW',
+  'POOL_VIEW',
+  'BALCONY',
+] as const;
+
 export interface MasukanKamar {
   roomTypeId?: string;
   nomorKamar?: string;
   lantai?: string;
+  features?: string[];
 }
 
 export function validasiProperti(masukan: MasukanProperti): Galat[] {
