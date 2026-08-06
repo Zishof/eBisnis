@@ -24,6 +24,8 @@ class _ShellVisualClient extends InventoryApiClient {
   @override
   Future<InventorySnapshot> snapshot() async => const InventorySnapshot(
         revenueToday: 152450000,
+        purchasesToday: 98760000,
+        purchasesMonth: 987650000,
         revenueMonth: 1245600000,
         cogsMonth: 756230000,
         grossProfitMonth: 489370000,
@@ -31,6 +33,8 @@ class _ShellVisualClient extends InventoryApiClient {
         products: 626,
         customers: 334,
         availableQty: 345678,
+        inventoryValue: 3456780000,
+        lowStockProducts: 45,
         rawRecords: 154341,
         receivableAmount: 1245500000,
         payableAmount: 876300000,
@@ -41,6 +45,29 @@ class _ShellVisualClient extends InventoryApiClient {
           SalesKpi('Tohirin', 35, 312500000),
           SalesKpi('Nofal', 29, 275800000),
           SalesKpi('Agung', 22, 196400000),
+        ],
+        topProducts: [
+          ProductKpi('000102', 'Adem Sari', 1349, 187502000),
+          ProductKpi('002959', 'Amplop 3/4 AM', 980, 156903000),
+          ProductKpi('000118', 'Antimo', 876, 134040000),
+          ProductKpi('002847', 'Bodrex Extra', 760, 91203000),
+          ProductKpi('003388', 'Antangin HBTSD', 590, 70030000),
+        ],
+        salesTrend: [
+          TrendKpi('2026-07-24', 82000000),
+          TrendKpi('2026-07-26', 118000000),
+          TrendKpi('2026-07-29', 69000000),
+          TrendKpi('2026-08-01', 156000000),
+          TrendKpi('2026-08-03', 103000000),
+          TrendKpi('2026-08-06', 174000000),
+        ],
+        purchaseTrend: [
+          TrendKpi('2026-07-24', 76000000),
+          TrendKpi('2026-07-26', 98000000),
+          TrendKpi('2026-07-29', 64000000),
+          TrendKpi('2026-08-01', 134000000),
+          TrendKpi('2026-08-03', 89000000),
+          TrendKpi('2026-08-06', 148000000),
         ],
         orders: [
           OrderKpi('INV/0826/0098', 'Toko Sumber Rejeki', 'Masrukin', 2750000),

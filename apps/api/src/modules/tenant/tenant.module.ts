@@ -1486,15 +1486,15 @@ export class ErpController {
   }
 
   @Get('inventory/sales-dashboard')
-  @Permissions('SALES.READ')
-  @ApiOperation({ summary: 'Dashboard sales dan inventory untuk pemilik, admin, dan sales lapangan' })
+  @Permissions('SALES_REPORT.VIEW_PROFIT')
+  @ApiOperation({ summary: 'Dashboard eksekutif sales dan inventory untuk pemilik dan admin' })
   async salesInventoryDashboard(
     @CurrentUser() user: AuthenticatedUser,
     @RequestContext() meta: RequestMeta,
   ) {
     const ctx = context(user, meta);
     const S = `"${ctx.schemaName}"`;
-    const [summary, topSales, topProducts, topCustomers, expiringLots, recentOrders] =
+    const [summary, salesTrend, purchaseTrend, topSales, topProducts, topCustomers, expiringLots, recentOrders] =
       await Promise.all([
         this.inventoryQuery(
           ctx,
@@ -1504,6 +1504,8 @@ export class ErpController {
              (SELECT count(*)::int FROM ${S}.supplier WHERE deleted_at IS NULL) AS suppliers,
              (SELECT count(*)::int FROM ${S}.sales_order WHERE order_date = CURRENT_DATE) AS orders_today,
              (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE order_date = CURRENT_DATE) AS revenue_today,
+             (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.purchase_order WHERE order_date = CURRENT_DATE AND deleted_at IS NULL) AS purchases_today,
+             (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.purchase_order WHERE order_date >= date_trunc('month', CURRENT_DATE)::date AND deleted_at IS NULL) AS purchases_month,
              (SELECT count(*)::int FROM ${S}.sales_order WHERE order_date >= date_trunc('month', CURRENT_DATE)::date) AS orders_month,
              (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE order_date >= date_trunc('month', CURRENT_DATE)::date) AS revenue_month,
              (SELECT COALESCE(sum(sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost)), 0)::text
@@ -1518,8 +1520,50 @@ export class ErpController {
                WHERE so.order_date >= date_trunc('month', CURRENT_DATE)::date) AS gross_profit_month,
              (SELECT COALESCE(sum(on_hand_qty), 0)::text FROM ${S}.stock_balance) AS on_hand_qty,
              (SELECT COALESCE(sum(available_qty), 0)::text FROM ${S}.stock_balance) AS available_qty,
+             (SELECT COALESCE(sum(on_hand_qty * average_cost), 0)::text FROM ${S}.stock_balance) AS inventory_value,
+             (SELECT count(*)::int
+                FROM (
+                  SELECT sp.product_id
+                    FROM ${S}.stock_policy sp
+                    LEFT JOIN ${S}.stock_balance sb
+                      ON sb.product_id = sp.product_id
+                     AND sb.warehouse_id = sp.warehouse_id
+                   WHERE sp.is_active
+                     AND sp.deleted_at IS NULL
+                   GROUP BY sp.product_id, sp.warehouse_id, sp.minimum_stock
+                  HAVING COALESCE(sum(sb.available_qty), 0) <= sp.minimum_stock
+                ) low_stock
+             ) AS low_stock_products,
              (SELECT count(*)::int FROM ${S}.inventory_lot WHERE expiry_date < CURRENT_DATE AND deleted_at IS NULL) AS expired_lots,
              (SELECT count(*)::int FROM ${S}.inventory_lot WHERE expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days' AND deleted_at IS NULL) AS expiring_lots`,
+        ),
+        this.inventoryQuery(
+          ctx,
+          `SELECT series.day::date::text AS date,
+                  COALESCE(sum(so.grand_total), 0)::text AS total
+             FROM generate_series(
+                    CURRENT_DATE - INTERVAL '29 days',
+                    CURRENT_DATE,
+                    INTERVAL '1 day'
+                  ) AS series(day)
+             LEFT JOIN ${S}.sales_order so ON so.order_date = series.day::date
+            GROUP BY series.day
+            ORDER BY series.day`,
+        ),
+        this.inventoryQuery(
+          ctx,
+          `SELECT series.day::date::text AS date,
+                  COALESCE(sum(po.grand_total), 0)::text AS total
+             FROM generate_series(
+                    CURRENT_DATE - INTERVAL '29 days',
+                    CURRENT_DATE,
+                    INTERVAL '1 day'
+                  ) AS series(day)
+             LEFT JOIN ${S}.purchase_order po
+               ON po.order_date = series.day::date
+              AND po.deleted_at IS NULL
+            GROUP BY series.day
+            ORDER BY series.day`,
         ),
         this.inventoryQuery(
           ctx,
@@ -1590,6 +1634,8 @@ export class ErpController {
 
     return {
       summary: summary[0] ?? {},
+      salesTrend,
+      purchaseTrend,
       topSales,
       topProducts,
       topCustomers,

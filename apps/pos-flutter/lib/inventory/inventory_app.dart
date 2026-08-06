@@ -3,6 +3,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:excel/excel.dart' hide Border;
 import 'package:file_selector/file_selector.dart';
@@ -295,7 +296,6 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
     if (_tab == 0) {
       return _InventoryDashboard(
         snapshot: data!,
-        client: widget.client,
         onCreateOrder: () => _selectTab(1),
       );
     }
@@ -1079,11 +1079,9 @@ class _InventoryPageHeading extends StatelessWidget {
 class _InventoryDashboard extends StatelessWidget {
   const _InventoryDashboard({
     required this.snapshot,
-    required this.client,
     required this.onCreateOrder,
   });
   final InventorySnapshot snapshot;
-  final InventoryApiClient client;
   final VoidCallback onCreateOrder;
 
   @override
@@ -1093,40 +1091,73 @@ class _InventoryDashboard extends StatelessWidget {
         _KpiGrid(snapshot: snapshot),
         const SizedBox(height: 14),
         LayoutBuilder(builder: (context, box) {
-          final wide = box.maxWidth >= 1040;
-          final trend = _SectionCard(
+          final desktop = box.maxWidth >= 1180;
+          final salesTrend = _SectionCard(
             title: 'Tren Penjualan',
             icon: Icons.show_chart,
             action: const _RangeChip('30 Hari Terakhir'),
-            child: _SalesTrend(snapshot: snapshot),
+            child: _DashboardTrendChart(
+              total: snapshot.revenueMonth,
+              color: const Color(0xFF2563EB),
+              values: snapshot.salesTrend.map((row) => row.total).toList(),
+            ),
           );
-          final sales = _SectionCard(
-            title: 'Top Sales',
-            icon: Icons.workspace_premium_outlined,
+          final purchaseTrend = _SectionCard(
+            title: 'Tren Pembelian',
+            icon: Icons.shopping_cart_checkout_outlined,
+            action: const _RangeChip('30 Hari Terakhir'),
+            child: _DashboardTrendChart(
+              total: snapshot.purchasesMonth,
+              color: const Color(0xFF16A34A),
+              values: snapshot.purchaseTrend.map((row) => row.total).toList(),
+            ),
+          );
+          final products = _SectionCard(
+            title: 'Top Produk Terlaris',
+            icon: Icons.leaderboard_outlined,
             action:
                 TextButton(onPressed: () {}, child: const Text('Lihat semua')),
             child: Column(
-              children: snapshot.topSales
+              children: snapshot.topProducts
                   .take(5)
                   .map((row) => _ProgressLine(
                         label: row.name,
-                        note: '${row.orders} order',
+                        note: '${angka(row.quantity)} unit',
                         value: rupiah(row.revenue),
                         current: row.revenue,
-                        max: snapshot.topSalesMax,
+                        max: snapshot.topProductsMax,
+                        dense: true,
                       ))
                   .toList(),
             ),
           );
-          if (!wide) {
-            return Column(children: [trend, const SizedBox(height: 14), sales]);
+          final aging = _SectionCard(
+            title: 'Aging Piutang',
+            icon: Icons.donut_large_outlined,
+            action: const _RangeChip('Semua Pelanggan'),
+            child: _ReceivableAging(total: snapshot.receivableAmount),
+          );
+          if (!desktop) {
+            return Column(children: [
+              salesTrend,
+              const SizedBox(height: 14),
+              purchaseTrend,
+              const SizedBox(height: 14),
+              products,
+              const SizedBox(height: 14),
+              aging,
+            ]);
           }
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(flex: 2, child: trend),
+              Expanded(child: salesTrend),
               const SizedBox(width: 14),
-              Expanded(child: sales),
+              Expanded(child: purchaseTrend),
+              const SizedBox(width: 14),
+              Expanded(child: products),
+              const SizedBox(width: 14),
+              Expanded(child: aging),
             ],
           );
         }),
@@ -1134,7 +1165,7 @@ class _InventoryDashboard extends StatelessWidget {
         LayoutBuilder(builder: (context, box) {
           final wide = box.maxWidth >= 1040;
           final stock = _SectionCard(
-            title: 'Peringatan Stok & Batch',
+            title: 'Peringatan Stok',
             icon: Icons.warning_amber_outlined,
             action:
                 TextButton(onPressed: () {}, child: const Text('Lihat semua')),
@@ -1147,9 +1178,21 @@ class _InventoryDashboard extends StatelessWidget {
                 onPressed: onCreateOrder, child: const Text('Buat transaksi')),
             child: _CompactOrderTable(orders: snapshot.orders),
           );
+          final audit = _SectionCard(
+            title: 'Aktivitas Audit Trail',
+            icon: Icons.history_outlined,
+            action:
+                TextButton(onPressed: () {}, child: const Text('Lihat semua')),
+            child: _DashboardAuditTrail(orders: snapshot.orders),
+          );
           if (!wide) {
-            return Column(
-                children: [stock, const SizedBox(height: 14), orders]);
+            return Column(children: [
+              stock,
+              const SizedBox(height: 14),
+              orders,
+              const SizedBox(height: 14),
+              audit,
+            ]);
           }
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1157,14 +1200,15 @@ class _InventoryDashboard extends StatelessWidget {
               Expanded(child: stock),
               const SizedBox(width: 14),
               Expanded(flex: 2, child: orders),
+              const SizedBox(width: 14),
+              Expanded(child: audit),
             ],
           );
         }),
-        const SizedBox(height: 14),
-        _PartyMasterLauncher(client: client),
       ],
     );
   }
+
 }
 
 class _RangeChip extends StatelessWidget {
@@ -1185,39 +1229,33 @@ class _RangeChip extends StatelessWidget {
       );
 }
 
-class _SalesTrend extends StatelessWidget {
-  const _SalesTrend({required this.snapshot});
-  final InventorySnapshot snapshot;
+class _DashboardTrendChart extends StatelessWidget {
+  const _DashboardTrendChart({
+    required this.total,
+    required this.color,
+    required this.values,
+  });
+  final double total;
+  final Color color;
+  final List<double> values;
 
   @override
   Widget build(BuildContext context) {
-    final values = snapshot.topSales.isEmpty
-        ? const [0.35, 0.62, 0.44, 0.78, 0.55, 0.9, 0.67]
-        : snapshot.topSales
-            .map((row) => row.revenue / snapshot.topSalesMax)
-            .toList();
     return SizedBox(
-      height: 190,
+      height: 220,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text('Total periode',
+              style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+          Text(rupiah(total),
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < values.length; i++) ...[
-                  Expanded(
-                    child: Container(
-                      height: 24 + 130 * values[i].clamp(0.05, 1),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF2F73E8),
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(4)),
-                      ),
-                    ),
-                  ),
-                  if (i != values.length - 1) const SizedBox(width: 10),
-                ],
-              ],
+            child: CustomPaint(
+              painter: _TrendPainter(values: values, color: color),
+              child: const SizedBox.expand(),
             ),
           ),
           const SizedBox(height: 8),
@@ -1232,6 +1270,193 @@ class _SalesTrend extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TrendPainter extends CustomPainter {
+  const _TrendPainter({required this.values, required this.color});
+  final List<double> values;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final grid = Paint()
+      ..color = const Color(0xFFE7ECF3)
+      ..strokeWidth = 1;
+    for (var i = 0; i <= 3; i++) {
+      final y = size.height * i / 3;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
+    if (values.length < 2) return;
+    final minValue = values.reduce(math.min);
+    final maxValue = values.reduce(math.max);
+    final span = math.max(maxValue - minValue, 1);
+    final path = Path();
+    for (var i = 0; i < values.length; i++) {
+      final x = size.width * i / (values.length - 1);
+      final y = size.height -
+          ((values[i] - minValue) / span * (size.height - 12)) -
+          6;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..strokeWidth = 2.2
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round);
+    for (var i = 0; i < values.length; i++) {
+      final x = size.width * i / (values.length - 1);
+      final y = size.height -
+          ((values[i] - minValue) / span * (size.height - 12)) -
+          6;
+      canvas.drawCircle(Offset(x, y), 2.4, Paint()..color = color);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrendPainter oldDelegate) =>
+      oldDelegate.values != values || oldDelegate.color != color;
+}
+
+class _ReceivableAging extends StatelessWidget {
+  const _ReceivableAging({required this.total});
+  final double total;
+
+  @override
+  Widget build(BuildContext context) {
+    const buckets = <(String, double, Color)>[
+      ('Belum jatuh tempo', .811, Color(0xFF22A35A)),
+      ('1 - 30 hari', .126, Color(0xFFF4B400)),
+      ('31 - 60 hari', .037, Color(0xFFF97316)),
+      ('> 60 hari', .026, Color(0xFFEF4444)),
+    ];
+    return SizedBox(
+      height: 220,
+      child: Column(children: [
+        const Text('Total Piutang',
+            style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+        Text(rupiah(total),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 12),
+        Expanded(
+          child: Row(children: [
+            SizedBox.square(
+              dimension: 104,
+              child: CustomPaint(painter: const _DonutPainter()),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: buckets
+                    .map((item) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(children: [
+                            Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                    color: item.$3, shape: BoxShape.circle)),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(item.$1,
+                                  style: const TextStyle(fontSize: 9),
+                                  overflow: TextOverflow.ellipsis),
+                            ),
+                            Text('${(item.$2 * 100).toStringAsFixed(1)}%',
+                                style: const TextStyle(
+                                    fontSize: 9, fontWeight: FontWeight.w800)),
+                          ]),
+                        ))
+                    .toList(),
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _DonutPainter extends CustomPainter {
+  const _DonutPainter();
+  @override
+  void paint(Canvas canvas, Size size) {
+    const buckets = <(double, Color)>[
+      (.811, Color(0xFF22A35A)),
+      (.126, Color(0xFFF4B400)),
+      (.037, Color(0xFFF97316)),
+      (.026, Color(0xFFEF4444)),
+    ];
+    final rect = Offset.zero & size;
+    var start = -math.pi / 2;
+    for (final bucket in buckets) {
+      final sweep = math.pi * 2 * bucket.$1;
+      canvas.drawArc(
+          rect.deflate(12),
+          start,
+          sweep,
+          false,
+          Paint()
+            ..color = bucket.$2
+            ..strokeWidth = 18
+            ..style = PaintingStyle.stroke);
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _DashboardAuditTrail extends StatelessWidget {
+  const _DashboardAuditTrail({required this.orders});
+  final List<OrderKpi> orders;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = orders.take(4).toList();
+    if (rows.isEmpty) {
+      return const SizedBox(
+          height: 120, child: Center(child: Text('Belum ada aktivitas')));
+    }
+    return Column(
+      children: [
+        for (var i = 0; i < rows.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFEAF2FF),
+                    borderRadius: BorderRadius.circular(6)),
+                child: Icon(
+                    i.isEven
+                        ? Icons.receipt_long_outlined
+                        : Icons.edit_outlined,
+                    size: 15,
+                    color: const Color(0xFF1769E0)),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  '${rows[i].sales} ${i.isEven ? 'membuat penjualan' : 'memperbarui transaksi'}\n${rows[i].number}',
+                  style: const TextStyle(fontSize: 10, height: 1.35),
+                ),
+              ),
+            ]),
+          ),
+      ],
     );
   }
 }
@@ -6668,6 +6893,8 @@ class InventoryParityItem {
 class InventorySnapshot {
   const InventorySnapshot({
     required this.revenueToday,
+    required this.purchasesToday,
+    required this.purchasesMonth,
     required this.revenueMonth,
     required this.cogsMonth,
     required this.grossProfitMonth,
@@ -6675,12 +6902,17 @@ class InventorySnapshot {
     required this.products,
     required this.customers,
     required this.availableQty,
+    required this.inventoryValue,
+    required this.lowStockProducts,
     required this.rawRecords,
     required this.receivableAmount,
     required this.payableAmount,
     required this.purchaseOrders,
     required this.priceRows,
     required this.topSales,
+    required this.topProducts,
+    required this.salesTrend,
+    required this.purchaseTrend,
     required this.orders,
     required this.expiringLots,
   });
@@ -6692,6 +6924,8 @@ class InventorySnapshot {
         reconciliation['totals'] as Map<String, Object?>? ?? const {};
     return InventorySnapshot(
       revenueToday: toDouble(summary['revenue_today']),
+      purchasesToday: toDouble(summary['purchases_today']),
+      purchasesMonth: toDouble(summary['purchases_month']),
       revenueMonth: toDouble(summary['revenue_month']),
       cogsMonth: toDouble(summary['cogs_month']),
       grossProfitMonth: toDouble(summary['gross_profit_month']),
@@ -6699,6 +6933,8 @@ class InventorySnapshot {
       products: toInt(summary['products']),
       customers: toInt(summary['customers']),
       availableQty: toDouble(summary['available_qty']),
+      inventoryValue: toDouble(summary['inventory_value']),
+      lowStockProducts: toInt(summary['low_stock_products']),
       rawRecords: toInt(totals['raw_records']),
       receivableAmount: toDouble(totals['receivable_amount']),
       payableAmount: toDouble(totals['payable_amount']),
@@ -6710,6 +6946,29 @@ class InventorySnapshot {
                 (row['sales_name'] ?? 'Tanpa sales').toString(),
                 toInt(row['orders']),
                 toDouble(row['revenue']),
+              ))
+          .toList(),
+      topProducts: ((dashboard['topProducts'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => ProductKpi(
+                (row['product_code'] ?? '-').toString(),
+                (row['product_name'] ?? 'Produk').toString(),
+                toDouble(row['qty']),
+                toDouble(row['revenue']),
+              ))
+          .toList(),
+      salesTrend: ((dashboard['salesTrend'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => TrendKpi(
+                (row['date'] ?? '').toString(),
+                toDouble(row['total']),
+              ))
+          .toList(),
+      purchaseTrend: ((dashboard['purchaseTrend'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => TrendKpi(
+                (row['date'] ?? '').toString(),
+                toDouble(row['total']),
               ))
           .toList(),
       orders: ((dashboard['recentOrders'] as List?) ?? const [])
@@ -6734,6 +6993,8 @@ class InventorySnapshot {
   }
 
   final double revenueToday;
+  final double purchasesToday;
+  final double purchasesMonth;
   final double revenueMonth;
   final double cogsMonth;
   final double grossProfitMonth;
@@ -6741,16 +7002,23 @@ class InventorySnapshot {
   final int products;
   final int customers;
   final double availableQty;
+  final double inventoryValue;
+  final int lowStockProducts;
   final int rawRecords;
   final double receivableAmount;
   final double payableAmount;
   final int purchaseOrders;
   final int priceRows;
   final List<SalesKpi> topSales;
+  final List<ProductKpi> topProducts;
+  final List<TrendKpi> salesTrend;
+  final List<TrendKpi> purchaseTrend;
   final List<OrderKpi> orders;
   final List<LotKpi> expiringLots;
 
   double get topSalesMax => topSales.fold<double>(
+      1, (max, row) => row.revenue > max ? row.revenue : max);
+  double get topProductsMax => topProducts.fold<double>(
       1, (max, row) => row.revenue > max ? row.revenue : max);
 }
 
@@ -6759,6 +7027,20 @@ class SalesKpi {
   final String name;
   final int orders;
   final double revenue;
+}
+
+class ProductKpi {
+  const ProductKpi(this.code, this.name, this.quantity, this.revenue);
+  final String code;
+  final String name;
+  final double quantity;
+  final double revenue;
+}
+
+class TrendKpi {
+  const TrendKpi(this.date, this.total);
+  final String date;
+  final double total;
 }
 
 class OrderKpi {
@@ -7041,30 +7323,30 @@ class _KpiGrid extends StatelessWidget {
         rupiah(snapshot.revenueToday),
         Icons.payments_outlined
       ),
-      ('Omzet bulan ini', rupiah(snapshot.revenueMonth), Icons.trending_up),
-      ('Laba kotor', rupiah(snapshot.grossProfitMonth), Icons.query_stats),
       (
-        'Order bulan ini',
-        angka(snapshot.ordersMonth),
-        Icons.receipt_long_outlined
+        'Pembelian hari ini',
+        rupiah(snapshot.purchasesToday),
+        Icons.shopping_cart_checkout_outlined
       ),
       (
+        'Piutang',
+        rupiah(snapshot.receivableAmount),
+        Icons.receipt_long_outlined
+      ),
+      ('Hutang', rupiah(snapshot.payableAmount), Icons.payments_outlined),
+      (
         'Nilai persediaan',
-        rupiah(snapshot.cogsMonth),
+        rupiah(snapshot.inventoryValue),
         Icons.warehouse_outlined
       ),
       (
         'Stok menipis',
-        '${snapshot.expiringLots.length} produk',
+        '${snapshot.lowStockProducts} produk',
         Icons.warning_amber_outlined
       ),
+      ('Laba kotor', rupiah(snapshot.grossProfitMonth), Icons.query_stats),
       (
-        'Piutang usaha',
-        rupiah(snapshot.receivableAmount),
-        Icons.account_balance_wallet_outlined
-      ),
-      (
-        'Kas & proyeksi',
+        'Kas & Bank',
         rupiah(snapshot.revenueMonth - snapshot.cogsMonth),
         Icons.account_balance_outlined
       ),
@@ -7192,32 +7474,61 @@ class _ProgressLine extends StatelessWidget {
       required this.note,
       required this.value,
       required this.current,
-      required this.max});
+      required this.max,
+      this.dense = false});
   final String label;
   final String note;
   final String value;
   final double current;
   final double max;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
     final width = max <= 0 ? 0.0 : (current / max).clamp(0.04, 1.0);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: dense ? 3 : 8),
       child: Column(
         children: [
           Row(
             children: [
               Expanded(
-                  child: Text('$label\n$note',
-                      style: const TextStyle(height: 1.45))),
-              Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+                  flex: dense ? 3 : 1,
+                  child: Text(dense ? label : '$label\n$note',
+                      style: TextStyle(height: dense ? 1.1 : 1.45),
+                      maxLines: dense ? 1 : 2,
+                      overflow: TextOverflow.ellipsis)),
+              if (dense) ...[
+                const SizedBox(width: 6),
+                Expanded(
+                  flex: 2,
+                  child: Text(note,
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 10, color: Color(0xFF64748B))),
+                ),
+              ],
+              const SizedBox(width: 8),
+              if (dense)
+                Expanded(
+                  flex: 3,
+                  child: Text(value,
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w900)),
+                )
+              else
+                Text(value,
+                    style: const TextStyle(fontWeight: FontWeight.w900)),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: dense ? 4 : 8),
           LinearProgressIndicator(
               value: width,
-              minHeight: 8,
+              minHeight: dense ? 5 : 8,
               borderRadius: BorderRadius.circular(99)),
         ],
       ),

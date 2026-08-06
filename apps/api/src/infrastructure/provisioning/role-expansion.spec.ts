@@ -141,6 +141,15 @@ describe('penurunan profil menjadi izin menu', () => {
     expect(byCode('KASIR_POS').dataScope).toBe('OUTLET_TERMINAL');
   });
 
+  it('membatasi dashboard inventory eksekutif kepada pemilik dan admin', () => {
+    expect(expandRole(byCode('PEMILIK_USAHA')).permissions['SALES_REPORT'])
+      .toContain('VIEW_PROFIT');
+    expect(expandRole(byCode('ADMIN_TENANT')).permissions['SALES_REPORT'])
+      .toContain('VIEW_PROFIT');
+    expect(expandRole(byCode('SALES')).permissions['SALES_REPORT'] ?? [])
+      .not.toContain('VIEW_PROFIT');
+  });
+
   it('memberi auditor hanya aksi baca', () => {
     const permissions = expandRole(byCode('AUDITOR_INTERNAL')).permissions;
     const mutating = new Set(['CREATE', 'UPDATE', 'DELETE', 'POST', 'APPROVE']);
