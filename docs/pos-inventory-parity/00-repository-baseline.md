@@ -150,6 +150,28 @@ tetapi memblokir seluruh test suite bila tidak diperbaiki): `sanitize-html@2.17.
 di production, bukan hanya masalah test. Diperbaiki via `pnpm.overrides` di `package.json` root
 (`"sanitize-html>htmlparser2": "10.1.0"`), sudah diuji lulus.
 
+## CI/CD (POS-1.5, ditambahkan setelah baseline awal)
+
+`.github/workflows/` berisi pipeline yang jauh lebih matang daripada yang bisa diverifikasi di
+mesin audit ini secara lokal — penting dicatat karena ini mengubah penilaian risiko untuk
+perubahan yang sudah di-commit pada sesi ini:
+
+| Workflow | Trigger | Yang dilakukan |
+|---|---|---|
+| `ci.yml` | push/PR ke `main` | `pnpm install/db:validate/db:generate/lint/test/build`, PLUS memeriksa `packages/pos-rules-vectors/vectors.json` (vektor konformansi uang) tidak tertinggal dari `apps/web/src/pos-offline/`. Job **`flutter` terpisah, berjalan pada SETIAP PR tanpa penyaring jalur**: `flutter pub get/analyze/test` — termasuk `konformansi_test.dart` yang menuntut Dart menghasilkan angka SAMA PERSIS dengan TypeScript dari vektor bersama. |
+| `e2e.yml` | push/PR ke `main` | Menjalankan PostgreSQL 13 sungguhan (`services: postgres`, sengaja versi produksi bukan versi dev 17, supaya SQL yang hanya jalan di versi baru tertangkap di CI) dan uji E2E peramban sungguhan. |
+| `migration-check.yml` | PR/push yang menyentuh `tenant-migrations/**` atau `prisma/**` | Memvalidasi schema Prisma, penamaan migration, migration lama tidak diubah (immutability terhadap base branch pada PR), tidak ada SQL destruktif, dan tidak ada workflow yang menjalankan migration sungguhan terhadap database manapun. |
+| `rilis-pos.yml` | tag `pos-v*` | Build+test Flutter dulu (`needs: uji`), lalu build installer Windows (Inno Setup, 3 varian: inventory-sales, POS Apotik, Inventory) dan APK Android (3 flavor, ditandatangani hanya bila secret keystore ada — APK berkunci debug SENGAJA tidak pernah dilampirkan ke rilis, karena Android mengunci kunci penandatanganan secara permanen dan mengganti kunci berarti mencopot aplikasi, yang menghapus buku transaksi luring yang belum terkirim). |
+| `security.yml` | belum dibaca detail pada pass ini | — |
+
+**Implikasi penting untuk perubahan yang sudah di-commit sesi ini:** commit perbaikan offline
+checkout Flutter (`kasir_luring.dart`, `pos_api.dart`, `main.dart` — ditandai TIDAK TERVERIFIKASI
+karena tidak ada Flutter SDK lokal) dan migration `V052` **akan benar-benar diperiksa otomatis
+oleh CI** begitu di-push/dibuka sebagai PR — `flutter analyze`/`flutter test` sungguhan untuk kode
+Dart, dan `migration-check.yml` untuk migration. Ini tidak menggantikan verifikasi manual, tapi
+berarti kegagalan kompilasi/analisis akan tertangkap otomatis pada PR, bukan baru diketahui saat
+build rilis.
+
 ## Rekomendasi langkah berikutnya (perlu keputusan manusia)
 
 1. Konfirmasi path workspace: apakah `C:\opt\eBisnisGithub\` perlu dibuat sebagai symlink/copy,
