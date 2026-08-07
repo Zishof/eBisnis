@@ -800,6 +800,18 @@ export class PosController {
         );
       }
     }
+    if (dto.manualDiscount) {
+      const kurang = await this.izin.findMissing(schema, user.userId, ['POS_SALE.DISCOUNT_LINE'], {
+        isDemo: user.isDemo,
+        activeRoleId: user.activeRoleId ?? null,
+      });
+      if (kurang.length) {
+        throw AppError.forbidden(
+          ErrorCodes.FORBIDDEN,
+          'Anda tidak berwenang memberikan diskon manual. Mintakan persetujuan supervisor.',
+        );
+      }
+    }
 
     return this.katalog.kuotasi(schema, {
       outletId: dto.outletId,
@@ -887,6 +899,18 @@ export class PosController {
         throw AppError.forbidden(
           ErrorCodes.FORBIDDEN,
           'Anda tidak berwenang mengubah harga secara manual. Mintakan persetujuan supervisor.',
+        );
+      }
+    }
+    if (dto.manualDiscount) {
+      const kurang = await this.izin.findMissing(schema, user.userId, ['POS_SALE.DISCOUNT_LINE'], {
+        isDemo: user.isDemo,
+        activeRoleId: user.activeRoleId ?? null,
+      });
+      if (kurang.length) {
+        throw AppError.forbidden(
+          ErrorCodes.FORBIDDEN,
+          'Anda tidak berwenang memberikan diskon manual. Mintakan persetujuan supervisor.',
         );
       }
     }
