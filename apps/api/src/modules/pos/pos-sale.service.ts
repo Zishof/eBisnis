@@ -41,8 +41,10 @@ import {
 } from './pos-external-payment';
 import { bulatkan, totalKeranjang, type HasilKuotasi } from './pos-pricing';
 import {
+  bolehMenyetujui,
   bolehPindah,
   bolehSuntingBaris,
+  isTerminal,
   type PosSaleStatus,
 } from './pos-sale-state';
 
@@ -325,6 +327,59 @@ export class PosSaleService {
       [lineId, saleId],
     );
     await this.hitungUlang(schemaName, saleId);
+    return this.ambil(schemaName, saleId);
+  }
+
+  /**
+   * Menyetujui baris yang menuntut persetujuan (mis. harga di bawah HPP).
+   *
+   * Baris yang ditandai `requires_approval` memblokir `selesaikan()` sampai
+   * `approved_by` terisi — lihat langkah 3 pada `selesaikan()`. Tanpa
+   * endpoint ini, satu-satunya jalan keluar bagi transaksi yang terlanjur
+   * ditandai adalah membatalkannya dari awal.
+   *
+   * Penyetuju tidak boleh kasir yang membuat penjualannya sendiri — aturan
+   * yang sama dipakai persetujuan pembatalan dan refund.
+   */
+  async setujuiBaris(schemaName: string, saleId: string, lineId: string, subjectId: string) {
+    const sale = await this.ambilKepala(schemaName, saleId);
+    if (isTerminal(sale.status as PosSaleStatus) || sale.status === 'COMPLETED') {
+      throw AppError.conflict(
+        ErrorCodes.CONFLICT,
+        `Transaksi berstatus ${sale.status} tidak lagi dapat disetujui barisnya.`,
+      );
+    }
+
+    const sod = bolehMenyetujui(sale.cashier_id, subjectId);
+    if (!sod.allowed) throw AppError.forbidden(ErrorCodes.FORBIDDEN, sod.message!);
+
+    const baris = await this.tenantDb.query<{
+      requires_approval: boolean;
+      approved_by: string | null;
+    }>(
+      schemaName,
+      `SELECT requires_approval, approved_by FROM "${schemaName}".pos_sale_line
+        WHERE id = $1 AND pos_sale_id = $2`,
+      [lineId, saleId],
+    );
+    if (!baris.length) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Baris tidak ditemukan.');
+    if (!baris[0].requires_approval) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Baris ini tidak menuntut persetujuan.');
+    }
+    if (baris[0].approved_by) {
+      // Sudah disetujui — diperlakukan sebagai berhasil, bukan galat. Klik
+      // ganda pada tombol yang sama tidak boleh menghentikan kasir.
+      return this.ambil(schemaName, saleId);
+    }
+
+    await this.tenantDb.query(
+      schemaName,
+      `UPDATE "${schemaName}".pos_sale_line
+          SET approved_by = $3, approved_at = now(), version = version + 1
+        WHERE id = $1 AND pos_sale_id = $2 AND approved_by IS NULL`,
+      [lineId, saleId, subjectId],
+    );
+
     return this.ambil(schemaName, saleId);
   }
 
@@ -1001,7 +1056,8 @@ export class PosSaleService {
   private async ambilKepala(schemaName: string, saleId: string) {
     const rows = await this.tenantDb.query<Record<string, string>>(
       schemaName,
-      `SELECT id, status, outlet_id, brand_id, customer_id, warehouse_id, shift_id, currency_code
+      `SELECT id, status, outlet_id, brand_id, customer_id, warehouse_id, shift_id, currency_code,
+              cashier_id
          FROM "${schemaName}".pos_sale WHERE id = $1`,
       [saleId],
     );

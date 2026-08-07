@@ -103,6 +103,10 @@ const SYARAT: Partial<Record<`${PosSaleStatus}->${PosSaleStatus}`, Omit<Verdict,
   // dahulu, dan permintaannya tidak boleh disetujui pemohonnya sendiri.
   'COMPLETED->VOID_REQUESTED': { requiresPermission: 'POS_SALE.CANCEL' },
   'VOID_REQUESTED->VOIDED': { requiresPermission: 'POS_SALE.APPROVE', requiresApproval: true },
+  // Menolak permintaan pembatalan adalah keputusan supervisor yang sama
+  // beratnya dengan menyetujuinya -- pemohon tidak boleh menutup
+  // permintaannya sendiri dengan berpura-pura "ditolak" begitu saja.
+  'VOID_REQUESTED->COMPLETED': { requiresPermission: 'POS_SALE.APPROVE', requiresApproval: true },
   'COMPLETED->RETURNED_PARTIAL': { requiresPermission: 'POS_RETURN.RETURN' },
   'COMPLETED->RETURNED_FULL': { requiresPermission: 'POS_RETURN.RETURN' },
   'RETURNED_PARTIAL->REFUND_PENDING': { requiresPermission: 'POS_RETURN.RETURN_APPROVE' },

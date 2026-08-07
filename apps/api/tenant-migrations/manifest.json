@@ -360,6 +360,13 @@
         "description": "Menyimpan termin dan catatan Sales Order serta rencana batch/kedaluwarsa Purchase Order dari workspace responsif. Nilai harga, diskon, pajak, dan total tetap memakai kolom moneter ERP yang telah ada."
       },
       {
+        "version": "V052",
+        "sequence": 52,
+        "file": "V052__pos_sale_line_approval.sql",
+        "name": "Waktu persetujuan baris kasir",
+        "description": "Menambahkan pos_sale_line.approved_at berpasangan dengan approved_by (V027) yang sudah ada, serta indeks parsial baris yang masih menunggu persetujuan. Migrasi aditif murni, tidak mengubah kolom yang sudah ada."
+      },
+      {
         "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

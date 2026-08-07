@@ -141,6 +141,15 @@ describe('hak akses yang dituntut transisi', () => {
     expect(v.requiresApproval).toBe(true);
   });
 
+  it('penolakan pembatalan menuntut hak yang sama dengan menyetujuinya', () => {
+    // Menolak permintaan pembatalan adalah keputusan supervisor yang sama
+    // beratnya dengan menyetujuinya -- keduanya menutup VOID_REQUESTED.
+    // Sebelum baris ini ada, transisi ini tidak menuntut hak akses apa pun.
+    const v = bolehPindah('VOID_REQUESTED', 'COMPLETED');
+    expect(v.requiresPermission).toBe('POS_SALE.APPROVE');
+    expect(v.requiresApproval).toBe(true);
+  });
+
   it('refund menuntut hak REFUND_APPROVE', () => {
     for (const ke of ['REFUNDED_PARTIAL', 'REFUNDED_FULL'] as PosSaleStatus[]) {
       const v = bolehPindah('REFUND_PENDING', ke);

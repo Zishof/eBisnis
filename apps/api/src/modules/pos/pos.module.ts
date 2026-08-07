@@ -927,6 +927,26 @@ export class PosController {
   }
 
   @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.APPROVE')
+  @Post('sales/:id/items/:lineId/approve')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menyetujui baris yang menuntut persetujuan',
+    description:
+      'Baris yang ditandai `requiresApproval` (mis. harga di bawah HPP) memblokir penyelesaian ' +
+      'transaksi sampai disetujui di sini. Pemohon (kasir pemilik transaksi) tidak dapat ' +
+      'menyetujui barisnya sendiri.',
+  })
+  async setujuiBaris(
+    @Param('id') id: string,
+    @Param('lineId') lineId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    return this.jual.setujuiBaris(schema, id, lineId, await this.subjek(schema, user));
+  }
+
+  @ApiBearerAuth('access-token')
   @Permissions('POS_SALE.HOLD')
   @Post('sales/:id/hold')
   @HttpCode(200)
@@ -1329,6 +1349,32 @@ export class PosController {
       schema,
       id,
       dto.reason ?? 'Pembatalan disetujui',
+      user,
+      await this.subjek(schema, user),
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.APPROVE')
+  @Post('sales/:id/void-reject')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menolak pembatalan',
+    description:
+      'Transaksi kembali COMPLETED apa adanya — tidak ada stok maupun akuntansi yang dibalik, ' +
+      'sebab belum ada yang pernah dibalik untuk permintaan yang ditolak. Pemohon tidak dapat ' +
+      'menolak permintaannya sendiri, sama seperti menyetujuinya.',
+  })
+  async tolakVoid(
+    @Param('id') id: string,
+    @Body() dto: AlasanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const schema = requireSchema(user);
+    return this.retur.tolakVoid(
+      schema,
+      id,
+      dto.reason ?? 'Pembatalan ditolak',
       user,
       await this.subjek(schema, user),
     );

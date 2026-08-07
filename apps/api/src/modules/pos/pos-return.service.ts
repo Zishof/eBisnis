@@ -153,6 +153,46 @@ export class PosReturnService {
     });
   }
 
+  /**
+   * Menolak permintaan pembatalan. Transaksi kembali `COMPLETED` — tidak ada
+   * stok maupun peristiwa akuntansi yang perlu dibalik, sebab `setujuiVoid`
+   * belum pernah menjalankannya untuk permintaan yang ditolak.
+   *
+   * Tanpa ini, `VOID_REQUESTED` adalah pintu satu arah: satu-satunya jalan
+   * keluar bagi permintaan yang keliru adalah menyetujuinya juga.
+   * `void_requested_by`/`void_reason` SENGAJA tidak dikosongkan — keduanya
+   * tetap menjadi jejak bahwa pembatalan pernah diminta dan alasannya,
+   * sedangkan siapa yang menolak dan mengapa tercatat pada
+   * `pos_sale_status_history` lewat `catat()` di bawah, sama seperti setiap
+   * transisi status lain.
+   */
+  async tolakVoid(
+    schemaName: string,
+    saleId: string,
+    alasan: string,
+    user: AuthenticatedUser,
+    subjectId: string,
+  ) {
+    const sale = await this.kepala(schemaName, saleId);
+    const v = bolehPindah(sale.status as PosSaleStatus, 'COMPLETED');
+    if (!v.allowed) throw AppError.conflict(ErrorCodes.CONFLICT, v.message ?? 'Tidak dapat ditolak.');
+
+    const sod = bolehMenyetujui(sale.void_requested_by ?? null, subjectId);
+    if (!sod.allowed) throw AppError.forbidden(ErrorCodes.FORBIDDEN, sod.message!);
+
+    return this.tenantDb.transaction(schemaName, async (client) => {
+      await client.query(
+        `UPDATE "${schemaName}".pos_sale
+            SET status = 'COMPLETED', updated_at = now(), version = version + 1
+          WHERE id = $1`,
+        [saleId],
+      );
+      await this.catat(client, schemaName, saleId, sale.status, 'COMPLETED', alasan, subjectId, user);
+
+      return { saleId, status: 'COMPLETED', rejectedBy: subjectId };
+    });
+  }
+
   // --- Retur ----------------------------------------------------------------
 
   /**
