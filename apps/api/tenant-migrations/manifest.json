@@ -381,6 +381,13 @@
         "description": "Satu sequence baru (live_receivable_ledger_seq) untuk legacy_row_number unik pada baris legacy_receivable_ledger yang dihasilkan faktur pesanan penjualan hidup, dibedakan dari hasil impor DBF lewat source_file='LIVE:SALES'. Riwayat harga sisi penjualan memakai ulang live_price_history_seq dari V053. Tidak ada tabel atau kolom baru."
       },
       {
+        "version": "V055",
+        "sequence": 55,
+        "file": "V055__price_book_no_self_approval.sql",
+        "name": "Larangan persetujuan buku harga oleh pengaju sendiri",
+        "description": "Menambahkan price_book.submitted_by/submitted_at (dibekukan terpisah dari updated_by yang berubah pada setiap transisi) beserta CHECK constraint price_book_no_self_approval, mengikuti pola V030 pos_sale_no_self_void_approval. Migrasi aditif murni."
+      },
+      {
         "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

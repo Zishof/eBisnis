@@ -529,17 +529,30 @@ export class SalesInventoryOperationsController {
     const schema = schemaOf(user);
     const S = quotedSchema(user);
     return this.tenantDb.transaction(schema, async (client) => {
-      const current = await client.query<{ approval_status: string }>(
-        `SELECT approval_status FROM ${S}.price_book WHERE id = $1::uuid AND deleted_at IS NULL FOR UPDATE`, [id],
+      const current = await client.query<{ approval_status: string; submitted_by: string | null }>(
+        `SELECT approval_status, submitted_by::text AS submitted_by
+           FROM ${S}.price_book WHERE id = $1::uuid AND deleted_at IS NULL FOR UPDATE`, [id],
       );
       if (!current.rowCount) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Buku harga tidak ditemukan.');
       if (!(allowed[current.rows[0].approval_status] ?? []).includes(body.status)) {
         throw invalidTransition(`Buku harga ${current.rows[0].approval_status} tidak dapat diubah menjadi ${body.status}.`);
       }
       const subjectId = await subjectIdOf(client, S, user.userId);
+      // Pengaju tidak boleh menyetujui pengajuannya sendiri -- aturan yang
+      // sama dipakai pembatalan dan refund POS. Ditegakkan di sini dengan
+      // pesan yang jelas, dan sekali lagi oleh constraint
+      // `price_book_no_self_approval` (V055) bila jalan lain lupa memeriksa.
+      if (body.status === 'APPROVED' && current.rows[0].submitted_by === subjectId) {
+        throw AppError.forbidden(
+          ErrorCodes.FORBIDDEN,
+          'Anda tidak dapat menyetujui pengajuan buku harga Anda sendiri. Mintakan kepada supervisor lain.',
+        );
+      }
       await client.query(
         `UPDATE ${S}.price_book
             SET approval_status = $2, approval_note = $3,
+                submitted_at = CASE WHEN $2 = 'SUBMITTED' THEN now() ELSE submitted_at END,
+                submitted_by = CASE WHEN $2 = 'SUBMITTED' THEN $4::uuid ELSE submitted_by END,
                 approved_at = CASE WHEN $2 = 'APPROVED' THEN now() ELSE approved_at END,
                 approved_by = CASE WHEN $2 = 'APPROVED' THEN $4::uuid ELSE approved_by END,
                 rejected_at = CASE WHEN $2 = 'REJECTED' THEN now() ELSE rejected_at END,
