@@ -16,6 +16,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { assertWarehouseNotFrozen } from '../../infrastructure/provisioning/tenant-bootstrap.service';
 import type { PoolClient } from 'pg';
 import {
   bolehJual,
@@ -207,6 +208,8 @@ export class PosStockService {
         [kunci],
       );
       if (sudah.rows.length) continue;
+
+      await assertWarehouseNotFrozen(client, `"${schemaName}"`, l.warehouseId);
 
       await client.query(
         `UPDATE "${schemaName}".stock_reservation

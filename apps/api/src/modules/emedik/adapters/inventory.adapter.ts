@@ -24,7 +24,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { PoolClient } from 'pg';
 import { TenantConnectionService } from '../../../infrastructure/database/tenant-connection.service';
 import { NumberSequenceService } from '../../../infrastructure/sequence/number-sequence.service';
-import { applyBalanceDelta } from '../../../infrastructure/provisioning/tenant-bootstrap.service';
+import { applyBalanceDelta, assertWarehouseNotFrozen } from '../../../infrastructure/provisioning/tenant-bootstrap.service';
 import { AppError, ErrorCodes } from '../../../common/errors/app-error';
 import type { InventoryPort, StokTersedia } from '../ports';
 
@@ -235,6 +235,8 @@ export class CoreInventoryAdapter implements InventoryPort {
         this.logger.debug(`Pengeluaran ${req.idempotencyKey} sudah tercatat; tidak diulang.`);
         return { movementId: sudah.rows[0].id, totalCost: req.unitCost * req.quantity };
       }
+
+      await assertWarehouseNotFrozen(client, `"${schema}"`, req.warehouseId);
 
       const uom = await client.query<{ base_uom_id: string }>(
         `SELECT base_uom_id::text AS base_uom_id FROM "${schema}".product WHERE id = $1`,

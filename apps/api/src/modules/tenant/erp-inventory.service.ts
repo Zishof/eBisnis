@@ -8,6 +8,7 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { LifecycleContext } from './master-lifecycle.service';
 import {
   applyBalanceDelta,
+  assertWarehouseNotFrozen,
   consumeAvailable,
 } from '../../infrastructure/provisioning/tenant-bootstrap.service';
 import { DataScopeResolver } from '../../infrastructure/authorization/data-scope.resolver';
@@ -258,6 +259,8 @@ export class ErpInventoryService {
           [id],
         );
 
+        await assertWarehouseNotFrozen(client, S, transfer.rows[0].source_warehouse_id);
+
         // Posting key harus muat pada VARCHAR(96): pakai nomor dokumen dan
         // nomor baris, bukan UUID.
         const postingKey = `ITD:${transfer.rows[0].transfer_number}`;
@@ -422,6 +425,8 @@ export class ErpInventoryService {
             `Validasi penerimaan memerlukan transfer dalam perjalanan, saat ini ${transfer.rows[0].status}.`,
           );
         }
+
+        await assertWarehouseNotFrozen(client, S, transfer.rows[0].destination_warehouse_id);
 
         const receiptNumber = await this.sequences.next(client, ctx.schemaName, 'TRANSFER_RECEIPT');
         const receipt = await client.query<{ id: string }>(

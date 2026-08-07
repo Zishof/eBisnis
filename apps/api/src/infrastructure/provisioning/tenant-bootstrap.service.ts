@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { TenantConnectionService } from '../database/tenant-connection.service';
 import { PrismaService } from '../database/prisma.service';
+import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { deterministicBatchId } from '../../modules/master-seed/master-seed.service';
 import {
   MENU_TREE_SEED,
@@ -1123,6 +1124,40 @@ export async function consumeAvailable(
     );
   }
   return allocations;
+}
+
+/**
+ * Menolak mutasi stok pada gudang yang sedang dibekukan untuk stock opname.
+ *
+ * `freeze` pada `inventory_stock_opname_session` sebelumnya hanya label:
+ * tidak ada kode yang memeriksanya, sehingga penjualan atau penerimaan yang
+ * berjalan bersamaan tetap mengubah stok yang sedang dihitung fisik —
+ * membuat hasil hitungnya salah sejak sebelum sempat disetujui. Jendela
+ * yang dilindungi adalah FROZEN..COUNTED: sebelum freeze (DRAFT) dan
+ * setelah disetujui/diposting (APPROVED/POSTED) stok boleh bergerak lagi.
+ *
+ * Dipanggil dari dalam transaksi yang sama sebelum tiap `INSERT INTO
+ * stock_movement`, bukan dari satu titik bersama — modul-modul yang
+ * membuat movement (POS, ERP purchasing/inventory, sales order, eMedik)
+ * tidak berbagi satu fungsi penyisipan movement.
+ */
+export async function assertWarehouseNotFrozen(
+  client: PoolClient,
+  schemaLiteral: string,
+  warehouseId: string,
+): Promise<void> {
+  const frozen = await client.query<{ opname_number: string }>(
+    `SELECT opname_number FROM ${schemaLiteral}.inventory_stock_opname_session
+      WHERE warehouse_id = $1 AND status IN ('FROZEN', 'COUNTED') LIMIT 1`,
+    [warehouseId],
+  );
+  if (frozen.rowCount) {
+    throw AppError.conflict(
+      ErrorCodes.WAREHOUSE_FROZEN,
+      `Gudang sedang dibekukan untuk stock opname ${frozen.rows[0].opname_number}. Mutasi stok ditolak sampai opname disetujui atau diposting.`,
+      { warehouseId, opnameNumber: frozen.rows[0].opname_number },
+    );
+  }
 }
 
 /** Update projection saldo stok secara atomik. */

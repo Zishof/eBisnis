@@ -6,7 +6,7 @@ import { NumberSequenceService } from '../../infrastructure/sequence/number-sequ
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { LifecycleContext } from './master-lifecycle.service';
-import { applyBalanceDelta } from '../../infrastructure/provisioning/tenant-bootstrap.service';
+import { applyBalanceDelta, assertWarehouseNotFrozen } from '../../infrastructure/provisioning/tenant-bootstrap.service';
 
 export interface RequestOrderLineInput {
   productId: string;
@@ -1057,6 +1057,7 @@ export class ErpPurchasingService {
         if (!lines.rows.length) {
           throw AppError.unprocessable(ErrorCodes.VALIDATION_FAILED, 'Penerimaan tidak memiliki baris.');
         }
+        await assertWarehouseNotFrozen(client, S, receipt.rows[0].warehouse_id);
 
         const postingKey = `GR::${receipt.rows[0].receipt_number}`;
         const movements: string[] = [];
@@ -1324,6 +1325,8 @@ export class ErpPurchasingService {
              AND movement_type IN ('GOODS_RECEIPT', 'GOODS_RECEIPT_QUARANTINE')`,
           [id],
         );
+
+        await assertWarehouseNotFrozen(client, S, receipt.rows[0].warehouse_id);
 
         for (const [index, movement] of originals.rows.entries()) {
           const movementNumber = await this.sequences.next(client, ctx.schemaName, 'STOCK_MOVEMENT');

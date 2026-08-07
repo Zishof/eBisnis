@@ -388,6 +388,13 @@
         "description": "Menambahkan price_book.submitted_by/submitted_at (dibekukan terpisah dari updated_by yang berubah pada setiap transisi) beserta CHECK constraint price_book_no_self_approval, mengikuti pola V030 pos_sale_no_self_void_approval. Migrasi aditif murni."
       },
       {
+        "version": "V056",
+        "sequence": 56,
+        "file": "V056__stock_opname_freeze_index.sql",
+        "name": "Indeks penegakan freeze stock opname",
+        "description": "Indeks parsial pada inventory_stock_opname_session(warehouse_id) WHERE status IN ('FROZEN','COUNTED') untuk mendukung assertWarehouseNotFrozen() yang sekarang dipanggil sebelum setiap penyisipan stock_movement. Tidak ada tabel atau kolom baru."
+      },
+      {
         "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

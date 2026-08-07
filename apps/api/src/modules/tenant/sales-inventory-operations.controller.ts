@@ -2022,11 +2022,27 @@ export function reportSql(code: string, S: string): { title: string; sql: string
              WHERE p.deleted_at IS NULL GROUP BY p.id, u.code ORDER BY p.code`,
     },
     'stock-opname': {
+      // Baris `legacy_stock_opname` hanya diisi oleh impor CLI satu kali
+      // (lihat onboard-cmn-inventory.cli.ts) — siklus opname yang benar-benar
+      // dijalankan lewat freeze->count->approve->post tidak pernah masuk ke
+      // sana. Digabung dengan UNION ALL supaya riwayat impor lama tetap
+      // tampil bersisian dengan opname hidup, bukan digantikan.
       title: 'Laporan Stock Opname', totalKey: 'variance_value',
-      sql: `SELECT l.opname_date::text, p.code, p.name, l.system_qty::text, l.physical_qty::text,
-                   l.variance_qty::text, l.unit_cost::text, (l.variance_qty * l.unit_cost)::text AS variance_value
-              FROM ${S}.legacy_stock_opname l LEFT JOIN ${S}.product p ON p.id = l.product_id
-             WHERE l.opname_date <= $1::date ORDER BY l.opname_date DESC, p.code`,
+      sql: `SELECT opname_date::text, code, name, system_qty::text, physical_qty::text,
+                   variance_qty::text, unit_cost::text, (variance_qty * unit_cost)::text AS variance_value
+              FROM (
+                SELECT o.opname_date AS opname_date, p.code AS code, p.name AS name,
+                       l.system_qty AS system_qty, l.physical_qty AS physical_qty,
+                       l.variance_qty AS variance_qty, l.unit_cost AS unit_cost
+                  FROM ${S}.inventory_stock_opname_session o
+                  JOIN ${S}.inventory_stock_opname_line l ON l.opname_id = o.id
+                  LEFT JOIN ${S}.product p ON p.id = l.product_id
+                 WHERE o.status IN ('APPROVED', 'POSTED')
+                UNION ALL
+                SELECT l.opname_date, p.code, p.name, l.system_qty, l.physical_qty, l.variance_qty, l.unit_cost
+                  FROM ${S}.legacy_stock_opname l LEFT JOIN ${S}.product p ON p.id = l.product_id
+              ) gabungan
+             WHERE opname_date <= $1::date ORDER BY opname_date DESC, code`,
     },
     'price-sale': {
       title: 'Daftar Harga Jual Customer', totalKey: 'price',

@@ -24,6 +24,7 @@ import type { PoolClient } from 'pg';
 import Decimal from 'decimal.js';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { assertWarehouseNotFrozen } from '../../infrastructure/provisioning/tenant-bootstrap.service';
 import { AuthenticatedUser } from '../../common/decorators';
 import {
   bolehMenyetujui,
@@ -684,6 +685,10 @@ export class PosReturnService {
       [ctx.idempotencyKey],
     );
     if (sudah.rows.length) return;
+
+    if (ctx.warehouseId) {
+      await assertWarehouseNotFrozen(client, `"${schemaName}"`, ctx.warehouseId);
+    }
 
     if (ctx.warehouseId && ctx.ember) {
       const kolom = ctx.ember === 'DAMAGED' ? 'damaged_qty' : 'on_hand_qty';

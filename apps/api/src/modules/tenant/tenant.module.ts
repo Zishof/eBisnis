@@ -33,7 +33,7 @@ import { ErpPurchasingService } from './erp-purchasing.service';
 import { ErpInventoryService } from './erp-inventory.service';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { MASTER_RESOURCES, MASTER_RESOURCE_PATTERN } from './master-resource.registry';
-import { applyBalanceDelta } from '../../infrastructure/provisioning/tenant-bootstrap.service';
+import { applyBalanceDelta, assertWarehouseNotFrozen } from '../../infrastructure/provisioning/tenant-bootstrap.service';
 import { BaseQueryDto } from '../../common/dto/base-query.dto';
 import {
   AuthenticatedOnly,
@@ -1595,6 +1595,7 @@ export class ErpController {
             'Outlet pesanan ini belum memiliki gudang aktif. Stok tidak dapat dipotong tanpanya.',
           );
         }
+        await assertWarehouseNotFrozen(client, S, warehouseId);
 
         let totalCost = new Decimal(0);
         for (const line of lines.rows) {
