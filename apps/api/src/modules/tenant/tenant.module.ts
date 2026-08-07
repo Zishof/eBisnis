@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
+import Decimal from 'decimal.js';
 import {
   IsArray,
   IsBoolean,
@@ -32,6 +33,7 @@ import { ErpPurchasingService } from './erp-purchasing.service';
 import { ErpInventoryService } from './erp-inventory.service';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { MASTER_RESOURCES, MASTER_RESOURCE_PATTERN } from './master-resource.registry';
+import { applyBalanceDelta } from '../../infrastructure/provisioning/tenant-bootstrap.service';
 import { BaseQueryDto } from '../../common/dto/base-query.dto';
 import {
   AuthenticatedOnly,
@@ -49,6 +51,7 @@ import { SalesInventoryOperationsController } from './sales-inventory-operations
 import { AccountingModule } from '../accounting/accounting.module';
 import { AccountingEventCatalogRegistry } from '../accounting/event-catalog.registry';
 import { PURCHASE_EVENT_CATALOG } from './purchasing-events.catalog';
+import { SALES_ORDER_EVENT_CATALOG } from './sales-events.catalog';
 
 // ---------------------------------------------------------------------------
 // DTO
@@ -1489,6 +1492,265 @@ export class ErpController {
     return { ...header[0], lines };
   }
 
+  /**
+   * Menjadikan pesanan penjualan sebagai faktur (layar legacy 30-42).
+   *
+   * `sales_order` tercipta lewat `createMobileInventoryOrder` tetapi
+   * sebelumnya tidak pernah berlanjut: statusnya tidak pernah berubah dari
+   * `CONFIRMED`, tidak ada stok terpotong, dan tidak pernah menghasilkan
+   * piutang dagang. Lihat
+   * docs/pos-inventory-parity/decisions/sales-order-to-invoice.md.
+   *
+   * Memotong stok untuk SISA yang belum terkirim (`ordered_qty -
+   * delivered_qty`) — bukan seluruh pesanan diam-diam, sebab baris yang
+   * sebagian sudah dikirim (bila kelak ada alur pengiriman parsial) tidak
+   * boleh terpotong dua kali. Pada keadaan sekarang, `delivered_qty` selalu
+   * nol saat pesanan baru dibuat, jadi ini berarti seluruh pesanan — tetapi
+   * kode ditulis benar untuk keduanya, bukan mengasumsikan yang pertama.
+   */
+  @Post('sales/orders/:id/invoice')
+  @Permissions('SALES_ORDER.INVOICE')
+  @BlockDemo()
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Menjadikan pesanan penjualan sebagai faktur',
+    description:
+      'Memotong stok, mencatat piutang dagang dengan jatuh tempo, riwayat harga jual, dan ' +
+      'peristiwa akuntansi. Hanya pesanan berstatus CONFIRMED yang dapat diproses.',
+  })
+  async invoiceSalesOrder(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    return this.tenantDb.transaction(
+      ctx.schemaName,
+      async (client) => {
+        const order = await client.query<{
+          id: string;
+          order_number: string;
+          status: string;
+          customer_id: string | null;
+          outlet_id: string | null;
+          order_date: string;
+          currency_code: string;
+          subtotal: string;
+          discount_total: string;
+          tax_total: string;
+          grand_total: string;
+          created_by: string | null;
+        }>(
+          `SELECT id::text, order_number, status, customer_id::text AS customer_id,
+                  outlet_id::text AS outlet_id, order_date::text, currency_code,
+                  subtotal::text, discount_total::text, tax_total::text, grand_total::text,
+                  created_by::text AS created_by
+             FROM ${S}.sales_order WHERE id = $1 FOR UPDATE`,
+          [id],
+        );
+        if (!order.rowCount) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Pesanan penjualan tidak ditemukan.');
+        const so = order.rows[0];
+        if (so.status !== 'CONFIRMED') {
+          throw AppError.conflict(
+            ErrorCodes.CONFLICT,
+            `Pesanan berstatus ${so.status} tidak dapat dijadikan faktur. Hanya pesanan ` +
+              'berstatus CONFIRMED yang dapat diproses.',
+          );
+        }
+        if (!so.customer_id) {
+          throw AppError.badRequest(
+            ErrorCodes.VALIDATION_FAILED,
+            'Pesanan tanpa customer tidak dapat dijadikan faktur.',
+          );
+        }
+
+        const lines = await client.query<{
+          id: string;
+          product_id: string;
+          uom_id: string;
+          ordered_qty: string;
+          delivered_qty: string;
+          unit_price: string;
+          legacy_unit_cost: string | null;
+        }>(
+          `SELECT id::text, product_id::text, uom_id::text, ordered_qty::text, delivered_qty::text,
+                  unit_price::text, legacy_unit_cost::text AS legacy_unit_cost
+             FROM ${S}.sales_order_line WHERE sales_order_id = $1 ORDER BY line_no`,
+          [id],
+        );
+        if (!lines.rowCount) {
+          throw AppError.unprocessable(ErrorCodes.VALIDATION_FAILED, 'Pesanan tidak memiliki baris.');
+        }
+
+        const warehouse = await client.query<{ id: string }>(
+          `SELECT id::text FROM ${S}.warehouse
+            WHERE outlet_id = $1 AND is_active ORDER BY created_at LIMIT 1`,
+          [so.outlet_id],
+        );
+        const warehouseId = warehouse.rows[0]?.id ?? null;
+        if (!warehouseId) {
+          throw AppError.conflict(
+            ErrorCodes.CONFLICT,
+            'Outlet pesanan ini belum memiliki gudang aktif. Stok tidak dapat dipotong tanpanya.',
+          );
+        }
+
+        let totalCost = new Decimal(0);
+        for (const line of lines.rows) {
+          const sisa = new Decimal(line.ordered_qty).minus(new Decimal(line.delivered_qty));
+          if (sisa.lessThanOrEqualTo(0)) continue;
+
+          const idempotencyKey = `SALES_ORDER:${id}:${line.id}`;
+          const sudah = await client.query(
+            `SELECT id FROM ${S}.stock_movement WHERE idempotency_key = $1`,
+            [idempotencyKey],
+          );
+          if (sudah.rowCount) continue;
+
+          const unitCost = Number(line.legacy_unit_cost ?? 0);
+          await client.query(
+            `INSERT INTO ${S}.stock_movement
+               (movement_number, movement_type, product_id, uom_id, quantity, unit_cost,
+                source_warehouse_id, bucket_from, bucket_to, reference_type, reference_id,
+                reference_number, posting_key, idempotency_key, occurred_at, created_by, note)
+             VALUES ($1, 'SALES_ORDER_ISSUE', $2, $3, $4, $5, $6, 'AVAILABLE', 'SOLD',
+                     'sales_order', $7, $8, $9, $9, now(), $10, 'Faktur pesanan penjualan')`,
+            [
+              `SO-${id.slice(0, 8)}-${line.id.slice(0, 8)}`,
+              line.product_id,
+              line.uom_id,
+              sisa.toFixed(6),
+              unitCost,
+              warehouseId,
+              id,
+              so.order_number,
+              idempotencyKey,
+              ctx.userId,
+            ],
+          );
+          await applyBalanceDelta(client, S, {
+            warehouseId,
+            productId: line.product_id,
+            lotId: null,
+            onHandDelta: -sisa.toNumber(),
+            availableDelta: -sisa.toNumber(),
+          });
+          totalCost = totalCost.plus(sisa.times(unitCost));
+
+          await client.query(
+            `UPDATE ${S}.sales_order_line SET delivered_qty = ordered_qty, version = version + 1
+              WHERE id = $1`,
+            [line.id],
+          );
+
+          // Riwayat harga jual (layar legacy 11/19). Tabel dipakai ulang dari
+          // V045, sama seperti V053 pada sisi pembelian.
+          await client.query(
+            `INSERT INTO ${S}.legacy_price_history
+               (source_file, legacy_row_number, party_type, customer_id, product_id,
+                effective_date, price, metadata)
+             VALUES ('LIVE:SALES', nextval('${S}.live_price_history_seq'), 'CUSTOMER',
+                     $1, $2, $3::date, $4, $5::jsonb)`,
+            [
+              so.customer_id,
+              line.product_id,
+              so.order_date,
+              line.unit_price,
+              JSON.stringify({ origin: 'sales_order', salesOrderId: id, salesOrderLineId: line.id }),
+            ],
+          );
+        }
+
+        // Piutang dagang. `salesperson_id` diisi dari pembuat pesanan --
+        // sama seperti derivasi "sales_name" pada listSalesOrders di atas.
+        // Bukan snapshot penugasan sejati (sales_order tidak punya kolom
+        // itu, lihat 08-purchase-sales-bridge-findings.md #5), tetapi lebih
+        // baik daripada tidak mengalir sama sekali ke layar analisis
+        // piutang per sales (37-38).
+        const term = await client.query<{ due_days: number | null }>(
+          `SELECT pt.due_days FROM ${S}.customer c
+             LEFT JOIN ${S}.payment_term pt ON pt.id = c.payment_term_id
+            WHERE c.id = $1`,
+          [so.customer_id],
+        );
+        const dueDays = term.rows[0]?.due_days ?? 0;
+
+        const receivable = await client.query<{ id: string }>(
+          `INSERT INTO ${S}.legacy_receivable_ledger
+             (source_file, legacy_row_number, legacy_invoice_number, customer_id, salesperson_id,
+              transaction_date, due_date, amount, status, metadata)
+           VALUES ('LIVE:SALES', nextval('${S}.live_receivable_ledger_seq'), $1, $2, $3, $4::date,
+                   ($4::date + ($5 || ' days')::interval)::date, $6, 'OPEN', $7::jsonb)
+           RETURNING id::text`,
+          [
+            so.order_number,
+            so.customer_id,
+            so.created_by,
+            so.order_date,
+            dueDays,
+            so.grand_total,
+            JSON.stringify({ origin: 'sales_order', salesOrderId: id }),
+          ],
+        );
+
+        await client.query(
+          `UPDATE ${S}.sales_order SET status = 'INVOICED', updated_at = now(), version = version + 1
+            WHERE id = $1`,
+          [id],
+        );
+
+        /*
+         * Peristiwa akuntansi (IR-003, lihat `sales-events.catalog.ts`).
+         * Nama medan nilai sengaja sama dengan peristiwa kasir (`gross`,
+         * `net`, `tax`, `discountAmount`, `cost`, `inventoryValue`) —
+         * `gross` adalah subtotal SEBELUM diskon, `net` adalah grand_total
+         * dikurangi pajak, persis semantik `POS_SALE` pada
+         * `pos-sale.service.ts`. Belum benar-benar dijurnal sampai saluran
+         * peristiwa-ke-jurnal dibangun; lihat catatan pada katalog.
+         */
+        const gross = Number(so.subtotal);
+        const net = Number(so.grand_total) - Number(so.tax_total);
+        const tax = Number(so.tax_total);
+        const discount = Number(so.discount_total);
+        const events: Array<[string, Record<string, number>]> = [
+          ['SALES_ORDER_INVOICED', { gross, net, tax }],
+        ];
+        if (discount > 0) events.push(['SALES_ORDER_DISCOUNT', { discountAmount: discount }]);
+        if (totalCost.greaterThan(0)) {
+          events.push(['SALES_ORDER_COGS', { cost: totalCost.toNumber() }]);
+          events.push(['SALES_ORDER_INVENTORY_RELEASE', { inventoryValue: totalCost.toNumber() }]);
+        }
+        for (const [code, amounts] of events) {
+          await client.query(
+            `INSERT INTO ${S}.accounting_event
+               (event_code, source_type, source_id, source_number, occurred_at, amounts,
+                currency_code, status, idempotency_key, created_by)
+             VALUES ($1, 'SALES_ORDER', $2, $3, now(), $4::jsonb, $5, 'PENDING', $6, $7)
+             ON CONFLICT (idempotency_key) DO NOTHING`,
+            [
+              code,
+              id,
+              so.order_number,
+              JSON.stringify(amounts),
+              so.currency_code,
+              `${code}:SALES_ORDER:${id}`,
+              ctx.userId,
+            ],
+          );
+        }
+
+        return {
+          id,
+          orderNumber: so.order_number,
+          status: 'INVOICED',
+          receivableLedgerId: receivable.rows[0].id,
+        };
+      },
+      { ...ctx.audit, moduleCode: 'SALES', actionCode: 'SALES_ORDER_INVOICED' },
+    );
+  }
+
   @Get('inventory/sales-dashboard')
   @Permissions('SALES_REPORT.VIEW_PROFIT')
   @ApiOperation({ summary: 'Dashboard eksekutif sales dan inventory untuk pemilik dan admin' })
@@ -2369,9 +2631,11 @@ export class TenantModule implements OnModuleInit {
    * pada pengujian, dan pendaftaran ganda ditolak registri.
    */
   onModuleInit(): void {
-    const kunci = `${PURCHASE_EVENT_CATALOG.module}:${PURCHASE_EVENT_CATALOG.prefix}`;
-    if (!this.katalogPeristiwa.registeredCatalogs().includes(kunci)) {
-      this.katalogPeristiwa.register(PURCHASE_EVENT_CATALOG);
+    for (const catalog of [PURCHASE_EVENT_CATALOG, SALES_ORDER_EVENT_CATALOG]) {
+      const kunci = `${catalog.module}:${catalog.prefix}`;
+      if (!this.katalogPeristiwa.registeredCatalogs().includes(kunci)) {
+        this.katalogPeristiwa.register(catalog);
+      }
     }
   }
 }

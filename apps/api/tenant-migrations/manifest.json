@@ -374,6 +374,13 @@
         "description": "Dua sequence (live_payable_ledger_seq, live_price_history_seq) yang memberi legacy_row_number unik pada baris legacy_payable_ledger/legacy_price_history yang dihasilkan transaksi pembelian hidup, dibedakan dari hasil impor DBF lewat source_file='LIVE:PURCHASING'. Tidak ada tabel atau kolom baru."
       },
       {
+        "version": "V054",
+        "sequence": 54,
+        "file": "V054__sales_order_ar_bridge.sql",
+        "name": "Sequence jembatan pesanan penjualan ke piutang dagang",
+        "description": "Satu sequence baru (live_receivable_ledger_seq) untuk legacy_row_number unik pada baris legacy_receivable_ledger yang dihasilkan faktur pesanan penjualan hidup, dibedakan dari hasil impor DBF lewat source_file='LIVE:SALES'. Riwayat harga sisi penjualan memakai ulang live_price_history_seq dari V053. Tidak ada tabel atau kolom baru."
+      },
+      {
         "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

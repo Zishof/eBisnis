@@ -1,0 +1,28 @@
+-- =========================================================================
+-- V054 — JEMBATAN PESANAN PENJUALAN KE PIUTANG DAGANG (AR)
+-- =========================================================================
+--
+-- Pasangan V053 untuk sisi penjualan. Menutup celah: `sales_order` tercipta
+-- (lewat POST /inventory/mobile-orders) tetapi tidak pernah "menjadi faktur"
+-- — statusnya tidak pernah berubah dari CONFIRMED, tidak ada stok terpotong,
+-- dan tidak pernah menghasilkan piutang dagang. Lihat
+-- docs/pos-inventory-parity/08-purchase-sales-bridge-findings.md dan
+-- docs/pos-inventory-parity/decisions/sales-order-to-invoice.md.
+--
+-- `legacy_receivable_ledger` (V045) dipakai ulang dengan alasan yang sama
+-- persis dengan `legacy_payable_ledger` pada V053: mesin pelunasan
+-- `inventory_ar_receipt`/`inventory_ar_receipt_allocation` (V047) sudah
+-- menunjuk ke tabel ini lewat FK, dan laporan aging/piutang (layar 31-38,
+-- 41-42) sudah membacanya. Baris hidup dibedakan lewat
+-- `source_file = 'LIVE:SALES'` dan `metadata->>'origin'`.
+--
+-- Sequence riwayat harga (`live_price_history_seq`) TIDAK dibuat ulang di
+-- sini — sequence yang sama dari V053 dipakai bersama untuk baris
+-- `legacy_price_history` sisi penjualan. Ini aman: keunikannya ditegakkan
+-- `(source_file, legacy_row_number)`, dan `source_file` sisi penjualan
+-- ('LIVE:SALES') berbeda dari sisi pembelian ('LIVE:PURCHASING') — angka
+-- yang sama pada sequence tidak pernah bertabrakan pada indeks unik yang
+-- sudah ada, sebab pasangannya berbeda.
+-- =========================================================================
+
+CREATE SEQUENCE IF NOT EXISTS "{{TENANT_SCHEMA}}".live_receivable_ledger_seq;
