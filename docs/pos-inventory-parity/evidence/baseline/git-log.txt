@@ -1,0 +1,30 @@
+6df6b85 (HEAD -> main, origin/main, origin/HEAD) fix(apotik): isolate update versions by platform
+ad1cc97 feat(apotik): complete POS operational workspaces
+51cdf7d build(apotik): bundle Windows installer 0.1.15
+489fcec fix(inventory): isolate release entrypoints (#113)
+2bc699f (tag: pos-v0.1.15) feat(apotik): complete clinical POS workflows
+ace7c39 (tag: inventory-v0.1.14) Merge pull request #112 from Zishof/codex/inventory-supplier-ui-parity
+aca61f4 (origin/codex/inventory-supplier-ui-parity) feat(inventory): add supplier operations workspace
+63ee624 Merge pull request #111 from Zishof/codex/inventory-dashboard-ui-parity
+348fb2f (origin/codex/inventory-dashboard-ui-parity) build(inventory): prepare dashboard clients 0.1.13
+60da0bb Merge remote-tracking branch 'origin/main' into codex/inventory-dashboard-ui-parity
+7846725 feat(inventory): align executive dashboard across clients
+5a290af (tag: pos-v0.1.12) build(pos): bundle pharmacy clients 0.1.12
+a494852 build(pos): set pharmacy release version 0.1.12
+5c3797e build(pos): bundle pharmacy clients 0.1.10
+40d5610 feat(apotik): align POS workspace across web and Flutter
+5d4ecfd (tag: inventory-v0.1.11) Merge pull request #110 from Zishof/codex/inventory-transaction-ui-parity
+f983beb (origin/codex/inventory-transaction-ui-parity) build(inventory): bundle 0.1.11 installers
+554b4bc Merge pull request #109 from Zishof/codex/inventory-transaction-ui-parity
+962ba10 feat(inventory): align sales and purchase workspaces
+a48c926 Merge pull request #108 from Zishof/codex/inventory-order-purchase-responsive
+a759753 (origin/codex/inventory-order-purchase-responsive) build(inventory): prepare client 0.1.10
+c9ab435 Merge pull request #107 from Zishof/codex/inventory-order-purchase-responsive
+b4e66df feat(inventory): rebuild sales and purchase workspaces
+d2c392a build(pos): bundle pharmacy clients 0.1.9
+4ecb499 (tag: pos-v0.1.9) feat(pos): resolve pharmacy tenant from login account
+631ff89 (tag: inventory-v0.1.8) feat(inventory): adopt responsive Flutter ERP shell (#106)
+e2892c2 feat: add national ledger exports
+5b26b4a fix: retire stale pharmacy download service worker
+008a6dc Merge pull request #104 from Zishof/codex/inventory-sales-ui-parity-48
+2da71e3 (origin/codex/inventory-sales-ui-parity-48) build(inventory): bundle 0.1.6 parity clients
