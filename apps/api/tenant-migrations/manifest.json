@@ -367,6 +367,13 @@
         "description": "Menambahkan pos_sale_line.approved_at berpasangan dengan approved_by (V027) yang sudah ada, serta indeks parsial baris yang masih menunggu persetujuan. Migrasi aditif murni, tidak mengubah kolom yang sudah ada."
       },
       {
+        "version": "V053",
+        "sequence": 53,
+        "file": "V053__purchase_ap_bridge.sql",
+        "name": "Sequence jembatan pembelian ke hutang dagang",
+        "description": "Dua sequence (live_payable_ledger_seq, live_price_history_seq) yang memberi legacy_row_number unik pada baris legacy_payable_ledger/legacy_price_history yang dihasilkan transaksi pembelian hidup, dibedakan dari hasil impor DBF lewat source_file='LIVE:PURCHASING'. Tidak ada tabel atau kolom baru."
+      },
+      {
         "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

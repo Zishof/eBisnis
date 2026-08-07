@@ -11,11 +11,15 @@ mendalam per layar belum dilakukan pada pass ini.
 
 | No | Layar legacy | Domain | Self-report repo (Web/Flutter) | Status verifikasi P0 | Catatan |
 |---:|---|---|---|---|---|
-| 01-07 | Master supplier/customer/sales | MASTER | OPERATIONAL/OPERATIONAL | UNKNOWN | CHANGELOG Wave 0-1 mengklaim CRUD, audit, PDF/Excel, offline queue |
-| 08-19 | Stok/opname/harga | STOCK_PRICE | OPERATIONAL/OPERATIONAL | UNKNOWN | CHANGELOG Wave 2 mengklaim siklus opname penuh + ekspor |
-| 20-29 | Pembelian/hutang | PURCHASE_AP | OPERATIONAL/OPERATIONAL | UNKNOWN | CHANGELOG Wave 3 mengklaim PO→GR→AP lengkap dengan batch/expiry |
-| 30-42 | Penjualan/piutang/nota sales | SALES_AR | OPERATIONAL/OPERATIONAL | UNKNOWN | CHANGELOG Wave 4 mengklaim order→invoice→AR dengan aging |
-| 43-48 | Kas/jurnal/laba-rugi | FINANCE | OPERATIONAL/OPERATIONAL | UNKNOWN | CHANGELOG Wave 5 mengklaim posting/reversal + snapshot laba-rugi teraudit |
+| 01-07 | Master supplier/customer/sales | MASTER | OPERATIONAL/OPERATIONAL | UNKNOWN | CHANGELOG Wave 0-1 mengklaim CRUD, audit, PDF/Excel, offline queue — belum diverifikasi mendalam |
+| 08-19 | Stok/opname/harga | STOCK_PRICE | OPERATIONAL/OPERATIONAL | UNKNOWN | CHANGELOG Wave 2 mengklaim siklus opname penuh + ekspor — belum diverifikasi mendalam |
+| 20 | Proses pembelian | PURCHASE_AP | OPERATIONAL/OPERATIONAL | **FIXED (source-only, 2026-08-08)** | PO→GR→stok+batch tetap CONFIRMED. `validateGoodsReceipt` sekarang juga menghasilkan baris `legacy_payable_ledger` (AP+jatuh tempo), `legacy_price_history` (riwayat harga beli), dan peristiwa akuntansi `PURCHASE_GOODS_RECEIPT_VALUED`. Lint/build/test lulus; BELUM diuji terhadap PostgreSQL sungguhan. Lihat `decisions/purchase-legacy-to-modern.md` |
+| 21-27 | Hutang dagang/pembayaran/analisis | PURCHASE_AP | OPERATIONAL/OPERATIONAL | **PARTIAL, membaik** | Mekanisme settlement AP (`/ap/payments`, aging) sudah CONFIRMED bekerja; sekarang punya baris hidup untuk diproses (bukan cuma hasil impor) berkat perbaikan layar 20. Belum diverifikasi end-to-end dengan DB sungguhan bahwa `/ap/payments` benar-benar dapat melunasi baris baru ini |
+| 28-29 | Cetak faktur/laporan pembelian | PURCHASE_AP | OPERATIONAL/OPERATIONAL | **PARTIAL, membaik** | Snapshot cetak (CONFIRMED) sekarang punya data AP hidup untuk ditampilkan, bukan hanya data impor |
+| 30 | Menu penjualan | SALES_AR | OPERATIONAL/OPERATIONAL | **PARTIAL** | Terverifikasi 2026-08-08: sales_order tercipta idempoten (CONFIRMED), tapi TIDAK PERNAH "jadi invoice" — status tidak pernah berubah dari CONFIRMED, tidak ada potong stok |
+| 31-38, 41-42 | Piutang/analisis piutang | SALES_AR | OPERATIONAL/OPERATIONAL | **BROKEN untuk transaksi baru** | Sama seperti AP: mekanisme settlement bekerja tapi hanya untuk baris hasil import legacy |
+| 39-40 | Nota sales | SALES_AR | OPERATIONAL/OPERATIONAL | **PARTIAL** | State machine ada tapi lebih datar dari spesifikasi (tidak ada AVAILABLE/ASSIGNED/PARTIALLY_COLLECTED/RECONCILED terpisah), dan sumber datanya terputus dari sales_order live |
+| 43-48 | Kas/jurnal/laba-rugi | FINANCE | OPERATIONAL/OPERATIONAL | UNKNOWN, tapi ada sinyal kuat GAP | Belum diverifikasi langsung, tapi #20 dan #30 sama-sama membuktikan TIDAK ADA auto-posting jurnal dari pembelian/penjualan — jurnal hanya bisa dibuat manual. Laporan laba-rugi/kas kemungkinan hanya benar untuk data hasil import, bukan transaksi baru |
 
 Rincian 48 baris individual (nama, API path, web route persis) — lihat
 `apps/api/src/modules/tenant/sales-inventory-parity.catalog.ts` langsung; tidak diduplikasi di

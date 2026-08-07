@@ -1012,10 +1012,13 @@ export class ErpPurchasingService {
           status: string;
           warehouse_id: string;
           purchase_order_id: string | null;
+          supplier_id: string | null;
+          receipt_date: string;
           posting_key: string | null;
         }>(
           `SELECT id::text AS id, receipt_number, status, warehouse_id::text AS warehouse_id,
-                  purchase_order_id::text AS purchase_order_id, posting_key
+                  purchase_order_id::text AS purchase_order_id, supplier_id::text AS supplier_id,
+                  receipt_date::text AS receipt_date, posting_key
            FROM ${S}.goods_receipt WHERE id = $1 FOR UPDATE`,
           [id],
         );
@@ -1057,6 +1060,11 @@ export class ErpPurchasingService {
 
         const postingKey = `GR::${receipt.rows[0].receipt_number}`;
         const movements: string[] = [];
+        // Nilai barang yang benar-benar diterima (harga x kuantitas diterima,
+        // BUKAN ditolak) — dasar hutang dagang yang dibuat di bawah. Diterima
+        // dan dimiliki adalah yang ditagihkan; barang yang ditolak masuk
+        // karantina dan bukan kewajiban membayar.
+        let nilaiDiterima = new Decimal(0);
 
         for (const line of lines.rows) {
           const accepted = new Decimal(line.accepted_qty);
@@ -1095,6 +1103,29 @@ export class ErpPurchasingService {
               onHandDelta: accepted.toNumber(),
               availableDelta: accepted.toNumber(),
             });
+
+            nilaiDiterima = nilaiDiterima.plus(accepted.times(new Decimal(line.unit_cost)));
+
+            // Riwayat harga beli (layar legacy 11/18). Dipakai ulang, bukan
+            // tabel baru — lihat V053. Hanya dicatat bila penerimaan ini
+            // punya supplier: harga tanpa pihak yang menawarkannya bukan
+            // riwayat, hanya angka lepas.
+            if (receipt.rows[0].supplier_id) {
+              await client.query(
+                `INSERT INTO ${S}.legacy_price_history
+                   (source_file, legacy_row_number, party_type, supplier_id, product_id,
+                    effective_date, price, metadata)
+                 VALUES ('LIVE:PURCHASING', nextval('${S}.live_price_history_seq'), 'SUPPLIER',
+                         $1, $2, $3::date, $4, $5::jsonb)`,
+                [
+                  receipt.rows[0].supplier_id,
+                  line.product_id,
+                  receipt.rows[0].receipt_date,
+                  line.unit_cost,
+                  JSON.stringify({ origin: 'goods_receipt', goodsReceiptId: id, goodsReceiptLineId: line.id }),
+                ],
+              );
+            }
           }
 
           if (rejected.greaterThan(0)) {
@@ -1173,6 +1204,72 @@ export class ErpPurchasingService {
           );
         }
 
+        /*
+         * Hutang dagang dan peristiwa akuntansi (layar legacy 20-29).
+         *
+         * Dibuat HANYA bila ada supplier dan ada nilai yang diterima — tanpa
+         * keduanya tidak ada pihak yang ditagih dan tidak ada apa pun yang
+         * berutang. Tidak melempar bila keduanya tidak ada: validasi
+         * penerimaan (pemotongan stok) tidak boleh gagal karena penerimaan
+         * langsung yang memang tidak menyebut supplier.
+         */
+        let payableLedgerId: string | null = null;
+        if (receipt.rows[0].supplier_id && nilaiDiterima.greaterThan(0)) {
+          const term = await client.query<{ due_days: number | null }>(
+            `SELECT pt.due_days FROM ${S}.supplier s
+               LEFT JOIN ${S}.payment_term pt ON pt.id = s.payment_term_id
+              WHERE s.id = $1`,
+            [receipt.rows[0].supplier_id],
+          );
+          const dueDays = term.rows[0]?.due_days ?? 0;
+
+          const payable = await client.query<{ id: string }>(
+            `INSERT INTO ${S}.legacy_payable_ledger
+               (source_file, legacy_row_number, legacy_invoice_number, supplier_id,
+                transaction_date, due_date, amount, status, metadata)
+             VALUES ('LIVE:PURCHASING', nextval('${S}.live_payable_ledger_seq'), $1, $2, $3::date,
+                     ($3::date + ($4 || ' days')::interval)::date, $5, 'OPEN', $6::jsonb)
+             RETURNING id::text`,
+            [
+              receipt.rows[0].receipt_number,
+              receipt.rows[0].supplier_id,
+              receipt.rows[0].receipt_date,
+              dueDays,
+              nilaiDiterima.toFixed(4),
+              JSON.stringify({
+                origin: 'goods_receipt',
+                goodsReceiptId: id,
+                purchaseOrderId: receipt.rows[0].purchase_order_id,
+              }),
+            ],
+          );
+          payableLedgerId = payable.rows[0].id;
+
+          /*
+           * Peristiwa akuntansi (IR-003, lihat `purchasing-events.catalog.ts`).
+           * SATU nilai (`inventoryValue`) dipakai kedua sisi jurnal lewat dua
+           * baris `accounting_posting_rule` yang menunjuk medan yang sama —
+           * bukan dua peristiwa terpisah yang dapat menjadi tidak seimbang.
+           * Belum benar-benar dijurnal sampai operator tenant menyemai aturan
+           * postingnya; lihat komentar pada katalog peristiwa.
+           */
+          await client.query(
+            `INSERT INTO ${S}.accounting_event
+               (event_code, source_type, source_id, source_number, occurred_at, amounts,
+                currency_code, status, idempotency_key, created_by)
+             VALUES ('PURCHASE_GOODS_RECEIPT_VALUED', 'GOODS_RECEIPT', $1, $2, now(), $3::jsonb,
+                     'IDR', 'PENDING', $4, $5)
+             ON CONFLICT (idempotency_key) DO NOTHING`,
+            [
+              id,
+              receipt.rows[0].receipt_number,
+              JSON.stringify({ inventoryValue: nilaiDiterima.toNumber() }),
+              `PURCHASE_GOODS_RECEIPT_VALUED:GOODS_RECEIPT:${id}`,
+              ctx.userId,
+            ],
+          );
+        }
+
         await this.audit.record({
           moduleCode: 'PURCHASING',
           actionCode: 'GOODS_RECEIPT_VALIDATED',
@@ -1184,7 +1281,7 @@ export class ErpPurchasingService {
           actorUserId: ctx.userId,
           actorUsername: ctx.username,
           requestId: ctx.audit.requestId,
-          metadata: { postingKey, movements },
+          metadata: { postingKey, movements, payableLedgerId },
         });
 
         return this.loadGoodsReceipt(client, ctx.schemaName, id);

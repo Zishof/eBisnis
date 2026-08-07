@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Module,
+  type OnModuleInit,
   Param,
   Patch,
   Post,
@@ -45,6 +46,9 @@ import {
 } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { SalesInventoryOperationsController } from './sales-inventory-operations.controller';
+import { AccountingModule } from '../accounting/accounting.module';
+import { AccountingEventCatalogRegistry } from '../accounting/event-catalog.registry';
+import { PURCHASE_EVENT_CATALOG } from './purchasing-events.catalog';
 
 // ---------------------------------------------------------------------------
 // DTO
@@ -2346,10 +2350,28 @@ function schemaOf(user: AuthenticatedUser): string {
 }
 
 @Module({
+  imports: [AccountingModule],
   // Controller route spesifik lebih dahulu: ia harus menang atas
   // wildcard `:resource` pada MasterController.
   controllers: [SalesInventoryOperationsController, ErpController, AccountingDocumentController, MasterController, TenantAdminController],
   providers: [MasterLifecycleService, ErpPurchasingService, ErpInventoryService],
   exports: [MasterLifecycleService, ErpPurchasingService, ErpInventoryService],
 })
-export class TenantModule {}
+export class TenantModule implements OnModuleInit {
+  constructor(private readonly katalogPeristiwa: AccountingEventCatalogRegistry) {}
+
+  /**
+   * Katalog peristiwa akuntansi pembelian (IR-003), lewat pintu yang sama
+   * dipakai koperasi. Pendaftaran ini TIDAK membuat peristiwanya dijurnal —
+   * lihat komentar `purchasing-events.catalog.ts`.
+   *
+   * Dilewati bila sudah terdaftar: modul Nest dapat dimuat lebih dari sekali
+   * pada pengujian, dan pendaftaran ganda ditolak registri.
+   */
+  onModuleInit(): void {
+    const kunci = `${PURCHASE_EVENT_CATALOG.module}:${PURCHASE_EVENT_CATALOG.prefix}`;
+    if (!this.katalogPeristiwa.registeredCatalogs().includes(kunci)) {
+      this.katalogPeristiwa.register(PURCHASE_EVENT_CATALOG);
+    }
+  }
+}
