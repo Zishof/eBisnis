@@ -466,6 +466,12 @@ export class PlatformAdminController {
         tenantId: session.tenantId,
         userId: user.userId,
         username: user.username,
+        // Staf dukungan bukan pengguna tenant -- tidak punya penugasan role
+        // tenant apa pun. `false`/`null` berarti field sensitif (mis. data
+        // bank) tetap disamarkan pada sesi dukungan secara bawaan, sama
+        // seperti pengguna tenant tanpa VIEW_BANK_DETAILS eksplisit.
+        isDemo: false,
+        activeRoleId: null,
         audit: {
           requestId: meta.requestId,
           userId: user.userId,
@@ -542,6 +548,12 @@ export class PlatformAdminController {
         tenantId: session.tenantId,
         userId: user.userId,
         username: user.username,
+        // Staf dukungan bukan pengguna tenant -- tidak punya penugasan role
+        // tenant apa pun. `false`/`null` berarti field sensitif (mis. data
+        // bank) tetap disamarkan pada sesi dukungan secara bawaan, sama
+        // seperti pengguna tenant tanpa VIEW_BANK_DETAILS eksplisit.
+        isDemo: false,
+        activeRoleId: null,
         audit: {
           requestId: meta.requestId,
           userId: user.userId,

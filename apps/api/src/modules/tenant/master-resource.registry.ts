@@ -20,6 +20,13 @@ export interface MasterResourceDefinition {
   writableFields: string[];
   /** Field yang dikembalikan pada list. */
   selectFields: string[];
+  /**
+   * Field yang disamarkan pada `list`/`findById` kecuali pemanggil punya
+   * `<menuCode>.VIEW_BANK_DETAILS` (lihat `MasterLifecycleService.samarkan`).
+   * Ditulis/dibaca penuh pada `create`/`update` tetap seperti biasa --
+   * penyamaran hanya berlaku pada jalan baca umum.
+   */
+  sensitiveFields?: string[];
   /** Relasi FK yang divalidasi ada sebelum ditulis: field -> tabel referensi. */
   foreignKeys?: Record<string, string>;
   /** Tabel yang mereferensikan resource ini, dipakai reference check sebelum purge. */
@@ -146,6 +153,7 @@ export const MASTER_RESOURCES: MasterResourceDefinition[] = [
       'region_name', 'bank_account_number', 'bank_account_name', 'bank_name', 'bank_address',
       'sort_order',
     ],
+    sensitiveFields: ['bank_account_number', 'bank_account_name', 'bank_name', 'bank_address'],
     foreignKeys: { supplier_group_id: 'supplier_group', payment_term_id: 'payment_term' },
     references: [
       { table: 'purchase_order', column: 'supplier_id', isTransactional: true, label: 'Purchase Order' },
@@ -169,6 +177,7 @@ export const MASTER_RESOURCES: MasterResourceDefinition[] = [
       'address_text', 'region_name', 'default_discount_percent', 'bank_account_number',
       'bank_account_name', 'bank_name', 'bank_address', 'sort_order',
     ],
+    sensitiveFields: ['bank_account_number', 'bank_account_name', 'bank_name', 'bank_address'],
     foreignKeys: { customer_group_id: 'customer_group', payment_term_id: 'payment_term' },
     references: [
       { table: 'pos_sale', column: 'customer_id', isTransactional: true, label: 'Penjualan POS' },

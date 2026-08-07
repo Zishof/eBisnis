@@ -111,6 +111,16 @@ export const PERMISSION_ACTIONS_SEED: PermissionActionSeed[] = [
    */
   { code: 'DISBURSE', name: 'Cairkan Dana', nameKey: 'action.disburse', actionType: 'SENSITIVE', sortOrder: 51, requiresStepUp: true },
   { code: 'WRITE_OFF', name: 'Hapus Buku', nameKey: 'action.writeOff', actionType: 'SENSITIVE', sortOrder: 52, requiresStepUp: true },
+  /*
+   * Nomor rekening bank pemasok/pelanggan sebelumnya terkirim penuh ke
+   * setiap pemanggil ber-hak READ dasar -- "penyamaran" yang ada hanya
+   * state komponen React lokal tanpa pemeriksaan hak akses sama sekali.
+   * Aksi ini yang menjadi gerbang sungguhan di layanan (lihat
+   * `MasterLifecycleService`); READ dasar tetap melihat field ini
+   * tersamar, bukan kosong -- kehadiran datanya tidak disembunyikan,
+   * hanya nilainya.
+   */
+  { code: 'VIEW_BANK_DETAILS', name: 'Lihat Data Rekening Bank', nameKey: 'action.viewBankDetails', actionType: 'SENSITIVE', sortOrder: 53 },
 ];
 
 export interface MenuNodeSeed {
@@ -179,7 +189,7 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
 
   // 05 Pelanggan dan CRM
   { code: 'CRM', label: 'Pelanggan dan CRM', translationKey: 'menu.crm', icon: 'users', moduleCode: 'CRM', sortOrder: 5, actions: ['READ'] },
-  { code: 'CRM_CUSTOMER', parentCode: 'CRM', label: 'Pelanggan', translationKey: 'menu.crm.customer', route: '/app/customers', icon: 'user', moduleCode: 'CRM', sortOrder: 1, actions: [...CRUD, 'HARD_DELETE', 'RESTORE'] },
+  { code: 'CRM_CUSTOMER', parentCode: 'CRM', label: 'Pelanggan', translationKey: 'menu.crm.customer', route: '/app/customers', icon: 'user', moduleCode: 'CRM', sortOrder: 1, actions: [...CRUD, 'HARD_DELETE', 'RESTORE', 'VIEW_BANK_DETAILS'] },
   { code: 'CRM_GROUP', parentCode: 'CRM', label: 'Grup Pelanggan', translationKey: 'menu.crm.group', route: '/app/customer-groups', icon: 'users-round', moduleCode: 'CRM', sortOrder: 2, actions: CRUD },
 
   // 06 Pembelian
@@ -188,7 +198,7 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
   { code: 'PURCHASING_PO', parentCode: 'PURCHASING', label: 'Purchase Order', translationKey: 'menu.purchasing.purchaseOrder', route: '/app/purchase-orders', icon: 'file-text', moduleCode: 'PURCHASING', sortOrder: 2, actions: [...DOC, 'VIEW_AMOUNT'] },
   { code: 'PURCHASING_RECEIPT', parentCode: 'PURCHASING', label: 'Penerimaan Barang', translationKey: 'menu.purchasing.goodsReceipt', route: '/app/goods-receipts', icon: 'package-check', moduleCode: 'PURCHASING', sortOrder: 3, actions: [...DOC, 'POST', 'REVIEW'] },
   { code: 'PURCHASING_BACKORDER', parentCode: 'PURCHASING', label: 'Backorder', translationKey: 'menu.purchasing.backorder', route: '/app/backorders', icon: 'package-x', moduleCode: 'PURCHASING', sortOrder: 4, actions: DOC },
-  { code: 'PURCHASING_SUPPLIER', parentCode: 'PURCHASING', label: 'Pemasok', translationKey: 'menu.purchasing.supplier', route: '/app/suppliers', icon: 'truck', moduleCode: 'PURCHASING', sortOrder: 5, actions: [...CRUD, 'HARD_DELETE', 'RESTORE'] },
+  { code: 'PURCHASING_SUPPLIER', parentCode: 'PURCHASING', label: 'Pemasok', translationKey: 'menu.purchasing.supplier', route: '/app/suppliers', icon: 'truck', moduleCode: 'PURCHASING', sortOrder: 5, actions: [...CRUD, 'HARD_DELETE', 'RESTORE', 'VIEW_BANK_DETAILS'] },
   { code: 'PURCHASING_PRODUCT_SUPPLIER', parentCode: 'PURCHASING', label: 'Produk Pemasok', translationKey: 'menu.purchasing.productSupplier', route: '/app/product-suppliers', icon: 'link', moduleCode: 'PURCHASING', sortOrder: 6, actions: CRUD },
 
   // 07 Gudang dan Persediaan
@@ -419,7 +429,7 @@ export const ROLE_TEMPLATES_SEED: RoleTemplateSeed[] = [
     permissions: Object.fromEntries(
       ALL_MENU_CODES.map((code) => [
         code,
-        ['READ', 'CREATE', 'UPDATE', 'SUBMIT', 'APPROVE', 'REJECT', 'CANCEL', 'PRINT', 'EXPORT', 'POST', 'VIEW_AMOUNT', 'VIEW_COST'],
+        ['READ', 'CREATE', 'UPDATE', 'SUBMIT', 'APPROVE', 'REJECT', 'CANCEL', 'PRINT', 'EXPORT', 'POST', 'VIEW_AMOUNT', 'VIEW_COST', 'VIEW_BANK_DETAILS'],
       ]),
     ) as Record<string, string[]>,
   },

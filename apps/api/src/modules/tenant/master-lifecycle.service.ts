@@ -2,17 +2,50 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { TenantConnectionService, AuditContext } from '../../infrastructure/database/tenant-connection.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { TenantPermissionService } from '../auth/tenant-permission.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { BaseQueryDto, PagedResult, paged } from '../../common/dto/base-query.dto';
 import { findMasterResource, MasterResourceDefinition } from './master-resource.registry';
 
 const IDENT = /^[a-z_][a-z0-9_]*$/;
 
+/** Ditulis ke field sensitif yang disamarkan. Bukan `null`: pemanggil tanpa
+ * hak lihat tetap tahu datanya ADA, hanya tidak boleh melihat isinya --
+ * membedakan "kosong" dari "disembunyikan" berarti kolom yang benar-benar
+ * kosong tidak mengarahkan orang mencari data yang memang tidak pernah ada. */
+export const NILAI_DISAMARKAN = '••• disembunyikan •••';
+
+/**
+ * Transformasi murni: menyamarkan `fields` pada setiap baris bila `revealed`
+ * salah. Dipisah dari `MasterLifecycleService.samarkan()` (yang melakukan
+ * pemeriksaan hak akses sungguhan lewat basis data) supaya aturan
+ * "kosong tetap kosong, terisi menjadi disamarkan" dapat diuji tanpa basis
+ * data maupun mock permission service.
+ */
+export function maskFields<T extends Record<string, unknown>>(
+  rows: T[],
+  fields: readonly string[],
+  revealed: boolean,
+): T[] {
+  if (revealed || !fields.length) return rows;
+  return rows.map((row) => {
+    const masked = { ...row };
+    for (const field of fields) {
+      if (masked[field] !== null && masked[field] !== undefined && masked[field] !== '') {
+        (masked as Record<string, unknown>)[field] = NILAI_DISAMARKAN;
+      }
+    }
+    return masked;
+  });
+}
+
 export interface LifecycleContext {
   schemaName: string;
   tenantId?: string;
   userId: string;
   username: string;
+  isDemo: boolean;
+  activeRoleId: string | null;
   audit: AuditContext;
 }
 
@@ -40,7 +73,31 @@ export class MasterLifecycleService {
   constructor(
     private readonly tenantDb: TenantConnectionService,
     private readonly audit: AuditService,
+    private readonly izin: TenantPermissionService,
   ) {}
+
+  /**
+   * Menyamarkan `definition.sensitiveFields` pada baris yang dikembalikan,
+   * kecuali pemanggil punya `<menuCode>.VIEW_BANK_DETAILS`.
+   *
+   * Dipanggil pada `list()`/`findById()` -- jalan baca umum. TIDAK dipanggil
+   * pada `create()`/`update()`: nilai yang baru saja ditulis pemanggil
+   * sendiri sudah diketahuinya, menyamarkannya di sana hanya membuat formulir
+   * sunting terlihat kehilangan data yang baru saja diisi.
+   */
+  private async samarkan(
+    ctx: LifecycleContext,
+    definition: MasterResourceDefinition,
+    rows: Record<string, unknown>[],
+  ): Promise<Record<string, unknown>[]> {
+    if (!definition.sensitiveFields?.length || !rows.length) return rows;
+    const permission = `${definition.menuCode}.VIEW_BANK_DETAILS`;
+    const kurang = await this.izin.findMissing(ctx.schemaName, ctx.userId, [permission], {
+      isDemo: ctx.isDemo,
+      activeRoleId: ctx.activeRoleId,
+    });
+    return maskFields(rows, definition.sensitiveFields, kurang.length === 0);
+  }
 
   resource(resourceCode: string): MasterResourceDefinition {
     const definition = findMasterResource(resourceCode);
@@ -117,7 +174,7 @@ export class MasterLifecycleService {
       params,
     );
 
-    return paged(items, total, query);
+    return paged(await this.samarkan(ctx, definition, items), total, query);
   }
 
   async findById(
@@ -135,7 +192,7 @@ export class MasterLifecycleService {
       // Cross-tenant / tidak ada → 404 tanpa membocorkan keberadaan data.
       throw AppError.notFound(ErrorCodes.NOT_FOUND, `${definition.label} tidak ditemukan.`);
     }
-    return row;
+    return (await this.samarkan(ctx, definition, [row]))[0];
   }
 
   async create(

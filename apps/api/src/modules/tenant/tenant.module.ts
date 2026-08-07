@@ -2592,6 +2592,8 @@ function context(user: AuthenticatedUser, meta: RequestMeta): LifecycleContext {
     tenantId: user.tenantId,
     userId: user.userId,
     username: user.username,
+    isDemo: user.isDemo,
+    activeRoleId: user.activeRoleId ?? null,
     audit: {
       requestId: meta.requestId,
       correlationId: meta.correlationId,
