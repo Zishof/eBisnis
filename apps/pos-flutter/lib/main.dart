@@ -15,6 +15,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import 'package:path_provider/path_provider.dart';
+
 import 'api/pos_api.dart';
 import 'aturan/harga_luring.dart';
 import 'aturan/koneksi.dart';
@@ -24,6 +26,8 @@ import 'layar/operasi_apotik.dart';
 import 'layar/sumber.dart';
 import 'layar/tampilan_pelanggan.dart';
 import 'layar/tema.dart';
+import 'mesin/identitas_mesin.dart';
+import 'mesin/kasir_luring.dart';
 import 'pembaruan/pengelola_pembaruan.dart';
 import 'pembaruan/sumber_pembaruan.dart';
 import 'pembaruan/versi_aplikasi.dart';
@@ -314,17 +318,17 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
   Future<void> _aktifkanApotik(PosApiClient client) async {
     final boot = await client.bootstrap();
     final sesi = boot.sesi;
+    final mesin = await _siapkanMesinLuring(client, sesi, boot.katalog);
     final sumber = _SumberKasir(
       katalog: boot.katalog,
       metode: boot.metode,
       namaToko: client.authenticatedTenantName ?? 'Apotik eMedik',
       namaOutlet: sesi.outletName,
       shift: sesi.shiftNumber ?? sesi.businessDate,
-      koneksi: KeadaanKoneksi.daring,
+      koneksi: mesin.status.state,
       namaPengguna:
           client.displayName ?? client.authenticatedUsername ?? 'apoteker',
-      pembukuan: (transaksi) =>
-          client.bukukan(sesi: sesi, transaksi: transaksi),
+      pembukuan: mesin.bukukan,
     );
     if (!mounted) return;
     setState(() {
@@ -356,18 +360,41 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
     );
     final boot = await client.bootstrap();
     final sesi = boot.sesi;
+    final mesin = await _siapkanMesinLuring(client, sesi, boot.katalog);
     return _SumberKasir(
       katalog: boot.katalog,
       metode: boot.metode,
       namaToko: _modeApotik ? 'Apotik eMedik' : 'eBisnis.id',
       namaOutlet: sesi.outletName,
       shift: sesi.shiftNumber ?? sesi.businessDate,
-      koneksi: KeadaanKoneksi.daring,
+      koneksi: mesin.status.state,
       namaPengguna:
           const String.fromEnvironment('POS_USERNAME', defaultValue: 'demo'),
-      pembukuan: (transaksi) =>
-          client.bukukan(sesi: sesi, transaksi: transaksi),
+      pembukuan: mesin.bukukan,
     );
+  }
+
+  /// Menyiapkan mesin kasir luring: memuat identitas permanen mesin ini dan
+  /// memesan/memuat jatah nomor struk selagi (mudah-mudahan) masih daring.
+  ///
+  /// Tidak pernah melempar -- kegagalan pada langkah ini hanya berarti
+  /// penjualan luring tidak tersedia pada sesi ini, dan kasir tetap dapat
+  /// berjualan daring seperti biasa. Lihat `mesin/kasir_luring.dart`.
+  Future<KasirLuringEngine> _siapkanMesinLuring(
+    PosApiClient client,
+    SesiKasirApi sesi,
+    SumberKatalogApi katalog,
+  ) async {
+    final direktori = await getApplicationSupportDirectory();
+    final identitas = await IdentitasBerkas(direktori).muat();
+    final mesin = KasirLuringEngine(
+      client: client,
+      sesi: sesi,
+      identitas: identitas,
+      katalogSyncedAt: katalog.generatedAt,
+    );
+    await mesin.siapkan();
+    return mesin;
   }
 }
 

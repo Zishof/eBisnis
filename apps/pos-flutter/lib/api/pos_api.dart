@@ -181,6 +181,43 @@ class PosApiClient {
     );
   }
 
+  /// Memesan jatah nomor struk untuk register ini. Dipanggil selagi daring;
+  /// lihat `PosOfflineService.alokasikanJatah` pada peladen.
+  Future<Map<String, Object?>> pesanJatahStruk(String terminalId) async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>>(
+      'POST',
+      '/pos/offline/receipt-blocks',
+      body: {'terminalId': terminalId},
+    );
+  }
+
+  /// Jatah nomor struk yang sedang aktif pada register ini, atau null bila
+  /// belum ada.
+  Future<Map<String, Object?>?> jatahStrukAktif(String terminalId) async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>?>(
+      'GET',
+      '/pos/offline/receipt-blocks/current?terminalId=$terminalId',
+    );
+  }
+
+  /// Mengirim satu transaksi yang dibangun sepenuhnya di mesin ini saat luring.
+  ///
+  /// Idempoten pada `offlineId` di dalam `payload` — lihat
+  /// `PosOfflineService.terima`. Jawabannya SELALU HTTP 200 (dibukukan atau
+  /// ditahan di karantina); yang berarti benar-benar tidak terkirim hanyalah
+  /// galat jaringan (`PosApiException`/`SocketException`/`TimeoutException`).
+  Future<Map<String, Object?>> kirimTransaksiLuring(
+      Map<String, Object?> payload) async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>>(
+      'POST',
+      '/pos/offline/sales',
+      body: payload,
+    );
+  }
+
   Future<Map<String, Object?>> ajukanVoid(String saleId, String reason) async {
     await pastikanMasuk();
     return _request<Map<String, Object?>>(
