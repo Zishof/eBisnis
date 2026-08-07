@@ -8,6 +8,7 @@ import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { TenantFileBlobService } from '../../infrastructure/files/tenant-file-blob.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { sanitizeRichText } from '../../common/security/rich-text-sanitizer';
 import {
   KategoriGambarProfil,
   KODE_BERKAS_GAMBAR_PROFIL,
@@ -113,8 +114,8 @@ export class PesantrenProfilService {
         bersihkan(masukan.themeCode),
         bersihkan(masukan.namaTampilan),
         bersihkan(masukan.tagline),
-        bersihkan(masukan.muqodimahHtml),
-        bersihkan(masukan.sejarahHtml),
+        bersihkanHtml(masukan.muqodimahHtml),
+        bersihkanHtml(masukan.sejarahHtml),
         bersihkan(masukan.visi),
         bersihkan(masukan.misi),
         bersihkan(masukan.pengasuh),
@@ -190,4 +191,10 @@ export class PesantrenProfilService {
 function bersihkan(nilai?: string | null): string | null {
   const bersih = (nilai ?? '').trim();
   return bersih ? bersih : null;
+}
+
+/** Sama dengan `bersihkan()`, ditambah sanitasi HTML (XSS) sebelum disimpan. */
+function bersihkanHtml(nilai?: string | null): string | null {
+  const bersih = bersihkan(nilai);
+  return bersih ? sanitizeRichText(bersih) : null;
 }

@@ -345,7 +345,7 @@ export function SitusPondokPage() {
             </p>
             <div
               className="prose prose-slate mt-4 max-w-none text-center dark:prose-invert sm:text-start"
-              // Ditulis pengurus lewat menu Profil, bukan diterima dari pengunjung.
+              // Disanitasi via sanitizeRichText() sebelum disimpan (lihat PesantrenProfilService.perbarui).
               dangerouslySetInnerHTML={{ __html: profil.muqodimah_html }}
             />
           </section>
@@ -359,7 +359,7 @@ export function SitusPondokPage() {
                 <h2 className={`text-xl font-bold ${tema.aksen}`}>Sejarah Pondok</h2>
                 <div
                   className="prose prose-slate mt-4 max-w-none dark:prose-invert"
-                  // Ditulis pengurus lewat menu Profil, bukan diterima dari pengunjung.
+                  // Disanitasi via sanitizeRichText() sebelum disimpan (lihat PesantrenProfilService.perbarui).
                   dangerouslySetInnerHTML={{ __html: profil.sejarah_html }}
                 />
               </div>

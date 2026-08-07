@@ -79,7 +79,7 @@ export function BeritaDetailPage() {
 
       <div
         className="prose prose-slate mt-6 max-w-none dark:prose-invert"
-        // Ditulis pengurus lewat menu Berita, bukan diterima dari pengunjung.
+        // Disanitasi via sanitizeRichText() sebelum disimpan (lihat PesantrenBeritaService.catat).
         dangerouslySetInnerHTML={{ __html: berita.isi_html }}
       />
 

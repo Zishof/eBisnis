@@ -2,7 +2,6 @@ import { Body, Controller, Get, HttpCode, Module, Param, Patch, Post, Query } fr
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { CmsStatus, Prisma } from '@prisma/client';
-import sanitizeHtml from 'sanitize-html';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import {
@@ -12,29 +11,7 @@ import {
   PlatformPermissions,
 } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
-
-/** Whitelist rich text CMS — tidak ada script, event handler, iframe, atau style bebas. */
-const RICH_TEXT_POLICY: sanitizeHtml.IOptions = {
-  allowedTags: [
-    'p', 'br', 'strong', 'em', 'u', 's', 'blockquote', 'ul', 'ol', 'li',
-    'h2', 'h3', 'h4', 'h5', 'a', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'code', 'pre',
-  ],
-  allowedAttributes: {
-    a: ['href', 'title', 'target', 'rel'],
-    img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
-    '*': ['class'],
-  },
-  allowedSchemes: ['http', 'https', 'mailto'],
-  allowedSchemesByTag: { img: ['http', 'https', 'data'] },
-  disallowedTagsMode: 'discard',
-  transformTags: {
-    a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }),
-  },
-};
-
-export function sanitizeRichText(html: string): string {
-  return sanitizeHtml(html, RICH_TEXT_POLICY);
-}
+import { sanitizeRichText } from '../../common/security/rich-text-sanitizer';
 
 class UpdateBlockDto {
   @ApiPropertyOptional()

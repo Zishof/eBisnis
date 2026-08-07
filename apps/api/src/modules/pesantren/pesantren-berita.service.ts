@@ -7,6 +7,7 @@ import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { TenantFileBlobService } from '../../infrastructure/files/tenant-file-blob.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
+import { sanitizeRichText } from '../../common/security/rich-text-sanitizer';
 import { kodeBerkasGambarBerita, lintasanGambarBerita, MasukanBerita, validasiBerita } from './pesantren-berita';
 
 export interface BarisBerita {
@@ -89,7 +90,7 @@ export class PesantrenBeritaService {
       [
         masukan.judul!.trim(),
         bersihkan(masukan.ringkasan),
-        bersihkan(masukan.isiHtml),
+        bersihkanHtml(masukan.isiHtml),
         bersihkan(masukan.gambarUrl),
         bersihkan(masukan.sumberUrl),
         masukan.tanggalTerbit ? new Date(masukan.tanggalTerbit) : null,
@@ -160,4 +161,10 @@ export class PesantrenBeritaService {
 function bersihkan(nilai?: string | null): string | null {
   const bersih = (nilai ?? '').trim();
   return bersih ? bersih : null;
+}
+
+/** Sama dengan `bersihkan()`, ditambah sanitasi HTML (XSS) sebelum disimpan. */
+function bersihkanHtml(nilai?: string | null): string | null {
+  const bersih = bersihkan(nilai);
+  return bersih ? sanitizeRichText(bersih) : null;
 }
