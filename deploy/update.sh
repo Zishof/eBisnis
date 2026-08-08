@@ -92,7 +92,7 @@ fi
 NODE_MAJOR=$(node --version 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || true)
 [[ "$NODE_MAJOR" =~ ^[0-9]+$ && "$NODE_MAJOR" -ge 20 ]] \
   || die "Node.js >=20 diperlukan; terdeteksi: $(node --version 2>/dev/null || echo tidak-ada)."
-PNPM_VERSION=$(as_app "pnpm --version" 2>/dev/null || true)
+PNPM_VERSION=$(as_app "cd '$APP_DIR' && pnpm --version" 2>/dev/null || true)
 [[ "$PNPM_VERSION" == "$EXPECTED_PNPM_VERSION" ]] \
   || die "pnpm $EXPECTED_PNPM_VERSION diperlukan; terdeteksi: ${PNPM_VERSION:-tidak-ada}. Jalankan corepack prepare pnpm@$EXPECTED_PNPM_VERSION --activate."
 
