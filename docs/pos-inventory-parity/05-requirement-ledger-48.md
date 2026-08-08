@@ -1,5 +1,15 @@
 # 05. Requirement Ledger — 48 Layar (seed awal, P0)
 
+> **Update besar 2026-08-09:** 46 dari 48 layar (semua kecuali 43-44) sekarang punya bukti
+> `PARITY_EVIDENCE` di `apps/api/src/modules/tenant/parity-evidence.registry.ts` — UAT NYATA lewat
+> PostgreSQL lokal sungguhan (`ebisnis`/`root`/`root123`), bukan lagi hanya lint/build/test
+> source-only seperti status "BELUM diuji terhadap PostgreSQL sungguhan" di baris-baris di bawah
+> ini yang sekarang sudah TERBANTAHKAN oleh bukti baru. 7 bug nyata ditemukan lewat UAT ini dan
+> DIPERBAIKI (lihat commit `6415550`); 3 bug tambahan DILAPORKAN sengaja tidak diperbaiki (lihat
+> `uat.md` layar 22 dan 07). Detail lengkap per layar ada di `docs/pos-inventory-parity/evidence/
+> screen-NN/uat.md`, bukan di tabel ringkas di bawah ini yang sengaja TIDAK diperbarui baris demi
+> baris agar tidak drift dari sumber kebenaran (`parity-evidence.registry.ts` + `evidence/`).
+
 Status pada tabel ini adalah **status verifikasi P0**, bukan status implementasi. Kolom
 "Self-report repo" dikutip langsung dari `sales-inventory-parity.catalog.ts` (kode produksi).
 Kolom "Status verifikasi" memakai taksonomi wajib dokumen perintah
