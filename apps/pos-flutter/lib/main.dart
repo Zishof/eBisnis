@@ -15,8 +15,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import 'package:path_provider/path_provider.dart';
-
 import 'api/pos_api.dart';
 import 'aturan/harga_luring.dart';
 import 'aturan/koneksi.dart';
@@ -26,7 +24,6 @@ import 'layar/operasi_apotik.dart';
 import 'layar/sumber.dart';
 import 'layar/tampilan_pelanggan.dart';
 import 'layar/tema.dart';
-import 'mesin/identitas_mesin.dart';
 import 'mesin/kasir_luring.dart';
 import 'pembaruan/pengelola_pembaruan.dart';
 import 'pembaruan/sumber_pembaruan.dart';
@@ -374,28 +371,18 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
     );
   }
 
-  /// Menyiapkan mesin kasir luring: memuat identitas permanen mesin ini dan
-  /// memesan/memuat jatah nomor struk selagi (mudah-mudahan) masih daring.
-  ///
-  /// Tidak pernah melempar -- kegagalan pada langkah ini hanya berarti
-  /// penjualan luring tidak tersedia pada sesi ini, dan kasir tetap dapat
-  /// berjualan daring seperti biasa. Lihat `mesin/kasir_luring.dart`.
+  /// Menyiapkan mesin kasir luring. Lihat `KasirLuringEngine.buat` dan
+  /// `mesin/kasir_luring.dart` -- tidak pernah melempar.
   Future<KasirLuringEngine> _siapkanMesinLuring(
     PosApiClient client,
     SesiKasirApi sesi,
     SumberKatalogApi katalog,
-  ) async {
-    final direktori = await getApplicationSupportDirectory();
-    final identitas = await IdentitasBerkas(direktori).muat();
-    final mesin = KasirLuringEngine(
-      client: client,
-      sesi: sesi,
-      identitas: identitas,
-      katalogSyncedAt: katalog.generatedAt,
-    );
-    await mesin.siapkan();
-    return mesin;
-  }
+  ) =>
+      KasirLuringEngine.buat(
+        client: client,
+        sesi: sesi,
+        katalogSyncedAt: katalog.generatedAt,
+      );
 }
 
 typedef _MasukApotik = Future<void> Function({

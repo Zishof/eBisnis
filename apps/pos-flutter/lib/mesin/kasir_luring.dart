@@ -67,6 +67,59 @@ class KasirLuringEngine {
 
   final InventoryLocalDatabase _database;
 
+  /// Menyiapkan mesin kasir luring: memuat identitas permanen mesin ini dan
+  /// memesan/memuat jatah nomor struk selagi (mudah-mudahan) masih daring.
+  ///
+  /// Tidak pernah melempar. Kegagalan mengambil direktori data aplikasi atau
+  /// identitas mesin (kanal platform `path_provider` belum tersedia,
+  /// penyimpanan tidak dapat diakses) menghasilkan mesin lewat
+  /// [KasirLuringEngine.takTersedia] -- sama seperti keadaan sebelum mesin
+  /// ini ada, bukan galat yang menghentikan kasir masuk sama sekali.
+  static Future<KasirLuringEngine> buat({
+    required PosApiClient client,
+    required SesiKasirApi sesi,
+    required String katalogSyncedAt,
+  }) async {
+    try {
+      final direktori = await getApplicationSupportDirectory();
+      final identitas = await IdentitasBerkas(direktori).muat();
+      final mesin = KasirLuringEngine(
+        client: client,
+        sesi: sesi,
+        identitas: identitas,
+        katalogSyncedAt: katalogSyncedAt,
+      );
+      await mesin.siapkan();
+      return mesin;
+    } on Object {
+      return KasirLuringEngine.takTersedia(
+        client: client,
+        sesi: sesi,
+        katalogSyncedAt: katalogSyncedAt,
+      );
+    }
+  }
+
+  /// Mesin yang tidak pernah menawarkan penjualan luring. Dipakai saat
+  /// prasyarat [buat] (direktori data aplikasi, identitas mesin) tak
+  /// terjangkau -- database in-memory di sini tidak pernah benar-benar
+  /// dipakai (tidak ada yang menyetel [_jatah]), tetapi disetel eksplisit
+  /// tetap saja supaya pemanggil [sinkronkan]/[jumlahTertunda] di masa depan
+  /// pada mesin ini tidak mewarisi kegagalan `path_provider` yang sama.
+  factory KasirLuringEngine.takTersedia({
+    required PosApiClient client,
+    required SesiKasirApi sesi,
+    required String katalogSyncedAt,
+  }) {
+    return KasirLuringEngine(
+      client: client,
+      sesi: sesi,
+      identitas: IdentitasMesin(id: buatIdMesin(), nama: namaMesinBawaan),
+      katalogSyncedAt: katalogSyncedAt,
+      database: InventoryLocalDatabase(NativeDatabase.memory()),
+    );
+  }
+
   _JatahLokal? _jatah;
 
   int? _lastReachableAt;
@@ -127,7 +180,15 @@ class KasirLuringEngine {
       // Jaringan gagal saat menyiapkan jatah -- coba pakai jatah tersimpan
       // dari sesi sebelumnya (mis. aplikasi baru dibuka ulang selagi luring).
       // Bila tidak ada, penjualan luring memang tidak tersedia sesi ini.
-      _jatah = await _muatJatahTersimpan();
+      //
+      // Percobaan cadangan ini sendiri bisa gagal (mis. basis data lokal pun
+      // tak terjangkau) -- dibungkus terpisah supaya kegagalan itu juga
+      // tidak lolos ke pemanggil, menepati janji dokumentasi fungsi ini.
+      try {
+        _jatah = await _muatJatahTersimpan();
+      } on Object {
+        _jatah = null;
+      }
     }
   }
 
