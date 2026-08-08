@@ -2360,7 +2360,7 @@ export class ErpController {
   }
 
   @Get('inventory/legacy/payables')
-  @Permissions('PURCHASE_ORDER.READ')
+  @Permissions('PURCHASING.READ')
   @ApiOperation({ summary: 'Hutang legacy CMN dari Tran_Hut' })
   async legacyPayables(
     @Query() query: InventoryLegacyQueryDto,

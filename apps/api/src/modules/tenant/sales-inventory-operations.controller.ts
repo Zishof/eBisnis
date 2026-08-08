@@ -557,15 +557,20 @@ export class SalesInventoryOperationsController {
         );
       }
       await client.query(
+        // $2 dipakai berulang -- sekali sebagai nilai kolom langsung dan
+        // beberapa kali dalam perbandingan string di CASE WHEN. Tanpa cast
+        // eksplisit yang konsisten, Postgres menolak dengan "inconsistent
+        // types deduced for parameter $2" (pola yang sama dengan bug
+        // stock_movement.quantity yang diperbaiki di postStockOpname).
         `UPDATE ${S}.price_book
-            SET approval_status = $2, approval_note = $3,
-                submitted_at = CASE WHEN $2 = 'SUBMITTED' THEN now() ELSE submitted_at END,
-                submitted_by = CASE WHEN $2 = 'SUBMITTED' THEN $4::uuid ELSE submitted_by END,
-                approved_at = CASE WHEN $2 = 'APPROVED' THEN now() ELSE approved_at END,
-                approved_by = CASE WHEN $2 = 'APPROVED' THEN $4::uuid ELSE approved_by END,
-                rejected_at = CASE WHEN $2 = 'REJECTED' THEN now() ELSE rejected_at END,
-                rejected_by = CASE WHEN $2 = 'REJECTED' THEN $4::uuid ELSE rejected_by END,
-                is_active = ($2 = 'APPROVED'), updated_at = now(), updated_by = $4::uuid, version = version + 1
+            SET approval_status = $2::varchar, approval_note = $3,
+                submitted_at = CASE WHEN $2::varchar = 'SUBMITTED' THEN now() ELSE submitted_at END,
+                submitted_by = CASE WHEN $2::varchar = 'SUBMITTED' THEN $4::uuid ELSE submitted_by END,
+                approved_at = CASE WHEN $2::varchar = 'APPROVED' THEN now() ELSE approved_at END,
+                approved_by = CASE WHEN $2::varchar = 'APPROVED' THEN $4::uuid ELSE approved_by END,
+                rejected_at = CASE WHEN $2::varchar = 'REJECTED' THEN now() ELSE rejected_at END,
+                rejected_by = CASE WHEN $2::varchar = 'REJECTED' THEN $4::uuid ELSE rejected_by END,
+                is_active = ($2::varchar = 'APPROVED'), updated_at = now(), updated_by = $4::uuid, version = version + 1
           WHERE id = $1::uuid`,
         [id, body.status, body.note ?? null, subjectId],
       );
@@ -989,14 +994,22 @@ export class SalesInventoryOperationsController {
              (movement_number, movement_type, product_id, uom_id, lot_id, quantity, unit_cost,
               source_warehouse_id, source_bin_id, destination_warehouse_id, destination_bin_id,
               reference_type, reference_id, reference_number, posting_key, created_by, note)
-           VALUES ($1, $2, $3::uuid, $4::uuid, $5::uuid, $6, $7,
-             CASE WHEN $6 < 0 THEN $8::uuid END, CASE WHEN $6 < 0 THEN $9::uuid END,
-             CASE WHEN $6 > 0 THEN $8::uuid END, CASE WHEN $6 > 0 THEN $9::uuid END,
+           VALUES ($1, $2, $3::uuid, $4::uuid, $5::uuid, $6::numeric, $7,
+             CASE WHEN $14::numeric < 0 THEN $8::uuid END, CASE WHEN $14::numeric < 0 THEN $9::uuid END,
+             CASE WHEN $14::numeric > 0 THEN $8::uuid END, CASE WHEN $14::numeric > 0 THEN $9::uuid END,
              'STOCK_OPNAME', $10::uuid, $11, $12, $13::uuid, 'Selisih stock opname')`,
+          // $6 membawa besaran mutlak (kolom quantity selalu non-negatif); arah
+          // source/destination HARUS diputuskan dari tanda varians asli ($14),
+          // bukan dari $6 yang sudah di-Math.abs() -- membandingkan nilai yang
+          // sudah mutlak terhadap <0/>0 membuat cabang ">0" selalu benar,
+          // sehingga ADJUSTMENT_OUT ikut tercatat sebagai destination (stok
+          // masuk) alih-alih source (stok keluar), merusak invarian
+          // balance = Σ movement yang jadi dasar pembuktian layar 8.
           [`${header.rows[0].opname_number}-${line.id.slice(0, 8)}`,
             variance > 0 ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT', line.product_id, line.uom_id,
             line.lot_id, Math.abs(variance), line.unit_cost, header.rows[0].warehouse_id,
-            line.bin_id, id, header.rows[0].opname_number, `STOCK_OPNAME:${id}:${line.id}`, subjectId],
+            line.bin_id, id, header.rows[0].opname_number, `STOCK_OPNAME:${id}:${line.id}`, subjectId,
+            variance],
         );
         await client.query(
           `UPDATE ${S}.stock_balance SET on_hand_qty = on_hand_qty + $5,
@@ -1031,7 +1044,7 @@ export class SalesInventoryOperationsController {
   }
 
   @Get('inventory/supplier-workspace')
-  @Permissions('PURCHASE_ORDER.READ')
+  @Permissions('PURCHASING.READ')
   @ApiOperation({ summary: 'Workspace supplier terintegrasi untuk Web dan Flutter' })
   async supplierWorkspace(@CurrentUser() user: AuthenticatedUser) {
     const schema = schemaOf(user);
@@ -1326,11 +1339,26 @@ export class SalesInventoryOperationsController {
         id: string; legacy_invoice_number: string; transaction_date: string | null;
         due_date: string | null; amount: string; customer_name: string; territory_code: string | null;
       }>(
+        // `amount` di sini WAJIB dinetokan terhadap AR receipt yang sudah POSTED --
+        // bukan lr.amount mentah (nilai faktur asli). lr.amount tidak pernah
+        // dikurangi saat pelunasan dicatat (lihat transitionSettlement di atas,
+        // hanya is_settled yang di-flip), jadi memakainya langsung akan membuat
+        // paket titipan nota mencatat customer harus bayar lebih dari piutang
+        // yang sebenarnya tersisa bila sebagian sudah dilunasi lewat /ar/receipts
+        // sebelum nota diserahkan ke sales.
         `SELECT lr.id::text, lr.legacy_invoice_number, lr.transaction_date::text,
-                lr.due_date::text, lr.amount::text, COALESCE(c.name, 'Customer legacy') AS customer_name,
+                lr.due_date::text,
+                GREATEST(abs(lr.amount) - COALESCE(settlement.allocated_amount, 0), 0)::text AS amount,
+                COALESCE(c.name, 'Customer legacy') AS customer_name,
                 c.metadata->>'legacy_area_code' AS territory_code
            FROM ${S}.legacy_receivable_ledger lr
            LEFT JOIN ${S}.customer c ON c.id = lr.customer_id
+           LEFT JOIN LATERAL (
+             SELECT sum(a.allocated_amount) AS allocated_amount
+               FROM ${S}.inventory_ar_receipt_allocation a
+               JOIN ${S}.inventory_ar_receipt r ON r.id = a.receipt_id
+              WHERE a.receivable_ledger_id = lr.id AND r.status = 'POSTED'
+           ) settlement ON TRUE
           WHERE lr.id = ANY($1::uuid[])
             AND NOT lr.is_settled
             AND lr.amount > 0
@@ -1346,6 +1374,12 @@ export class SalesInventoryOperationsController {
           FOR UPDATE OF lr`,
         [uniqueIds, body.salespersonId],
       );
+      if (ledgers.rows.some((row) => Number(row.amount) <= 0)) {
+        throw AppError.badRequest(
+          ErrorCodes.VALIDATION_FAILED,
+          'Sebagian nota sudah lunas lewat pembayaran piutang langsung dan tidak dapat dititipkan ke sales.',
+        );
+      }
       if (ledgers.rowCount !== uniqueIds.length) {
         throw AppError.badRequest(
           ErrorCodes.VALIDATION_FAILED,
@@ -1416,9 +1450,9 @@ export class SalesInventoryOperationsController {
         const amount = line.amount ?? 0;
         const updated = await client.query(
           `UPDATE ${S}.sales_note_handover_line
-              SET status = $3,
-                  returned_amount = CASE WHEN $3 = 'RETURNED' THEN $4 ELSE returned_amount END,
-                  collected_amount = CASE WHEN $3 = 'COLLECTED' THEN $4 ELSE collected_amount END
+              SET status = $3::text,
+                  returned_amount = CASE WHEN $3::text = 'RETURNED' THEN $4::numeric ELSE returned_amount END,
+                  collected_amount = CASE WHEN $3::text = 'COLLECTED' THEN $4::numeric ELSE collected_amount END
             WHERE id = $1::uuid AND handover_id = $2::uuid`,
           [line.lineId, id, line.status, amount],
         );
@@ -1460,7 +1494,7 @@ export class SalesInventoryOperationsController {
       const subjectId = await subjectIdOf(client, S, user.userId);
       const changed = await client.query(
         `UPDATE ${S}.sales_note_handover
-            SET status = 'CANCELLED', note = concat_ws(E'\n', note, $2),
+            SET status = 'CANCELLED', note = concat_ws(E'\n', note, $2::text),
                 updated_at = now(), version = version + 1
           WHERE id = $1::uuid AND status = 'DRAFT' RETURNING id`,
         [id, `Dibatalkan: ${body.reason}`],
@@ -1983,7 +2017,13 @@ export class SalesInventoryOperationsController {
     const S = quotedSchema(user);
     const report = reportSql(code, S);
     if (!report) throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, `Kode laporan ${code} tidak didukung.`);
-    const rows = await this.tenantDb.query<Record<string, unknown>>(schemaOf(user), report.sql, [asOfDate]);
+    // Sebagian laporan (mis. stock-list, supplier-list, customer-list) tidak
+    // memakai $1 sama sekali -- mengirim [asOfDate] tetap ke query itu bikin
+    // Postgres menolak dengan "bind message supplies 1 parameters, but
+    // prepared statement requires 0". Hanya sertakan parameter bila SQL-nya
+    // benar-benar mereferensikan $1.
+    const params = report.sql.includes('$1') ? [asOfDate] : [];
+    const rows = await this.tenantDb.query<Record<string, unknown>>(schemaOf(user), report.sql, params);
     const totalKey = report.totalKey;
     return {
       reportCode: code,
@@ -2219,10 +2259,21 @@ export function reportSql(code: string, S: string): { title: string; sql: string
     },
     'ar-aging-sales': {
       title: 'Aging Piutang per Sales', totalKey: 'amount',
+      // Sama seperti agingReport() di bawah: netokan terhadap AR receipt yang
+      // sudah POSTED, bukan l.amount mentah -- query ini terpisah dari
+      // agingReport() karena join tambahan ke user_subject (sales), bukan
+      // party ledger biasa.
       sql: `SELECT COALESCE(us.name, 'Tanpa sales') AS party_name, l.legacy_invoice_number,
-                   l.transaction_date::text, l.due_date::text, l.amount::text,
+                   l.transaction_date::text, l.due_date::text,
+                   GREATEST(abs(l.amount) - COALESCE(settlement.allocated_amount, 0), 0)::text AS amount,
                    GREATEST($1::date - COALESCE(l.due_date, l.transaction_date, $1::date), 0)::int AS overdue_days
               FROM ${S}.legacy_receivable_ledger l LEFT JOIN ${S}.user_subject us ON us.id = l.salesperson_id
+              LEFT JOIN LATERAL (
+                SELECT sum(a.allocated_amount) AS allocated_amount
+                  FROM ${S}.inventory_ar_receipt_allocation a
+                  JOIN ${S}.inventory_ar_receipt r ON r.id = a.receipt_id
+                 WHERE a.receivable_ledger_id = l.id AND r.status = 'POSTED'
+              ) settlement ON TRUE
              WHERE NOT l.is_settled AND l.amount > 0 AND COALESCE(l.transaction_date, $1::date) <= $1::date
              ORDER BY us.name, overdue_days DESC`,
     },
@@ -2270,11 +2321,33 @@ export function reportSql(code: string, S: string): { title: string; sql: string
   return reports[code] ?? null;
 }
 
+/**
+ * `l.amount` adalah nilai faktur/dokumen ASLI -- tidak pernah dikurangi saat
+ * pelunasan PARSIAL dicatat lewat `/ap/payments`/`/ar/receipts` (hanya
+ * `is_settled` yang di-flip, dan hanya ketika LUNAS PENUH; lihat
+ * `transitionSettlement` di atas). Memakainya langsung membuat laporan aging
+ * menampilkan piutang/hutang yang sebagian sudah dibayar seolah belum
+ * dibayar sama sekali. Dinetokan di sini terhadap alokasi pembayaran/
+ * penerimaan yang sudah POSTED, sama seperti pola yang sudah dipakai
+ * `/inventory/legacy/payables|receivables` dan `createHandover`.
+ */
 function agingReport(S: string, ledger: string, party: string, partyId: string): string {
+  const isPayable = ledger === 'legacy_payable_ledger';
+  const allocationTable = isPayable ? 'inventory_ap_payment_allocation' : 'inventory_ar_receipt_allocation';
+  const parentTable = isPayable ? 'inventory_ap_payment' : 'inventory_ar_receipt';
+  const parentColumn = isPayable ? 'payment_id' : 'receipt_id';
+  const ledgerColumn = isPayable ? 'payable_ledger_id' : 'receivable_ledger_id';
   return `SELECT COALESCE(p.name, 'Tanpa pihak') AS party_name, l.legacy_invoice_number,
-                 l.transaction_date::text, l.due_date::text, l.amount::text,
+                 l.transaction_date::text, l.due_date::text,
+                 GREATEST(abs(l.amount) - COALESCE(settlement.allocated_amount, 0), 0)::text AS amount,
                  GREATEST($1::date - COALESCE(l.due_date, l.transaction_date, $1::date), 0)::int AS overdue_days
             FROM ${S}.${ledger} l LEFT JOIN ${S}.${party} p ON p.id = l.${partyId}
+            LEFT JOIN LATERAL (
+              SELECT sum(a.allocated_amount) AS allocated_amount
+                FROM ${S}.${allocationTable} a
+                JOIN ${S}.${parentTable} par ON par.id = a.${parentColumn}
+               WHERE a.${ledgerColumn} = l.id AND par.status = 'POSTED'
+            ) settlement ON TRUE
            WHERE NOT l.is_settled AND l.amount > 0 AND COALESCE(l.transaction_date, $1::date) <= $1::date
            ORDER BY p.name, overdue_days DESC`;
 }
