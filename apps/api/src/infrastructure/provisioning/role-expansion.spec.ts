@@ -3,6 +3,7 @@ import {
   buildMenuModuleMap,
   expandRole,
   expandTenantRoles,
+  resolveEffectiveRoleEntry,
   resolveMenuActions,
 } from './role-expansion';
 import { PROFILE_ACTIONS, UPLOAD_CAPABLE_PROFILES, profileAllowsUpload } from './role-profile';
@@ -86,6 +87,14 @@ describe('katalog role', () => {
     ]);
     const legacyCodes = ['OWNER', 'MANAGER', 'CASHIER', 'PURCHASING_STAFF', 'WAREHOUSE_STAFF', 'DEMO_USER'];
     expect(legacyCodes.filter((code) => !seeded.has(code))).toEqual([]);
+  });
+
+  it('memberi role legacy profil dan batas data role penerusnya', () => {
+    const catalog = new Map(TENANT_ROLE_CATALOG.map((role) => [role.code, role]));
+    const owner = resolveEffectiveRoleEntry('OWNER', catalog);
+    expect(owner?.code).toBe('PEMILIK_USAHA');
+    expect(owner?.profile).toBe('P11');
+    expect(owner?.dataScope).toBe('TENANT');
   });
 });
 

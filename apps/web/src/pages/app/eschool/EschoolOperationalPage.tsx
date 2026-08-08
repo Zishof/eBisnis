@@ -86,7 +86,7 @@ export function EschoolOperationalPage() {
     queryKey: ['eschool-navigation'],
     queryFn: () => api.get<EschoolNavigationItem[]>('/eschool/navigation'),
   });
-  const modules = navigationQuery.data ?? [];
+  const modules = useMemo(() => navigationQuery.data ?? [], [navigationQuery.data]);
   const module = useMemo(() => modules.find((item) => item.code === moduleCode), [moduleCode, modules]);
   const current = module ?? fallbackModule(moduleCode);
   const links = FOUNDATION_LINKS[current.code] ?? [];

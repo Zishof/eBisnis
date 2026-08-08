@@ -108,3 +108,18 @@ export function buildLegacyRoleMap(): Map<string, string> {
   }
   return map;
 }
+
+/**
+ * Role lama memakai profil dan batas data role penerusnya, sambil tetap
+ * mempertahankan kode lama untuk assignment pengguna yang sudah ada.
+ */
+export function resolveEffectiveRoleEntry(
+  code: string,
+  catalogByCode: ReadonlyMap<string, RoleCatalogEntry>,
+  legacyMap: ReadonlyMap<string, string> = buildLegacyRoleMap(),
+): RoleCatalogEntry | undefined {
+  const direct = catalogByCode.get(code);
+  if (direct) return direct;
+  const successorCode = legacyMap.get(code);
+  return successorCode ? catalogByCode.get(successorCode) : undefined;
+}

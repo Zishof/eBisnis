@@ -45,25 +45,40 @@ const TENANT = {
   siteVertical: 'inventory',
 };
 
-const USERS: Array<{
+const USER_DEFINITIONS: Array<{
   username: string;
-  password: string;
+  passwordEnv: string;
   displayName: string;
   roleCode: string;
   owner?: boolean;
 }> = [
-  { username: 'muklis', password: 'muklis123!!', displayName: 'Muklis', roleCode: 'PEMILIK_USAHA', owner: true },
-  { username: 'masrukin', password: 'masrukin123!!', displayName: 'Masrukin', roleCode: 'SALES' },
-  { username: 'tohirin', password: 'tohirin123!!', displayName: 'Tohirin', roleCode: 'SALES' },
-  { username: 'nofal', password: 'nofal123!!', displayName: 'Nofal', roleCode: 'SALES' },
-  { username: 'agung', password: 'agung123!!', displayName: 'Agung', roleCode: 'SALES' },
+  { username: 'muklis', passwordEnv: 'CMN_PASSWORD_MUKLIS', displayName: 'Muklis', roleCode: 'PEMILIK_USAHA', owner: true },
+  { username: 'masrukin', passwordEnv: 'CMN_PASSWORD_MASRUKIN', displayName: 'Masrukin', roleCode: 'SALES' },
+  { username: 'tohirin', passwordEnv: 'CMN_PASSWORD_TOHIRIN', displayName: 'Tohirin', roleCode: 'SALES' },
+  { username: 'nofal', passwordEnv: 'CMN_PASSWORD_NOFAL', displayName: 'Nofal', roleCode: 'SALES' },
+  { username: 'agung', passwordEnv: 'CMN_PASSWORD_AGUNG', displayName: 'Agung', roleCode: 'SALES' },
   {
     username: 'cmnmedika',
-    password: 'cmnmedika123!!',
+    passwordEnv: 'CMN_PASSWORD_ADMIN',
     displayName: 'Admin Caruban Medika Nusantara',
     roleCode: 'ADMIN_TENANT',
   },
 ] as const;
+
+function configuredUsers() {
+  const missing = USER_DEFINITIONS
+    .map((user) => user.passwordEnv)
+    .filter((name) => !process.env[name]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Kredensial onboarding CMN belum lengkap. Set secret environment: ${missing.join(', ')}`,
+    );
+  }
+  return USER_DEFINITIONS.map(({ passwordEnv, ...user }) => ({
+    ...user,
+    password: process.env[passwordEnv] as string,
+  }));
+}
 
 const LEGACY_DIR_CANDIDATES = [
   process.env.CMN_LEGACY_DBF_DIR,
@@ -243,8 +258,9 @@ async function main(): Promise<void> {
       return;
     }
 
+    const users = configuredUsers();
     const registration = await ensureCmnRegistration(ctx);
-    const owner = await ensurePlatformUser(ctx, USERS[0]);
+    const owner = await ensurePlatformUser(ctx, users[0]);
     let tenant = await ctx.prisma.tenant.findUnique({ where: { code: TENANT.code } });
     if (!tenant) {
       tenant = await ctx.prisma.tenant.create({
@@ -328,7 +344,7 @@ async function main(): Promise<void> {
       },
     });
 
-    for (const user of USERS) {
+    for (const user of users) {
       const platformUser = await ensurePlatformUser(ctx, user);
       await ensureTenantMembershipAndRole(ctx, tenant.id, TENANT.schema, platformUser, user.roleCode, Boolean(user.owner));
     }

@@ -22,6 +22,7 @@ import { join } from 'node:path';
 const MIGRATION_DIR = 'apps/api/tenant-migrations';
 const MANIFEST = join(MIGRATION_DIR, 'manifest.json');
 const NAME_PATTERN = /^V(\d{3})__[a-z0-9]+(_[a-z0-9]+)*\.sql$/;
+const HEALTH_NAME_PATTERN = /^H(\d{3})__health__[a-z0-9]+(_[a-z0-9]+)*\.sql$/;
 
 /**
  * Nama berkas migrasi modul: <timestamp>__<modul>__<keterangan>.sql
@@ -69,13 +70,25 @@ if (files.length === 0) {
 }
 
 const versions = [];
+const healthVersions = [];
 for (const file of files) {
   const match = NAME_PATTERN.exec(file);
-  if (!match) {
-    fail(`Penamaan tidak sesuai pola V###__snake_case.sql: ${file}`);
+  if (match) {
+    versions.push({ file, version: `V${match[1]}`, sequence: Number(match[1]) });
     continue;
   }
-  versions.push({ file, version: `V${match[1]}`, sequence: Number(match[1]) });
+
+  const healthMatch = HEALTH_NAME_PATTERN.exec(file);
+  if (healthMatch) {
+    healthVersions.push({
+      file,
+      version: `H${healthMatch[1]}`,
+      sequence: 1000 + Number(healthMatch[1]),
+    });
+    continue;
+  }
+
+  fail(`Penamaan tidak sesuai pola V###__snake_case.sql atau H###__health__snake_case.sql: ${file}`);
 }
 
 versions.sort((a, b) => a.sequence - b.sequence);
@@ -86,6 +99,14 @@ versions.forEach((entry, index) => {
       `Urutan versi tidak berurutan: ${entry.file} berada pada posisi ${expected} ` +
         `tetapi bernomor ${entry.sequence}. Nomor tidak boleh melompat atau duplikat.`,
     );
+  }
+});
+
+healthVersions.sort((a, b) => a.sequence - b.sequence);
+healthVersions.forEach((entry, index) => {
+  const previous = healthVersions[index - 1];
+  if (previous?.sequence === entry.sequence) {
+    fail(`Nomor migration health duplikat: ${previous.file} dan ${entry.file}`);
   }
 });
 
@@ -101,7 +122,7 @@ try {
 if (manifest) {
   const listed = new Map(manifest.migrations.map((m) => [m.file, m]));
 
-  for (const { file, version } of versions) {
+  for (const { file, version, sequence } of [...versions, ...healthVersions]) {
     const entry = listed.get(file);
     if (!entry) {
       fail(`Berkas ${file} ada di disk tetapi tidak terdaftar pada manifest.json`);
@@ -110,6 +131,12 @@ if (manifest) {
     if (entry.version !== version) {
       fail(
         `Versi pada manifest (${entry.version}) tidak cocok dengan nama berkas ${file}`,
+      );
+    }
+    if (entry.sequence !== sequence) {
+      fail(
+        `Sequence pada manifest (${entry.sequence}) tidak cocok dengan ${version} pada ${file}; ` +
+          `seharusnya ${sequence}`,
       );
     }
     if (!entry.name || !entry.description) {
@@ -224,7 +251,11 @@ for (const moduleName of moduleDirs) {
 
 // --- 4. SQL destruktif tanpa persetujuan -----------------------------------
 
-const destructiveTargets = [...versions.map((v) => v.file), ...moduleFiles];
+const destructiveTargets = [
+  ...versions.map((v) => v.file),
+  ...healthVersions.map((v) => v.file),
+  ...moduleFiles,
+];
 
 for (const file of destructiveTargets) {
   const content = readFileSync(join(MIGRATION_DIR, file), 'utf8');
@@ -266,6 +297,7 @@ for (const file of destructiveTargets) {
 const baseRef = process.argv[2];
 if (baseRef) {
   let changed = [];
+  let immutabilityChecked = false;
   try {
     changed = execFileSync(
       'git',
@@ -275,8 +307,12 @@ if (baseRef) {
       .split('\n')
       .map((line) => line.trim())
       .filter((line) => line.endsWith('.sql'));
+    immutabilityChecked = true;
   } catch (error) {
-    notes.push(`Lewati pemeriksaan immutability: ${error.message.split('\n')[0]}`);
+    fail(
+      `Pemeriksaan immutability gagal terhadap ${baseRef}: ${error.message.split('\n')[0]}\n` +
+        '    Commit pembanding wajib valid; pemeriksaan tidak boleh dilewati diam-diam.',
+    );
   }
 
   for (const path of changed) {
@@ -286,7 +322,7 @@ if (baseRef) {
     );
   }
 
-  if (changed.length === 0) {
+  if (immutabilityChecked && changed.length === 0) {
     notes.push(`Immutability: tidak ada migration lama yang diubah terhadap ${baseRef}`);
   }
 } else {
@@ -296,10 +332,19 @@ if (baseRef) {
 // --- Laporan ---------------------------------------------------------------
 
 console.log(
-  `Memeriksa ${versions.length} migration inti dan ${moduleFiles.length} migration modul ` +
+  `Memeriksa ${versions.length} migration inti, ${healthVersions.length} migration health, ` +
+    `dan ${moduleFiles.length} migration modul ` +
     `(${moduleDirs.length} modul) pada ${MIGRATION_DIR}`,
 );
 for (const { file, version } of versions) {
+  const checksum = createHash('sha256')
+    .update(readFileSync(join(MIGRATION_DIR, file)))
+    .digest('hex')
+    .slice(0, 16);
+  console.log(`  ${version}  ${checksum}  ${file}`);
+}
+
+for (const { file, version } of healthVersions) {
   const checksum = createHash('sha256')
     .update(readFileSync(join(MIGRATION_DIR, file)))
     .digest('hex')

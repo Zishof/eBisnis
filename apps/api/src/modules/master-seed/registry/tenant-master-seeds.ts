@@ -363,6 +363,7 @@ export const TENANT_MASTER_SEEDS: MasterSeedDefinition[] = [
         { code: '5-1100', name: 'Harga Pokok Penjualan', normal_balance: 'DEBIT', account_type_id: await t('COGS'), path: '/5-1100', sort_order: 10 },
         { code: '6-1100', name: 'Beban Gaji', normal_balance: 'DEBIT', account_type_id: await t('OPERATING_EXPENSE'), path: '/6-1100', sort_order: 11 },
         { code: '6-1200', name: 'Beban Sewa', normal_balance: 'DEBIT', account_type_id: await t('OPERATING_EXPENSE'), path: '/6-1200', sort_order: 12 },
+        { code: '6-1300', name: 'Beban Kas dan Selisih', normal_balance: 'DEBIT', account_type_id: await t('OPERATING_EXPENSE'), path: '/6-1300', sort_order: 13 },
       ];
     },
   }),

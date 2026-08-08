@@ -1252,19 +1252,27 @@ export class PosSaleService {
       userId: string;
     },
   ) {
+    const paymentTotals = await client.query<{ cash: string; noncash: string }>(
+      `SELECT
+          COALESCE(SUM(p.amount) FILTER (WHERE pm.method_type = 'CASH'), 0)::text AS cash,
+          COALESCE(SUM(p.amount) FILTER (WHERE pm.method_type <> 'CASH'), 0)::text AS noncash
+         FROM "${schemaName}".pos_payment p
+         JOIN "${schemaName}".payment_method pm ON pm.id = p.payment_method_id
+        WHERE p.pos_sale_id = $1 AND p.status = 'RECEIVED'`,
+      [ctx.saleId],
+    );
+    const cash = Number(paymentTotals.rows[0]?.cash ?? 0);
+    const noncash = Number(paymentTotals.rows[0]?.noncash ?? 0);
     const peristiwa: Array<[string, Record<string, number>]> = [
       ['POS_SALE', { gross: Number(ctx.gross), net: Number(ctx.net), tax: Number(ctx.tax) }],
-      ['POS_CASH_RECEIPT', { amount: Number(ctx.gross) }],
     ];
-    if (Number(ctx.tax) > 0) {
-      peristiwa.push(['POS_TAX_OUTPUT', { taxBase: Number(ctx.net), taxAmount: Number(ctx.tax) }]);
-    }
+    if (cash > 0) peristiwa.push(['POS_CASH_RECEIPT', { amount: cash }]);
+    if (noncash > 0) peristiwa.push(['POS_NONCASH_RECEIPT', { amount: noncash }]);
     if (Number(ctx.discount) > 0) {
       peristiwa.push(['POS_DISCOUNT', { discountAmount: Number(ctx.discount) }]);
     }
     if (Number(ctx.cost) > 0) {
       peristiwa.push(['POS_COGS', { cost: Number(ctx.cost) }]);
-      peristiwa.push(['POS_INVENTORY_RELEASE', { inventoryValue: Number(ctx.cost) }]);
     }
 
     for (const [kode, nilai] of peristiwa) {

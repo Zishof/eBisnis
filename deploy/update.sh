@@ -5,10 +5,11 @@
 #   sudo bash /opt/ebisnis/app/deploy/update.sh              # ke ujung branch main
 #   sudo bash /opt/ebisnis/app/deploy/update.sh v7.0.0       # ke tag tertentu
 #   sudo bash /opt/ebisnis/app/deploy/update.sh --force      # bangun ulang meski commit sama
+#   sudo SKIP_RELEASE_TESTS=1 bash .../update.sh              # darurat; build tetap wajib
 #
-# Urutan: backup database -> ambil source -> build -> migration -> restart ->
-# health check -> sandbox demo ePesantren -> Apache. Bila health check gagal,
-# aplikasi otomatis dikembalikan ke commit sebelumnya.
+# Urutan: backup database -> ambil source -> release gate/build -> migration ->
+# restart -> health check -> onboarding idempoten -> Apache. Bila langkah wajib
+# gagal, aplikasi otomatis dikembalikan ke commit sebelumnya.
 #
 # CATATAN PENTING TENTANG ROLLBACK
 #   Pengembalian otomatis hanya mengembalikan APLIKASI, bukan database.
@@ -34,6 +35,9 @@ APP_DIR=/opt/ebisnis/app
 ENV_FILE=/etc/ebisnis/ebisnis.env
 BACKUP_DIR=/var/backups/ebisnis
 KEEP_BACKUPS=10
+EXPECTED_PNPM_VERSION=9.15.4
+DEPLOY_LOCK=/run/lock/ebisnis-update.lock
+APACHE_ROLLBACK_DIR=
 
 # Commit yang terakhir SELESAI dipasang — bukan sekadar yang ada di working tree.
 #
@@ -61,8 +65,36 @@ die()  { printf '\033[1;31m[x] %s\033[0m\n' "$*" >&2; exit 1; }
 [[ $EUID -eq 0 ]] || die "Jalankan dengan sudo."
 [[ -d "$APP_DIR/.git" ]] || die "$APP_DIR bukan repository Git. Jalankan install.sh lebih dahulu."
 [[ -f "$ENV_FILE" ]] || die "$ENV_FILE tidak ditemukan."
+if [[ -n "$TARGET" && ! "$TARGET" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]; then
+  die "Target Git memuat karakter yang tidak diizinkan: $TARGET"
+fi
 
 as_app() { sudo -u "$APP_USER" bash -lc "$*"; }
+
+# Satu host hanya boleh menjalankan satu update pada satu waktu. Tanpa lock,
+# dua proses dapat checkout commit berbeda, menerapkan migration bersamaan,
+# dan saling menimpa deployment stamp. File descriptor diwariskan saat skrip
+# menjalankan ulang dirinya setelah git pull.
+if [[ -z "${EBISNIS_DEPLOY_LOCKED:-}" ]]; then
+  command -v flock >/dev/null 2>&1 || die "Perintah flock tidak tersedia (paket util-linux)."
+  exec 9>"$DEPLOY_LOCK"
+  flock -n 9 || die "Pembaruan lain sedang berjalan (lock: $DEPLOY_LOCK)."
+  export EBISNIS_DEPLOY_LOCKED=1
+fi
+
+# Jangan menimpa hotfix atau eksperimen tracked yang dibuat langsung di
+# server. Untracked artifacts sengaja diizinkan karena folder rilis POS dapat
+# dikelola operator di luar Git.
+if ! as_app "git -C '$APP_DIR' diff --quiet -- && git -C '$APP_DIR' diff --cached --quiet --"; then
+  die "Working tree server mempunyai perubahan tracked. Commit/stash perubahan itu sebelum deploy."
+fi
+
+NODE_MAJOR=$(node --version 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || true)
+[[ "$NODE_MAJOR" =~ ^[0-9]+$ && "$NODE_MAJOR" -ge 20 ]] \
+  || die "Node.js >=20 diperlukan; terdeteksi: $(node --version 2>/dev/null || echo tidak-ada)."
+PNPM_VERSION=$(as_app "pnpm --version" 2>/dev/null || true)
+[[ "$PNPM_VERSION" == "$EXPECTED_PNPM_VERSION" ]] \
+  || die "pnpm $EXPECTED_PNPM_VERSION diperlukan; terdeteksi: ${PNPM_VERSION:-tidak-ada}. Jalankan corepack prepare pnpm@$EXPECTED_PNPM_VERSION --activate."
 
 # Menjalankan ulang diri sendiri sekali, TEPAT SETELAH source dimutakhirkan
 # (lihat titik `exec` di bawah), sebab bash membaca skrip yang sedang berjalan
@@ -83,9 +115,10 @@ if [[ -n "${EBISNIS_REEXECED:-}" ]]; then
 else
   PREVIOUS=$(as_app "git -C '$APP_DIR' rev-parse HEAD")
 fi
+[[ "$PREVIOUS" =~ ^[0-9a-f]{40,64}$ ]] || die "Commit sebelumnya tidak valid: $PREVIOUS"
 
 # ---------------------------------------------------------------------------
-log "1/9  Backup database"
+log "1/10  Backup database"
 # ---------------------------------------------------------------------------
 # shellcheck disable=SC1090
 ADMIN_URL=$(grep -E '^DATABASE_ADMIN_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
@@ -163,10 +196,13 @@ Rincian: docs/deployment/ubuntu.md bagian \"Backup ketika pg_dump lebih tua\"."
 fi
 
 # Simpan sejumlah backup terakhir saja.
+# Nama backup sepenuhnya dibentuk skrip (timestamp tanpa spasi/metakarakter),
+# sehingga pengurutan mtime melalui ls aman untuk kumpulan terkontrol ini.
+# shellcheck disable=SC2012
 ls -1t "$BACKUP_DIR"/ebisnis-*.dump 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm -f
 
 # ---------------------------------------------------------------------------
-log "2/9  Ambil source"
+log "2/10  Ambil source"
 # ---------------------------------------------------------------------------
 as_app "git -C '$APP_DIR' fetch --all --tags --prune"
 
@@ -180,8 +216,12 @@ else
 fi
 
 NEW=$(as_app "git -C '$APP_DIR' rev-parse HEAD")
+[[ "$NEW" =~ ^[0-9a-f]{40,64}$ ]] || die "Commit target tidak valid: $NEW"
 
 DEPLOYED=$(cat "$DEPLOY_STAMP" 2>/dev/null || true)
+if [[ -n "$DEPLOYED" && ! "$DEPLOYED" =~ ^[0-9a-f]{40,64}$ ]]; then
+  die "Isi deployment stamp tidak valid: $DEPLOY_STAMP"
+fi
 if [[ -z "$DEPLOYED" ]]; then
   # Belum pernah ada penanda: instalasi lama, atau penanda terhapus. Yang
   # terpasang tidak dapat dipastikan, jadi dibangun ulang. Membangun ulang
@@ -240,6 +280,26 @@ rollback() {
   # mengembalikannya ke sana tidak memperbaiki apa pun.
   local target=${DEPLOYED:-$PREVIOUS}
   warn "Mengembalikan aplikasi ke ${target:0:7}"
+
+  # Bila kegagalan terjadi sesudah konfigurasi Apache baru disalin tetapi
+  # sebelum reload dinyatakan sehat, kembalikan berkas konfigurasi lama juga.
+  # Tanpa ini Apache memang masih memakai konfigurasi lama di memori, tetapi
+  # restart host berikutnya dapat gagal karena berkas rusak tertinggal di disk.
+  if [[ -n "${APACHE_ROLLBACK_DIR:-}" && -d "$APACHE_ROLLBACK_DIR" ]]; then
+    for name in ebisnis-app.inc ebisnis.conf; do
+      case "$name" in
+        ebisnis-app.inc) destination=/etc/apache2/conf-available/ebisnis-app.inc ;;
+        ebisnis.conf) destination=/etc/apache2/sites-available/ebisnis.conf ;;
+      esac
+      if [[ -f "$APACHE_ROLLBACK_DIR/$name.missing" ]]; then
+        rm -f "$destination"
+      elif [[ -f "$APACHE_ROLLBACK_DIR/$name" ]]; then
+        install -m 644 "$APACHE_ROLLBACK_DIR/$name" "$destination"
+      fi
+    done
+    apache2ctl configtest >/dev/null 2>&1 && systemctl reload apache2 || true
+  fi
+
   as_app "git -C '$APP_DIR' checkout --quiet '$target'"
   as_app "cd '$APP_DIR' && pnpm install --frozen-lockfile && pnpm db:generate && pnpm build" || true
   systemctl restart ebisnis-api || true
@@ -258,13 +318,44 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-log "3/9  Install dependency dan build"
+log "3/10  Dependency, release gate, dan build"
 # ---------------------------------------------------------------------------
 as_app "cd '$APP_DIR' && pnpm install --frozen-lockfile" || rollback
-as_app "cd '$APP_DIR' && pnpm db:generate && pnpm build"  || rollback
+
+# Berkas migration yang pernah ada pada commit terakhir terpasang tidak boleh
+# berubah. Ini dijalankan sebelum migration menyentuh database, sehingga typo,
+# rename, manifest drift, SQL destruktif, atau edit migration applied menghentikan
+# deploy saat backup masih utuh dan layanan lama masih berjalan.
+MIGRATION_BASE=${DEPLOYED:-$PREVIOUS}
+as_app "git -C '$APP_DIR' cat-file -e '${MIGRATION_BASE}^{commit}'" || rollback
+if ! as_app "git -C '$APP_DIR' merge-base --is-ancestor '$MIGRATION_BASE' HEAD"; then
+  warn "Target bukan turunan linear dari commit terakhir terpasang ${MIGRATION_BASE:0:7}."
+  warn "Deploy non-fast-forward berisiko menghapus migration dari source yang masih tercatat di database."
+  rollback
+fi
+as_app "cd '$APP_DIR' && node scripts/ci/verify-migrations.mjs '$MIGRATION_BASE'" || rollback
+
+if [[ "${SKIP_RELEASE_TESTS:-0}" == "1" ]]; then
+  warn "SKIP_RELEASE_TESTS=1 — lint dan unit test dilewati atas permintaan eksplisit."
+else
+  as_app "cd '$APP_DIR' && pnpm lint" || rollback
+
+  # Test tidak boleh mewarisi URL database produksi dari apps/api/.env.
+  # Seluruh URL diarahkan ke port loopback tertutup; unit test yang tanpa
+  # sengaja mencoba koneksi nyata akan gagal, bukan menyentuh data pelanggan.
+  TEST_DATABASE_URL='postgresql://deploy_gate:blocked@127.0.0.1:1/deploy_gate?schema=platform'
+  as_app "cd '$APP_DIR' && \
+    export CI=true NODE_ENV=test \
+      DATABASE_URL='$TEST_DATABASE_URL' \
+      DIRECT_DATABASE_URL='$TEST_DATABASE_URL' \
+      DATABASE_ADMIN_URL='$TEST_DATABASE_URL' && \
+    pnpm --filter @ebisnis/api test -- --runInBand && \
+    pnpm --filter @ebisnis/web test" || rollback
+fi
+as_app "cd '$APP_DIR' && pnpm db:generate && pnpm build" || rollback
 
 # ---------------------------------------------------------------------------
-log "4/9  Migration"
+log "4/10  Migration platform dan seluruh tenant"
 # ---------------------------------------------------------------------------
 # Schema platform.
 as_app "cd '$APP_DIR/apps/api' && pnpm exec prisma migrate status" || true
@@ -283,18 +374,22 @@ as_app "cd '$APP_DIR/apps/api' && pnpm exec prisma migrate deploy" || rollback
 as_app "cd '$APP_DIR' && pnpm --filter @ebisnis/api migrate:tenants" || rollback
 
 # ---------------------------------------------------------------------------
-log "5/9  Restart layanan"
+log "5/10  Restart layanan"
 # ---------------------------------------------------------------------------
 install -m 644 "$APP_DIR/deploy/systemd/ebisnis-api.service" /etc/systemd/system/ebisnis-api.service
-systemctl daemon-reload
-systemctl restart ebisnis-api
+systemctl daemon-reload || rollback
+systemctl restart ebisnis-api || rollback
 
 # ---------------------------------------------------------------------------
-log "6/9  Health check"
+log "6/10  Health check"
 # ---------------------------------------------------------------------------
 HEALTHY=0
-for i in $(seq 1 30); do
-  if curl -fsS -m 3 http://127.0.0.1:3000/health | grep -q '"status":"ok"'; then HEALTHY=1; break; fi
+for attempt in $(seq 1 30); do
+  if curl -fsS -m 3 http://127.0.0.1:3000/health | grep -q '"status":"ok"'; then
+    HEALTHY=1
+    echo "    sehat pada percobaan $attempt/30"
+    break
+  fi
   sleep 2
 done
 if [[ $HEALTHY -ne 1 ]]; then
@@ -304,13 +399,6 @@ fi
 curl -s http://127.0.0.1:3000/health | sed 's/^/    /'
 
 as_app "cd '$APP_DIR' && pnpm seed:verify" || warn "Verifikasi seed melaporkan masalah — periksa keluarannya."
-
-# Penanda ditulis SETELAH health check lulus, bukan setelah build. Build yang
-# menghasilkan aplikasi yang tidak mau menyala bukan deployment yang selesai,
-# dan menandainya selesai akan membuat percobaan berikutnya dilewati.
-install -d -m 755 "$(dirname "$DEPLOY_STAMP")"
-printf '%s
-' "$NEW" > "$DEPLOY_STAMP"
 
 # ---------------------------------------------------------------------------
 log "7/10  Sandbox demo ePesantren"
@@ -322,6 +410,9 @@ log "7/10  Sandbox demo ePesantren"
 #
 # `${PSQL:-psql}` sebab `$PSQL` hanya diisi di dalam langkah backup, dan
 # tidak ada sama sekali bila dipanggil dengan SKIP_DB_BACKUP=1.
+# APP_DIR pada sisi kanan sengaja dievaluasi oleh shell pemanggil; assignment
+# di kiri hanya meneruskan nilainya ke proses onboarding.
+# shellcheck disable=SC2097,SC2098
 APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:-psql}" \
   bash "$APP_DIR/deploy/ensure-demo-pesantren.sh" \
   || warn "Penyiapan sandbox demo ePesantren gagal — periksa manual bila perlu."
@@ -335,6 +426,7 @@ log "8/10  Pelanggan pertama: Raudlatul Ulum"
 # deploy/onboard-raudlatul-ulum.sh untuk jaminan idempotensinya. BERBEDA dari
 # sandbox demo di atas: ini pelanggan sungguhan, bukan tenant bersama.
 # Kegagalan di sini tidak pernah menggagalkan deploy.
+# shellcheck disable=SC2097,SC2098
 APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:-psql}" \
   bash "$APP_DIR/deploy/onboard-raudlatul-ulum.sh" \
   || warn "Penyiapan tenant Raudlatul Ulum gagal — periksa manual bila perlu."
@@ -352,6 +444,7 @@ if [[ -d "$CMN_BUNDLED_IMPORT_DIR" ]]; then
   find "$CMN_BUNDLED_IMPORT_DIR" -maxdepth 1 -type f -iname '*.dbf' -print0 \
     | xargs -0 -r -I{} install -m 640 -o "$APP_USER" -g "$APP_USER" "{}" "$CMN_IMPORT_DIR/"
 fi
+# shellcheck disable=SC2097,SC2098
 APP_DIR="$APP_DIR" APP_USER="$APP_USER" \
   bash "$APP_DIR/deploy/onboard-cmn-inventory.sh" \
   || warn "Penyiapan tenant Caruban Medika Nusantara gagal -- periksa manual bila perlu."
@@ -488,9 +581,36 @@ if [[ -n "$latest_inventory_exe" ]]; then
     "$POS_UPDATE_DIR/ebisnis-inventory-sales.exe"
 fi
 
+APACHE_ROLLBACK_DIR=$(mktemp -d /tmp/ebisnis-apache.XXXXXX)
+for source_and_destination in \
+  "ebisnis-app.inc:/etc/apache2/conf-available/ebisnis-app.inc" \
+  "ebisnis.conf:/etc/apache2/sites-available/ebisnis.conf"; do
+  name=${source_and_destination%%:*}
+  destination=${source_and_destination#*:}
+  if [[ -f "$destination" ]]; then
+    cp -a "$destination" "$APACHE_ROLLBACK_DIR/$name"
+  else
+    touch "$APACHE_ROLLBACK_DIR/$name.missing"
+  fi
+done
+
 install -m 644 "$APP_DIR/deploy/apache/ebisnis-app.inc" /etc/apache2/conf-available/ebisnis-app.inc
 install -m 644 "$APP_DIR/deploy/apache/ebisnis.conf"    /etc/apache2/sites-available/ebisnis.conf
-apache2ctl configtest && systemctl reload apache2
+apache2ctl configtest || rollback
+systemctl reload apache2 || rollback
+
+rm -f "$APACHE_ROLLBACK_DIR"/ebisnis-app.inc \
+      "$APACHE_ROLLBACK_DIR"/ebisnis-app.inc.missing \
+      "$APACHE_ROLLBACK_DIR"/ebisnis.conf \
+      "$APACHE_ROLLBACK_DIR"/ebisnis.conf.missing
+rmdir "$APACHE_ROLLBACK_DIR"
+APACHE_ROLLBACK_DIR=
+
+# Penanda baru ditulis setelah API sehat DAN konfigurasi reverse proxy lolos.
+# Build atau health yang sukses tetapi Apache gagal bukan deployment selesai.
+install -d -m 755 "$(dirname "$DEPLOY_STAMP")"
+printf '%s
+' "$NEW" > "$DEPLOY_STAMP"
 
 cat <<EOF
 

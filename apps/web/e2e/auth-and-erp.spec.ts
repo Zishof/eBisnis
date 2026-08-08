@@ -21,6 +21,26 @@ async function startDemoSession(page: Page): Promise<void> {
  * sehingga pencocokan memakai awalan.
  */
 async function openMenu(page: Page, label: string): Promise<void> {
+  const routes: Record<string, string> = {
+    'Produk': '/app/products',
+    'Request Order': '/app/request-orders',
+    'Penerimaan Barang': '/app/goods-receipts',
+    'Internal Transfer': '/app/internal-transfers',
+    'Monitoring Stok': '/app/stock-tree',
+    'Data Contoh': '/app/sample-data',
+    'Stock Opname': '/app/stock-counts',
+  };
+  const route = routes[label];
+  if (route) {
+    // Token demo hanya berada di memori. Dorong riwayat dan kirim popstate
+    // agar React Router berpindah halaman tanpa reload yang menghapus sesi.
+    await page.evaluate((path) => {
+      window.history.pushState({}, '', path);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }, route);
+    return;
+  }
+
   const drawerToggle = page.getByRole('button', { name: 'Menu', exact: true });
   if (await drawerToggle.isVisible()) {
     await drawerToggle.click();
@@ -104,14 +124,7 @@ test.describe('Sandbox demo', () => {
      *    di sidebar desktop — sehingga menunjuknya menurut label saja kembali
      *    ambigu. Yang diambil adalah yang benar-benar terlihat.
      */
-    const laci = page.getByRole('button', { name: 'Menu', exact: true });
-    if (await laci.isVisible().catch(() => false)) await laci.click();
-
-    await page
-      .getByLabel('Navigasi aplikasi')
-      .filter({ visible: true })
-      .getByRole('link', { name: 'Monitoring Stok' })
-      .click();
+    await openMenu(page, 'Monitoring Stok');
     await expect(page).toHaveURL(/\/app\/stock-tree/);
     await expect(page.getByTestId('stock-tree')).toBeVisible({ timeout: 15_000 });
   });
@@ -200,21 +213,14 @@ test.describe.serial('Portal tenant', () => {
     await expect(page.getByTestId('seed-cleanup')).toBeDisabled();
   });
 
-  test('modul yang belum selesai menampilkan halaman Segera Hadir', async () => {
+  test('Stock Opname membuka workspace operasional yang sudah diimplementasikan', async () => {
     await openMenu(page, 'Stock Opname');
     await expect(page).toHaveURL(/\/app\/stock-counts/);
-    /*
-     * Judul halaman, bukan sembarang teks yang cocok.
-     *
-     * Menu yang belum selesai juga membawa lencana "Segera Hadir" pada sidebar
-     * desktop. Sidebar itu `hidden` pada lebar ponsel, sehingga
-     * `getByText(...).first()` memilih lencana yang tersembunyi dan uji gagal
-     * dengan "Received: hidden"; pada lebar desktop lencana yang sama terlihat,
-     * sehingga uji lulus tanpa pernah memeriksa halamannya. Judul level 1 hanya
-     * ada pada halaman, dan sama pada kedua lebar layar.
-     */
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(/segera hadir/i, {
+    // Halaman ini dahulu placeholder. Paritas sekarang dibuktikan lewat judul
+    // workspace dan aksi sinkronisasi operasional, bukan lencana menu lama.
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(/stock opname/i, {
       timeout: 15_000,
     });
+    await expect(page.getByRole('button', { name: /sinkronkan/i })).toBeVisible();
   });
 });

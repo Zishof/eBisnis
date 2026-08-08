@@ -27,6 +27,8 @@ warn() { printf '\033[1;33m[!] %s\033[0m\n' "$*"; }
 die()  { printf '\033[1;31m[x] %s\033[0m\n' "$*" >&2; exit 1; }
 
 [[ $EUID -eq 0 ]] || die "Jalankan dengan sudo."
+# Berkas ini milik OS target dan memang tidak tersedia saat lint lintas-platform.
+# shellcheck disable=SC1091
 [[ -r /etc/os-release ]] && . /etc/os-release
 
 # Codename dipakai untuk repositori APT PostgreSQL. Jangan di-hardcode: nilainya
@@ -46,7 +48,9 @@ log "1/10  Paket dasar"
 # ---------------------------------------------------------------------------
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq curl ca-certificates gnupg git rsync apache2 ufw ${EXTRA_PACKAGES:-}
+# EXTRA_PACKAGES sengaja berupa daftar paket yang dipisah spasi.
+# shellcheck disable=SC2086
+apt-get install -y -qq curl ca-certificates gnupg git rsync apache2 ufw util-linux ${EXTRA_PACKAGES:-}
 
 # ---------------------------------------------------------------------------
 log "2/10  Node.js ${NODE_MAJOR} dan pnpm"

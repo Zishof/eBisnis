@@ -135,8 +135,9 @@ export class PosReturnService {
         saleId,
         receiptNumber: sale.receipt_number,
         currency: sale.currency_code,
-        gross: sale.grand_total,
+        gross: sale.subtotal,
         tax: sale.tax_total,
+        discount: sale.discount_total,
         cost: nilaiPersediaan.toString(),
         userId: subjectId,
       });
@@ -433,7 +434,9 @@ export class PosReturnService {
 
       await this.peristiwa(client, schemaName, 'POS_RETURN', returnId, r.return_number, {
         returnValue: Number(r.grand_total),
+        net: new Decimal(r.grand_total).minus(new Decimal(r.tax_total)).toNumber(),
         tax: Number(r.tax_total),
+        inventoryValue: nilaiPersediaan.toNumber(),
       }, r.currency_code ?? 'IDR', subjectId);
 
       await client.query(
@@ -552,13 +555,24 @@ export class PosReturnService {
         ],
       );
 
+      const method = input.paymentMethodId
+        ? await client.query<{ method_type: string }>(
+            `SELECT method_type FROM "${schemaName}".payment_method WHERE id = $1`,
+            [input.paymentMethodId],
+          )
+        : null;
+      const cash = !method?.rows[0] || method.rows[0].method_type === 'CASH';
       await this.peristiwa(
         client,
         schemaName,
         'POS_REFUND',
         returnId,
         r.return_number,
-        { refundAmount: diminta.toNumber() },
+        {
+          refundAmount: diminta.toNumber(),
+          cashAmount: cash ? diminta.toNumber() : 0,
+          noncashAmount: cash ? 0 : diminta.toNumber(),
+        },
         r.currency_code ?? 'IDR',
         subjectId,
       );
@@ -612,7 +626,8 @@ export class PosReturnService {
     const rows = await this.tenantDb.query<Record<string, string>>(
       schemaName,
       `SELECT id, status, outlet_id, terminal_id, shift_id, customer_id, warehouse_id,
-              receipt_number, currency_code, grand_total::text, tax_total::text,
+              receipt_number, currency_code, subtotal::text, discount_total::text,
+              grand_total::text, tax_total::text,
               void_requested_by
          FROM "${schemaName}".pos_sale WHERE id = $1`,
       [saleId],
@@ -739,37 +754,53 @@ export class PosReturnService {
       currency: string | null;
       gross: string;
       tax: string;
+      discount: string;
       cost: string;
       userId: string;
     },
   ) {
-    const bersih = new Decimal(ctx.gross).minus(new Decimal(ctx.tax));
-    // Nilai negatif: peristiwa pembalik, bukan peristiwa baru. Buku besar
-    // menunjukkan keduanya, sehingga pembatalan terlihat sebagai pembatalan —
-    // bukan sebagai transaksi yang tidak pernah ada.
+    const paymentTotals = await client.query<{ cash: string; noncash: string }>(
+      `SELECT
+          COALESCE(SUM(p.amount) FILTER (WHERE pm.method_type = 'CASH'), 0)::text AS cash,
+          COALESCE(SUM(p.amount) FILTER (WHERE pm.method_type <> 'CASH'), 0)::text AS noncash
+         FROM "${schemaName}".pos_payment p
+         JOIN "${schemaName}".payment_method pm ON pm.id = p.payment_method_id
+        WHERE p.pos_sale_id = $1 AND p.status IN ('RECEIVED', 'REVERSED')`,
+      [ctx.saleId],
+    );
     await this.peristiwa(
       client,
       schemaName,
-      'POS_SALE',
+      'POS_SALE_VOID',
       ctx.saleId,
       ctx.receiptNumber,
       {
-        gross: -Number(ctx.gross),
-        net: -bersih.toNumber(),
-        tax: -Number(ctx.tax),
+        gross: Number(ctx.gross),
+        tax: Number(ctx.tax),
+        discountAmount: Number(ctx.discount),
       },
       ctx.currency ?? 'IDR',
       ctx.userId,
       'VOID',
     );
+    const cash = Number(paymentTotals.rows[0]?.cash ?? 0);
+    const noncash = Number(paymentTotals.rows[0]?.noncash ?? 0);
+    if (cash > 0) {
+      await this.peristiwa(client, schemaName, 'POS_CASH_RECEIPT_VOID', ctx.saleId,
+        ctx.receiptNumber, { amount: cash }, ctx.currency ?? 'IDR', ctx.userId, 'VOID');
+    }
+    if (noncash > 0) {
+      await this.peristiwa(client, schemaName, 'POS_NONCASH_RECEIPT_VOID', ctx.saleId,
+        ctx.receiptNumber, { amount: noncash }, ctx.currency ?? 'IDR', ctx.userId, 'VOID');
+    }
     if (Number(ctx.cost) > 0) {
       await this.peristiwa(
         client,
         schemaName,
-        'POS_COGS',
+        'POS_COGS_VOID',
         ctx.saleId,
         ctx.receiptNumber,
-        { cost: -Number(ctx.cost) },
+        { cost: Number(ctx.cost) },
         ctx.currency ?? 'IDR',
         ctx.userId,
         'VOID',

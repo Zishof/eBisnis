@@ -395,6 +395,48 @@
         "description": "Indeks parsial pada inventory_stock_opname_session(warehouse_id) WHERE status IN ('FROZEN','COUNTED') untuk mendukung assertWarehouseNotFrozen() yang sekarang dipanggil sebelum setiap penyisipan stock_movement. Tidak ada tabel atau kolom baru."
       },
       {
+        "version": "V057",
+        "sequence": 57,
+        "file": "V057__inventory_sales_posting_rules.sql",
+        "name": "Aturan posting bawaan Inventory dan Sales",
+        "description": "Menyemai pemetaan event penerimaan barang, invoice, diskon, dan HPP ke bagan akun tenant secara idempoten. Tenant baru juga memperoleh pemetaan setelah chart of account disemai; tidak ada tabel lama yang diubah atau dihapus."
+      },
+      {
+        "version": "V058",
+        "sequence": 58,
+        "file": "V058__current_fiscal_periods.sql",
+        "name": "Periode fiskal bulanan tahun berjalan",
+        "description": "Menjamin dua belas periode bulanan tahun berjalan tersedia bagi jurnal manual dan processor event akuntansi. Penyisipan idempoten dan tidak membuka kembali periode yang sudah ditutup."
+      },
+      {
+        "version": "V059",
+        "sequence": 59,
+        "file": "V059__pos_sale_posting_rules.sql",
+        "name": "Aturan posting penjualan POS normal",
+        "description": "Menyemai aturan invoice, diskon, penerimaan tunai/nontunai, dan HPP POS. Emitter memakai metode pembayaran aktual serta tidak lagi menerbitkan event pajak/persediaan duplikat."
+      },
+      {
+        "version": "V060",
+        "sequence": 60,
+        "file": "V060__pos_reversal_return_posting_rules.sql",
+        "name": "Aturan posting void, retur, dan refund POS",
+        "description": "Menambahkan event pembalik bernilai positif dan rule sisi-balik untuk void, pengembalian HPP/persediaan saat retur, serta refund tunai/nontunai. Tidak ada jurnal negatif atau penghapusan transaksi asal."
+      },
+      {
+        "version": "V061",
+        "sequence": 61,
+        "file": "V061__pos_cash_movement_posting_rules.sql",
+        "name": "Aturan posting pergerakan dan selisih kas POS",
+        "description": "Menambah akun Beban Kas dan Selisih serta rule kas masuk, kas keluar, kekurangan, dan kelebihan kas. Selisih negatif diubah menjadi shortage positif sehingga jurnal tidak memakai nominal negatif."
+      },
+      {
+        "version": "V062",
+        "sequence": 62,
+        "file": "V062__sales_note_custody_event.sql",
+        "name": "Ledger custody nota sales append-only",
+        "description": "Mencatat CREATE, HANDOVER, RETURN, CLOSE, dan CANCEL beserta aktor, waktu, status asal/tujuan, dan metadata. Trigger immutable melarang update/delete histori custody."
+      },
+      {
         "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

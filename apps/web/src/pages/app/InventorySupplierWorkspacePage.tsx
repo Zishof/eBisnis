@@ -136,7 +136,7 @@ export function InventorySupplierWorkspacePage() {
     queryFn: () => api.get<SupplierWorkspace>('/inventory/supplier-workspace'),
   });
   const data = query.data;
-  const suppliers = data?.suppliers ?? [];
+  const suppliers = useMemo(() => data?.suppliers ?? [], [data?.suppliers]);
   const selected = suppliers.find((row) => row.id === selectedId) ?? suppliers[0] ?? null;
   const visible = useMemo(() => suppliers.filter((row) => {
     const needle = search.trim().toLowerCase();

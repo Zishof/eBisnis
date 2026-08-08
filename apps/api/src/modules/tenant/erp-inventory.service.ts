@@ -808,9 +808,23 @@ export class ErpInventoryService {
     // Batas data ditegakkan di sini, bukan pada controller. Pemegang batas
     // WAREHOUSE tanpa gudang yang ditugaskan memperoleh predikat FALSE sehingga
     // ia melihat nol baris, bukan seluruh gudang tenant.
+    // `LifecycleContext.userId` adalah id pengguna platform, sedangkan tabel
+    // role/scope tenant memakai `user_subject.id`. Tanpa resolusi ini seluruh
+    // pengguna sah tampak tidak punya role dan endpoint saldo mengembalikan
+    // nol baris, walaupun mutasi serta stock-tree sudah berisi data.
+    const subject = await this.tenantDb.query<{ id: string }>(
+      ctx.schemaName,
+      `SELECT id::text AS id
+         FROM ${S}.user_subject
+        WHERE id = $1::uuid OR platform_user_id = $1::uuid
+        LIMIT 1`,
+      [ctx.userId],
+    );
+    if (!subject[0]) return [];
+
     const scope = await this.dataScope.buildPredicate(
       ctx.schemaName,
-      ctx.userId,
+      subject[0].id,
       { WAREHOUSE: 'b.warehouse_id', LEGAL_ENTITY: 'w.legal_entity_id', OUTLET: 'w.outlet_id' },
       { startIndex: params.length + 1 },
     );

@@ -152,6 +152,14 @@ class ReturnHandoverDto {
   lines!: ReturnHandoverLineDto[];
 }
 
+class CancelHandoverDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason!: string;
+}
+
 class ReportDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -570,7 +578,7 @@ export class SalesInventoryOperationsController {
   @Permissions('FINANCE_JOURNAL.READ')
   async financeWorkspace(@CurrentUser() user: AuthenticatedUser) {
     const S = quotedSchema(user);
-    const [accounts, periods, journals, closeRuns] = await Promise.all([
+    const [accounts, periods, journals, closeRuns, accountingEvents] = await Promise.all([
       this.tenantDb.query<Record<string, unknown>>(schemaOf(user),
         `SELECT coa.id::text, coa.code, coa.name, coa.account_type_id::text,
                 at.category AS account_type, coa.normal_balance, coa.allow_posting
@@ -589,8 +597,17 @@ export class SalesInventoryOperationsController {
                 r.completed_at::text, fp.code AS period_code
            FROM ${S}.inventory_period_close_run r JOIN ${S}.fiscal_period fp ON fp.id = r.fiscal_period_id
           ORDER BY r.started_at DESC LIMIT 50`),
+      this.tenantDb.query<Record<string, unknown>>(schemaOf(user),
+        `SELECT ae.id::text, ae.event_code, ae.source_type, ae.source_number,
+                ae.occurred_at::text, ae.status, ae.failure_reason, ae.retry_count,
+                ae.journal_entry_id::text, je.journal_number
+           FROM ${S}.accounting_event ae
+           LEFT JOIN ${S}.journal_entry je ON je.id = ae.journal_entry_id
+          ORDER BY CASE ae.status WHEN 'FAILED' THEN 0 WHEN 'PENDING' THEN 1 ELSE 2 END,
+                   ae.occurred_at DESC
+          LIMIT 100`),
     ]);
-    return { accounts, periods, journals, closeRuns };
+    return { accounts, periods, journals, closeRuns, accountingEvents };
   }
 
   @Post('inventory/chart-accounts')
@@ -825,7 +842,17 @@ export class SalesInventoryOperationsController {
         WHERE l.opname_id = $1::uuid ORDER BY p.code, lot.expiry_date NULLS LAST`,
       [id],
     );
-    return { ...header, lines };
+    const custodyEvents = await this.tenantDb.query<Record<string, unknown>>(
+      schemaOf(user),
+      `SELECT e.id::text, e.event_type, e.from_status, e.to_status,
+              e.occurred_at::text, e.metadata, us.name AS actor_name
+         FROM ${S}.sales_note_custody_event e
+         JOIN ${S}.user_subject us ON us.id = e.actor_id
+        WHERE e.handover_id = $1::uuid
+        ORDER BY e.occurred_at, e.id`,
+      [id],
+    );
+    return { ...header, lines, custody_events: custodyEvents };
   }
 
   @Post('stock-opnames')
@@ -1267,6 +1294,17 @@ export class SalesInventoryOperationsController {
     return { ...header, lines };
   }
 
+  @Get('sales-note-handovers/:id/print-data')
+  @Permissions('SALES.READ')
+  async handoverPrintData(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const detail = await this.handoverDetail(id, user);
+    return {
+      document_type: 'SALES_NOTE_HANDOVER',
+      generated_at: new Date().toISOString(),
+      ...detail,
+    };
+  }
+
   @Post('sales-note-handovers')
   @HttpCode(201)
   @BlockDemo()
@@ -1293,11 +1331,26 @@ export class SalesInventoryOperationsController {
                 c.metadata->>'legacy_area_code' AS territory_code
            FROM ${S}.legacy_receivable_ledger lr
            LEFT JOIN ${S}.customer c ON c.id = lr.customer_id
-          WHERE lr.id = ANY($1::uuid[]) AND NOT lr.is_settled AND lr.amount > 0`,
-        [uniqueIds],
+          WHERE lr.id = ANY($1::uuid[])
+            AND NOT lr.is_settled
+            AND lr.amount > 0
+            AND (lr.salesperson_id IS NULL OR lr.salesperson_id = $2::uuid)
+            AND NOT EXISTS (
+              SELECT 1
+                FROM ${S}.sales_note_handover_line existing_line
+                JOIN ${S}.sales_note_handover existing_header
+                  ON existing_header.id = existing_line.handover_id
+               WHERE existing_line.receivable_ledger_id = lr.id
+                 AND existing_header.status IN ('DRAFT', 'HANDED_OVER')
+            )
+          FOR UPDATE OF lr`,
+        [uniqueIds, body.salespersonId],
       );
       if (ledgers.rowCount !== uniqueIds.length) {
-        throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Sebagian nota tidak ditemukan, sudah lunas, atau bukan tagihan.');
+        throw AppError.badRequest(
+          ErrorCodes.VALIDATION_FAILED,
+          'Sebagian nota tidak ditemukan, sudah lunas, berbeda sales, atau sedang berada dalam paket custody aktif.',
+        );
       }
       const handoverNumber = `NOTA-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36).toUpperCase()}`;
       const created = await client.query<{ id: string; handover_number: string }>(
@@ -1317,6 +1370,12 @@ export class SalesInventoryOperationsController {
             row.transaction_date, row.due_date, row.amount, row.territory_code],
         );
       }
+      await client.query(
+        `INSERT INTO ${S}.sales_note_custody_event
+           (handover_id, event_type, from_status, to_status, actor_id, metadata)
+         VALUES ($1::uuid, 'CREATED', NULL, 'DRAFT', $2::uuid, $3::jsonb)`,
+        [created.rows[0].id, subjectId, JSON.stringify({ invoiceCount: ledgers.rowCount })],
+      );
       return created.rows[0];
     }, auditOf(user, meta, 'SALES_NOTE_HANDOVER', 'CREATE'));
   }
@@ -1365,6 +1424,12 @@ export class SalesInventoryOperationsController {
         );
         if (!updated.rowCount) throw AppError.notFound(ErrorCodes.NOT_FOUND, `Baris nota ${line.lineId} tidak ditemukan.`);
       }
+      await client.query(
+        `INSERT INTO ${S}.sales_note_custody_event
+           (handover_id, event_type, from_status, to_status, actor_id, metadata)
+         VALUES ($1::uuid, 'RETURNED', 'HANDED_OVER', 'RETURNED', $2::uuid, $3::jsonb)`,
+        [id, subjectId, JSON.stringify({ lines: body.lines })],
+      );
       return { id, status: 'RETURNED' };
     }, auditOf(user, meta, 'SALES_NOTE_HANDOVER', 'RETURN'));
   }
@@ -1378,6 +1443,39 @@ export class SalesInventoryOperationsController {
     @RequestContext() meta: RequestMeta,
   ) {
     return this.transitionHandover(id, 'RETURNED', 'CLOSED', user, meta);
+  }
+
+  @Post('sales-note-handovers/:id/cancel')
+  @BlockDemo()
+  @Permissions('SALES_ORDER.CREATE')
+  cancelHandover(
+    @Param('id') id: string,
+    @Body() body: CancelHandoverDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    return this.tenantDb.transaction(schema, async (client) => {
+      const subjectId = await subjectIdOf(client, S, user.userId);
+      const changed = await client.query(
+        `UPDATE ${S}.sales_note_handover
+            SET status = 'CANCELLED', note = concat_ws(E'\n', note, $2),
+                updated_at = now(), version = version + 1
+          WHERE id = $1::uuid AND status = 'DRAFT' RETURNING id`,
+        [id, `Dibatalkan: ${body.reason}`],
+      );
+      if (!changed.rowCount) {
+        throw invalidTransition('Hanya paket nota DRAFT yang dapat dibatalkan; paket yang sudah dibawa harus dikembalikan.');
+      }
+      await client.query(
+        `INSERT INTO ${S}.sales_note_custody_event
+           (handover_id, event_type, from_status, to_status, actor_id, metadata)
+         VALUES ($1::uuid, 'CANCELLED', 'DRAFT', 'CANCELLED', $2::uuid, $3::jsonb)`,
+        [id, subjectId, JSON.stringify({ reason: body.reason })],
+      );
+      return { id, status: 'CANCELLED' };
+    }, auditOf(user, meta, 'SALES_NOTE_HANDOVER', 'CANCEL'));
   }
 
   @Post('reports/:code/preview')
@@ -1747,6 +1845,12 @@ export class SalesInventoryOperationsController {
         [id, subjectId, next, expected],
       );
       if (!row.rowCount) throw invalidTransition(`Serah-terima harus berstatus ${expected}.`);
+      await client.query(
+        `INSERT INTO ${S}.sales_note_custody_event
+           (handover_id, event_type, from_status, to_status, actor_id)
+         VALUES ($1::uuid, $2, $3, $4, $5::uuid)`,
+        [id, next, expected, next, subjectId],
+      );
       return { id, status: next };
     }, auditOf(user, meta, 'SALES_NOTE_HANDOVER', next));
   }
@@ -1821,6 +1925,7 @@ export class SalesInventoryOperationsController {
       if (current.status !== 'OPEN') throw invalidTransition('Hanya periode OPEN yang dapat ditutup.');
       const checksResult = await client.query<{
         draft_journals: number; draft_ap: number; draft_ar: number; incomplete_opnames: number;
+        unposted_events: number;
       }>(
         `SELECT
            (SELECT count(*)::int FROM ${S}.journal_entry
@@ -1830,10 +1935,14 @@ export class SalesInventoryOperationsController {
            (SELECT count(*)::int FROM ${S}.inventory_ar_receipt
              WHERE status = 'DRAFT' AND receipt_date BETWEEN $1::date AND $2::date) AS draft_ar,
            (SELECT count(*)::int FROM ${S}.inventory_stock_opname_session
-             WHERE status NOT IN ('POSTED', 'CANCELLED') AND opname_date BETWEEN $1::date AND $2::date) AS incomplete_opnames`,
+             WHERE status NOT IN ('POSTED', 'CANCELLED') AND opname_date BETWEEN $1::date AND $2::date) AS incomplete_opnames,
+           (SELECT count(*)::int FROM ${S}.accounting_event
+             WHERE status IN ('PENDING', 'FAILED') AND occurred_at::date BETWEEN $1::date AND $2::date) AS unposted_events`,
         [current.start_date, current.end_date],
       );
-      const validation = checksResult.rows[0] ?? { draft_journals: 0, draft_ap: 0, draft_ar: 0, incomplete_opnames: 0 };
+      const validation = checksResult.rows[0] ?? {
+        draft_journals: 0, draft_ap: 0, draft_ar: 0, incomplete_opnames: 0, unposted_events: 0,
+      };
       const blocked = Object.values(validation).some((value) => Number(value) > 0);
       const snapshotResult = await client.query<Record<string, unknown>>(
         `SELECT
@@ -2137,22 +2246,25 @@ export function reportSql(code: string, S: string): { title: string; sql: string
                    (sol.line_total - sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost))::text AS gross_profit
               FROM ${S}.sales_order so JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
               JOIN ${S}.product p ON p.id = sol.product_id
-             WHERE so.order_date <= $1::date ORDER BY so.order_date, so.order_number, sol.line_no`,
+             WHERE so.status = 'INVOICED' AND so.order_date <= $1::date
+             ORDER BY so.order_date, so.order_number, sol.line_no`,
     },
   };
   if (code === 'profit-loss') {
     return {
       title: 'Laporan Laba Rugi Akuntansi', totalKey: 'balance',
-      sql: `SELECT coa.code, coa.name, coa.account_type,
+      sql: `SELECT coa.code, coa.name, at.category AS account_type,
                    COALESCE(sum(CASE
                      WHEN coa.normal_balance = 'DEBIT' THEN jel.debit - jel.credit
                      ELSE jel.credit - jel.debit
                    END), 0)::text AS balance
-              FROM ${S}.chart_of_account coa LEFT JOIN ${S}.journal_entry_line jel ON jel.account_id = coa.id
+              FROM ${S}.chart_of_account coa
+              JOIN ${S}.account_type at ON at.id = coa.account_type_id
+              LEFT JOIN ${S}.journal_entry_line jel ON jel.account_id = coa.id
               LEFT JOIN ${S}.journal_entry je ON je.id = jel.journal_entry_id
                AND je.status = 'POSTED' AND je.journal_date <= $1::date
-             WHERE coa.deleted_at IS NULL AND coa.account_type IN ('REVENUE', 'EXPENSE')
-             GROUP BY coa.id ORDER BY coa.code`,
+             WHERE coa.deleted_at IS NULL AND at.category IN ('REVENUE', 'EXPENSE')
+             GROUP BY coa.id, at.category ORDER BY coa.code`,
     };
   }
   return reports[code] ?? null;

@@ -290,7 +290,10 @@ export function MasterListPage({ resource }: { resource: string }) {
     [t, meta, mutate, openReferences, resource],
   );
 
-  const label = meta?.label ?? resource;
+  // Metadata dapat terlambat atau ditolak pada sesi demo yang sengaja sempit.
+  // Judul produk tetap harus terbaca manusia, bukan membocorkan slug API
+  // berbahasa Inggris sebagai "Daftar products".
+  const label = meta?.label ?? (resource === 'products' ? t('inventory.product') : resource);
 
   return (
     <>

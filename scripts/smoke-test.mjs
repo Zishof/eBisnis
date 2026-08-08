@@ -102,7 +102,8 @@ async function main() {
     byCode.POS_COMPLETE?.modules?.some((m) => m.code === 'PAYROLL') === true);
 
   const compare = await call('GET', '/public/subscription-packages/compare');
-  check('Perbandingan paket tersedia', (compare.data?.packages?.length ?? 0) === 4);
+  const comparedPosPackages = (compare.data?.packages ?? []).filter((pkg) => pkg.code.startsWith('POS_'));
+  check('Perbandingan empat paket POS tersedia', comparedPosPackages.length === 4);
 
   log('\n=== 2. VALIDASI NAMA SCHEMA ===');
   const reserved = await call('POST', '/public/usernames/check', {

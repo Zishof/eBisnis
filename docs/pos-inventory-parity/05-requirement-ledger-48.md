@@ -12,8 +12,8 @@ mendalam per layar belum dilakukan pada pass ini.
 | No | Layar legacy | Domain | Self-report repo (Web/Flutter) | Status verifikasi P0 | Catatan |
 |---:|---|---|---|---|---|
 | 01-06 | Master supplier/customer | MASTER | OPERATIONAL/OPERATIONAL | **PARTIAL, mayoritas CONFIRMED (2026-08-08)** | CRUD/audit/export/antrean luring semuanya CONFIRMED bekerja benar. **Masking data bank — FIXED (2026-08-08, source-only)**: penyamaran sungguhan sisi server ditambahkan (`MasterLifecycleService.samarkan()`, permission baru `VIEW_BANK_DETAILS`), bukan lagi kosmetik sisi klien. Filter saldo open/settled masih hanya bucketing sisi klien — belum dikerjakan. Lihat `09-master-stock-pricing-findings.md` |
-| 07 | Data Sales/Penjual Keliling | MASTER | OPERATIONAL/OPERATIONAL | **PARTIAL** | CRUD sama seperti 01-06, TAPI tidak ada penegakan active/inactive untuk salesperson di alur transaksi manapun (berbeda dari supplier/customer yang sudah ditegakkan) |
-| 08 | Data Stok Barang | STOCK_PRICE | OPERATIONAL/OPERATIONAL | **PARTIAL** | Endpoint `/stock/balances` yang diklaim katalog tidak ada; path nyata `/inventory/balances` tidak pernah dipanggil Web/Flutter. Layar Stok Web tidak menampilkan kuantitas live sama sekali |
+| 07 | Data Sales/Penjual Keliling | MASTER | OPERATIONAL/OPERATIONAL | **FIXED (API-tested, 2026-08-08)** | CRUD/audit/export tetap tersedia. Pengiriman order mobile baru kini memeriksa `inventory_salesperson_profile.is_active` setelah jalur retry idempoten dan sebelum validasi customer; profil sales nonaktif ditolak 403, sedangkan retry order yang telah berhasil tidak rusak. API lint/build dan test kontrak lulus; Flutter runtime/UAT masih diblokir. |
+| 08 | Data Stok Barang | STOCK_PRICE | OPERATIONAL/OPERATIONAL | **FIXED (DB + browser tested, 2026-08-08)** | Katalog diperbaiki dari endpoint fiktif `/stock/balances` ke `/inventory/balances`. Web membaca saldo live dengan data-scope gudang dan menampilkan/mengekspor on-hand, available, reserved, in-transit, quarantine, UOM, gudang, dan status. Smoke database membuktikan penerimaan 58+2 quarantine serta transfer 20 in-transit→on-hand; Playwright membuktikan stock tree desktop/mobile. Cacat identitas platform-user→tenant-subject dan warisan data-scope OWNER juga diperbaiki. |
 | 09 | Laporan Opname | STOCK_PRICE | OPERATIONAL/OPERATIONAL | **FIXED (source-only, 2026-08-08)** | Siklus freeze→count→approve→post tetap CONFIRMED. Freeze sekarang benar-benar menegakkan: `assertWarehouseNotFrozen` dipanggil sebelum tiap `INSERT INTO stock_movement` di 6 modul (POS jual/retur, penerimaan barang + pembatalannya, transfer kirim/terima, faktur pesanan penjualan, penyerahan obat eMedik) — penjualan/penerimaan bersamaan pada gudang FROZEN/COUNTED sekarang ditolak 409 `WAREHOUSE_FROZEN`. Indeks parsial baru (V056). Lint/build/test lulus; BELUM diuji terhadap PostgreSQL sungguhan. Lihat `decisions/stock-opname-freeze-and-report.md` |
 | 10 | Mencetak Laporan Opname | STOCK_PRICE | OPERATIONAL/OPERATIONAL | **FIXED (source-only, 2026-08-08)** | `reportSql('stock-opname', ...)` sekarang UNION `inventory_stock_opname_session`/`_line` (status APPROVED/POSTED) dengan `legacy_stock_opname` — opname yang benar-benar dijalankan siklus barunya sekarang muncul di laporan cetak, bersisian dengan riwayat impor lama, bukan menggantikannya |
 | 11-19 | Harga | STOCK_PRICE | OPERATIONAL/OPERATIONAL | **PARTIAL, membaik** | `price_book` (dipakai POS) dan `legacy_price_history` (baca/cari CONFIRMED, sekarang terisi transaksi live) tetap DUA SISTEM TERPISAH tanpa rekonsiliasi, dan `legacy_price_history` tetap tidak pernah dikonsultasikan untuk memberi harga transaksi apa pun. **Self-approval buku harga — FIXED (2026-08-08, source-only)**: kolom `submitted_by`/`submitted_at` + pemeriksaan layanan + CHECK constraint `price_book_no_self_approval` (V055), mengikuti pola V030. Ekspor Excel/cetak layar 13-16 masih mengandalkan endpoint snapshot yang TIDAK PERNAH dipanggil frontend manapun — belum dikerjakan |
@@ -22,8 +22,8 @@ mendalam per layar belum dilakukan pada pass ini.
 | 28-29 | Cetak faktur/laporan pembelian | PURCHASE_AP | OPERATIONAL/OPERATIONAL | **PARTIAL, membaik** | Snapshot cetak (CONFIRMED) sekarang punya data AP hidup untuk ditampilkan, bukan hanya data impor |
 | 30 | Menu penjualan | SALES_AR | OPERATIONAL/OPERATIONAL | **FIXED (source-only, 2026-08-08)** | Order tercipta tetap CONFIRMED. Ditambahkan `POST /sales/orders/:id/invoice`: memotong stok sisa, mengisi `delivered_qty`, mencatat riwayat harga jual, piutang+jatuh tempo, dan peristiwa akuntansi. Lint/build/test lulus; BELUM diuji terhadap PostgreSQL sungguhan. Lihat `decisions/sales-order-to-invoice.md` |
 | 31-38, 41-42 | Piutang/analisis piutang | SALES_AR | OPERATIONAL/OPERATIONAL | **PARTIAL, membaik** | Mekanisme settlement AR (CONFIRMED) sekarang punya baris hidup untuk diproses berkat layar 30. Atribusi sales (37-38) dari `sales_order.created_by`, BUKAN snapshot penugasan sejati — `sales_order` tetap tidak punya kolom `salesperson_id` |
-| 39-40 | Nota sales | SALES_AR | OPERATIONAL/OPERATIONAL | **PARTIAL, belum disentuh** | State machine tetap lebih datar dari spesifikasi. Belum diverifikasi apakah handover sekarang membaca baris AR hidup hasil layar 30 atau masih hanya baris import — perlu pass tersendiri |
-| 43-48 | Kas/jurnal/laba-rugi | FINANCE | OPERATIONAL/OPERATIONAL | UNKNOWN, tapi ada sinyal kuat GAP | Belum diverifikasi langsung, tapi #20 dan #30 sama-sama membuktikan TIDAK ADA auto-posting jurnal dari pembelian/penjualan — jurnal hanya bisa dibuat manual. Laporan laba-rugi/kas kemungkinan hanya benar untuk data hasil import, bukan transaksi baru |
+| 39-40 | Nota sales | SALES_AR | OPERATIONAL/OPERATIONAL | **PARTIAL, live-AR + custody DB-tested (2026-08-08)** | Jalur data kini terverifikasi: invoice layar 30 dan import sama-sama bermuara pada `legacy_receivable_ledger`, yang dibaca langsung oleh paket nota. Create memakai row lock, menjaga kesesuaian sales, dan menolak nota yang sudah berada dalam custody `DRAFT/HANDED_OVER`; endpoint cancel-draft dan print-data tersedia. `V062` menambah timeline custody immutable untuk CREATE/HANDOVER/RETURN/CLOSE/CANCEL lengkap dengan aktor/waktu/status/metadata; detail dan print-data mengembalikannya. Uji PostgreSQL membuktikan AR live eligible tepat sekali, duplikasi aktif tertolak, empat event timeline tersimpan dan UPDATE event ditolak; seluruh transaksi bukti di-rollback dengan residu 0. Tetap PARTIAL: belum ada status `RECONCILED`, Web masih aksi satu-nota sederhana, serta ekspor, offline/retry, rekonsiliasi dan UAT belum lulus. |
+| 43-48 | Kas/jurnal/laba-rugi | FINANCE | OPERATIONAL/OPERATIONAL | **PARTIAL, backend/Web keuangan FIXED dan DB-tested (2026-08-08)** | `V057`–`V061` menyemai 51 rule sistem untuk penerimaan barang, Sales, POS normal, void, retur, refund, kas masuk/keluar, dan selisih shift; `V058` mengisi 12 periode fiskal bulanan. Worker memakai lock/idempotensi, jurnal seimbang/periode terbuka, status gagal+retry, API, dan antrean Web. Tiga event pembelian lama berhasil di-retry menjadi jurnal satu-ke-satu. POS desktop E2E 9/9 menghasilkan penjualan tunai nyata; tiga event diposting 3/3, semua jurnal seimbang, dan net Piutang POS `0`. Reversal tidak lagi memakai nominal negatif; retur mengembalikan persediaan/HPP; refund mengikuti tunai/nontunai; periode tidak dapat ditutup bila masih ada event `PENDING/FAILED`. SQL layar 47 diperbaiki dari kolom fiktif `coa.account_type` ke join `account_type`; query PostgreSQL aktual menghasilkan 5 baris laba-rugi dan saldo pendapatan `10.000`. Masih PARTIAL terhadap definisi POS-14 karena rule marketplace/koperasi di luar 48 layar, rekonsiliasi laporan dengan DBF legacy, Flutter Windows/Android, UAT, dan cetak fisik belum dapat dibuktikan. |
 
 Rincian 48 baris individual (nama, API path, web route persis) — lihat
 `apps/api/src/modules/tenant/sales-inventory-parity.catalog.ts` langsung; tidak diduplikasi di
@@ -34,12 +34,12 @@ sini agar tidak drift dari source saat catalog berubah.
 Kriteria DONE POS-14 mensyaratkan build/smoke/e2e lulus dan perilaku Web+Windows+Android
 teruji. Pada mesin audit ini:
 
-- Web behavior: **bisa diverifikasi** via `pnpm test`/`pnpm build` (source-level) — sudah lulus,
-  lihat `00-repository-baseline.md`. Verifikasi visual/E2E browser belum dilakukan pada pass ini.
+- Web behavior: **terverifikasi lokal** melalui lint/unit/build dan Playwright terhadap production
+  preview: 73 executed, 15 mobile-POS skip by design, 0 gagal.
 - Windows/Android behavior: **BLOCKED** — Flutter SDK tidak terpasang, tidak bisa `flutter
   analyze/test/build windows/build apk`.
-- Reconciliation/DB-dependent (`seed:verify`, `smoke-test.mjs`, `test:e2e`): **BLOCKED** — tidak
-  ada PostgreSQL/Docker lokal.
+- Database-dependent: migration deploy, seed verify, smoke 122/122, dan browser E2E sudah lulus.
+  Rekonsiliasi DBF tetap **BLOCKED** karena sumber legacy tidak tersedia.
 - Print/hardware evidence: **BLOCKED** — tidak ada printer/perangkat fisik atau emulator terhubung
   pada sesi ini.
 - UAT lama-vs-baru: **BLOCKED** — memerlukan keputusan bisnis dan akses pengguna operasional CMN,
@@ -49,13 +49,13 @@ Setiap baris ledger yang menunggu langkah-langkah ini secara eksplisit ditandai 
 `DONE` dan bukan `MISSING`) sampai bukti tersedia — sesuai instruksi eksplisit dokumen perintah
 untuk tidak menebak.
 
-## Rencana verifikasi berikutnya (butuh keputusan manusia sebelum lanjut penuh)
+## Rencana verifikasi berikutnya
 
-1. Sediakan PostgreSQL lokal + Flutter SDK pada mesin ini, ATAU
-2. Lanjutkan audit source-only (baca detail `sales-inventory-operations.controller.ts` 2.139
+1. Sediakan Flutter SDK pada mesin ini, lalu jalankan analyze/test/build Windows dan APK.
+2. Lanjutkan audit source + database (baca detail `sales-inventory-operations.controller.ts` 2.139
    baris, plus widget/test Flutter yang ADA tanpa menjalankan build) untuk menaikkan status dari
    `UNKNOWN` ke `PARTIAL`/`STRONG_INFERENCE DONE` berdasarkan code review saja — masih belum
    `DONE` sejati tanpa build/run nyata, tapi jauh lebih informatif daripada `UNKNOWN`, ATAU
-3. Fokuskan sesi berikutnya pada satu domain dulu (mis. hanya POS core P1 sesuai roadmap dokumen
+3. Fokuskan slice berikutnya pada satu domain (mis. POS core P1 sesuai roadmap dokumen
    perintah sendiri: "Do not complete all frontend screens first and defer services") untuk
    verifikasi mendalam bertahap, bukan seluruh 48 layar sekaligus.

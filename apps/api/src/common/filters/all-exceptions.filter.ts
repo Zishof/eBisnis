@@ -49,6 +49,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
         errorCode = (record.errorCode as string) ?? mapStatusToCode(status);
         message = (record.message as string) ?? message;
         params = (record.params as Record<string, unknown>) ?? {};
+        if (status === HttpStatus.TOO_MANY_REQUESTS && !record.errorCode) {
+          message = 'Terlalu banyak permintaan. Coba lagi sebentar lagi.';
+        }
         if (Array.isArray(record.message)) {
           errorCode = ErrorCodes.VALIDATION_FAILED;
           message = 'Validasi permintaan gagal.';
@@ -133,6 +136,8 @@ function mapStatusToCode(status: number): string {
       return ErrorCodes.NOT_FOUND;
     case HttpStatus.CONFLICT:
       return ErrorCodes.CONFLICT;
+    case HttpStatus.TOO_MANY_REQUESTS:
+      return ErrorCodes.RATE_LIMITED;
     default:
       return ErrorCodes.INTERNAL_ERROR;
   }

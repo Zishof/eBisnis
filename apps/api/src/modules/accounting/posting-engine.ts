@@ -260,6 +260,10 @@ export const POS_EVENTS = [
   'POS_CASH_VARIANCE',
   'POS_CASH_IN',
   'POS_CASH_OUT',
+  'POS_SALE_VOID',
+  'POS_CASH_RECEIPT_VOID',
+  'POS_NONCASH_RECEIPT_VOID',
+  'POS_COGS_VOID',
 ] as const;
 
 export type PosEventCode = (typeof POS_EVENTS)[number];
@@ -310,13 +314,17 @@ export const REQUIRED_AMOUNTS: Record<KnownEventCode, string[]> = {
   POS_COGS: ['cost'],
   POS_INVENTORY_RELEASE: ['inventoryValue'],
   POS_DISCOUNT: ['discountAmount'],
-  POS_RETURN: ['returnValue', 'tax'],
-  POS_REFUND: ['refundAmount'],
+  POS_RETURN: ['returnValue', 'net', 'tax', 'inventoryValue'],
+  POS_REFUND: ['refundAmount', 'cashAmount', 'noncashAmount'],
   // Selisih kas membawa ketiganya supaya jurnalnya dapat menyebutkan bukan
   // hanya berapa selisihnya, melainkan terhadap apa.
-  POS_CASH_VARIANCE: ['expected', 'counted', 'variance'],
+  POS_CASH_VARIANCE: ['expected', 'counted', 'variance', 'shortage', 'overage'],
   POS_CASH_IN: ['amount'],
   POS_CASH_OUT: ['amount'],
+  POS_SALE_VOID: ['gross', 'tax', 'discountAmount'],
+  POS_CASH_RECEIPT_VOID: ['amount'],
+  POS_NONCASH_RECEIPT_VOID: ['amount'],
+  POS_COGS_VOID: ['cost'],
 };
 
 export function checkRequiredAmounts(

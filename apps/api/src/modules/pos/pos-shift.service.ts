@@ -68,13 +68,32 @@ export class PosShiftService {
 
     const shift = await this.shiftTerbuka(schemaName, shiftId);
 
-    await this.tenantDb.query(
-      schemaName,
-      `INSERT INTO "${schemaName}".cash_drawer_movement
-         (shift_id, movement_type, amount, reason, source_type, occurred_at, created_by)
-       VALUES ($1, $2::varchar, $3, $4, 'MANUAL', now(), $5)`,
-      [shiftId, input.movementType, input.amount, input.reason.trim(), subjectId],
-    );
+    await this.tenantDb.transaction(schemaName, async (client) => {
+      const movement = await client.query<{ id: string }>(
+        `INSERT INTO "${schemaName}".cash_drawer_movement
+           (shift_id, movement_type, amount, reason, source_type, occurred_at, created_by)
+         VALUES ($1, $2::varchar, $3, $4, 'MANUAL', now(), $5)
+         RETURNING id::text`,
+        [shiftId, input.movementType, input.amount, input.reason.trim(), subjectId],
+      );
+      await client.query(
+        `INSERT INTO "${schemaName}".accounting_event
+           (event_code, source_type, source_id, source_number, occurred_at, amounts,
+            currency_code, status, idempotency_key, created_by)
+         VALUES ($1, 'CASH_DRAWER_MOVEMENT', $2::uuid, $3, now(), $4::jsonb,
+                 (SELECT COALESCE(value, 'IDR') FROM "${schemaName}".app_setting
+                   WHERE key = 'POS_CURRENCY' LIMIT 1),
+                 'PENDING', $5, $6::uuid)`,
+        [
+          input.movementType === 'CASH_IN' ? 'POS_CASH_IN' : 'POS_CASH_OUT',
+          movement.rows[0].id,
+          shift.shift_number,
+          JSON.stringify({ amount: input.amount }),
+          `${input.movementType}:CASH_DRAWER_MOVEMENT:${movement.rows[0].id}`,
+          subjectId,
+        ],
+      );
+    });
 
     this.logger.log(
       `Kas ${input.movementType} ${input.amount} pada shift ${shift.shift_number}: ${input.reason}`,
@@ -236,6 +255,8 @@ export class PosShiftService {
               expected: Number(ringkas.expectedCash),
               counted: dihitung.toNumber(),
               variance: selisih.toNumber(),
+              shortage: selisih.isNegative() ? selisih.abs().toNumber() : 0,
+              overage: selisih.isPositive() ? selisih.toNumber() : 0,
             }),
             `POS_CASH_VARIANCE:POS_SHIFT:${shiftId}`,
             subjectId,

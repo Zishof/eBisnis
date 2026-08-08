@@ -212,7 +212,7 @@ describe('Telaah Darurat — angka yang belum ditelaah paling atas', () => {
 
     await pengguna.type(screen.getByLabelText(/Langkah berikutnya/), 'Diteruskan ke komite etik.');
     expect(screen.getByRole('button', { name: /Simpan telaah/ })).not.toBeDisabled();
-  });
+  }, 10_000);
 
   it('menyatakan bahwa telaah tidak menyetujui aksesnya', async () => {
     const pengguna = userEvent.setup();

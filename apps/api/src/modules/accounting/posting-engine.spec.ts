@@ -268,8 +268,8 @@ describe('peristiwa yang dikenal', () => {
     expect(unknown).toEqual([]);
   });
 
-  it('dua belas peristiwa kasir terdaftar', () => {
-    expect(POS_EVENTS).toHaveLength(12);
+  it('enam belas peristiwa kasir termasuk pembalik terdaftar', () => {
+    expect(POS_EVENTS).toHaveLength(16);
   });
 
   it('membedakan peristiwa kasir dari peristiwa marketplace', () => {

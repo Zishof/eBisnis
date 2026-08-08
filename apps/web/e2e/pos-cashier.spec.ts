@@ -118,6 +118,19 @@ async function masukSebagaiKasir(page: Page): Promise<void> {
  * Aturan yang sama sudah dicatat pada `auth-and-erp.spec.ts`.
  */
 async function bukaMenu(page: Page, label: string): Promise<void> {
+  const routes: Record<string, string> = {
+    'Kasir / POS': '/app/pos/kasir',
+    'Laporan': '/app/pos/laporan',
+  };
+  const route = routes[label];
+  if (route) {
+    await page.evaluate((path) => {
+      window.history.pushState({}, '', path);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }, route);
+    return;
+  }
+
   const drawer = page.getByRole('button', { name: 'Menu', exact: true });
   if (await drawer.isVisible().catch(() => false)) {
     await drawer.click();
@@ -146,6 +159,16 @@ async function pastikanShiftTerbuka(page: Page): Promise<void> {
 
 /** Membuka keranjang baru bila belum ada. */
 async function pastikanKeranjang(page: Page): Promise<void> {
+  // Setiap skenario harus berawal dari keranjang bersih. Berkas ini memakai
+  // satu sesi kasir bersama agar tidak menabrak rate-limit login, sehingga
+  // keranjang dari test sebelumnya perlu dibatalkan secara eksplisit.
+  const batal = page.getByRole('button', { name: /^batal$/i });
+  if (await batal.isVisible().catch(() => false)) {
+    await batal.click();
+    await expect(page.getByRole('button', { name: /keranjang baru/i })).toBeVisible({
+      timeout: 20_000,
+    });
+  }
   const tombol = page.getByRole('button', { name: /keranjang baru/i });
   if (await tombol.isVisible().catch(() => false)) {
     await tombol.click();
@@ -234,7 +257,9 @@ test.describe('Layar kasir', () => {
     await kotak.fill(f.barcode);
     await kotak.press('Enter');
 
-    await expect(halaman.getByText(f.productName)).toBeVisible({ timeout: 20_000 });
+    await expect(
+      halaman.getByRole('article').getByText(f.productName).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 20_000 });
 
     /*
      * Inti pengujian ini. Pemindai mengirim kode lalu Enter tanpa menyentuh
@@ -252,7 +277,9 @@ test.describe('Layar kasir', () => {
     const kotak = halaman.getByLabel(/kotak pindai barcode/i);
     await kotak.fill(f.barcode);
     await kotak.press('Enter');
-    await expect(halaman.getByText(f.productName)).toBeVisible({ timeout: 20_000 });
+    await expect(
+      halaman.getByRole('article').getByText(f.productName).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 20_000 });
 
     // Menaikkan menjadi tiga lewat tombol, seperti kasir menambah barang yang
     // sama alih-alih memindainya berulang.
@@ -281,7 +308,9 @@ test.describe('Layar kasir', () => {
     const kotak = halaman.getByLabel(/kotak pindai barcode/i);
     await kotak.fill(f.barcode);
     await kotak.press('Enter');
-    await expect(halaman.getByText(f.productName)).toBeVisible({ timeout: 20_000 });
+    await expect(
+      halaman.getByRole('article').getByText(f.productName).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 20_000 });
 
     await halaman.getByRole('button', { name: /bayar/i }).click();
 
@@ -331,7 +360,9 @@ test.describe('Layar kasir', () => {
     const kotak = halaman.getByLabel(/kotak pindai barcode/i);
     await kotak.fill(f.barcode);
     await kotak.press('Enter');
-    await expect(halaman.getByText(f.productName)).toBeVisible({ timeout: 20_000 });
+    await expect(
+      halaman.getByRole('article').getByText(f.productName).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 20_000 });
 
     await halaman.getByRole('button', { name: /^tahan$/i }).click();
     await expect(halaman.getByText(/keranjang ditahan/i)).toBeVisible({ timeout: 20_000 });

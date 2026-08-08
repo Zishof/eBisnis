@@ -171,7 +171,7 @@ export function InventoryPartyMasterPage({ kind }: { kind: InventoryPartyKind })
     queryKey: ['inventory-party-balances', kind],
     queryFn: () => api.get<BalanceRow[]>(`/inventory/party-master-balances/${kind}`),
   });
-  const rows = list.data?.data ?? [];
+  const rows = useMemo(() => list.data?.data ?? [], [list.data?.data]);
   const balanceById = useMemo(() => new Map((balances.data ?? []).map((row) => [row.id, row])), [balances.data]);
   const visibleRows = useMemo(() => rows.filter((row) => {
     const balance = Number(balanceById.get(row.id)?.balance ?? 0);

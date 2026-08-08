@@ -12,7 +12,7 @@ import {
   type PermissionActionSeed,
 } from './tenant-menu.seed';
 import { VerticalCatalogRegistry } from './vertical-catalog.registry';
-import { buildLegacyRoleMap, expandTenantRoles } from './role-expansion';
+import { buildLegacyRoleMap, expandTenantRoles, resolveEffectiveRoleEntry } from './role-expansion';
 import {
   buildSodGroups,
   ROLE_CATALOG,
@@ -511,6 +511,13 @@ export class TenantBootstrapService {
       let permissionCount = 0;
       for (const template of roleTemplates) {
         const entry = catalogByCode.get(template.code);
+        const successorCode = legacyMap.get(template.code);
+        // Role lama tetap dipertahankan agar assignment tenant yang sudah ada
+        // tidak putus. Tata kelola datanya harus mengikuti role penerus resmi;
+        // tanpa ini OWNER (penerus: PEMILIK_USAHA) memiliki permission menu
+        // penuh tetapi tidak mempunyai role_data_scope, sehingga resolver
+        // menolak seluruh baris data operasional.
+        const effectiveEntry = resolveEffectiveRoleEntry(template.code, catalogByCode, legacyMap);
         const roleId = await upsertByCode(client, S, 'role', template.code, {
           code: template.code,
           name: template.name,
@@ -518,11 +525,11 @@ export class TenantBootstrapService {
           role_type: template.roleType,
           sort_order: template.sortOrder,
           is_system: true,
-          profile_code: entry?.profile ?? null,
-          role_family: entry?.family ?? null,
-          is_core: entry?.core ?? false,
+          profile_code: effectiveEntry?.profile ?? null,
+          role_family: effectiveEntry?.family ?? null,
+          is_core: effectiveEntry?.core ?? false,
           is_legacy: !entry,
-          successor_code: legacyMap.get(template.code) ?? null,
+          successor_code: successorCode ?? null,
         });
         roleIds.set(template.code, roleId);
         roleCount += 1;
@@ -544,11 +551,11 @@ export class TenantBootstrapService {
                 OR successor_code IS DISTINCT FROM $6)`,
           [
             roleId,
-            entry?.profile ?? null,
-            entry?.family ?? null,
-            entry?.core ?? false,
+            effectiveEntry?.profile ?? null,
+            effectiveEntry?.family ?? null,
+            effectiveEntry?.core ?? false,
             !entry,
-            legacyMap.get(template.code) ?? null,
+            successorCode ?? null,
           ],
         );
 
@@ -564,11 +571,11 @@ export class TenantBootstrapService {
         }
         permissionCount += await insertRolePermissions(client, S, roleId, rows);
 
-        if (!entry) continue;
+        if (!effectiveEntry) continue;
 
         // Profil per modul disimpan agar penurunan izin dapat diulang saat menu
         // baru ditambahkan, tanpa menebak profil apa yang dulu dipakai.
-        for (const [moduleCode, profileCode] of Object.entries(entry.modules)) {
+        for (const [moduleCode, profileCode] of Object.entries(effectiveEntry.modules)) {
           await client.query(
             // WHERE pada DO UPDATE menahan penulisan ulang bernilai sama.
             // Tanpanya setiap provisioning yang diulang menerbitkan satu baris
@@ -594,7 +601,12 @@ export class TenantBootstrapService {
            WHERE role_data_scope.scope_level IS DISTINCT FROM EXCLUDED.scope_level
               OR role_data_scope.requires_assignment IS DISTINCT FROM EXCLUDED.requires_assignment
               OR role_data_scope.description IS DISTINCT FROM EXCLUDED.description`,
-          [roleId, entry.dataScope, SCOPES_NEEDING_ASSIGNMENT.has(entry.dataScope), entry.description],
+          [
+            roleId,
+            effectiveEntry.dataScope,
+            SCOPES_NEEDING_ASSIGNMENT.has(effectiveEntry.dataScope),
+            effectiveEntry.description,
+          ],
         );
       }
 

@@ -313,6 +313,44 @@ server atau setelah build yang terputus:
 sudo bash /opt/ebisnis/app/deploy/update.sh --force
 ```
 
+`update.sh` sekarang menjalankan gate berikut sebelum migration menyentuh
+database:
+
+1. lock eksklusif agar dua deployment tidak berjalan bersamaan;
+2. penolakan perubahan tracked pada working tree server;
+3. pemeriksaan Node.js minimal 20 dan pnpm tepat `9.15.4`;
+4. verifikasi penamaan, manifest, SQL destruktif, dan immutability migration
+   terhadap commit terakhir yang benar-benar terpasang;
+5. lint dan seluruh unit test API/Web;
+6. Prisma generate dan production build.
+
+Lock memakai `flock` dari paket `util-linux`; `install.sh` memasang paket ini
+secara eksplisit untuk instalasi baru.
+
+Selama unit test, ketiga URL database dioverride ke port loopback tertutup.
+Dengan demikian test yang keliru mencoba koneksi nyata akan gagal dan tidak
+dapat membaca atau menulis database produksi dari symlink `.env`. Suite API
+dijalankan `--runInBand`, lalu suite Web dijalankan sesudahnya agar keduanya
+tidak berebut memori server.
+
+Dalam keadaan darurat, lint dan unit test dapat dilewati secara eksplisit;
+production build, migration integrity, backup, migration, dan health check
+tetap tidak dapat dilewati:
+
+```bash
+sudo SKIP_RELEASE_TESTS=1 bash /opt/ebisnis/app/deploy/update.sh
+```
+
+Deployment stamp baru ditulis setelah API sehat dan `apache2ctl configtest`
+serta reload Apache berhasil. Kegagalan restart service atau Apache memicu
+rollback aplikasi ke commit terakhir yang tercatat sehat; database tetap tidak
+di-rollback otomatis karena migration memakai pola additive.
+
+Target deployment normal wajib merupakan turunan Git linear (fast-forward)
+dari commit pada deployment stamp. Gate berhenti fail-closed bila commit
+pembanding hilang, history ditulis ulang, atau pemeriksaan Git gagal; migration
+immutability tidak pernah dilewati diam-diam.
+
 ### Import legacy CMN saat deploy
 
 Step pelanggan inventory Caruban Medika Nusantara membuat tenant, schema, akun

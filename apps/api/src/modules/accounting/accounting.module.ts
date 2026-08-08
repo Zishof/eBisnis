@@ -13,10 +13,13 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { AccountingEventCatalogRegistry } from './event-catalog.registry';
 import { CORE_EVENT_CATALOGS } from './core-event-catalog';
+import { AccountingPostingService } from './accounting-posting.service';
+import { AccountingEventsController } from './accounting-events.controller';
 
 @Module({
-  providers: [AccountingEventCatalogRegistry],
-  exports: [AccountingEventCatalogRegistry],
+  controllers: [AccountingEventsController],
+  providers: [AccountingEventCatalogRegistry, AccountingPostingService],
+  exports: [AccountingEventCatalogRegistry, AccountingPostingService],
 })
 export class AccountingModule implements OnModuleInit {
   constructor(private readonly registry: AccountingEventCatalogRegistry) {}

@@ -10,6 +10,8 @@ import {
   MasterSeedVerifyRow,
 } from './master-seed.types';
 import { TENANT_MASTER_SEEDS } from './registry/tenant-master-seeds';
+import { ensureInventorySalesPostingRules } from '../accounting/default-posting-rules';
+import { ensureCurrentFiscalPeriods } from '../accounting/default-fiscal-periods';
 
 const IDENTIFIER = /^[a-z_][a-z0-9_]*$/;
 
@@ -113,6 +115,29 @@ export class MasterSeedService {
         });
         summary.totalInserted += inserted;
         summary.totalUpdated += updated;
+      }
+
+      if (!options.only?.length || options.only.includes('ACCOUNTING_POSTING_RULE')) {
+        const rules = await ensureInventorySalesPostingRules(client, schemaName);
+        summary.resources.push({
+          resourceCode: 'ACCOUNTING_POSTING_RULE',
+          inserted: rules.inserted,
+          updated: rules.updated,
+          skipped: 0,
+        });
+        summary.totalInserted += rules.inserted;
+        summary.totalUpdated += rules.updated;
+      }
+
+      if (!options.only?.length || options.only.includes('FISCAL_PERIOD')) {
+        const periods = await ensureCurrentFiscalPeriods(client, schemaName);
+        summary.resources.push({
+          resourceCode: 'FISCAL_PERIOD',
+          inserted: periods.inserted,
+          updated: 0,
+          skipped: periods.existing,
+        });
+        summary.totalInserted += periods.inserted;
       }
     });
 

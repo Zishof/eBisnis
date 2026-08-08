@@ -1720,7 +1720,6 @@ export class ErpController {
         if (discount > 0) events.push(['SALES_ORDER_DISCOUNT', { discountAmount: discount }]);
         if (totalCost.greaterThan(0)) {
           events.push(['SALES_ORDER_COGS', { cost: totalCost.toNumber() }]);
-          events.push(['SALES_ORDER_INVENTORY_RELEASE', { inventoryValue: totalCost.toNumber() }]);
         }
         for (const [code, amounts] of events) {
           await client.query(
@@ -2029,6 +2028,19 @@ export class ErpController {
           [deviceId, body.deviceEventId, JSON.stringify(existing.rows[0])],
         );
         return { ...existing.rows[0], idempotent: true };
+      }
+      const salesperson = await client.query<{ is_active: boolean }>(
+        `SELECT is_active
+           FROM ${S}.inventory_salesperson_profile
+          WHERE user_subject_id = $1::uuid AND deleted_at IS NULL
+          LIMIT 1`,
+        [subjectId],
+      );
+      if (salesperson.rowCount && !salesperson.rows[0].is_active) {
+        throw AppError.forbidden(
+          ErrorCodes.FORBIDDEN,
+          'Profil sales tidak aktif; order baru tidak dapat dikirim.',
+        );
       }
       const customer = await client.query<{ id: string }>(
         `SELECT id::text FROM ${S}.customer WHERE id = $1::uuid AND deleted_at IS NULL AND is_active`,

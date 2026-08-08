@@ -152,6 +152,21 @@ type LegacyStockOpnameRow = Record<string, unknown> & {
   unit_cost: string;
 };
 
+type StockBalanceRow = Record<string, unknown> & {
+  id: string;
+  warehouse_code: string;
+  warehouse_name: string;
+  product_code: string;
+  product_name: string;
+  uom_code: string;
+  on_hand_qty: string;
+  available_qty: string;
+  reserved_qty: string;
+  in_transit_qty: string;
+  quarantine_qty: string;
+  last_movement_at: string | null;
+};
+
 type InventoryPriceBook = {
   id: string;
   code: string;
@@ -173,6 +188,18 @@ type FinanceWorkspace = {
   periods: Array<{ id: string; code: string; name: string; start_date: string; end_date: string; status: string }>;
   journals: Array<{ id: string; journal_number: string; journal_date: string; description: string; status: string; total_debit: string }>;
   closeRuns: Array<{ id: string; run_number: string; status: string; validation_result: Record<string, number>; period_code: string }>;
+  accountingEvents?: Array<{
+    id: string;
+    event_code: string;
+    source_type: string;
+    source_number: string | null;
+    occurred_at: string;
+    status: 'PENDING' | 'POSTED' | 'FAILED' | 'SKIPPED';
+    failure_reason: string | null;
+    retry_count: number;
+    journal_entry_id: string | null;
+    journal_number: string | null;
+  }>;
 };
 
 type InventoryFinancialReport = {
@@ -301,6 +328,11 @@ export function InventoryControlPage() {
     queryFn: () => api.get<StockOpnameWorkspace>('/stock-opnames'),
     enabled: active === 'stock',
   });
+  const stockBalances = useQuery({
+    queryKey: ['inventory-stock-balances'],
+    queryFn: () => api.get<StockBalanceRow[]>('/inventory/balances'),
+    enabled: active === 'stock',
+  });
 
   const view = useMemo(() => buildView(active, {
     dashboard: dashboard.data,
@@ -313,7 +345,8 @@ export function InventoryControlPage() {
     payables: payables.data ?? [],
     prices: prices.data ?? [],
     opname: opname.data ?? [],
-  }), [active, dashboard.data, masterData.data, opname.data, parity.data, payables.data, prices.data, receivables.data, reconciliation.data]);
+    stockBalances: stockBalances.data ?? [],
+  }), [active, dashboard.data, masterData.data, opname.data, parity.data, payables.data, prices.data, receivables.data, reconciliation.data, stockBalances.data]);
 
   const filteredRows = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -326,13 +359,13 @@ export function InventoryControlPage() {
   const loading = dashboard.isLoading || reconciliation.isLoading || (
     active === 'suppliers' ? masterData.isLoading :
     active === 'customers' ? masterData.isLoading :
-    active === 'stock' ? masterData.isLoading || opname.isLoading :
+    active === 'stock' ? stockBalances.isLoading || opname.isLoading :
     active === 'prices' ? prices.isLoading :
     active === 'purchases' ? payables.isLoading :
     active === 'salesOrders' ? receivables.isLoading :
     false
   );
-  const error = [dashboard.error, reconciliation.error, parity.error, parityContract.error, masterData.error, receivables.error, payables.error, prices.error, opname.error, priceBooks.error, finance.error, stockOpnames.error]
+  const error = [dashboard.error, reconciliation.error, parity.error, parityContract.error, masterData.error, receivables.error, payables.error, prices.error, opname.error, priceBooks.error, finance.error, stockOpnames.error, stockBalances.error]
     .filter(Boolean)
     .map(errorMessage)[0];
 
@@ -732,6 +765,7 @@ function FinanceWorkflowPanel({ mode, data, onChanged }: { mode: 'cash' | 'perio
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [message, setMessage] = useState('');
+  const accountingEvents = data?.accountingEvents ?? [];
   const selectedPeriod = periodId || openPeriods[0]?.id || '';
   const journal = useMutation({
     mutationFn: async () => {
@@ -751,12 +785,33 @@ function FinanceWorkflowPanel({ mode, data, onChanged }: { mode: 'cash' | 'perio
     onSuccess: (result) => { setMessage(result.status === 'BLOCKED' ? `Periode belum ditutup: ${JSON.stringify(result.validation)}` : `Periode sekarang berstatus ${result.status}.`); onChanged(); },
     onError: (error) => setMessage(errorMessage(error)),
   });
+  const processEvents = useMutation({
+    mutationFn: () => api.post<{ processed: number; posted: number; failed: number }>('/accounting-events/process-pending'),
+    onSuccess: (result) => {
+      setMessage(`${result.processed} event diproses: ${result.posted} posted, ${result.failed} gagal.`);
+      onChanged();
+    },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+  const retryEvent = useMutation({
+    mutationFn: (id: string) => api.post<{ status: string; journalEntryId?: string }>(`/accounting-events/${id}/retry`),
+    onSuccess: (result) => {
+      setMessage(result.status === 'POSTED' ? 'Event berhasil dijurnal pada percobaan ulang.' : 'Event masih gagal; periksa alasan terbaru.');
+      onChanged();
+    },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
 
   if (!data) return <div className="mb-4 rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Memuat workspace keuangan...</div>;
   return (
     <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950">
       {mode === 'cash' ? <>
-        <div className="mb-3 flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /><h3 className="text-sm font-black">Jurnal harian seimbang</h3></div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /><h3 className="text-sm font-black">Jurnal harian seimbang</h3></div>
+          <button type="button" className="btn-secondary" disabled={processEvents.isPending} onClick={() => processEvents.mutate()}>
+            Proses event tertunda
+          </button>
+        </div>
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-6">
           <select aria-label="Periode jurnal" value={selectedPeriod} onChange={(event) => setPeriodId(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">{openPeriods.map((row) => <option key={row.id} value={row.id}>{row.code}</option>)}</select>
           <select aria-label="Akun debit" value={debitAccount} onChange={(event) => setDebitAccount(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"><option value="">Akun debit</option>{data.accounts.map((row) => <option key={row.id} value={row.id}>{row.code} - {row.name}</option>)}</select>
@@ -764,6 +819,23 @@ function FinanceWorkflowPanel({ mode, data, onChanged }: { mode: 'cash' | 'perio
           <input aria-label="Nominal jurnal" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Nominal" className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
           <input aria-label="Uraian jurnal" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Uraian" className="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
           <button type="button" className="btn-primary" disabled={journal.isPending} onClick={() => journal.mutate()}>Simpan & posting</button>
+        </div>
+        <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+          <table className="min-w-full text-left text-xs">
+            <thead className="border-b border-slate-200 text-slate-500 dark:border-slate-700"><tr><th className="px-3 py-2">Event</th><th className="px-3 py-2">Sumber</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Jurnal / alasan</th><th className="px-3 py-2">Aksi</th></tr></thead>
+            <tbody>
+              {accountingEvents.slice(0, 20).map((event) => (
+                <tr key={event.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+                  <td className="px-3 py-2 font-bold">{event.event_code}</td>
+                  <td className="px-3 py-2">{event.source_number ?? event.source_type}</td>
+                  <td className="px-3 py-2">{event.status}{event.retry_count > 0 ? ` (${event.retry_count}x)` : ''}</td>
+                  <td className="max-w-md px-3 py-2">{event.journal_number ?? event.failure_reason ?? '-'}</td>
+                  <td className="px-3 py-2">{event.status === 'FAILED' && <button type="button" className="btn-secondary" disabled={retryEvent.isPending} onClick={() => retryEvent.mutate(event.id)}>Coba ulang</button>}</td>
+                </tr>
+              ))}
+              {!accountingEvents.length && <tr><td colSpan={5} className="px-3 py-4 text-center text-slate-500">Belum ada event akuntansi.</td></tr>}
+            </tbody>
+          </table>
         </div>
       </> : <>
         <h3 className="mb-3 text-sm font-black">Tutup periode dengan validasi transaksi tertunda</h3>
@@ -1007,6 +1079,7 @@ function buildView(active: TabKey, data: {
   payables: LegacyPayableRow[];
   prices: LegacyPriceRow[];
   opname: LegacyStockOpnameRow[];
+  stockBalances: StockBalanceRow[];
 }) {
   if (active === 'suppliers') {
     return simpleMasterView('Daftar Supplier', 'Supplier lama lengkap dengan kode, nama, status, dan metadata pembayaran.', data.suppliers, ['code', 'name', 'is_active']);
@@ -1036,26 +1109,33 @@ function buildView(active: TabKey, data: {
     };
   }
   if (active === 'stock') {
-    const productRows = data.products.map((row) => ({
+    const balanceRows = data.stockBalances.map((row) => ({
       ...row,
-      stock_status: stockStatus(row, data.opname),
+      stock_status: Number(row.available_qty) > 0 ? 'Tersedia' : Number(row.on_hand_qty) > 0 ? 'Tertahan' : 'Habis',
     }));
     return {
       title: 'Daftar Stok Barang',
-      description: 'Kontrol obat menggunakan batch/expiry dan prinsip FEFO: stok yang lebih dekat kedaluwarsa diprioritaskan.',
+      description: 'Saldo live per gudang dan produk, termasuk tersedia, reservasi, transit, dan karantina.',
       filename: 'cmn-stok-barang',
-      rows: productRows,
+      rows: balanceRows,
       insights: [
-        { label: 'Total SKU', value: formatNumber(data.dashboard?.summary.products ?? productRows.length), note: 'master obat' },
+        { label: 'Total SKU', value: formatNumber(data.dashboard?.summary.products), note: 'master obat' },
+        { label: 'Saldo tersedia', value: formatNumber(balanceRows.reduce((total, row) => total + Number(row.available_qty), 0)), note: 'seluruh gudang dalam scope' },
         { label: 'Batch mendekati ED', value: formatNumber(data.dashboard?.summary.expiring_lots), note: 'perlu follow-up FEFO' },
-        { label: 'Baris opname', value: formatNumber(data.reconciliation?.totals.stock_opname_rows), note: 'hasil import dataopn.dbf' },
       ],
       columns: [
-        col('code', '#Barang', (row) => <Code>{String(row.code)}</Code>),
-        col('name', 'Nama Barang'),
-        col('stock_status', 'Status', (row) => <StatusBadge status={String(row.stock_status)} tone={row.stock_status === 'Perlu opname' ? 'warning' : 'success'} />),
+        col('warehouse_code', 'Gudang', (row) => <Code>{String(row.warehouse_code)}</Code>),
+        col('product_code', '#Barang', (row) => <Code>{String(row.product_code)}</Code>),
+        col('product_name', 'Nama Barang'),
+        col('on_hand_qty', 'On Hand', (row) => formatNumber(Number(row.on_hand_qty))),
+        col('available_qty', 'Tersedia', (row) => formatNumber(Number(row.available_qty))),
+        col('reserved_qty', 'Reservasi', (row) => formatNumber(Number(row.reserved_qty))),
+        col('in_transit_qty', 'Transit', (row) => formatNumber(Number(row.in_transit_qty))),
+        col('quarantine_qty', 'Karantina', (row) => formatNumber(Number(row.quarantine_qty))),
+        col('uom_code', 'Satuan'),
+        col('stock_status', 'Status', (row) => <StatusBadge status={String(row.stock_status)} tone={row.stock_status === 'Tersedia' ? 'success' : 'warning'} />),
       ],
-      exportColumns: exportCols(['code', 'name', 'stock_status']),
+      exportColumns: exportCols(['warehouse_code', 'warehouse_name', 'product_code', 'product_name', 'on_hand_qty', 'available_qty', 'reserved_qty', 'in_transit_qty', 'quarantine_qty', 'uom_code', 'stock_status']),
     };
   }
   if (active === 'prices') {
@@ -1198,12 +1278,6 @@ function financialView<T extends LegacyReceivableRow | LegacyPayableRow>(title: 
     ],
     exportColumns: exportCols(['legacy_invoice_number', String(partyKey), 'transaction_date', 'due_date', 'paid_at', 'amount']),
   };
-}
-
-function stockStatus(row: MasterRow, opname: LegacyStockOpnameRow[]) {
-  return opname.some((item) => item.product_code === row.code && Number(item.variance_qty) !== 0)
-    ? 'Perlu opname'
-    : 'Terkendali';
 }
 
 function col<T extends Record<string, unknown>>(key: string, header: string, render?: (row: T) => ReactNode): GridColumn<T> {

@@ -74,7 +74,6 @@ const AKUN_CMN_INVENTORY = [
     label: 'Pemilik',
     roleCode: 'PEMILIK_USAHA',
     username: 'muklis',
-    password: 'muklis123!!',
     description: 'Dashboard owner, laba, piutang, stok, performa sales, dan laporan investor.',
     icon: Landmark,
   },
@@ -82,7 +81,6 @@ const AKUN_CMN_INVENTORY = [
     label: 'Sales Masrukin',
     roleCode: 'SALES_MASRUKIN',
     username: 'masrukin',
-    password: 'masrukin123!!',
     description: 'Entry order, kunjungan customer, cek stok obat, dan laporan penjualan pribadi.',
     icon: Route,
   },
@@ -90,7 +88,6 @@ const AKUN_CMN_INVENTORY = [
     label: 'Sales Tohirin',
     roleCode: 'SALES_TOHIRIN',
     username: 'tohirin',
-    password: 'tohirin123!!',
     description: 'Entry order, kunjungan customer, cek stok obat, dan laporan penjualan pribadi.',
     icon: Route,
   },
@@ -98,7 +95,6 @@ const AKUN_CMN_INVENTORY = [
     label: 'Sales Nofal',
     roleCode: 'SALES_NOFAL',
     username: 'nofal',
-    password: 'nofal123!!',
     description: 'Entry order, kunjungan customer, cek stok obat, dan laporan penjualan pribadi.',
     icon: Route,
   },
@@ -106,7 +102,6 @@ const AKUN_CMN_INVENTORY = [
     label: 'Sales Agung',
     roleCode: 'SALES_AGUNG',
     username: 'agung',
-    password: 'agung123!!',
     description: 'Entry order, kunjungan customer, cek stok obat, dan laporan penjualan pribadi.',
     icon: Route,
   },
@@ -114,7 +109,6 @@ const AKUN_CMN_INVENTORY = [
     label: 'Admin',
     roleCode: 'ADMIN_TENANT',
     username: 'cmnmedika',
-    password: 'cmnmedika123!!',
     description: 'Konfigurasi tenant, master data, impor, user, dan operasional inventory.',
     icon: ClipboardList,
   },
@@ -161,7 +155,11 @@ export function LoginPage() {
     const akun =
       akunInventory.find((item) => item.roleCode === roleCode) ?? akunInventory[0];
     setValue('username', akun.username, { shouldDirty: true, shouldValidate: true });
-    setValue('password', akun.password, { shouldDirty: true, shouldValidate: true });
+    const password = 'password' in akun && typeof akun.password === 'string' ? akun.password : '';
+    setValue('password', password, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   }, [akunInventory, setValue]);
 
   useEffect(() => {
@@ -367,7 +365,7 @@ export function LoginPage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Pilih persona demo inventory
               </p>
-              {akunInventory.map((akun) => {
+              {AKUN_INVENTORY_DEMO.map((akun) => {
                 const Icon = akun.icon;
                 return (
                   <button

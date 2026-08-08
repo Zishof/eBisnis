@@ -1,9 +1,16 @@
 # 08. Purchase→AP and Sales Order→AR Bridge — Verification Findings
 
-**Metode:** dua agent riset paralel membaca kode langsung (bukan menjalankan test — tidak ada DB
-live), dengan sitasi file:line, mengikuti persis pertanyaan wajib POS-7.1/POS-7.2 dokumen perintah:
-buktikan satu transaksi legacy menghasilkan seluruh rangkaian efek yang dituntut, bukan hanya
-"route-nya ada".
+**Metode audit awal:** pembacaan kode langsung sebelum database lokal tersedia, mengikuti
+pertanyaan wajib POS-7.1/POS-7.2 dokumen perintah: buktikan satu transaksi menghasilkan seluruh
+rangkaian efek yang dituntut, bukan hanya "route-nya ada".
+
+> **Status koreksi 2026-08-08:** temuan keterputusan di bawah adalah baseline historis yang telah
+> memicu implementasi bridge. Kondisi aktual berbeda: validasi GR menulis AP/riwayat harga/event;
+> invoice sales menulis stok/AR/riwayat harga/event; worker mem-posting event ke jurnal seimbang.
+> Layar 39-40 juga sudah terbukti membaca AR live tersebut; `V062` memberi timeline custody
+> append-only yang immutable untuk seluruh transisi. PostgreSQL smoke, POS E2E, dan
+> pengujian transaksional rollback tersedia di `00-repository-baseline.md`. Bagian historis tetap
+> dipertahankan agar alasan perubahan dapat diaudit, bukan sebagai klaim keadaan source terkini.
 
 ## Temuan inti: pola yang sama berulang di DUA domain
 

@@ -60,7 +60,7 @@ export const SALES_INVENTORY_PARITY: InventoryParityItem[] = [
   item(5, 'Membuka Daftar Customer', 'MASTER', ['/customers', '/inventory/party-master-balances/customers'], 'OPERATIONAL', 'OPERATIONAL'),
   item(6, 'Menutup Daftar Customer', 'MASTER', ['/customers', '/inventory/party-master-balances/customers'], 'OPERATIONAL', 'OPERATIONAL'),
   item(7, 'Data Sales atau Penjual Keliling', 'MASTER', ['/salespeople', '/inventory/party-master-balances/salespeople'], 'OPERATIONAL', 'OPERATIONAL'),
-  item(8, 'Data Stok Barang', 'STOCK_PRICE', ['/stock/balances', '/inventory/mobile-catalog'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(8, 'Data Stok Barang', 'STOCK_PRICE', ['/inventory/balances', '/inventory/mobile-catalog'], 'OPERATIONAL', 'OPERATIONAL'),
   item(9, 'Laporan Opname Stok', 'STOCK_PRICE', ['/stock-opnames', '/inventory/legacy/stock-opname'], 'OPERATIONAL', 'OPERATIONAL'),
   item(10, 'Mencetak Laporan Opname Stok', 'STOCK_PRICE', ['/reports/stock-opname/snapshot'], 'OPERATIONAL', 'OPERATIONAL'),
   item(11, 'Harga Beli dan Harga Jual', 'STOCK_PRICE', ['/inventory/legacy/price-history'], 'OPERATIONAL', 'OPERATIONAL'),

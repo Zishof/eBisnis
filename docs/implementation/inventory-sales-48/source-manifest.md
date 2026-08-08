@@ -1,16 +1,44 @@
-# Source Manifest
+# Source Manifest dan Chain of Custody
 
-Audit sumber dilakukan pada 2026-08-06 (Asia/Jakarta). Seluruh sumber dibaca
-sampai selesai; PDF 420 halaman juga diperiksa secara tekstual dan visual pada
-contoh lintas gelombang layar 01, 08, 20, 30, dan 43.
+Audit sumber diperbarui 2026-08-08 (Asia/Jakarta). Pencarian dilakukan pada repository,
+`C:\Users\Admin1\Downloads`, folder paket perintah, dan nama file persis yang diwajibkan master.
+File yang tidak ditemukan tidak direkonstruksi atau dikarang.
 
-| Sumber | Ukuran | Diubah | SHA-256 | Status | Kegunaan |
-| --- | ---: | --- | --- | --- | --- |
-| `C:\Users\USER\Downloads\README_CARA_MENJALANKAN_PERINTAH_IMPLEMENTASI_UI_EBISNIS.txt` | 1,491 | 2026-08-06 01:53:58 +07:00 | `2BDFCAD7DB51BCF24C6ACD38EBF22D05C4B6BE3BDC30F94DC432709D0FE7E7A6` | Dibaca | Aturan eksekusi dan evidence |
-| `C:\Users\USER\Downloads\TRACKER_IMPLEMENTASI_UI_EBISNIS_INVENTORY_48_LAYAR.csv` | 9,453 | 2026-08-06 01:53:56 +07:00 | `7D9B1F43B606413FCD6DEA6FAD516EE7763B992C85894307207CF71E63A556B1` | Dibaca | Baseline tracker 48 layar |
-| `C:\Users\USER\Downloads\PERINTAH_MASTER_CODEX_CLAUDE_IMPLEMENTASI_UI_EBISNIS_INVENTORY_48_LAYAR.md` | 210,971 | 2026-08-06 01:53:53 +07:00 | `A0CD548AC08B651F0BD5F45B580BF4987C1243F711B5C3F03C930298450CD1C4` | Dibaca penuh, 4.016 baris | Kontrak implementasi utama |
-| `C:\Users\USER\Downloads\Paket-Panduan-Transisi-48-Layar-v2-Paritas-Fungsional\Panduan-Transisi-48-Layar-eBisnis-Inventory-Sales-v2-Paritas-Fungsional.pdf` | 12,910,130 | 2026-08-06 00:56:35 +07:00 | `23FD37FDBA8C8F7B89330E3A749FFF607701DA28DE56EA2EFDEDADA01767994B` | Dibaca, 420 halaman | Detail tombol, field, tabel, validasi, keluaran |
-| `C:\Users\USER\Downloads\Paket-Panduan-Transisi-48-Layar-v2-Paritas-Fungsional\Matriks-Paritas-Komponen-48-Layar-v2.csv` | 75,693 | 2026-08-06 00:49:03 +07:00 | `2298045AD3715DD758A3C4A51D56C2CF5623847DC08D45ACE134F61EBCAC614B` | Dibaca, 48 baris | Acceptance criteria terstruktur |
+## Input tersedia dan dibaca
 
-File sumber eksternal tidak disalin ke Git agar PDF besar tidak menggandakan
-artefak. Checksum dan lokasi absolut mempertahankan keterlacakan.
+| Path | Bytes | SHA-256 | Status / tujuan |
+|---|---:|---|---|
+| `C:\Users\Admin1\Downloads\Mapping-48-Layar-Legacy-ke-UI-Baru-eBisnis-POS-Inventory-v3.pdf` | 11.974.012 | `2CADD76BCBD759AEFFE5D101DF9A080139CD228B70A033557256BDB7238935C0` | Dibaca tekstual dan visual 105/105 halaman; mapping visual terbaru 48 layar |
+| `C:\Users\Admin1\Downloads\Panduan-Transisi-48-Layar-eBisnis-Inventory-Sales-v2-Paritas-Fungsional.pdf` | 12.910.130 | `23FD37FDBA8C8F7B89330E3A749FFF607701DA28DE56EA2EFDEDADA01767994B` | Dibaca tekstual 420/420 halaman; kontrak detail v2 |
+| `C:\Users\Admin1\Downloads\Paket_Perintah_POS_Inventory_eBisnis_Paritas_48_Layar\PERINTAH_MASTER_CODEX_CLAUDE_POS_INVENTORY_PARITAS_48_LAYAR.md` | 233.928 | `183CA8FB4114B866233F0451E4AED1E98F683FCE7C7708F274D80C914CFB2142` | Dibaca penuh, 4.714 baris; kontrak eksekusi utama |
+| `...\MATRIKS_EKSEKUSI_POS_INVENTORY_48_LAYAR.md` | 7.934 | `DC7107DB0D8F1C93E64917E50498E5E2A3A630B9E86CF6F3C8C049AF28C64752` | Dibaca penuh; urutan fase/checklist |
+| `...\REKOMENDASI_POS_INVENTORY_EBISNIS_2026.md` | 24.912 | `CC78E6A48EF59DF9971C3FF0C4BF4E345D3EFCC533BC64C8398B01BEA0F29E85` | Dibaca penuh; rekomendasi arsitektur |
+| `...\README_CARA_MENJALANKAN_POS_INVENTORY.txt` | 2.345 | `2F206B64C3CE1A66550326A7156A99BCE918DE9C2CA5CE2ECD05A6CD890F4CE5` | Dibaca penuh; petunjuk paket |
+| `...\MANIFEST_POS_INVENTORY_48_LAYAR.json` | 991 | `77AD6313C230BD86EC1EE62C06D83BCA4464FAF4ACB5400F22C2B673A2958F70` | Dibaca; checksum aktual file manifest berbeda dari self-hash yang tertulis di dalamnya |
+
+Ellipsis pada lima baris paket berarti prefix absolut
+`C:\Users\Admin1\Downloads\Paket_Perintah_POS_Inventory_eBisnis_Paritas_48_Layar`.
+
+Ekstraksi teks dan render PDF dibuat hanya di `tmp/pdfs/` yang diabaikan Git. PDF sumber tidak
+diubah. Render v3 diperiksa melalui 9 contact sheet yang mencakup semua 105 halaman.
+
+## Input wajib master yang tidak ditemukan (`MISSING_INPUT`)
+
+1. `Panduan-Transisi-48-Layar-eBisnis-Inventory-Sales-v2-Paritas-Fungsional.docx`
+2. `Matriks-Paritas-Komponen-48-Layar-v2.csv`
+3. `MASTER_PROMPT_CLAUDE_CODEX_REDEVELOPMENT_SALES_INVENTORY.md`
+4. `ERD_DAN_MAPPING_DBF_SALES_INVENTORY.md`
+5. `ERD_Legacy_DBF_Inventory.mmd`
+6. `ERD_Target_Modern_Sales_Inventory.mmd`
+7. `ERD_Target_Modern_Sales_Inventory.dbml`
+8. `DBF_Legacy_Schema_Inventory.csv`
+9. `LAPORAN_ANALISIS_APLIKASI_LEGACY_SALES_INVENTORY.md`
+10. `Matriks_Paritas_48_Layar.csv`
+11. `Cara penggunaan system inventory buat sales.docx`
+12. `5-Inventory--.rar`
+13. `BRD_eBisnis_ID_Versi_13_Enterprise_Education_Lengkap.docx` atau versi lebih baru dengan nama itu
+14. `PROMPT_CODEX_CLAUDE_V7_GIT_ONLY_MIGRATION_AND_CONTINUOUS_COMMIT.md`
+
+Dari 15 nama wajib master, hanya PDF panduan v2 ditemukan. Mapping v3 dan lima berkas paket adalah
+input baru pengguna yang melengkapi tetapi tidak menggantikan bukti DBF/ERD/BRD yang hilang.
+Requirement yang bergantung pada file hilang tidak boleh berstatus `DONE`.
