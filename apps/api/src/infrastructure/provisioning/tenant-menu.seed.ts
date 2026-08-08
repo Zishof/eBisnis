@@ -121,6 +121,16 @@ export const PERMISSION_ACTIONS_SEED: PermissionActionSeed[] = [
    * hanya nilainya.
    */
   { code: 'VIEW_BANK_DETAILS', name: 'Lihat Data Rekening Bank', nameKey: 'action.viewBankDetails', actionType: 'SENSITIVE', sortOrder: 53 },
+  /*
+   * `POST /sales/orders/:id/invoice` (tenant.module.ts) sudah menegakkan
+   * `@Permissions('SALES_ORDER.INVOICE')` sejak jembatan Sales Order -> AR
+   * dibuat, tetapi aksi 'INVOICE' tidak pernah tersemai ke katalog global
+   * ini -- tidak ada satu pun peran, termasuk Pemilik Usaha (`allModules`),
+   * yang bisa diberi izin itu. Endpoint-nya ADA dan BEKERJA, tetapi tidak
+   * ada jalan sah untuk mengizinkannya. Ditemukan lewat UAT nyata (mencoba
+   * membuat faktur sungguhan), bukan tinjauan kode.
+   */
+  { code: 'INVOICE', name: 'Buat Faktur', nameKey: 'action.invoice', actionType: 'WORKFLOW', sortOrder: 54 },
 ];
 
 export interface MenuNodeSeed {
@@ -176,7 +186,7 @@ export const MENU_TREE_SEED: MenuNodeSeed[] = [
 
   // 03 Penjualan
   { code: 'SALES', label: 'Penjualan', translationKey: 'menu.sales', icon: 'trending-up', moduleCode: 'SALES', sortOrder: 3, actions: ['READ'] },
-  { code: 'SALES_ORDER', parentCode: 'SALES', label: 'Pesanan Penjualan', translationKey: 'menu.sales.order', route: '/app/sales/orders', moduleCode: 'SALES', sortOrder: 1, actions: DOC },
+  { code: 'SALES_ORDER', parentCode: 'SALES', label: 'Pesanan Penjualan', translationKey: 'menu.sales.order', route: '/app/sales/orders', moduleCode: 'SALES', sortOrder: 1, actions: [...DOC, 'INVOICE'] },
   { code: 'SALES_REPORT', parentCode: 'SALES', label: 'Laporan Penjualan', translationKey: 'menu.sales.report', route: '/app/sales/reports', moduleCode: 'SALES', sortOrder: 2, actions: ['READ', 'EXPORT', 'VIEW_AMOUNT', 'VIEW_PROFIT'] },
 
   // 04 Produk dan Harga

@@ -13,15 +13,29 @@ export interface ParityProof {
 /**
  * Bukti PROVEN. KOSONG di awal. Tambah entri hanya bila bukti benar-benar ada
  * (mis. test e2e hijau, hasil UAT ber-evidence). Jangan mengisi tanpa bukti.
+ *
+ * Layar 45-48 (FINANCE) naik ke PROVEN 2026-08-09 lewat UAT nyata terhadap
+ * PostgreSQL lokal (bukan mock): sales order -> invoice -> event akuntansi
+ * -> AccountingPostingService -> journal_entry sungguhan, direkonsiliasi
+ * SQL independen (selisih 0), plus uji immutability snapshot yang sungguh
+ * memverifikasi angka tidak berubah setelah data sumber berubah. Lihat
+ * docs/pos-inventory-parity/evidence/screen-45..48/uat.md.
  */
-export const PARITY_EVIDENCE: ParityProof[] = [];
+export const PARITY_EVIDENCE: ParityProof[] = [
+  { screen: 45, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-45/uat.md' },
+  { screen: 46, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-46/uat.md' },
+  { screen: 47, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-47/uat.md' },
+  { screen: 48, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-48/uat.md' },
+];
 
 /**
  * Layar yang dideklarasikan OPERATIONAL (wired) tetapi BELUM PROVEN.
  * Daftar ini WAJIB menyusut seiring waktu, tidak boleh bertambah.
- * Awal: seluruh 48 layar.
+ * Awal: seluruh 48 layar; 45-48 dikeluarkan 2026-08-09 (lihat PARITY_EVIDENCE).
  */
-export const PENDING_PROOF: number[] = Array.from({ length: 48 }, (_, i) => i + 1);
+export const PENDING_PROOF: number[] = Array.from({ length: 48 }, (_, i) => i + 1).filter(
+  (screen) => ![45, 46, 47, 48].includes(screen),
+);
 
 export function provenScreens(): Set<number> {
   return new Set(PARITY_EVIDENCE.map((p) => p.screen));

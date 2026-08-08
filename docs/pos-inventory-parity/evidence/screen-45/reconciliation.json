@@ -1,0 +1,27 @@
+{
+  "asOfDate": "2026-08-09",
+  "tenantSchema": "uat_finance_15643",
+  "grossProfit": {
+    "apiTotal": "60000",
+    "reconciliationSql": "60000.0000000000",
+    "difference": 0
+  },
+  "profitLoss": {
+    "apiRevenue": "180000.0000",
+    "apiExpenseCogs": "120000.0000",
+    "reconciliationRevenue": "180000.0000",
+    "reconciliationExpense": "120000.0000",
+    "difference": 0
+  },
+  "sourceTransaction": {
+    "salesOrderId": "81d5a5c7-3839-4ad1-8f07-be2238cb5050",
+    "orderNumber": "MOB-20260808-tfinanceorder001",
+    "customer": "CUST-007 Andi Pratama",
+    "product": "FRIED-CHICKEN Ayam Goreng Siap Saji",
+    "qty": 10,
+    "unitPrice": 18000,
+    "standardCost": 12000,
+    "grandTotal": 180000,
+    "createdVia": "POST /inventory/mobile-orders then POST /sales/orders/:id/invoice, this UAT session"
+  }
+}

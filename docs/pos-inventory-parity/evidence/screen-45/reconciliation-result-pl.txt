@@ -1,0 +1,6 @@
+ category |   balance   
+----------+-------------
+ EXPENSE  | 120000.0000
+ REVENUE  | 180000.0000
+(2 rows)
+
