@@ -25,7 +25,6 @@
 library;
 
 import 'package:ebisnis_pos/api/pos_api.dart';
-import 'package:ebisnis_pos/layar/sumber.dart';
 import 'package:ebisnis_pos/mesin/kasir_luring.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
