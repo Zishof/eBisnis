@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"INVALID_STATE_TRANSITION","message":"Aksi \"submit\" tidak diizinkan pada status SENT.","params":{"allowedFrom":["DRAFT"]}},"requestId":"4081b324-75a1-405c-9ceb-8004213d8704","timestamp":"2026-08-08T20:09:17.224Z","path":"/api/v1/purchase-orders/c28c0715-713f-4336-9b9c-e3a1a77ad75e/submit"}

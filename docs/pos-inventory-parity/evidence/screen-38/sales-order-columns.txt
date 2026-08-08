@@ -1,0 +1,24 @@
+    column_name     
+--------------------
+ channel
+ created_at
+ created_by
+ currency_code
+ customer_id
+ delivery_date
+ discount_total
+ grand_total
+ id
+ note
+ order_date
+ order_number
+ outlet_id
+ payment_term_label
+ source_event_id
+ status
+ subtotal
+ tax_total
+ updated_at
+ version
+(20 rows)
+

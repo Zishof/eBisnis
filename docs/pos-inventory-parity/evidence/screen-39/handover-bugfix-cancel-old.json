@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"INTERNAL_ERROR","message":"tidak dapat menentukan tipe data dari parameter $2","params":{}},"requestId":"341c11c3-a052-4bc4-8fa3-f15d13764b4b","timestamp":"2026-08-08T20:00:20.276Z","path":"/api/v1/sales-note-handovers/9b3ada6f-9705-416d-b4cd-a18a8d8d9770/cancel"}

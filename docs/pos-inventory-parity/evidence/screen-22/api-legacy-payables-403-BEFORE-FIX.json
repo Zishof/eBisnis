@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"PERMISSION_DENIED","message":"Hak akses tidak mencukupi.","params":{"missing":["PURCHASE_ORDER.READ"]}},"requestId":"cfdc0c70-23d4-4559-8968-c6ff6c3f13e3","timestamp":"2026-08-08T20:04:03.655Z","path":"/api/v1/inventory/legacy/payables?pageSize=5"}

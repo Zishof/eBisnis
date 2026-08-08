@@ -1,0 +1,6 @@
+  customer_name   | outstanding  | overdue_days 
+------------------+--------------+--------------
+ Andi Pratama     |  800000.0000 |            0
+ CV Warung Berkah | 1000000.0000 |            0
+(2 rows)
+

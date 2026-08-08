@@ -1,0 +1,5 @@
+ sales_name | outstanding  | invoice_count 
+------------+--------------+---------------
+ UAT Tester | 1800000.0000 |             2
+(1 row)
+

@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"CONFLICT","message":"Stock opname harus APPROVED sebelum diposting.","params":{}},"requestId":"696764af-c995-44f7-8599-83bd80913c8a","timestamp":"2026-08-08T20:05:16.206Z","path":"/api/v1/stock-opnames/ce7f9ca2-d0e9-491a-9462-49abb05fb5c8/post"}

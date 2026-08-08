@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"INTERNAL_ERROR","message":"mededuksi tipe yang tidak konsisten untuk parameter $6","params":{}},"requestId":"b98019ec-5ecb-4f0c-9b7f-b8745cd1a71c","timestamp":"2026-08-08T20:03:03.109Z","path":"/api/v1/stock-opnames/ce7f9ca2-d0e9-491a-9462-49abb05fb5c8/post"}

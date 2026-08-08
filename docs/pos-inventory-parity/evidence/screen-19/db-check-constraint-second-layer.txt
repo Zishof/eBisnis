@@ -1,0 +1,10 @@
+DB state before direct-SQL bypass attempt:
+ approval_status | is_active |             submitted_by             | approved_by 
+-----------------+-----------+--------------------------------------+-------------
+ SUBMITTED       | f         | bff8a6f9-614e-423b-9198-e775687b43ad | 
+(1 row)
+
+
+Direct SQL attempt bypassing the app layer entirely (UPDATE approved_by = submitted_by):
+ERROR:  baris baru untuk relasi « price_book » melanggar pemeriksaan constraint « price_book_no_self_approval »
+DETAIL:  Baris gagal berisi (2c9fbc0b-a263-41a2-b1a7-24a81888d9e7, PB-UAT-01, Harga Khusus CUST-007, null, CUSTOMER, 960967de-8466-4f43-b047-ac124e9fc71e, IDR, 2026-08-09, null, f, f, f, null, 0, null, 2026-08-09 03:13:59.763768+07, bff8a6f9-614e-423b-9198-e775687b43ad, 2026-08-09 03:15:09.698985+07, bff8a6f9-614e-423b-9198-e775687b43ad, null, null, null, null, null, 2, SUBMITTED, null, bff8a6f9-614e-423b-9198-e775687b43ad, null, null, null, bff8a6f9-614e-423b-9198-e775687b43ad, 2026-08-09 03:15:09.698985+07)

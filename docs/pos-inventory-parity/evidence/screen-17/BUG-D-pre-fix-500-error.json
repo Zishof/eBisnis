@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"INTERNAL_ERROR","message":"mededuksi tipe yang tidak konsisten untuk parameter $2","params":{}},"requestId":"d38b878c-7ded-4712-814f-fea06839e37a","timestamp":"2026-08-08T20:14:07.073Z","path":"/api/v1/inventory/price-books/2c9fbc0b-a263-41a2-b1a7-24a81888d9e7/status"}

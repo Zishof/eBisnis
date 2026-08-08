@@ -1,0 +1,2 @@
+{"success":false,"error":{"code":"RECORD_REFERENCED","message":"Record tidak dapat dihapus permanen karena masih direferensikan atau kebijakan melarangnya.","params":{"policy":"PURGE_SAMPLE_ONLY","references":[{"table":"sales_order","column":"customer_id","label":"Pesanan penjualan","count":1,"isTransactional":true}]}},"requestId":"f01eb743-91a4-4a71-b11f-0978ed1c5666","timestamp":"2026-08-08T20:14:12.261Z","path":"/api/v1/customers/93813472-cbc9-44f2-8121-fb4399ebb981/purge"}
+HTTP:409

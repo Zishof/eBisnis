@@ -1,0 +1,10 @@
+ sales_order_rows_survive_purge 
+--------------------------------
+                              3
+(1 row)
+
+ salesperson_rows_after_purge 
+------------------------------
+                            0
+(1 row)
+

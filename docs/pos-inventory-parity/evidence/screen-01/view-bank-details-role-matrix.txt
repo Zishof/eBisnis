@@ -1,0 +1,6 @@
+  role   | menus_with_view_bank_details 
+---------+------------------------------
+ MANAGER |                          141
+ OWNER   |                          141
+(2 rows)
+

@@ -1,0 +1,10 @@
+ event_type  | from_status |  to_status  |               actor_id               | actor_name |          occurred_at          |                                                                                               metadata                                                                                                
+-------------+-------------+-------------+--------------------------------------+------------+-------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ CREATED     |             | DRAFT       | b3bb36d3-5f4c-4cb8-96f0-b1e0dad382da | UAT Tester | 2026-08-09 03:01:14.544067+07 | {"invoiceCount": 2}
+ HANDED_OVER | DRAFT       | HANDED_OVER | b3bb36d3-5f4c-4cb8-96f0-b1e0dad382da | UAT Tester | 2026-08-09 03:01:49.701449+07 | {}
+ RETURNED    | HANDED_OVER | RETURNED    | b3bb36d3-5f4c-4cb8-96f0-b1e0dad382da | UAT Tester | 2026-08-09 03:06:04.835566+07 | {"lines": [{"amount": 500000, "lineId": "a26d1367-6fc1-442d-877b-750053e25291", "status": "COLLECTED"}, {"amount": 1000000, "lineId": "bb376efc-1f27-49b8-ae96-eafa086630d7", "status": "RETURNED"}]}
+ CLOSED      | RETURNED    | CLOSED      | b3bb36d3-5f4c-4cb8-96f0-b1e0dad382da | UAT Tester | 2026-08-09 03:07:43.207924+07 | {}
+ CREATED     |             | DRAFT       | b3bb36d3-5f4c-4cb8-96f0-b1e0dad382da | UAT Tester | 2026-08-09 02:59:07.11481+07  | {"invoiceCount": 2}
+ CANCELLED   | DRAFT       | CANCELLED   | b3bb36d3-5f4c-4cb8-96f0-b1e0dad382da | UAT Tester | 2026-08-09 03:01:05.552825+07 | {"reason": "Test data pra-perbaikan bug outstanding_amount, dibatalkan untuk membuat ulang dengan data benar"}
+(6 rows)
+

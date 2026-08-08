@@ -1,0 +1,133 @@
+File: apps/api/src/modules/tenant/sales-inventory-operations.controller.ts
+(Only the 3 hunks below are from this UAT pass. The file was concurrently edited by
+another parallel UAT session working on screens 20-29 -- `git diff` on the whole file
+also shows their in-progress, unrelated changes; those are NOT reproduced here.)
+
+=========================================================================
+BUG D fix -- transitionInventoryPriceBook (price_book status transition, ~line 559)
+=========================================================================
+BEFORE:
+      await client.query(
+        `UPDATE ${S}.price_book
+            SET approval_status = $2, approval_note = $3,
+                submitted_at = CASE WHEN $2 = 'SUBMITTED' THEN now() ELSE submitted_at END,
+                submitted_by = CASE WHEN $2 = 'SUBMITTED' THEN $4::uuid ELSE submitted_by END,
+                approved_at = CASE WHEN $2 = 'APPROVED' THEN now() ELSE approved_at END,
+                approved_by = CASE WHEN $2 = 'APPROVED' THEN $4::uuid ELSE approved_by END,
+                rejected_at = CASE WHEN $2 = 'REJECTED' THEN now() ELSE rejected_at END,
+                rejected_by = CASE WHEN $2 = 'REJECTED' THEN $4::uuid ELSE rejected_by END,
+                is_active = ($2 = 'APPROVED'), updated_at = now(), updated_by = $4::uuid, version = version + 1
+          WHERE id = $1::uuid`,
+        [id, body.status, body.note ?? null, subjectId],
+      );
+
+AFTER:
+      await client.query(
+        `UPDATE ${S}.price_book
+            SET approval_status = $2::varchar, approval_note = $3,
+                submitted_at = CASE WHEN $2::varchar = 'SUBMITTED' THEN now() ELSE submitted_at END,
+                submitted_by = CASE WHEN $2::varchar = 'SUBMITTED' THEN $4::uuid ELSE submitted_by END,
+                approved_at = CASE WHEN $2::varchar = 'APPROVED' THEN now() ELSE approved_at END,
+                approved_by = CASE WHEN $2::varchar = 'APPROVED' THEN $4::uuid ELSE approved_by END,
+                rejected_at = CASE WHEN $2::varchar = 'REJECTED' THEN now() ELSE rejected_at END,
+                rejected_by = CASE WHEN $2::varchar = 'REJECTED' THEN $4::uuid ELSE rejected_by END,
+                is_active = ($2::varchar = 'APPROVED'), updated_at = now(), updated_by = $4::uuid, version = version + 1
+          WHERE id = $1::uuid`,
+        [id, body.status, body.note ?? null, subjectId],
+      );
+
+Root cause: $2 (body.status, plain JS string) is used both as a direct column
+value and inside several unqualified string-equality CASE WHEN comparisons.
+node-postgres sends parameters untyped (OID 0/"unknown"); Postgres's parser
+must infer a single consistent type for $2 across every occurrence in the
+statement and failed to do so, throwing "inconsistent types deduced for
+parameter $2" (bilingual message: "mededuksi tipe yang tidak konsisten untuk
+parameter $2"). This made the ENTIRE price-book transition endpoint --
+submit, approve, reject, deactivate -- fail with HTTP 500 on every call
+against real Postgres. Fix: explicit ::varchar cast on every occurrence.
+
+=========================================================================
+BUG A + BUG B fix -- postStockOpname stock_movement INSERT (~line 992)
+=========================================================================
+BEFORE:
+          `INSERT INTO ${S}.stock_movement
+             (movement_number, movement_type, product_id, uom_id, lot_id, quantity, unit_cost,
+              source_warehouse_id, source_bin_id, destination_warehouse_id, destination_bin_id,
+              reference_type, reference_id, reference_number, posting_key, created_by, note)
+           VALUES ($1, $2, $3::uuid, $4::uuid, $5::uuid, $6, $7,
+             CASE WHEN $6 < 0 THEN $8::uuid END, CASE WHEN $6 < 0 THEN $9::uuid END,
+             CASE WHEN $6 > 0 THEN $8::uuid END, CASE WHEN $6 > 0 THEN $9::uuid END,
+             'STOCK_OPNAME', $10::uuid, $11, $12, $13::uuid, 'Selisih stock opname')`,
+          [`${header.rows[0].opname_number}-${line.id.slice(0, 8)}`,
+            variance > 0 ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT', line.product_id, line.uom_id,
+            line.lot_id, Math.abs(variance), line.unit_cost, header.rows[0].warehouse_id,
+            line.bin_id, id, header.rows[0].opname_number, `STOCK_OPNAME:${id}:${line.id}`, subjectId],
+
+AFTER:
+          `INSERT INTO ${S}.stock_movement
+             (movement_number, movement_type, product_id, uom_id, lot_id, quantity, unit_cost,
+              source_warehouse_id, source_bin_id, destination_warehouse_id, destination_bin_id,
+              reference_type, reference_id, reference_number, posting_key, created_by, note)
+           VALUES ($1, $2, $3::uuid, $4::uuid, $5::uuid, $6::numeric, $7,
+             CASE WHEN $14::numeric < 0 THEN $8::uuid END, CASE WHEN $14::numeric < 0 THEN $9::uuid END,
+             CASE WHEN $14::numeric > 0 THEN $8::uuid END, CASE WHEN $14::numeric > 0 THEN $9::uuid END,
+             'STOCK_OPNAME', $10::uuid, $11, $12, $13::uuid, 'Selisih stock opname')`,
+          [`${header.rows[0].opname_number}-${line.id.slice(0, 8)}`,
+            variance > 0 ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT', line.product_id, line.uom_id,
+            line.lot_id, Math.abs(variance), line.unit_cost, header.rows[0].warehouse_id,
+            line.bin_id, id, header.rows[0].opname_number, `STOCK_OPNAME:${id}:${line.id}`, subjectId,
+            variance],
+
+Bug A root cause: same "inconsistent types deduced for parameter $6" class
+as Bug D -- $6 (Math.abs(variance), a JS number) is used both as the raw
+`quantity` column value and inside unqualified `$6 < 0` / `$6 > 0`
+comparisons. Fixed with explicit ::numeric casts.
+
+Bug B root cause (only exposed once Bug A's exception was fixed and the
+statement could actually run): the CASE WHEN direction logic compared $6 --
+which is Math.abs(variance), therefore ALWAYS >= 0 -- against < 0 and > 0 to
+decide whether the warehouse goes in source_warehouse_id or
+destination_warehouse_id. Since $6 can never be negative, "$6 < 0" is always
+false and "$6 > 0" is always true (variance=0 rows are filtered out by the
+WHERE clause upstream) -- every adjustment, whether ADJUSTMENT_IN (found
+more stock) or ADJUSTMENT_OUT (found less stock), was recorded with the
+warehouse in destination_warehouse_id, never source_warehouse_id. This
+silently breaks the "balance = Sigma(movement)" invariant that is the core
+claim of screen 8/9 for every ADJUSTMENT_OUT ever posted. Fixed by adding a
+14th bound parameter carrying the *signed* variance, used only for the
+direction decision, while $6 (the always-non-negative magnitude) still feeds
+the `quantity` column, which itself must always be a non-negative value.
+
+=========================================================================
+BUG C fix -- buildReport() parameter binding (~line 2017, private method)
+=========================================================================
+BEFORE:
+    const report = reportSql(code, S);
+    if (!report) throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, `Kode laporan ${code} tidak didukung.`);
+    const rows = await this.tenantDb.query<Record<string, unknown>>(schemaOf(user), report.sql, [asOfDate]);
+
+AFTER:
+    const report = reportSql(code, S);
+    if (!report) throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, `Kode laporan ${code} tidak didukung.`);
+    const params = report.sql.includes('$1') ? [asOfDate] : [];
+    const rows = await this.tenantDb.query<Record<string, unknown>>(schemaOf(user), report.sql, params);
+
+Root cause: buildReport() (backs both `POST /reports/:code/preview` and
+`POST /reports/:code/snapshot`, used by screens 10 and 13-16) unconditionally
+binds `[asOfDate]` to every report query. Three of the ~17 report codes in
+`reportSql()` -- 'stock-list' (screens 14/15's report), 'supplier-list', and
+'customer-list' -- have zero `$1` placeholders in their SQL. Postgres
+rejected every call to those three report codes with "bind message supplies
+1 parameters, but prepared statement requires 0" (HTTP 500). Fixed by only
+including the parameter when the SQL text actually references $1.
+
+=========================================================================
+Verification after all 4 fixes
+=========================================================================
+- `pnpm --filter @ebisnis/api lint` -- clean, 0 warnings (run twice, after
+  each batch of edits).
+- `pnpm --filter @ebisnis/api test` -- 157 suites / 4015 tests, all green
+  (run twice, after each batch of edits).
+- Each fix re-verified live against real Postgres via the actual HTTP
+  endpoints -- see uat.md in screen-09, screen-14, screen-17/19 for the
+  exact before/after request-response pairs.

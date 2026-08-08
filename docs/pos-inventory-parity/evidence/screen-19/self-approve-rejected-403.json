@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"FORBIDDEN","message":"Anda tidak dapat menyetujui pengajuan buku harga Anda sendiri. Mintakan kepada supervisor lain.","params":{}},"requestId":"fc69967f-ae4a-4afc-9fc8-2e4978571d67","timestamp":"2026-08-08T20:15:16.163Z","path":"/api/v1/inventory/price-books/2c9fbc0b-a263-41a2-b1a7-24a81888d9e7/status"}

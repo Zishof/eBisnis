@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"VALIDATION_FAILED","message":"Customer atau supplier wajib dipilih untuk harga khusus.","params":{}},"requestId":"80673e0d-add8-4349-806e-d6ce3c160c16","timestamp":"2026-08-08T20:16:13.771Z","path":"/api/v1/inventory/price-books"}

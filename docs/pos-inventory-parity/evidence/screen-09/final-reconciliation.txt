@@ -1,0 +1,6 @@
+=== Final on_hand_qty vs Sigma(movement) reconciliation ===
+ on_hand_qty | derived_all_movements | derived_excluding_prefix_bad_row 
+-------------+-----------------------+----------------------------------
+   45.000000 |             55.000000 |                        50.000000
+(1 row)
+

@@ -1,0 +1,2 @@
+{"success":false,"error":{"code":"CONFLICT","message":"Serah-terima harus berstatus DRAFT.","params":{}},"requestId":"43e1f9e6-8737-4b8e-9d96-4825430c18d7","timestamp":"2026-08-08T20:01:50.027Z","path":"/api/v1/sales-note-handovers/3901e97f-029a-4bcd-a0cf-10696d09e004/handover"}
+HTTP=409

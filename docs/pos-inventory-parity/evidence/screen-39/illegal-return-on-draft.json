@@ -1,0 +1,2 @@
+{"success":false,"error":{"code":"CONFLICT","message":"Nota hanya dapat dikembalikan setelah diserahterimakan.","params":{}},"requestId":"78ae5f0a-897b-46ce-8d1d-766f4d3c4836","timestamp":"2026-08-08T20:01:42.713Z","path":"/api/v1/sales-note-handovers/3901e97f-029a-4bcd-a0cf-10696d09e004/return"}
+HTTP=409

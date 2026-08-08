@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"VALIDATION_FAILED","message":"Validasi permintaan gagal.","params":{},"details":["format must be one of the following values: PDF, EXCEL, PRINT, CSV"]},"requestId":"97b36d75-eac8-4cc2-a7d7-19c36454f843","timestamp":"2026-08-08T20:12:45.006Z","path":"/api/v1/report-snapshots/8f0bc06f-1c78-4691-b58a-eeb61a095a9e/print-log"}

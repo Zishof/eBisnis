@@ -1,0 +1,10 @@
+ total_manual_all_status | payment_count 
+-------------------------+---------------
+             800000.0000 |             2
+(1 row)
+
+ total_posted_only | posted_count 
+-------------------+--------------
+       800000.0000 |            2
+(1 row)
+

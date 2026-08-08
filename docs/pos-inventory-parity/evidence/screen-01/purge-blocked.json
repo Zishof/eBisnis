@@ -1,0 +1,2 @@
+{"success":false,"error":{"code":"STEP_UP_REQUIRED","message":"Aksi ini memerlukan verifikasi ulang kata sandi.","params":{"purpose":"HARD_DELETE"}},"requestId":"49e001de-64a3-4df6-9a4e-643de28b570b","timestamp":"2026-08-08T19:58:48.283Z","path":"/api/v1/suppliers/89667d24-12f5-41ed-8a05-1ae8a386dbed/purge"}
+HTTP:403

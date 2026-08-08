@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"CONFLICT","message":"Pemasok dengan kode \"SUP-UAT-1\" sudah ada.","params":{}},"requestId":"bc09390f-ef74-405e-adf6-0fec0d5ef9e5","timestamp":"2026-08-08T19:51:56.731Z","path":"/api/v1/suppliers"}

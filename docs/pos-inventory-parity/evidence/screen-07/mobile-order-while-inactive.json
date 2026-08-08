@@ -1,0 +1,2 @@
+{"success":false,"error":{"code":"FORBIDDEN","message":"Profil sales tidak aktif; order baru tidak dapat dikirim.","params":{}},"requestId":"9a0984e0-7e54-4299-8832-5eca735b4f4d","timestamp":"2026-08-08T19:56:45.384Z","path":"/api/v1/inventory/mobile-orders"}
+HTTP:403

@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"CONFLICT","message":"Pelanggan dengan kode \"CUST-UAT-1\" sudah ada.","params":{}},"requestId":"2811edfa-5d91-4a0e-b5d5-cf1c5100f6c0","timestamp":"2026-08-08T20:13:25.046Z","path":"/api/v1/customers"}

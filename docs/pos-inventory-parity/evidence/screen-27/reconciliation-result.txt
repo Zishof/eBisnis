@@ -1,0 +1,12 @@
+        party_name        | legacy_invoice_number | transaction_date |  due_date  |   amount    | overdue_days_manual 
+--------------------------+-----------------------+------------------+------------+-------------+---------------------
+ CV Bahan Segar Nusantara | GR-000003             | 2026-06-13       | 2026-06-20 | 300000.0000 |                  50
+ CV Bahan Segar Nusantara | GR-000002             | 2026-08-09       | 2026-08-16 | 500000.0000 |                   0
+ CV Bahan Segar Nusantara | GR-000004             | 2026-08-09       | 2026-08-16 |  60000.0000 |                   0
+(3 rows)
+
+ total_manual 
+--------------
+  860000.0000
+(1 row)
+

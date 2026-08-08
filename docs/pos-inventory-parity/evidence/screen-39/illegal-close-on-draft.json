@@ -1,0 +1,2 @@
+{"success":false,"error":{"code":"CONFLICT","message":"Serah-terima harus berstatus RETURNED.","params":{}},"requestId":"3171b1b5-ff5c-4cc9-8d31-0b6aefe88861","timestamp":"2026-08-08T20:01:33.017Z","path":"/api/v1/sales-note-handovers/3901e97f-029a-4bcd-a0cf-10696d09e004/close"}
+HTTP=409

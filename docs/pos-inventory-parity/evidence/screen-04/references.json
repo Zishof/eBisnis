@@ -1,0 +1,1 @@
+{"success":true,"data":{"resourceCode":"customers","recordId":"93813472-cbc9-44f2-8121-fb4399ebb981","canPurge":false,"policy":"PURGE_SAMPLE_ONLY","references":[{"table":"sales_order","column":"customer_id","label":"Pesanan penjualan","count":1,"isTransactional":true}]},"requestId":"1cacfae2-c59f-4670-bb73-8a9b59ac5dd8"}

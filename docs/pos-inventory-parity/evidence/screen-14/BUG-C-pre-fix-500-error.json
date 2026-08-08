@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"INTERNAL_ERROR","message":"pesan terikat menyediakan 1 parameter, tapi 'prepared statement' «  » butuh 0","params":{}},"requestId":"e9981542-fc79-4f85-9233-22d78d74ece2","timestamp":"2026-08-08T20:11:13.018Z","path":"/api/v1/reports/stock-list/snapshot"}
