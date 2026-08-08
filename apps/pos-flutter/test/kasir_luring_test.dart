@@ -3,10 +3,15 @@
 ///
 /// Dua hal diuji berkas ini:
 ///
-/// 1. `KasirLuringEngine.buat()` tidak pernah melempar walau kanal platform
-///    `path_provider` tidak tersedia -- persis lingkungan `flutter test`
-///    default, tanpa mock apa pun. Ini sengaja TIDAK dimock: kegagalan yang
-///    dites di sini adalah kegagalan yang sungguh terjadi bila tidak ditangani.
+/// 1. `KasirLuringEngine.buat()` tidak pernah melempar walau `path_provider`
+///    gagal. Disimulasikan lewat `PathProviderPlatform.instance` palsu yang
+///    melempar deterministik -- BUKAN dengan membiarkan kanal platform tanpa
+///    mock sama sekali. Percobaan pertama memakai pendekatan itu ("environment
+///    default sudah begini") ternyata membuat `flutter test` di CI MENGGANTUNG
+///    ~10 menit alih-alih melempar `MissingPluginException` seperti diduga --
+///    perilaku kanal platform tanpa handler ternyata tidak terjamin sama di
+///    semua versi Flutter. Mock eksplisit di sini menjamin kegagalan yang
+///    CEPAT dan DAPAT DIDUGA, tanpa bergantung pada perilaku ambien.
 /// 2. Siklus jual-luring-lalu-sinkron sungguhan: jatah dipesan selagi daring,
 ///    jaringan putus di tengah penjualan, transaksi tetap tersimpan di
 ///    antrean lokal tanpa melempar ke pemanggil, lalu terkirim begitu
@@ -24,7 +29,23 @@ import 'package:ebisnis_pos/inventory/inventory_local_database.dart';
 import 'package:ebisnis_pos/layar/sumber.dart';
 import 'package:ebisnis_pos/mesin/identitas_mesin.dart';
 import 'package:ebisnis_pos/mesin/kasir_luring.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+
+/// `path_provider` palsu yang selalu gagal -- deterministik, tanpa bergantung
+/// pada bagaimana kanal platform tanpa handler berperilaku di versi Flutter
+/// yang sedang dipakai CI.
+class _PathProviderGagal extends PathProviderPlatform with MockPlatformInterfaceMixin {
+  @override
+  Future<String?> getApplicationSupportPath() async {
+    throw PlatformException(
+      code: 'UNAVAILABLE',
+      message: 'path_provider tidak tersedia (disimulasikan untuk uji).',
+    );
+  }
+}
 
 const _sesi = SesiKasirApi(
   outletId: 'outlet-1',
@@ -88,8 +109,10 @@ void main() {
     testWidgets(
       'tidak melempar dan menandai luring tak tersedia ketika direktori data aplikasi tak terjangkau',
       (tester) async {
-        // Kanal platform path_provider sengaja TIDAK dimock: environment
-        // flutter test default persis begini, dan itulah yang harus ditangani.
+        final asli = PathProviderPlatform.instance;
+        PathProviderPlatform.instance = _PathProviderGagal();
+        addTearDown(() => PathProviderPlatform.instance = asli);
+
         final client = PosApiClient(
           baseUrl: Uri.parse('http://127.0.0.1:1/'),
           accessToken: 'token-uji',
