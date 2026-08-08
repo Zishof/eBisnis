@@ -127,6 +127,7 @@ ADMIN_URL=$(grep -E '^DATABASE_ADMIN_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
 install -d -m 700 "$BACKUP_DIR"
 STAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/ebisnis-$STAMP.dump"
+BACKUP_PID=
 
 if [[ "${SKIP_DB_BACKUP:-0}" == "1" ]]; then
   # Jalan keluar untuk kasus backup ditangani di tempat lain, misalnya cron pada
@@ -178,20 +179,25 @@ Rincian: docs/deployment/ubuntu.md bagian \"Backup ketika pg_dump lebih tua\"."
   fi
 
   if [[ -n "${EBISNIS_REEXECED:-}" ]]; then
-    # Sudah dibuat pada proses sebelum dijalankan ulang (lihat catatan
-    # EBISNIS_REEXECED di atas) -- membuatnya lagi di sini akan menghasilkan
-    # dump kedua yang percuma dari database yang belum sempat berubah.
+    # Dimulai pada proses sebelum dijalankan ulang (lihat catatan EBISNIS_REEXECED
+    # di atas) -- membuatnya lagi di sini akan menghasilkan dump kedua yang
+    # percuma dari database yang belum sempat berubah. `exec` mengganti isi
+    # proses tetapi mempertahankan PID-nya, sehingga proses pg_dump latar
+    # belakang yang dimulai sebelum exec tetap anak proses yang SAMA di sini
+    # dan tetap dapat ditunggu lewat PID-nya.
     BACKUP_FILE="$EBISNIS_BACKUP_FILE"
-    echo "    sudah dibuat sebelum menjalankan ulang skrip: $BACKUP_FILE"
+    BACKUP_PID="${EBISNIS_BACKUP_PID:-}"
+    echo "    dimulai sebelum menjalankan ulang skrip, masih berjalan di latar belakang: $BACKUP_FILE"
   else
+    # Dijalankan di latar belakang: baris "3/10" yang mengikuti (install,
+    # lint, test, build) tidak menyentuh database sama sekali, sehingga aman
+    # tumpang tindih dengan pg_dump. Ditunggu tepat sebelum "4/10 Migration"
+    # -- langkah pertama yang benar-benar mengubah database -- supaya jaminan
+    # "backup ada sebelum migration berjalan" tetap utuh.
     echo "    memakai $PG_DUMP (versi $CLIENT_VER), server versi ${SERVER_VER:-?}"
-    if "$PG_DUMP" --dbname="$ADMIN_URL" --format=custom --file="$BACKUP_FILE" 2>/tmp/pgdump.err; then
-      chmod 600 "$BACKUP_FILE"
-      echo "    $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
-    else
-      cat /tmp/pgdump.err >&2
-      die "Backup gagal. Pembaruan dihentikan — tidak ada perubahan yang dilakukan."
-    fi
+    echo "    dijalankan di latar belakang, ditunggu tepat sebelum 4/10 Migration."
+    "$PG_DUMP" --dbname="$ADMIN_URL" --format=custom --file="$BACKUP_FILE" 2>/tmp/pgdump.err &
+    BACKUP_PID=$!
   fi
 fi
 
@@ -243,7 +249,7 @@ as_app "git -C '$APP_DIR' log --oneline '$PREVIOUS'..'$NEW'" | sed 's/^/      /'
 # atas. Sesudah titik ini, seluruh langkah memakai isi update.sh yang baru
 # saja ditarik, bukan isi yang sudah dibaca bash sebelum `git pull` berjalan.
 if [[ -z "${EBISNIS_REEXECED:-}" ]]; then
-  export EBISNIS_REEXECED=1 EBISNIS_PREVIOUS="$PREVIOUS" EBISNIS_BACKUP_FILE="$BACKUP_FILE"
+  export EBISNIS_REEXECED=1 EBISNIS_PREVIOUS="$PREVIOUS" EBISNIS_BACKUP_FILE="$BACKUP_FILE" EBISNIS_BACKUP_PID="$BACKUP_PID"
   exec bash "$APP_DIR/deploy/update.sh" "$@"
 fi
 
@@ -354,6 +360,21 @@ else
 fi
 as_app "cd '$APP_DIR' && pnpm db:generate && pnpm build" || rollback
 
+# Backup latar belakang dari "1/10" ditunggu di sini -- tepat sebelum langkah
+# pertama yang benar-benar mengubah database. `wait` pada PID spesifik bekerja
+# walau backup dimulai pada proses sebelum `exec` menjalankan ulang skrip ini,
+# karena `exec` mempertahankan PID prosesnya sendiri.
+if [[ -n "$BACKUP_PID" ]]; then
+  log "Menunggu backup database (PID $BACKUP_PID) selesai sebelum migration"
+  if wait "$BACKUP_PID"; then
+    chmod 600 "$BACKUP_FILE"
+    echo "    $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+  else
+    cat /tmp/pgdump.err >&2
+    die "Backup gagal. Pembaruan dihentikan sebelum migration — tidak ada perubahan pada database."
+  fi
+fi
+
 # ---------------------------------------------------------------------------
 log "4/10  Migration platform dan seluruh tenant"
 # ---------------------------------------------------------------------------
@@ -401,42 +422,33 @@ curl -s http://127.0.0.1:3000/health | sed 's/^/    /'
 as_app "cd '$APP_DIR' && pnpm seed:verify" || warn "Verifikasi seed melaporkan masalah — periksa keluarannya."
 
 # ---------------------------------------------------------------------------
-log "7/10  Sandbox demo ePesantren"
+log "7-9/10  Onboarding sandbox/pelanggan contoh (latar belakang)"
 # ---------------------------------------------------------------------------
-# Mendaftarkan ponpes_demo (bila belum ada) lewat alur publik yang sama
-# dengan pendaftar asli, lalu menyemai data contoh besar TEPAT SEKALI --
-# lihat deploy/ensure-demo-pesantren.sh untuk jaminan idempotensinya.
-# Kegagalan di sini tidak pernah menggagalkan deploy.
+# Ketiga proses ini (ePesantren, Raudlatul Ulum, CMN Inventory) TIDAK PERNAH
+# menggagalkan deploy (lihat masing-masing `|| warn` di bawah) dan tidak ada
+# langkah sesudahnya -- termasuk Apache pada "10/10" -- yang bergantung pada
+# hasilnya. Karena itu ketiganya dijalankan paralel satu sama lain DAN paralel
+# dengan Apache, bukan berurutan; hasilnya baru ditunggu tepat sebelum
+# `DEPLOY_STAMP` ditulis, supaya skrip tidak keluar sementara mereka masih
+# berjalan. Beda dengan backup pada "1/10": tidak ada satu pun langkah wajib
+# yang menunggu ketiganya, jadi tidak perlu titik `wait` di tengah.
 #
-# `${PSQL:-psql}` sebab `$PSQL` hanya diisi di dalam langkah backup, dan
-# tidak ada sama sekali bila dipanggil dengan SKIP_DB_BACKUP=1.
+# `${PSQL:-psql}` sebab `$PSQL` hanya diisi di dalam langkah backup, dan tidak
+# ada sama sekali bila dipanggil dengan SKIP_DB_BACKUP=1.
 # APP_DIR pada sisi kanan sengaja dievaluasi oleh shell pemanggil; assignment
 # di kiri hanya meneruskan nilainya ke proses onboarding.
 # shellcheck disable=SC2097,SC2098
 APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:-psql}" \
-  bash "$APP_DIR/deploy/ensure-demo-pesantren.sh" \
-  || warn "Penyiapan sandbox demo ePesantren gagal — periksa manual bila perlu."
+  bash "$APP_DIR/deploy/ensure-demo-pesantren.sh" >/tmp/ensure-demo-pesantren.log 2>&1 &
+PESANTREN_PID=$!
 
-# ---------------------------------------------------------------------------
-log "8/10  Pelanggan pertama: Raudlatul Ulum"
-# ---------------------------------------------------------------------------
-# Mendaftarkan raudlatul-ulum.santri.info (bila belum ada) lewat alur publik
-# yang sama dengan pendaftar asli, lalu menyiapkan profil situs, unit
-# pendidikan, mata pelajaran, tagihan percobaan, dan akun staf -- lihat
-# deploy/onboard-raudlatul-ulum.sh untuk jaminan idempotensinya. BERBEDA dari
-# sandbox demo di atas: ini pelanggan sungguhan, bukan tenant bersama.
-# Kegagalan di sini tidak pernah menggagalkan deploy.
 # shellcheck disable=SC2097,SC2098
 APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:-psql}" \
-  bash "$APP_DIR/deploy/onboard-raudlatul-ulum.sh" \
-  || warn "Penyiapan tenant Raudlatul Ulum gagal — periksa manual bila perlu."
+  bash "$APP_DIR/deploy/onboard-raudlatul-ulum.sh" >/tmp/onboard-raudlatul-ulum.log 2>&1 &
+RAUDLATUL_PID=$!
 
-# ---------------------------------------------------------------------------
-log "9/10  Pelanggan inventory: Caruban Medika Nusantara"
-# ---------------------------------------------------------------------------
-# Membuat schema `cmnmedika_inventory`, akun pemilik/sales/admin, domain
-# cmnmedika-inventory.ebisnis.id, serta impor DBF legacy bila foldernya tersedia.
-# Kegagalan di sini tidak menggagalkan deploy utama.
+# Penyalinan DBF tetap sinkron (cepat, lokal) sebab skrip onboarding di
+# bawahnya butuh berkasnya sudah di tempat sebelum ia mulai.
 CMN_BUNDLED_IMPORT_DIR="$APP_DIR/deploy/imports/cmn-inventory"
 CMN_IMPORT_DIR=/opt/ebisnis/imports/cmn-inventory
 if [[ -d "$CMN_BUNDLED_IMPORT_DIR" ]]; then
@@ -446,8 +458,8 @@ if [[ -d "$CMN_BUNDLED_IMPORT_DIR" ]]; then
 fi
 # shellcheck disable=SC2097,SC2098
 APP_DIR="$APP_DIR" APP_USER="$APP_USER" \
-  bash "$APP_DIR/deploy/onboard-cmn-inventory.sh" \
-  || warn "Penyiapan tenant Caruban Medika Nusantara gagal -- periksa manual bila perlu."
+  bash "$APP_DIR/deploy/onboard-cmn-inventory.sh" >/tmp/onboard-cmn-inventory.log 2>&1 &
+CMN_PID=$!
 
 # ---------------------------------------------------------------------------
 log "10/10  Apache"
@@ -605,6 +617,25 @@ rm -f "$APACHE_ROLLBACK_DIR"/ebisnis-app.inc \
       "$APACHE_ROLLBACK_DIR"/ebisnis.conf.missing
 rmdir "$APACHE_ROLLBACK_DIR"
 APACHE_ROLLBACK_DIR=
+
+# Ketiganya sudah berjalan sejak "7-9/10", tumpang tindih dengan Apache di
+# atas. Ditunggu di sini -- bukan di tengah -- karena tidak ada langkah wajib
+# yang bergantung padanya; ini semata memastikan skrip tidak keluar sementara
+# proses latar belakang masih berjalan, bukan gerbang keberhasilan deploy.
+for entry in \
+  "Sandbox demo ePesantren:$PESANTREN_PID:/tmp/ensure-demo-pesantren.log" \
+  "Pelanggan Raudlatul Ulum:$RAUDLATUL_PID:/tmp/onboard-raudlatul-ulum.log" \
+  "Pelanggan CMN Inventory:$CMN_PID:/tmp/onboard-cmn-inventory.log"; do
+  nama=${entry%%:*}
+  sisa=${entry#*:}
+  pid=${sisa%%:*}
+  logfile=${sisa#*:}
+  if wait "$pid"; then
+    echo "    $nama: selesai"
+  else
+    warn "$nama gagal — lihat $logfile"
+  fi
+done
 
 # Penanda baru ditulis setelah API sehat DAN konfigurasi reverse proxy lolos.
 # Build atau health yang sukses tetapi Apache gagal bukan deployment selesai.
