@@ -1,0 +1,60 @@
+name: Perbarui Golden POS
+
+# Sekali pakai (dan dapat dipakai ulang): menyamakan berkas golden
+# `apps/pos-flutter/test/goldens/*.png` dengan rendering ubuntu-latest --
+# runner yang sama dipakai job `uji` pada rilis-pos.yml.
+#
+# Golden yang ada di repo dibangkitkan di Windows dan LULUS di sana, tapi
+# Skia merender font berbeda di Ubuntu, sehingga `uji` gagal persis pada
+# semua test golden (13 dari 187) walau widget-nya sendiri benar. Alur ini
+# membangkitkan ulang golden pada runner yang SAMA dengan yang menggerbang
+# rilis, lalu mendorongnya balik -- supaya perbandingan pixel dilakukan
+# terhadap baseline yang benar-benar berasal dari lingkungan CI.
+#
+# Dipicu lewat push ke cabang `golden-refresh/**` supaya tidak bercampur
+# dengan alur push/tag biasa.
+
+on:
+  push:
+    branches: ['golden-refresh/**']
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.27.1'
+  JALUR: apps/pos-flutter
+
+jobs:
+  perbarui:
+    name: Bangkitkan ulang golden
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Ambil dependensi
+        working-directory: ${{ env.JALUR }}
+        run: flutter pub get
+
+      - name: Bangkitkan ulang golden
+        working-directory: ${{ env.JALUR }}
+        run: flutter test --update-goldens
+
+      - name: Dorong balik bila berubah
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- "${JALUR}/test/goldens"; then
+            echo "Tidak ada perubahan golden."
+            exit 0
+          fi
+          git add "${JALUR}/test/goldens"
+          git commit -m "chore(pos-flutter): regenerate goldens on ubuntu-latest to match CI rendering"
+          git push
