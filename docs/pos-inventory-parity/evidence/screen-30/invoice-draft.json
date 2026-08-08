@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"CONFLICT","message":"Pesanan berstatus DRAFT tidak dapat dijadikan faktur. Hanya pesanan berstatus CONFIRMED yang dapat diproses.","params":{}},"requestId":"09053750-665a-4ae4-81a4-aacbf3a278bb","timestamp":"2026-08-08T19:14:16.975Z","path":"/api/v1/sales/orders/5bb3c812-c052-4c98-964f-63274bab6bbc/invoice"}

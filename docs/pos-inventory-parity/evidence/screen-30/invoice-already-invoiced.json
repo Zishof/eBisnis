@@ -1,0 +1,1 @@
+{"success":false,"error":{"code":"CONFLICT","message":"Pesanan berstatus INVOICED tidak dapat dijadikan faktur. Hanya pesanan berstatus CONFIRMED yang dapat diproses.","params":{}},"requestId":"5b900476-4aa8-4634-a5ae-52356c1e68fa","timestamp":"2026-08-08T19:13:47.651Z","path":"/api/v1/sales/orders/81d5a5c7-3839-4ad1-8f07-be2238cb5050/invoice"}

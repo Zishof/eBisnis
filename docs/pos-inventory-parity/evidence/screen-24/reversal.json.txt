@@ -1,0 +1,30 @@
+                  id                  |   amount    | is_settled | total_settled 
+--------------------------------------+-------------+------------+---------------
+ e0da8d28-8899-4259-9a0c-990ea9069ea8 | 600000.0000 | f          |   250000.0000
+(1 row)
+
+{"success":true,"data":{"id":"9b40e4b1-3833-4d91-bb5e-759b9369399c","status":"REVERSED"},"requestId":"7eeacf30-1262-421c-b0bc-3f503f34cf6b"}  status  
+----------
+ REVERSED
+(1 row)
+
+                  id                  |   amount    | is_settled | total_settled 
+--------------------------------------+-------------+------------+---------------
+ e0da8d28-8899-4259-9a0c-990ea9069ea8 | 600000.0000 | f          |             0
+(1 row)
+
+ERROR:  kolom « created_at » tidak ada
+LINE 2: SELECT action_code, created_at FROM "uat_finance_15643__audi...
+                            ^
+ action_code | entity_type | entity_id | occurred_at 
+-------------+-------------+-----------+-------------
+(0 rows)
+
+ERROR:  kolom « changed_at » tidak ada
+LINE 2: SELECT table_name, operation, row_pk, changed_at FROM "uat_f...
+                                              ^
+ count 
+-------
+     0
+(1 row)
+
