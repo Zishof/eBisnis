@@ -437,6 +437,13 @@
         "description": "Mencatat CREATE, HANDOVER, RETURN, CLOSE, dan CANCEL beserta aktor, waktu, status asal/tujuan, dan metadata. Trigger immutable melarang update/delete histori custody."
       },
       {
+        "version": "V063",
+        "sequence": 63,
+        "file": "V063__catch_up_audit_triggers.sql",
+        "name": "Lengkapi trigger audit pada tabel pasca-V008",
+        "description": "Mengulang blok instalasi trigger audit generik V008 (aman dijalankan ulang) supaya tabel yang dibuat migrasi setelah V008 -- termasuk inventory_ap_payment dan inventory_ar_receipt -- ikut punya trg_audit_<table>. Ditemukan lewat UAT: aksi create/post/reverse pembayaran hutang tidak menghasilkan satu pun baris audit_event."
+      },
+      {
         "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

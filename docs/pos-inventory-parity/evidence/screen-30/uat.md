@@ -20,26 +20,37 @@
    Ketiganya konsisten dan berasal dari SATU pemanggilan `invoiceSalesOrder`, yang seluruhnya
    dibungkus `tenantDb.transaction` — sesuai klaim source (properti "Atomicity" pada template).
 
-## Temuan: stok tidak diperiksa sebelum dipotong (bukan bug atomicity, tapi celah validasi)
+## Temuan DIPERBAIKI: stok tidak diperiksa sebelum dipotong
 
-**GAP nyata ditemukan, BELUM diperbaiki:** `invoiceSalesOrder` memotong stok tanpa memeriksa
-ketersediaannya lebih dulu. Dibuktikan langsung: setelah dua invoice pada tenant uji ini
+**GAP nyata ditemukan DAN DIPERBAIKI dalam pass ini:** `invoiceSalesOrder` memotong stok tanpa
+memeriksa ketersediaannya lebih dulu. Dibuktikan langsung: setelah dua invoice pada tenant uji ini
 (order 1: -10, order 2: -5 — tenant baru, tidak pernah menerima barang sama sekali), saldo stok
-FRIED-CHICKEN pada `stock_balance` menjadi **-15** (negatif). Produk ini punya
-`allow_negative_stock: false` pada masternya — nilai itu diabaikan sepenuhnya oleh
-`invoiceSalesOrder`. Ini BUKAN kegagalan atomicity (tidak ada rollback parsial; seluruh efek tetap
-konsisten satu sama lain seperti dibuktikan di atas) — melainkan tidak adanya pemeriksaan
-kecukupan stok SEBELUM transaksi dimulai, sesuatu yang jalur POS (`pos-stock.service.ts`, dengan
-`FOR UPDATE` + pemeriksaan) dan goods-receipt punya, tetapi jalur invoice sales order ini tidak.
+FRIED-CHICKEN pada `stock_balance` sempat menjadi **-15** (negatif), padahal produk ini punya
+`allow_negative_stock: false` pada masternya.
 
-**Dampak:** bisnis dapat "menjual" barang yang stoknya sudah habis lewat faktur pesanan penjualan,
-tanpa penolakan maupun peringatan, menghasilkan saldo stok negatif yang secara diam-diam salah.
+**Perbaikan:** menambahkan pemeriksaan `stock_balance.available_qty` (dijumlah lintas lot pada
+gudang tujuan) terhadap sisa kuantitas sebelum baris `stock_movement` ditulis, dilewati hanya bila
+`product.allow_negative_stock = true`. Melempar `422 INSUFFICIENT_STOCK` dengan kode produk pada
+pesan bila tidak cukup.
+
+**Verifikasi ulang setelah perbaikan** (order baru `aaa04a96-...`, produk yang sama, sudah di
+saldo negatif dari sebelumnya): `POST .../invoice` → **HTTP 422 INSUFFICIENT_STOCK**, `"Stok
+FRIED-CHICKEN tidak mencukupi untuk faktur ini."` — dan status order TETAP `CONFIRMED` (bukan
+`INVOICED`), TIDAK ADA baris `stock_movement` tercipta (`count = 0`). Penolakan bersih, tanpa efek
+parsial.
+
+**Catatan implementasi:** percobaan pertama query pemeriksaan memakai `FOR UPDATE` bersama
+`sum()` — Postgres menolak (`FOR UPDATE tidak diperbolehkan dengan fungsi agregat`), tertangkap
+langsung oleh percobaan HTTP nyata (bukan lolos diam-diam). Query diperbaiki tanpa `FOR UPDATE`,
+mengikuti pola pemeriksaan stok yang sudah ada di `erp-inventory.service.ts` (percobaan
+transfer/dispatch) — celah balapan kecil pada window pemeriksaan-lalu-tulis yang sama seperti
+kode lain di codebase ini, bukan regresi baru.
 
 ## Hasil
 
-**PASS** untuk state guard (dua skenario) dan konsistensi efek gabungan (atomicity struktural: satu
-transaksi DB, semua efek konsisten). Kekurangan pemeriksaan stok dilaporkan sebagai temuan
-terpisah, sengaja tidak diperbaiki pada pass ini.
+**PASS** untuk state guard (dua skenario), konsistensi efek gabungan (atomicity struktural: satu
+transaksi DB, semua efek konsisten), DAN pemeriksaan kecukupan stok (setelah perbaikan, diverifikasi
+ulang lewat percobaan HTTP nyata).
 
 ## Yang TIDAK dicakup pass ini
 

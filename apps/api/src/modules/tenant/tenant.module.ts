@@ -1573,10 +1573,15 @@ export class ErpController {
           delivered_qty: string;
           unit_price: string;
           legacy_unit_cost: string | null;
+          allow_negative_stock: boolean;
+          product_code: string;
         }>(
-          `SELECT id::text, product_id::text, uom_id::text, ordered_qty::text, delivered_qty::text,
-                  unit_price::text, legacy_unit_cost::text AS legacy_unit_cost
-             FROM ${S}.sales_order_line WHERE sales_order_id = $1 ORDER BY line_no`,
+          `SELECT sol.id::text, sol.product_id::text, sol.uom_id::text, sol.ordered_qty::text,
+                  sol.delivered_qty::text, sol.unit_price::text,
+                  sol.legacy_unit_cost::text AS legacy_unit_cost,
+                  p.allow_negative_stock, p.code AS product_code
+             FROM ${S}.sales_order_line sol JOIN ${S}.product p ON p.id = sol.product_id
+            WHERE sol.sales_order_id = $1 ORDER BY sol.line_no`,
           [id],
         );
         if (!lines.rowCount) {
@@ -1608,6 +1613,21 @@ export class ErpController {
             [idempotencyKey],
           );
           if (sudah.rowCount) continue;
+
+          if (!line.allow_negative_stock) {
+            const balance = await client.query<{ available: string }>(
+              `SELECT COALESCE(sum(available_qty), 0)::text AS available
+                 FROM ${S}.stock_balance WHERE warehouse_id = $1 AND product_id = $2`,
+              [warehouseId, line.product_id],
+            );
+            if (sisa.greaterThan(new Decimal(balance.rows[0]?.available ?? '0'))) {
+              throw AppError.unprocessable(
+                ErrorCodes.INSUFFICIENT_STOCK,
+                `Stok ${line.product_code} tidak mencukupi untuk faktur ini.`,
+                { productId: line.product_id, warehouseId },
+              );
+            }
+          }
 
           const unitCost = Number(line.legacy_unit_cost ?? 0);
           await client.query(
