@@ -27,6 +27,7 @@ export const ROLE_ROOM_ATTENDANT = 'HOSPITALITY_ROOM_ATTENDANT';
 export const ROLE_ENGINEERING_MANAGER = 'HOSPITALITY_ENGINEERING_MANAGER';
 export const ROLE_ENGINEER = 'HOSPITALITY_ENGINEER';
 export const ROLE_HOSPITALITY_CASHIER = 'HOSPITALITY_CASHIER';
+export const ROLE_NIGHT_AUDITOR = 'HOSPITALITY_NIGHT_AUDITOR';
 
 const DASAR = { HOME: 'P1', SUPPORT: 'P1' } as const;
 
@@ -101,6 +102,12 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
     moduleCode: HOSPITALITY_PREFIX, sortOrder: 7,
     actions: ['READ','CREATE','UPDATE','POST','REVERSE','PRINT','VIEW_AMOUNT'],
   },
+  {
+    code: 'HOSPITALITY_NIGHT_AUDIT', parentCode: 'HOSPITALITY_GROUP', label: 'Night Audit',
+    translationKey: 'menu.hospitality.nightAudit', route: '/app/hospitality/night-audit', icon: 'MoonStar',
+    moduleCode: HOSPITALITY_PREFIX, sortOrder: 8,
+    actions: ['READ','CREATE','UPDATE','POST','REVIEW','APPROVE','EXPORT'],
+  },
 ];
 
 export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
@@ -158,6 +165,11 @@ export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
     code: ROLE_HOSPITALITY_CASHIER, name: 'Hospitality Cashier', family: 'Hospitality', profile: 'P6',
     modules: { HOME:'P1',SUPPORT:'P1',HOSPITALITY_FOLIO:'P6' }, dataScope:'TENANT', core:false,
     description:'Mengelola folio, pembayaran tokenized, deposit, reversal, invoice, dan cashiering.',
+  },
+  {
+    code: ROLE_NIGHT_AUDITOR, name: 'Night Auditor', family: 'Hospitality', profile: 'P6',
+    modules: { HOME:'P1',SUPPORT:'P1',HOSPITALITY_FOLIO:'P4',HOSPITALITY_NIGHT_AUDIT:'P6' }, dataScope:'TENANT', core:false,
+    description:'Menjalankan end-of-day idempoten, menyelesaikan exception, merekonsiliasi saldo, dan meninjau income audit.',
   },
 ];
 

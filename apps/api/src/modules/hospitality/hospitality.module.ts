@@ -27,6 +27,8 @@ import { HospitalityFolioController } from './hospitality-folio.controller';
 import { HospitalityFolioService } from './hospitality-folio.service';
 import { HospitalityCashierController } from './hospitality-cashier.controller';
 import { HospitalityFolioOperationsController } from './hospitality-folio-operations.controller';
+import { HospitalityNightAuditController } from './hospitality-night-audit.controller';
+import { HospitalityNightAuditService } from './hospitality-night-audit.service';
 
 @Module({
   controllers: [
@@ -45,6 +47,7 @@ import { HospitalityFolioOperationsController } from './hospitality-folio-operat
     HospitalityFolioController,
     HospitalityCashierController,
     HospitalityFolioOperationsController,
+    HospitalityNightAuditController,
   ],
   providers: [
     HospitalityPropertiService,
@@ -60,6 +63,7 @@ import { HospitalityFolioOperationsController } from './hospitality-folio-operat
     HospitalityHousekeepingService,
     HospitalityMaintenanceService,
     HospitalityFolioService,
+    HospitalityNightAuditService,
   ],
 })
 export class HospitalityModule {}
