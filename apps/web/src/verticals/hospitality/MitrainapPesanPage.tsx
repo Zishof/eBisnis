@@ -16,6 +16,14 @@ interface KonteksSitus {
   propertyName: string;
 }
 
+interface KontenSitus {
+  contentType: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  body: Record<string, unknown>;
+}
+
 interface HasilTipeKamar {
   room_type_id: string;
   code: string;
@@ -63,6 +71,10 @@ export function MitrainapPropertiSitusPage() {
     queryKey: ['mitrainap-situs-konteks'],
     queryFn: () => api.get<KonteksSitus>('/public/hospitality-site/context'),
   });
+  const konten = useQuery({
+    queryKey: ['mitrainap-situs-konten'],
+    queryFn: () => api.get<KontenSitus[]>('/public/hospitality-site/content'),
+  });
 
   if (konteks.isLoading) {
     return <p className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-slate-500 dark:text-slate-400">Memuat...</p>;
@@ -78,15 +90,17 @@ export function MitrainapPropertiSitusPage() {
     );
   }
 
-  return <IsiPesan propertyId={konteks.data.propertyId} namaProperti={konteks.data.propertyName} />;
+  return <IsiPesan propertyId={konteks.data.propertyId} namaProperti={konteks.data.propertyName} konten={konten.data ?? []} />;
 }
 
 function IsiPesan({
   propertyId,
   namaProperti,
+  konten,
 }: {
   propertyId: string;
   namaProperti?: string;
+  konten: KontenSitus[];
 }) {
   const besok = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
   const lusa = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
@@ -168,6 +182,12 @@ function IsiPesan({
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
+      {konten.filter((item) => item.contentType === 'PAGE').slice(0, 1).map((item) => (
+        <section key={item.slug} className="mb-8 rounded-2xl bg-gradient-to-r from-indigo-700 to-blue-600 p-6 text-white">
+          <h1 className="text-2xl font-black">{item.title}</h1>
+          {item.summary && <p className="mt-2 max-w-2xl text-sm text-indigo-100">{item.summary}</p>}
+        </section>
+      ))}
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
         {namaProperti ? `Cari dan Pesan Kamar — ${namaProperti}` : 'Cari dan Pesan Kamar'}
       </h1>
@@ -180,6 +200,18 @@ function IsiPesan({
       >
         Sudah memesan? Kelola pemesanan
       </a>
+
+      {konten.filter((item) => item.contentType === 'ARTICLE' || item.contentType === 'FAQ').length > 0 && (
+        <aside className="mt-5 grid gap-3 sm:grid-cols-2">
+          {konten.filter((item) => item.contentType === 'ARTICLE' || item.contentType === 'FAQ').slice(0, 4).map((item) => (
+            <article key={`${item.contentType}-${item.slug}`} className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+              <p className="text-xs font-bold uppercase text-indigo-600">{item.contentType}</p>
+              <h2 className="mt-1 font-bold">{item.title}</h2>
+              {item.summary && <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{item.summary}</p>}
+            </article>
+          ))}
+        </aside>
+      )}
 
       <div className="card mt-6 grid gap-3 p-4 sm:grid-cols-5">
         <Field label="Check-in">

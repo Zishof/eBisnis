@@ -47,6 +47,7 @@ import { HospitalityLongstayPage } from '../pages/app/hospitality/HospitalityLon
 import { HospitalityExperiencePage } from '../pages/app/hospitality/HospitalityExperiencePage';
 import { HospitalityErpPage } from '../pages/app/hospitality/HospitalityErpPage';
 import { HospitalityInsightPage } from '../pages/app/hospitality/HospitalityInsightPage';
+import { HospitalityGoLivePage } from '../pages/app/hospitality/HospitalityGoLivePage';
 import { PesantrenBeritaPage } from '../pages/app/pesantren/PesantrenBeritaPage';
 import { PesantrenPsbPage } from '../pages/app/pesantren/PesantrenPsbPage';
 import { PesantrenKioskPage } from '../pages/app/pesantren/PesantrenKioskPage';
@@ -437,6 +438,10 @@ const MitrainapFaqPage = lazy(() =>
     default: m.MitrainapFaqPage,
   })),
 );
+const MitrainapPricingPage = lazy(() => import('../verticals/hospitality/MitrainapResourcesPage').then((m) => ({ default: m.MitrainapPricingPage })));
+const MitrainapDemoPage = lazy(() => import('../verticals/hospitality/MitrainapResourcesPage').then((m) => ({ default: m.MitrainapDemoPage })));
+const MitrainapBlogPage = lazy(() => import('../verticals/hospitality/MitrainapResourcesPage').then((m) => ({ default: m.MitrainapBlogPage })));
+const MitrainapHelpPage = lazy(() => import('../verticals/hospitality/MitrainapResourcesPage').then((m) => ({ default: m.MitrainapHelpPage })));
 const MitrainapKelolaPesananPage = lazy(() =>
   import('../verticals/hospitality/MitrainapKelolaPesananPage').then((m) => ({
     default: m.MitrainapKelolaPesananPage,
@@ -612,6 +617,10 @@ export function App() {
           <Route index element={<MitrainapHomePage />} />
           <Route path="solusi" element={<MitrainapSolusiPage />} />
           <Route path="faq" element={<MitrainapFaqPage />} />
+          <Route path="harga" element={<MitrainapPricingPage />} />
+          <Route path="demo" element={<MitrainapDemoPage />} />
+          <Route path="blog" element={<MitrainapBlogPage />} />
+          <Route path="bantuan" element={<MitrainapHelpPage />} />
           {/* Pendaftaran properti sungguhan (MI-3) -- lihat komentar di berkasnya. */}
           <Route path="daftar" element={<MitrainapDaftarPage />} />
           <Route path="daftar/berhasil" element={<MitrainapDaftarBerhasilPage />} />
@@ -894,6 +903,7 @@ export function App() {
           <Route path="hospitality/experience" element={<HospitalityExperiencePage />} />
           <Route path="hospitality/erp" element={<HospitalityErpPage />} />
           <Route path="hospitality/insight" element={<HospitalityInsightPage />} />
+          <Route path="hospitality/go-live" element={<HospitalityGoLivePage />} />
           <Route path="pesantren/tagihan" element={<PesantrenTagihanPage />} />
           <Route path="pesantren/profil" element={<PesantrenProfilPage />} />
           <Route path="pesantren/berita" element={<PesantrenBeritaPage />} />

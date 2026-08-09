@@ -120,6 +120,7 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
   { code:'HOSPITALITY_EXPERIENCE',parentCode:'HOSPITALITY_GROUP',label:'Guest & Staff Experience',translationKey:'menu.hospitality.experience',route:'/app/hospitality/experience',icon:'Smartphone',moduleCode:HOSPITALITY_PREFIX,sortOrder:12,actions:['READ','CREATE','UPDATE','APPROVE','EXPORT'] },
   { code:'HOSPITALITY_ERP',parentCode:'HOSPITALITY_GROUP',label:'ERP & Accounting Integration',translationKey:'menu.hospitality.erp',route:'/app/hospitality/erp',icon:'Network',moduleCode:HOSPITALITY_PREFIX,sortOrder:13,actions:['READ','UPDATE','POST','REVIEW','EXPORT'] },
   { code:'HOSPITALITY_INSIGHT',parentCode:'HOSPITALITY_GROUP',label:'Reports, AI & Observability',translationKey:'menu.hospitality.insight',route:'/app/hospitality/insight',icon:'ChartNoAxesCombined',moduleCode:HOSPITALITY_PREFIX,sortOrder:14,actions:['READ','CREATE','APPROVE','PRINT','EXPORT'] },
+  { code:'HOSPITALITY_GO_LIVE',parentCode:'HOSPITALITY_GROUP',label:'Go-live Control Center',translationKey:'menu.hospitality.goLive',route:'/app/hospitality/go-live',icon:'Rocket',moduleCode:HOSPITALITY_PREFIX,sortOrder:15,actions:['READ','CREATE','UPDATE','APPROVE','EXPORT'] },
 ];
 
 export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [

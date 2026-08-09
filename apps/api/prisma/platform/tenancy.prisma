@@ -581,6 +581,15 @@ model VerticalSiteDomain {
   /// memperoleh permintaan yang ditujukan ke sana.
   verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
   verifyToken String?  @map("verify_token") @db.VarChar(128)
+  domainKind String @default("MANAGED") @map("domain_kind") @db.VarChar(16)
+  verificationMethod String? @map("verification_method") @db.VarChar(16)
+  verificationTokenHash String? @map("verification_token_hash") @db.VarChar(64)
+  verificationRecord String? @map("verification_record") @db.VarChar(320)
+  verificationCheckedAt DateTime? @map("verification_checked_at") @db.Timestamptz(6)
+  tlsStatus String @default("NOT_REQUIRED") @map("tls_status") @db.VarChar(32)
+  tlsProviderReference String? @map("tls_provider_reference") @db.VarChar(240)
+  certificateExpiresAt DateTime? @map("certificate_expires_at") @db.Timestamptz(6)
+  lastError String? @map("last_error") @db.Text
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   version    Int       @default(1)

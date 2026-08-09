@@ -124,6 +124,23 @@ log "1/10  Backup database"
 ADMIN_URL=$(grep -E '^DATABASE_ADMIN_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
 [[ -n "$ADMIN_URL" ]] || die "DATABASE_ADMIN_URL tidak ada pada $ENV_FILE."
 
+# Prisma multi-schema menyimpan histori migration di schema `platform`. URL
+# tanpa `?schema=platform` dapat terhubung ke database tetapi gagal saat
+# inisialisasi persistence migration. Fail-fast sebelum backup/build panjang,
+# dan jangan pernah mencetak URL yang dapat memuat password.
+DATABASE_URL_VALUE=$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
+DIRECT_DATABASE_URL_VALUE=$(grep -E '^DIRECT_DATABASE_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
+for DB_URL_LABEL in DATABASE_URL DIRECT_DATABASE_URL DATABASE_ADMIN_URL; do
+  case "$DB_URL_LABEL" in
+    DATABASE_URL) DB_URL_VALUE=$DATABASE_URL_VALUE ;;
+    DIRECT_DATABASE_URL) DB_URL_VALUE=$DIRECT_DATABASE_URL_VALUE ;;
+    DATABASE_ADMIN_URL) DB_URL_VALUE=$ADMIN_URL ;;
+  esac
+  [[ -n "$DB_URL_VALUE" ]] || die "$DB_URL_LABEL tidak ada pada $ENV_FILE."
+  [[ "$DB_URL_VALUE" =~ [\?\&]schema=platform([\&]|$) ]] \
+    || die "$DB_URL_LABEL wajib memuat parameter schema=platform. Nilai aktual disembunyikan."
+done
+
 install -d -m 700 "$BACKUP_DIR"
 STAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/ebisnis-$STAMP.dump"

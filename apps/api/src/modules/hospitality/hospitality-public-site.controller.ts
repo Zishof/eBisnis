@@ -3,7 +3,7 @@
  * sama dengan `pesantren-public.controller.ts`.
  */
 
-import { Controller, Get, Headers } from '@nestjs/common';
+import { Controller, Get, Headers, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { HospitalityPublicSiteService } from './hospitality-public-site.service';
 import { Public } from '../../common/decorators';
@@ -28,5 +28,12 @@ export class HospitalityPublicSiteController {
       propertyName: konteks.propertyName,
       timezone: konteks.timezone,
     };
+  }
+
+  @Public()
+  @Get('content')
+  @ApiOperation({ summary: 'Konten CMS terpublikasi untuk situs properti pada host aktif' })
+  content(@Headers('host') host: string, @Query('slug') slug?: string) {
+    return this.situs.konten(host, slug);
   }
 }

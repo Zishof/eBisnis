@@ -40,6 +40,16 @@ export interface KonteksSitusProperti {
   timezone: string;
 }
 
+export interface KontenSitusPublik {
+  contentType: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  body: Record<string, unknown>;
+  seo: Record<string, unknown>;
+  publishedAt: string;
+}
+
 @Injectable()
 export class HospitalityPublicSiteService {
   constructor(
@@ -75,5 +85,16 @@ export class HospitalityPublicSiteService {
       propertyName: properti.name,
       timezone: properti.timezone,
     };
+  }
+
+  async konten(host: string | undefined, slug?: string): Promise<KontenSitusPublik[]> {
+    const context = await this.konteks(host);
+    const S = context.schemaName;
+    return this.tenantDb.query<KontenSitusPublik>(S, `
+      SELECT content_type AS "contentType",slug,title,summary,body_json AS body,seo_json AS seo,published_at::text AS "publishedAt"
+      FROM "${S}".hospitality_site_content
+      WHERE status='PUBLISHED' AND deleted_at IS NULL AND ($1::varchar IS NULL OR slug=$1)
+      ORDER BY content_type,slug
+    `, [slug?.trim().toLowerCase() || null]);
   }
 }

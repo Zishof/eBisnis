@@ -1,6 +1,6 @@
 # Rencana implementasi incremental
 
-Setiap fase adalah vertical slice migration → model/domain → API → permission → UI → test → docs/changelog. Status audit 9 Agustus 2026: MI-0, MI-1, MI-4, dan MI-12..MI-23 selesai. MI-24 lulus seluruh gate lokal; sign-off staging/perangkat, backup-restore/DR produksi, dan provider eksternal tetap wajib sebelum keputusan go-live. MI-2, MI-3, dan MI-5..MI-11 tetap parsial terhadap BRD.
+Setiap fase adalah vertical slice migration → model/domain → API → permission → UI → test → docs/changelog. Status audit ulang 9 Agustus 2026: MI-0..MI-23 memiliki implementasi fungsional; migration penyelesaian H071 lulus pada 16 schema. MI-24 tetap memisahkan bukti lokal dari keputusan produksi: sign-off staging/perangkat, backup-restore/DR, DNS/TLS, provider eksternal, dan persetujuan manusia wajib sebelum cutover.
 
 | Fase | Outcome |
 |---|---|
@@ -19,16 +19,16 @@ Setiap fase adalah vertical slice migration → model/domain → API → permiss
 |---|---|---|
 | MI-0 | SELESAI | audit baseline dan ledger pada direktori ini; commit `62c93e2` |
 | MI-1 | SELESAI | portal/host/branding MitraInap terdaftar dan diuji |
-| MI-2 | PARSIAL | homepage, solusi, FAQ, dan public site tersedia; cakupan CMS/SEO BRD belum lengkap |
-| MI-3 | PARSIAL | registrasi, provisioning subdomain, Apache alias, dan demo deploy tersedia; custom-domain/TLS lifecycle belum lengkap |
+| MI-2 | SELESAI | portal homepage/solusi/harga/demo/blog/FAQ/bantuan, lead/registration, sitemap/robots, CMS workflow dan host-scoped publication tersedia |
+| MI-3 | SELESAI | registrasi/subdomain, tenant CMS, custom-domain DNS TXT hash verification, revoke dan TLS lifecycle state tersedia |
 | MI-4 | SELESAI | produk/paket tanpa harga rekaan, modul/fitur/dependency, assignment entitlement, usage contract, provisioning/role/menu/support seed, dan health check tersedia |
-| MI-5 | PARSIAL | property, room type, dan room tersedia; portfolio/building/floor/zone/active-context belum lengkap |
-| MI-6 | PARSIAL | inventory block dan availability tersedia; ledger stay-date/allotment/concurrency coverage BRD belum lengkap |
-| MI-7 | PARSIAL | guest profile, consent, merge, dan privacy tersedia; relasi/company/loyalty CRM belum lengkap |
-| MI-8 | PARSIAL | reservation core lifecycle tersedia; quote/waitlist/group/detail lifecycle belum lengkap |
-| MI-9 | PARSIAL | direct booking dan manage-booking berbasis trusted host tersedia; payment/provider dan acceptance a11y penuh belum lengkap |
-| MI-10 | PARSIAL | rate plan, calendar, restriction, dan occupancy summary tersedia; forecast/recommendation/approval revenue belum lengkap |
-| MI-11 | PARSIAL | kontrak provider-neutral, account/mapping, ARI/reservation queue, retry/DLQ, sanitasi, dan reconciliation exception tersedia; worker/UI/live adapter belum lengkap |
+| MI-5 | SELESAI | legal entity/portfolio/brand/property/building/floor/zone, sellable room/unit/bed/space dan active context tersedia |
+| MI-6 | SELESAI | block, stay-date ledger, allotment, overbooking, accessibility, transactional reconciliation dan concurrency guard tersedia |
+| MI-7 | SELESAI | profile/consent/merge/privacy/restricted guest, relationship/companion/loyalty dan business-account link tersedia |
+| MI-8 | SELESAI | quote snapshot, reservation lifecycle, multi-room/guest, waitlist/walk-in dan group rooming tersedia |
+| MI-9 | SELESAI | direct/manage booking, transparent total/policy, provider-neutral payment intent, idempotency dan recovery tersedia |
+| MI-10 | SELESAI | rate/restriction/calendar, pickup/pace forecast, evidence recommendation, review dan approval-before-publish tersedia |
+| MI-11 | SELESAI | provider-neutral mapping/ARI/reservation queue, SKIP LOCKED worker, attempt audit, retry/DLQ, parity dan reconciliation tersedia |
 | MI-12 | SELESAI | board arrival/departure/in-house, pre-arrival, room assignment, check-in/out idempoten, physical/digital-key contract, room move/rekey, perubahan masa inap/late checkout, exception model, handover, RBAC sempit, dan UI operasional tersedia |
 | MI-13 | SELESAI | supervisor room board, task/checklist lifecycle, mobile offline idempotency, DND/refused/discrepancy, inspection/rework, linen/laundry, minibar outbox, lost-and-found custody, role supervisor/attendant, dan UI responsif tersedia |
 | MI-14 | SELESAI | work order/SLA/mobile events, shared product/supplier links, inventory issue outbox, asset/room history, preventive plan, approved OOO/OOS availability blocks, verified release, RBAC, dan UI tersedia |
@@ -41,6 +41,6 @@ Setiap fase adalah vertical slice migration → model/domain → API → permiss
 | MI-21 | SELESAI | guest portal session, staff offline queue, kiosk, privacy purge, digital-key/IoT provider-neutral contracts |
 | MI-22 | SELESAI | canonical versioned events, ERP ports/delivery, accounting trace, retry dan reconciliation |
 | MI-23 | SELESAI | report snapshots/export, evidence-bound AI drafts, help, demo markers, notification outbox dan observability |
-| MI-24 | LOCAL GATE PASS | 184 suite/4.170 API test dan seluruh Web Vitest pass; lint/build/release gate/migration idempotency 16 schema pass; staging UAT, device/a11y visual, load, backup-restore/DR dan go-live sign-off pending |
+| MI-24 | LOCAL GATE PASS | 186 suite/4.176 API test dan 45 file/518 Web test pass; lint, API/Web production build, release gate, 20 migration hospitality idempoten pada 16 schema, serta backup dan restore isolasi lokal pass; staging UAT, device/a11y visual, load, DNS/TLS/provider dan go-live sign-off pending |
 
 Gate tiap fase: tidak ada TODO/skeleton sebagai acceptance; negative authorization dan tenant/property isolation lulus; migration additive; API/UI memakai data nyata; mobile/responsive diperiksa; ledger diperbarui. Live OTA/GDS/payment/digital-key/IoT tetap `BLOCKED_PROVIDER_INPUT` bila contract/credential belum tersedia, tetapi interface, fake adapter, queue, failure mode, dan tests tetap dibuat.

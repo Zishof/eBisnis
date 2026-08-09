@@ -106,11 +106,11 @@ export function MitrainapHomePage() {
 
       <section className="mx-auto max-w-6xl px-4 py-16">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Cakupan yang sedang dibangun
+          Operasional Hospitality terpadu
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-          MitraInap.id sedang dibangun bertahap. Modul berikut adalah cakupan
-          yang direncanakan, dibangun berurutan mengikuti kesiapan masing-masing.
+          Modul inti terhubung melalui konteks properti, tanggal operasional,
+          audit, antrean idempoten, dan kontrol akses yang sama.
         </p>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {MODUL_UTAMA.map((m) => (

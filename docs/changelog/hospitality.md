@@ -9,6 +9,14 @@
 
 # Hospitality / MitraInap changelog
 
+## 2026-08-09 — Penyelesaian MI-2/3/5–11 dan hardening go-live
+
+- Menambahkan migration tenant H071 yang additive untuk CMS publication; hierarchy legal entity/portfolio/brand/building/floor/zone; active context; sellable room/unit/bed/space; stay-date ledger/allotment; CRM relationship/loyalty; quote/waitlist; booking payment/recovery; revenue forecast/recommendation approval; serta channel worker attempt/parity.
+- Menambahkan migration platform lifecycle custom-domain dengan DNS TXT proof berbasis hash, revoke, dan state sertifikat TLS tanpa menyimpan private key.
+- Menambahkan `Go-live Control Center`, CMS host-scoped, halaman harga/demo/blog/bantuan, sitemap/robots, dan menghapus klaim portal “sedang dibangun”.
+- Payment/channel/provider yang belum punya kontrak resmi tetap fail-closed `BLOCKED_PROVIDER_INPUT`; TEST adapter deterministic tidak dianggap koneksi live.
+- Prisma typecheck dan API/Web lint lulus; Web production build lulus; migration platform diterapkan dan H071 diterapkan pada 16 schema tenant.
+
 ## 2026-08-09 — MI-0 audit
 
 - Memverifikasi seluruh checksum paket dokumen V14 terhadap manifest.
@@ -17,7 +25,7 @@
 - Menetapkan keputusan REUSE/EXTEND/ADAPTER/CREATE dan requirement ledger awal.
 - Belum menambah model, migration, endpoint, route, UI, seed, atau konfigurasi deployment Hospitality pada fase audit ini.
 
-## 2026-08-09 — Integrasi MI-1 sampai MI-10 (parsial)
+## 2026-08-09 — Integrasi awal MI-1 sampai MI-10 (kemudian diselesaikan H071)
 
 - Mengintegrasikan portal, public site, pendaftaran/provisioning, property dan room inventory, guest CRM, reservation, direct booking, serta rate management ke baseline `main` terbaru tanpa menimpa perbaikan POS/Inventory yang lebih baru.
 - Menambahkan enam tenant migration Hospitality yang additive dan satu platform migration untuk kode vertical `HOSPITALITY`.
@@ -35,17 +43,17 @@
 - MI-21 menambahkan guest-portal token-hash session, kiosk session/residue purge, idempotent staff-mobile offline queue, serta digital-key/IoT provider-neutral contracts.
 - MI-22 menambahkan canonical versioned domain/accounting events, ERP ports, transactional delivery queue, retry/dead-letter trace dan reconciliation tanpa hard-code debit/kredit di controller.
 - MI-23 menambahkan immutable report snapshots/CSV export, evidence-bound AI drafts, guided help, tagged demo scenarios, notification outbox dan observability dashboard events.
-- MI-24 local gate: release verifier ditambahkan ke `update.sh`; API 184 suite/4.170 test, seluruh Web Vitest, lint, production build, Bash syntax, dan migration idempotency 16 schema lulus. UAT manusia/perangkat dan DR produksi tetap menjadi gate staging, bukan diklaim otomatis.
-- MI-2, MI-3, dan MI-5..MI-10 tetap dicatat parsial sampai seluruh acceptance BRD masing-masing fase terpenuhi; MI-16..MI-24 belum diklaim selesai.
+- MI-24 local gate (historis, telah digantikan bukti 9 Agustus 2026): release verifier ditambahkan ke `update.sh`; API 184 suite/4.170 test, seluruh Web Vitest, lint, production build, Bash syntax, dan migration idempotency 16 schema lulus. UAT manusia/perangkat dan DR produksi tetap menjadi gate staging, bukan diklaim otomatis.
+- Gap MI-2, MI-3, dan MI-5..MI-10 dari audit awal ini kemudian ditutup oleh migration H071 dan control center sebagaimana entri penyelesaian di atas.
 
-## 2026-08-09 — MI-11 Channel Manager (parsial)
+## 2026-08-09 — MI-11 Channel Manager (fondasi awal; worker ditutup H071)
 
 - Menambahkan account dan mapping property/room/rate yang provider-neutral.
 - Menambahkan canonical ARI/reservation delivery queue dengan idempotency key, correlation ID, stable payload hash, retry limit, acknowledgement, dan dead-letter status.
 - Menambahkan reconciliation exception queue untuk seluruh kategori exception minimum BRD §18.4.
 - Menyamarkan credential dan data kartu sebelum payload disimpan; contract test membuktikan sanitasi, hash deterministik, retry/DLQ, test double, dan status `BLOCKED_PROVIDER_INPUT`.
 - Menambahkan API tenant-scoped untuk account, mapping, enqueue, queue health, dan reconciliation list; seluruhnya dilindungi permission server-side.
-- Migration diterapkan tanpa kegagalan ke 13 schema lokal. Live OTA/GDS/metasearch adapter tidak dibuat sebelum dokumentasi dan credential provider tersedia; worker pengiriman dan UI dashboard masih gap MI-11.
+- Migration diterapkan tanpa kegagalan ke 13 schema lokal. Live OTA/GDS/metasearch adapter tidak dibuat sebelum dokumentasi dan credential provider tersedia; worker dan dashboard kemudian ditambahkan pada H071.
 
 ## 2026-08-09 — MI-4 Product, Entitlement, dan Provisioning
 

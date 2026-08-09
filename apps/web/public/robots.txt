@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /mitrainap/properti/kelola-pesanan
+Sitemap: https://mitrainap.id/sitemap.xml

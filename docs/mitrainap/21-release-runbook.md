@@ -8,3 +8,18 @@
 6. Restore database hanya untuk insiden data material dan setelah approval: gunakan dump yang dicetak skrip, restore ke database isolasi dahulu, verifikasi checksum/tenant count, baru lakukan cutover terkontrol.
 
 Tidak ada force-push, reset/drop database, edit migration applied, atau penimpaan `.env` dalam prosedur ini.
+
+## Gate keputusan go-live
+
+Status `LOCAL_GATE_PASS` bukan izin otomatis menyalakan produksi. Release manager hanya memberi keputusan GO bila seluruh bukti berikut terlampir pada tiket perubahan:
+
+1. seluruh persona pada `20-uat-persona-matrix.md` ditandatangani operator staging;
+2. uji viewport keyboard/screen-reader pada desktop dan perangkat mobile nyata lulus;
+3. load test search/booking/check-in/folio/night-audit memenuhi SLO yang disepakati;
+4. dump pra-migration berhasil direstore ke database isolasi dan checksum/tenant count cocok;
+5. health, synthetic booking, observability, alert delivery, serta rollback aplikasi diuji;
+6. DNS apex/wildcard/custom domain dan sertifikat TLS aktif dengan auto-renew;
+7. setiap provider live mempunyai contract version, secret reference, allowlist, sandbox proof, dan owner;
+8. PIC cutover, rollback commander, komunikasi pengguna, maintenance window, dan hypercare tersedia.
+
+Jika salah satu gate belum memiliki bukti, keputusan adalah **NO-GO** atau aktivasi terbatas tanpa provider terkait. Status `BLOCKED_PROVIDER_INPUT` adalah mode aman dan tidak boleh diubah menjadi sukses palsu.
