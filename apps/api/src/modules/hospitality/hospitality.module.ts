@@ -13,6 +13,8 @@ import { HospitalityRateController } from './hospitality-rate.controller';
 import { HospitalityRateService } from './hospitality-rate.service';
 import { HospitalityPublicSiteController } from './hospitality-public-site.controller';
 import { HospitalityPublicSiteService } from './hospitality-public-site.service';
+import { HospitalityChannelController } from './hospitality-channel.controller';
+import { HospitalityChannelService } from './hospitality-channel.service';
 
 @Module({
   controllers: [
@@ -23,6 +25,7 @@ import { HospitalityPublicSiteService } from './hospitality-public-site.service'
     HospitalityBookingEngineController,
     HospitalityRateController,
     HospitalityPublicSiteController,
+    HospitalityChannelController,
   ],
   providers: [
     HospitalityPropertiService,
@@ -32,6 +35,7 @@ import { HospitalityPublicSiteService } from './hospitality-public-site.service'
     HospitalityBookingEngineService,
     HospitalityRateService,
     HospitalityPublicSiteService,
+    HospitalityChannelService,
   ],
 })
 export class HospitalityModule {}

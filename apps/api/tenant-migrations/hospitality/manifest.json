@@ -41,6 +41,12 @@
       "file": "20260806T210000__hospitality__rate_management.sql",
       "name": "MI-10: Rate, Restriction, dan Revenue Management",
       "description": "hospitality_rate_plan (rencana harga bernama per tipe kamar) dan hospitality_rate_calendar (harga + MinLOS/MaxLOS/CTA/CTD/stop-sell, satu baris per rate plan per malam, status DRAFT/PUBLISHED -- booking engine publik MI-9 HANYA membaca PUBLISHED). Menggantikan published_rate_amount MI-9 sebagai sumber harga sesungguhnya bila rate plan tersedia, jatuh ke published_rate_amount bila tidak (kompatibel mundur). BAR/derived rate otomatis, pickup/pace/forecast, dan rekomendasi SENGAJA belum ada -- lihat komentar migrasi."
+    },
+    {
+      "id": "20260807T000000__hospitality__channel_distribution",
+      "file": "20260807T000000__hospitality__channel_distribution.sql",
+      "name": "MI-11: Channel Manager dan Distribution",
+      "description": "Provider-neutral channel account dan property/room/rate mapping, canonical ARI/reservation delivery queue dengan idempotency, retry/dead-letter, payload hash dan sanitized raw message, serta reconciliation exception queue. Live OTA/GDS adapter tetap BLOCKED_PROVIDER_INPUT sampai dokumentasi dan credential provider tersedia; contract dan deterministic test double tersedia di hospitality-channel.ts."
     }
   ]
 }

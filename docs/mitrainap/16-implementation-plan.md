@@ -1,6 +1,6 @@
 # Rencana implementasi incremental
 
-Setiap fase adalah vertical slice migration → model/domain → API → permission → UI → test → docs/changelog. Status audit 9 Agustus 2026: MI-0 selesai; MI-1 selesai; MI-2, MI-3, dan MI-5..MI-10 sudah memiliki vertical slice tetapi masih parsial terhadap BRD; MI-4 dan MI-11..MI-24 belum selesai.
+Setiap fase adalah vertical slice migration → model/domain → API → permission → UI → test → docs/changelog. Status audit 9 Agustus 2026: MI-0 selesai; MI-1 selesai; MI-2, MI-3, dan MI-5..MI-11 sudah memiliki vertical slice tetapi masih parsial terhadap BRD; MI-4 dan MI-12..MI-24 belum selesai.
 
 | Fase | Outcome |
 |---|---|
@@ -28,6 +28,7 @@ Setiap fase adalah vertical slice migration → model/domain → API → permiss
 | MI-8 | PARSIAL | reservation core lifecycle tersedia; quote/waitlist/group/detail lifecycle belum lengkap |
 | MI-9 | PARSIAL | direct booking dan manage-booking berbasis trusted host tersedia; payment/provider dan acceptance a11y penuh belum lengkap |
 | MI-10 | PARSIAL | rate plan, calendar, restriction, dan occupancy summary tersedia; forecast/recommendation/approval revenue belum lengkap |
-| MI-11..24 | BELUM SELESAI | dilanjutkan incremental sesuai urutan fase dan gate di bawah |
+| MI-11 | PARSIAL | kontrak provider-neutral, account/mapping, ARI/reservation queue, retry/DLQ, sanitasi, dan reconciliation exception tersedia; worker/UI/live adapter belum lengkap |
+| MI-12..24 | BELUM SELESAI | dilanjutkan incremental sesuai urutan fase dan gate di bawah |
 
 Gate tiap fase: tidak ada TODO/skeleton sebagai acceptance; negative authorization dan tenant/property isolation lulus; migration additive; API/UI memakai data nyata; mobile/responsive diperiksa; ledger diperbarui. Live OTA/GDS/payment/digital-key/IoT tetap `BLOCKED_PROVIDER_INPUT` bila contract/credential belum tersedia, tetapi interface, fake adapter, queue, failure mode, dan tests tetap dibuat.
