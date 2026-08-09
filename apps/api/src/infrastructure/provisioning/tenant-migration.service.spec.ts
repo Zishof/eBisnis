@@ -1,6 +1,43 @@
 import { TenantMigrationService } from './tenant-migration.service';
 
 describe('TenantMigrationService', () => {
+  it('memarkir sequence katalog secara atomik sebelum resequence modul', async () => {
+    const tx = {
+      $executeRawUnsafe: jest.fn().mockResolvedValue(2),
+      schemaMigrationCatalog: { upsert: jest.fn().mockResolvedValue({}) },
+    };
+    const prisma = {
+      $transaction: jest.fn(async (callback: (client: typeof tx) => Promise<void>) => callback(tx)),
+    };
+    const service = new TenantMigrationService(prisma as never, {} as never);
+    jest.spyOn(service, 'getManifest').mockReturnValue({
+      schemaVersion: 1,
+      migrations: [
+        { version: 'V001', sequence: 1, file: 'V001.sql', name: 'satu', description: '' },
+        {
+          version: '20260807T000000__hospitality__channel',
+          sequence: 2,
+          file: 'hospitality/channel.sql',
+          name: 'channel',
+          description: '',
+          module: 'hospitality',
+        },
+      ],
+    });
+    jest.spyOn(
+      service as unknown as { loadSql: (definition: unknown) => { sql: string; checksum: string } },
+      'loadSql',
+    ).mockReturnValue({ sql: '', checksum: 'checksum' });
+
+    await service.syncCatalog();
+
+    expect(tx.$executeRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('SET "sequence" = -"sequence"'));
+    expect(tx.schemaMigrationCatalog.upsert).toHaveBeenCalledTimes(2);
+    expect(tx.$executeRawUnsafe.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.schemaMigrationCatalog.upsert.mock.invocationCallOrder[0],
+    );
+  });
+
   it('melewati V044 pada tenant yang tidak memiliki tabel pesantren_unit_pendidikan', async () => {
     const prisma = {
       tenantSchemaMigrationHistory: {

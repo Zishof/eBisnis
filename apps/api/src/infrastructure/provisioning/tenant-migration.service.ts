@@ -268,27 +268,42 @@ export class TenantMigrationService {
 
   /** Sinkronkan katalog canonical ke platform.schema_migration_catalog. */
   async syncCatalog(): Promise<void> {
-    for (const definition of this.getManifest().migrations) {
-      const { checksum } = this.loadSql(definition);
-      await this.prisma.schemaMigrationCatalog.upsert({
-        where: { version: definition.version },
-        create: {
-          version: definition.version,
-          name: definition.name,
-          checksum,
-          scriptPath: `tenant-migrations/${definition.file}`,
-          description: definition.description,
-          sequence: definition.sequence,
-        },
-        update: {
-          name: definition.name,
-          checksum,
-          scriptPath: `tenant-migrations/${definition.file}`,
-          description: definition.description,
-          sequence: definition.sequence,
-        },
-      });
-    }
+    const definitions = this.getManifest().migrations;
+    await this.prisma.$transaction(async (tx) => {
+      /*
+       * Penambahan migration pada modul yang berurutan sebelum modul lain
+       * dapat menggeser sequence canonical modul berikutnya. Upsert satu per
+       * satu akan menabrak UNIQUE(sequence) sebelum baris pemilik lama sempat
+       * dipindah. Parkir seluruh sequence ke ruang negatif dalam transaksi
+       * yang sama, lalu tulis urutan canonical baru. Bila satu upsert gagal,
+       * transaksi membatalkan parkir sehingga katalog tidak pernah setengah.
+       * Version/checksum riwayat tenant tidak disentuh.
+       */
+      await tx.$executeRawUnsafe(
+        'UPDATE "platform"."schema_migration_catalog" SET "sequence" = -"sequence" WHERE "sequence" > 0',
+      );
+      for (const definition of definitions) {
+        const { checksum } = this.loadSql(definition);
+        await tx.schemaMigrationCatalog.upsert({
+          where: { version: definition.version },
+          create: {
+            version: definition.version,
+            name: definition.name,
+            checksum,
+            scriptPath: `tenant-migrations/${definition.file}`,
+            description: definition.description,
+            sequence: definition.sequence,
+          },
+          update: {
+            name: definition.name,
+            checksum,
+            scriptPath: `tenant-migrations/${definition.file}`,
+            description: definition.description,
+            sequence: definition.sequence,
+          },
+        });
+      }
+    });
   }
 
   /**

@@ -31,6 +31,7 @@ import { TenantBootstrapService } from '../../infrastructure/provisioning/tenant
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { RegistrationService } from './registration.service';
 import { ROLE_ADMIN_HOSPITALITY } from '../hospitality/rbac/hospitality-vertical.catalog';
+import { HOSPITALITY_PLAN_SEED } from '../master-seed/registry/platform-master-seeds';
 import {
   hostSitus,
   usulanSlugDariNama,
@@ -160,6 +161,23 @@ export class HospitalityRegistrationService {
     const host = hostSitus(slug);
 
     return this.tenantDb.withAdvisoryLock(`hospitality:${host}`, async () => {
+      const plan = await this.prisma.subscriptionPlan.findUnique({
+        where: { code: HOSPITALITY_PLAN_SEED.code },
+        include: {
+          versions: {
+            where: { status: 'PUBLISHED', deletedAt: null },
+            orderBy: { effectiveFrom: 'desc' },
+            take: 1,
+          },
+        },
+      });
+      const planVersion = plan?.versions[0];
+      if (!planVersion) {
+        throw AppError.internal(
+          ErrorCodes.PROVISIONING_FAILED,
+          'Katalog paket MitraInap belum siap. Jalankan master seed sebelum menerima pendaftaran.',
+        );
+      }
       const ketersediaan = await this.cekSlugSitus(slug);
       if (!ketersediaan.tersedia) {
         throw AppError.conflict(ErrorCodes.CONFLICT, ketersediaan.pesan);
@@ -199,6 +217,14 @@ export class HospitalityRegistrationService {
               vertical: VERTIKAL_SITUS_HOSPITALITY,
               status: 'ACTIVE',
               verifiedAt: new Date(),
+            },
+          }),
+          this.prisma.packageAssignment.create({
+            data: {
+              tenantId: umum.tenantId,
+              planVersionId: planVersion.id,
+              scopeType: 'TENANT',
+              status: 'ACTIVE',
             },
           }),
         ]);
