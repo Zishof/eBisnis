@@ -1,3 +1,7 @@
+> **ARSIP 1 AGUSTUS 2026.** Untuk keadaan terkini dan langkah pindah komputer,
+> mulai dari [HANDOVER-2026-08-10.md](HANDOVER-2026-08-10.md). Angka menu dan
+> prioritas dalam dokumen ini adalah snapshot historis H065/H066.
+
 # Serah-Terima — eMedik V12
 
 **Untuk:** sesi lanjutan (Codex)
