@@ -422,10 +422,16 @@ class _InventoryNavItem {
   final IconData icon;
 }
 
+// 'Operasional' TERBUKTI menyembunyikan fitur: Pembelian ke Supplier ada dan
+// berfungsi (segmen ke-4 di dalam tab ini, lihat _purchaseWorkspace), tetapi
+// label generik ini tidak memberi petunjuk sama sekali bahwa Pembelian ada di
+// sana -- pemilik tenant melapor tidak menemukannya sama sekali. Label diganti
+// supaya kata "Pembelian" langsung terlihat di sidebar, bukan terkubur sebagai
+// tombol segmen ke-4 yang harus diklik dulu untuk ditemukan.
 const _inventoryNavigation = [
   _InventoryNavItem('Dashboard', Icons.dashboard_outlined),
   _InventoryNavItem('Order Baru', Icons.receipt_long_outlined),
-  _InventoryNavItem('Operasional', Icons.shopping_cart_outlined),
+  _InventoryNavItem('Pembelian & Piutang', Icons.shopping_cart_outlined),
   _InventoryNavItem('Stok & Harga', Icons.inventory_2_outlined),
   _InventoryNavItem('Paritas', Icons.fact_check_outlined),
   _InventoryNavItem('Keuangan', Icons.account_balance_outlined),

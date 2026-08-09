@@ -1930,6 +1930,78 @@ export class ErpController {
     };
   }
 
+  // Dashboard eksekutif di atas (SALES_REPORT.VIEW_PROFIT) sengaja hanya
+  // pemilik/admin: berisi COGS dan gross profit perusahaan. Role SALES
+  // ('Tenaga Penjualan') secara eksplisit tidak boleh mengubah maupun melihat
+  // harga pokok/margin (lihat tenant-role.seed.ts). Endpoint ini adalah
+  // dashboard performa PRIBADI tenaga penjualan -- order dan omzet miliknya
+  // sendiri (created_by = subject-nya), TANPA satu pun kolom cost/margin --
+  // digerbang SALES_ORDER.READ yang sudah dimiliki role SALES (dipakai juga
+  // oleh mobile-catalog di bawah), bukan izin baru yang perlu diseed ulang.
+  @Get('inventory/my-sales-dashboard')
+  @Permissions('SALES_ORDER.READ')
+  @ApiOperation({ summary: 'Dashboard performa pribadi tenaga penjualan -- tanpa margin/laba perusahaan' })
+  async mySalesDashboard(
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const subject = await this.inventoryQuery(
+      ctx,
+      `SELECT id::text FROM ${S}.user_subject WHERE id = $1::uuid OR platform_user_id = $1::uuid LIMIT 1`,
+      [ctx.userId],
+    );
+    const subjectId = (subject[0]?.id as string | undefined) ?? null;
+    if (!subjectId) {
+      throw AppError.forbidden(ErrorCodes.FORBIDDEN, 'Akun tidak terhubung ke subject tenant.');
+    }
+
+    const [summary, recentOrders, topCustomers] = await Promise.all([
+      this.inventoryQuery(
+        ctx,
+        `SELECT
+           (SELECT count(*)::int FROM ${S}.sales_order WHERE created_by = $1 AND order_date = CURRENT_DATE) AS orders_today,
+           (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE created_by = $1 AND order_date = CURRENT_DATE) AS revenue_today,
+           (SELECT count(*)::int FROM ${S}.sales_order WHERE created_by = $1 AND order_date >= date_trunc('month', CURRENT_DATE)::date) AS orders_month,
+           (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE created_by = $1 AND order_date >= date_trunc('month', CURRENT_DATE)::date) AS revenue_month,
+           (SELECT count(DISTINCT customer_id)::int FROM ${S}.sales_order WHERE created_by = $1 AND order_date >= date_trunc('month', CURRENT_DATE)::date) AS customers_month`,
+        [subjectId],
+      ),
+      this.inventoryQuery(
+        ctx,
+        `SELECT so.id::text, so.order_number, so.order_date::text, so.status,
+                so.grand_total::text, COALESCE(c.name, 'Pelanggan umum') AS customer_name
+           FROM ${S}.sales_order so
+           LEFT JOIN ${S}.customer c ON c.id = so.customer_id
+          WHERE so.created_by = $1
+          ORDER BY so.order_date DESC, so.created_at DESC
+          LIMIT 12`,
+        [subjectId],
+      ),
+      this.inventoryQuery(
+        ctx,
+        `SELECT COALESCE(c.name, 'Pelanggan umum') AS customer_name,
+                count(so.id)::int AS orders,
+                COALESCE(sum(so.grand_total), 0)::text AS revenue
+           FROM ${S}.sales_order so
+           LEFT JOIN ${S}.customer c ON c.id = so.customer_id
+          WHERE so.created_by = $1
+            AND so.order_date >= date_trunc('month', CURRENT_DATE)::date
+          GROUP BY c.name
+          ORDER BY COALESCE(sum(so.grand_total), 0) DESC
+          LIMIT 8`,
+        [subjectId],
+      ),
+    ]);
+
+    return {
+      summary: summary[0] ?? {},
+      recentOrders,
+      topCustomers,
+    };
+  }
+
   @Get('inventory/mobile-catalog')
   @Permissions('SALES_ORDER.READ')
   @ApiOperation({ summary: 'Katalog ringkas customer dan produk untuk klien Flutter sales' })
