@@ -226,9 +226,18 @@ class InventoryHomePage extends StatefulWidget {
 class _InventoryHomePageState extends State<InventoryHomePage> {
   late Future<InventorySnapshot> _snapshot = widget.client.snapshot();
   late Future<InventoryParityContract> _parity = widget.client.parityContract();
-  int _tab = 0;
+  late int _tab = _tabAwalUntukPeran(widget.persona.role);
   bool _syncing = false;
   int _pending = 0;
+
+  // Dashboard (tab 0) memanggil GET /inventory/sales-dashboard, digerbang
+  // @Permissions('SALES_REPORT.VIEW_PROFIT') di server -- sengaja hanya
+  // pemilik/admin, sebab isinya margin dan laba yang bukan urusan sales
+  // lapangan. Peran Sales dijadikan tab awal berarti SETIAP login sales
+  // langsung menabrak "Hak akses tidak mencukupi" pada detik pertama,
+  // sebelum sempat melakukan apa pun -- diarahkan ke Sales Order (tab 1),
+  // layar yang memang mereka pakai sehari-hari.
+  int _tabAwalUntukPeran(String role) => role == 'Sales' ? 1 : 0;
 
   @override
   void initState() {
@@ -338,25 +347,35 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _InventoryPageHeading(
-                  title: _pageTitle,
-                  subtitle: _pageSubtitle,
-                  actions: _tab == 0
-                      ? [
-                          FilledButton.icon(
-                            onPressed: () => _selectTab(1),
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Buat Transaksi'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: _refresh,
-                            icon: const Icon(Icons.tune, size: 18),
-                            label: const Text('Filter Dashboard'),
-                          ),
-                        ]
-                      : const [],
-                ),
-                const SizedBox(height: 18),
+                // Tab 1 (Sales Order) merender heading sendiri lewat
+                // InventorySalesOrderWorkspace -- lengkap dengan indikator
+                // langkah dan toolbar (Kirim Order, Simpan Draft, dst) yang
+                // heading generik ini tidak punya untuk tab ini (actions-nya
+                // kosong). Menampilkan keduanya berarti "Sales Order"
+                // tercetak dua kali; heading generik dilewati di sini,
+                // bukan dihapus dari workspace-nya, sebab yang di workspace
+                // jauh lebih lengkap.
+                if (_tab != 1) ...[
+                  _InventoryPageHeading(
+                    title: _pageTitle,
+                    subtitle: _pageSubtitle,
+                    actions: _tab == 0
+                        ? [
+                            FilledButton.icon(
+                              onPressed: () => _selectTab(1),
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('Buat Transaksi'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: _refresh,
+                              icon: const Icon(Icons.tune, size: 18),
+                              label: const Text('Filter Dashboard'),
+                            ),
+                          ]
+                        : const [],
+                  ),
+                  const SizedBox(height: 18),
+                ],
                 _pageFor(state.data),
               ],
             ),

@@ -1080,25 +1080,76 @@ class _PartySelector extends StatelessWidget {
   final String? value;
   final ValueChanged<String?> onChanged;
   final Widget? trailing;
+  static String _display(TransactionParty p) => '${p.code} - ${p.name}';
+
   @override
   Widget build(BuildContext context) => _WorkspacePanel(
         title: label,
         child: LayoutBuilder(builder: (context, box) {
-          final selector = DropdownButtonFormField<String>(
-            value: value,
-            isExpanded: true,
-            decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Cari nama, kode, atau telepon...'),
-            items: parties
-                .map((p) => DropdownMenuItem(
-                    value: p.id,
-                    child: Text('${p.code} - ${p.name}',
-                        overflow: TextOverflow.ellipsis)))
-                .toList(),
-            onChanged: onChanged,
+          final selected = parties.where((p) => p.id == value).firstOrNull;
+          // Autocomplete, bukan DropdownButtonFormField: dropdown polos hanya
+          // membuka daftar statis untuk digulir -- ikon kaca pembesar dan teks
+          // "Cari nama..." pada versi lama menjanjikan pencarian tetapi tidak
+          // benar-benar memfilter apa pun saat diketik. Ini benar-benar
+          // memfilter berdasarkan nama, kode, ATAU telepon setiap ketikan.
+          final selector = Autocomplete<TransactionParty>(
+            initialValue: TextEditingValue(
+                text: selected == null ? '' : _display(selected)),
+            displayStringForOption: _display,
+            optionsBuilder: (input) {
+              final q = input.text.trim().toLowerCase();
+              if (q.isEmpty) return parties;
+              return parties.where((p) =>
+                  p.name.toLowerCase().contains(q) ||
+                  p.code.toLowerCase().contains(q) ||
+                  p.phone.toLowerCase().contains(q));
+            },
+            onSelected: (p) => onChanged(p.id),
+            fieldViewBuilder: (context, controller, focusNode, onSubmit) =>
+                TextField(
+              key: const Key('sales-order-party-search'),
+              controller: controller,
+              focusNode: focusNode,
+              decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Cari nama, kode, atau telepon...'),
+            ),
+            optionsViewBuilder: (context, onSelected, options) => Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(8),
+                child: ConstrainedBox(
+                  constraints:
+                      const BoxConstraints(maxHeight: 280, maxWidth: 480),
+                  child: options.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.all(14),
+                          child: Text('Tidak ada customer yang cocok.'),
+                        )
+                      : ListView.separated(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final p = options.elementAt(index);
+                            return ListTile(
+                              dense: true,
+                              title: Text(p.name,
+                                  overflow: TextOverflow.ellipsis),
+                              subtitle: Text('${p.code}  •  ${p.phone}',
+                                  overflow: TextOverflow.ellipsis),
+                              onTap: () => onSelected(p),
+                            );
+                          },
+                        ),
+                ),
+              ),
+            ),
           );
-          final party = parties.where((p) => p.id == value).firstOrNull;
+          final party = selected;
           final card = party == null
               ? const SizedBox.shrink()
               : Container(
