@@ -71,6 +71,158 @@ fi
 
 as_app() { sudo -u "$APP_USER" bash -lc "$*"; }
 
+# Menyalin .exe/.apk terbaru dari GitHub Release ke folder unduhan publik.
+#
+# WAJIB dipanggil TANPA PEDULI apakah commit `main` berubah. Rilis POS
+# (tag `pos-v*`/`inventory-v*`) ditandai ulang lewat CI-nya SENDIRI,
+# independen dari commit `main` -- build ulang exe yang salah isinya, atau
+# perbaikan lain di alur rilis Flutter, tidak selalu menyertakan commit baru
+# di sini. Ditemukan langsung di produksi: exe yang benar sudah terbit di
+# GitHub Release, tetapi situs tetap menyajikan versi lama karena deploy
+# sebelumnya sudah menandai commit yang sama sebagai "terpasang seutuhnya"
+# dan keluar di "1/10" SEBELUM pernah sampai ke langkah ini.
+sinkronkan_unduhan_pos() {
+  local POS_UPDATE_DIR=/opt/ebisnis/updates/pos
+  install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$POS_UPDATE_DIR"
+
+  # Asset POS/Inventory/Apotik Flutter boleh hidup publik di server, sementara
+  # repository tetap private. Artefak yang ikut dalam repository private
+  # disalin dulu ke folder publik update, supaya server yang belum punya
+  # token GitHub Release pun tetap dapat melayani
+  # /update/ebisnis-inventory-sales.apk dan .exe.
+  local LOCAL_INVENTORY_RELEASE_DIR="$APP_DIR/artifacts/inventory-release"
+  if [[ -d "$LOCAL_INVENTORY_RELEASE_DIR" ]]; then
+    shopt -s nullglob
+    local asset
+    for asset in "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales-*.apk \
+                 "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales-*-windows.exe \
+                 "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales-*-windows.zip \
+                 "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales.apk; do
+      install -m 644 -o "$APP_USER" -g "$APP_USER" "$asset" "$POS_UPDATE_DIR/$(basename "$asset")"
+    done
+
+    local latest_inventory_apk
+    latest_inventory_apk=$(
+      find "$LOCAL_INVENTORY_RELEASE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*.apk' \
+        | sort -V \
+        | tail -1
+    )
+    if [[ -n "$latest_inventory_apk" ]]; then
+      install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_apk" \
+        "$POS_UPDATE_DIR/ebisnis-inventory-sales.apk"
+    fi
+
+    local latest_inventory_exe
+    latest_inventory_exe=$(
+      find "$LOCAL_INVENTORY_RELEASE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*-windows.exe' \
+        | sort -V \
+        | tail -1
+    )
+    if [[ -n "$latest_inventory_exe" ]]; then
+      install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_exe" \
+        "$POS_UPDATE_DIR/ebisnis-inventory-sales.exe"
+    fi
+    shopt -u nullglob
+  fi
+
+  # Rilis POS Apotik memakai namespace berkas sendiri supaya tidak pernah
+  # terpilih sebagai pembaruan POS retail. Endpoint publik memilih versi
+  # terbaru dari `emedik-pos-apotik-<versi>-windows.exe` dan `.apk` di folder
+  # yang sama.
+  local LOCAL_APOTIK_RELEASE_DIR="$APP_DIR/artifacts/apotik-release"
+  if [[ -d "$LOCAL_APOTIK_RELEASE_DIR" ]]; then
+    shopt -s nullglob
+    local asset
+    for asset in "$LOCAL_APOTIK_RELEASE_DIR"/emedik-pos-apotik-*.apk \
+                 "$LOCAL_APOTIK_RELEASE_DIR"/emedik-pos-apotik-*-windows.exe; do
+      install -m 644 -o "$APP_USER" -g "$APP_USER" "$asset" "$POS_UPDATE_DIR/$(basename "$asset")"
+    done
+    shopt -u nullglob
+  fi
+
+  # Bila token server tersedia, tarik juga asset dari GitHub Release private
+  # ke folder publik ini. Token TIDAK pernah dikirim ke klien; klien hanya
+  # membaca https://ebisnis.id/update/...
+  local POS_RELEASE_TOKEN
+  POS_RELEASE_TOKEN=$(
+    { grep -E '^(POS_RELEASE_GITHUB_TOKEN|GITHUB_TOKEN)=' "$ENV_FILE" || true; } \
+      | head -1 \
+      | cut -d= -f2- \
+      | sed -e 's/^"//' -e 's/"$//'
+  )
+  if [[ -n "$POS_RELEASE_TOKEN" ]]; then
+    if command -v curl >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then
+      local RELEASES_JSON ASSETS_LIST
+      RELEASES_JSON=$(mktemp)
+      ASSETS_LIST=$(mktemp)
+      if curl -fsSL \
+        -H "Authorization: Bearer $POS_RELEASE_TOKEN" \
+        -H "Accept: application/vnd.github+json" \
+        https://api.github.com/repos/Zishof/eBisnis/releases \
+        -o "$RELEASES_JSON"; then
+        node - "$RELEASES_JSON" "$ASSETS_LIST" <<'NODE'
+const fs = require('fs');
+const releases = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const lines = [];
+for (const prefix of ['pos-v', 'inventory-v']) {
+  const release = releases.find((r) => !r.draft && !r.prerelease && String(r.tag_name || '').startsWith(prefix));
+  for (const asset of release?.assets || []) {
+    if (/\.(exe|apk)$/i.test(asset.name)) lines.push(`${asset.name}\t${asset.url}`);
+  }
+}
+fs.writeFileSync(process.argv[3], lines.join('\n'));
+NODE
+        local nama url tmp
+        while IFS=$'\t' read -r nama url; do
+          [[ -n "$nama" && -n "$url" ]] || continue
+          tmp="$POS_UPDATE_DIR/$nama.tmp"
+          if curl -fL \
+            -H "Authorization: Bearer $POS_RELEASE_TOKEN" \
+            -H "Accept: application/octet-stream" \
+            "$url" \
+            -o "$tmp"; then
+            mv "$tmp" "$POS_UPDATE_DIR/$nama"
+            chown "$APP_USER:$APP_USER" "$POS_UPDATE_DIR/$nama"
+            chmod 644 "$POS_UPDATE_DIR/$nama"
+          else
+            rm -f "$tmp"
+            warn "Gagal mengunduh asset pembaruan $nama dari GitHub Release."
+          fi
+        done < "$ASSETS_LIST"
+      else
+        warn "Gagal membaca GitHub Release pembaruan. Asset lama di $POS_UPDATE_DIR tetap dipakai."
+      fi
+      rm -f "$RELEASES_JSON" "$ASSETS_LIST"
+    else
+      warn "curl atau node tidak tersedia; asset pembaruan tidak ditarik otomatis."
+    fi
+  else
+    warn "POS_RELEASE_GITHUB_TOKEN belum ada; salin .exe/.apk manual ke $POS_UPDATE_DIR."
+  fi
+
+  local latest_inventory_apk
+  latest_inventory_apk=$(
+    find "$POS_UPDATE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*.apk' \
+      | sort -V \
+      | tail -1
+  )
+  if [[ -n "$latest_inventory_apk" ]]; then
+    install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_apk" \
+      "$POS_UPDATE_DIR/ebisnis-inventory-sales.apk"
+  fi
+
+  local latest_inventory_exe
+  latest_inventory_exe=$(
+    find "$POS_UPDATE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*-windows.exe' \
+      | sort -V \
+      | tail -1
+  )
+  if [[ -n "$latest_inventory_exe" ]]; then
+    install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_exe" \
+      "$POS_UPDATE_DIR/ebisnis-inventory-sales.exe"
+  fi
+}
+
 # Satu host hanya boleh menjalankan satu update pada satu waktu. Tanpa lock,
 # dua proses dapat checkout commit berbeda, menerapkan migration bersamaan,
 # dan saling menimpa deployment stamp. File descriptor diwariskan saat skrip
@@ -138,6 +290,12 @@ fi
 
 NEW=$(as_app "git -C '$APP_DIR' rev-parse HEAD")
 [[ "$NEW" =~ ^[0-9a-f]{40,64}$ ]] || die "Commit target tidak valid: $NEW"
+
+# Dipanggil DI SINI, sebelum pemeriksaan "tidak ada yang berubah" di bawah
+# boleh keluar lebih awal: rilis .exe/.apk independen dari commit `main`,
+# jadi harus tetap tersinkron walau aplikasi web/API sendiri tidak perlu
+# dibangun ulang.
+sinkronkan_unduhan_pos
 
 DEPLOYED=$(cat "$DEPLOY_STAMP" 2>/dev/null || true)
 if [[ -n "$DEPLOYED" && ! "$DEPLOYED" =~ ^[0-9a-f]{40,64}$ ]]; then
@@ -479,135 +637,11 @@ CMN_PID=$!
 # ---------------------------------------------------------------------------
 log "10/10  Apache"
 # ---------------------------------------------------------------------------
-POS_UPDATE_DIR=/opt/ebisnis/updates/pos
-install -d -o "$APP_USER" -g "$APP_USER" -m 755 "$POS_UPDATE_DIR"
-
-# Asset POS/Inventory/Apotik Flutter boleh hidup publik di server, sementara repository
-# tetap private. Artefak yang ikut dalam repository private disalin dulu ke
-# folder publik update, supaya server yang belum punya token GitHub Release pun
-# tetap dapat melayani /update/ebisnis-inventory-sales.apk dan .exe.
-LOCAL_INVENTORY_RELEASE_DIR="$APP_DIR/artifacts/inventory-release"
-if [[ -d "$LOCAL_INVENTORY_RELEASE_DIR" ]]; then
-  shopt -s nullglob
-  for asset in "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales-*.apk \
-               "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales-*-windows.exe \
-               "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales-*-windows.zip \
-               "$LOCAL_INVENTORY_RELEASE_DIR"/ebisnis-inventory-sales.apk; do
-    install -m 644 -o "$APP_USER" -g "$APP_USER" "$asset" "$POS_UPDATE_DIR/$(basename "$asset")"
-  done
-
-  latest_inventory_apk=$(
-    find "$LOCAL_INVENTORY_RELEASE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*.apk' \
-      | sort -V \
-      | tail -1
-  )
-  if [[ -n "$latest_inventory_apk" ]]; then
-    install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_apk" \
-      "$POS_UPDATE_DIR/ebisnis-inventory-sales.apk"
-  fi
-
-  latest_inventory_exe=$(
-    find "$LOCAL_INVENTORY_RELEASE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*-windows.exe' \
-      | sort -V \
-      | tail -1
-  )
-  if [[ -n "$latest_inventory_exe" ]]; then
-    install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_exe" \
-      "$POS_UPDATE_DIR/ebisnis-inventory-sales.exe"
-  fi
-  shopt -u nullglob
-fi
-
-# Rilis POS Apotik memakai namespace berkas sendiri supaya tidak pernah terpilih
-# sebagai pembaruan POS retail. Endpoint publik memilih versi terbaru dari
-# `emedik-pos-apotik-<versi>-windows.exe` dan `.apk` di folder yang sama.
-LOCAL_APOTIK_RELEASE_DIR="$APP_DIR/artifacts/apotik-release"
-if [[ -d "$LOCAL_APOTIK_RELEASE_DIR" ]]; then
-  shopt -s nullglob
-  for asset in "$LOCAL_APOTIK_RELEASE_DIR"/emedik-pos-apotik-*.apk \
-               "$LOCAL_APOTIK_RELEASE_DIR"/emedik-pos-apotik-*-windows.exe; do
-    install -m 644 -o "$APP_USER" -g "$APP_USER" "$asset" "$POS_UPDATE_DIR/$(basename "$asset")"
-  done
-  shopt -u nullglob
-fi
-
-# Bila token server tersedia, tarik juga asset dari GitHub Release private ke
-# folder publik ini. Token TIDAK pernah dikirim ke klien; klien hanya membaca
-# https://ebisnis.id/update/...
-POS_RELEASE_TOKEN=$(
-  { grep -E '^(POS_RELEASE_GITHUB_TOKEN|GITHUB_TOKEN)=' "$ENV_FILE" || true; } \
-    | head -1 \
-    | cut -d= -f2- \
-    | sed -e 's/^"//' -e 's/"$//'
-)
-if [[ -n "$POS_RELEASE_TOKEN" ]]; then
-  if command -v curl >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then
-    RELEASES_JSON=$(mktemp)
-    ASSETS_LIST=$(mktemp)
-    if curl -fsSL \
-      -H "Authorization: Bearer $POS_RELEASE_TOKEN" \
-      -H "Accept: application/vnd.github+json" \
-      https://api.github.com/repos/Zishof/eBisnis/releases \
-      -o "$RELEASES_JSON"; then
-      node - "$RELEASES_JSON" "$ASSETS_LIST" <<'NODE'
-const fs = require('fs');
-const releases = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-const lines = [];
-for (const prefix of ['pos-v', 'inventory-v']) {
-  const release = releases.find((r) => !r.draft && !r.prerelease && String(r.tag_name || '').startsWith(prefix));
-  for (const asset of release?.assets || []) {
-    if (/\.(exe|apk)$/i.test(asset.name)) lines.push(`${asset.name}\t${asset.url}`);
-  }
-}
-fs.writeFileSync(process.argv[3], lines.join('\n'));
-NODE
-      while IFS=$'\t' read -r nama url; do
-        [[ -n "$nama" && -n "$url" ]] || continue
-        tmp="$POS_UPDATE_DIR/$nama.tmp"
-        if curl -fL \
-          -H "Authorization: Bearer $POS_RELEASE_TOKEN" \
-          -H "Accept: application/octet-stream" \
-          "$url" \
-          -o "$tmp"; then
-          mv "$tmp" "$POS_UPDATE_DIR/$nama"
-          chown "$APP_USER:$APP_USER" "$POS_UPDATE_DIR/$nama"
-          chmod 644 "$POS_UPDATE_DIR/$nama"
-        else
-          rm -f "$tmp"
-          warn "Gagal mengunduh asset pembaruan $nama dari GitHub Release."
-        fi
-      done < "$ASSETS_LIST"
-    else
-      warn "Gagal membaca GitHub Release pembaruan. Asset lama di $POS_UPDATE_DIR tetap dipakai."
-    fi
-    rm -f "$RELEASES_JSON" "$ASSETS_LIST"
-  else
-    warn "curl atau node tidak tersedia; asset pembaruan tidak ditarik otomatis."
-  fi
-else
-  warn "POS_RELEASE_GITHUB_TOKEN belum ada; salin .exe/.apk manual ke $POS_UPDATE_DIR."
-fi
-
-latest_inventory_apk=$(
-  find "$POS_UPDATE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*.apk' \
-    | sort -V \
-    | tail -1
-)
-if [[ -n "$latest_inventory_apk" ]]; then
-  install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_apk" \
-    "$POS_UPDATE_DIR/ebisnis-inventory-sales.apk"
-fi
-
-latest_inventory_exe=$(
-  find "$POS_UPDATE_DIR" -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*-windows.exe' \
-    | sort -V \
-    | tail -1
-)
-if [[ -n "$latest_inventory_exe" ]]; then
-  install -m 644 -o "$APP_USER" -g "$APP_USER" "$latest_inventory_exe" \
-    "$POS_UPDATE_DIR/ebisnis-inventory-sales.exe"
-fi
-
+# Sinkronisasi .exe/.apk (dulu di sini) sudah dipindah ke pemanggilan
+# `sinkronkan_unduhan_pos` tepat setelah "1/10 Ambil source" -- lihat catatan
+# di sana. Dipanggil di SETIAP invokasi skrip ini, bukan cuma di sini, supaya
+# tidak ikut terlewat saat commit `main` tidak berubah tetapi rilis
+# .exe/.apk sudah lebih baru.
 APACHE_ROLLBACK_DIR=$(mktemp -d /tmp/ebisnis-apache.XXXXXX)
 for source_and_destination in \
   "ebisnis-app.inc:/etc/apache2/conf-available/ebisnis-app.inc" \
