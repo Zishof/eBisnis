@@ -340,6 +340,7 @@ if ! as_app "git -C '$APP_DIR' merge-base --is-ancestor '$MIGRATION_BASE' HEAD";
   rollback
 fi
 as_app "cd '$APP_DIR' && node scripts/ci/verify-migrations.mjs '$MIGRATION_BASE'" || rollback
+as_app "cd '$APP_DIR' && node scripts/ci/verify-mitrainap-release.mjs" || rollback
 
 if [[ "${SKIP_RELEASE_TESTS:-0}" == "1" ]]; then
   warn "SKIP_RELEASE_TESTS=1 — lint dan unit test dilewati atas permintaan eksplisit."

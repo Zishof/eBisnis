@@ -35,6 +35,7 @@
 - MI-21 menambahkan guest-portal token-hash session, kiosk session/residue purge, idempotent staff-mobile offline queue, serta digital-key/IoT provider-neutral contracts.
 - MI-22 menambahkan canonical versioned domain/accounting events, ERP ports, transactional delivery queue, retry/dead-letter trace dan reconciliation tanpa hard-code debit/kredit di controller.
 - MI-23 menambahkan immutable report snapshots/CSV export, evidence-bound AI drafts, guided help, tagged demo scenarios, notification outbox dan observability dashboard events.
+- MI-24 local gate: release verifier ditambahkan ke `update.sh`; API 184 suite/4.170 test, seluruh Web Vitest, lint, production build, Bash syntax, dan migration idempotency 16 schema lulus. UAT manusia/perangkat dan DR produksi tetap menjadi gate staging, bukan diklaim otomatis.
 - MI-2, MI-3, dan MI-5..MI-10 tetap dicatat parsial sampai seluruh acceptance BRD masing-masing fase terpenuhi; MI-16..MI-24 belum diklaim selesai.
 
 ## 2026-08-09 — MI-11 Channel Manager (parsial)

@@ -1,6 +1,6 @@
 # Rencana implementasi incremental
 
-Setiap fase adalah vertical slice migration → model/domain → API → permission → UI → test → docs/changelog. Status audit 9 Agustus 2026: MI-0, MI-1, MI-4, dan MI-12..MI-23 selesai; MI-2, MI-3, dan MI-5..MI-11 sudah memiliki vertical slice tetapi masih parsial terhadap BRD; MI-24 belum selesai.
+Setiap fase adalah vertical slice migration → model/domain → API → permission → UI → test → docs/changelog. Status audit 9 Agustus 2026: MI-0, MI-1, MI-4, dan MI-12..MI-23 selesai. MI-24 lulus seluruh gate lokal; sign-off staging/perangkat, backup-restore/DR produksi, dan provider eksternal tetap wajib sebelum keputusan go-live. MI-2, MI-3, dan MI-5..MI-11 tetap parsial terhadap BRD.
 
 | Fase | Outcome |
 |---|---|
@@ -41,6 +41,6 @@ Setiap fase adalah vertical slice migration → model/domain → API → permiss
 | MI-21 | SELESAI | guest portal session, staff offline queue, kiosk, privacy purge, digital-key/IoT provider-neutral contracts |
 | MI-22 | SELESAI | canonical versioned events, ERP ports/delivery, accounting trace, retry dan reconciliation |
 | MI-23 | SELESAI | report snapshots/export, evidence-bound AI drafts, help, demo markers, notification outbox dan observability |
-| MI-24 | BELUM SELESAI | full regression, security/performance/a11y/UAT, migration/backup/rollback/release gate |
+| MI-24 | LOCAL GATE PASS | 184 suite/4.170 API test dan seluruh Web Vitest pass; lint/build/release gate/migration idempotency 16 schema pass; staging UAT, device/a11y visual, load, backup-restore/DR dan go-live sign-off pending |
 
 Gate tiap fase: tidak ada TODO/skeleton sebagai acceptance; negative authorization dan tenant/property isolation lulus; migration additive; API/UI memakai data nyata; mobile/responsive diperiksa; ledger diperbarui. Live OTA/GDS/payment/digital-key/IoT tetap `BLOCKED_PROVIDER_INPUT` bila contract/credential belum tersedia, tetapi interface, fake adapter, queue, failure mode, dan tests tetap dibuat.
