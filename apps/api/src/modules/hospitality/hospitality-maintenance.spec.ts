@@ -1,0 +1,3 @@
+import {slaDueAt,transisiWorkOrderDiizinkan} from './hospitality-maintenance';
+describe('hospitality maintenance domain',()=>{it('menjaga workflow inspeksi/verifikasi',()=>{expect(transisiWorkOrderDiizinkan('NEW','IN_PROGRESS')).toBe(false);expect(transisiWorkOrderDiizinkan('READY_FOR_INSPECTION','COMPLETED')).toBe(true);expect(transisiWorkOrderDiizinkan('VERIFIED','CLOSED')).toBe(true);});it('menghitung SLA dari priority',()=>{const d=new Date('2026-08-09T00:00:00Z');expect(slaDueAt(d,'CRITICAL').toISOString()).toBe('2026-08-09T00:30:00.000Z');expect(slaDueAt(d,'NORMAL').toISOString()).toBe('2026-08-09T08:00:00.000Z');});});
+

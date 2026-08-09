@@ -65,3 +65,13 @@
 - Memperbaiki shared role expansion agar profil menu-spesifik mengalahkan profil root group; front desk, supervisor, dan room attendant kini benar-benar sempit. Aksi `ASSIGN` hanya tersedia mulai profil module manager.
 - Menambahkan route/menu, role supervisor/attendant, permission server-side, dan `HospitalityHousekeepingPage` responsif untuk board, task mobile, linen, serta lost-and-found.
 - Migration additive diterapkan ke 13 schema lokal tanpa kegagalan.
+
+## 2026-08-09 — MI-14 Maintenance, Engineering, Asset, dan OOO/OOS
+
+- Menambahkan work request/order dengan workflow lengkap BRD, SLA dari priority, assignment, mobile event idempotency, part/photo payload, dan overdue board.
+- Asset hospitality menaut ke shared `product` dan `supplier`; konsumsi part masuk inventory-issue outbox agar stock hanya berubah melalui adapter inventory, bukan engine kedua.
+- Menambahkan preventive plan berbasis calendar/meter/hours/condition/compliance dan histori asset/room melalui work-order/event yang immutable.
+- Approval room closure membuat block OOO/OOS per malam pada ledger availability. Konflik block yang sudah ada tidak ditimpa.
+- Release hanya diizinkan setelah work order VERIFIED/CLOSED dan hanya soft-delete block `MAINTENANCE` milik closure tersebut.
+- Menambahkan role Engineering Manager/Engineer, permission server-side, route/menu, dan `HospitalityMaintenancePage` responsif.
+- Migration additive diterapkan ke 13 schema lokal tanpa kegagalan.

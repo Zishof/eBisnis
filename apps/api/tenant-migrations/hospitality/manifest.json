@@ -59,6 +59,12 @@
       "file": "20260807T060000__hospitality__housekeeping.sql",
       "name": "MI-13: Housekeeping, Linen, Minibar, Lost-and-Found",
       "description": "Room operational state, supervisor/mobile task lifecycle dengan offline client-operation idempotency, inspection/rework, linen/laundry movements, minibar posting outbox, serta immutable lost-and-found custody chain."
+    },
+    {
+      "id": "20260807T090000__hospitality__maintenance",
+      "file": "20260807T090000__hospitality__maintenance.sql",
+      "name": "MI-14: Maintenance, Asset, dan Room Downtime",
+      "description": "Engineering work-order/SLA/mobile events, asset links ke shared product/supplier, preventive plans, inventory issue outbox, dan approved OOO/OOS closure yang menulis availability block serta memerlukan verifikasi sebelum release."
     }
   ]
 }

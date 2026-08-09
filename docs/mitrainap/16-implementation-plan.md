@@ -1,6 +1,6 @@
 # Rencana implementasi incremental
 
-Setiap fase adalah vertical slice migration → model/domain → API → permission → UI → test → docs/changelog. Status audit 9 Agustus 2026: MI-0, MI-1, MI-4, MI-12, dan MI-13 selesai; MI-2, MI-3, dan MI-5..MI-11 sudah memiliki vertical slice tetapi masih parsial terhadap BRD; MI-14..MI-24 belum selesai.
+Setiap fase adalah vertical slice migration → model/domain → API → permission → UI → test → docs/changelog. Status audit 9 Agustus 2026: MI-0, MI-1, MI-4, dan MI-12..MI-14 selesai; MI-2, MI-3, dan MI-5..MI-11 sudah memiliki vertical slice tetapi masih parsial terhadap BRD; MI-15..MI-24 belum selesai.
 
 | Fase | Outcome |
 |---|---|
@@ -31,6 +31,7 @@ Setiap fase adalah vertical slice migration → model/domain → API → permiss
 | MI-11 | PARSIAL | kontrak provider-neutral, account/mapping, ARI/reservation queue, retry/DLQ, sanitasi, dan reconciliation exception tersedia; worker/UI/live adapter belum lengkap |
 | MI-12 | SELESAI | board arrival/departure/in-house, pre-arrival, room assignment, check-in/out idempoten, physical/digital-key contract, room move/rekey, perubahan masa inap/late checkout, exception model, handover, RBAC sempit, dan UI operasional tersedia |
 | MI-13 | SELESAI | supervisor room board, task/checklist lifecycle, mobile offline idempotency, DND/refused/discrepancy, inspection/rework, linen/laundry, minibar outbox, lost-and-found custody, role supervisor/attendant, dan UI responsif tersedia |
-| MI-14..24 | BELUM SELESAI | dilanjutkan incremental sesuai urutan fase dan gate di bawah |
+| MI-14 | SELESAI | work order/SLA/mobile events, shared product/supplier links, inventory issue outbox, asset/room history, preventive plan, approved OOO/OOS availability blocks, verified release, RBAC, dan UI tersedia |
+| MI-15..24 | BELUM SELESAI | dilanjutkan incremental sesuai urutan fase dan gate di bawah |
 
 Gate tiap fase: tidak ada TODO/skeleton sebagai acceptance; negative authorization dan tenant/property isolation lulus; migration additive; API/UI memakai data nyata; mobile/responsive diperiksa; ledger diperbarui. Live OTA/GDS/payment/digital-key/IoT tetap `BLOCKED_PROVIDER_INPUT` bila contract/credential belum tersedia, tetapi interface, fake adapter, queue, failure mode, dan tests tetap dibuat.

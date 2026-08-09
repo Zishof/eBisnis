@@ -24,6 +24,8 @@ export const ROLE_ADMIN_HOSPITALITY = 'HOSPITALITY_ADMIN';
 export const ROLE_FRONT_DESK_HOSPITALITY = 'HOSPITALITY_FRONT_DESK_AGENT';
 export const ROLE_HOUSEKEEPING_SUPERVISOR = 'HOSPITALITY_HOUSEKEEPING_SUPERVISOR';
 export const ROLE_ROOM_ATTENDANT = 'HOSPITALITY_ROOM_ATTENDANT';
+export const ROLE_ENGINEERING_MANAGER = 'HOSPITALITY_ENGINEERING_MANAGER';
+export const ROLE_ENGINEER = 'HOSPITALITY_ENGINEER';
 
 const DASAR = { HOME: 'P1', SUPPORT: 'P1' } as const;
 
@@ -87,6 +89,11 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
     moduleCode: HOSPITALITY_PREFIX, sortOrder: 5,
     actions: ['READ','CREATE','UPDATE','REVIEW','IMPORT','EXPORT','ASSIGN'],
   },
+  {
+    code: 'HOSPITALITY_MAINTENANCE', parentCode: 'HOSPITALITY_GROUP', label: 'Maintenance',
+    translationKey: 'menu.hospitality.maintenance', route: '/app/hospitality/maintenance', icon: 'Wrench',
+    moduleCode: HOSPITALITY_PREFIX, sortOrder: 6, actions: ['READ','CREATE','UPDATE','APPROVE','EXPORT'],
+  },
 ];
 
 export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
@@ -129,6 +136,16 @@ export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
     code: ROLE_ROOM_ATTENDANT, name: 'Room Attendant', family: 'Hospitality', profile: 'P2',
     modules: { HOME:'P1',SUPPORT:'P1',HOSPITALITY_HOUSEKEEPING:'P2' }, dataScope:'SELF', core:false,
     description:'Menjalankan tugas kamar yang ditugaskan dan sinkronisasi operasi mobile idempoten.',
+  },
+  {
+    code: ROLE_ENGINEERING_MANAGER, name: 'Engineering Manager', family: 'Hospitality', profile: 'P6',
+    modules: { HOME:'P1',SUPPORT:'P1',HOSPITALITY_MAINTENANCE:'P6' }, dataScope:'TENANT', core:false,
+    description:'Mengelola SLA, work order, preventive plan, asset, dan approval room downtime.',
+  },
+  {
+    code: ROLE_ENGINEER, name: 'Engineer', family: 'Hospitality', profile: 'P2',
+    modules: { HOME:'P1',SUPPORT:'P1',HOSPITALITY_MAINTENANCE:'P2' }, dataScope:'SELF', core:false,
+    description:'Menjalankan work order yang ditugaskan melalui operasi mobile idempoten.',
   },
 ];
 
