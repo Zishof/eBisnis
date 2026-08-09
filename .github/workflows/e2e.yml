@@ -120,6 +120,12 @@ jobs:
 
       - name: Build
         run: pnpm build
+        env:
+          # Vite/Workbox harus dibangun seperti artefak produksi. Job-level
+          # NODE_ENV=test tetap dipakai oleh seed, API, dan Playwright, tetapi
+          # bila diwariskan ke Vite bundle utama membengkak melewati batas
+          # precache 2 MiB dan E2E berhenti sebelum peramban dijalankan.
+          NODE_ENV: production
 
       - name: Pasang peramban Playwright
         run: pnpm --filter @ebisnis/web test:e2e:install
