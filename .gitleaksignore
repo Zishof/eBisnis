@@ -84,3 +84,28 @@ a463093a1f3b58c00d0fa628009edcb41dd82aaf:apps/api/src/modules/master-seed/platfo
 # force-push.
 9cf9ac40776b64ccadf9d25562832b9599d92ff2:apps/api/src/infrastructure/observability/telemetry-sanitizer.spec.ts:jwt:55
 9cf9ac40776b64ccadf9d25562832b9599d92ff2:apps/api/src/infrastructure/observability/telemetry-sanitizer.spec.ts:stripe-access-token:70
+
+# ---------------------------------------------------------------------------
+# 5. Bukti UAT POS/Inventory — token kedaluwarsa dan idempotency key
+#
+# Empat token di bawah berasal dari sesi UAT lokal 2026-08-08, sudah
+# kedaluwarsa, dan nilainya sudah diredaksi pada HEAD. Fingerprint hanya
+# mengizinkan kemunculan historis yang spesifik karena riwayat tidak boleh
+# ditulis ulang/force-push.
+#
+# Delapan temuan lain adalah UUID/idempotency key transaksi UAT, bukan
+# kredensial. Nilainya sengaja dipertahankan agar bukti retry/reconciliation
+# tetap dapat dicocokkan dengan baris database.
+# ---------------------------------------------------------------------------
+457db4044e0735dd8b0793f674c9fea62df33d93:docs/pos-inventory-parity/evidence/screen-01/masking-test/demo-session.json:jwt:1
+457db4044e0735dd8b0793f674c9fea62df33d93:docs/pos-inventory-parity/evidence/screen-01/step-up.json:generic-api-key:1
+457db4044e0735dd8b0793f674c9fea62df33d93:docs/pos-inventory-parity/evidence/screen-04/step-up.json:generic-api-key:1
+457db4044e0735dd8b0793f674c9fea62df33d93:docs/pos-inventory-parity/evidence/screen-07/step-up.json:generic-api-key:1
+457db4044e0735dd8b0793f674c9fea62df33d93:docs/pos-inventory-parity/evidence/screen-20/api-po1-approve.json:generic-api-key:1
+457db4044e0735dd8b0793f674c9fea62df33d93:docs/pos-inventory-parity/evidence/screen-20/api-po1-idempotent-retry.json:generic-api-key:1
+457db4044e0735dd8b0793f674c9fea62df33d93:docs/pos-inventory-parity/evidence/screen-20/api-po1-create.json:generic-api-key:1
+457db4044e0735dd8b0793f674c9fea62df33d93:docs/pos-inventory-parity/evidence/screen-20/api-po1-send.json:generic-api-key:1
+457db4044e0735dd8b0793f674c9fea62df33d93:docs/pos-inventory-parity/evidence/screen-20/api-po1-submit.json:generic-api-key:1
+457db4044e0735dd8b0793f674c9fea62df33d93:docs/pos-inventory-parity/evidence/screen-20/api-po4-create.json:generic-api-key:1
+457db4044e0735dd8b0793f674c9fea62df33d93:docs/pos-inventory-parity/evidence/screen-28/api-po1-detail.json:generic-api-key:1
+357ae6d0827a8cfee1030e25fad344722b39a05f:docs/pos-inventory-parity/evidence/screen-34/reconciliation.sql:generic-api-key:2
