@@ -66,6 +66,24 @@ export function maskAuditRows<T extends Record<string, unknown>>(
   }));
 }
 
+/**
+ * Nilai yang dicocokkan pada reference check sebelum purge. Referensi
+ * langsung (mis. `pos_sale.customer_id`) dicocokkan terhadap `id` record
+ * yang akan dihapus. Referensi TIDAK langsung (`viaColumn` diisi, mis.
+ * salesperson: transaksi menunjuk `user_subject_id` milik salesperson,
+ * bukan id profil salesperson-nya sendiri) dicocokkan terhadap
+ * `record[viaColumn]`. Mengembalikan `null`/`undefined` berarti reference
+ * tsb harus dilewati (kolom via belum terisi pada record ini, sehingga
+ * tidak ada apa pun yang bisa direferensikan lewatnya).
+ */
+export function resolveReferenceMatchValue(
+  record: Record<string, unknown>,
+  id: string,
+  viaColumn?: string,
+): unknown {
+  return viaColumn ? record[viaColumn] : id;
+}
+
 export interface LifecycleContext {
   schemaName: string;
   tenantId?: string;
@@ -558,11 +576,14 @@ export class MasterLifecycleService {
       );
       if (!exists?.exists) continue;
 
+      const matchValue = resolveReferenceMatchValue(record, id, reference.viaColumn);
+      if (matchValue == null) continue;
+
       const counted = await this.tenantDb.queryOne<{ total: string }>(
         ctx.schemaName,
         `SELECT count(*)::text AS total FROM "${ctx.schemaName}"."${ident(reference.table)}"
          WHERE "${ident(reference.column)}" = $1`,
-        [id],
+        [matchValue],
       );
       const count = Number(counted?.total ?? '0');
       if (count > 0) {

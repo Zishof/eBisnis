@@ -7,7 +7,7 @@
  * kosong tetap kosong, terisi menjadi disamarkan kecuali diizinkan.
  */
 
-import { maskAuditRows, maskFields, NILAI_DISAMARKAN } from './master-lifecycle.service';
+import { maskAuditRows, maskFields, NILAI_DISAMARKAN, resolveReferenceMatchValue } from './master-lifecycle.service';
 
 const FIELDS = ['bank_account_number', 'bank_account_name'];
 
@@ -102,5 +102,31 @@ describe('maskAuditRows', () => {
     const rows = [{ id: '1', old_data: originalOldData, new_data: null }];
     maskAuditRows(rows, FIELDS, false);
     expect(originalOldData.bank_account_number).toBe('1234567890');
+  });
+});
+
+/**
+ * Guard referensi purge salesperson bergantung pada ini: transaksi
+ * (sales_order dkk.) menunjuk `user_subject_id` milik salesperson, bukan id
+ * profil salesperson itu sendiri -- referential guard lama (`references: []`)
+ * membiarkan salesperson berpiutang riwayat transaksi terhapus permanen
+ * karena tidak ada kolom manapun pada tabel transaksi yang cocok dengan
+ * id record yang dihapus.
+ */
+describe('resolveReferenceMatchValue', () => {
+  it('tanpa viaColumn, cocokkan langsung terhadap id record', () => {
+    const record = { id: 'sales-1', user_subject_id: 'user-9' };
+    expect(resolveReferenceMatchValue(record, 'sales-1')).toBe('sales-1');
+  });
+
+  it('dengan viaColumn, cocokkan terhadap record[viaColumn], bukan id', () => {
+    const record = { id: 'sales-1', user_subject_id: 'user-9' };
+    expect(resolveReferenceMatchValue(record, 'sales-1', 'user_subject_id')).toBe('user-9');
+  });
+
+  it('viaColumn menunjuk kolom yang belum terisi menghasilkan null/undefined (harus dilewati)', () => {
+    const record = { id: 'sales-1', user_subject_id: null };
+    expect(resolveReferenceMatchValue(record, 'sales-1', 'user_subject_id')).toBeNull();
+    expect(resolveReferenceMatchValue({ id: 'sales-1' }, 'sales-1', 'user_subject_id')).toBeUndefined();
   });
 });

@@ -48,11 +48,16 @@ export const PARITY_EVIDENCE: ParityProof[] = [
    * Salesperson aktif/tidak aktif dibuktikan DITEGAKKAN pada mobile order --
    * membalik temuan sesi audit sebelumnya (09-master-stock-pricing-findings.md)
    * yang menyimpulkan sebaliknya tanpa mencobanya langsung. Dua gap baru
-   * ditemukan dan SENGAJA TIDAK diperbaiki (terlalu struktural untuk pass
-   * ini, dilaporkan lewat spawn_task terpisah): purge salesperson tidak
-   * memeriksa referensi tak-langsung (sudah menghapus satu salesperson uji
-   * yang punya riwayat transaksi hidup), dan endpoint audit-trail melewati
-   * penyamaran data bank. Sales/AR 31-42: rantai stok->jual->faktur->piutang
+   * ditemukan pass ini, KEDUANYA SUDAH DIPERBAIKI menyusul (2026-08-10):
+   * purge salesperson tidak memeriksa referensi tak-langsung (sudah
+   * menghapus satu salesperson uji yang punya riwayat transaksi hidup) --
+   * diperbaiki lewat `viaColumn`/`resolveReferenceMatchValue` pada
+   * `master-lifecycle.service.ts` (lihat screen-07/uat.md §5; verifikasi HTTP
+   * live ulang belum dilakukan karena profil uji lama sudah terlanjur
+   * terhapus permanen oleh gap tsb); dan endpoint audit-trail melewati
+   * penyamaran data bank -- diperbaiki lewat `maskAuditRows()` pada berkas
+   * yang sama, diuji unit (`master-lifecycle.spec.ts`). Sales/AR 31-42:
+   * rantai stok->jual->faktur->piutang
    * hidup dibuktikan penuh, termasuk custody nota (39/40) yang sebelumnya
    * sama sekali belum diuji. Tiga bug nyata ditemukan DAN DIPERBAIKI:
    * netting titipan nota terhadap pelunasan langsung, dua endpoint custody

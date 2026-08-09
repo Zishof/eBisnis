@@ -66,8 +66,29 @@ hubungan salesperson→order tidak langsung: `sales_order.created_by` menunjuk k
 `user_subject.id`, BUKAN ke `inventory_salesperson_profile.id` — perlu join tambahan lewat
 `inventory_salesperson_profile.user_subject_id` yang mekanisme sekarang tidak mendukung. Ini
 BUKAN cuma `references: []` yang lupa diisi; skema referensinya butuh perluasan kemampuan
-(join tidak langsung), bukan sekadar menambah satu baris konfigurasi — karena itu tidak
-diperbaiki pass ini sesuai kriteria "kecil dan jelas" (didokumentasikan, bukan gap kecil).
+(join tidak langsung), bukan sekadar menambah satu baris konfigurasi.
+
+### 5. GAP DIPERBAIKI (susulan): dukungan join tidak langsung ditambahkan ke mekanisme `references`
+Mekanisme generik diperluas dengan field opsional `viaColumn` pada tiap entri
+`MasterResourceDefinition.references` (`master-resource.registry.ts`) — bila diisi,
+`MasterLifecycleService.references()` mencocokkan `reference.column` terhadap
+`record[viaColumn]`, bukan terhadap `id` record itu sendiri (fungsi murni
+`resolveReferenceMatchValue`, diuji lewat unit test tanpa basis data —
+`master-lifecycle.spec.ts`, describe `resolveReferenceMatchValue`). `salespeople` kini
+mendaftarkan tiga referensi tidak langsung lewat `user_subject_id`: `sales_order.created_by`,
+`sales_note_handover.salesperson_id`, dan `legacy_receivable_ledger.salesperson_id` — ketiganya
+`isTransactional:true`, sehingga `canPurge` otomatis `false` selama salah satu ada baris yang
+cocok. `resolveReferenceMatchValue` juga menangani kasus `record[viaColumn]` kosong
+(`null`/`undefined`, mis. salesperson yang belum ditautkan ke `user_subject`) dengan melewati
+referensi tsb, mencegah query dengan parameter `NULL` yang tidak berarti.
+
+Perbaikan ini bersifat mekanisme umum (`references`/`purge` generik), belum diverifikasi ulang
+lewat siklus HTTP live yang sama seperti pembuktian gap di atas (profil uji `SALES-UAT-1` dari
+langkah 3 sudah terlanjur terhapus permanen oleh gap tsb sebelum perbaikan ini ada, sehingga tidak
+bisa dipakai ulang). Verifikasi tersisa: `POST /salespeople` baru + `POST
+/inventory/mobile-orders` + `GET /salespeople/:id/references` (harus `canPurge:false`,
+`references` berisi baris `sales_order`) + `POST /salespeople/:id/purge` (harus **409
+RECORD_REFERENCED**, bukan lagi 200).
 
 ## Hasil
 
@@ -78,13 +99,14 @@ lengkap 5 langkah di atas). Klaim sesi sebelumnya perlu diperbarui: penegakan AD
 mobile order, sekalipun mungkin tidak ada di jalur transaksi lain yang belum diuji (lihat di
 bawah).
 
-**GAP BARU ditemukan dan didokumentasikan** (bukan diperbaiki): referential guard untuk purge
-salesperson tidak berfungsi sama sekali — profil dengan riwayat transaksi nyata bisa dihapus
-permanen tanpa peringatan.
+**GAP DIPERBAIKI** (lihat §5): referential guard untuk purge salesperson kini memblokir purge
+selama ada `sales_order`/`sales_note_handover`/`legacy_receivable_ledger` yang menunjuk
+`user_subject_id` salesperson tsb — sebelumnya profil dengan riwayat transaksi nyata bisa
+dihapus permanen tanpa peringatan. Verifikasi HTTP live end-to-end atas perbaikan ini belum
+dilakukan (lihat catatan di §5).
 
 ## Yang TIDAK dicakup pass ini
 Jalur transaksi LAIN yang mungkin memakai salesperson (mis. field sales order dari Web, bukan
 mobile) tidak diuji — hanya `/inventory/mobile-orders` yang diverifikasi. Screenshot
-Web/Windows/Android tidak diambil. Gap referential guard purge tidak diperbaiki (perlu perluasan
-mekanisme `references` untuk mendukung join tidak langsung — di luar kriteria "kecil dan
-jelas" pada sesi ini).
+Web/Windows/Android tidak diambil. Perbaikan gap referential guard purge (§5) belum diverifikasi
+lewat siklus HTTP live baru (lihat catatan di §5).

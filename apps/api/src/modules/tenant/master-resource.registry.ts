@@ -30,7 +30,20 @@ export interface MasterResourceDefinition {
   /** Relasi FK yang divalidasi ada sebelum ditulis: field -> tabel referensi. */
   foreignKeys?: Record<string, string>;
   /** Tabel yang mereferensikan resource ini, dipakai reference check sebelum purge. */
-  references: Array<{ table: string; column: string; isTransactional: boolean; label: string }>;
+  references: Array<{
+    table: string;
+    column: string;
+    isTransactional: boolean;
+    label: string;
+    /**
+     * Jika diisi, `column` dibandingkan terhadap `record[viaColumn]` (bukan
+     * `record.id`) -- untuk referensi tidak langsung lewat kolom lain pada
+     * record ini. Dipakai mis. oleh salesperson: transaksi mereferensikan
+     * `user_subject_id` milik salesperson, bukan id profil salesperson itu
+     * sendiri.
+     */
+    viaColumn?: string;
+  }>;
   hardDeletePolicy: HardDeletePolicy;
   supportsPurge: boolean;
   defaultSort: string;
@@ -199,7 +212,29 @@ export const MASTER_RESOURCES: MasterResourceDefinition[] = [
       'monthly_target', 'phone', 'email', 'sort_order',
     ],
     foreignKeys: { user_subject_id: 'user_subject' },
-    references: [],
+    references: [
+      {
+        table: 'sales_order',
+        column: 'created_by',
+        isTransactional: true,
+        label: 'Pesanan penjualan',
+        viaColumn: 'user_subject_id',
+      },
+      {
+        table: 'sales_note_handover',
+        column: 'salesperson_id',
+        isTransactional: true,
+        label: 'Serah-terima nota penjualan',
+        viaColumn: 'user_subject_id',
+      },
+      {
+        table: 'legacy_receivable_ledger',
+        column: 'salesperson_id',
+        isTransactional: true,
+        label: 'Kartu piutang legacy',
+        viaColumn: 'user_subject_id',
+      },
+    ],
     hardDeletePolicy: 'PURGE_IF_UNREFERENCED',
     supportsPurge: true,
     defaultSort: 'name',
