@@ -68,13 +68,13 @@ export class HospitalityFrontdeskController {
     return this.service.preArrival(schema(u), id, dto, u.userId);
   }
 
-  @Permissions('HOSPITALITY_FRONTDESK.CHECKIN')
+  @Permissions('HOSPITALITY_FRONTDESK.CREATE')
   @Post('room-stays/:id/check-in')
   checkin(@Param('id') id: string, @Body() dto: CheckinDto, @RequestContext() meta: RequestMeta, @CurrentUser() u: AuthenticatedUser) {
     return this.service.checkin(schema(u), id, dto, meta.idempotencyKey, u.userId);
   }
 
-  @Permissions('HOSPITALITY_FRONTDESK.ROOM_MOVE')
+  @Permissions('HOSPITALITY_FRONTDESK.UPDATE')
   @Post('stays/:id/room-move')
   move(@Param('id') id: string, @Body() dto: MoveDto, @RequestContext() meta: RequestMeta, @CurrentUser() u: AuthenticatedUser) {
     return this.service.moveRoom(schema(u), id, dto, meta.idempotencyKey, u.userId);
@@ -86,13 +86,13 @@ export class HospitalityFrontdeskController {
     return this.service.changeStayDates(schema(u), id, dto, u.userId);
   }
 
-  @Permissions('HOSPITALITY_FRONTDESK.CHECKOUT')
+  @Permissions('HOSPITALITY_FRONTDESK.SUBMIT')
   @Post('stays/:id/check-out')
   checkout(@Param('id') id: string, @Body() dto: CheckoutDto, @RequestContext() meta: RequestMeta, @CurrentUser() u: AuthenticatedUser) {
     return this.service.checkout(schema(u), id, dto, meta.idempotencyKey, u.userId);
   }
 
-  @Permissions('HOSPITALITY_FRONTDESK.HANDOVER')
+  @Permissions('HOSPITALITY_FRONTDESK.CREATE')
   @Post('handover')
   handover(@Body() dto: HandoverDto, @CurrentUser() u: AuthenticatedUser) { return this.service.handover(schema(u), dto, u.userId); }
 }

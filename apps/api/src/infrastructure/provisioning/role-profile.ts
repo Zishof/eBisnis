@@ -63,7 +63,7 @@ const SUPERVISOR = [
 const MODULE_MANAGER = [
   ...SUPERVISOR,
   'APPROVE', 'REJECT', 'CANCEL', 'POST', 'REVERSE', 'RETURN', 'CHECK_ALL',
-  'VIEW_AMOUNT',
+  'VIEW_AMOUNT', 'ASSIGN',
 ] as const;
 
 const MODULE_ADMIN = [

@@ -55,3 +55,13 @@
 - Physical key issuance operasional; digital key memakai port provider-neutral dan secara eksplisit `BLOCKED_PROVIDER_INPUT` sampai kontrak provider terverifikasi tersedia. Room move mencabut kunci lama dan menerbitkan kunci pengganti.
 - Menambahkan peran sempit `HOSPITALITY_FRONT_DESK_AGENT`, permission server-side per aksi, route/menu, dan UI operasional `HospitalityFrontdeskPage`.
 - Migration additive diterapkan pada 13 schema lokal; eksekusi kedua seluruhnya `sudah mutakhir` dan seed ulang menghasilkan 0 izin baru.
+
+## 2026-08-09 — MI-13 Housekeeping, Linen, Minibar, dan Lost-and-Found
+
+- Menambahkan room-operation state dan supervisor board yang menggabungkan kondisi kamar, status front office, guest stay, DND, dan tugas aktif.
+- Menambahkan assignment serta lifecycle task start/pause/complete/request-inspection/pass/rework/close/refuse dengan row lock dan immutable event ledger.
+- Operasi mobile membawa `clientOperationId` unik; retry offline mengembalikan event yang sama dan tidak menggandakan supply, linen, minibar, foto, atau perubahan status.
+- Menambahkan workload point deterministik, checklist/result, DND/refused/discrepancy, inspection, linen/laundry movement dan discrepancy/cost/write-off, minibar posting outbox, serta lost-and-found custody chain.
+- Memperbaiki shared role expansion agar profil menu-spesifik mengalahkan profil root group; front desk, supervisor, dan room attendant kini benar-benar sempit. Aksi `ASSIGN` hanya tersedia mulai profil module manager.
+- Menambahkan route/menu, role supervisor/attendant, permission server-side, dan `HospitalityHousekeepingPage` responsif untuk board, task mobile, linen, serta lost-and-found.
+- Migration additive diterapkan ke 13 schema lokal tanpa kegagalan.

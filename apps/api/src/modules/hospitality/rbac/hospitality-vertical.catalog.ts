@@ -22,6 +22,8 @@ export const HOSPITALITY_PREFIX = 'HOSPITALITY';
 /** Kode peran yang diberikan kepada pemilik properti saat provisioning. */
 export const ROLE_ADMIN_HOSPITALITY = 'HOSPITALITY_ADMIN';
 export const ROLE_FRONT_DESK_HOSPITALITY = 'HOSPITALITY_FRONT_DESK_AGENT';
+export const ROLE_HOUSEKEEPING_SUPERVISOR = 'HOSPITALITY_HOUSEKEEPING_SUPERVISOR';
+export const ROLE_ROOM_ATTENDANT = 'HOSPITALITY_ROOM_ATTENDANT';
 
 const DASAR = { HOME: 'P1', SUPPORT: 'P1' } as const;
 
@@ -77,7 +79,13 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
     icon: 'ConciergeBell',
     moduleCode: HOSPITALITY_PREFIX,
     sortOrder: 4,
-    actions: ['READ', 'UPDATE', 'CHECKIN', 'CHECKOUT', 'ROOM_MOVE', 'HANDOVER'],
+    actions: ['READ', 'CREATE', 'UPDATE', 'SUBMIT', 'REVIEW'],
+  },
+  {
+    code: 'HOSPITALITY_HOUSEKEEPING', parentCode: 'HOSPITALITY_GROUP', label: 'Housekeeping',
+    translationKey: 'menu.hospitality.housekeeping', route: '/app/hospitality/housekeeping', icon: 'Sparkles',
+    moduleCode: HOSPITALITY_PREFIX, sortOrder: 5,
+    actions: ['READ','CREATE','UPDATE','REVIEW','IMPORT','EXPORT','ASSIGN'],
   },
 ];
 
@@ -111,6 +119,16 @@ export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
     dataScope: 'TENANT',
     core: false,
     description: 'Menangani arrival, room assignment, check-in, room move, check-out, dan handover tanpa akses administrasi properti.',
+  },
+  {
+    code: ROLE_HOUSEKEEPING_SUPERVISOR, name: 'Housekeeping Supervisor', family: 'Hospitality', profile: 'P6',
+    modules: { HOME:'P1',SUPPORT:'P1',HOSPITALITY_HOUSEKEEPING:'P6' }, dataScope:'TENANT', core:false,
+    description:'Mengelola board, assignment, inspeksi, linen, minibar, dan lost-and-found.',
+  },
+  {
+    code: ROLE_ROOM_ATTENDANT, name: 'Room Attendant', family: 'Hospitality', profile: 'P2',
+    modules: { HOME:'P1',SUPPORT:'P1',HOSPITALITY_HOUSEKEEPING:'P2' }, dataScope:'SELF', core:false,
+    description:'Menjalankan tugas kamar yang ditugaskan dan sinkronisasi operasi mobile idempoten.',
   },
 ];
 

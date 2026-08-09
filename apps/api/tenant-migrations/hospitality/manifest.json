@@ -53,6 +53,12 @@
       "file": "20260807T030000__hospitality__front_office.sql",
       "name": "MI-12: Front Office dan Guest Stay",
       "description": "Lifecycle operasional guest stay terpisah dari booking, pre-arrival, room assignment, transactional check-in/out idempotent, provider-neutral physical/digital key issuance, immutable room move, walk/overbooking exception, dan shift handover."
+    },
+    {
+      "id": "20260807T060000__hospitality__housekeeping",
+      "file": "20260807T060000__hospitality__housekeeping.sql",
+      "name": "MI-13: Housekeeping, Linen, Minibar, Lost-and-Found",
+      "description": "Room operational state, supervisor/mobile task lifecycle dengan offline client-operation idempotency, inspection/rework, linen/laundry movements, minibar posting outbox, serta immutable lost-and-found custody chain."
     }
   ]
 }

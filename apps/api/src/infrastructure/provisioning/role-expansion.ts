@@ -45,8 +45,11 @@ export function buildMenuModuleMap(menus: readonly MenuNodeSeed[] = MENU_TREE_SE
  * ekspor, dan daftar izin berhenti mencerminkan kenyataan.
  */
 export function resolveMenuActions(role: RoleCatalogEntry, menu: MenuNodeSeed, moduleCode: string): string[] {
+  // Override menu spesifik memungkinkan role sempit di dalam satu vertical
+  // group tanpa mewarisi seluruh menu saudaranya. Fallback root menjaga
+  // perilaku seluruh katalog lama tetap kompatibel.
   const profile: ProfileCode | undefined =
-    role.modules[moduleCode] ?? (role.allModules ? role.profile : undefined);
+    role.modules[menu.code] ?? role.modules[moduleCode] ?? (role.allModules ? role.profile : undefined);
   if (!profile || profile === 'P0') return [];
 
   const granted = PROFILE_ACTIONS[profile];

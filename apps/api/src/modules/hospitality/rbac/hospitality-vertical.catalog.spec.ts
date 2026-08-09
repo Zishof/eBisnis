@@ -11,6 +11,9 @@ import {
   HOSPITALITY_ROLES,
   HOSPITALITY_VERTICAL_CATALOG,
   ROLE_ADMIN_HOSPITALITY,
+  ROLE_FRONT_DESK_HOSPITALITY,
+  ROLE_HOUSEKEEPING_SUPERVISOR,
+  ROLE_ROOM_ATTENDANT,
 } from './hospitality-vertical.catalog';
 import { VERTICAL_CATALOGS } from '../../../infrastructure/provisioning/vertical-catalogs';
 import { buildMenuModuleMap, resolveMenuActions } from '../../../infrastructure/provisioning/role-expansion';
@@ -61,6 +64,26 @@ describe('katalog vertikal Hospitality', () => {
         .map((modul) => `${peran.code} -> ${modul}`),
     );
     expect(takDikenali).toEqual([]);
+  });
+
+  it('role sempit memakai override menu tanpa mewarisi menu hospitality lain', () => {
+    const moduleMap = buildMenuModuleMap(HOSPITALITY_MENUS);
+    const frontdesk = HOSPITALITY_MENUS.find((m) => m.code === 'HOSPITALITY_FRONTDESK')!;
+    const properti = HOSPITALITY_MENUS.find((m) => m.code === 'HOSPITALITY_PROPERTI')!;
+    const role = HOSPITALITY_ROLES.find((r) => r.code === ROLE_FRONT_DESK_HOSPITALITY)!;
+    expect(resolveMenuActions(role, frontdesk, moduleMap.get(frontdesk.code)!)).toEqual(expect.arrayContaining(['READ','CREATE','UPDATE','SUBMIT']));
+    expect(resolveMenuActions(role, properti, moduleMap.get(properti.code)!)).toEqual([]);
+  });
+
+  it('room attendant dapat bekerja tetapi tidak assign/inspect/import', () => {
+    const moduleMap = buildMenuModuleMap(HOSPITALITY_MENUS);
+    const menu = HOSPITALITY_MENUS.find((m) => m.code === 'HOSPITALITY_HOUSEKEEPING')!;
+    const attendant = HOSPITALITY_ROLES.find((r) => r.code === ROLE_ROOM_ATTENDANT)!;
+    const supervisor = HOSPITALITY_ROLES.find((r) => r.code === ROLE_HOUSEKEEPING_SUPERVISOR)!;
+    const actions = resolveMenuActions(attendant, menu, moduleMap.get(menu.code)!);
+    expect(actions).toEqual(expect.arrayContaining(['READ','CREATE','UPDATE']));
+    expect(actions).not.toEqual(expect.arrayContaining(['ASSIGN','REVIEW','IMPORT']));
+    expect(resolveMenuActions(supervisor, menu, moduleMap.get(menu.code)!)).toEqual(expect.arrayContaining(['ASSIGN','REVIEW','IMPORT']));
   });
 
   it('terdaftar pada VERTICAL_CATALOGS', () => {
