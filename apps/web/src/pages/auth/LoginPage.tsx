@@ -143,7 +143,16 @@ export function LoginPage() {
    */
   const portalUmum = isSantriPortalHost();
   const slugPondok = slugPondokDariHost();
-  const tampilkanDemoLogin = !slugPondok && !cmnInventory;
+  // `inventory && !cmnInventory` (host generik seperti inventory.ebisnis.id,
+  // BUKAN cmnmedika-inventory.ebisnis.id) memakai AKUN_INVENTORY_DEMO --
+  // kredensial yang TIDAK PERNAH benar-benar dibuat di server. Dikonfirmasi
+  // langsung lewat POST /auth/login: 401 INVALID_CREDENTIALS. Tidak ada
+  // skrip seeding untuk tenant demo inventory generik ini (beda dari
+  // ensure-demo-pesantren.sh yang memang ada untuk santri). Sampai tenant
+  // demo sungguhan dibuat, jalan pintas "coba demo" ini disembunyikan
+  // seluruhnya -- lebih baik tidak ada tombol daripada tombol yang
+  // menjanjikan tetapi selalu gagal masuk.
+  const tampilkanDemoLogin = !slugPondok && !cmnInventory && !inventory;
 
   const pilihAkunSalon = useCallback((roleCode: string) => {
     const akun = AKUN_SALON_DEMO.find((item) => item.roleCode === roleCode) ?? AKUN_SALON_DEMO[0];
@@ -167,8 +176,11 @@ export function LoginPage() {
     const role = searchParams.get('role');
     if (!role) return;
     if (salon) pilihAkunSalon(role);
-    if (inventory) pilihAkunInventory(role);
-  }, [inventory, pilihAkunInventory, pilihAkunSalon, salon, searchParams]);
+    // Hanya untuk cmnInventory: `?role=` pada host inventory generik akan
+    // mengisi AKUN_INVENTORY_DEMO yang tidak pernah benar-benar dibuat di
+    // server -- lihat catatan panjang pada tampilkanDemoLogin.
+    if (inventory && cmnInventory) pilihAkunInventory(role);
+  }, [cmnInventory, inventory, pilihAkunInventory, pilihAkunSalon, salon, searchParams]);
 
   const onSubmit = handleSubmit(async (values) => {
     setError(null);
@@ -360,37 +372,12 @@ export function LoginPage() {
             </div>
           )}
 
-          {inventory && !cmnInventory && (
-            <div className="mt-6 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Pilih persona demo inventory
-              </p>
-              {AKUN_INVENTORY_DEMO.map((akun) => {
-                const Icon = akun.icon;
-                return (
-                  <button
-                    key={akun.roleCode}
-                    type="button"
-                    className="group flex w-full items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-brand-300 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-700 dark:hover:bg-brand-950/30"
-                    onClick={() => pilihAkunInventory(akun.roleCode)}
-                  >
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-100 text-brand-800 group-hover:bg-brand-700 group-hover:text-white dark:bg-brand-950 dark:text-brand-200">
-                      <Icon className="h-5 w-5" aria-hidden />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block font-semibold text-slate-900 dark:text-white">{akun.label}</span>
-                      <span className="mt-0.5 block text-xs leading-5 text-slate-600 dark:text-slate-300">
-                        {akun.description}
-                      </span>
-                      <span className="mt-2 block truncate rounded-md bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        {akun.username} / {akun.password}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {/* Kartu persona demo inventory generik dihapus (bukan cuma
+              disembunyikan lewat kondisi false): AKUN_INVENTORY_DEMO tidak
+              pernah dibuat di server -- lihat catatan pada
+              tampilkanDemoLogin di atas. Untuk cmnInventory (pelanggan
+              sungguhan), memang sengaja tidak pernah ada kartu demo sama
+              sekali -- itu bukan tenant bersama. */}
 
           {portalUmum && (
             <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
