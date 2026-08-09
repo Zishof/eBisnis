@@ -10,6 +10,10 @@ sampai validasi penerimaan barang.
 | Branch utama | `main` |
 | Workspace pengembangan | `C:\opt\eBisnisGithub` |
 
+Untuk melanjutkan pekerjaan dari komputer lain, mulai dari
+[`HANDOVER.md`](HANDOVER.md). Berkas tersebut mengindeks handoff aktif eMedik,
+POS/Inventory, dan Education beserta langkah clone, verifikasi, dan deploy.
+
 Sejak 2026-07-30 proyek ini **Git-only**. `C:\opt\eBisnis` adalah arsip
 read-only dan tidak dipakai untuk pengembangan; lihat
 [rencana cutover](docs/git-migration/04-migration-cutover-plan.md).
