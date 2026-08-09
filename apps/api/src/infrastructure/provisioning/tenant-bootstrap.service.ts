@@ -1172,7 +1172,20 @@ export async function assertWarehouseNotFrozen(
   }
 }
 
-/** Update projection saldo stok secara atomik. */
+/**
+ * Update projection saldo stok secara atomik.
+ *
+ * `average_cost` HANYA dihitung ulang bila `inboundCost` diisi -- artinya
+ * delta ini benar-benar penerimaan dengan biaya nyata baru (mis. goods
+ * receipt), bukan sekadar mutasi kuantitas (keluar POS, reservasi, transfer
+ * tanpa data biaya, dst). Rumus moving-average-cost standar: rata-rata
+ * tertimbang antara saldo lama dan qty*biaya yang baru masuk. Sebelumnya
+ * kolom ini TIDAK PERNAH ditulis oleh jalur transaksi manapun -- laporan
+ * valuasi stok (layar 14/15) dan HPP penjualan POS selalu membaca 0
+ * (docs/pos-inventory-parity/evidence/screen-08/uat.md). Baris pertama untuk
+ * kombinasi gudang/produk/lot/bin ini otomatis memakai `inboundCost` apa
+ * adanya (rata-rata dari kosong + biaya baru = biaya baru itu sendiri).
+ */
 export async function applyBalanceDelta(
   client: PoolClient,
   schemaLiteral: string,
@@ -1187,13 +1200,14 @@ export async function applyBalanceDelta(
     inTransitDelta?: number;
     quarantineDelta?: number;
     damagedDelta?: number;
+    inboundCost?: number;
   },
 ): Promise<void> {
   await client.query(
     `INSERT INTO ${schemaLiteral}.stock_balance
        (warehouse_id, product_id, lot_id, bin_id, on_hand_qty, available_qty, reserved_qty,
-        in_transit_qty, quarantine_qty, damaged_qty, last_movement_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+        in_transit_qty, quarantine_qty, damaged_qty, average_cost, last_movement_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE($11::numeric, 0), now())
      ON CONFLICT (warehouse_id, product_id,
                   COALESCE(lot_id, '00000000-0000-0000-0000-000000000000'::uuid),
                   COALESCE(bin_id, '00000000-0000-0000-0000-000000000000'::uuid))
@@ -1204,6 +1218,16 @@ export async function applyBalanceDelta(
        in_transit_qty = ${schemaLiteral}.stock_balance.in_transit_qty + EXCLUDED.in_transit_qty,
        quarantine_qty = ${schemaLiteral}.stock_balance.quarantine_qty + EXCLUDED.quarantine_qty,
        damaged_qty    = ${schemaLiteral}.stock_balance.damaged_qty + EXCLUDED.damaged_qty,
+       average_cost   = CASE
+         WHEN $11::numeric IS NOT NULL AND EXCLUDED.on_hand_qty > 0 THEN
+           COALESCE(
+             (${schemaLiteral}.stock_balance.on_hand_qty * ${schemaLiteral}.stock_balance.average_cost
+                + EXCLUDED.on_hand_qty * $11::numeric)
+             / NULLIF(${schemaLiteral}.stock_balance.on_hand_qty + EXCLUDED.on_hand_qty, 0),
+             $11::numeric
+           )
+         ELSE ${schemaLiteral}.stock_balance.average_cost
+       END,
        last_movement_at = now(),
        updated_at     = now(),
        version        = ${schemaLiteral}.stock_balance.version + 1`,
@@ -1218,6 +1242,7 @@ export async function applyBalanceDelta(
       delta.inTransitDelta ?? 0,
       delta.quarantineDelta ?? 0,
       delta.damagedDelta ?? 0,
+      delta.inboundCost ?? null,
     ],
   );
 }

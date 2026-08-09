@@ -1103,6 +1103,7 @@ export class ErpPurchasingService {
               lotId: line.lot_id,
               onHandDelta: accepted.toNumber(),
               availableDelta: accepted.toNumber(),
+              inboundCost: new Decimal(line.unit_cost).toNumber(),
             });
 
             nilaiDiterima = nilaiDiterima.plus(accepted.times(new Decimal(line.unit_cost)));
@@ -1310,6 +1311,39 @@ export class ErpPurchasingService {
           );
         }
 
+        /*
+         * Hutang dagang yang dibuat saat validasi (lihat `validateGoodsReceipt`)
+         * harus ikut dibalik -- sebelumnya reversal ini hanya membalik
+         * stock_movement, meninggalkan `legacy_payable_ledger` tetap terbuka
+         * ("hutang hantu") walau penerimaan barangnya sudah dibatalkan
+         * (docs/pos-inventory-parity/evidence/screen-20/uat.md). Diblokir bila
+         * sudah ada pembayaran BERSTATUS POSTED yang dialokasikan ke hutang
+         * tsb -- uang sungguhan sudah keluar, tidak aman menyamarkan hutangnya
+         * begitu saja lewat reversal otomatis; perlu koreksi manual.
+         */
+        const payables = await client.query<{ id: string; paid_amount: string }>(
+          `SELECT l.id::text,
+                  COALESCE(posted.allocated_amount, 0)::text AS paid_amount
+             FROM ${S}.legacy_payable_ledger l
+             LEFT JOIN LATERAL (
+               SELECT sum(a.allocated_amount) AS allocated_amount
+                 FROM ${S}.inventory_ap_payment_allocation a
+                 JOIN ${S}.inventory_ap_payment p ON p.id = a.payment_id
+                WHERE a.payable_ledger_id = l.id AND p.status = 'POSTED'
+             ) posted ON TRUE
+            WHERE l.metadata->>'goodsReceiptId' = $1 AND NOT l.is_settled
+            FOR UPDATE OF l`,
+          [id],
+        );
+        const alreadyPaid = payables.rows.find((row) => new Decimal(row.paid_amount).greaterThan(0));
+        if (alreadyPaid) {
+          throw AppError.conflict(
+            ErrorCodes.PAYABLE_ALREADY_PAID,
+            'Hutang dari penerimaan ini sudah memiliki pembayaran terposting; tidak dapat dibatalkan otomatis. Lakukan koreksi manual.',
+            { payableLedgerId: alreadyPaid.id, paidAmount: alreadyPaid.paid_amount },
+          );
+        }
+
         const originals = await client.query<{
           product_id: string;
           uom_id: string;
@@ -1382,6 +1416,29 @@ export class ErpPurchasingService {
           [id, reason],
         );
 
+        for (const payable of payables.rows) {
+          await client.query(
+            `UPDATE ${S}.legacy_payable_ledger
+               SET is_settled = TRUE,
+                   metadata = metadata || jsonb_build_object(
+                     'reversedAt', now(), 'reversedBy', $1::uuid, 'reversalReason', $2
+                   )
+             WHERE id = $3`,
+            [ctx.userId, reason, payable.id],
+          );
+        }
+        /* Peristiwa akuntansi yang belum sempat dijurnal (masih PENDING) untuk
+         * nilai yang baru saja dibalik tidak boleh menunggu lalu terjurnal
+         * belakangan -- jika sudah POSTED (sudah terjurnal), dibiarkan berdiri
+         * apa adanya (di luar cakupan reversal ini; perlu jurnal pembalik
+         * terpisah mengikuti pola `reversal_of_id`). */
+        await client.query(
+          `UPDATE ${S}.accounting_event
+             SET status = 'SKIPPED'
+           WHERE source_type = 'GOODS_RECEIPT' AND source_id = $1 AND status = 'PENDING'`,
+          [id],
+        );
+
         await client.query(
           `INSERT INTO ${S}.goods_receipt_validation
              (goods_receipt_id, validator_id, posting_key, action, reason)
@@ -1401,6 +1458,7 @@ export class ErpPurchasingService {
           actorUsername: ctx.username,
           reason,
           requestId: ctx.audit.requestId,
+          metadata: { settledPayableLedgerIds: payables.rows.map((row) => row.id) },
         });
 
         return this.loadGoodsReceipt(client, ctx.schemaName, id);

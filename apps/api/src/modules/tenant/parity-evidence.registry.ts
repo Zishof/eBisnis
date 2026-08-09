@@ -98,9 +98,17 @@ export const PARITY_EVIDENCE: ParityProof[] = [
    * memakainya) ditemukan SECARA INDEPENDEN oleh agen Sales/AR juga,
    * konvergen pada perbaikan yang sama persis (dikonfirmasi lewat tinjauan
    * diff akhir -- bukan penulisan ganda yang bentrok). Didokumentasikan
-   * tidak diperbaiki: stock_balance.average_cost tidak pernah ditulis jalur
-   * transaksi hidup manapun (hanya impor CLI/seed demo), membuat nilai stok
-   * pada layar 14/15 selalu nol -- terlalu lintas-modul untuk pass ini.
+   * tidak diperbaiki saat itu, KEMUDIAN DIPERBAIKI SEBAGIAN (2026-08-10):
+   * stock_balance.average_cost tidak pernah ditulis jalur transaksi hidup
+   * manapun (hanya impor CLI/seed demo), membuat nilai stok pada layar
+   * 14/15 DAN HPP penjualan POS (dijurnal sebagai COGS) selalu nol --
+   * ditambahkan rumus moving-average-cost ke `applyBalanceDelta()`
+   * (`tenant-bootstrap.service.ts`), opt-in lewat parameter `inboundCost`
+   * baru, diwire HANYA ke titik goods-receipt-diterima (satu-satunya titik
+   * dari 13 pemanggil yang punya data biaya nyata siap pakai tanpa
+   * plumbing baru). Transfer antar-gudang, un-blending saat reversal GR,
+   * dan retur/void POS masih belum ikut menghitung ulang rata-rata --
+   * tetap terlalu lintas-modul untuk pass ini, lihat screen-08/uat.md.
    *
    * Purchase/AP 20-23,25-29: rantai PO->GR->AP hidup dibuktikan penuh
    * termasuk idempotency PO create. Satu bug DIPERBAIKI: `PURCHASE_ORDER.READ`
@@ -108,16 +116,19 @@ export const PARITY_EVIDENCE: ParityProof[] = [
    * gap SALES_ORDER.INVOICE yang ditemukan pass sebelumnya) mengunci
    * `/inventory/legacy/payables` dan `/inventory/supplier-workspace` untuk
    * SEMUA peran termasuk Pemilik Usaha -- diganti `PURCHASING.READ`. Dua gap
-   * DILAPORKAN, sengaja tidak diperbaiki: goods-receipt reversal tidak
-   * membalik legacy_payable_ledger (payable jadi piutang hantu setelah
-   * barang diretur ke supplier -- perbaikan yang benar perlu menangani kasus
-   * payable yang sudah sebagian dibayar sebelum reversal, di luar cakupan
-   * patch kecil), dan agingReport() memakai nilai kotor bukan neto --
-   * KEMUDIAN DIPERBAIKI langsung oleh sesi utama setelah kedua agen selesai
-   * (tidak ada lagi risiko bentrok berkas): lihat commit yang menyertai
-   * entri ini, agingReport() dan query 'ar-aging-sales' sekarang menetokan
-   * terhadap alokasi pembayaran/penerimaan yang sudah POSTED, mengikuti pola
-   * yang sama dengan /inventory/legacy/payables|receivables.
+   * DILAPORKAN, KEMUDIAN KEDUANYA DIPERBAIKI (2026-08-10): goods-receipt
+   * reversal tidak membalik legacy_payable_ledger (payable jadi piutang
+   * hantu setelah barang diretur ke supplier) -- diperbaiki lewat
+   * `reverseGoodsReceiptValidation()` (`erp-purchasing.service.ts`): blokir
+   * HTTP 409 `PAYABLE_ALREADY_PAID` bila sudah ada pembayaran POSTED
+   * teralokasi, jika belum maka payable disetel `is_settled=TRUE` +
+   * dicatat metadata reversal (lihat screen-20/uat.md); dan agingReport()
+   * memakai nilai kotor bukan neto -- agingReport() dan query
+   * 'ar-aging-sales' sekarang menetokan terhadap alokasi pembayaran/
+   * penerimaan yang sudah POSTED, mengikuti pola yang sama dengan
+   * /inventory/legacy/payables|receivables. Gap terpisah juga DIPERBAIKI
+   * di domain Stock/Harga (layar 08, lihat blok komentar di atas):
+   * `stock_balance.average_cost` tidak pernah ditulis.
    *
    * Lihat docs/pos-inventory-parity/evidence/screen-{08..23,25..29}/uat.md.
    */

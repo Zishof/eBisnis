@@ -48,11 +48,11 @@ Semua PO memakai supplier SUP-C (CV Bahan Segar Nusantara) dan gudang GDG-OUTLET
 supplier-produk — keempatnya bekerja persis seperti diklaim source, dibuktikan lewat panggilan
 HTTP nyata + verifikasi SQL independen terhadap PostgreSQL lokal (bukan mock).
 
-## Temuan BELUM DIPERBAIKI: `reverse-validation` GR tidak membalik payable AP yang sudah dibuat
+## Temuan (DIPERBAIKI, 2026-08-10): `reverse-validation` GR tidak membalik payable AP yang sudah dibuat
 
-**GAP nyata ditemukan lewat pass ini, DIDOKUMENTASIKAN (tidak diperbaiki)** — lebih besar/berisiko
-dari sekadar perbaikan string permission (lihat layar 22), jadi mengikuti arahan sesi untuk
-didokumentasikan saja, bukan diperbaiki tergesa.
+**GAP nyata ditemukan lewat pass ini** — awalnya didokumentasikan tanpa diperbaiki karena lebih
+besar/berisiko dari sekadar perbaikan string permission (lihat layar 22); diperbaiki menyusul
+setelah keputusan desain di bawah diambil.
 
 **Reproduksi langsung** (PO-000004/GR-000004, alur sama seperti di atas sampai `STOCK_POSTED`):
 
@@ -82,14 +82,45 @@ mencerminkan bahwa penerimaannya sudah tidak sah lagi.
 menyentuh `goods_receipt`, `goods_receipt_validation`, `stock_movement`, `stock_balance` — tidak
 ada satu baris kode pun yang menyentuh `legacy_payable_ledger`.
 
-**Kenapa TIDAK diperbaiki di pass ini**: perbaikan yang benar perlu menangani kasus di mana
-payable itu **sudah mulai dibayar** sebelum GR-nya dibalik (ada baris
-`inventory_ap_payment_allocation` berstatus `POSTED` mengarah ke ledger ini) — kasus itu tidak
-boleh serta-merta membatalkan/menghapus payable begitu saja (uangnya sudah keluar). Ini butuh
-keputusan desain (blokir reverse jika sudah ada pembayaran POSTED? Atau buat dokumen
-penyesuaian/kredit nota baru?) yang di luar cakupan "perbaikan kecil, berisiko rendah" yang
-diizinkan sesi ini. Didokumentasikan agar tim yang berwenang bisa memutuskan pendekatan yang
-tepat.
+**Keputusan desain yang diambil**: perbaikan yang benar perlu menangani kasus di mana payable itu
+**sudah mulai dibayar** sebelum GR-nya dibalik (ada baris `inventory_ap_payment_allocation`
+berstatus `POSTED` mengarah ke ledger ini) — kasus itu tidak boleh serta-merta
+membatalkan/menghapus payable begitu saja (uangnya sudah keluar). Dipilih pendekatan **blokir**
+(bukan dokumen penyesuaian/kredit nota otomatis, yang butuh desain akuntansi lebih dalam dan
+di luar cakupan pass ini): bila ada pembayaran POSTED teralokasi ke payable dari GR ini,
+`reverse-validation` ditolak **HTTP 409 `PAYABLE_ALREADY_PAID`** sebelum menyentuh stok sama
+sekali (dicek sebelum loop pembalikan `stock_movement`) — konsisten dengan pola "blokir dulu,
+biarkan operator melakukan koreksi manual" yang sudah dipakai di tempat lain (mis. purge
+salesperson yang masih punya riwayat transaksi, lihat `screen-07/uat.md`).
+
+Bila TIDAK ada pembayaran POSTED (kasus GR-000004 di atas): `reverseGoodsReceiptValidation()`
+kini juga menyetel `legacy_payable_ledger.is_settled = TRUE` untuk baris payable dari GR
+tsb (dicari lewat `metadata->>'goodsReceiptId'`, satu-satunya tautan yang ada — tidak ada
+kolom FK khusus) plus mencatat `reversedAt`/`reversedBy`/`reversalReason` ke `metadata`
+(bukan menghapus/mengosongkan `amount`, agar riwayat nilai asli tetap terlihat untuk audit).
+Dipilih menulis `is_settled` (bukan mengarang nilai `status` baru) karena SEMUA query
+saldo-terhutang/aging/dashboard yang ada (`sales-inventory-operations.controller.ts`, baris
+1363, 1744, 1848, 1986-1987, 2058-2076, 2277, 2351) memfilter lewat `is_settled`, tidak
+pernah lewat `status` — jadi baris yang dibalik otomatis berhenti muncul di semua laporan
+tsb tanpa perlu mengubah query manapun. `accounting_event` `PURCHASE_GOODS_RECEIPT_VALUED`
+terkait juga di-set `status='SKIPPED'` bila masih `PENDING` (belum sempat dijurnal) agar
+tidak terjurnal belakangan untuk nilai yang sudah dibalik; bila SUDAH `POSTED` (sudah
+terjurnal), sengaja dibiarkan apa adanya — butuh jurnal pembalik terpisah mengikuti pola
+`reversal_of_id` yang sudah ada di `journal_entry`
+(`sales-inventory-operations.controller.ts:734-775`), di luar cakupan pass ini.
+
+**Masih di luar cakupan pass ini** (dicatat, bukan diperbaiki): status `purchase_order` PO-000004
+tetap `RECEIVED` setelah GR-nya dibatalkan (catatan sekunder di atas) — tidak ikut diperbaiki
+karena gap terpisah dari payable AP yang jadi fokus pass ini; dan reversal untuk GR yang
+`accounting_event`-nya sudah `POSTED` (jarang terjadi karena aturan posting tidak disemai
+default per tenant, lihat komentar di `erp-purchasing.service.ts:1249-1256`) belum menghasilkan
+jurnal pembalik otomatis.
+
+Verifikasi: type-check bersih (`tsc --noEmit`) dan suite test API penuh (186 suite/4184 test)
+tetap hijau setelah perubahan. Reproduksi HTTP live ulang terhadap skenario PO-000004/GR-000004
+di atas TIDAK dilakukan pada pass perbaikan ini (tenant uji `uat_purchase_ap_19222` tidak
+diakses ulang) — perbaikan diverifikasi lewat pembacaan kode + type-check + suite test yang ada,
+bukan siklus HTTP baru.
 
 ## Yang TIDAK dicakup pass ini
 
