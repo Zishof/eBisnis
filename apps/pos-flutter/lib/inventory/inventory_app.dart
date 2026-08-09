@@ -11,7 +11,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:url_launcher/url_launcher.dart';
 
+import '../pembaruan/pengelola_pembaruan.dart';
+import '../pembaruan/sumber_pembaruan.dart';
+import '../pembaruan/versi.dart';
+import '../pembaruan/versi_aplikasi.dart';
 import 'inventory_local_database.dart';
 import 'inventory_supplier_workspace.dart';
 import 'inventory_transaction_workspaces.dart';
@@ -230,6 +235,24 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
   bool _syncing = false;
   int _pending = 0;
 
+  // Sumbernya server eBisnis sendiri (/update/inventory/latest), BUKAN
+  // api.github.com langsung: repository ini private, dan aset rilis GitHub
+  // tidak dapat diunduh publik tanpa akses repo. Server sudah menyalin aset
+  // rilis terbaru ke /opt/ebisnis/updates/pos lalu menyajikannya ulang lewat
+  // endpoint publik ini -- satu penguraian (uraiRilisGitHub), dua sumber yang
+  // bentuknya sama persis. Dipakai APA ADANYA dari lib/pembaruan/, yang sudah
+  // dipakai layar kasir default (lihat lib/main.dart).
+  late final PengelolaPembaruan _pembaruan = PengelolaPembaruan(
+    sumber: SumberRilisGitHub(
+      alamat: Uri.parse('https://ebisnis.id/update/inventory/latest'),
+      akhiranBerkas: akhiranPemasang(),
+    ),
+    versiBerjalan: versiAplikasi,
+  );
+  String? _versiPembaruanDitampilkan;
+  bool _dialogPembaruanTerbuka = false;
+  Timer? _jadwalPembaruan;
+
   // Dashboard (tab 0) memanggil GET /inventory/sales-dashboard, digerbang
   // @Permissions('SALES_REPORT.VIEW_PROFIT') di server -- sengaja hanya
   // pemilik/admin, sebab isinya margin dan laba yang bukan urusan sales
@@ -243,11 +266,128 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
   void initState() {
     super.initState();
     unawaited(_loadPendingCount());
+    _pembaruan.addListener(_pembaruanBerubah);
+    unawaited(_pembaruan.periksa());
+    // Sama seperti layar kasir default: sekali saat dibuka, lalu tiap enam
+    // jam -- cukup untuk mesin yang dibiarkan menyala berhari-hari, cukup
+    // jarang untuk tidak jadi beban jaringan gerai.
+    _jadwalPembaruan = Timer.periodic(
+      const Duration(hours: 6),
+      (_) => unawaited(_pembaruan.periksa()),
+    );
   }
 
   Future<void> _loadPendingCount() async {
     final pending = await widget.client.pendingOutboxCount();
     if (mounted) setState(() => _pending = pending);
+  }
+
+  void _pembaruanBerubah() {
+    final hasil = _pembaruan.hasil;
+    if (!mounted ||
+        _pembaruan.sedangMemeriksa ||
+        hasil == null ||
+        hasil.keadaan != KeadaanPembaruan.tersedia ||
+        _dialogPembaruanTerbuka) {
+      return;
+    }
+    final rilis = hasil.rilis;
+    if (rilis == null || _versiPembaruanDitampilkan == rilis.versi) return;
+    _versiPembaruanDitampilkan = rilis.versi;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _dialogPembaruanTerbuka) return;
+      unawaited(_tampilkanDialogPembaruan(hasil));
+    });
+  }
+
+  Future<void> _cekPembaruanManual() async {
+    await _pembaruan.periksa();
+    if (!mounted) return;
+    final hasil = _pembaruan.hasil;
+    if (hasil == null) return;
+    if (hasil.rilis case final rilis?) {
+      _versiPembaruanDitampilkan = rilis.versi;
+    }
+    await _tampilkanDialogPembaruan(hasil);
+  }
+
+  Future<void> _tampilkanDialogPembaruan(HasilPeriksaPembaruan h) async {
+    if (!mounted || _dialogPembaruanTerbuka) return;
+    _dialogPembaruanTerbuka = true;
+    final tersedia = h.keadaan == KeadaanPembaruan.tersedia;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !h.wajib,
+      builder: (c) => AlertDialog(
+        key: Key(tersedia ? 'dialog-pembaruan-inventory' : 'dialog-pembaruan-inventory-info'),
+        icon: Icon(
+          h.wajib ? Icons.warning_amber_rounded : Icons.system_update_alt,
+          color: h.wajib ? Colors.red : Theme.of(c).colorScheme.primary,
+          size: 34,
+        ),
+        title: Text(switch (h.keadaan) {
+          KeadaanPembaruan.tersedia =>
+            h.wajib ? 'Pembaruan wajib tersedia' : 'Pembaruan Inventory tersedia',
+          KeadaanPembaruan.mutakhir => 'Sudah versi terbaru',
+          KeadaanPembaruan.lebihBaru => 'Versi ini lebih baru',
+          KeadaanPembaruan.gagalDiperiksa => 'Tidak dapat diperiksa',
+        }),
+        content: SizedBox(
+          width: 460,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(h.pesan),
+              if (h.rilis?.catatan case final catatan? when catatan.trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text('Catatan rilis', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 160),
+                  child: SingleChildScrollView(child: Text(catatan)),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          if (!h.wajib)
+            TextButton(
+              onPressed: () => Navigator.pop(c),
+              child: Text(tersedia ? 'Ingatkan nanti' : 'Tutup'),
+            ),
+          if (tersedia && h.rilis != null)
+            FilledButton.icon(
+              onPressed: () async {
+                final uri = Uri.tryParse(h.rilis!.jalurUnduh);
+                final terbuka = uri != null && await launchUrl(uri, mode: LaunchMode.externalApplication);
+                if (!terbuka) {
+                  await Clipboard.setData(ClipboardData(text: h.rilis!.jalurUnduh));
+                  if (c.mounted) {
+                    ScaffoldMessenger.of(c).showSnackBar(const SnackBar(
+                      content: Text('Browser tidak dapat dibuka. Tautan unduhan disalin.'),
+                    ));
+                  }
+                  return;
+                }
+                if (c.mounted) Navigator.pop(c);
+              },
+              icon: const Icon(Icons.download_outlined),
+              label: const Text('Unduh pembaruan'),
+            ),
+        ],
+      ),
+    );
+    _dialogPembaruanTerbuka = false;
+  }
+
+  @override
+  void dispose() {
+    _jadwalPembaruan?.cancel();
+    _pembaruan.removeListener(_pembaruanBerubah);
+    _pembaruan.dispose();
+    super.dispose();
   }
 
   void _refresh() {
@@ -399,6 +539,7 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           onSync: _synchronize,
           onRefresh: _refresh,
           onLogout: widget.onKeluar,
+          onCekPembaruan: _cekPembaruanManual,
           content: _content(),
         );
       }
@@ -449,6 +590,7 @@ class _InventoryDesktopShell extends StatelessWidget {
     required this.onSync,
     required this.onRefresh,
     required this.onLogout,
+    required this.onCekPembaruan,
     required this.content,
   });
 
@@ -460,6 +602,7 @@ class _InventoryDesktopShell extends StatelessWidget {
   final VoidCallback onSync;
   final VoidCallback onRefresh;
   final VoidCallback onLogout;
+  final VoidCallback onCekPembaruan;
   final Widget content;
 
   @override
@@ -536,6 +679,7 @@ class _InventoryDesktopShell extends StatelessWidget {
                     onSync: onSync,
                     onRefresh: onRefresh,
                     onLogout: onLogout,
+                    onCekPembaruan: onCekPembaruan,
                   ),
                   Expanded(child: content),
                 ],
@@ -899,6 +1043,7 @@ class _InventoryTopBar extends StatelessWidget {
     required this.onSync,
     required this.onRefresh,
     required this.onLogout,
+    required this.onCekPembaruan,
   });
   final PersonaInventory persona;
   final int pending;
@@ -906,6 +1051,7 @@ class _InventoryTopBar extends StatelessWidget {
   final VoidCallback onSync;
   final VoidCallback onRefresh;
   final VoidCallback onLogout;
+  final VoidCallback onCekPembaruan;
 
   @override
   Widget build(BuildContext context) {
@@ -994,8 +1140,11 @@ class _InventoryTopBar extends StatelessWidget {
             tooltip: 'Menu akun',
             onSelected: (value) {
               if (value == 'logout') onLogout();
+              if (value == 'cek-pembaruan') onCekPembaruan();
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(
+                  value: 'cek-pembaruan', child: Text('Periksa pembaruan')),
               PopupMenuItem(value: 'logout', child: Text('Keluar')),
             ],
           ),
