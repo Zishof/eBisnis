@@ -268,10 +268,24 @@ jobs:
             exit 0
           fi
           if [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_PASSWORD" ] || [ -z "$KEY_ALIAS" ]; then
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "ada=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::Keystore rilis belum lengkap — build uji memakai kunci debug dan tidak diterbitkan."
+              exit 0
+            fi
             echo "::error::Keystore ada tetapi kata sandi atau alias belum lengkap."
             exit 1
           fi
-          echo "$KEYSTORE" | base64 -d > "${JALUR}/android/rilis.jks"
+          if ! printf '%s' "$KEYSTORE" | base64 -d > "${JALUR}/android/rilis.jks"; then
+            rm -f "${JALUR}/android/rilis.jks"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "ada=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::ANDROID_KEYSTORE_BASE64 tidak valid — build uji memakai kunci debug dan tidak diterbitkan."
+              exit 0
+            fi
+            echo "::error::ANDROID_KEYSTORE_BASE64 tidak valid. Perbaiki secret sebelum membuat tag rilis."
+            exit 1
+          fi
           {
             echo "storeFile=rilis.jks"
             echo "storePassword=${STORE_PASSWORD}"
