@@ -23,6 +23,10 @@ import { HospitalityHousekeepingController } from './hospitality-housekeeping.co
 import { HospitalityHousekeepingService } from './hospitality-housekeeping.service';
 import { HospitalityMaintenanceController } from './hospitality-maintenance.controller';
 import { HospitalityMaintenanceService } from './hospitality-maintenance.service';
+import { HospitalityFolioController } from './hospitality-folio.controller';
+import { HospitalityFolioService } from './hospitality-folio.service';
+import { HospitalityCashierController } from './hospitality-cashier.controller';
+import { HospitalityFolioOperationsController } from './hospitality-folio-operations.controller';
 
 @Module({
   controllers: [
@@ -38,6 +42,9 @@ import { HospitalityMaintenanceService } from './hospitality-maintenance.service
     HospitalityFrontdeskController,
     HospitalityHousekeepingController,
     HospitalityMaintenanceController,
+    HospitalityFolioController,
+    HospitalityCashierController,
+    HospitalityFolioOperationsController,
   ],
   providers: [
     HospitalityPropertiService,
@@ -52,6 +59,7 @@ import { HospitalityMaintenanceService } from './hospitality-maintenance.service
     HospitalityFrontdeskService,
     HospitalityHousekeepingService,
     HospitalityMaintenanceService,
+    HospitalityFolioService,
   ],
 })
 export class HospitalityModule {}

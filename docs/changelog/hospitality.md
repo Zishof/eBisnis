@@ -26,7 +26,8 @@
 - Menerapkan platform migration dan keenam tenant migration secara lokal ke 13 schema terdaftar; dry-run awal dan eksekusi akhir lulus tanpa schema gagal.
 - Menambahkan `ensure-demo-mitrainap.sh`, Apache alias MitraInap, dan integrasi paralel yang ditunggu oleh `deploy/update.sh` sebelum deploy stamp.
 - Verifikasi: API lint/build dan 167 suite/4.122 test lulus; Web lint/typecheck/build dan Vitest lulus; migration verifier dan syntax check Bash lulus.
-- MI-2, MI-3, dan MI-5..MI-10 tetap dicatat parsial sampai seluruh acceptance BRD masing-masing fase terpenuhi; MI-4 dan MI-12..MI-24 belum diklaim selesai.
+- MI-15 menambahkan folio/window, routing dan transfer saldo immutable, cashier shift, deposit/payment/reversal, invoice snapshot, city ledger, serta adapter minibar-ke-folio dengan Decimal dan idempotency key.
+- MI-2, MI-3, dan MI-5..MI-10 tetap dicatat parsial sampai seluruh acceptance BRD masing-masing fase terpenuhi; MI-16..MI-24 belum diklaim selesai.
 
 ## 2026-08-09 — MI-11 Channel Manager (parsial)
 

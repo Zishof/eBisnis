@@ -26,6 +26,7 @@ export const ROLE_HOUSEKEEPING_SUPERVISOR = 'HOSPITALITY_HOUSEKEEPING_SUPERVISOR
 export const ROLE_ROOM_ATTENDANT = 'HOSPITALITY_ROOM_ATTENDANT';
 export const ROLE_ENGINEERING_MANAGER = 'HOSPITALITY_ENGINEERING_MANAGER';
 export const ROLE_ENGINEER = 'HOSPITALITY_ENGINEER';
+export const ROLE_HOSPITALITY_CASHIER = 'HOSPITALITY_CASHIER';
 
 const DASAR = { HOME: 'P1', SUPPORT: 'P1' } as const;
 
@@ -94,6 +95,12 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
     translationKey: 'menu.hospitality.maintenance', route: '/app/hospitality/maintenance', icon: 'Wrench',
     moduleCode: HOSPITALITY_PREFIX, sortOrder: 6, actions: ['READ','CREATE','UPDATE','APPROVE','EXPORT'],
   },
+  {
+    code: 'HOSPITALITY_FOLIO', parentCode: 'HOSPITALITY_GROUP', label: 'Folio & Cashiering',
+    translationKey: 'menu.hospitality.folio', route: '/app/hospitality/folio', icon: 'ReceiptText',
+    moduleCode: HOSPITALITY_PREFIX, sortOrder: 7,
+    actions: ['READ','CREATE','UPDATE','POST','REVERSE','PRINT','VIEW_AMOUNT'],
+  },
 ];
 
 export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
@@ -146,6 +153,11 @@ export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
     code: ROLE_ENGINEER, name: 'Engineer', family: 'Hospitality', profile: 'P2',
     modules: { HOME:'P1',SUPPORT:'P1',HOSPITALITY_MAINTENANCE:'P2' }, dataScope:'SELF', core:false,
     description:'Menjalankan work order yang ditugaskan melalui operasi mobile idempoten.',
+  },
+  {
+    code: ROLE_HOSPITALITY_CASHIER, name: 'Hospitality Cashier', family: 'Hospitality', profile: 'P6',
+    modules: { HOME:'P1',SUPPORT:'P1',HOSPITALITY_FOLIO:'P6' }, dataScope:'TENANT', core:false,
+    description:'Mengelola folio, pembayaran tokenized, deposit, reversal, invoice, dan cashiering.',
   },
 ];
 
