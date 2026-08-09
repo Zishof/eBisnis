@@ -67,6 +67,7 @@
       "description": "Engineering work-order/SLA/mobile events, asset links ke shared product/supplier, preventive plans, inventory issue outbox, dan approved OOO/OOS closure yang menulis availability block serta memerlukan verifikasi sebelum release."
     },
     {"id":"20260807T120000__hospitality__folio","file":"20260807T120000__hospitality__folio.sql","name":"MI-15: Folio, Cashiering, Payment, City Ledger","description":"Multi-window folio/routing, Decimal immutable postings and reversal, cashier shift, token-reference payment/deposit/refund, city ledger credit, source/accounting correlation, and immutable invoice snapshots."},
-    {"id":"20260807T150000__hospitality__night_audit","file":"20260807T150000__hospitality__night_audit.sql","name":"MI-16: Night Audit dan Income Audit","description":"Business date, resumable idempotent step execution, exception queue, immutable report snapshots, step-up protected final roll, and income-audit review."}
+    {"id":"20260807T150000__hospitality__night_audit","file":"20260807T150000__hospitality__night_audit.sql","name":"MI-16: Night Audit dan Income Audit","description":"Business date, resumable idempotent step execution, exception queue, immutable report snapshots, step-up protected final roll, and income-audit review."},
+    {"id":"20260807T180000__hospitality__pos_adapter","file":"20260807T180000__hospitality__pos_adapter.sql","name":"MI-17: POS Hospitality dan F&B","description":"Additive extension over shared POS for property/outlet context, room charge, meal entitlement, kitchen status, and accounting/stock outbox trace."}
   ]
 }

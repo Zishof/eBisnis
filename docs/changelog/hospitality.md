@@ -28,6 +28,7 @@
 - Verifikasi: API lint/build dan 167 suite/4.122 test lulus; Web lint/typecheck/build dan Vitest lulus; migration verifier dan syntax check Bash lulus.
 - MI-15 menambahkan folio/window, routing dan transfer saldo immutable, cashier shift, deposit/payment/reversal, invoice snapshot, city ledger, serta adapter minibar-ke-folio dengan Decimal dan idempotency key.
 - MI-16 menambahkan business date, night-audit step yang resumable/idempoten, exception queue, report snapshot, final roll dengan step-up, serta income-audit review.
+- MI-17 memperluas PosModule yang sama dengan konteks outlet hotel, guest/room lookup, room charge ke folio immutable, meal entitlement, kitchen ticket, dan event outbox; tidak ada POS kedua.
 - MI-2, MI-3, dan MI-5..MI-10 tetap dicatat parsial sampai seluruh acceptance BRD masing-masing fase terpenuhi; MI-16..MI-24 belum diklaim selesai.
 
 ## 2026-08-09 — MI-11 Channel Manager (parsial)

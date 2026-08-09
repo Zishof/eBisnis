@@ -1,6 +1,6 @@
 # Rencana implementasi incremental
 
-Setiap fase adalah vertical slice migration → model/domain → API → permission → UI → test → docs/changelog. Status audit 9 Agustus 2026: MI-0, MI-1, MI-4, dan MI-12..MI-16 selesai; MI-2, MI-3, dan MI-5..MI-11 sudah memiliki vertical slice tetapi masih parsial terhadap BRD; MI-17..MI-24 belum selesai.
+Setiap fase adalah vertical slice migration → model/domain → API → permission → UI → test → docs/changelog. Status audit 9 Agustus 2026: MI-0, MI-1, MI-4, dan MI-12..MI-17 selesai; MI-2, MI-3, dan MI-5..MI-11 sudah memiliki vertical slice tetapi masih parsial terhadap BRD; MI-18..MI-24 belum selesai.
 
 | Fase | Outcome |
 |---|---|
@@ -34,6 +34,7 @@ Setiap fase adalah vertical slice migration → model/domain → API → permiss
 | MI-14 | SELESAI | work order/SLA/mobile events, shared product/supplier links, inventory issue outbox, asset/room history, preventive plan, approved OOO/OOS availability blocks, verified release, RBAC, dan UI tersedia |
 | MI-15 | SELESAI | folio immutable Decimal, routing/transfer, cashier shift, pembayaran tokenized, invoice, dan city ledger; migrasi idempoten 16 schema |
 | MI-16 | SELESAI | night audit resumable/idempoten, exception queue, snapshot, step-up final roll, dan income review |
-| MI-17..24 | BELUM SELESAI | dilanjutkan incremental sesuai urutan fase dan gate di bawah |
+| MI-17 | SELESAI | shared POS diperluas dengan property/outlet, room charge, meal entitlement, kitchen status, stock/accounting trace |
+| MI-18..24 | BELUM SELESAI | dilanjutkan incremental sesuai urutan fase dan gate di bawah |
 
 Gate tiap fase: tidak ada TODO/skeleton sebagai acceptance; negative authorization dan tenant/property isolation lulus; migration additive; API/UI memakai data nyata; mobile/responsive diperiksa; ledger diperbarui. Live OTA/GDS/payment/digital-key/IoT tetap `BLOCKED_PROVIDER_INPUT` bila contract/credential belum tersedia, tetapi interface, fake adapter, queue, failure mode, dan tests tetap dibuat.
