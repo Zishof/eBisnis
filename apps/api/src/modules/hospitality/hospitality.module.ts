@@ -31,6 +31,8 @@ import { HospitalityNightAuditController } from './hospitality-night-audit.contr
 import { HospitalityNightAuditService } from './hospitality-night-audit.service';
 import { HospitalityMiceController } from './hospitality-mice.controller';
 import { HospitalityMiceService } from './hospitality-mice.service';
+import { HospitalityGuestServiceController } from './hospitality-guest-service.controller';
+import { HospitalityGuestServiceOperations } from './hospitality-guest-service.service';
 
 @Module({
   controllers: [
@@ -51,6 +53,7 @@ import { HospitalityMiceService } from './hospitality-mice.service';
     HospitalityFolioOperationsController,
     HospitalityNightAuditController,
     HospitalityMiceController,
+    HospitalityGuestServiceController,
   ],
   providers: [
     HospitalityPropertiService,
@@ -68,6 +71,7 @@ import { HospitalityMiceService } from './hospitality-mice.service';
     HospitalityFolioService,
     HospitalityNightAuditService,
     HospitalityMiceService,
+    HospitalityGuestServiceOperations,
   ],
 })
 export class HospitalityModule {}

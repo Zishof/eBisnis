@@ -29,6 +29,7 @@ export const ROLE_ENGINEER = 'HOSPITALITY_ENGINEER';
 export const ROLE_HOSPITALITY_CASHIER = 'HOSPITALITY_CASHIER';
 export const ROLE_NIGHT_AUDITOR = 'HOSPITALITY_NIGHT_AUDITOR';
 export const ROLE_MICE_MANAGER = 'HOSPITALITY_MICE_MANAGER';
+export const ROLE_GUEST_SERVICE = 'HOSPITALITY_GUEST_SERVICE';
 
 const DASAR = { HOME: 'P1', SUPPORT: 'P1' } as const;
 
@@ -110,6 +111,7 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
     actions: ['READ','CREATE','UPDATE','POST','REVIEW','APPROVE','EXPORT'],
   },
   { code:'HOSPITALITY_MICE',parentCode:'HOSPITALITY_GROUP',label:'Corporate, Group & MICE',translationKey:'menu.hospitality.mice',route:'/app/hospitality/mice',icon:'Presentation',moduleCode:HOSPITALITY_PREFIX,sortOrder:9,actions:['READ','CREATE','UPDATE','APPROVE','EXPORT'] },
+  { code:'HOSPITALITY_GUEST_SERVICE',parentCode:'HOSPITALITY_GROUP',label:'Guest Service & Ancillary',translationKey:'menu.hospitality.guestService',route:'/app/hospitality/guest-service',icon:'BellRing',moduleCode:HOSPITALITY_PREFIX,sortOrder:10,actions:['READ','CREATE','UPDATE','APPROVE','EXPORT'] },
 ];
 
 export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
@@ -174,6 +176,7 @@ export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
     description:'Menjalankan end-of-day idempoten, menyelesaikan exception, merekonsiliasi saldo, dan meninjau income audit.',
   },
   { code:ROLE_MICE_MANAGER,name:'MICE & Group Manager',family:'Hospitality',profile:'P6',modules:{HOME:'P1',SUPPORT:'P1',HOSPITALITY_MICE:'P6'},dataScope:'TENANT',core:false,description:'Mengelola corporate contract, group allotment, rooming list, function space, event dan BEO.' },
+  { code:ROLE_GUEST_SERVICE,name:'Guest Service Agent',family:'Hospitality',profile:'P5',modules:{HOME:'P1',SUPPORT:'P1',HOSPITALITY_GUEST_SERVICE:'P5'},dataScope:'TENANT',core:false,description:'Menangani guest request, concierge, ancillary, komunikasi perjalanan dan feedback.' },
 ];
 
 export const HOSPITALITY_VERTICAL_CATALOG: VerticalCatalog = {

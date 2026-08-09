@@ -1,0 +1,1 @@
+describe('guest service consent boundary',()=>{it('mewajibkan dasar consent sebelum komunikasi',()=>{const valid=(x:{consentBasis?:string})=>Boolean(x.consentBasis);expect(valid({})).toBe(false);expect(valid({consentBasis:'SERVICE_FULFILMENT'})).toBe(true)})});
