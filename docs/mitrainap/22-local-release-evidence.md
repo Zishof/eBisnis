@@ -2,6 +2,17 @@
 
 Tanggal verifikasi: 9 Agustus 2026 (Asia/Jakarta).
 
+## Recheck kandidat rilis — 10 Agustus 2026
+
+- Verifikasi diulang dari checkout bersih pada commit `bf33e89230c963d3b16975d0b65fd89a33b9165d` dengan pnpm store terisolasi.
+- Bootstrap bersih memerlukan urutan `pnpm install --frozen-lockfile` lalu `pnpm db:generate`; urutan ini sudah diterapkan oleh `deploy/update.sh` sebelum build.
+- API kembali lulus 186 suite/4.176 test dan production build.
+- Web kembali lulus 45 file/518 test dan production build/PWA.
+- API typecheck, API/Web lint, release verifier, dan sintaks Bash `deploy/update.sh` lulus.
+- Platform migration melaporkan `No pending migrations to apply`; H071 kembali melaporkan `sudah mutakhir` pada 16 dari 16 schema tenant.
+- Worktree sumber bersih dan commit lokal sama dengan branch remote kandidat rilis sebelum catatan recheck ini dibuat.
+- Instalasi `node_modules` lama pada worktree pengembangan terdeteksi termodifikasi dan file native Argon2 terkunci Windows. Kondisi lokal tersebut diisolasi dari bukti rilis dengan checkout serta dependency store baru; source, lockfile, database sumber, dan migration tidak diubah untuk mengatasinya.
+
 ## Hasil otomatis
 
 - API: 186 suite, 4.176 test lulus; lint, typecheck, dan production build lulus.
