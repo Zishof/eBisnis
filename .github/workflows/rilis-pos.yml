@@ -57,7 +57,7 @@ jobs:
         run: flutter test
 
   windows:
-    name: Bangun pemasang Windows
+    name: Bangun pemasang Windows (${{ matrix.produk.kunci }})
     needs: uji
     # Citra dipatok, bukan `windows-latest`.
     #
@@ -73,6 +73,49 @@ jobs:
     # memutuskannya.
     runs-on: windows-2022
     timeout-minutes: 30
+    # Tiga produk (default, apotik, inventory) SEBELUMNYA dibangun berurutan
+    # dalam SATU job, tiga kali `flutter build windows` ke folder output yang
+    # sama (`build/windows/x64/runner/Release`), masing-masing dipaketkan
+    # segera sesudahnya. `flutter clean` di antaranya TERBUKTI TIDAK CUKUP --
+    # ditemukan langsung dari rilis nyata: exe Inventory yang terpasang tetap
+    # menampilkan "Salon Cantik Demo", login bawaan varian default yang HANYA
+    # ada di lib/main.dart, bukan lib/main_inventory.dart. Penyebab persisnya
+    # (cache inkremental Flutter/CMake yang mana persisnya) tidak berhasil
+    # dipastikan lewat pembacaan kode setelah dua percobaan gagal (flutter
+    # clean sendirian, lalu dikombinasikan lagi) -- daripada menebak lebih
+    # jauh, ketiganya sekarang dibangun sebagai job MATRIX terpisah, masing-
+    # masing pada runner Windows sendiri dengan working directory sendiri.
+    # Tidak ada folder `build/` yang dibagi sama sekali, sehingga kontaminasi
+    # silang secara struktural tidak mungkin terjadi lagi, apa pun akar
+    # masalah cache yang sebenarnya.
+    strategy:
+      fail-fast: false
+      matrix:
+        produk:
+          - kunci: default
+            target: ''
+            dartDefineTambahan: ''
+            namaApl: 'eBisnis POS'
+            penerbit: 'eBisnis.id'
+            situs: 'https://ebisnis.id'
+            appId: '{{8E2B4F31-0C7A-4D96-9B55-1F3E7A2C6D40}'
+            namaBerkasKeluaran: 'ebisnis-pos'
+          - kunci: apotik
+            target: ''
+            dartDefineTambahan: '--dart-define=POS_MODE=apotik'
+            namaApl: 'POS Apotik eMedik'
+            penerbit: 'eMedik.id'
+            situs: 'https://apotik.emedik.id'
+            appId: '{{5C2B4B6E-9F8F-4308-B2F2-2D3A3709B7C2}'
+            namaBerkasKeluaran: 'emedik-pos-apotik'
+          - kunci: inventory
+            target: '--target=lib/main_inventory.dart'
+            dartDefineTambahan: '--dart-define=APP_PRODUCT=inventory'
+            namaApl: 'eBisnis Inventory dan Sales'
+            penerbit: 'eBisnis.id'
+            situs: 'https://inventory.ebisnis.id'
+            appId: '{{A7C84E12-7B8D-44C7-92B8-7E5D28B69A16}'
+            namaBerkasKeluaran: 'ebisnis-inventory-sales'
     steps:
       - uses: actions/checkout@v4
 
@@ -102,26 +145,14 @@ jobs:
 
       - name: Bangun
         working-directory: ${{ env.JALUR }}
+        shell: pwsh
         run: |
           flutter pub get
-          flutter clean
-          flutter build windows --release --dart-define=VERSI=${{ steps.versi.outputs.nilai }}
+          flutter build windows --release ${{ matrix.produk.target }} --dart-define=VERSI=${{ steps.versi.outputs.nilai }} ${{ matrix.produk.dartDefineTambahan }}
 
       # Inno Setup sudah terpasang pada runner windows-latest. Diperiksa tegas
       # supaya kegagalannya berbunyi jelas, bukan berakhir sebagai rilis tanpa
       # berkas .exe yang baru ketahuan ketika seseorang mencoba mengunduhnya.
-      #
-      # `flutter clean` WAJIB sebelum SETIAP build produk di sini, bukan cuma
-      # yang pertama. Ketiga produk (default, apotik, inventory) dibangun
-      # berurutan ke folder output YANG SAMA (`build/windows/x64/runner/Release`),
-      # dan build Windows Flutter yang inkremental tidak selalu mendeteksi
-      # perubahan `--target`/`--dart-define` sebagai alasan membangun ulang
-      # `data/flutter_assets` -- baik `main_inventory.dart` (lihat komentarnya)
-      # maupun tanpa `flutter clean` di sini SENDIRI-SENDIRI tidak cukup:
-      # ditemukan langsung dari rilis nyata, ebisnis-inventory-sales-*.exe yang
-      # terpasang menampilkan "Salon Cantik Demo" -- login bawaan varian
-      # default/Salon yang HANYA ada di lib/main.dart, bukan Inventory sama
-      # sekali.
       - name: Rakit pemasang
         shell: pwsh
         run: |
@@ -131,35 +162,11 @@ jobs:
           }
           & $iscc `
             "/DVersi=${{ steps.versi.outputs.nilai }}" `
-            "/DSumber=$PWD\${{ env.JALUR }}\build\windows\x64\runner\Release" `
-            "/DKeluaran=$PWD\keluaran" `
-            "${{ env.JALUR }}\windows\pemasang.iss"
-
-          flutter clean
-          flutter build windows --release --dart-define=VERSI=${{ steps.versi.outputs.nilai }} --dart-define=POS_MODE=apotik
-          & $iscc `
-            "/DVersi=${{ steps.versi.outputs.nilai }}" `
-            "/DNamaApl=POS Apotik eMedik" `
-            "/DPenerbit=eMedik.id" `
-            "/DSitus=https://apotik.emedik.id" `
-            "/DAppIdPemasang={{5C2B4B6E-9F8F-4308-B2F2-2D3A3709B7C2}" `
-            "/DNamaBerkasKeluaran=emedik-pos-apotik" `
-            "/DSumber=$PWD\${{ env.JALUR }}\build\windows\x64\runner\Release" `
-            "/DKeluaran=$PWD\keluaran" `
-            "${{ env.JALUR }}\windows\pemasang.iss"
-
-          flutter clean
-          flutter build windows --release `
-            --target=lib/main_inventory.dart `
-            --dart-define=VERSI=${{ steps.versi.outputs.nilai }} `
-            --dart-define=APP_PRODUCT=inventory
-          & $iscc `
-            "/DVersi=${{ steps.versi.outputs.nilai }}" `
-            "/DNamaApl=eBisnis Inventory dan Sales" `
-            "/DPenerbit=eBisnis.id" `
-            "/DSitus=https://inventory.ebisnis.id" `
-            "/DAppIdPemasang={{A7C84E12-7B8D-44C7-92B8-7E5D28B69A16}" `
-            "/DNamaBerkasKeluaran=ebisnis-inventory-sales" `
+            "/DNamaApl=${{ matrix.produk.namaApl }}" `
+            "/DPenerbit=${{ matrix.produk.penerbit }}" `
+            "/DSitus=${{ matrix.produk.situs }}" `
+            "/DAppIdPemasang=${{ matrix.produk.appId }}" `
+            "/DNamaBerkasKeluaran=${{ matrix.produk.namaBerkasKeluaran }}" `
             "/DSumber=$PWD\${{ env.JALUR }}\build\windows\x64\runner\Release" `
             "/DKeluaran=$PWD\keluaran" `
             "${{ env.JALUR }}\windows\pemasang.iss"
@@ -167,17 +174,54 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: pemasang-windows
+          name: pemasang-windows-${{ matrix.produk.kunci }}
           path: keluaran/*.exe
           if-no-files-found: error
 
   android:
-    name: Bangun APK Android
+    name: Bangun APK Android (${{ matrix.produk.kunci }})
     needs: uji
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
+      # Job matrix: bila beberapa entri menyetel output yang sama, GitHub
+      # Actions TIDAK menjamin urutan siapa yang menang -- didokumentasikan
+      # begitu. Di sini aman karena nilainya sengaja SAMA pada ketiga entri
+      # (keduanya hanya bergantung pada secrets repo, bukan pada flavor):
+      # entri manapun yang "menang" memberi jawaban yang benar. Satu-satunya
+      # kasus di mana ini bisa berbeda antar entri adalah kegagalan yang
+      # sangat spesifik-flavor, yang tidak terjadi pada langkah penandatanganan
+      # ini -- langkah itu sama sekali tidak bergantung pada flavor mana pun.
       ditandatangani: ${{ steps.kunci.outputs.ada }}
+    # Alasan matrix sama dengan job `windows`: build APK Windows sudah
+    # terbukti mencampur konten antar produk walau memakai `flutter clean` di
+    # antaranya, akar masalahnya tidak berhasil dipastikan, dan flavor Gradle
+    # -- walau memisahkan path keluaran APK sendiri-sendiri -- tidak terbukti
+    # kebal dari kelas masalah yang sama pada tahap kompilasi Dart-nya. Ketiga
+    # flavor sekarang dibangun sebagai job terpisah, masing-masing pada
+    # runner sendiri, tanpa folder `build/` yang dibagi sama sekali.
+    strategy:
+      fail-fast: false
+      matrix:
+        produk:
+          - kunci: penjualan
+            flavor: penjualan
+            target: ''
+            dartDefineTambahan: ''
+            berkasApk: 'app-penjualan-release.apk'
+            namaKeluaran: 'ebisnis-pos'
+          - kunci: inventory
+            flavor: inventory
+            target: '--target=lib/main_inventory.dart'
+            dartDefineTambahan: '--dart-define=APP_PRODUCT=inventory'
+            berkasApk: 'app-inventory-release.apk'
+            namaKeluaran: 'ebisnis-inventory-sales'
+          - kunci: apotik
+            flavor: apotik
+            target: ''
+            dartDefineTambahan: '--dart-define=POS_MODE=apotik'
+            berkasApk: 'app-apotik-release.apk'
+            namaKeluaran: 'emedik-pos-apotik'
     steps:
       - uses: actions/checkout@v4
 
@@ -239,43 +283,17 @@ jobs:
       # `--build-number` wajib naik setiap rilis. Android menolak memasang APK
       # dengan versionCode yang sama atau lebih kecil daripada yang terpasang,
       # dan `pubspec.yaml` tidak memuat nomor bangun.
-      # `flutter clean` sebelum SETIAP flavor: build APK Windows sudah terbukti
-      # membangun ulang varian yang salah ketika tiga produk dibangun berurutan
-      # ke folder output yang sama tanpa dibersihkan lebih dulu (lihat catatan
-      # panjang pada "Rakit pemasang" di job `windows`). Flavor Gradle memang
-      # memisahkan path keluaran APK-nya sendiri-sendiri, tetapi tidak ada
-      # jaminan tahap kompilasi Dart-nya kebal dari masalah cache inkremental
-      # yang sama -- dibersihkan di sini juga sebagai jaring pengaman, bukan
-      # cuma diasumsikan aman.
       - name: Bangun APK
         working-directory: ${{ env.JALUR }}
         run: |
           flutter pub get
-          flutter clean
-          flutter build apk --release --flavor penjualan \
-            --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
+          flutter build apk --release --flavor ${{ matrix.produk.flavor }} ${{ matrix.produk.target }} \
+            --dart-define=VERSI=${{ steps.versi.outputs.nilai }} ${{ matrix.produk.dartDefineTambahan }} \
             --build-name=${{ steps.versi.outputs.nilai }} \
             --build-number=${{ github.run_number }}
           mkdir -p "${GITHUB_WORKSPACE}/keluaran"
-          cp build/app/outputs/flutter-apk/app-penjualan-release.apk \
-             "${GITHUB_WORKSPACE}/keluaran/ebisnis-pos-${{ steps.versi.outputs.nilai }}.apk"
-          flutter clean
-          flutter build apk --release --flavor inventory \
-            --target=lib/main_inventory.dart \
-            --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
-            --dart-define=APP_PRODUCT=inventory \
-            --build-name=${{ steps.versi.outputs.nilai }} \
-            --build-number=${{ github.run_number }}
-          cp build/app/outputs/flutter-apk/app-inventory-release.apk \
-             "${GITHUB_WORKSPACE}/keluaran/ebisnis-inventory-sales-${{ steps.versi.outputs.nilai }}.apk"
-          flutter clean
-          flutter build apk --release --flavor apotik \
-            --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
-            --dart-define=POS_MODE=apotik \
-            --build-name=${{ steps.versi.outputs.nilai }} \
-            --build-number=${{ github.run_number }}
-          cp build/app/outputs/flutter-apk/app-apotik-release.apk \
-             "${GITHUB_WORKSPACE}/keluaran/emedik-pos-apotik-${{ steps.versi.outputs.nilai }}.apk"
+          cp "build/app/outputs/flutter-apk/${{ matrix.produk.berkasApk }}" \
+             "${GITHUB_WORKSPACE}/keluaran/${{ matrix.produk.namaKeluaran }}-${{ steps.versi.outputs.nilai }}.apk"
 
       - name: Hapus kunci dari runner
         if: always()
@@ -283,7 +301,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: apk-android
+          name: apk-android-${{ matrix.produk.kunci }}
           path: keluaran/*.apk
           if-no-files-found: error
 
@@ -323,9 +341,11 @@ jobs:
           # menerima satu baris per `key=value` kecuali memakai sintaks
           # heredoc -- runner sekarang menolaknya tegas ("Invalid format"),
           # bukan cuma menerima diam-diam seperti sebelumnya.
-          daftar_arr=(berkas/pemasang-windows/*.exe)
+          # windows sekarang job matrix (3 artefak terpisah: pemasang-windows-default,
+          # -apotik, -inventory), bukan satu artefak berisi ketiga exe.
+          daftar_arr=(berkas/pemasang-windows-*/*.exe)
           if [ "$DITANDATANGANI" = "true" ]; then
-            daftar_arr+=(berkas/apk-android/*.apk)
+            daftar_arr+=(berkas/apk-android-*/*.apk)
           elif [ "$HASIL_ANDROID" = "failure" ]; then
             echo "::warning::APK tidak dilampirkan: job Android GAGAL (lihat log job \"Bangun APK Android\") -- bukan sekadar kunci debug."
           else
