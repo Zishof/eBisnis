@@ -7,7 +7,7 @@
 #   sudo bash /opt/ebisnis/app/deploy/update.sh --force      # bangun ulang meski commit sama
 #   sudo SKIP_RELEASE_TESTS=1 bash .../update.sh              # darurat; build tetap wajib
 #
-# Urutan: backup database -> ambil source -> release gate/build -> migration ->
+# Urutan: ambil source -> backup database -> release gate/build -> migration ->
 # restart -> health check -> onboarding idempoten -> Apache. Bila langkah wajib
 # gagal, aplikasi otomatis dikembalikan ke commit sebelumnya.
 #
@@ -118,8 +118,73 @@ fi
 [[ "$PREVIOUS" =~ ^[0-9a-f]{40,64}$ ]] || die "Commit sebelumnya tidak valid: $PREVIOUS"
 
 # ---------------------------------------------------------------------------
-log "1/10  Backup database"
+log "1/10  Ambil source"
 # ---------------------------------------------------------------------------
+# `--force` pada tags: rilis POS Flutter (tag `pos-v*`) rutin ditandai ulang ke
+# commit lain saat build gagal dan diulang. Tanpa `--force`, fetch menolak
+# menimpa tag lokal yang sudah berbeda dari remote dan MENGHENTIKAN SELURUH
+# deploy web/API -- padahal deploy ini sama sekali tidak memakai tag itu,
+# hanya branch `main`.
+as_app "git -C '$APP_DIR' fetch --all --tags --force --prune"
+
+if [[ -n "$TARGET" ]]; then
+  as_app "git -C '$APP_DIR' checkout --quiet '$TARGET'"
+else
+  BRANCH=$(as_app "git -C '$APP_DIR' rev-parse --abbrev-ref HEAD")
+  [[ "$BRANCH" == "HEAD" ]] && BRANCH=main
+  as_app "git -C '$APP_DIR' checkout --quiet '$BRANCH'"
+  as_app "git -C '$APP_DIR' pull --ff-only origin '$BRANCH'"
+fi
+
+NEW=$(as_app "git -C '$APP_DIR' rev-parse HEAD")
+[[ "$NEW" =~ ^[0-9a-f]{40,64}$ ]] || die "Commit target tidak valid: $NEW"
+
+DEPLOYED=$(cat "$DEPLOY_STAMP" 2>/dev/null || true)
+if [[ -n "$DEPLOYED" && ! "$DEPLOYED" =~ ^[0-9a-f]{40,64}$ ]]; then
+  die "Isi deployment stamp tidak valid: $DEPLOY_STAMP"
+fi
+if [[ -z "$DEPLOYED" ]]; then
+  # Belum pernah ada penanda: instalasi lama, atau penanda terhapus. Yang
+  # terpasang tidak dapat dipastikan, jadi dibangun ulang. Membangun ulang
+  # tanpa perlu hanya memakan waktu; melewatinya tanpa perlu meninggalkan
+  # aplikasi yang tidak sesuai sourcenya.
+  echo "    Penanda deployment belum ada — dibangun ulang untuk memastikan."
+elif [[ "$DEPLOYED" == "$NEW" && $FORCE -eq 0 ]]; then
+  echo "    ${NEW:0:7} sudah terpasang seutuhnya. Tidak ada yang dikerjakan."
+  echo "    Untuk membangun ulang: sudo bash $0 --force"
+  exit 0
+elif [[ "$DEPLOYED" == "$NEW" ]]; then
+  echo "    ${NEW:0:7} sudah terpasang, dibangun ulang atas permintaan (--force)."
+fi
+echo "    ${PREVIOUS:0:7} -> ${NEW:0:7}"
+as_app "git -C '$APP_DIR' log --oneline '$PREVIOUS'..'$NEW'" | sed 's/^/      /' || true
+
+# Menjalankan ulang diri sendiri TEPAT SEKALI, sekarang bahwa source sudah
+# berada di commit baru -- lihat catatan panjang pada EBISNIS_REEXECED di
+# atas. Sesudah titik ini, seluruh langkah memakai isi update.sh yang baru
+# saja ditarik, bukan isi yang sudah dibaca bash sebelum `git pull` berjalan.
+if [[ -z "${EBISNIS_REEXECED:-}" ]]; then
+  export EBISNIS_REEXECED=1 EBISNIS_PREVIOUS="$PREVIOUS"
+  exec bash "$APP_DIR/deploy/update.sh" "$@"
+fi
+
+# ---------------------------------------------------------------------------
+log "2/10  Backup database"
+# ---------------------------------------------------------------------------
+# Dilakukan DI SINI, sesudah re-exec di atas selesai -- bukan sebelum source
+# diambil seperti versi lama skrip ini. `wait "$PID"` hanya mengenali PID yang
+# DIFORK oleh proses bash yang SAMA; `exec` mengganti isi proses tanpa fork,
+# sehingga proses yang dibackground SEBELUM exec TIDAK lagi dikenali sebagai
+# anaknya oleh instance bash yang baru, walau nomor PID induknya sama persis.
+# Ini bukan teori: persis kegagalan nyata yang terjadi di produksi -- "wait:
+# pid ... is not a child of this shell" -- setelah versi sebelumnya
+# mem-background pg_dump SEBELUM titik exec. Ditaruh di sini, start dan wait
+# sama-sama terjadi pada SATU instance bash yang sama, jadi selalu valid.
+#
+# Efek sampingnya: pada commit yang sudah terpasang (tidak ada yang perlu
+# dikerjakan, exit 0 di "1/10" di atas), backup TIDAK dibuat sama sekali --
+# lebih baik dari versi lama yang selalu membuat dump walau tidak ada
+# perubahan.
 # shellcheck disable=SC1090
 ADMIN_URL=$(grep -E '^DATABASE_ADMIN_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
 [[ -n "$ADMIN_URL" ]] || die "DATABASE_ADMIN_URL tidak ada pada $ENV_FILE."
@@ -178,27 +243,14 @@ Pilihan:
 Rincian: docs/deployment/ubuntu.md bagian \"Backup ketika pg_dump lebih tua\"."
   fi
 
-  if [[ -n "${EBISNIS_REEXECED:-}" ]]; then
-    # Dimulai pada proses sebelum dijalankan ulang (lihat catatan EBISNIS_REEXECED
-    # di atas) -- membuatnya lagi di sini akan menghasilkan dump kedua yang
-    # percuma dari database yang belum sempat berubah. `exec` mengganti isi
-    # proses tetapi mempertahankan PID-nya, sehingga proses pg_dump latar
-    # belakang yang dimulai sebelum exec tetap anak proses yang SAMA di sini
-    # dan tetap dapat ditunggu lewat PID-nya.
-    BACKUP_FILE="$EBISNIS_BACKUP_FILE"
-    BACKUP_PID="${EBISNIS_BACKUP_PID:-}"
-    echo "    dimulai sebelum menjalankan ulang skrip, masih berjalan di latar belakang: $BACKUP_FILE"
-  else
-    # Dijalankan di latar belakang: baris "3/10" yang mengikuti (install,
-    # lint, test, build) tidak menyentuh database sama sekali, sehingga aman
-    # tumpang tindih dengan pg_dump. Ditunggu tepat sebelum "4/10 Migration"
-    # -- langkah pertama yang benar-benar mengubah database -- supaya jaminan
-    # "backup ada sebelum migration berjalan" tetap utuh.
-    echo "    memakai $PG_DUMP (versi $CLIENT_VER), server versi ${SERVER_VER:-?}"
-    echo "    dijalankan di latar belakang, ditunggu tepat sebelum 4/10 Migration."
-    "$PG_DUMP" --dbname="$ADMIN_URL" --format=custom --file="$BACKUP_FILE" 2>/tmp/pgdump.err &
-    BACKUP_PID=$!
-  fi
+  # Dijalankan di latar belakang: langkah "3/10" yang mengikuti (install,
+  # lint, test, build) tidak menyentuh database sama sekali, sehingga aman
+  # tumpang tindih dengan pg_dump. Ditunggu tepat sebelum "4/10 Migration" --
+  # langkah pertama yang benar-benar mengubah database.
+  echo "    memakai $PG_DUMP (versi $CLIENT_VER), server versi ${SERVER_VER:-?}"
+  echo "    dijalankan di latar belakang, ditunggu tepat sebelum 4/10 Migration."
+  "$PG_DUMP" --dbname="$ADMIN_URL" --format=custom --file="$BACKUP_FILE" 2>/tmp/pgdump.err &
+  BACKUP_PID=$!
 fi
 
 # Simpan sejumlah backup terakhir saja.
@@ -206,57 +258,6 @@ fi
 # sehingga pengurutan mtime melalui ls aman untuk kumpulan terkontrol ini.
 # shellcheck disable=SC2012
 ls -1t "$BACKUP_DIR"/ebisnis-*.dump 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm -f
-
-# ---------------------------------------------------------------------------
-log "2/10  Ambil source"
-# ---------------------------------------------------------------------------
-# `--force` pada tags: rilis POS Flutter (tag `pos-v*`) rutin ditandai ulang ke
-# commit lain saat build gagal dan diulang. Tanpa `--force`, fetch menolak
-# menimpa tag lokal yang sudah berbeda dari remote dan MENGHENTIKAN SELURUH
-# deploy web/API -- padahal deploy ini sama sekali tidak memakai tag itu,
-# hanya branch `main`.
-as_app "git -C '$APP_DIR' fetch --all --tags --force --prune"
-
-if [[ -n "$TARGET" ]]; then
-  as_app "git -C '$APP_DIR' checkout --quiet '$TARGET'"
-else
-  BRANCH=$(as_app "git -C '$APP_DIR' rev-parse --abbrev-ref HEAD")
-  [[ "$BRANCH" == "HEAD" ]] && BRANCH=main
-  as_app "git -C '$APP_DIR' checkout --quiet '$BRANCH'"
-  as_app "git -C '$APP_DIR' pull --ff-only origin '$BRANCH'"
-fi
-
-NEW=$(as_app "git -C '$APP_DIR' rev-parse HEAD")
-[[ "$NEW" =~ ^[0-9a-f]{40,64}$ ]] || die "Commit target tidak valid: $NEW"
-
-DEPLOYED=$(cat "$DEPLOY_STAMP" 2>/dev/null || true)
-if [[ -n "$DEPLOYED" && ! "$DEPLOYED" =~ ^[0-9a-f]{40,64}$ ]]; then
-  die "Isi deployment stamp tidak valid: $DEPLOY_STAMP"
-fi
-if [[ -z "$DEPLOYED" ]]; then
-  # Belum pernah ada penanda: instalasi lama, atau penanda terhapus. Yang
-  # terpasang tidak dapat dipastikan, jadi dibangun ulang. Membangun ulang
-  # tanpa perlu hanya memakan waktu; melewatinya tanpa perlu meninggalkan
-  # aplikasi yang tidak sesuai sourcenya.
-  echo "    Penanda deployment belum ada — dibangun ulang untuk memastikan."
-elif [[ "$DEPLOYED" == "$NEW" && $FORCE -eq 0 ]]; then
-  echo "    ${NEW:0:7} sudah terpasang seutuhnya. Tidak ada yang dikerjakan."
-  echo "    Untuk membangun ulang: sudo bash $0 --force"
-  exit 0
-elif [[ "$DEPLOYED" == "$NEW" ]]; then
-  echo "    ${NEW:0:7} sudah terpasang, dibangun ulang atas permintaan (--force)."
-fi
-echo "    ${PREVIOUS:0:7} -> ${NEW:0:7}"
-as_app "git -C '$APP_DIR' log --oneline '$PREVIOUS'..'$NEW'" | sed 's/^/      /' || true
-
-# Menjalankan ulang diri sendiri TEPAT SEKALI, sekarang bahwa source sudah
-# berada di commit baru -- lihat catatan panjang pada EBISNIS_REEXECED di
-# atas. Sesudah titik ini, seluruh langkah memakai isi update.sh yang baru
-# saja ditarik, bukan isi yang sudah dibaca bash sebelum `git pull` berjalan.
-if [[ -z "${EBISNIS_REEXECED:-}" ]]; then
-  export EBISNIS_REEXECED=1 EBISNIS_PREVIOUS="$PREVIOUS" EBISNIS_BACKUP_FILE="$BACKUP_FILE" EBISNIS_BACKUP_PID="$BACKUP_PID"
-  exec bash "$APP_DIR/deploy/update.sh" "$@"
-fi
 
 # Symlink .env dipastikan tetap benar setelah checkout.
 ln -sfn "$ENV_FILE" "$APP_DIR/apps/api/.env"
@@ -365,10 +366,8 @@ else
 fi
 as_app "cd '$APP_DIR' && pnpm db:generate && pnpm build" || rollback
 
-# Backup latar belakang dari "1/10" ditunggu di sini -- tepat sebelum langkah
-# pertama yang benar-benar mengubah database. `wait` pada PID spesifik bekerja
-# walau backup dimulai pada proses sebelum `exec` menjalankan ulang skrip ini,
-# karena `exec` mempertahankan PID prosesnya sendiri.
+# Backup latar belakang dari "2/10" ditunggu di sini -- tepat sebelum langkah
+# pertama yang benar-benar mengubah database.
 if [[ -n "$BACKUP_PID" ]]; then
   log "Menunggu backup database (PID $BACKUP_PID) selesai sebelum migration"
   if wait "$BACKUP_PID"; then
