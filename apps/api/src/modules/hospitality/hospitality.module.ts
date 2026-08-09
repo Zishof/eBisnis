@@ -37,6 +37,8 @@ import { HospitalityLongstayController } from './hospitality-longstay.controller
 import { HospitalityLongstayService } from './hospitality-longstay.service';
 import { HospitalityExperienceController } from './hospitality-experience.controller';
 import { HospitalityExperienceService } from './hospitality-experience.service';
+import { HospitalityErpController } from './hospitality-erp.controller';
+import { HospitalityErpService } from './hospitality-erp.service';
 
 @Module({
   controllers: [
@@ -60,6 +62,7 @@ import { HospitalityExperienceService } from './hospitality-experience.service';
     HospitalityGuestServiceController,
     HospitalityLongstayController,
     HospitalityExperienceController,
+    HospitalityErpController,
   ],
   providers: [
     HospitalityPropertiService,
@@ -80,6 +83,7 @@ import { HospitalityExperienceService } from './hospitality-experience.service';
     HospitalityGuestServiceOperations,
     HospitalityLongstayService,
     HospitalityExperienceService,
+    HospitalityErpService,
   ],
 })
 export class HospitalityModule {}
