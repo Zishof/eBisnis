@@ -32,6 +32,7 @@
 - MI-18 menambahkan corporate/travel account, negotiated rate, group allotment dan pickup, rooming list, function-space conflict check, event serta BEO versioned.
 - MI-19 menambahkan guest-request SLA, concierge/ancillary booking, komunikasi pre/in/post-stay berbasis consent, feedback approval, dan reputation provider contract.
 - MI-20 menambahkan configurable long-stay/rental contract, signed move inspection, recurring rent/deposit, utility meter, collection, owner commission dan statement immutable.
+- MI-21 menambahkan guest-portal token-hash session, kiosk session/residue purge, idempotent staff-mobile offline queue, serta digital-key/IoT provider-neutral contracts.
 - MI-2, MI-3, dan MI-5..MI-10 tetap dicatat parsial sampai seluruh acceptance BRD masing-masing fase terpenuhi; MI-16..MI-24 belum diklaim selesai.
 
 ## 2026-08-09 — MI-11 Channel Manager (parsial)

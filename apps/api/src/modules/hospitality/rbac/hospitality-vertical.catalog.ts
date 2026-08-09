@@ -31,6 +31,7 @@ export const ROLE_NIGHT_AUDITOR = 'HOSPITALITY_NIGHT_AUDITOR';
 export const ROLE_MICE_MANAGER = 'HOSPITALITY_MICE_MANAGER';
 export const ROLE_GUEST_SERVICE = 'HOSPITALITY_GUEST_SERVICE';
 export const ROLE_LONGSTAY_MANAGER = 'HOSPITALITY_LONGSTAY_MANAGER';
+export const ROLE_EXPERIENCE_ADMIN = 'HOSPITALITY_EXPERIENCE_ADMIN';
 
 const DASAR = { HOME: 'P1', SUPPORT: 'P1' } as const;
 
@@ -114,6 +115,7 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
   { code:'HOSPITALITY_MICE',parentCode:'HOSPITALITY_GROUP',label:'Corporate, Group & MICE',translationKey:'menu.hospitality.mice',route:'/app/hospitality/mice',icon:'Presentation',moduleCode:HOSPITALITY_PREFIX,sortOrder:9,actions:['READ','CREATE','UPDATE','APPROVE','EXPORT'] },
   { code:'HOSPITALITY_GUEST_SERVICE',parentCode:'HOSPITALITY_GROUP',label:'Guest Service & Ancillary',translationKey:'menu.hospitality.guestService',route:'/app/hospitality/guest-service',icon:'BellRing',moduleCode:HOSPITALITY_PREFIX,sortOrder:10,actions:['READ','CREATE','UPDATE','APPROVE','EXPORT'] },
   { code:'HOSPITALITY_LONGSTAY',parentCode:'HOSPITALITY_GROUP',label:'Long Stay & Rental',translationKey:'menu.hospitality.longstay',route:'/app/hospitality/longstay',icon:'KeyRound',moduleCode:HOSPITALITY_PREFIX,sortOrder:11,actions:['READ','CREATE','UPDATE','POST','APPROVE','PRINT','EXPORT'] },
+  { code:'HOSPITALITY_EXPERIENCE',parentCode:'HOSPITALITY_GROUP',label:'Guest & Staff Experience',translationKey:'menu.hospitality.experience',route:'/app/hospitality/experience',icon:'Smartphone',moduleCode:HOSPITALITY_PREFIX,sortOrder:12,actions:['READ','CREATE','UPDATE','APPROVE','EXPORT'] },
 ];
 
 export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
@@ -180,6 +182,7 @@ export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
   { code:ROLE_MICE_MANAGER,name:'MICE & Group Manager',family:'Hospitality',profile:'P6',modules:{HOME:'P1',SUPPORT:'P1',HOSPITALITY_MICE:'P6'},dataScope:'TENANT',core:false,description:'Mengelola corporate contract, group allotment, rooming list, function space, event dan BEO.' },
   { code:ROLE_GUEST_SERVICE,name:'Guest Service Agent',family:'Hospitality',profile:'P5',modules:{HOME:'P1',SUPPORT:'P1',HOSPITALITY_GUEST_SERVICE:'P5'},dataScope:'TENANT',core:false,description:'Menangani guest request, concierge, ancillary, komunikasi perjalanan dan feedback.' },
   { code:ROLE_LONGSTAY_MANAGER,name:'Long Stay Manager',family:'Hospitality',profile:'P6',modules:{HOME:'P1',SUPPORT:'P1',HOSPITALITY_LONGSTAY:'P6'},dataScope:'TENANT',core:false,description:'Mengelola kontrak resident, inspeksi, recurring charge, utility, collection dan owner statement.' },
+  { code:ROLE_EXPERIENCE_ADMIN,name:'Experience Administrator',family:'Hospitality',profile:'P6',modules:{HOME:'P1',SUPPORT:'P1',HOSPITALITY_EXPERIENCE:'P6'},dataScope:'TENANT',core:false,description:'Mengelola guest portal, kiosk, mobile sync, privacy purge dan provider contract.' },
 ];
 
 export const HOSPITALITY_VERTICAL_CATALOG: VerticalCatalog = {
