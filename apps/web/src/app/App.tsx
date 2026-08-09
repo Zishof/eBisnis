@@ -46,6 +46,7 @@ import { HospitalityGuestServicePage } from '../pages/app/hospitality/Hospitalit
 import { HospitalityLongstayPage } from '../pages/app/hospitality/HospitalityLongstayPage';
 import { HospitalityExperiencePage } from '../pages/app/hospitality/HospitalityExperiencePage';
 import { HospitalityErpPage } from '../pages/app/hospitality/HospitalityErpPage';
+import { HospitalityInsightPage } from '../pages/app/hospitality/HospitalityInsightPage';
 import { PesantrenBeritaPage } from '../pages/app/pesantren/PesantrenBeritaPage';
 import { PesantrenPsbPage } from '../pages/app/pesantren/PesantrenPsbPage';
 import { PesantrenKioskPage } from '../pages/app/pesantren/PesantrenKioskPage';
@@ -892,6 +893,7 @@ export function App() {
           <Route path="hospitality/longstay" element={<HospitalityLongstayPage />} />
           <Route path="hospitality/experience" element={<HospitalityExperiencePage />} />
           <Route path="hospitality/erp" element={<HospitalityErpPage />} />
+          <Route path="hospitality/insight" element={<HospitalityInsightPage />} />
           <Route path="pesantren/tagihan" element={<PesantrenTagihanPage />} />
           <Route path="pesantren/profil" element={<PesantrenProfilPage />} />
           <Route path="pesantren/berita" element={<PesantrenBeritaPage />} />

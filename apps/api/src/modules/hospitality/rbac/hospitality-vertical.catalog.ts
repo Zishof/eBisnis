@@ -33,6 +33,7 @@ export const ROLE_GUEST_SERVICE = 'HOSPITALITY_GUEST_SERVICE';
 export const ROLE_LONGSTAY_MANAGER = 'HOSPITALITY_LONGSTAY_MANAGER';
 export const ROLE_EXPERIENCE_ADMIN = 'HOSPITALITY_EXPERIENCE_ADMIN';
 export const ROLE_ERP_INTEGRATOR = 'HOSPITALITY_ERP_INTEGRATOR';
+export const ROLE_INSIGHT_ANALYST = 'HOSPITALITY_INSIGHT_ANALYST';
 
 const DASAR = { HOME: 'P1', SUPPORT: 'P1' } as const;
 
@@ -118,6 +119,7 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
   { code:'HOSPITALITY_LONGSTAY',parentCode:'HOSPITALITY_GROUP',label:'Long Stay & Rental',translationKey:'menu.hospitality.longstay',route:'/app/hospitality/longstay',icon:'KeyRound',moduleCode:HOSPITALITY_PREFIX,sortOrder:11,actions:['READ','CREATE','UPDATE','POST','APPROVE','PRINT','EXPORT'] },
   { code:'HOSPITALITY_EXPERIENCE',parentCode:'HOSPITALITY_GROUP',label:'Guest & Staff Experience',translationKey:'menu.hospitality.experience',route:'/app/hospitality/experience',icon:'Smartphone',moduleCode:HOSPITALITY_PREFIX,sortOrder:12,actions:['READ','CREATE','UPDATE','APPROVE','EXPORT'] },
   { code:'HOSPITALITY_ERP',parentCode:'HOSPITALITY_GROUP',label:'ERP & Accounting Integration',translationKey:'menu.hospitality.erp',route:'/app/hospitality/erp',icon:'Network',moduleCode:HOSPITALITY_PREFIX,sortOrder:13,actions:['READ','UPDATE','POST','REVIEW','EXPORT'] },
+  { code:'HOSPITALITY_INSIGHT',parentCode:'HOSPITALITY_GROUP',label:'Reports, AI & Observability',translationKey:'menu.hospitality.insight',route:'/app/hospitality/insight',icon:'ChartNoAxesCombined',moduleCode:HOSPITALITY_PREFIX,sortOrder:14,actions:['READ','CREATE','APPROVE','PRINT','EXPORT'] },
 ];
 
 export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
@@ -186,6 +188,7 @@ export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
   { code:ROLE_LONGSTAY_MANAGER,name:'Long Stay Manager',family:'Hospitality',profile:'P6',modules:{HOME:'P1',SUPPORT:'P1',HOSPITALITY_LONGSTAY:'P6'},dataScope:'TENANT',core:false,description:'Mengelola kontrak resident, inspeksi, recurring charge, utility, collection dan owner statement.' },
   { code:ROLE_EXPERIENCE_ADMIN,name:'Experience Administrator',family:'Hospitality',profile:'P6',modules:{HOME:'P1',SUPPORT:'P1',HOSPITALITY_EXPERIENCE:'P6'},dataScope:'TENANT',core:false,description:'Mengelola guest portal, kiosk, mobile sync, privacy purge dan provider contract.' },
   { code:ROLE_ERP_INTEGRATOR,name:'Hospitality ERP Integrator',family:'Hospitality',profile:'P6',modules:{HOME:'P1',SUPPORT:'P1',HOSPITALITY_ERP:'P6'},dataScope:'TENANT',core:false,description:'Mengelola canonical event, ERP delivery, accounting-event trace dan rekonsiliasi.' },
+  { code:ROLE_INSIGHT_ANALYST,name:'Hospitality Insight Analyst',family:'Hospitality',profile:'P6',modules:{HOME:'P1',SUPPORT:'P1',HOSPITALITY_INSIGHT:'P6'},dataScope:'TENANT',core:false,description:'Menjalankan report, AI draft berbasis evidence, help/demo dan observability dashboard.' },
 ];
 
 export const HOSPITALITY_VERTICAL_CATALOG: VerticalCatalog = {
