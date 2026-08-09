@@ -210,7 +210,12 @@ ls -1t "$BACKUP_DIR"/ebisnis-*.dump 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1))
 # ---------------------------------------------------------------------------
 log "2/10  Ambil source"
 # ---------------------------------------------------------------------------
-as_app "git -C '$APP_DIR' fetch --all --tags --prune"
+# `--force` pada tags: rilis POS Flutter (tag `pos-v*`) rutin ditandai ulang ke
+# commit lain saat build gagal dan diulang. Tanpa `--force`, fetch menolak
+# menimpa tag lokal yang sudah berbeda dari remote dan MENGHENTIKAN SELURUH
+# deploy web/API -- padahal deploy ini sama sekali tidak memakai tag itu,
+# hanya branch `main`.
+as_app "git -C '$APP_DIR' fetch --all --tags --force --prune"
 
 if [[ -n "$TARGET" ]]; then
   as_app "git -C '$APP_DIR' checkout --quiet '$TARGET'"
