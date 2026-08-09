@@ -19,13 +19,22 @@ Baca sesuai bidang yang akan dilanjutkan:
 | 1 | eMedik dan POS Apotik | [`docs/emedik/HANDOVER-2026-08-10.md`](docs/emedik/HANDOVER-2026-08-10.md) | `64c60a4` |
 | 2 | POS/Inventory, CI/CD, rilis Flutter, dan perbaikan integritas | [`docs/session-notes/2026-08-10-ringkasan-sesi.md`](docs/session-notes/2026-08-10-ringkasan-sesi.md) | `ea03c91` |
 | 3 | ePesantren, eSchool, dan Education Core | [`docs/santri-info/21-session-handoff-2026-08-10.md`](docs/santri-info/21-session-handoff-2026-08-10.md) | `aef9c93` |
+| 4 | POS/Inventory dan ekosistem lintas vertikal (konteks lengkap) | [`docs/pos-web-priority/18-serah-terima-claude-2026-08-10.md`](docs/pos-web-priority/18-serah-terima-claude-2026-08-10.md) | commit konsolidasi ini |
+| 5 | POS/Inventory dan ekosistem (ringkasan sesi Codex) | [`docs/pos-web-priority/19-serah-terima-sesi-codex-2026-08-10.md`](docs/pos-web-priority/19-serah-terima-sesi-codex-2026-08-10.md) | commit konsolidasi ini |
 
-Ketiga dokumen tersebut saling melengkapi. Dokumen eMedik mencakup domain,
+Kelima dokumen tersebut saling melengkapi. Dokumen eMedik mencakup domain,
 landing, storefront tenant, UI klinis, POS Apotik Web/Windows/Android, manual,
 unduhan, pembaruan, deploy, dan status Android signing. Ringkasan POS/Inventory
 mencakup CI, matrix build, auto-update, parity 48 layar, serta gap akuntansi dan
 costing. Handoff Education mencakup ePesantren, eSchool, portal unit, DAPODIK,
 rapor, dan gap eCampus.
+
+Dua dokumen POS/Inventory tambahan pada urutan 4-5 sebelumnya hanya tersimpan
+lokal di worktree `C:\opt\eBisnisGithub-ecosystem`. Keduanya kini dilacak Git.
+Dokumen nomor 4 adalah konteks produk paling luas untuk melanjutkan lewat Claude
+atau Codex; dokumen nomor 5 lebih ringkas dan berfokus pada status sesi serta
+hal yang masih perlu dibuktikan. Bila ada perbedaan status, utamakan source,
+test, `origin/main`, lalu ringkasan sesi pada urutan 2.
 
 ## Dokumen historis
 
