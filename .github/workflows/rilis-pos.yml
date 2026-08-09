@@ -289,7 +289,15 @@ jobs:
 
   terbitkan:
     name: Terbitkan rilis
-    if: github.event_name == 'push'
+    # Sengaja TIDAK menyiratkan `success()` bawaan GitHub Actions atas seluruh
+    # `needs` (yang akan menuntut `android` juga sukses). Windows dan Android
+    # dua produk independen dari repo yang sama; kegagalan salah satu (mis.
+    # rahasia penandatanganan Android belum lengkap) tidak boleh menahan
+    # pemasang Windows yang sudah jadi dan siap dipasang pelanggan.
+    if: |
+      !cancelled() &&
+      needs.windows.result == 'success' &&
+      github.event_name == 'push'
     needs: [windows, android]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -306,10 +314,13 @@ jobs:
         id: berkas
         env:
           DITANDATANGANI: ${{ needs.android.outputs.ditandatangani }}
+          HASIL_ANDROID: ${{ needs.android.result }}
         run: |
           daftar=$(ls berkas/pemasang-windows/*.exe)
           if [ "$DITANDATANGANI" = "true" ]; then
             daftar="$daftar $(ls berkas/apk-android/*.apk)"
+          elif [ "$HASIL_ANDROID" = "failure" ]; then
+            echo "::warning::APK tidak dilampirkan: job Android GAGAL (lihat log job \"Bangun APK Android\") -- bukan sekadar kunci debug."
           else
             echo "::warning::APK tidak dilampirkan: dibangun dengan kunci debug."
           fi
@@ -339,6 +350,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           DITANDATANGANI: ${{ needs.android.outputs.ditandatangani }}
+          HASIL_ANDROID: ${{ needs.android.result }}
           DAFTAR: ${{ steps.berkas.outputs.daftar }}
         run: |
           versi="${GITHUB_REF_NAME#pos-v}"
@@ -357,6 +369,13 @@ jobs:
               echo "| \`ebisnis-inventory-sales-$versi.apk\` | Android - Inventory dan Sales |"
               echo "| \`ebisnis-pos-$versi.apk\` | Android — pasang langsung dari berkas |"
               echo "| \`emedik-pos-apotik-$versi.apk\` | Android - POS Apotik eMedik |"
+            elif [ "$HASIL_ANDROID" = "failure" ]; then
+              echo
+              echo "> **APK Android belum tersedia pada rilis ini -- job Android GAGAL.**"
+              echo "> Rahasia penandatanganan ada tetapi tidak lengkap (lihat log job"
+              echo "> \"Bangun APK Android\"). Windows tetap diterbitkan karena keduanya"
+              echo "> produk independen; APK menyusul pada rilis berikutnya setelah rahasia"
+              echo "> penandatanganan dilengkapi."
             else
               echo
               echo "> **APK Android belum tersedia pada rilis ini.** Rahasia penandatanganan"
