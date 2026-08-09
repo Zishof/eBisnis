@@ -229,9 +229,20 @@ class InventoryHomePage extends StatefulWidget {
 }
 
 class _InventoryHomePageState extends State<InventoryHomePage> {
+  // Dashboard eksekutif (untuk pemilik/admin). Peran Sales tidak pernah
+  // memakai future ini -- lihat _mySnapshot dan _content() di bawah -- tetapi
+  // masih diambil di sini juga untuk peran itu supaya field `late` ini boleh
+  // dibaca dengan aman kalau _pageFor tab lain (mis. Laporan) memanggilnya;
+  // kegagalannya sederhana diam bagi peran yang memang tidak memakainya.
   late Future<InventorySnapshot> _snapshot = widget.client.snapshot();
   late Future<InventoryParityContract> _parity = widget.client.parityContract();
   late int _tab = _tabAwalUntukPeran(widget.persona.role);
+  // Dashboard pribadi Sales -- lihat MySalesDashboard. Hanya diambil untuk
+  // peran itu; peran lain tidak pernah butuh, dan endpoint dashboard
+  // eksekutif akan menolak mereka lagipula (SALES_ORDER.READ vs
+  // SALES_REPORT.VIEW_PROFIT, dua izin berbeda).
+  late Future<MySalesDashboard>? _mySnapshot =
+      widget.persona.role == 'Sales' ? widget.client.mySalesDashboard() : null;
   bool _syncing = false;
   int _pending = 0;
 
@@ -394,6 +405,9 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
     setState(() {
       _snapshot = widget.client.snapshot();
       _parity = widget.client.parityContract();
+      if (widget.persona.role == 'Sales') {
+        _mySnapshot = widget.client.mySalesDashboard();
+      }
     });
   }
 
@@ -470,6 +484,18 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
   }
 
   Widget _content() {
+    // Dicabang SEBELUM FutureBuilder [InventorySnapshot] di bawah bahkan
+    // disentuh: dashboard eksekutif itu digerbang SALES_REPORT.VIEW_PROFIT,
+    // yang peran Sales tidak pernah punya (lihat _mySnapshot). Menunggu
+    // FutureBuilder itu untuk tab ini hanya akan menampilkan panel galat 403
+    // -- persis bug yang dilaporkan langsung dari lapangan.
+    if (_tab == 0 && widget.persona.role == 'Sales') {
+      return _MySalesDashboardPage(
+        future: _mySnapshot!,
+        onRefresh: _refresh,
+        onCreateOrder: () => _selectTab(1),
+      );
+    }
     return FutureBuilder<InventorySnapshot>(
       future: _snapshot,
       builder: (context, state) {
@@ -1381,6 +1407,148 @@ class _InventoryDashboard extends StatelessWidget {
           );
         }),
       ],
+    );
+  }
+}
+
+/// Dashboard pribadi peran Sales. Dipakai sebagai isi tab 0 (Dashboard) untuk
+/// role Sales SAJA -- lihat _content() di _InventoryHomePageState, yang
+/// bercabang sebelum FutureBuilder [InventorySnapshot] (dashboard eksekutif)
+/// bahkan disentuh, sebab endpoint itu akan selalu 403 untuk role ini.
+class _MySalesDashboardPage extends StatelessWidget {
+  const _MySalesDashboardPage({
+    required this.future,
+    required this.onRefresh,
+    required this.onCreateOrder,
+  });
+
+  final Future<MySalesDashboard> future;
+  final VoidCallback onRefresh;
+  final VoidCallback onCreateOrder;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<MySalesDashboard>(
+      future: future,
+      builder: (context, state) {
+        if (state.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.only(top: 60),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (state.hasError || state.data == null) {
+          return _ErrorPanel(
+              message: state.error.toString(), onRetry: onRefresh);
+        }
+        final d = state.data!;
+        return Scrollbar(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _InventoryPageHeading(
+                  title: 'Dashboard',
+                  subtitle: 'Order dan pelanggan Anda -- bukan laba perusahaan.',
+                  actions: [
+                    FilledButton.icon(
+                      onPressed: onCreateOrder,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Buat Transaksi'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                LayoutBuilder(builder: (context, box) {
+                  final columns = box.maxWidth >= 900
+                      ? 5
+                      : box.maxWidth >= 560
+                          ? 3
+                          : 2;
+                  return GridView.count(
+                    crossAxisCount: columns,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 1.5,
+                    children: [
+                      _KpiCard(
+                          label: 'Order Hari Ini',
+                          value: angka(d.ordersToday),
+                          icon: Icons.receipt_long_outlined),
+                      _KpiCard(
+                          label: 'Omzet Hari Ini',
+                          value: rupiah(d.revenueToday),
+                          icon: Icons.payments_outlined),
+                      _KpiCard(
+                          label: 'Order Bulan Ini',
+                          value: angka(d.ordersMonth),
+                          icon: Icons.calendar_month_outlined),
+                      _KpiCard(
+                          label: 'Omzet Bulan Ini',
+                          value: rupiah(d.revenueMonth),
+                          icon: Icons.trending_up),
+                      _KpiCard(
+                          label: 'Pelanggan Bulan Ini',
+                          value: angka(d.customersMonth),
+                          icon: Icons.storefront_outlined),
+                    ],
+                  );
+                }),
+                const SizedBox(height: 14),
+                LayoutBuilder(builder: (context, box) {
+                  final desktop = box.maxWidth >= 900;
+                  final orders = _SectionCard(
+                    title: 'Order Saya Terbaru',
+                    icon: Icons.receipt_long_outlined,
+                    action: TextButton(
+                        onPressed: onCreateOrder,
+                        child: const Text('Buat transaksi')),
+                    child: _CompactOrderTable(orders: d.recentOrders),
+                  );
+                  final customers = _SectionCard(
+                    title: 'Pelanggan Teratas Bulan Ini',
+                    icon: Icons.leaderboard_outlined,
+                    child: d.topCustomers.isEmpty
+                        ? const SizedBox(
+                            height: 120,
+                            child: Center(child: Text('Belum ada order.')))
+                        : Column(
+                            children: d.topCustomers
+                                .map((row) => _ProgressLine(
+                                      label: row.name,
+                                      note: '${row.orders} order',
+                                      value: rupiah(row.revenue),
+                                      current: row.revenue,
+                                      max: d.topCustomersMax,
+                                      dense: true,
+                                    ))
+                                .toList(),
+                          ),
+                  );
+                  if (!desktop) {
+                    return Column(children: [
+                      orders,
+                      const SizedBox(height: 14),
+                      customers,
+                    ]);
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 2, child: orders),
+                      const SizedBox(width: 14),
+                      Expanded(child: customers),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -5506,6 +5674,18 @@ class InventoryApiClient {
     return InventorySnapshot.fromApi(dashboard, reconciliation);
   }
 
+  /// Dashboard pribadi peran Sales: order dan omzet miliknya sendiri, TANPA
+  /// margin/laba perusahaan (lihat komentar panjang pada server,
+  /// GET /inventory/my-sales-dashboard).
+  Future<MySalesDashboard> mySalesDashboard() async {
+    if (_token == null) {
+      throw const InventoryApiException('Silakan masuk kembali.');
+    }
+    final data = await _request<Map<String, Object?>>(
+        'GET', '/inventory/my-sales-dashboard');
+    return MySalesDashboard.fromApi(data);
+  }
+
   Future<InventoryParityContract> parityContract() async {
     if (_token == null) {
       throw const InventoryApiException('Silakan masuk kembali.');
@@ -7228,6 +7408,60 @@ class InventorySnapshot {
   double get topSalesMax => topSales.fold<double>(
       1, (max, row) => row.revenue > max ? row.revenue : max);
   double get topProductsMax => topProducts.fold<double>(
+      1, (max, row) => row.revenue > max ? row.revenue : max);
+}
+
+/// Dashboard pribadi peran Sales -- lihat GET /inventory/my-sales-dashboard.
+/// Sengaja TIDAK punya satu pun kolom cost/margin, tidak seperti
+/// [InventorySnapshot] yang memang untuk pemilik/admin.
+class MySalesDashboard {
+  const MySalesDashboard({
+    required this.ordersToday,
+    required this.revenueToday,
+    required this.ordersMonth,
+    required this.revenueMonth,
+    required this.customersMonth,
+    required this.recentOrders,
+    required this.topCustomers,
+  });
+
+  factory MySalesDashboard.fromApi(Map<String, Object?> data) {
+    final summary = data['summary'] as Map<String, Object?>? ?? const {};
+    return MySalesDashboard(
+      ordersToday: toInt(summary['orders_today']),
+      revenueToday: toDouble(summary['revenue_today']),
+      ordersMonth: toInt(summary['orders_month']),
+      revenueMonth: toDouble(summary['revenue_month']),
+      customersMonth: toInt(summary['customers_month']),
+      recentOrders: ((data['recentOrders'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => OrderKpi(
+                (row['order_number'] ?? '-').toString(),
+                (row['customer_name'] ?? 'Pelanggan umum').toString(),
+                (row['status'] ?? '-').toString(),
+                toDouble(row['grand_total']),
+              ))
+          .toList(),
+      topCustomers: ((data['topCustomers'] as List?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map((row) => SalesKpi(
+                (row['customer_name'] ?? 'Pelanggan umum').toString(),
+                toInt(row['orders']),
+                toDouble(row['revenue']),
+              ))
+          .toList(),
+    );
+  }
+
+  final int ordersToday;
+  final double revenueToday;
+  final int ordersMonth;
+  final double revenueMonth;
+  final int customersMonth;
+  final List<OrderKpi> recentOrders;
+  final List<SalesKpi> topCustomers;
+
+  double get topCustomersMax => topCustomers.fold<double>(
       1, (max, row) => row.revenue > max ? row.revenue : max);
 }
 
