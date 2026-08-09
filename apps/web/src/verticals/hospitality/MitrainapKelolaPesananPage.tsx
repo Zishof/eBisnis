@@ -5,7 +5,6 @@
  */
 
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { api, formatDate } from '../../lib/api';
 
@@ -25,7 +24,6 @@ interface DetailReservasi {
 }
 
 export function MitrainapKelolaPesananPage() {
-  const { schemaName } = useParams<{ schemaName: string }>();
   const [form, setForm] = useState({ code: '', kontak: '' });
   const [alasanBatal, setAlasanBatal] = useState('');
   const [reservasi, setReservasi] = useState<DetailReservasi | null>(null);
@@ -34,7 +32,7 @@ export function MitrainapKelolaPesananPage() {
   const cari = useMutation({
     mutationFn: () =>
       api.get<DetailReservasi>(
-        `/public/hospitality/${schemaName}/reservasi/${encodeURIComponent(form.code.trim())}?kontak=${encodeURIComponent(form.kontak.trim())}`,
+        `/public/hospitality-booking/reservations/${encodeURIComponent(form.code.trim())}?kontak=${encodeURIComponent(form.kontak.trim())}`,
       ),
     onSuccess: (data) => {
       setReservasi(data);
@@ -48,7 +46,7 @@ export function MitrainapKelolaPesananPage() {
 
   const batalkan = useMutation({
     mutationFn: () =>
-      api.post<DetailReservasi>(`/public/hospitality/${schemaName}/reservasi/${reservasi!.code}/batalkan`, {
+      api.post<DetailReservasi>(`/public/hospitality-booking/reservations/${reservasi!.code}/cancel`, {
         kontak: form.kontak.trim(),
         alasan: alasanBatal,
       }),

@@ -1,22 +1,15 @@
-
-
-
-
-
-
-
 requirement_id,module,requirement,source,source_location,evidence_label,current_status,target_phase,model_evidence,migration_evidence,api_evidence,ui_evidence,permission_evidence,test_evidence,uat_evidence,owner,notes
-"MI-PORTAL-001","Portal","Register MITRAINAP portal and hosts","MASTER","§8.1","SRC-MASTER","MISSING","MI-1","","","","","","","","Portal",""
-MI-PORTAL-002,Portal,"Reuse one auth/CMS/platform",BRD,"§7.2-7.3",SRC-BRD,FOUNDATION_READY,MI-1,"portal catalog/CMS/auth",platform migrations,,,portal specs,,,Platform,"must not duplicate"
-MI-DOMAIN-001,Domain,"Resolve reserved/demo/tenant/custom hosts fail closed",BRD,"§8",SRC-BRD,PARTIAL,MI-3,"vertical_site_domain",existing platform migration,"PublicTenantResolver",,,resolver specs,,Platform,
+"MI-PORTAL-001","Portal","Register MITRAINAP portal and hosts","MASTER","§8.1","SRC-MASTER","IMPLEMENTED","MI-1","portal catalog","20260806220000_tenant_vertical_hospitality","portal host resolver","MitrainapLayout/Home","hospitality RBAC catalog","portal/host specs","","Portal","reserved, demo, and tenant hosts registered"
+MI-PORTAL-002,Portal,"Reuse one auth/CMS/platform",BRD,"§7.2-7.3",SRC-BRD,IMPLEMENTED,MI-1,"shared portal/CMS/auth",platform migrations,"shared portal and public-site services","Mitrainap public pages","shared auth + hospitality RBAC","portal and registration specs",,Platform,"no duplicate auth or CMS"
+MI-DOMAIN-001,Domain,"Resolve reserved/demo/tenant/custom hosts fail closed",BRD,"§8",SRC-BRD,PARTIAL,MI-3,"vertical_site_domain",20260806220000_tenant_vertical_hospitality,"PublicTenantResolver + registration","MitrainapDaftar pages","hospitality registration policy","registration + trusted-host booking specs",,Platform,"subdomain implemented; custom-domain and TLS lifecycle incomplete"
 "MI-PRICE-001","Pricing","Do not invent price; expose configuration required","MASTER","§10","SRC-MASTER","MISSING","MI-4","shared pricing models","existing platform migrations","pricing module","","","pricing tests","","Product",""
-MI-PROP-001,Property,"Portfolio property building floor zone hierarchy",BRD,"§9 and §13.1",SRC-BRD,MISSING,MI-5,,,,,,,,Hospitality,
-MI-ROOM-001,Inventory,"Room type room bed space and statuses",BRD,"§14",SRC-BRD,MISSING,MI-5,,,,,,,,Hospitality,
-MI-AVAIL-001,Availability,"Stay-date availability ledger with concurrency safety",BRD,"§13.3 and §17",SRC-BRD,MISSING,MI-6,,,,,,,,Hospitality,
-MI-GUEST-001,Guest,"Golden profile preferences consent privacy and merge",BRD,"§15",SRC-BRD,MISSING,MI-7,,,,,,,,CRM,
-MI-RES-001,Reservation,"Quote and full reservation lifecycle",BRD,"§16",SRC-BRD,MISSING,MI-8,,,,,,,,Reservation,
-MI-BOOK-001,Booking,"Accessible direct booking and manage booking",UI,"§9",SRC-UI,MISSING,MI-9,,,,,,,,Booking,
-MI-RATE-001,Revenue,"Rates restrictions forecast recommendation approval",BRD,"§17",SRC-BRD,MISSING,MI-10,,,,,,,,Revenue,
+MI-PROP-001,Property,"Portfolio property building floor zone hierarchy",BRD,"§9 and §13.1",SRC-BRD,PARTIAL,MI-5,"hospitality_property and room models","hospitality foundation migration","hospitality/properties API","HospitalityPropertiPage","hospitality.property permissions","property service specs",,Hospitality,"property and rooms implemented; portfolio/building/floor/zone incomplete"
+MI-ROOM-001,Inventory,"Room type room bed space and statuses",BRD,"§14",SRC-BRD,PARTIAL,MI-5,"room_type and room","hospitality foundation migration","property room APIs","HospitalityPropertiPage","hospitality room permissions","property service specs",,Hospitality,"bed-space and full status matrix incomplete"
+MI-AVAIL-001,Availability,"Stay-date availability ledger with concurrency safety",BRD,"§13.3 and §17",SRC-BRD,PARTIAL,MI-6,"room block and availability models","hospitality inventory migration","hospitality/room-blocks API","HospitalityReservasiPage","hospitality inventory permissions","room-block specs",,Hospitality,"core blocks implemented; full stay-date ledger and allotment acceptance incomplete"
+MI-GUEST-001,Guest,"Golden profile preferences consent privacy and merge",BRD,"§15",SRC-BRD,PARTIAL,MI-7,"guest profile/consent/privacy","hospitality guest CRM migration","hospitality/guests API","HospitalityTamuPage","hospitality guest permissions","guest specs",,CRM,"core profile/consent/merge implemented; relationship/company/loyalty incomplete"
+MI-RES-001,Reservation,"Quote and full reservation lifecycle",BRD,"§16",SRC-BRD,PARTIAL,MI-8,"reservation and lifecycle models","hospitality reservation migration","hospitality/reservations API","HospitalityReservasiPage","hospitality reservation permissions","reservation specs",,Reservation,"core lifecycle implemented; quote/waitlist/group coverage incomplete"
+MI-BOOK-001,Booking,"Accessible direct booking and manage booking",UI,"§9",SRC-UI,PARTIAL,MI-9,"booking reservation models","hospitality booking migration","public/hospitality-booking via trusted host","MitrainapPesanPage + KelolaPesananPage","public host isolation","booking service + controller specs",,Booking,"schema removed from public URL; provider payment and full a11y acceptance incomplete"
+MI-RATE-001,Revenue,"Rates restrictions forecast recommendation approval",BRD,"§17",SRC-BRD,PARTIAL,MI-10,"rate plan/calendar/restriction models","hospitality rate migration","hospitality/rates API","HospitalityReservasiPage","hospitality rate permissions","rate specs",,Revenue,"rates/restrictions implemented; forecast/recommendation/approval incomplete"
 MI-CHANNEL-001,Distribution,"Provider-neutral ARI delivery retry DLQ reconciliation",BRD,"§18",SRC-BRD,MISSING,MI-11,,,,,,,,Distribution,"live adapter awaits provider contract"
 MI-FO-001,FrontOffice,"Arrival check-in in-house room move checkout",BRD,"§21",SRC-BRD,MISSING,MI-12,,,,,,,,FrontOffice,
 MI-HK-001,Housekeeping,"Supervisor board mobile tasks linen minibar lost-found",BRD,"§22",SRC-BRD,MISSING,MI-13,,,,,,,,Housekeeping,
@@ -34,5 +27,5 @@ MI-REPORT-001,Reporting,"Operational revenue finance reports and snapshots",BRD,
 MI-SEC-001,Security,"RBAC scope mask SoD idempotency audit",BRD,"§34",SRC-BRD,PARTIAL,MI-24,"shared auth/audit",existing migrations,"permission guard",,"RBAC catalog","authorization tests",,Security,
 MI-UI-001,UX,"Responsive accessible shared design system",UI,"§3-6 and §31-37",SRC-UI,FOUNDATION_READY,MI-24,,, ,"shared React UI/PWA",,"Web tests/Playwright",,UX,
 MI-DEMO-001,Demo,"Resettable non-billable sample tenant",BRD,"§39",SRC-BRD,MISSING,MI-23,,,,,,,,Demo,
-MI-TEST-001,Quality,"Full test matrix and persona UAT",BRD,"§40",SRC-BRD,PARTIAL,MI-24,,,,,,"baseline recorded",,QA,
-MI-REL-001,Release,"Migration rehearsal backup health rollback release",MASTER,"MI-24",SRC-MASTER,FOUNDATION_READY,MI-24,,"migration guard",,"deploy/update.sh",,"CI workflows",,Release,
+MI-TEST-001,Quality,"Full test matrix and persona UAT",BRD,"§40",SRC-BRD,PARTIAL,MI-24,,,,,,"API 167 suites/4122 tests and Web Vitest pass; persona UAT pending",,QA,
+MI-REL-001,Release,"Migration rehearsal backup health rollback release",MASTER,"MI-24",SRC-MASTER,PARTIAL,MI-24,,"platform + six tenant migrations rehearsed on 13 local schemas",,"deploy/update.sh + Apache aliases",,"migration verifier and Bash syntax checks",,Release,"production health/rollback rehearsal pending"

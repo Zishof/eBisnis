@@ -1,20 +1,16 @@
 /**
  * Titik masuk HTTP booking engine publik (MI-9) -- TANPA login staf.
  *
- * `schemaName` diterima eksplisit pada jalur URL. Ini interim: mekanisme
- * pemesanannya sendiri (pencarian, validasi, pemesanan, kelola) sudah
- * nyata dan teruji; yang BELUM ada adalah resolusi tenant lewat host/
- * subdomain (`PublicTenantResolver`, pola `pesantren-public.service.ts`)
- * karena MI-3 (subdomain properti) masih diblokir -- lihat catatan
- * migrasi. Begitu MI-3 selesai, jalur ini tinggal disambung ke resolver
- * host, bukan ditulis ulang.
+ * Tenant dan properti selalu ditentukan dari host terverifikasi melalui
+ * `PublicTenantResolver`. Nama schema tidak pernah diterima dari URL/body.
  */
 
-import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { HospitalityBookingEngineService } from './hospitality-booking-engine.service';
+import { HospitalityPublicSiteService } from './hospitality-public-site.service';
 import { METODE_PEMBAYARAN } from './hospitality-booking-engine';
 import { Public, RequestContext, type RequestMeta } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
@@ -38,10 +34,6 @@ class CariKetersediaanQuery {
 }
 
 class PesanPublikDto {
-  @ApiProperty()
-  @IsString()
-  propertyId!: string;
-
   @ApiProperty()
   @IsString()
   roomTypeId!: string;
@@ -93,41 +85,31 @@ class BatalkanPublikDto {
   alasan!: string;
 }
 
-function schemaDariUrl(schemaName: string): string {
-  // Bukan validasi keamanan (itu tugas basis data -- query pada schema
-  // yang tidak ada gagal wajar) -- hanya penjaga kewarasan awal supaya
-  // galat yang muncul jelas, bukan galat SQL mentah.
-  if (!schemaName?.trim()) {
-    throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Identitas penyewa tidak sah.');
-  }
-  return schemaName;
-}
-
 @ApiTags('hospitality-public')
-@Controller('public/hospitality/:schemaName')
+@Controller('public/hospitality-booking')
 export class HospitalityBookingEngineController {
-  constructor(private readonly booking: HospitalityBookingEngineService) {}
+  constructor(
+    private readonly booking: HospitalityBookingEngineService,
+    private readonly situs: HospitalityPublicSiteService,
+  ) {}
 
   @Public()
-  @Get('properti/:propertyId/cari')
+  @Get('search')
   @ApiOperation({ summary: 'Mencari tipe kamar tersedia dan terpublikasi untuk rentang menginap' })
-  cari(
-    @Param('schemaName') schemaName: string,
-    @Param('propertyId') propertyId: string,
-    @Query() query: CariKetersediaanQuery,
-  ) {
-    return this.booking.cariKetersediaan(schemaDariUrl(schemaName), propertyId, query);
+  async cari(@Headers('host') host: string, @Query() query: CariKetersediaanQuery) {
+    const konteks = await this.situs.konteks(host);
+    return this.booking.cariKetersediaan(konteks.schemaName, konteks.propertyId, query);
   }
 
   @Public()
-  @Post('reservasi')
+  @Post('reservations')
   @HttpCode(201)
   @ApiOperation({
     summary: 'Memesan mandiri tanpa staf',
     description: 'Wajib menyertakan tajuk Idempotency-Key -- klik ganda pada koneksi lambat tidak menghasilkan pemesanan ganda.',
   })
   async pesan(
-    @Param('schemaName') schemaName: string,
+    @Headers('host') host: string,
     @Body() dto: PesanPublikDto,
     @RequestContext() meta: RequestMeta,
   ) {
@@ -137,36 +119,39 @@ export class HospitalityBookingEngineController {
     // pemanggil yang sama-sama membaca objek reservasi. Ketidaksamaan
     // ini pernah menyebabkan layar publik gagal membaca `room_stays`
     // (undefined.map) -- ditemukan lewat pengujian peramban sungguhan.
+    const konteks = await this.situs.konteks(host);
     const { reservasi, diulang } = await this.booking.pesanPublik(
-      schemaDariUrl(schemaName),
-      dto,
+      konteks.schemaName,
+      { ...dto, propertyId: konteks.propertyId },
       meta.idempotencyKey,
     );
     return { ...reservasi, _diulangDariPermintaanSebelumnya: diulang };
   }
 
   @Public()
-  @Get('reservasi/:code')
+  @Get('reservations/:code')
   @ApiOperation({ summary: 'Melihat pemesanan lewat kode + verifikasi kontak' })
-  lihat(
-    @Param('schemaName') schemaName: string,
+  async lihat(
+    @Headers('host') host: string,
     @Param('code') code: string,
     @Query('kontak') kontak: string,
   ) {
     if (!kontak?.trim()) {
       throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Kontak (email atau telepon) wajib diisi untuk verifikasi.');
     }
-    return this.booking.lihatPemesanan(schemaDariUrl(schemaName), code, kontak.trim());
+    const konteks = await this.situs.konteks(host);
+    return this.booking.lihatPemesanan(konteks.schemaName, code, kontak.trim());
   }
 
   @Public()
-  @Post('reservasi/:code/batalkan')
+  @Post('reservations/:code/cancel')
   @ApiOperation({ summary: 'Membatalkan pemesanan sendiri + verifikasi kontak' })
-  batalkan(
-    @Param('schemaName') schemaName: string,
+  async batalkan(
+    @Headers('host') host: string,
     @Param('code') code: string,
     @Body() dto: BatalkanPublikDto,
   ) {
-    return this.booking.batalkanPemesanan(schemaDariUrl(schemaName), code, dto.kontak.trim(), dto.alasan);
+    const konteks = await this.situs.konteks(host);
+    return this.booking.batalkanPemesanan(konteks.schemaName, code, dto.kontak.trim(), dto.alasan);
   }
 }

@@ -2,30 +2,16 @@
  * Booking engine publik MitraInap (MI-9) -- cari, pesan, dan kelola
  * pemesanan TANPA login staf.
  *
- * Dua titik masuk, satu isi:
- *
- *   `MitrainapPesanPage`     -- `schemaName`/`propertyId` dari jalur URL
- *                                (dipertahankan untuk tautan lama/uji manual).
- *   `MitrainapPropertiSitusPage` (MI-3) -- `schemaName`/`propertyId`
- *                                diresolusi dari SUBDOMAIN permintaan lewat
- *                                `/public/hospitality-site/context`
- *                                (`PublicTenantResolver`, IR-005), dipasang
- *                                di `<slug>.mitrainap.id`.
- *
- * Keduanya merender `IsiPesan` yang SAMA begitu schemaName/propertyId
- * diketahui -- mekanisme pencarian/pemesanan (MI-9) tidak disalin ulang,
- * pola yang sama dengan "ganti sumber bukan mekanisme" yang dipakai
- * berulang di modul hospitality.
+ * Tenant/properti ditentukan oleh host di backend. Browser tidak pernah
+ * menerima atau mengirim nama schema tenant.
  */
 
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { AlertTriangle, CalendarRange, CheckCircle2, Users } from 'lucide-react';
 import { api, formatDate } from '../../lib/api';
 
 interface KonteksSitus {
-  schemaName: string;
   propertyId: string;
   propertyName: string;
 }
@@ -61,9 +47,7 @@ function formatRupiah(nilai: number | string) {
 }
 
 export function MitrainapPesanPage() {
-  const { schemaName, propertyId } = useParams<{ schemaName: string; propertyId: string }>();
-  if (!schemaName || !propertyId) return null;
-  return <IsiPesan schemaName={schemaName} propertyId={propertyId} />;
+  return <MitrainapPropertiSitusPage />;
 }
 
 /**
@@ -94,21 +78,13 @@ export function MitrainapPropertiSitusPage() {
     );
   }
 
-  return (
-    <IsiPesan
-      schemaName={konteks.data.schemaName}
-      propertyId={konteks.data.propertyId}
-      namaProperti={konteks.data.propertyName}
-    />
-  );
+  return <IsiPesan propertyId={konteks.data.propertyId} namaProperti={konteks.data.propertyName} />;
 }
 
 function IsiPesan({
-  schemaName,
   propertyId,
   namaProperti,
 }: {
-  schemaName: string;
   propertyId: string;
   namaProperti?: string;
 }) {
@@ -123,7 +99,7 @@ function IsiPesan({
   const [galatPesan, setGalatPesan] = useState<string | null>(null);
 
   const hasil = useQuery({
-    queryKey: ['mitrainap-cari', schemaName, propertyId, pencarian.checkin, pencarian.checkout, pencarian.dewasa, pencarian.anak],
+    queryKey: ['mitrainap-cari', propertyId, pencarian.checkin, pencarian.checkout, pencarian.dewasa, pencarian.anak],
     queryFn: () => {
       const params = new URLSearchParams({
         checkin: pencarian.checkin,
@@ -131,19 +107,16 @@ function IsiPesan({
         dewasa: pencarian.dewasa,
         anak: pencarian.anak,
       });
-      return api.get<HasilTipeKamar[]>(
-        `/public/hospitality/${schemaName}/properti/${propertyId}/cari?${params.toString()}`,
-      );
+      return api.get<HasilTipeKamar[]>(`/public/hospitality-booking/search?${params.toString()}`);
     },
-    enabled: dicari && !!schemaName && !!propertyId,
+    enabled: dicari && !!propertyId,
   });
 
   const pesan = useMutation({
     mutationFn: () =>
       api.post<HasilReservasi>(
-        `/public/hospitality/${schemaName}/reservasi`,
+        '/public/hospitality-booking/reservations',
         {
-          propertyId,
           roomTypeId: tipeDipilih!.room_type_id,
           checkin: pencarian.checkin,
           checkout: pencarian.checkout,
@@ -201,6 +174,12 @@ function IsiPesan({
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
         Harga yang tampil adalah total untuk seluruh malam menginap -- tidak ada biaya tersembunyi.
       </p>
+      <a
+        href="/mitrainap/properti/kelola-pesanan"
+        className="mt-2 inline-block text-sm font-medium text-blue-700 hover:underline dark:text-blue-300"
+      >
+        Sudah memesan? Kelola pemesanan
+      </a>
 
       <div className="card mt-6 grid gap-3 p-4 sm:grid-cols-5">
         <Field label="Check-in">

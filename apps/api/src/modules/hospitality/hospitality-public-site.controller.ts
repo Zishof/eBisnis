@@ -18,10 +18,15 @@ export class HospitalityPublicSiteController {
   @ApiOperation({
     summary: 'Resolusi properti dari subdomain permintaan (<slug>.mitrainap.id)',
     description:
-      'Dipakai halaman pemesanan publik untuk memperoleh schemaName + propertyId dari host, ' +
-      'lalu memanggil endpoint booking engine (MI-9) yang sudah ada seperti biasa.',
+      'Dipakai halaman pemesanan publik untuk memperoleh identitas properti dari host. ' +
+      'Nama schema tetap hanya berada di backend.',
   })
-  context(@Headers('host') host: string) {
-    return this.situs.konteks(host);
+  async context(@Headers('host') host: string) {
+    const konteks = await this.situs.konteks(host);
+    return {
+      propertyId: konteks.propertyId,
+      propertyName: konteks.propertyName,
+      timezone: konteks.timezone,
+    };
   }
 }

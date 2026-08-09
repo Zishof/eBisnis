@@ -426,11 +426,6 @@ const MitrainapFaqPage = lazy(() =>
     default: m.MitrainapFaqPage,
   })),
 );
-const MitrainapPesanPage = lazy(() =>
-  import('../verticals/hospitality/MitrainapPesanPage').then((m) => ({
-    default: m.MitrainapPesanPage,
-  })),
-);
 const MitrainapKelolaPesananPage = lazy(() =>
   import('../verticals/hospitality/MitrainapKelolaPesananPage').then((m) => ({
     default: m.MitrainapKelolaPesananPage,
@@ -606,13 +601,6 @@ export function App() {
           <Route index element={<MitrainapHomePage />} />
           <Route path="solusi" element={<MitrainapSolusiPage />} />
           <Route path="faq" element={<MitrainapFaqPage />} />
-          {/*
-            Booking engine publik (MI-9). schemaName/propertyId eksplisit pada
-            jalur URL -- lihat catatan di hospitality-booking-engine.controller.ts
-            (MI-3/subdomain properti belum ada).
-          */}
-          <Route path="pesan/:schemaName/:propertyId" element={<MitrainapPesanPage />} />
-          <Route path="kelola-pesanan/:schemaName" element={<MitrainapKelolaPesananPage />} />
           {/* Pendaftaran properti sungguhan (MI-3) -- lihat komentar di berkasnya. */}
           <Route path="daftar" element={<MitrainapDaftarPage />} />
           <Route path="daftar/berhasil" element={<MitrainapDaftarBerhasilPage />} />
@@ -634,6 +622,7 @@ export function App() {
           seorang PELANGGAN).
         */}
         <Route path="/mitrainap/properti" element={<MitrainapPropertiSitusPage />} />
+        <Route path="/mitrainap/properti/kelola-pesanan" element={<MitrainapKelolaPesananPage />} />
         {/*
           Formulir PSB dibungkus PondokChrome (nama/logo pondok di header,
           bukan bingkai kosong) -- rute ini hanya pernah dicapai lewat
