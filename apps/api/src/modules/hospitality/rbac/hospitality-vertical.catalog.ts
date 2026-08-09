@@ -28,6 +28,7 @@ export const ROLE_ENGINEERING_MANAGER = 'HOSPITALITY_ENGINEERING_MANAGER';
 export const ROLE_ENGINEER = 'HOSPITALITY_ENGINEER';
 export const ROLE_HOSPITALITY_CASHIER = 'HOSPITALITY_CASHIER';
 export const ROLE_NIGHT_AUDITOR = 'HOSPITALITY_NIGHT_AUDITOR';
+export const ROLE_MICE_MANAGER = 'HOSPITALITY_MICE_MANAGER';
 
 const DASAR = { HOME: 'P1', SUPPORT: 'P1' } as const;
 
@@ -108,6 +109,7 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
     moduleCode: HOSPITALITY_PREFIX, sortOrder: 8,
     actions: ['READ','CREATE','UPDATE','POST','REVIEW','APPROVE','EXPORT'],
   },
+  { code:'HOSPITALITY_MICE',parentCode:'HOSPITALITY_GROUP',label:'Corporate, Group & MICE',translationKey:'menu.hospitality.mice',route:'/app/hospitality/mice',icon:'Presentation',moduleCode:HOSPITALITY_PREFIX,sortOrder:9,actions:['READ','CREATE','UPDATE','APPROVE','EXPORT'] },
 ];
 
 export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
@@ -171,6 +173,7 @@ export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
     modules: { HOME:'P1',SUPPORT:'P1',HOSPITALITY_FOLIO:'P4',HOSPITALITY_NIGHT_AUDIT:'P6' }, dataScope:'TENANT', core:false,
     description:'Menjalankan end-of-day idempoten, menyelesaikan exception, merekonsiliasi saldo, dan meninjau income audit.',
   },
+  { code:ROLE_MICE_MANAGER,name:'MICE & Group Manager',family:'Hospitality',profile:'P6',modules:{HOME:'P1',SUPPORT:'P1',HOSPITALITY_MICE:'P6'},dataScope:'TENANT',core:false,description:'Mengelola corporate contract, group allotment, rooming list, function space, event dan BEO.' },
 ];
 
 export const HOSPITALITY_VERTICAL_CATALOG: VerticalCatalog = {
