@@ -58,6 +58,7 @@ import { PosReportService } from './pos-report.service';
 import { PosSampleService, PROFIL_BAWAAN, PROFIL_RINGKAS } from './pos-sample.service';
 import { PosOfflineService } from './pos-offline.service';
 import { PosPromotionService } from './pos-promotion.service';
+import { bersihkanPenyaring } from './pos-held';
 import { AuthModule } from '../auth/auth.module';
 import { TenantPermissionService } from '../auth/tenant-permission.service';
 
@@ -1496,6 +1497,49 @@ export class PosController {
   @ApiOperation({ summary: 'Shift yang sedang terbuka bagi pengguna ini' })
   shiftBerjalan(@CurrentUser() user: AuthenticatedUser) {
     return this.konteks.shiftBerjalan(requireSchema(user), user);
+  }
+
+  // --- Transaksi ditahan -----------------------------------------------------
+  //
+  // Menu "Transaksi Ditahan" sudah lama menunjuk rute yang tidak ada. Kasir yang
+  // menahan keranjang karena pembeli pergi mengambil satu barang lagi tidak
+  // punya jalan mengambilnya kembali selain mengingat nomor struknya — dan yang
+  // tidak ditemukan berakhir sebagai pemindaian ulang di depan antrean.
+
+  @ApiBearerAuth('access-token')
+  @Permissions('POS_SALE.RESUME')
+  @Get('held')
+  @ApiOperation({
+    summary: 'Daftar keranjang yang sedang ditahan',
+    description:
+      'Diurutkan: milik mesin yang sedang dipakai lebih dahulu, lalu yang paling baru ditahan. ' +
+      'Cakupan outlet ditegakkan pada query, bukan disaring sesudahnya.',
+  })
+  async daftarTertahan(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('q') q?: string,
+    @Query('outletId') outletId?: string,
+    @Query('terminalId') terminalId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const schema = requireSchema(user);
+    const subjectId = await this.subjek(schema, user);
+    const shift = await this.konteks.shiftBerjalan(schema, user);
+
+    return this.jual.daftarTertahan(
+      schema,
+      bersihkanPenyaring({ from, to, q, outletId, terminalId, limit }),
+      {
+        outletIds: await this.konteks.outletTerjangkau(schema, subjectId),
+        // Terminal yang sedang dipakai diambil dari shift berjalan, bukan dari
+        // query: kasir tidak memilih mesinnya sendiri, dan menerimanya dari
+        // klien membuat badge "mesin ini" dapat dibuat menunjuk mesin mana pun.
+        terminalId:
+          (shift as { terminalId?: string | null } | null)?.terminalId ?? null,
+      },
+    );
   }
 
   // --- Aturan diskon --------------------------------------------------------

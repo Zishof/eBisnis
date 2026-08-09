@@ -22,6 +22,12 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  tandaiMesinIni,
+  urutkanTertahan,
+  type BarisTertahan,
+  type PenyaringTertahan,
+} from './pos-held';
 import type { PoolClient } from 'pg';
 import Decimal from 'decimal.js';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
@@ -1293,6 +1299,99 @@ export class PosSaleService {
         ],
       );
     }
+  }
+
+  /**
+   * Daftar keranjang yang sedang ditahan.
+   *
+   * Sampai sebelum ini, menu "Transaksi Ditahan" menunjuk rute yang tidak ada:
+   * kasir yang menahan keranjang tidak punya jalan mengambilnya kembali selain
+   * mengingat nomor struknya. Keranjang yang tidak ditemukan berakhir sebagai
+   * pemindaian ulang seluruh barang di depan antrean.
+   *
+   * Cakupan outlet ditegakkan pada QUERY, bukan disaring sesudahnya: baris yang
+   * pernah keluar dari basis data sudah terlanjur keluar, dan penyaring di
+   * lapisan atas hanya menyembunyikannya dari tampilan.
+   */
+  async daftarTertahan(
+    schemaName: string,
+    penyaring: PenyaringTertahan,
+    ctx: { outletIds: string[]; terminalId: string | null },
+  ): Promise<BarisTertahan[]> {
+    /*
+     * Cakupan kosong berarti pengguna tidak ditugaskan ke outlet mana pun DAN
+     * tidak punya cakupan data — pada `outletTerjangkau` itu berarti tidak
+     * dibatasi. Dibaca di sini sebagai "tanpa penyaring outlet", bukan sebagai
+     * "tidak boleh melihat apa pun", supaya sejalan dengan laporan kasir yang
+     * sudah memakai aturan yang sama.
+     */
+    const dibatasi = ctx.outletIds.length > 0;
+
+    const rows = await this.tenantDb.query<{
+      id: string;
+      receipt_number: string;
+      business_date: string;
+      held_at: Date | null;
+      outlet_id: string;
+      outlet_name: string | null;
+      terminal_id: string | null;
+      terminal_name: string | null;
+      customer_name: string | null;
+      currency_code: string;
+      grand_total: string;
+      item_count: string;
+    }>(
+      schemaName,
+      `SELECT s.id, s.receipt_number, s.business_date::text AS business_date, s.held_at,
+              s.outlet_id, o.name AS outlet_name,
+              s.terminal_id, t.name AS terminal_name,
+              c.name AS customer_name,
+              s.currency_code, s.grand_total::text AS grand_total,
+              (SELECT COUNT(*)::text FROM "${schemaName}".pos_sale_line l
+                WHERE l.pos_sale_id = s.id) AS item_count
+         FROM "${schemaName}".pos_sale s
+         LEFT JOIN "${schemaName}".outlet o ON o.id = s.outlet_id
+         LEFT JOIN "${schemaName}".pos_terminal t ON t.id = s.terminal_id
+         LEFT JOIN "${schemaName}".customer c ON c.id = s.customer_id
+        WHERE s.status = 'HELD'
+          AND ($1::boolean IS FALSE OR s.outlet_id = ANY($2::uuid[]))
+          AND ($3::uuid IS NULL OR s.outlet_id = $3::uuid)
+          AND ($4::uuid IS NULL OR s.terminal_id = $4::uuid)
+          AND ($5::date IS NULL OR s.business_date >= $5::date)
+          AND ($6::date IS NULL OR s.business_date <= $6::date)
+          AND ($7::text IS NULL
+               OR s.receipt_number ILIKE '%' || $7 || '%'
+               OR c.name ILIKE '%' || $7 || '%')
+        ORDER BY s.held_at DESC NULLS LAST, s.receipt_number
+        LIMIT $8`,
+      [
+        dibatasi,
+        ctx.outletIds,
+        penyaring.outletId,
+        penyaring.terminalId,
+        penyaring.dariTanggal,
+        penyaring.sampaiTanggal,
+        penyaring.kunci,
+        penyaring.batas,
+      ],
+    );
+
+    const baris = rows.map((r) => ({
+      id: r.id,
+      receiptNumber: r.receipt_number,
+      businessDate: r.business_date,
+      heldAt: r.held_at ? r.held_at.toISOString() : null,
+      outletId: r.outlet_id,
+      outletName: r.outlet_name,
+      terminalId: r.terminal_id,
+      terminalName: r.terminal_name,
+      customerName: r.customer_name,
+      currencyCode: r.currency_code,
+      grandTotal: r.grand_total,
+      itemCount: Number(r.item_count ?? '0'),
+    }));
+
+    return urutkanTertahan(tandaiMesinIni(baris, ctx.terminalId));
   }
 
   private async catatStatus(
