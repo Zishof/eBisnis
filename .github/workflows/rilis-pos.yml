@@ -316,15 +316,22 @@ jobs:
           DITANDATANGANI: ${{ needs.android.outputs.ditandatangani }}
           HASIL_ANDROID: ${{ needs.android.result }}
         run: |
-          daftar=$(ls berkas/pemasang-windows/*.exe)
+          # Glob langsung ke array, BUKAN `daftar=$(ls ...)`: `ls` mencetak
+          # setiap berkas pada baris terpisah ketika keluarannya ditangkap
+          # (bukan ke terminal), sehingga `$daftar` memuat newline di antara
+          # tiap path. Newline itu merusak `$GITHUB_OUTPUT`, yang hanya
+          # menerima satu baris per `key=value` kecuali memakai sintaks
+          # heredoc -- runner sekarang menolaknya tegas ("Invalid format"),
+          # bukan cuma menerima diam-diam seperti sebelumnya.
+          daftar_arr=(berkas/pemasang-windows/*.exe)
           if [ "$DITANDATANGANI" = "true" ]; then
-            daftar="$daftar $(ls berkas/apk-android/*.apk)"
+            daftar_arr+=(berkas/apk-android/*.apk)
           elif [ "$HASIL_ANDROID" = "failure" ]; then
             echo "::warning::APK tidak dilampirkan: job Android GAGAL (lihat log job \"Bangun APK Android\") -- bukan sekadar kunci debug."
           else
             echo "::warning::APK tidak dilampirkan: dibangun dengan kunci debug."
           fi
-          echo "daftar=$daftar" >> "$GITHUB_OUTPUT"
+          echo "daftar=${daftar_arr[*]}" >> "$GITHUB_OUTPUT"
 
       # Peringatan yang tidak dapat diabaikan diam-diam.
       #
