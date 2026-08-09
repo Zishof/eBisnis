@@ -39,6 +39,33 @@ export function maskFields<T extends Record<string, unknown>>(
   });
 }
 
+/**
+ * Sama seperti [maskFields], tetapi untuk baris riwayat audit: nilai sensitif
+ * hidup DI DALAM `old_data`/`new_data` (snapshot JSONB baris penuh yang
+ * ditulis trigger basis data), bukan sebagai kolom pada baris itu sendiri.
+ * `list()`/`findById()` sudah menyamarkan lewat [maskFields]; audit trail
+ * TIDAK -- ditemukan lewat audit langsung: siapa pun dengan AUDIT_READ bisa
+ * membaca nomor rekening penuh dari riwayat perubahan walau tidak punya
+ * VIEW_BANK_DETAILS.
+ */
+export function maskAuditRows<T extends Record<string, unknown>>(
+  rows: T[],
+  fields: readonly string[],
+  revealed: boolean,
+): T[] {
+  if (revealed || !fields.length) return rows;
+  const maskSnapshot = (value: unknown): unknown => {
+    if (!value || typeof value !== 'object') return value;
+    const [masked] = maskFields([value as Record<string, unknown>], fields, false);
+    return masked;
+  };
+  return rows.map((row) => ({
+    ...row,
+    old_data: maskSnapshot(row.old_data),
+    new_data: maskSnapshot(row.new_data),
+  }));
+}
+
 export interface LifecycleContext {
   schemaName: string;
   tenantId?: string;
@@ -634,7 +661,7 @@ export class MasterLifecycleService {
   async auditTrail(ctx: LifecycleContext, resourceCode: string, id: string, limit = 100) {
     const definition = this.resource(resourceCode);
     const auditSchema = `${ctx.schemaName}__audit`;
-    return this.tenantDb.queryAdmin<Record<string, unknown>>(
+    const rows = await this.tenantDb.queryAdmin<Record<string, unknown>>(
       `SELECT rc.id, rc.operation, rc.changed_columns, rc.statement_timestamp,
               rc.old_data, rc.new_data,
               ev.action_code, ev.actor_username, ev.actor_user_id, ev.request_id, ev.reason
@@ -645,6 +672,13 @@ export class MasterLifecycleService {
        LIMIT ${Math.min(limit, 500)}`,
       [ctx.schemaName, definition.table, id],
     );
+    if (!definition.sensitiveFields?.length || !rows.length) return rows;
+    const permission = `${definition.menuCode}.VIEW_BANK_DETAILS`;
+    const kurang = await this.izin.findMissing(ctx.schemaName, ctx.userId, [permission], {
+      isDemo: ctx.isDemo,
+      activeRoleId: ctx.activeRoleId,
+    });
+    return maskAuditRows(rows, definition.sensitiveFields, kurang.length === 0);
   }
 
   // -------------------------------------------------------------------------

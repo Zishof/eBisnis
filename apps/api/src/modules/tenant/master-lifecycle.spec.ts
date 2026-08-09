@@ -7,7 +7,7 @@
  * kosong tetap kosong, terisi menjadi disamarkan kecuali diizinkan.
  */
 
-import { maskFields, NILAI_DISAMARKAN } from './master-lifecycle.service';
+import { maskAuditRows, maskFields, NILAI_DISAMARKAN } from './master-lifecycle.service';
 
 const FIELDS = ['bank_account_number', 'bank_account_name'];
 
@@ -50,5 +50,57 @@ describe('maskFields', () => {
   it('daftar field kosong berarti tidak ada yang disamarkan', () => {
     const rows = [{ id: '1', bank_account_number: '1234567890' }];
     expect(maskFields(rows, [], false)).toEqual(rows);
+  });
+});
+
+/**
+ * Jalur audit trail TIDAK memakai maskFields -- nilai sensitif hidup di
+ * dalam old_data/new_data (snapshot JSONB baris penuh dari trigger basis
+ * data), bukan sebagai kolom pada baris riwayatnya sendiri. Ditemukan lewat
+ * audit langsung: siapa pun ber-AUDIT_READ bisa membaca nomor rekening penuh
+ * dari riwayat perubahan walau tidak punya VIEW_BANK_DETAILS -- endpoint
+ * list()/findById() sudah bergerbang, endpoint audit ini belum.
+ */
+describe('maskAuditRows', () => {
+  it('tidak mengubah apa pun bila revealed benar', () => {
+    const rows = [{ id: '1', old_data: { bank_account_number: '1234567890' }, new_data: null }];
+    expect(maskAuditRows(rows, FIELDS, true)).toEqual(rows);
+  });
+
+  it('menyamarkan field sensitif di dalam old_data dan new_data ketika revealed salah', () => {
+    const rows = [
+      {
+        id: '1',
+        operation: 'UPDATE',
+        old_data: { name: 'Bank BCA', bank_account_number: '1234567890' },
+        new_data: { name: 'Bank BCA', bank_account_number: '0987654321' },
+      },
+    ];
+    const hasil = maskAuditRows(rows, FIELDS, false);
+    expect((hasil[0].old_data as Record<string, unknown>).bank_account_number).toBe(NILAI_DISAMARKAN);
+    expect((hasil[0].new_data as Record<string, unknown>).bank_account_number).toBe(NILAI_DISAMARKAN);
+    // Field lain (termasuk kolom baris riwayat itu sendiri) tidak ikut tersamar.
+    expect((hasil[0].old_data as Record<string, unknown>).name).toBe('Bank BCA');
+    expect(hasil[0].operation).toBe('UPDATE');
+  });
+
+  it('old_data/new_data null (mis. INSERT tanpa old_data) tidak menyebabkan galat', () => {
+    const rows = [{ id: '1', operation: 'INSERT', old_data: null, new_data: { bank_account_number: '111' } }];
+    const hasil = maskAuditRows(rows, FIELDS, false);
+    expect(hasil[0].old_data).toBeNull();
+    expect((hasil[0].new_data as Record<string, unknown>).bank_account_number).toBe(NILAI_DISAMARKAN);
+  });
+
+  it('field kosong di dalam snapshot tetap kosong, bukan ikut disamarkan', () => {
+    const rows = [{ id: '1', old_data: { bank_account_number: '' }, new_data: null }];
+    const hasil = maskAuditRows(rows, FIELDS, false);
+    expect((hasil[0].old_data as Record<string, unknown>).bank_account_number).toBe('');
+  });
+
+  it('tidak memodifikasi baris atau snapshot asli (imutabel)', () => {
+    const originalOldData = { bank_account_number: '1234567890' };
+    const rows = [{ id: '1', old_data: originalOldData, new_data: null }];
+    maskAuditRows(rows, FIELDS, false);
+    expect(originalOldData.bank_account_number).toBe('1234567890');
   });
 });
