@@ -104,11 +104,24 @@ jobs:
         working-directory: ${{ env.JALUR }}
         run: |
           flutter pub get
+          flutter clean
           flutter build windows --release --dart-define=VERSI=${{ steps.versi.outputs.nilai }}
 
       # Inno Setup sudah terpasang pada runner windows-latest. Diperiksa tegas
       # supaya kegagalannya berbunyi jelas, bukan berakhir sebagai rilis tanpa
       # berkas .exe yang baru ketahuan ketika seseorang mencoba mengunduhnya.
+      #
+      # `flutter clean` WAJIB sebelum SETIAP build produk di sini, bukan cuma
+      # yang pertama. Ketiga produk (default, apotik, inventory) dibangun
+      # berurutan ke folder output YANG SAMA (`build/windows/x64/runner/Release`),
+      # dan build Windows Flutter yang inkremental tidak selalu mendeteksi
+      # perubahan `--target`/`--dart-define` sebagai alasan membangun ulang
+      # `data/flutter_assets` -- baik `main_inventory.dart` (lihat komentarnya)
+      # maupun tanpa `flutter clean` di sini SENDIRI-SENDIRI tidak cukup:
+      # ditemukan langsung dari rilis nyata, ebisnis-inventory-sales-*.exe yang
+      # terpasang menampilkan "Salon Cantik Demo" -- login bawaan varian
+      # default/Salon yang HANYA ada di lib/main.dart, bukan Inventory sama
+      # sekali.
       - name: Rakit pemasang
         shell: pwsh
         run: |
@@ -122,6 +135,7 @@ jobs:
             "/DKeluaran=$PWD\keluaran" `
             "${{ env.JALUR }}\windows\pemasang.iss"
 
+          flutter clean
           flutter build windows --release --dart-define=VERSI=${{ steps.versi.outputs.nilai }} --dart-define=POS_MODE=apotik
           & $iscc `
             "/DVersi=${{ steps.versi.outputs.nilai }}" `
@@ -134,6 +148,7 @@ jobs:
             "/DKeluaran=$PWD\keluaran" `
             "${{ env.JALUR }}\windows\pemasang.iss"
 
+          flutter clean
           flutter build windows --release `
             --target=lib/main_inventory.dart `
             --dart-define=VERSI=${{ steps.versi.outputs.nilai }} `
@@ -224,10 +239,19 @@ jobs:
       # `--build-number` wajib naik setiap rilis. Android menolak memasang APK
       # dengan versionCode yang sama atau lebih kecil daripada yang terpasang,
       # dan `pubspec.yaml` tidak memuat nomor bangun.
+      # `flutter clean` sebelum SETIAP flavor: build APK Windows sudah terbukti
+      # membangun ulang varian yang salah ketika tiga produk dibangun berurutan
+      # ke folder output yang sama tanpa dibersihkan lebih dulu (lihat catatan
+      # panjang pada "Rakit pemasang" di job `windows`). Flavor Gradle memang
+      # memisahkan path keluaran APK-nya sendiri-sendiri, tetapi tidak ada
+      # jaminan tahap kompilasi Dart-nya kebal dari masalah cache inkremental
+      # yang sama -- dibersihkan di sini juga sebagai jaring pengaman, bukan
+      # cuma diasumsikan aman.
       - name: Bangun APK
         working-directory: ${{ env.JALUR }}
         run: |
           flutter pub get
+          flutter clean
           flutter build apk --release --flavor penjualan \
             --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
             --build-name=${{ steps.versi.outputs.nilai }} \
@@ -235,6 +259,7 @@ jobs:
           mkdir -p "${GITHUB_WORKSPACE}/keluaran"
           cp build/app/outputs/flutter-apk/app-penjualan-release.apk \
              "${GITHUB_WORKSPACE}/keluaran/ebisnis-pos-${{ steps.versi.outputs.nilai }}.apk"
+          flutter clean
           flutter build apk --release --flavor inventory \
             --target=lib/main_inventory.dart \
             --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
@@ -243,6 +268,7 @@ jobs:
             --build-number=${{ github.run_number }}
           cp build/app/outputs/flutter-apk/app-inventory-release.apk \
              "${GITHUB_WORKSPACE}/keluaran/ebisnis-inventory-sales-${{ steps.versi.outputs.nilai }}.apk"
+          flutter clean
           flutter build apk --release --flavor apotik \
             --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
             --dart-define=POS_MODE=apotik \
