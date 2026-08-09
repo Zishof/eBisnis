@@ -21,6 +21,7 @@ export const HOSPITALITY_PREFIX = 'HOSPITALITY';
 
 /** Kode peran yang diberikan kepada pemilik properti saat provisioning. */
 export const ROLE_ADMIN_HOSPITALITY = 'HOSPITALITY_ADMIN';
+export const ROLE_FRONT_DESK_HOSPITALITY = 'HOSPITALITY_FRONT_DESK_AGENT';
 
 const DASAR = { HOME: 'P1', SUPPORT: 'P1' } as const;
 
@@ -67,6 +68,17 @@ export const HOSPITALITY_MENUS: MenuNodeSeed[] = [
     sortOrder: 3,
     actions: ['READ', 'CREATE', 'UPDATE', 'PRINT', 'EXPORT'],
   },
+  {
+    code: 'HOSPITALITY_FRONTDESK',
+    parentCode: 'HOSPITALITY_GROUP',
+    label: 'Front Office',
+    translationKey: 'menu.hospitality.frontdesk',
+    route: '/app/hospitality/frontdesk',
+    icon: 'ConciergeBell',
+    moduleCode: HOSPITALITY_PREFIX,
+    sortOrder: 4,
+    actions: ['READ', 'UPDATE', 'CHECKIN', 'CHECKOUT', 'ROOM_MOVE', 'HANDOVER'],
+  },
 ];
 
 export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
@@ -89,6 +101,16 @@ export const HOSPITALITY_ROLES: RoleCatalogEntry[] = [
       'Mencatat dan mengubah data properti, tipe kamar, dan kamar. Diberikan ' +
       'kepada pemilik properti saat provisioning sebagai peran tambahan di ' +
       'samping OWNER — bukan pengganti, sebab izin dari kedua peran digabungkan.',
+  },
+  {
+    code: ROLE_FRONT_DESK_HOSPITALITY,
+    name: 'Petugas Front Desk',
+    family: 'Hospitality',
+    profile: 'P5',
+    modules: { HOME: 'P1', SUPPORT: 'P1', HOSPITALITY_RESERVASI: 'P5', HOSPITALITY_FRONTDESK: 'P5' },
+    dataScope: 'TENANT',
+    core: false,
+    description: 'Menangani arrival, room assignment, check-in, room move, check-out, dan handover tanpa akses administrasi properti.',
   },
 ];
 

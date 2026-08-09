@@ -46,3 +46,12 @@
 - Menambahkan endpoint health tenant untuk katalog, entitlement assignment, tabel schema wajib, dan usage contract. Shared role/menu/support seed tetap dipakai; tidak ada engine kedua.
 - Memperbaiki resequence `schema_migration_catalog` secara atomik: sequence lama diparkir sementara di ruang negatif dalam transaksi sebelum urutan canonical ditulis ulang. Riwayat/version/checksum migration tenant tidak disentuh.
 - Master seed lokal lulus dua kali berturut-turut. Bukti database: produk/paket MitraInap memiliki 7 modul, 4 fitur, dan 0 harga.
+
+## 2026-08-09 — MI-12 Front Office dan Guest Stay
+
+- Menambahkan lifecycle `hospitality_guest_stay` terpisah dari lifecycle booking agar reservasi lama tidak diubah semantiknya.
+- Menambahkan board arrival/departure/in-house, pre-arrival, room assignment, check-in idempoten, perubahan tanggal/late checkout, room move, check-out idempoten, exception ledger, dan shift handover.
+- Check-in mengunci room-stay dan kamar dalam satu transaksi, memvalidasi reservasi terkonfirmasi, identity, guarantee/deposit, registration consent, room readiness, tipe/properti kamar, block ledger, serta duplikat kamar in-house.
+- Physical key issuance operasional; digital key memakai port provider-neutral dan secara eksplisit `BLOCKED_PROVIDER_INPUT` sampai kontrak provider terverifikasi tersedia. Room move mencabut kunci lama dan menerbitkan kunci pengganti.
+- Menambahkan peran sempit `HOSPITALITY_FRONT_DESK_AGENT`, permission server-side per aksi, route/menu, dan UI operasional `HospitalityFrontdeskPage`.
+- Migration additive diterapkan pada 13 schema lokal; eksekusi kedua seluruhnya `sudah mutakhir` dan seed ulang menghasilkan 0 izin baru.

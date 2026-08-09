@@ -47,6 +47,12 @@
       "file": "20260807T000000__hospitality__channel_distribution.sql",
       "name": "MI-11: Channel Manager dan Distribution",
       "description": "Provider-neutral channel account dan property/room/rate mapping, canonical ARI/reservation delivery queue dengan idempotency, retry/dead-letter, payload hash dan sanitized raw message, serta reconciliation exception queue. Live OTA/GDS adapter tetap BLOCKED_PROVIDER_INPUT sampai dokumentasi dan credential provider tersedia; contract dan deterministic test double tersedia di hospitality-channel.ts."
+    },
+    {
+      "id": "20260807T030000__hospitality__front_office",
+      "file": "20260807T030000__hospitality__front_office.sql",
+      "name": "MI-12: Front Office dan Guest Stay",
+      "description": "Lifecycle operasional guest stay terpisah dari booking, pre-arrival, room assignment, transactional check-in/out idempotent, provider-neutral physical/digital key issuance, immutable room move, walk/overbooking exception, dan shift handover."
     }
   ]
 }
