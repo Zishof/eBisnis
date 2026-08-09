@@ -7,6 +7,64 @@ import 'package:ebisnis_pos/aturan/harga_luring.dart';
 import 'package:ebisnis_pos/layar/sumber.dart';
 
 void main() {
+  test('POS Apotik membaca kas sistem lalu menutup shift dengan kas fisik',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final calls = <String>[];
+    Map<String, Object?>? closeBody;
+
+    final serving = () async {
+      await for (final request in server) {
+        calls.add('${request.method} ${request.uri.path}');
+        final text = await utf8.decoder.bind(request).join();
+        if (request.uri.path.endsWith('/close')) {
+          closeBody = jsonDecode(text) as Map<String, Object?>;
+        }
+        final data = request.uri.path.endsWith('/cash-summary')
+            ? <String, Object?>{
+                'shiftId': 'shift-1',
+                'expectedCash': '2500000',
+                'cashSales': '2000000',
+              }
+            : <String, Object?>{
+                'shiftId': 'shift-1',
+                'countedCash': '2495000',
+                'variance': '-5000',
+                'requiresApproval': false,
+                'status': 'CLOSED',
+              };
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(jsonEncode({'success': true, 'data': data}));
+        await request.response.close();
+      }
+    }();
+
+    final client = PosApiClient(
+      baseUrl: Uri.parse('http://127.0.0.1:${server.port}/api/v1/'),
+      accessToken: 'token-test',
+    );
+    final summary = await client.ringkasanKasShift('shift-1');
+    final result = await client.tutupShift(
+      shiftId: 'shift-1',
+      countedCash: 2495000,
+      note: 'Retur tunai belum masuk rekap.',
+    );
+
+    expect(summary['expectedCash'], '2500000');
+    expect(result['status'], 'CLOSED');
+    expect(calls, [
+      'GET /api/v1/pos/shifts/shift-1/cash-summary',
+      'POST /api/v1/pos/shifts/shift-1/close',
+    ]);
+    expect(closeBody, {
+      'countedCash': 2495000,
+      'note': 'Retur tunai belum masuk rekap.',
+    });
+
+    await server.close(force: true);
+    await serving;
+  });
+
   test('POS Apotik memilih FEFO lalu memvalidasi farmasi sebelum pembayaran',
       () async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);

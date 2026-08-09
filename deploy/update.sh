@@ -313,7 +313,7 @@ rollback() {
   fi
 
   as_app "git -C '$APP_DIR' checkout --quiet '$target'"
-  as_app "cd '$APP_DIR' && pnpm install --frozen-lockfile && pnpm db:generate && pnpm build" || true
+  as_app "cd '$APP_DIR' && CI=true pnpm install --frozen-lockfile && pnpm db:generate && pnpm build" || true
   systemctl restart ebisnis-api || true
   cat <<EOF
 
@@ -332,7 +332,18 @@ EOF
 # ---------------------------------------------------------------------------
 log "3/10  Dependency, release gate, dan build"
 # ---------------------------------------------------------------------------
-as_app "cd '$APP_DIR' && pnpm install --frozen-lockfile" || rollback
+# Deploy juga dapat dijalankan dari automation tanpa TTY. `CI=true` membuat
+# pnpm mengambil keputusan non-interaktif saat node_modules perlu dibangun
+# ulang; lockfile tetap frozen dan versi pnpm sudah diverifikasi di awal skrip.
+as_app "cd '$APP_DIR' && CI=true pnpm install --frozen-lockfile" || rollback
+
+# Prisma Client adalah artefak hasil generate dan tidak dijamin tetap ada di
+# node_modules setelah install bersih (misalnya server baru, store pnpm yang
+# dipulihkan, atau dependency tree yang direkonstruksi). Sejumlah unit test
+# mengimpor @prisma/client saat test suite dimuat, sehingga generate WAJIB
+# terjadi sebelum lint/test -- bukan baru sesudahnya. Perintah ini hanya
+# menghasilkan client dari schema source; belum menyentuh database.
+as_app "cd '$APP_DIR' && pnpm db:generate" || rollback
 
 # Berkas migration yang pernah ada pada commit terakhir terpasang tidak boleh
 # berubah. Ini dijalankan sebelum migration menyentuh database, sehingga typo,
@@ -364,7 +375,7 @@ else
     pnpm --filter @ebisnis/api test -- --runInBand && \
     pnpm --filter @ebisnis/web test" || rollback
 fi
-as_app "cd '$APP_DIR' && pnpm db:generate && pnpm build" || rollback
+as_app "cd '$APP_DIR' && pnpm build" || rollback
 
 # Backup latar belakang dari "2/10" ditunggu di sini -- tepat sebelum langkah
 # pertama yang benar-benar mengubah database.

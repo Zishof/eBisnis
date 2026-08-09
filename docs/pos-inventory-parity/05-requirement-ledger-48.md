@@ -1,10 +1,12 @@
 # 05. Requirement Ledger — 48 Layar (seed awal, P0)
 
-> **Update besar 2026-08-09:** 46 dari 48 layar (semua kecuali 43-44) sekarang punya bukti
+> **Update besar 2026-08-09:** seluruh 48 dari 48 layar sekarang punya bukti
 > `PARITY_EVIDENCE` di `apps/api/src/modules/tenant/parity-evidence.registry.ts` — UAT NYATA lewat
 > PostgreSQL lokal sungguhan (`ebisnis`/`root`/`root123`), bukan lagi hanya lint/build/test
 > source-only seperti status "BELUM diuji terhadap PostgreSQL sungguhan" di baris-baris di bawah
-> ini yang sekarang sudah TERBANTAHKAN oleh bukti baru. 7 bug nyata ditemukan lewat UAT ini dan
+> ini yang sekarang sudah TERBANTAHKAN oleh bukti baru. Layar 43-44 ditutup terakhir lewat alur
+> additive create COA -> create jurnal seimbang -> post -> reverse -> read-back pada tenant uji
+> terisolasi. 7 bug nyata ditemukan lewat UAT sebelumnya dan
 > DIPERBAIKI (lihat commit `6415550`); 3 bug tambahan DILAPORKAN sengaja tidak diperbaiki (lihat
 > `uat.md` layar 22 dan 07). Detail lengkap per layar ada di `docs/pos-inventory-parity/evidence/
 > screen-NN/uat.md`, bukan di tabel ringkas di bawah ini yang sengaja TIDAK diperbarui baris demi
@@ -39,33 +41,34 @@ Rincian 48 baris individual (nama, API path, web route persis) — lihat
 `apps/api/src/modules/tenant/sales-inventory-parity.catalog.ts` langsung; tidak diduplikasi di
 sini agar tidak drift dari source saat catalog berubah.
 
-## Blocker struktural terhadap verifikasi POS-14 penuh (berlaku ke SEMUA 48 baris)
+## Status verifikasi POS-14 setelah reload 2026-08-09
 
 Kriteria DONE POS-14 mensyaratkan build/smoke/e2e lulus dan perilaku Web+Windows+Android
-teruji. Pada mesin audit ini:
+teruji. Status terbaru pada mesin audit ini:
 
 - Web behavior: **terverifikasi lokal** melalui lint/unit/build dan Playwright terhadap production
   preview: 73 executed, 15 mobile-POS skip by design, 0 gagal.
-- Windows/Android behavior: **BLOCKED** — Flutter SDK tidak terpasang, tidak bisa `flutter
-  analyze/test/build windows/build apk`.
+- Flutter behavior: **FUNCTIONAL TESTED** — Flutter 3.27.1 tersedia, `flutter analyze` lulus dan
+  174 functional test non-golden lulus. Golden resmi dibuat di Ubuntu CI dan tidak diregenerasi
+  dari Windows.
+- Windows/Android package build lokal: **BLOCKED OLEH TOOLCHAIN HOST**, bukan source — Developer
+  Mode/symlink dan workload C++/Inno Setup belum lengkap; Android SDK juga tidak terpasang.
+  Workflow `rilis-pos.yml` menyediakan toolchain resmi pada runner Windows/Ubuntu.
 - Database-dependent: migration deploy, seed verify, smoke 122/122, dan browser E2E sudah lulus.
   Rekonsiliasi DBF tetap **BLOCKED** karena sumber legacy tidak tersedia.
 - Print/hardware evidence: **BLOCKED** — tidak ada printer/perangkat fisik atau emulator terhubung
   pada sesi ini.
-- UAT lama-vs-baru: **BLOCKED** — memerlukan keputusan bisnis dan akses pengguna operasional CMN,
-  bukan sesuatu yang bisa dibuktikan dari source semata.
+- UAT API/DB: **48/48 PROVEN** pada PostgreSQL lokal terisolasi; registry berisi 48 nomor unik.
+- UAT lama-vs-baru di lokasi: **MASIH DIPERLUKAN** untuk keputusan bisnis, perangkat fisik, dan
+  rekonsiliasi dataset DBF produksi CMN.
 
-Setiap baris ledger yang menunggu langkah-langkah ini secara eksplisit ditandai `UNKNOWN` (bukan
-`DONE` dan bukan `MISSING`) sampai bukti tersedia — sesuai instruksi eksplisit dokumen perintah
-untuk tidak menebak.
+Tabel P0 di atas dipertahankan sebagai catatan historis. Sumber status aktual adalah
+`parity-evidence.registry.ts` dan folder `evidence/screen-01..48`, bukan label P0 lama.
 
 ## Rencana verifikasi berikutnya
 
-1. Sediakan Flutter SDK pada mesin ini, lalu jalankan analyze/test/build Windows dan APK.
-2. Lanjutkan audit source + database (baca detail `sales-inventory-operations.controller.ts` 2.139
-   baris, plus widget/test Flutter yang ADA tanpa menjalankan build) untuk menaikkan status dari
-   `UNKNOWN` ke `PARTIAL`/`STRONG_INFERENCE DONE` berdasarkan code review saja — masih belum
-   `DONE` sejati tanpa build/run nyata, tapi jauh lebih informatif daripada `UNKNOWN`, ATAU
-3. Fokuskan slice berikutnya pada satu domain (mis. POS core P1 sesuai roadmap dokumen
-   perintah sendiri: "Do not complete all frontend screens first and defer services") untuk
-   verifikasi mendalam bertahap, bukan seluruh 48 layar sekaligus.
+1. Jalankan workflow `rilis-pos.yml` dari commit yang sudah direview untuk menghasilkan installer
+   Windows dan APK terbaru secara terisolasi per produk.
+2. Deploy staging memakai `deploy/update.sh`, lalu verifikasi health, migration checksum, dan
+   publikasi artefak pembaruan.
+3. Jalankan UAT lokasi untuk printer, scanner, cash drawer, Android nyata, serta rekonsiliasi DBF.

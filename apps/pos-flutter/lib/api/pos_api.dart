@@ -157,6 +157,30 @@ class PosApiClient {
     );
   }
 
+  Future<Map<String, Object?>> ringkasanKasShift(String shiftId) async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>>(
+      'GET',
+      '/pos/shifts/$shiftId/cash-summary',
+    );
+  }
+
+  Future<Map<String, Object?>> tutupShift({
+    required String shiftId,
+    required num countedCash,
+    String? note,
+  }) async {
+    await pastikanMasuk();
+    return _request<Map<String, Object?>>(
+      'POST',
+      '/pos/shifts/$shiftId/close',
+      body: {
+        'countedCash': countedCash,
+        if ((note ?? '').trim().isNotEmpty) 'note': note!.trim(),
+      },
+    );
+  }
+
   Future<List<Map<String, Object?>>> daftarPenjualanApotik() async {
     await pastikanMasuk();
     final data = await _request<List<Object?>>(

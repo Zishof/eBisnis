@@ -1,6 +1,6 @@
 # Audit Paritas POS Inventory 48 Layar — Indeks
 
-**Sesi:** 2026-08-08 · **Modul:** eBisnis Inventory-Sales · **Workspace:** `C:\opt\eBisnis-Github\eBisnis`
+**Sesi awal:** 2026-08-08 · **Reload terakhir:** 2026-08-09 · **Modul:** eBisnis Inventory-Sales · **Workspace:** `C:\opt\eBisnis-Github\eBisnis`
 
 Dokumen ini adalah pintu masuk seluruh hasil audit sesi. Semua berbasis pembacaan source aktual (bukan asumsi paket perintah).
 
@@ -23,20 +23,20 @@ Dokumen ini adalah pintu masuk seluruh hasil audit sesi. Semua berbasis pembacaa
 
 | Domain | Layar | API WIRED | Runbook PROVEN | PROVEN aktual |
 |---|---|:--:|:--:|:--:|
-| Master | 1–7 | ✅ (MasterController + registry) | ✅ (07) | ⬜ butuh UAT |
-| Stok & Harga | 8–19 | ✅ (ErpController + SalesInvOps) | ✅ (08) | ⬜ butuh UAT |
-| Purchase/AP | 20–29 | ✅ (ErpController + SalesInvOps) | ✅ (06) | ⬜ butuh UAT |
-| Sales/AR | 30–42 | ✅ (ErpController + SalesInvOps) | ✅ (06) | ⬜ butuh UAT |
-| Finance | 43–48 | ✅ (SalesInvOps + AccountingDoc) | ✅ (05) | ⬜ butuh UAT |
+| Master | 1–7 | ✅ (MasterController + registry) | ✅ (07) | ✅ API/DB UAT 7/7 |
+| Stok & Harga | 8–19 | ✅ (ErpController + SalesInvOps) | ✅ (08) | ✅ API/DB UAT 12/12 |
+| Purchase/AP | 20–29 | ✅ (ErpController + SalesInvOps) | ✅ (06) | ✅ API/DB UAT 10/10 |
+| Sales/AR | 30–42 | ✅ (ErpController + SalesInvOps) | ✅ (06) | ✅ API/DB UAT 13/13 |
+| Finance | 43–48 | ✅ (SalesInvOps + AccountingDoc) | ✅ (05) | ✅ API/DB UAT 6/6 |
 
-**Ringkas:** 48/48 layar **WIRED penuh** di API (terverifikasi 4 controller), sebagian TESTED, **belum PROVEN**. Keenam runbook PROVEN sudah lengkap sebagai jalur pembuktian.
+**Ringkas:** 48/48 layar **WIRED dan mempunyai evidence API/DB UAT**. Registry berisi 48 nomor unik dan `PENDING_PROOF` kosong. Bukti per layar berada di `evidence/screen-01` sampai `screen-48`. Status ini membuktikan operasi backend terhadap PostgreSQL lokal; ia tidak menggantikan bukti printer/perangkat fisik atau perbandingan visual lintas-OS.
 
 ## Temuan utama (harus ditindak)
 
-1. **Self-test paritas meng-hardcode 48/48 OPERATIONAL** (`catalog.spec.ts:42–47`) → kunci deklarasi, bukan bukti. Perbaikan di dokumen 04. *(Prioritas 1)*
-2. **Belum ada bukti PROVEN aktual** (UAT/print/reconciliation) untuk layar mana pun. Runbook siap, eksekusi menunggu API+DB uji.
-3. **Documentation drift** README Flutter vs source — perlu rekonsiliasi.
-4. **File Flutter raksasa** `inventory_app.dart` (265 KB) — pecah feature-by-feature (rekomendasi paket).
+1. **Bukti perangkat fisik belum tersedia**: printer, scanner, cash drawer, dan Android nyata tetap harus diperiksa saat UAT lokasi.
+2. **Golden Flutter dibuat di Ubuntu CI**. Functional test Windows lulus, tetapi perbandingan pixel golden tidak boleh diregenerasi dari Windows karena perbedaan renderer.
+3. **Toolchain build lokal Windows belum lengkap**: Developer Mode/symlink, workload C++, Inno Setup, dan Android SDK tidak tersedia. Workflow `rilis-pos.yml` tetap menjadi jalur build resmi.
+4. **File Flutter besar** `inventory_app.dart` masih layak dipecah feature-by-feature; perubahan ini bukan syarat deploy dan tidak boleh dilakukan sebagai rewrite besar.
 
 ## Kualitas implementasi yang terverifikasi (kuat)
 
@@ -44,11 +44,10 @@ Idempotency (Idempotency-Key pada settlement & jurnal), atomicity (invoice `tran
 
 ## Langkah berikutnya (urutan disarankan)
 
-1. Jalankan baseline lokal (`pnpm lint/test/build`, `flutter analyze/test`) → dokumen 07 §3.
-2. Deploy uji server: `sudo bash /opt/ebisnis/app/deploy/update.sh` (install POS Inventory + impor DBF CMN otomatis) → dokumen 07.
-3. Verifikasi pasca-deploy data legacy masuk → dokumen 07 §7.
-4. Eksekusi runbook PROVEN mulai FINANCE (paling siap) → dokumen 05.
-5. Terapkan patch self-test (dokumen 04) di iterasi terpisah, test lokal dulu.
-6. Rekonsiliasi README Flutter dengan source.
+1. Commit dan push hanya perubahan yang sudah direview; worktree sesi ini belum otomatis di-commit.
+2. Jalankan workflow `rilis-pos.yml` untuk build Windows/Android pada toolchain CI yang lengkap.
+3. Deploy server: `sudo bash /opt/ebisnis/app/deploy/update.sh` → dokumen 07.
+4. Verifikasi pasca-deploy, impor legacy, domain publik, serta perangkat fisik → dokumen 07 §7.
+5. Catat hasil UAT lokasi sebagai pelengkap evidence API/DB yang sudah 48/48.
 
-*Catatan keterbatasan sesi: baseline/build/deploy tidak dijalankan dari lingkungan cloud (server & repo penuh tak terjangkau); seluruh penilaian berbasis pembacaan source aktual. PDF 105 hlm & master contract Bagian II (4.715 baris) baru dibaca bagian struktural — bila ada requirement detail di halaman-halaman itu, belum masuk ledger.*
+*Validasi reload 2026-08-09: lint/test/build API dan Web lulus; Flutter analyze dan 174 functional test non-golden lulus. UAT layar 43–44 dijalankan terhadap tenant PostgreSQL lokal terisolasi. Deploy server dan pengujian perangkat fisik belum dijalankan.*

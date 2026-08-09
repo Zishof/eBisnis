@@ -307,6 +307,13 @@ class _OperasiApotikPageState extends State<OperasiApotikPage> {
               message: snapshot.error.toString(), onRetry: _refresh);
         }
         if (snapshot.data is Map<String, Object?>) {
+          if (widget.area == 'shift-apotik') {
+            return ShiftApotikPanel(
+              data: snapshot.data! as Map<String, Object?>,
+              client: widget.client,
+              onRefresh: _refresh,
+            );
+          }
           return _DevicePanel(
               data: snapshot.data! as Map<String, Object?>,
               onRefresh: _refresh);
@@ -602,6 +609,329 @@ class _SaleDetailState extends State<_SaleDetail> {
               ])),
     );
   }
+}
+
+class ShiftApotikPanel extends StatefulWidget {
+  const ShiftApotikPanel({
+    required this.data,
+    required this.client,
+    required this.onRefresh,
+    super.key,
+  });
+
+  final Map<String, Object?> data;
+  final PosApiClient client;
+  final VoidCallback onRefresh;
+
+  @override
+  State<ShiftApotikPanel> createState() => _ShiftApotikPanelState();
+}
+
+class _ShiftApotikPanelState extends State<ShiftApotikPanel> {
+  final _countedCash = TextEditingController();
+  final _note = TextEditingController();
+  Future<Map<String, Object?>>? _summary;
+  bool _busy = false;
+  Map<String, Object?>? _result;
+
+  Map<String, Object?>? get _openShift =>
+      widget.data['openShift'] as Map<String, Object?>?;
+  String? get _shiftId => _openShift?['shiftId']?.toString();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSummary();
+  }
+
+  @override
+  void didUpdateWidget(covariant ShiftApotikPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldId =
+        (oldWidget.data['openShift'] as Map<String, Object?>?)?['shiftId']
+            ?.toString();
+    if (oldId != _shiftId) _loadSummary();
+  }
+
+  void _loadSummary() {
+    final id = _shiftId;
+    _summary = id == null ? null : widget.client.ringkasanKasShift(id);
+  }
+
+  @override
+  void dispose() {
+    _countedCash.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  num? _cashValue() {
+    final normalized = _countedCash.text
+        .replaceAll('Rp', '')
+        .replaceAll('.', '')
+        .replaceAll(',', '')
+        .trim();
+    return num.tryParse(normalized);
+  }
+
+  Future<void> _close() async {
+    final id = _shiftId;
+    final counted = _cashValue();
+    if (id == null || counted == null || counted < 0) return;
+    setState(() => _busy = true);
+    try {
+      final result = await widget.client.tutupShift(
+        shiftId: id,
+        countedCash: counted,
+        note: _note.text,
+      );
+      if (!mounted) return;
+      setState(() => _result = result);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result['requiresApproval'] == true
+            ? 'Shift ditutup dan menunggu persetujuan supervisor.'
+            : 'Shift berhasil ditutup.'),
+      ));
+      widget.onRefresh();
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _confirmAndClose({
+    required num expected,
+    required num counted,
+  }) async {
+    final variance = counted - expected;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Penutupan Shift'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Kas sistem: Rp ${expected.toStringAsFixed(0)}'),
+            Text('Kas fisik: Rp ${counted.toStringAsFixed(0)}'),
+            Text('Selisih: Rp ${variance.toStringAsFixed(0)}'),
+            const SizedBox(height: 12),
+            const Text(
+              'Tindakan ini final dan tercatat pada audit trail. '
+              'Pastikan uang serta catatan serah-terima sudah benar.',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Periksa Kembali'),
+          ),
+          FilledButton(
+            key: const Key('confirm-close-shift-apotik'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Ya, Tutup Shift'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) await _close();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_openShift == null) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _PageTitle(
+          title: 'Kas & Shift',
+          subtitle: 'Tidak ada shift aktif pada akun dan terminal ini.',
+          onRefresh: widget.onRefresh,
+        ),
+        const Expanded(
+          child: Center(
+            child: Text('Buka shift terlebih dahulu untuk mulai transaksi.'),
+          ),
+        ),
+      ]);
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _PageTitle(
+        title: 'Tutup Shift & Rekonsiliasi',
+        subtitle:
+            '${_openShift?['shiftNumber'] ?? 'Shift aktif'} · angka sistem dihitung server',
+        onRefresh: widget.onRefresh,
+      ),
+      Expanded(
+        child: FutureBuilder<Map<String, Object?>>(
+          future: _summary,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return _ErrorPanel(
+                message: snapshot.error.toString(),
+                onRetry: () => setState(_loadSummary),
+              );
+            }
+            final summary = snapshot.data!;
+            final expected =
+                num.tryParse(summary['expectedCash']?.toString() ?? '0') ?? 0;
+            final counted = _cashValue();
+            final variance = counted == null ? null : counted - expected;
+            final varianceNoteRequired = variance != null && variance != 0;
+            return ListView(
+              padding: const EdgeInsets.all(18),
+              children: [
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _CashMetric('Saldo awal', summary['openingCash']),
+                    _CashMetric('Penjualan tunai', summary['cashSales']),
+                    _CashMetric('Kas masuk', summary['cashIn']),
+                    _CashMetric('Kas keluar', summary['cashOut']),
+                    _CashMetric('Kas sistem', summary['expectedCash'],
+                        emphasized: true),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  key: const Key('closing-cash-apotik'),
+                  controller: _countedCash,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    labelText: 'Kas fisik dihitung',
+                    prefixText: 'Rp ',
+                    helperText:
+                        'Masukkan hasil hitung laci, bukan angka kas sistem.',
+                  ),
+                ),
+                if (variance != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: variance == 0
+                          ? const Color(0xFFE5F7F2)
+                          : const Color(0xFFFFF4D6),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(children: [
+                      const Expanded(
+                        child: Text('Selisih kas',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                      Text(
+                        'Rp ${variance.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w800),
+                      ),
+                    ]),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                TextField(
+                  key: const Key('closing-note-apotik'),
+                  controller: _note,
+                  maxLength: 500,
+                  maxLines: 3,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    labelText: 'Alasan selisih / catatan serah-terima',
+                    hintText: 'Wajib dijelaskan bila hasil hitung berbeda.',
+                  ),
+                ),
+                const _CloseShiftChecklist(),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  key: const Key('close-shift-apotik'),
+                  onPressed: _busy ||
+                          counted == null ||
+                          counted < 0 ||
+                          (varianceNoteRequired && _note.text.trim().isEmpty)
+                      ? null
+                      : () => _confirmAndClose(
+                            expected: expected,
+                            counted: counted,
+                          ),
+                  icon: _busy
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.lock_outline),
+                  label: const Text('Tutup Shift & Rekonsiliasi'),
+                ),
+                if (_result != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      'Status server: ${_result?['status'] ?? '-'}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    ]);
+  }
+}
+
+class _CashMetric extends StatelessWidget {
+  const _CashMetric(this.label, this.value, {this.emphasized = false});
+  final String label;
+  final Object? value;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 190,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: emphasized ? const Color(0xFFE5F7F2) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Warna.garis),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label,
+              style: const TextStyle(fontSize: 12, color: Warna.teksRedup)),
+          const SizedBox(height: 5),
+          Text('Rp ${value ?? 0}',
+              style:
+                  const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+        ]),
+      );
+}
+
+class _CloseShiftChecklist extends StatelessWidget {
+  const _CloseShiftChecklist();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: hiasanKartu(),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Validasi sebelum penutupan',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+            SizedBox(height: 8),
+            Text(
+                '• Server menolak shift yang masih memiliki transaksi pending.'),
+            Text('• Selisih besar otomatis menunggu persetujuan supervisor.'),
+            Text('• Penutupan dan selisih dicatat pada audit serta akuntansi.'),
+          ],
+        ),
+      );
 }
 
 class _DevicePanel extends StatelessWidget {

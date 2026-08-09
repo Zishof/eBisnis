@@ -137,6 +137,10 @@ export const PARITY_EVIDENCE: ParityProof[] = [
   { screen: 27, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-27/uat.md' },
   { screen: 28, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-28/uat.md' },
   { screen: 29, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-29/uat.md' },
+  // Kas/jurnal dan chart of accounts dibuktikan pada tenant PostgreSQL lokal
+  // khusus UAT: create COA -> create jurnal seimbang -> post -> reverse -> read-back.
+  { screen: 43, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-43/uat.md' },
+  { screen: 44, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-44/uat.md' },
 ];
 
 /**

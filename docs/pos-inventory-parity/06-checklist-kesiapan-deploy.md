@@ -1,6 +1,6 @@
 # Checklist Kesiapan Deploy & Install POS Inventory
 
-**Tanggal:** 2026-08-08
+**Tanggal:** 2026-08-09
 **Perintah target:** `sudo bash /opt/ebisnis/app/deploy/update.sh`
 **Kesimpulan singkat:** skrip deploy **aman & production-grade** (backup dulu, release gate, migrasi additive, rollback otomatis). Install POS Inventory + impor DBF legacy **sudah termasuk** di dalam `update.sh` (langkah 9/10). Sisa risiko satu-satunya: **release gate harus hijau** pada commit yang di-deploy.
 
@@ -10,7 +10,7 @@
 
 1. **Backup database** → `/var/backups/ebisnis/*.dump` (pg_dump; simpan 10 terakhir). Bisa dilewati `SKIP_DB_BACKUP=1` (tidak disarankan).
 2. **Ambil source** (git pull, dengan proteksi self-overwrite).
-3. **Dependency + release gate + build** → `pnpm install --frozen-lockfile`, `verify-migrations.mjs` (tolak edit migrasi applied/SQL destruktif), `pnpm lint`, `pnpm --filter @ebisnis/api test --runInBand`, `pnpm --filter @ebisnis/web test`, `db:generate`, `build`. **Gagal di sini → rollback.**
+3. **Dependency + release gate + build** → `CI=true pnpm install --frozen-lockfile` (aman untuk sesi non-interaktif), `db:generate` (sebelum test agar instalasi bersih memiliki Prisma Client), `verify-migrations.mjs` (tolak edit migrasi applied/SQL destruktif), `pnpm lint`, `pnpm --filter @ebisnis/api test --runInBand`, `pnpm --filter @ebisnis/web test`, lalu `build`. **Gagal di sini → rollback.**
 4. **Migration** → `prisma migrate deploy` (additive) + `migrate:tenants` (idempoten, tolak checksum beda).
 5. Restart layanan (systemd `ebisnis-api`).
 6. **Health check** (gagal → rollback ke rilis + DB backup langkah 1).
@@ -27,23 +27,24 @@ Enam dokumen audit di `docs/pos-inventory-parity/` dan patch self-test (`03-*`) 
 
 ## 3. Prasyarat WAJIB sebelum `update.sh` (server yang sudah ter-install)
 
-- [ ] **Release gate hijau lokal dulu** (paling penting — karena tree diedit sesi aktif hari ini):
+- [x] **Release gate source hijau lokal** pada reload 2026-08-09:
   ```bash
-  pnpm install --frozen-lockfile
+  CI=true pnpm install --frozen-lockfile
+  pnpm db:generate
   pnpm lint
   pnpm --filter @ebisnis/api test --runInBand
   pnpm --filter @ebisnis/web test
-  pnpm db:generate && pnpm build
+  pnpm build
   ```
-  Bila ada yang merah, `update.sh` akan **rollback** di langkah 3 — perbaiki dulu.
+  API/Web lint, test penuh, dan production build lulus. Flutter analyze serta 174 functional test non-golden juga lulus. Golden tetap milik renderer Ubuntu CI.
 - [ ] **Commit + push ke `main`** semua perubahan yang ingin di-deploy (server pull dari GitHub). Migrasi baru hari ini (V052–V062) harus ter-commit; jangan mengedit migrasi yang sudah applied (gate `verify-migrations` menolaknya).
 - [ ] **toolchain server**: Node 22, **pnpm 9.15.4 persis** (`corepack prepare pnpm@9.15.4 --activate`), klien PostgreSQL.
 - [ ] **DBF legacy tersedia di server** di `/opt/ebisnis/imports/cmn-inventory` (atau set `CMN_LEGACY_DBF_DIR`). Berkas ada di repo (`deploy/imports/cmn-inventory/*.DBF`: BELI 8.9MB, JUAL 13MB, CUSTOMER, SUPPLIER, STOK, Tran_Hut, Tran_Piut).
 - [ ] **env.production** terisi (lihat §5).
 
-## 4. ⚠️ Catatan patch self-test (dokumen 03)
+## 4. Status self-test dan evidence
 
-Jika Anda menerapkan patch A (tambah `parity-evidence.registry.ts` + ubah `catalog.spec.ts`) **sebelum** deploy, WAJIB jalankan `pnpm --filter @ebisnis/api test` lokal dulu. Test rusak → `update.sh` rollback di langkah 3. Jika patch **belum** diterapkan, deploy tidak terpengaruh (test lama tetap hijau). Rekomendasi: deploy dulu apa adanya untuk uji server, terapkan patch A pada iterasi terpisah.
+Patch evidence registry sudah aktif. Registry berisi **48 entri unik**, `PENDING_PROOF` kosong, dan suite kontrak paritas lulus 9/9. Evidence API/DB per layar tersedia di `docs/pos-inventory-parity/evidence/screen-01..48/`.
 
 ## 5. Variabel env wajib (`/opt/ebisnis/app/.env` produksi)
 
@@ -87,6 +88,6 @@ Setelah `update.sh` sukses:
 
 **Untuk deploy & install POS Inventory:** tidak ada penghambat dari sisi skrip — aman. Yang perlu Anda pastikan hanya: (1) release gate hijau lokal, (2) perubahan ter-commit & ter-push, (3) env terisi, (4) DBF ada di server. Setelah itu `sudo bash /opt/ebisnis/app/deploy/update.sh` boleh dijalankan.
 
-**Untuk paritas 100% PROVEN** (di luar sekadar deploy jalan): masih perlu bukti UAT/reconciliation aktual per layar (template FINANCE, Purchase/AP, Sales/AR sudah ada; Master 1–7 & Stock/Price 8–19 belum), perbaikan self-test paritas, dan rekonsiliasi dokumentasi.
+**Untuk paritas backend 48 layar:** evidence API/DB sudah 48/48. Yang masih perlu dilakukan di lingkungan target adalah UAT visual dan operasional pada Windows/Android, printer/scanner/cash drawer fisik, serta rekonsiliasi DBF produksi setelah impor.
 
-*Catatan: saya tidak menjalankan deploy atau baseline dari sesi ini — server tidak terjangkau dari lingkungan cloud, dan repo penuh tidak ada di sini. Penilaian di atas berbasis pembacaan skrip aktual.*
+*Catatan reload 2026-08-09: deploy server belum dijalankan. Build installer lokal juga belum dapat dilakukan karena host ini tidak memiliki Developer Mode/symlink, workload C++ lengkap, Inno Setup, dan Android SDK; gunakan workflow CI `rilis-pos.yml` yang memang memasang toolchain tersebut.*
