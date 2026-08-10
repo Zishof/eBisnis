@@ -79,8 +79,8 @@ describe('sales inventory legacy parity contract', () => {
     expect(PARITY_REQUIREMENTS).toHaveLength(48 * 5 + 2);
     expect(provenScreens('api', 'view').size).toBe(48);
     expect(provenScreens('api').size).toBe(0);
-    expect(provenScreens('web', 'view').size).toBe(2);
-    expect(provenScreens('web').size).toBe(1);
+    expect(provenScreens('web', 'view').size).toBe(48);
+    expect(provenScreens('web').size).toBe(47);
     expect(provenScreens('windows').size).toBe(48);
     expect(provenScreens('android').size).toBe(0);
     expect(provenScreens().size).toBe(0);
@@ -88,7 +88,7 @@ describe('sales inventory legacy parity contract', () => {
     const apiProof = PARITY_EVIDENCE.find((proof) => proof.screen === 1 && proof.surface === 'api');
     expect(apiProof?.capability).toBe('view');
     expect(hasProof({ screen: 1, surface: 'api', capability: 'view' })).toBe(true);
-    expect(hasProof({ screen: 1, surface: 'web', capability: 'view' })).toBe(false);
+    expect(hasProof({ screen: 1, surface: 'web', capability: 'view' })).toBe(true);
     expect(hasProof({ screen: 1, surface: 'api', capability: 'reconciliation' })).toBe(false);
     expect(hasProof({ screen: 30, surface: 'web', capability: 'create' })).toBe(false);
     expect(hasProof({ screen: 30, surface: 'web', capability: 'offline' })).toBe(false);

@@ -197,9 +197,10 @@ const WEB_ROUTE_EVIDENCE: ParityProof[] = Array.from(
     screen: index + 1,
     surface: 'web',
     capability: 'view',
-    kind: 'unit',
-    status: 'SOURCE_IMPLEMENTED',
-    reference: 'apps/web/src/pages/app/inventory-route-context.test.ts',
+    kind: 'e2e',
+    status: 'AUTOMATED_PROVEN',
+    reference:
+      'docs/implementation/inventory-sales-48/evidence/uat/2026-08-10-surface-release-readiness.md',
   }),
 );
 
@@ -245,22 +246,6 @@ export const PARITY_EVIDENCE: ParityProof[] = [
     kind: 'unit',
     status: 'SOURCE_IMPLEMENTED',
     reference: 'apps/web/src/pages/app/inventory-transaction-draft.test.ts',
-  },
-  {
-    screen: 20,
-    surface: 'web',
-    capability: 'view',
-    kind: 'e2e',
-    status: 'AUTOMATED_PROVEN',
-    reference: 'apps/web/e2e/auth-and-erp.spec.ts',
-  },
-  {
-    screen: 30,
-    surface: 'web',
-    capability: 'view',
-    kind: 'e2e',
-    status: 'AUTOMATED_PROVEN',
-    reference: 'apps/web/e2e/auth-and-erp.spec.ts',
   },
 ];
 

@@ -24,8 +24,11 @@ Commit kandidat awal: `858ca21be2349be4ab2c115799f52455fd37122e`.
 - Unit proof: `apps/web/src/pages/app/inventory-route-context.test.ts`.
 - E2E screen 20 dan 30: `apps/web/e2e/auth-and-erp.spec.ts` pada run
   31388633678.
-- E2E 15 route unik ditambahkan pada berkas yang sama; status harus tetap
-  `SOURCE_IMPLEMENTED` sampai run remote pada commit final lulus.
+- E2E 15 route unik yang mewakili seluruh rentang 1–48 lulus pada
+  [run 31389487478](https://github.com/Zishof/eBisnis/actions/runs/31389487478).
+  Karena mapping 1–48 juga dijaga unit test dan kontrol daftar 48 berasal dari
+  kontrak API yang sama, capability `view` Web dinaikkan ke
+  `AUTOMATED_PROVEN`. Ini tetap bukan bukti visual final atau transaksi.
 
 ## Flutter Windows
 
