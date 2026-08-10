@@ -1511,7 +1511,7 @@ export class ErpPurchasingService {
             `UPDATE ${S}.legacy_payable_ledger
                SET is_settled = TRUE,
                    metadata = metadata || jsonb_build_object(
-                     'reversedAt', now(), 'reversedBy', $1::uuid, 'reversalReason', $2
+                     'reversedAt', now(), 'reversedBy', $1::uuid, 'reversalReason', $2::text
                    )
              WHERE id = $3`,
             [ctx.userId, reason, payable.id],
