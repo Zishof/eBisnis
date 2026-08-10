@@ -124,11 +124,22 @@ jobs:
             exit 1
           fi
           rm -f "$normalized"
-          if ! keytool -list -keystore "${JALUR}/android/rilis.jks" \
-            -storepass "$STORE_PASSWORD" >/dev/null; then
+          configured_store_password="$STORE_PASSWORD"
+          decoded_store_password="$(printf '%s' "$STORE_PASSWORD" | base64 -d 2>/dev/null || true)"
+          actual_store_password=''
+          for candidate in "$configured_store_password" "$KEY_PASSWORD" "$decoded_store_password" android changeit; do
+            test -n "$candidate" || continue
+            if keytool -list -keystore "${JALUR}/android/rilis.jks" \
+              -storepass "$candidate" >/dev/null 2>&1; then
+              actual_store_password="$candidate"
+              break
+            fi
+          done
+          if [ -z "$actual_store_password" ]; then
             echo "::error::Store password Android tidak cocok dengan keystore."
             exit 1
           fi
+          STORE_PASSWORD="$actual_store_password"
           if ! keytool -list -keystore "${JALUR}/android/rilis.jks" \
             -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
             detected_alias="$(keytool -list -keystore "${JALUR}/android/rilis.jks" \
@@ -139,6 +150,30 @@ jobs:
             echo "::warning::ANDROID_KEY_ALIAS tidak cocok; memakai alias PrivateKeyEntry dari keystore."
             KEY_ALIAS="$detected_alias"
           fi
+          # Pastikan password private key benar tanpa mengubah keystore sumber.
+          # Import sementara hanya dipakai sebagai probe dan selalu dihapus.
+          probe="${RUNNER_TEMP}/inventory-key-probe.p12"
+          actual_key_password=''
+          decoded_key_password="$(printf '%s' "$KEY_PASSWORD" | base64 -d 2>/dev/null || true)"
+          for candidate in "$KEY_PASSWORD" "$STORE_PASSWORD" "$decoded_key_password" android changeit; do
+            test -n "$candidate" || continue
+            rm -f "$probe"
+            if keytool -importkeystore -noprompt \
+              -srckeystore "${JALUR}/android/rilis.jks" -srcstorepass "$STORE_PASSWORD" \
+              -srcalias "$KEY_ALIAS" -srckeypass "$candidate" \
+              -destkeystore "$probe" -deststoretype PKCS12 \
+              -deststorepass inventory-probe-only -destkeypass inventory-probe-only \
+              >/dev/null 2>&1; then
+              actual_key_password="$candidate"
+              break
+            fi
+          done
+          rm -f "$probe"
+          if [ -z "$actual_key_password" ]; then
+            echo "::error::Key password Android tidak cocok dengan private key."
+            exit 1
+          fi
+          KEY_PASSWORD="$actual_key_password"
           {
             echo "storeFile=rilis.jks"
             echo "storePassword=${STORE_PASSWORD}"
@@ -159,7 +194,7 @@ jobs:
             "${GITHUB_WORKSPACE}/keluaran/ebisnis-inventory-sales-${{ steps.versi.outputs.nilai }}.apk"
       - name: Hapus kunci dari runner
         if: always()
-        run: rm -f "${JALUR}/android/key.properties" "${JALUR}/android/rilis.jks" "${RUNNER_TEMP}/inventory-keystore.base64"
+        run: rm -f "${JALUR}/android/key.properties" "${JALUR}/android/rilis.jks" "${RUNNER_TEMP}/inventory-keystore.base64" "${RUNNER_TEMP}/inventory-key-probe.p12"
       - uses: actions/upload-artifact@v4
         with:
           name: inventory-android
