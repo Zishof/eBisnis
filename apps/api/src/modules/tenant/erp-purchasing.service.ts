@@ -4,6 +4,7 @@ import Decimal from 'decimal.js';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { NumberSequenceService } from '../../infrastructure/sequence/number-sequence.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { statusPoDariPenerimaan } from './purchase-order-status';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { LifecycleContext } from './master-lifecycle.service';
 import { applyBalanceDelta, assertWarehouseNotFrozen } from '../../infrastructure/provisioning/tenant-bootstrap.service';
@@ -1189,21 +1190,12 @@ export class ErpPurchasingService {
           [id, ctx.userId, postingKey, JSON.stringify({ movements })],
         );
 
-        // Status PO mengikuti sisa penerimaan.
+        // Status PO mengikuti sisa penerimaan, lewat aturan yang SAMA dengan
+        // jalur pembalikan (`purchase-order-status.ts`). Dua perhitungan yang
+        // terpisah cepat atau lambat berbeda, dan yang terlihat bukan galat
+        // melainkan pesanan pembelian berstatus salah.
         if (receipt.rows[0].purchase_order_id) {
-          const remaining = await client.query<{ remaining: string }>(
-            `SELECT COALESCE(sum(ordered_qty - received_qty - cancelled_qty), 0)::text AS remaining
-             FROM ${S}.purchase_order_line WHERE purchase_order_id = $1`,
-            [receipt.rows[0].purchase_order_id],
-          );
-          const remainingQty = new Decimal(remaining.rows[0]?.remaining ?? '0');
-          await client.query(
-            `UPDATE ${S}.purchase_order SET status = $2, updated_at = now() WHERE id = $1`,
-            [
-              receipt.rows[0].purchase_order_id,
-              remainingQty.lessThanOrEqualTo(0) ? 'RECEIVED' : 'PARTIALLY_RECEIVED',
-            ],
-          );
+          await this.selaraskanStatusPo(client, S, receipt.rows[0].purchase_order_id);
         }
 
         /*
@@ -1293,6 +1285,60 @@ export class ErpPurchasingService {
   }
 
   /** Reversal validasi: membuat movement lawan, tidak menghapus movement lama. */
+  /**
+   * Menyelaraskan status PO dengan jumlah yang benar-benar diterima.
+   *
+   * Satu-satunya tempat status PO dihitung dari kuantitas. Dipakai jalur
+   * validasi penerimaan DAN jalur pembalikannya, supaya keduanya tidak dapat
+   * menyimpang: aturannya sendiri ada di `purchase-order-status.ts` yang murni
+   * dan teruji tanpa basis data.
+   *
+   * Baris dikunci `FOR UPDATE` sebelum dibaca. Dua penerimaan untuk PO yang
+   * sama, divalidasi bersamaan, dapat sama-sama membaca sisa lama dan menulis
+   * status yang sudah basi.
+   */
+  private async selaraskanStatusPo(
+    client: PoolClient,
+    S: string,
+    purchaseOrderId: string,
+  ): Promise<void> {
+    const po = await client.query<{ status: string }>(
+      `SELECT status FROM ${S}.purchase_order WHERE id = $1 FOR UPDATE`,
+      [purchaseOrderId],
+    );
+    if (!po.rows[0]) return;
+
+    const jumlah = await client.query<{
+      dipesan: string;
+      diterima: string;
+      dibatalkan: string;
+    }>(
+      `SELECT COALESCE(sum(ordered_qty), 0)::text   AS dipesan,
+              COALESCE(sum(received_qty), 0)::text  AS diterima,
+              COALESCE(sum(cancelled_qty), 0)::text AS dibatalkan
+         FROM ${S}.purchase_order_line WHERE purchase_order_id = $1`,
+      [purchaseOrderId],
+    );
+
+    const statusBaru = statusPoDariPenerimaan({
+      statusSekarang: po.rows[0].status,
+      dipesan: jumlah.rows[0]?.dipesan ?? '0',
+      diterima: jumlah.rows[0]?.diterima ?? '0',
+      dibatalkan: jumlah.rows[0]?.dibatalkan ?? '0',
+    });
+
+    // null berarti tidak ada yang perlu diubah. Menulis ulang nilai yang sama
+    // tetap menaikkan `version` dan tetap menghasilkan satu baris jejak audit.
+    if (statusBaru === null) return;
+
+    await client.query(
+      `UPDATE ${S}.purchase_order
+          SET status = $2, updated_at = now(), version = version + 1
+        WHERE id = $1`,
+      [purchaseOrderId, statusBaru],
+    );
+  }
+
   async reverseGoodsReceiptValidation(ctx: LifecycleContext, id: string, reason: string) {
     return this.tenantDb.transaction(
       ctx.schemaName,
@@ -1415,6 +1461,50 @@ export class ErpPurchasingService {
            WHERE id = $1`,
           [id, reason],
         );
+
+        /*
+         * Sisa pesanan dikembalikan, lalu status PO diselaraskan.
+         *
+         * Sebelumnya pembalikan membalik stok, hutang dagang, dan peristiwa
+         * akuntansi -- tetapi TIDAK PERNAH menyentuh `received_qty` maupun
+         * status PO. Akibatnya PO tetap `RECEIVED` padahal barangnya tidak jadi
+         * masuk: tidak ada yang menagih pemasok, dan `received_qty` yang
+         * menggelembung membuat penerimaan berikutnya untuk PO yang sama
+         * langsung tampak lunas.
+         *
+         * Dikurangi dari BARIS PENERIMAAN, bukan dari pergerakan stok: baris
+         * yang ditolak (`rejected`) ikut menambah `received_qty` saat validasi
+         * tetapi masuk ke karantina, sehingga menghitungnya dari pergerakan
+         * akan menyisakan selisih sebesar jumlah yang ditolak.
+         */
+        const barisPenerimaan = await client.query<{
+          purchase_order_line_id: string | null;
+          dikembalikan: string;
+        }>(
+          `SELECT purchase_order_line_id::text AS purchase_order_line_id,
+                  (COALESCE(accepted_qty, 0) + COALESCE(rejected_qty, 0))::text AS dikembalikan
+             FROM ${S}.goods_receipt_line
+            WHERE goods_receipt_id = $1 AND purchase_order_line_id IS NOT NULL`,
+          [id],
+        );
+
+        for (const baris of barisPenerimaan.rows) {
+          await client.query(
+            `UPDATE ${S}.purchase_order_line
+                SET received_qty = GREATEST(received_qty - $2::numeric, 0),
+                    updated_at = now(), version = version + 1
+              WHERE id = $1`,
+            [baris.purchase_order_line_id, baris.dikembalikan],
+          );
+        }
+
+        const poTerkait = await client.query<{ purchase_order_id: string | null }>(
+          `SELECT purchase_order_id::text AS purchase_order_id
+             FROM ${S}.goods_receipt WHERE id = $1`,
+          [id],
+        );
+        const poId = poTerkait.rows[0]?.purchase_order_id ?? null;
+        if (poId) await this.selaraskanStatusPo(client, S, poId);
 
         for (const payable of payables.rows) {
           await client.query(

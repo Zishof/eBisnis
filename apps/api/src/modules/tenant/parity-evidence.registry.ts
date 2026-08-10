@@ -31,10 +31,12 @@ export const PARITY_EVIDENCE: ParityProof[] = [
    * dan 24 (AP payment allocation cap + reversal) naik ke PROVEN 2026-08-09,
    * prioritas tertinggi domain Purchase/AP & Sales/AR per
    * 05-template-bukti-proven-purchase-ap-sales-ar.md. Dua gap nyata
-   * ditemukan dan DILAPORKAN (bukan diperbaiki diam-diam) lewat pass ini:
-   * invoiceSalesOrder tidak memeriksa kecukupan stok (lihat screen-30/uat.md),
-   * dan aksi AP_PAYMENT/AR_RECEIPT sama sekali tidak tercatat di jejak audit
-   * (lihat screen-24/uat.md).
+   * ditemukan lewat pass ini: invoiceSalesOrder tidak memeriksa kecukupan stok
+   * (screen-30/uat.md) dan aksi AP_PAYMENT/AR_RECEIPT tidak tercatat di jejak
+   * audit (screen-24/uat.md). Keduanya SUDAH DIPERBAIKI kemudian -- komentar
+   * ini pernah tertinggal menulis "dilaporkan, bukan diperbaiki" lama sesudah
+   * keduanya ditutup, dan catatan basi di tempat seperti ini menyesatkan orang
+   * berikutnya persis ketika ia sedang mencari apa yang masih terbuka.
    */
   { screen: 24, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-24/uat.md' },
   { screen: 30, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-30/uat.md' },
