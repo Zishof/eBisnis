@@ -24,6 +24,8 @@ describe('sales inventory legacy parity contract', () => {
       expect(item.webRoute).toBe(webRouteForScreen(item.screen));
       expect(item.webRoute).not.toBe('/app/inventory-control');
       expect(item.flutterModule).toBe('Inventory Control');
+      expect(item.windows).toBe(item.flutter);
+      expect(item.android).toBe(item.flutter);
     }
   });
 
@@ -45,6 +47,8 @@ describe('sales inventory legacy parity contract', () => {
     const summary = paritySummary();
     expect(summary.screens).toBe(48);
     expect(summary.web.operational + summary.web.readOnly + summary.web.contractOnly).toBe(48);
+    expect(summary.windows.operational + summary.windows.readOnly + summary.windows.contractOnly).toBe(48);
+    expect(summary.android.operational + summary.android.readOnly + summary.android.contractOnly).toBe(48);
     expect(summary.flutter.operational + summary.flutter.readOnly + summary.flutter.contractOnly).toBe(48);
     // Sengaja TIDAK ada expect(...operational).toBe(48) / .toBe(0).
   });
@@ -56,7 +60,10 @@ describe('sales inventory legacy parity contract', () => {
       expect(pending.has(scr)).toBe(false); // PROVEN & PENDING tak boleh tumpang tindih
     }
     for (const item of SALES_INVENTORY_PARITY) {
-      const claimsOperational = item.web === 'OPERATIONAL' || item.flutter === 'OPERATIONAL';
+      const claimsOperational =
+        item.web === 'OPERATIONAL' ||
+        item.windows === 'OPERATIONAL' ||
+        item.android === 'OPERATIONAL';
       if (claimsOperational) {
         expect(proven.has(item.screen) || pending.has(item.screen)).toBe(true);
       }

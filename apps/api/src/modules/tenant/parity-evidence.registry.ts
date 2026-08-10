@@ -276,16 +276,20 @@ export const PROOF_SURFACES: ProofSurface[] = ['api', 'web', 'windows', 'android
  * surface. Capability tambahan (print/export/offline/hardware dan operasi
  * mutasi) ditambahkan per vertical slice; tidak boleh disimpulkan dari `view`.
  */
-export const PARITY_REQUIREMENTS: ParityRequirement[] = Array.from(
-  { length: 48 },
-  (_, index) => index + 1,
-).flatMap((screen) => [
-  ...PROOF_SURFACES.map((surface) => ({ screen, surface, capability: 'view' as const })),
-  { screen, surface: 'api' as const, capability: 'reconciliation' as const },
-]).concat([
+export const PARITY_REQUIREMENTS: ParityRequirement[] = [
+  ...Array.from({ length: 48 }, (_, index) => index + 1).flatMap<ParityRequirement>(
+    (screen) => [
+      ...PROOF_SURFACES.map((surface): ParityRequirement => ({
+        screen,
+        surface,
+        capability: 'view',
+      })),
+      { screen, surface: 'api', capability: 'reconciliation' },
+    ],
+  ),
   { screen: 30, surface: 'web', capability: 'create' },
   { screen: 30, surface: 'web', capability: 'offline' },
-]);
+];
 
 const PROVEN_STATUSES = new Set<ProofStatus>([
   'AUTOMATED_PROVEN',
@@ -334,7 +338,10 @@ export function ensureCatalogWired(): void {
   const proven = provenScreens();
   const pending = new Set(PENDING_PROOF.map((requirement) => requirement.screen));
   for (const item of SALES_INVENTORY_PARITY) {
-    const claimsOperational = item.web === 'OPERATIONAL' || item.flutter === 'OPERATIONAL';
+    const claimsOperational =
+      item.web === 'OPERATIONAL' ||
+      item.windows === 'OPERATIONAL' ||
+      item.android === 'OPERATIONAL';
     if (claimsOperational && !proven.has(item.screen) && !pending.has(item.screen)) {
       throw new Error(`Layar ${item.screen} klaim OPERATIONAL tanpa bukti/PENDING_PROOF`);
     }
