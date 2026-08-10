@@ -290,6 +290,9 @@ const PosReportPage = lazy(() =>
 const PosPromotionPage = lazy(() =>
   import('../pages/pos/PosPromotionPage').then((m) => ({ default: m.PosPromotionPage })),
 );
+const PosHeldPage = lazy(() =>
+  import('../pages/pos/PosHeldPage').then((m) => ({ default: m.PosHeldPage })),
+);
 const PelangganDemoPage = lazy(() =>
   import('../pages/pelanggan/PelangganDemoPage').then((m) => ({ default: m.PelangganDemoPage })),
 );
@@ -686,6 +689,7 @@ export function App() {
           <Route path="apotik/shift" element={<PharmacyOperationsPage area="shift" />} />
           <Route path="pos/laporan" element={<PosReportPage />} />
           <Route path="pos/aturan-diskon" element={<PosPromotionPage />} />
+          <Route path="pos/ditahan" element={<PosHeldPage />} />
           <Route path="portal-pelanggan" element={<PortalPelangganAdminPage />} />
           <Route path="sample-data" element={<SampleDataPage />} />
           <Route path="devices" element={<SubscriptionPage tab="devices" />} />
