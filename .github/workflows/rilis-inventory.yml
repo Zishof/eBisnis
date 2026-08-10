@@ -64,11 +64,20 @@ jobs:
             nilai="${{ github.event.inputs.versi }}"
           fi
           echo "nilai=$nilai" >> "$GITHUB_OUTPUT"
-      - name: Bangun Windows
+      - name: UAT navigasi Windows Inventory
         working-directory: ${{ env.JALUR }}
         shell: pwsh
         run: |
           flutter pub get
+          flutter test `
+            test/inventory_parity_navigation_test.dart `
+            test/inventory_app_test.dart `
+            test/inventory_supplier_workspace_test.dart `
+            test/inventory_transaction_workspaces_test.dart
+      - name: Bangun Windows
+        working-directory: ${{ env.JALUR }}
+        shell: pwsh
+        run: |
           flutter build windows --release --target=lib/main_inventory.dart `
             --dart-define=VERSI=${{ steps.versi.outputs.nilai }} `
             --dart-define=APP_PRODUCT=inventory

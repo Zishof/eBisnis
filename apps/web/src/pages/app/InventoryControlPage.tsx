@@ -25,7 +25,7 @@ import {
 import { api, formatDate, formatMoney, formatNumber } from '../../lib/api';
 import { downloadExcel, downloadPdf, type ExportColumn } from '../../lib/export-table';
 import { Code, DataGrid, PageHeader, StatusBadge, type GridColumn } from '../../components/ui';
-import { inventoryRouteContext, inventoryTabRoutes, type InventoryTabKey } from './inventory-route-context';
+import { inventoryRouteContext, inventoryRouteForLegacyScreen, inventoryTabRoutes, type InventoryTabKey } from './inventory-route-context';
 
 type TabKey = InventoryTabKey;
 
@@ -126,6 +126,7 @@ type ParityContract = {
     legacyName: string;
     domain: string;
     api: string[];
+    webRoute?: string;
     web: 'OPERATIONAL' | 'READ_ONLY' | 'CONTRACT_ONLY';
     flutter: 'OPERATIONAL' | 'READ_ONLY' | 'CONTRACT_ONLY';
   }>;
@@ -431,6 +432,24 @@ export function InventoryControlPage() {
             </details>
           ))}
         </div>
+        <details className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 lg:col-span-2">
+          <summary className="cursor-pointer text-sm font-black">Daftar 48 layar dan route operasional</summary>
+          <p className="mt-2 text-xs text-slate-500">Setiap tautan membuka workspace yang menjalankan fungsi terkait; daftar ini bukan pengganti UAT transaksi.</p>
+          <ol className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {(parityContract.data?.items ?? []).map((item) => (
+              <li key={item.screen} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+                <span className="min-w-0 text-xs"><strong>{String(item.screen).padStart(2, '0')}</strong> — {item.legacyName}</span>
+                <Link
+                  aria-label={`Buka layar ${item.screen}`}
+                  className="shrink-0 text-xs font-black text-brand-700 hover:underline dark:text-brand-300"
+                  to={item.webRoute ?? inventoryRouteForLegacyScreen(item.screen)}
+                >
+                  Buka
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </details>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
