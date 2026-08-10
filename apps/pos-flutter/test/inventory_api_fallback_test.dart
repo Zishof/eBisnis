@@ -4,7 +4,7 @@ import 'package:ebisnis_pos/inventory/inventory_app.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('endpoint CMN memakai domain utama sebagai fallback DNS', () {
+  test('endpoint CMN memakai dua zona DNS terpisah sebagai fallback', () {
     final candidates = inventoryApiRequestUris(
       Uri.parse('https://cmnmedika-inventory.ebisnis.id/api/v1/'),
       '/auth/login',
@@ -12,7 +12,8 @@ void main() {
 
     expect(candidates, [
       Uri.parse('https://cmnmedika-inventory.ebisnis.id/api/v1/auth/login'),
-      Uri.parse('https://ebisnis.id/api/v1/auth/login'),
+      Uri.parse('https://app.emedik.id/api/v1/auth/login'),
+      Uri.parse('https://app.santri.info/api/v1/auth/login'),
     ]);
   });
 
