@@ -183,7 +183,8 @@ void main() {
         matching: find.byType(Scrollable),
       ),
     );
-    await tester.tap(tombol);
+    final area = tester.getRect(tombol);
+    await tester.tapAt(Offset(area.left + 8, area.top + 8));
     await tester.pumpAndSettle();
 
     expect(dipanggil, 1);
