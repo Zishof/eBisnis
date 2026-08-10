@@ -1,0 +1,161 @@
+name: Rilis Inventory Sales
+
+on:
+  push:
+    tags: ['inventory-v*']
+
+concurrency:
+  group: rilis-inventory-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: '3.27.1'
+  JALUR: apps/pos-flutter
+
+jobs:
+  uji:
+    name: Uji Inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Ambil dependensi
+        working-directory: ${{ env.JALUR }}
+        run: flutter pub get
+      - name: Analisis
+        working-directory: ${{ env.JALUR }}
+        run: flutter analyze
+      - name: Uji
+        working-directory: ${{ env.JALUR }}
+        run: flutter test
+
+  windows:
+    name: Bangun installer Windows Inventory
+    needs: uji
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Tentukan versi
+        id: versi
+        shell: bash
+        run: echo "nilai=${GITHUB_REF_NAME#inventory-v}" >> "$GITHUB_OUTPUT"
+      - name: Bangun Windows
+        working-directory: ${{ env.JALUR }}
+        shell: pwsh
+        run: |
+          flutter pub get
+          flutter build windows --release --target=lib/main_inventory.dart `
+            --dart-define=VERSI=${{ steps.versi.outputs.nilai }} `
+            --dart-define=APP_PRODUCT=inventory
+      - name: Rakit installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "Inno Setup tidak ditemukan." }
+          & $iscc `
+            "/DVersi=${{ steps.versi.outputs.nilai }}" `
+            "/DNamaApl=eBisnis Inventory dan Sales" `
+            "/DPenerbit=eBisnis.id" `
+            "/DSitus=https://inventory.ebisnis.id" `
+            "/DAppIdPemasang={{A7C84E12-7B8D-44C7-92B8-7E5D28B69A16}" `
+            "/DNamaBerkasKeluaran=ebisnis-inventory-sales" `
+            "/DSumber=$PWD\${{ env.JALUR }}\build\windows\x64\runner\Release" `
+            "/DKeluaran=$PWD\keluaran" `
+            "${{ env.JALUR }}\windows\pemasang.iss"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inventory-windows
+          path: keluaran/ebisnis-inventory-sales-*-windows.exe
+          if-no-files-found: error
+
+  android:
+    name: Bangun APK Android Inventory
+    needs: uji
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Tentukan versi
+        id: versi
+        run: echo "nilai=${GITHUB_REF_NAME#inventory-v}" >> "$GITHUB_OUTPUT"
+      - name: Siapkan kunci release
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          test -n "$KEYSTORE" || { echo "::error::ANDROID_KEYSTORE_BASE64 belum tersedia."; exit 1; }
+          test -n "$STORE_PASSWORD" && test -n "$KEY_PASSWORD" && test -n "$KEY_ALIAS" || {
+            echo "::error::Konfigurasi signing Android belum lengkap."; exit 1;
+          }
+          printf '%s' "$KEYSTORE" | base64 -d > "${JALUR}/android/rilis.jks"
+          {
+            echo "storeFile=rilis.jks"
+            echo "storePassword=${STORE_PASSWORD}"
+            echo "keyPassword=${KEY_PASSWORD}"
+            echo "keyAlias=${KEY_ALIAS}"
+          } > "${JALUR}/android/key.properties"
+      - name: Bangun APK
+        working-directory: ${{ env.JALUR }}
+        run: |
+          flutter pub get
+          flutter build apk --release --flavor inventory --target=lib/main_inventory.dart \
+            --dart-define=VERSI=${{ steps.versi.outputs.nilai }} \
+            --dart-define=APP_PRODUCT=inventory \
+            --build-name=${{ steps.versi.outputs.nilai }} \
+            --build-number=${{ github.run_number }}
+          mkdir -p "${GITHUB_WORKSPACE}/keluaran"
+          cp build/app/outputs/flutter-apk/app-inventory-release.apk \
+            "${GITHUB_WORKSPACE}/keluaran/ebisnis-inventory-sales-${{ steps.versi.outputs.nilai }}.apk"
+      - name: Hapus kunci dari runner
+        if: always()
+        run: rm -f "${JALUR}/android/key.properties" "${JALUR}/android/rilis.jks"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inventory-android
+          path: keluaran/ebisnis-inventory-sales-*.apk
+          if-no-files-found: error
+
+  terbitkan:
+    name: Terbitkan GitHub Release Inventory
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: berkas
+      - name: Terbitkan dua aset Inventory
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          versi="${GITHUB_REF_NAME#inventory-v}"
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "eBisnis Inventory Sales $versi" \
+            --notes "Perbaikan kontrol Sales Order, draft lokal, sinkronisasi, riwayat order, dan pembatalan order aman. [WAJIB]" \
+            berkas/inventory-windows/*.exe \
+            berkas/inventory-android/*.apk

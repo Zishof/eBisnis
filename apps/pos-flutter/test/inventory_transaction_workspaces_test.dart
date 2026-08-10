@@ -63,6 +63,9 @@ void main() {
       products: products,
       salesName: 'Muklis',
       onSubmit: (_) async => 'SO-2026-0001',
+      onSaveDraft: (_) async => 'DR-1',
+      onLoadDrafts: () async => const [],
+      onSynchronize: () async => 'Sinkronisasi selesai',
     )));
     await tester.ensureVisible(find.byTooltip('Tambah item').first);
     await tester.tap(find.byTooltip('Tambah item').first);
@@ -131,6 +134,82 @@ void main() {
     expect(submission?.customerId, 'c1');
     expect(submission?.lines.single.product.code, '000102');
     expect(find.textContaining('SO-2026-0001'), findsOneWidget);
+  });
+
+  testWidgets(
+      'kontrol sales menjalankan draft, sinkronisasi, riwayat, dan batal',
+      (tester) async {
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var draftSaved = false;
+    var synchronized = false;
+    String? cancelledId;
+    String? cancelReason;
+
+    await tester.pumpWidget(host(InventorySalesOrderWorkspace(
+      customers: parties,
+      products: products,
+      salesName: 'Muklis',
+      onSubmit: (_) async => 'SO-2026-0001',
+      onSaveDraft: (_) async {
+        draftSaved = true;
+        return 'DR-1';
+      },
+      onLoadDrafts: () async => const [],
+      onDeleteDraft: (_) async {},
+      onSynchronize: () async {
+        synchronized = true;
+        return 'Sinkronisasi selesai';
+      },
+      onLoadOrders: () async => const [
+        SalesOrderHistoryItem(
+          id: 'so-1',
+          number: 'SO-2026-0001',
+          date: '2026-08-10',
+          customerName: 'Adem Sari Mart',
+          total: 49500,
+          status: 'CONFIRMED',
+          lineCount: 1,
+        ),
+      ],
+      onCancelOrder: (id, reason) async {
+        cancelledId = id;
+        cancelReason = reason;
+      },
+    )));
+
+    await tester.ensureVisible(find.text('Sinkronkan'));
+    await tester.tap(find.text('Sinkronkan'));
+    await tester.pumpAndSettle();
+    expect(synchronized, isTrue);
+    expect(find.text('Sinkronisasi selesai'), findsOneWidget);
+
+    await tester.ensureVisible(find.byTooltip('Tambah item').first);
+    await tester.tap(find.byTooltip('Tambah item').first);
+    await tester.pump();
+    await tester.ensureVisible(find.text('Simpan Draft').first);
+    await tester.tap(find.text('Simpan Draft').first);
+    await tester.pumpAndSettle();
+    expect(draftSaved, isTrue);
+
+    await tester.ensureVisible(find.text('Order Saya'));
+    await tester.tap(find.text('Order Saya'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('SO-2026-0001'), findsOneWidget);
+    await tester.tap(find.text('Batalkan'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const Key('sales-order-cancel-reason')), 'Customer batal');
+    await tester.tap(find.text('Batalkan Order'));
+    await tester.pumpAndSettle();
+    expect(cancelledId, 'so-1');
+    expect(cancelReason, 'Customer batal');
+
+    await tester.ensureVisible(find.text('Review & Kirim'));
+    await tester.tap(find.text('Review & Kirim'));
+    await tester.pumpAndSettle();
   });
 
   testWidgets(

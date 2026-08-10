@@ -1492,6 +1492,111 @@ export class ErpController {
     return { ...header[0], lines };
   }
 
+  @Get('inventory/mobile-orders')
+  @Permissions('SALES_ORDER.READ')
+  @ApiOperation({ summary: 'Riwayat order milik sales yang sedang masuk' })
+  async listMyMobileOrders(
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    return this.inventoryQuery(
+      ctx,
+      `SELECT so.id::text, so.order_number, so.order_date::text, so.status,
+              so.grand_total::text, COALESCE(c.name, 'Pelanggan umum') AS customer_name,
+              count(sol.id)::int AS line_count
+         FROM ${S}.sales_order so
+         LEFT JOIN ${S}.customer c ON c.id = so.customer_id
+         LEFT JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
+        WHERE so.created_by = (
+          SELECT us.id FROM ${S}.user_subject us
+           WHERE us.id = $1::uuid OR us.platform_user_id = $1::uuid LIMIT 1
+        )
+        GROUP BY so.id, c.name
+        ORDER BY so.order_date DESC, so.created_at DESC
+        LIMIT 100`,
+      [ctx.userId],
+    );
+  }
+
+  @Post('inventory/mobile-orders/:id/cancel')
+  @Permissions('SALES_ORDER.CREATE')
+  @BlockDemo()
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Batalkan order sales sendiri yang belum diproses',
+    description:
+      'Hanya order CONFIRMED milik pengguna aktif dan belum memiliki kuantitas terkirim yang dapat dibatalkan.',
+  })
+  async cancelMyMobileOrder(
+    @Param('id') id: string,
+    @Body() body: DeleteReasonDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    return this.tenantDb.transaction(
+      ctx.schemaName,
+      async (client) => {
+        const order = await client.query<{
+          id: string;
+          order_number: string;
+          status: string;
+        }>(
+          `SELECT so.id::text, so.order_number, so.status
+             FROM ${S}.sales_order so
+            WHERE so.id = $1::uuid
+              AND so.created_by = (
+                SELECT us.id FROM ${S}.user_subject us
+                 WHERE us.id = $2::uuid OR us.platform_user_id = $2::uuid LIMIT 1
+              )
+            FOR UPDATE`,
+          [id, ctx.userId],
+        );
+        if (!order.rowCount) {
+          throw AppError.notFound(
+            ErrorCodes.NOT_FOUND,
+            'Order tidak ditemukan atau bukan milik pengguna aktif.',
+          );
+        }
+        const current = order.rows[0];
+        if (current.status !== 'CONFIRMED') {
+          throw AppError.conflict(
+            ErrorCodes.CONFLICT,
+            `Order berstatus ${current.status} tidak dapat dibatalkan.`,
+          );
+        }
+        const delivery = await client.query<{ delivered_qty: string }>(
+          `SELECT COALESCE(sum(delivered_qty), 0)::text AS delivered_qty
+             FROM ${S}.sales_order_line WHERE sales_order_id = $1::uuid`,
+          [id],
+        );
+        if (new Decimal(delivery.rows[0]?.delivered_qty ?? 0).greaterThan(0)) {
+          throw AppError.conflict(
+            ErrorCodes.CONFLICT,
+            'Order yang sudah memiliki barang terkirim tidak dapat dibatalkan.',
+          );
+        }
+        await client.query(
+          `UPDATE ${S}.sales_order
+              SET status = 'CANCELLED',
+                  note = concat_ws(E'\n', nullif(note, ''), $2),
+                  updated_at = now(), version = version + 1
+            WHERE id = $1::uuid`,
+          [id, `Dibatalkan: ${body.reason.trim()}`],
+        );
+        return {
+          id: current.id,
+          order_number: current.order_number,
+          status: 'CANCELLED',
+        };
+      },
+      { ...ctx.audit, moduleCode: 'SALES', actionCode: 'SALES_ORDER_CANCELLED' },
+    );
+  }
+
   /**
    * Menjadikan pesanan penjualan sebagai faktur (layar legacy 30-42).
    *

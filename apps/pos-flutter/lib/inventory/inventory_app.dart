@@ -330,15 +330,18 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
       context: context,
       barrierDismissible: !h.wajib,
       builder: (c) => AlertDialog(
-        key: Key(tersedia ? 'dialog-pembaruan-inventory' : 'dialog-pembaruan-inventory-info'),
+        key: Key(tersedia
+            ? 'dialog-pembaruan-inventory'
+            : 'dialog-pembaruan-inventory-info'),
         icon: Icon(
           h.wajib ? Icons.warning_amber_rounded : Icons.system_update_alt,
           color: h.wajib ? Colors.red : Theme.of(c).colorScheme.primary,
           size: 34,
         ),
         title: Text(switch (h.keadaan) {
-          KeadaanPembaruan.tersedia =>
-            h.wajib ? 'Pembaruan wajib tersedia' : 'Pembaruan Inventory tersedia',
+          KeadaanPembaruan.tersedia => h.wajib
+              ? 'Pembaruan wajib tersedia'
+              : 'Pembaruan Inventory tersedia',
           KeadaanPembaruan.mutakhir => 'Sudah versi terbaru',
           KeadaanPembaruan.lebihBaru => 'Versi ini lebih baru',
           KeadaanPembaruan.gagalDiperiksa => 'Tidak dapat diperiksa',
@@ -350,9 +353,11 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(h.pesan),
-              if (h.rilis?.catatan case final catatan? when catatan.trim().isNotEmpty) ...[
+              if (h.rilis?.catatan case final catatan?
+                  when catatan.trim().isNotEmpty) ...[
                 const SizedBox(height: 12),
-                const Text('Catatan rilis', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Catatan rilis',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 160),
@@ -372,12 +377,15 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
             FilledButton.icon(
               onPressed: () async {
                 final uri = Uri.tryParse(h.rilis!.jalurUnduh);
-                final terbuka = uri != null && await launchUrl(uri, mode: LaunchMode.externalApplication);
+                final terbuka = uri != null &&
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
                 if (!terbuka) {
-                  await Clipboard.setData(ClipboardData(text: h.rilis!.jalurUnduh));
+                  await Clipboard.setData(
+                      ClipboardData(text: h.rilis!.jalurUnduh));
                   if (c.mounted) {
                     ScaffoldMessenger.of(c).showSnackBar(const SnackBar(
-                      content: Text('Browser tidak dapat dibuka. Tautan unduhan disalin.'),
+                      content: Text(
+                          'Browser tidak dapat dibuka. Tautan unduhan disalin.'),
                     ));
                   }
                   return;
@@ -1450,7 +1458,8 @@ class _MySalesDashboardPage extends StatelessWidget {
               children: [
                 _InventoryPageHeading(
                   title: 'Dashboard',
-                  subtitle: 'Order dan pelanggan Anda -- bukan laba perusahaan.',
+                  subtitle:
+                      'Order dan pelanggan Anda -- bukan laba perusahaan.',
                   actions: [
                     FilledButton.icon(
                       onPressed: onCreateOrder,
@@ -2187,6 +2196,15 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
             ? '$number (antrean sinkronisasi)'
             : number;
       },
+      onSaveDraft: widget.client.saveSalesOrderDraft,
+      onLoadDrafts: widget.client.salesOrderDrafts,
+      onDeleteDraft: widget.client.deleteSalesOrderDraft,
+      onSynchronize: () async {
+        final result = await widget.client.synchronize();
+        return 'Sinkronisasi selesai: ${result.sent} dikirim, ${result.pending} masih antre.';
+      },
+      onLoadOrders: widget.client.mySalesOrders,
+      onCancelOrder: widget.client.cancelSalesOrder,
     );
   }
 
@@ -6340,6 +6358,123 @@ class InventoryApiClient {
     }
   }
 
+  static const _salesDraftCacheKey = 'sales-order-drafts-v1';
+  static const _salesOrderHistoryCacheKey = 'sales-order-history-v1';
+
+  Future<String> saveSalesOrderDraft(
+      SalesOrderWorkspaceSubmission submission) async {
+    final database = _localDatabase;
+    if (database == null) {
+      throw const InventoryApiException('Database lokal tidak tersedia.');
+    }
+    final id = 'DR-${DateTime.now().millisecondsSinceEpoch}';
+    final existing = await database.getCache(_salesDraftCacheKey);
+    final items = ((existing?['items'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((raw) => Map<String, Object?>.from(raw))
+        .toList();
+    items.insert(0, {
+      'id': id,
+      'savedAt': DateTime.now().toUtc().toIso8601String(),
+      'customerId': submission.customerId,
+      'taxPercent': submission.taxPercent,
+      'paymentTerm': submission.paymentTerm,
+      'note': submission.note,
+      'lines': submission.lines
+          .map((line) => {
+                'productId': line.product.id,
+                'qty': line.quantity,
+                'unitPrice': line.unitPrice,
+                'discountPercent': line.discountPercent,
+              })
+          .toList(),
+    });
+    await database
+        .putCache(_salesDraftCacheKey, {'items': items.take(50).toList()});
+    return id;
+  }
+
+  Future<List<SalesOrderDraftRecord>> salesOrderDrafts() async {
+    final cached = await _localDatabase?.getCache(_salesDraftCacheKey);
+    return ((cached?['items'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((raw) {
+      final row = Map<String, Object?>.from(raw);
+      return SalesOrderDraftRecord(
+        id: (row['id'] ?? '').toString(),
+        savedAt: DateTime.tryParse((row['savedAt'] ?? '').toString()) ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+        customerId: (row['customerId'] ?? '').toString(),
+        taxPercent: toDouble(row['taxPercent']),
+        paymentTerm: (row['paymentTerm'] ?? '').toString(),
+        note: (row['note'] ?? '').toString(),
+        lines: ((row['lines'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((line) => Map<String, Object?>.from(line))
+            .toList(),
+      );
+    }).toList();
+  }
+
+  Future<void> deleteSalesOrderDraft(String id) async {
+    final database = _localDatabase;
+    if (database == null) return;
+    final cached = await database.getCache(_salesDraftCacheKey);
+    final items = ((cached?['items'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((raw) => Map<String, Object?>.from(raw))
+        .where((row) => row['id']?.toString() != id)
+        .toList();
+    await database.putCache(_salesDraftCacheKey, {'items': items});
+  }
+
+  Future<List<SalesOrderHistoryItem>> mySalesOrders() async {
+    try {
+      final rows =
+          await _request<List<Object?>>('GET', '/inventory/mobile-orders');
+      await _localDatabase
+          ?.putCache(_salesOrderHistoryCacheKey, {'items': rows});
+      return _salesOrdersFromRows(rows);
+    } on Object {
+      final cached = await _localDatabase?.getCache(_salesOrderHistoryCacheKey);
+      if (cached != null) {
+        return _salesOrdersFromRows(
+            (cached['items'] as List?)?.cast<Object?>() ?? const []);
+      }
+      rethrow;
+    }
+  }
+
+  List<SalesOrderHistoryItem> _salesOrdersFromRows(List<Object?> rows) =>
+      rows.whereType<Map>().map((raw) {
+        final row = Map<String, Object?>.from(raw);
+        return SalesOrderHistoryItem(
+          id: (row['id'] ?? '').toString(),
+          number: (row['order_number'] ?? '-').toString(),
+          date: (row['order_date'] ?? '-').toString(),
+          customerName: (row['customer_name'] ?? '-').toString(),
+          total: toDouble(row['grand_total']),
+          status: (row['status'] ?? '-').toString(),
+          lineCount: int.tryParse((row['line_count'] ?? 0).toString()) ?? 0,
+        );
+      }).toList();
+
+  Future<void> cancelSalesOrder(String id, String reason) async {
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/inventory/mobile-orders/$id/cancel',
+      body: {'reason': reason},
+    );
+    final cached = await _localDatabase?.getCache(_salesOrderHistoryCacheKey);
+    if (cached == null) return;
+    final rows = ((cached['items'] as List?) ?? const []).map((raw) {
+      final row = Map<String, Object?>.from(raw as Map);
+      if (row['id']?.toString() == id) row['status'] = 'CANCELLED';
+      return row;
+    }).toList();
+    await _localDatabase?.putCache(_salesOrderHistoryCacheKey, {'items': rows});
+  }
+
   Future<Map<String, Object?>> _queuedOrder(
       String eventId, Object error) async {
     final item = await _outboxItem(eventId);
@@ -6381,7 +6516,7 @@ class InventoryApiClient {
         body: {
           'deviceId': deviceId,
           'platform': Platform.operatingSystem,
-          'appVersion': '0.1.6',
+          'appVersion': versiAplikasi,
           'pendingOutbox': pendingCount,
         },
       );

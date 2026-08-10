@@ -74,6 +74,48 @@ class SalesOrderWorkspaceSubmission {
   final String note;
 }
 
+class SalesOrderDraftRecord {
+  const SalesOrderDraftRecord({
+    required this.id,
+    required this.savedAt,
+    required this.customerId,
+    required this.taxPercent,
+    required this.paymentTerm,
+    required this.note,
+    required this.lines,
+  });
+
+  final String id;
+  final DateTime savedAt;
+  final String customerId;
+  final double taxPercent;
+  final String paymentTerm;
+  final String note;
+  final List<Map<String, Object?>> lines;
+}
+
+class SalesOrderHistoryItem {
+  const SalesOrderHistoryItem({
+    required this.id,
+    required this.number,
+    required this.date,
+    required this.customerName,
+    required this.total,
+    required this.status,
+    required this.lineCount,
+  });
+
+  final String id;
+  final String number;
+  final String date;
+  final String customerName;
+  final double total;
+  final String status;
+  final int lineCount;
+
+  bool get canCancel => status == 'CONFIRMED';
+}
+
 class PurchaseWorkspaceSubmission {
   const PurchaseWorkspaceSubmission({
     required this.supplierId,
@@ -93,6 +135,15 @@ class PurchaseWorkspaceSubmission {
 
 typedef SalesWorkspaceSubmit = Future<String> Function(
     SalesOrderWorkspaceSubmission value);
+typedef SalesWorkspaceSaveDraft = Future<String> Function(
+    SalesOrderWorkspaceSubmission value);
+typedef SalesWorkspaceLoadDrafts = Future<List<SalesOrderDraftRecord>>
+    Function();
+typedef SalesWorkspaceDeleteDraft = Future<void> Function(String id);
+typedef SalesWorkspaceLoadOrders = Future<List<SalesOrderHistoryItem>>
+    Function();
+typedef SalesWorkspaceCancelOrder = Future<void> Function(
+    String id, String reason);
 typedef PurchaseWorkspaceSubmit = Future<String> Function(
     PurchaseWorkspaceSubmission value);
 
@@ -103,12 +154,24 @@ class InventorySalesOrderWorkspace extends StatefulWidget {
     required this.products,
     required this.salesName,
     required this.onSubmit,
+    this.onSaveDraft,
+    this.onLoadDrafts,
+    this.onDeleteDraft,
+    this.onSynchronize,
+    this.onLoadOrders,
+    this.onCancelOrder,
   });
 
   final List<TransactionParty> customers;
   final List<TransactionProduct> products;
   final String salesName;
   final SalesWorkspaceSubmit onSubmit;
+  final SalesWorkspaceSaveDraft? onSaveDraft;
+  final SalesWorkspaceLoadDrafts? onLoadDrafts;
+  final SalesWorkspaceDeleteDraft? onDeleteDraft;
+  final Future<String> Function()? onSynchronize;
+  final SalesWorkspaceLoadOrders? onLoadOrders;
+  final SalesWorkspaceCancelOrder? onCancelOrder;
 
   @override
   State<InventorySalesOrderWorkspace> createState() =>
@@ -126,6 +189,11 @@ class _InventorySalesOrderWorkspaceState
   double _taxPercent = 11;
   bool _saving = false;
   String? _message;
+  int _activeStep = 0;
+  final _partyKey = GlobalKey();
+  final _productKey = GlobalKey();
+  final _cartKey = GlobalKey();
+  final _summaryKey = GlobalKey();
 
   @override
   void dispose() {
@@ -173,6 +241,241 @@ class _InventorySalesOrderWorkspaceState
     });
   }
 
+  SalesOrderWorkspaceSubmission? _submission() {
+    if (_partyId == null || _lines.isEmpty) return null;
+    return SalesOrderWorkspaceSubmission(
+      customerId: _partyId!,
+      lines: List.unmodifiable(_lines),
+      taxPercent: _taxPercent,
+      paymentTerm: _paymentTerm,
+      note: _note.text.trim(),
+    );
+  }
+
+  Future<void> _goToStep(int index) async {
+    setState(() => _activeStep = index);
+    final key = [_partyKey, _productKey, _cartKey, _summaryKey][index];
+    final target = key.currentContext;
+    if (target != null) {
+      await Scrollable.ensureVisible(target,
+          duration: const Duration(milliseconds: 250), alignment: 0.08);
+    }
+  }
+
+  Future<void> _saveDraft() async {
+    final value = _submission();
+    if (value == null || widget.onSaveDraft == null) return;
+    try {
+      final id = await widget.onSaveDraft!(value);
+      if (mounted) {
+        setState(() => _message = 'Draft $id tersimpan di perangkat.');
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = 'Draft gagal disimpan: $error');
+    }
+  }
+
+  Future<void> _synchronize() async {
+    if (widget.onSynchronize == null) return;
+    setState(() => _message = 'Menyinkronkan data...');
+    try {
+      final message = await widget.onSynchronize!();
+      if (mounted) setState(() => _message = message);
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = 'Sinkronisasi gagal: $error');
+    }
+  }
+
+  Future<void> _showDrafts() async {
+    if (widget.onLoadDrafts == null) return;
+    late final List<SalesOrderDraftRecord> drafts;
+    try {
+      drafts = await widget.onLoadDrafts!();
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _message = 'Riwayat draft gagal dimuat: $error');
+      }
+      return;
+    }
+    if (!mounted) return;
+    final selected = await showDialog<SalesOrderDraftRecord>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Riwayat Draft'),
+        content: SizedBox(
+          width: 560,
+          child: drafts.isEmpty
+              ? const Text('Belum ada draft yang tersimpan di perangkat ini.')
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: drafts.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (_, index) {
+                    final draft = drafts[index];
+                    final customer = widget.customers
+                        .where((value) => value.id == draft.customerId)
+                        .firstOrNull;
+                    return ListTile(
+                      title: Text(customer?.name ?? 'Customer tidak tersedia'),
+                      subtitle: Text(
+                          '${draft.lines.length} item • ${_date(draft.savedAt)}'),
+                      trailing: IconButton(
+                        tooltip: 'Hapus draft',
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: widget.onDeleteDraft == null
+                            ? null
+                            : () async {
+                                await widget.onDeleteDraft!(draft.id);
+                                if (dialogContext.mounted) {
+                                  Navigator.pop(dialogContext);
+                                }
+                              },
+                      ),
+                      onTap: () => Navigator.pop(dialogContext, draft),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Tutup'))
+        ],
+      ),
+    );
+    if (selected == null || !mounted) return;
+    final restored = <TransactionLineDraft>[];
+    for (final raw in selected.lines) {
+      final productId = (raw['productId'] ?? '').toString();
+      final products = widget.products.where((p) => p.id == productId);
+      if (products.isEmpty) continue;
+      final line = TransactionLineDraft(
+        product: products.first,
+        quantity: (raw['qty'] as num?)?.toDouble() ?? 1,
+      );
+      line.unitPrice =
+          (raw['unitPrice'] as num?)?.toDouble() ?? line.product.price;
+      line.discountPercent = (raw['discountPercent'] as num?)?.toDouble() ?? 0;
+      restored.add(line);
+    }
+    setState(() {
+      _partyId = selected.customerId;
+      _taxPercent = selected.taxPercent;
+      _paymentTerm = selected.paymentTerm;
+      _note.text = selected.note;
+      _lines
+        ..clear()
+        ..addAll(restored);
+      _activeStep = restored.isEmpty ? 1 : 2;
+      _message = 'Draft berhasil dimuat.';
+    });
+  }
+
+  Future<void> _showOrders() async {
+    if (widget.onLoadOrders == null) return;
+    try {
+      final orders = await widget.onLoadOrders!();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Order Saya'),
+          content: SizedBox(
+            width: 680,
+            child: orders.isEmpty
+                ? const Text('Belum ada order yang pernah dikirim.')
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: orders.length,
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemBuilder: (_, index) {
+                      final order = orders[index];
+                      return ListTile(
+                        title: Text('${order.number} • ${order.customerName}'),
+                        subtitle: Text(
+                            '${order.date} • ${order.lineCount} item • ${_money(order.total)} • ${order.status}'),
+                        trailing:
+                            order.canCancel && widget.onCancelOrder != null
+                                ? TextButton(
+                                    key: Key('cancel-sales-order-${order.id}'),
+                                    onPressed: () async {
+                                      final reason =
+                                          await _askCancelReason(dialogContext);
+                                      if (reason == null ||
+                                          !dialogContext.mounted) {
+                                        return;
+                                      }
+                                      try {
+                                        await widget.onCancelOrder!(
+                                            order.id, reason);
+                                        if (dialogContext.mounted) {
+                                          Navigator.pop(dialogContext);
+                                        }
+                                        if (mounted) {
+                                          setState(() => _message =
+                                              'Order ${order.number} berhasil dibatalkan.');
+                                        }
+                                      } on Object catch (error) {
+                                        if (dialogContext.mounted) {
+                                          Navigator.pop(dialogContext);
+                                        }
+                                        if (mounted) {
+                                          setState(() => _message =
+                                              'Order gagal dibatalkan: $error');
+                                        }
+                                      }
+                                    },
+                                    child: const Text('Batalkan'),
+                                  )
+                                : null,
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Tutup'))
+          ],
+        ),
+      );
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _message = 'Riwayat order gagal dimuat: $error');
+      }
+    }
+  }
+
+  Future<String?> _askCancelReason(BuildContext context) async {
+    var reason = '';
+    final result = await showDialog<String>(
+      context: context,
+      builder: (reasonContext) => AlertDialog(
+        title: const Text('Batalkan order?'),
+        content: TextField(
+          key: const Key('sales-order-cancel-reason'),
+          autofocus: true,
+          maxLength: 500,
+          onChanged: (value) => reason = value.trim(),
+          decoration: const InputDecoration(
+              labelText: 'Alasan pembatalan',
+              hintText: 'Contoh: customer mengubah pesanan'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(reasonContext),
+              child: const Text('Kembali')),
+          FilledButton(
+              onPressed: () {
+                if (reason.isNotEmpty) Navigator.pop(reasonContext, reason);
+              },
+              child: const Text('Batalkan Order')),
+        ],
+      ),
+    );
+    return result;
+  }
+
   Future<void> _submit() async {
     if (_partyId == null || _lines.isEmpty || _saving) return;
     setState(() {
@@ -180,13 +483,7 @@ class _InventorySalesOrderWorkspaceState
       _message = null;
     });
     try {
-      final number = await widget.onSubmit(SalesOrderWorkspaceSubmission(
-        customerId: _partyId!,
-        lines: List.unmodifiable(_lines),
-        taxPercent: _taxPercent,
-        paymentTerm: _paymentTerm,
-        note: _note.text.trim(),
-      ));
+      final number = await widget.onSubmit(_submission()!);
       if (!mounted) return;
       setState(() {
         _message = 'Order $number berhasil disimpan.';
@@ -218,70 +515,88 @@ class _InventorySalesOrderWorkspaceState
               'Tambahkan ke Keranjang',
               'Review & Kirim'
             ],
+            activeStep: _activeStep,
+            onStepTap: _goToStep,
+            forceActionsBelow: widget.onLoadOrders != null,
             actions: _WorkspaceToolbar(
               primaryLabel: 'Kirim Order',
               primaryIcon: Icons.send_outlined,
               primaryEnabled: _partyId != null && _lines.isNotEmpty,
               busy: _saving,
               onPrimary: _submit,
-              onDraft: _lines.isEmpty
+              onDraft: _lines.isEmpty || widget.onSaveDraft == null
                   ? null
-                  : () => setState(() =>
-                      _message = 'Draft tetap tersimpan pada perangkat ini.'),
-              secondary: const ['Riwayat Draft', 'Sinkronkan'],
+                  : _saveDraft,
+              secondary: [
+                if (widget.onLoadOrders != null)
+                  _WorkspaceToolbarAction(
+                      'Order Saya', Icons.receipt_long_outlined, _showOrders),
+                _WorkspaceToolbarAction('Riwayat Draft', Icons.history,
+                    widget.onLoadDrafts == null ? null : _showDrafts),
+                _WorkspaceToolbarAction('Sinkronkan', Icons.sync,
+                    widget.onSynchronize == null ? null : _synchronize),
+              ],
             ),
           ),
           const SizedBox(height: 12),
-          _PartySelector(
-            label: 'Pilih Customer',
-            parties: widget.customers,
-            value: _partyId,
-            onChanged: (value) => setState(() => _partyId = value),
-            trailing: _party == null
-                ? null
-                : Wrap(spacing: 8, runSpacing: 8, children: [
-                    _MetricChip('Limit Kredit', _money(_party!.creditLimit)),
-                    _MetricChip('Saldo Piutang', _money(_party!.balance),
-                        warning: true),
-                    _MetricChip(
-                        'Sisa Kredit',
-                        _money((_party!.creditLimit - _party!.balance)
-                            .clamp(0, double.infinity)
-                            .toDouble()),
-                        success: true),
-                    _MetricChip('Sales', widget.salesName),
-                    const _MetricChip('Status', 'Aktif', success: true),
-                  ]),
+          KeyedSubtree(
+            key: _partyKey,
+            child: _PartySelector(
+                label: 'Pilih Customer',
+                parties: widget.customers,
+                value: _partyId,
+                onChanged: (value) => setState(() => _partyId = value),
+                trailing: _party == null
+                    ? null
+                    : Wrap(spacing: 8, runSpacing: 8, children: [
+                        _MetricChip(
+                            'Limit Kredit', _money(_party!.creditLimit)),
+                        _MetricChip('Saldo Piutang', _money(_party!.balance),
+                            warning: true),
+                        _MetricChip(
+                            'Sisa Kredit',
+                            _money((_party!.creditLimit - _party!.balance)
+                                .clamp(0, double.infinity)
+                                .toDouble()),
+                            success: true),
+                        _MetricChip('Sales', widget.salesName),
+                        const _MetricChip('Status', 'Aktif', success: true),
+                      ])),
           ),
           const SizedBox(height: 12),
           if (desktop)
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(child: _productPicker()),
+              Expanded(
+                  child:
+                      KeyedSubtree(key: _productKey, child: _productPicker())),
               const SizedBox(width: 12),
-              Expanded(child: _lineEditor()),
+              Expanded(
+                  child: KeyedSubtree(key: _cartKey, child: _lineEditor())),
             ])
           else ...[
-            _productPicker(),
+            KeyedSubtree(key: _productKey, child: _productPicker()),
             const SizedBox(height: 12),
-            _lineEditor(),
+            KeyedSubtree(key: _cartKey, child: _lineEditor()),
           ],
         ]);
-        final summary = _SalesSummary(
-          party: _party,
-          lineCount: _lines.length,
-          subtotal: _subtotal,
-          discount: _discount,
-          taxPercent: _taxPercent,
-          tax: _tax,
-          total: _total,
-          paymentTerm: _paymentTerm,
-          noteController: _note,
-          saving: _saving,
-          message: _message,
-          onTaxChanged: (v) => setState(() => _taxPercent = v),
-          onPaymentTermChanged: (v) => setState(() => _paymentTerm = v),
-          onSubmit: _partyId == null || _lines.isEmpty ? null : _submit,
-        );
+        final summary = KeyedSubtree(
+            key: _summaryKey,
+            child: _SalesSummary(
+              party: _party,
+              lineCount: _lines.length,
+              subtotal: _subtotal,
+              discount: _discount,
+              taxPercent: _taxPercent,
+              tax: _tax,
+              total: _total,
+              paymentTerm: _paymentTerm,
+              noteController: _note,
+              saving: _saving,
+              message: _message,
+              onTaxChanged: (v) => setState(() => _taxPercent = v),
+              onPaymentTermChanged: (v) => setState(() => _paymentTerm = v),
+              onSubmit: _partyId == null || _lines.isEmpty ? null : _submit,
+            ));
         if (!desktop) {
           return Column(
               children: [center, const SizedBox(height: 12), summary]);
@@ -512,7 +827,14 @@ class _InventoryPurchaseWorkspaceState
                   ? null
                   : () => setState(() =>
                       _message = 'Draft pembelian tersimpan pada perangkat.'),
-              secondary: const ['Cetak', 'Export', 'Audit Trail'],
+              secondary: [
+                _WorkspaceToolbarAction('Cetak', Icons.print_outlined,
+                    () => _showWorkspaceNotice(context, 'Cetak')),
+                _WorkspaceToolbarAction('Export', Icons.file_download_outlined,
+                    () => _showWorkspaceNotice(context, 'Export')),
+                _WorkspaceToolbarAction('Audit Trail', Icons.policy_outlined,
+                    () => _showWorkspaceNotice(context, 'Audit Trail')),
+              ],
             ),
           ),
           const SizedBox(height: 12),
@@ -651,10 +973,16 @@ class _WorkspaceHeading extends StatelessWidget {
       {required this.title,
       required this.subtitle,
       required this.steps,
+      this.activeStep = 0,
+      this.onStepTap,
+      this.forceActionsBelow = false,
       this.actions});
   final String title;
   final String subtitle;
   final List<String> steps;
+  final int activeStep;
+  final ValueChanged<int>? onStepTap;
+  final bool forceActionsBelow;
   final Widget? actions;
 
   @override
@@ -671,7 +999,7 @@ class _WorkspaceHeading extends StatelessWidget {
             const SizedBox(height: 2),
             Text(subtitle, style: const TextStyle(color: Color(0xFF64748B))),
           ]);
-          if (actions == null || box.maxWidth < 1100) {
+          if (actions == null || box.maxWidth < 1100 || forceActionsBelow) {
             return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -692,18 +1020,31 @@ class _WorkspaceHeading extends StatelessWidget {
         LayoutBuilder(builder: (context, box) {
           if (box.maxWidth < 680) {
             return SizedBox(
-                height: 54,
-                child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: steps.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (_, i) => SizedBox(
-                        width: 190,
-                        child: _StepTile(index: i, text: steps[i]))));
+              height: 54,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: steps.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, i) => SizedBox(
+                  width: 190,
+                  child: _StepTile(
+                    index: i,
+                    text: steps[i],
+                    active: i == activeStep,
+                    onTap: onStepTap == null ? null : () => onStepTap!(i),
+                  ),
+                ),
+              ),
+            );
           }
           return Row(children: [
             for (var i = 0; i < steps.length; i++) ...[
-              Expanded(child: _StepTile(index: i, text: steps[i])),
+              Expanded(
+                  child: _StepTile(
+                      index: i,
+                      text: steps[i],
+                      active: i == activeStep,
+                      onTap: onStepTap == null ? null : () => onStepTap!(i))),
               if (i < steps.length - 1)
                 const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 5),
@@ -712,6 +1053,13 @@ class _WorkspaceHeading extends StatelessWidget {
           ]);
         }),
       ]);
+}
+
+class _WorkspaceToolbarAction {
+  const _WorkspaceToolbarAction(this.label, this.icon, this.onPressed);
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
 }
 
 class _WorkspaceToolbar extends StatelessWidget {
@@ -730,7 +1078,7 @@ class _WorkspaceToolbar extends StatelessWidget {
   final bool busy;
   final VoidCallback onPrimary;
   final VoidCallback? onDraft;
-  final List<String> secondary;
+  final List<_WorkspaceToolbarAction> secondary;
 
   @override
   Widget build(BuildContext context) => Wrap(
@@ -738,21 +1086,11 @@ class _WorkspaceToolbar extends StatelessWidget {
         runSpacing: 7,
         alignment: WrapAlignment.end,
         children: [
-          for (final label in secondary)
+          for (final action in secondary)
             OutlinedButton.icon(
-              onPressed: () => _showWorkspaceNotice(context, label),
-              icon: Icon(
-                  label == 'Sinkronkan'
-                      ? Icons.sync
-                      : label == 'Cetak'
-                          ? Icons.print_outlined
-                          : label == 'Export'
-                              ? Icons.file_download_outlined
-                              : label == 'Audit Trail'
-                                  ? Icons.policy_outlined
-                                  : Icons.history,
-                  size: 17),
-              label: Text(label),
+              onPressed: action.onPressed,
+              icon: Icon(action.icon, size: 17),
+              label: Text(action.label),
             ),
           OutlinedButton.icon(
               onPressed: onDraft,
@@ -767,43 +1105,53 @@ class _WorkspaceToolbar extends StatelessWidget {
 }
 
 class _StepTile extends StatelessWidget {
-  const _StepTile({required this.index, required this.text});
+  const _StepTile(
+      {required this.index,
+      required this.text,
+      required this.active,
+      this.onTap});
   final int index;
   final String text;
+  final bool active;
+  final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
-    final active = index == 0;
-    return Container(
-      height: 54,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: active ? const Color(0xFFEFF6FF) : Colors.white,
-        border: Border.all(
-            color: active ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0)),
-        borderRadius: BorderRadius.circular(7),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(7),
+      child: Container(
+        height: 54,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFFEFF6FF) : Colors.white,
+          border: Border.all(
+              color:
+                  active ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Row(children: [
+          CircleAvatar(
+              radius: 14,
+              backgroundColor:
+                  active ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1),
+              child: Text('${index + 1}',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12))),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                      color: active
+                          ? const Color(0xFF1D4ED8)
+                          : const Color(0xFF475569)))),
+        ]),
       ),
-      child: Row(children: [
-        CircleAvatar(
-            radius: 14,
-            backgroundColor:
-                active ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1),
-            child: Text('${index + 1}',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12))),
-        const SizedBox(width: 8),
-        Expanded(
-            child: Text(text,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    color: active
-                        ? const Color(0xFF1D4ED8)
-                        : const Color(0xFF475569)))),
-      ]),
     );
   }
 }
@@ -1131,14 +1479,13 @@ class _PartySelector extends StatelessWidget {
                           padding: EdgeInsets.zero,
                           shrinkWrap: true,
                           itemCount: options.length,
-                          separatorBuilder: (_, __) =>
-                              const Divider(height: 1),
+                          separatorBuilder: (_, __) => const Divider(height: 1),
                           itemBuilder: (context, index) {
                             final p = options.elementAt(index);
                             return ListTile(
                               dense: true,
-                              title: Text(p.name,
-                                  overflow: TextOverflow.ellipsis),
+                              title:
+                                  Text(p.name, overflow: TextOverflow.ellipsis),
                               subtitle: Text('${p.code}  •  ${p.phone}',
                                   overflow: TextOverflow.ellipsis),
                               onTap: () => onSelected(p),
