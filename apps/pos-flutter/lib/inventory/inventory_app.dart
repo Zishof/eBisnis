@@ -18,6 +18,7 @@ import '../pembaruan/sumber_pembaruan.dart';
 import '../pembaruan/versi.dart';
 import '../pembaruan/versi_aplikasi.dart';
 import 'inventory_local_database.dart';
+import 'inventory_parity_navigation.dart';
 import 'inventory_supplier_workspace.dart';
 import 'inventory_transaction_workspaces.dart';
 
@@ -485,7 +486,13 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
       );
     }
     if (_tab == 3) return InventoryStockPricingPage(client: widget.client);
-    if (_tab == 4) return _InventoryFeaturePage(contract: _parity);
+    if (_tab == 4) {
+      return _InventoryFeaturePage(
+        contract: _parity,
+        onOpenScreen: (screen) =>
+            _selectTab(inventoryTabForLegacyScreen(screen)),
+      );
+    }
     if (_tab == 5) return InventoryFinancePage(client: widget.client);
     if (_tab == 6) return _InventoryReportPage(snapshot: data!);
     return const _InventoryManualPage();
@@ -5090,9 +5097,13 @@ class _InventoryReportPage extends StatelessWidget {
 }
 
 class _InventoryFeaturePage extends StatelessWidget {
-  const _InventoryFeaturePage({required this.contract});
+  const _InventoryFeaturePage({
+    required this.contract,
+    required this.onOpenScreen,
+  });
 
   final Future<InventoryParityContract> contract;
+  final ValueChanged<int> onOpenScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -5263,6 +5274,52 @@ class _InventoryFeaturePage extends StatelessWidget {
               );
             }
             return _ParityCoverageCard(contract: state.data!);
+          },
+        ),
+        const SizedBox(height: 16),
+        FutureBuilder<InventoryParityContract>(
+          future: contract,
+          builder: (context, state) {
+            if (!state.hasData) return const SizedBox.shrink();
+            final items = [...state.data!.items]
+              ..sort((a, b) => a.screen.compareTo(b.screen));
+            return _SectionCard(
+              title: 'Daftar 48 layar dan workspace tujuan',
+              icon: Icons.route_outlined,
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Buka bukti navigasi per layar',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  '${items.length} layar dipetakan; tombol membuka fungsi operasional, bukan mockup.',
+                ),
+                children: [
+                  for (final item in items)
+                    ListTile(
+                      key: Key('legacy-screen-${item.screen}'),
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        radius: 18,
+                        child: Text('${item.screen}'),
+                      ),
+                      title: Text(item.name),
+                      subtitle: Text(
+                        item.flutter == 'OPERATIONAL'
+                            ? 'Operasional pada Flutter Windows dan Android'
+                            : item.flutter,
+                      ),
+                      trailing: OutlinedButton(
+                        key: Key('open-legacy-screen-${item.screen}'),
+                        onPressed: () => onOpenScreen(item.screen),
+                        child: const Text('Buka'),
+                      ),
+                    ),
+                ],
+              ),
+            );
           },
         ),
         const SizedBox(height: 16),
