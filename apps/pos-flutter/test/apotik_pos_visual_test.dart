@@ -4,6 +4,7 @@ import 'package:ebisnis_pos/layar/layar_kasir.dart';
 import 'package:ebisnis_pos/layar/sumber.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'golden_path.dart';
 
 const _produk = [
   ProdukLokal(
@@ -136,7 +137,7 @@ void main() {
     expect(find.byKey(const Key('bilah-samping')), findsOneWidget);
     await expectLater(
       find.byType(LayarKasir),
-      matchesGoldenFile('goldens/apotik-pos-desktop.png'),
+      matchesGoldenFile(goldenPath('apotik-pos-desktop.png')),
     );
   });
 
@@ -148,7 +149,7 @@ void main() {
     expect(find.byKey(const Key('ringkasan-keranjang-mobile')), findsOneWidget);
     await expectLater(
       find.byType(LayarKasir),
-      matchesGoldenFile('goldens/apotik-pos-mobile.png'),
+      matchesGoldenFile(goldenPath('apotik-pos-mobile.png')),
     );
   });
 }

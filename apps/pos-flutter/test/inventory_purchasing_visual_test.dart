@@ -1,6 +1,7 @@
 import 'package:ebisnis_pos/inventory/inventory_app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'golden_path.dart';
 
 class _PurchasingVisualClient extends InventoryApiClient {
   _PurchasingVisualClient()
@@ -68,7 +69,7 @@ void main() {
 
     await expectLater(
       find.byType(InventoryOperationsPage),
-      matchesGoldenFile('goldens/inventory-purchasing-desktop.png'),
+      matchesGoldenFile(goldenPath('inventory-purchasing-desktop.png')),
     );
   });
 }

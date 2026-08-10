@@ -1,6 +1,7 @@
 import 'package:ebisnis_pos/inventory/inventory_transaction_workspaces.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'golden_path.dart';
 
 const parties = [
   TransactionParty(
@@ -73,7 +74,7 @@ void main() {
 
     await expectLater(
       find.byType(Scaffold),
-      matchesGoldenFile('goldens/inventory-sales-order-desktop.png'),
+      matchesGoldenFile(goldenPath('inventory-sales-order-desktop.png')),
     );
   });
 
@@ -97,7 +98,7 @@ void main() {
 
     await expectLater(
       find.byType(Scaffold),
-      matchesGoldenFile('goldens/inventory-purchase-mobile.png'),
+      matchesGoldenFile(goldenPath('inventory-purchase-mobile.png')),
     );
   });
 

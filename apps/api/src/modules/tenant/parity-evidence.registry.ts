@@ -219,6 +219,22 @@ export const PARITY_EVIDENCE: ParityProof[] = [
     status: 'SOURCE_IMPLEMENTED',
     reference: 'apps/web/src/pages/app/InventoryTransactionWorkspacePage.test.tsx',
   },
+  {
+    screen: 20,
+    surface: 'windows',
+    capability: 'view',
+    kind: 'golden',
+    status: 'AUTOMATED_PROVEN',
+    reference: 'apps/pos-flutter/test/inventory_purchasing_visual_test.dart',
+  },
+  {
+    screen: 30,
+    surface: 'windows',
+    capability: 'view',
+    kind: 'golden',
+    status: 'AUTOMATED_PROVEN',
+    reference: 'apps/pos-flutter/test/inventory_transaction_workspaces_test.dart',
+  },
 ];
 
 export const PROOF_SURFACES: ProofSurface[] = ['api', 'web', 'windows', 'android'];

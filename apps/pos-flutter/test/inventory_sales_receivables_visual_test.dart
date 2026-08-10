@@ -1,6 +1,7 @@
 import 'package:ebisnis_pos/inventory/inventory_app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'golden_path.dart';
 
 class _ReceivablesVisualClient extends InventoryApiClient {
   _ReceivablesVisualClient()
@@ -92,7 +93,7 @@ void main() {
     expect(find.text('Riwayat Penerimaan Piutang'), findsOneWidget);
     await expectLater(
       find.byType(InventoryOperationsPage),
-      matchesGoldenFile('goldens/inventory-sales-receivables-desktop.png'),
+      matchesGoldenFile(goldenPath('inventory-sales-receivables-desktop.png')),
     );
   });
 }

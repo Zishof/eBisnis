@@ -73,7 +73,7 @@ describe('sales inventory legacy parity contract', () => {
     expect(provenScreens('api', 'view').size).toBe(48);
     expect(provenScreens('api').size).toBe(0);
     expect(provenScreens('web').size).toBe(0);
-    expect(provenScreens('windows').size).toBe(0);
+    expect(provenScreens('windows').size).toBe(2);
     expect(provenScreens('android').size).toBe(0);
     expect(provenScreens().size).toBe(0);
 
