@@ -11,23 +11,22 @@
 /// Flutter. Mock eksplisit di sini menjamin kegagalan yang CEPAT dan DAPAT
 /// DIDUGA, tanpa bergantung pada perilaku ambien.
 ///
-/// Cakupan siklus jual-luring-lalu-sinkron penuh (server loopback palsu,
-/// jaringan putus di tengah penjualan, `sinkronkan()`) sengaja DIHAPUS dari
-/// berkas ini untuk sesi ini: tiga kasus itu gagal di CI tanpa log yang bisa
-/// diperiksa dari sandbox audit ini (tidak ada akses admin repo untuk
-/// mengunduh log mentah), dan penyebabnya tidak dapat dipastikan lewat
-/// tinjauan kode manual berulang. Menyimpan test yang gagal tanpa bisa
-/// didiagnosis lebih buruk daripada tidak menyimpannya sama sekali --
-/// `KasirLuringEngine.bukukan()`/`sinkronkan()` sendiri TETAP tidak berubah
-/// dan tetap seperti yang didokumentasikan di
-/// `docs/pos-inventory-parity/07-flutter-offline-checkout-fix.md` (belum
-/// diverifikasi lewat build/run Flutter sungguhan).
+/// Siklus jual-luring-lalu-sinkron diuji dengan client deterministik. Tidak ada
+/// socket server atau kanal platform ambien yang dapat menggantung CI: client
+/// dibuat putus, transaksi harus masuk outbox dengan id tetap, lalu client
+/// disambungkan dan item yang sama dikirim tepat sekali oleh `sinkronkan()`.
 library;
 
+import 'dart:io';
+
 import 'package:ebisnis_pos/api/pos_api.dart';
+import 'package:ebisnis_pos/aturan/harga_luring.dart';
+import 'package:ebisnis_pos/inventory/inventory_local_database.dart';
 import 'package:ebisnis_pos/mesin/kasir_luring.dart';
+import 'package:ebisnis_pos/mesin/identitas_mesin.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/native.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
@@ -51,6 +50,80 @@ const _sesi = SesiKasirApi(
   businessDate: '2026-08-08',
   outletName: 'Toko Uji',
   currency: 'IDR',
+);
+
+class _ClientLuring extends PosApiClient {
+  _ClientLuring()
+      : super(
+          baseUrl: Uri.parse('https://offline.test/api/v1/'),
+          accessToken: 'token-uji',
+        );
+
+  bool tersambung = true;
+  final terkirim = <Map<String, Object?>>[];
+
+  @override
+  Future<Map<String, Object?>?> jatahStrukAktif(String terminalId) async => {
+        'prefix': 'UAT-',
+        'padding': 4,
+        'fromNumber': 1,
+        'toNumber': 10,
+        'nextNumber': 1,
+      };
+
+  @override
+  Future<String> bukukan({
+    required SesiKasirApi sesi,
+    required TransaksiKasir transaksi,
+  }) async {
+    if (!tersambung) throw const SocketException('jaringan diputus untuk uji');
+    return 'ONLINE-0001';
+  }
+
+  @override
+  Future<Map<String, Object?>> kirimTransaksiLuring(
+      Map<String, Object?> payload) async {
+    if (!tersambung) throw const SocketException('jaringan diputus untuk uji');
+    terkirim.add(Map<String, Object?>.from(payload));
+    return {'status': 'POSTED'};
+  }
+}
+
+const _transaksi = TransaksiKasir(
+  baris: [
+    BarisLuring(
+      productId: 'product-1',
+      name: 'Barang Uji',
+      uomId: 'uom-1',
+      quantity: 2,
+      unitPrice: '1500',
+      taxRateId: null,
+    ),
+  ],
+  hasil: HasilKeranjang(
+    lines: [
+      HasilBaris(
+        productId: 'product-1',
+        name: 'Barang Uji',
+        uomId: 'uom-1',
+        quantity: 2,
+        unitPrice: '1500',
+        lineSubtotal: '3000',
+        taxAmount: '0',
+        lineTotal: '3000',
+        taxRateId: null,
+      ),
+    ],
+    subtotal: '3000',
+    taxTotal: '0',
+    grandTotal: '3000',
+    itemCount: 2,
+  ),
+  metode: MetodeBayar(id: 'cash-1', nama: 'Tunai', memberiKembalian: true),
+  diserahkan: '5000',
+  kembalian: '2000',
+  jenisPesanan: 'Eceran',
+  catatan: 'Uji luring',
 );
 
 void main() {
@@ -77,5 +150,39 @@ void main() {
         expect(await mesin.jumlahTertunda(), 0);
       },
     );
+  });
+
+  test('transaksi putus jaringan tersimpan lalu dikirim sekali saat reconnect',
+      () async {
+    final database = InventoryLocalDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final client = _ClientLuring();
+    final mesin = KasirLuringEngine(
+      client: client,
+      sesi: _sesi,
+      identitas: const IdentitasMesin(id: 'device-uat', nama: 'Kasir UAT'),
+      katalogSyncedAt: '2026-08-10T00:00:00Z',
+      database: database,
+    );
+    await mesin.siapkan();
+    expect(mesin.luringTersedia, isTrue);
+
+    client.tersambung = false;
+    final receipt = await mesin.bukukan(_transaksi);
+
+    expect(receipt, 'UAT-0001');
+    expect(await mesin.jumlahTertunda(), 1);
+    expect(client.terkirim, isEmpty);
+
+    client.tersambung = true;
+    expect(await mesin.sinkronkan(), 1);
+    expect(await mesin.jumlahTertunda(), 0);
+    expect(client.terkirim, hasLength(1));
+    expect(client.terkirim.single['receiptNumber'], 'UAT-0001');
+    expect(client.terkirim.single['offlineId'], startsWith('device-uat-'));
+
+    // Item sudah completed; sinkron berikutnya tidak boleh mengirim duplikat.
+    expect(await mesin.sinkronkan(), 0);
+    expect(client.terkirim, hasLength(1));
   });
 }
