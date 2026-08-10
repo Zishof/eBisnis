@@ -109,9 +109,8 @@ terjurnal), sengaja dibiarkan apa adanya — butuh jurnal pembalik terpisah meng
 `reversal_of_id` yang sudah ada di `journal_entry`
 (`sales-inventory-operations.controller.ts:734-775`), di luar cakupan pass ini.
 
-**Masih di luar cakupan pass ini** (dicatat, bukan diperbaiki): status `purchase_order` PO-000004
-tetap `RECEIVED` setelah GR-nya dibatalkan (catatan sekunder di atas) — tidak ikut diperbaiki
-karena gap terpisah dari payable AP yang jadi fokus pass ini; dan reversal untuk GR yang
+**DIPERBAIKI kemudian (2026-08-10)**: status `purchase_order` yang tetap `RECEIVED` setelah GR-nya
+dibatalkan — lihat bagian "Tindak lanjut" di bawah. **Masih di luar cakupan**: reversal untuk GR yang
 `accounting_event`-nya sudah `POSTED` (jarang terjadi karena aturan posting tidak disemai
 default per tenant, lihat komentar di `erp-purchasing.service.ts:1249-1256`) belum menghasilkan
 jurnal pembalik otomatis.
@@ -129,3 +128,51 @@ seperti catatan di `screen-30/uat.md`, kepercayaan pada atomicity struktural (`t
 didukung code review, bukan uji injeksi kegagalan langsung. Screenshot Web/Windows/Android tidak
 diambil. Backorder (`create-backorder`) tidak diuji — di luar daftar endpoint layar 20-29 pada
 template.
+
+
+---
+
+## Tindak lanjut — status PO sesudah pembalikan (2026-08-10)
+
+Catatan sekunder di atas ditindak. Dua hal yang sebelumnya tidak tersentuh pembalikan:
+
+1. **`purchase_order_line.received_qty` tidak pernah dikurangi kembali.** Sisa pesanan karena itu
+   salah dihitung selamanya, dan penerimaan berikutnya untuk PO yang sama langsung tampak lunas.
+2. **`purchase_order.status` tidak pernah dihitung ulang**, sehingga PO tetap `RECEIVED` untuk
+   barang yang tidak jadi masuk — tidak ada yang menagih pemasok.
+
+### Yang dikerjakan
+
+Aturan statusnya dipindah ke modul murni `apps/api/src/modules/tenant/purchase-order-status.ts`,
+lalu dipakai **kedua** jalur: validasi penerimaan dan pembalikannya. Sebelumnya hanya jalur maju
+yang menghitung status, langsung di dalam SQL-nya; dua perhitungan terpisah cepat atau lambat
+menyimpang, dan yang terlihat bukan galat melainkan PO berstatus salah.
+
+| Keadaan | Status |
+| --- | --- |
+| Sisa habis (termasuk penerimaan berlebih) | `RECEIVED` |
+| Sebagian diterima | `PARTIALLY_RECEIVED` |
+| Tidak ada yang diterima, dari status sesudah-terima | `APPROVED` |
+| `CANCELLED` / `CLOSED` | tidak disentuh |
+| PO yang belum pernah disetujui | tidak dinaikkan |
+
+Dua penjaga yang perlu disebut:
+
+- **`CANCELLED`/`CLOSED` tidak disentuh.** Pembatalan adalah keputusan manusia; membalik satu
+  penerimaan tidak boleh menghidupkannya kembali.
+- **PO `DRAFT`/`SUBMITTED` tidak dinaikkan ke `APPROVED`.** Tanpa penjaga itu, persetujuan terbit
+  dari perhitungan kuantitas alih-alih dari orang.
+
+`received_qty` dikurangi dari **baris penerimaan** (`accepted_qty + rejected_qty`), bukan dari
+pergerakan stok: baris yang ditolak ikut menambah `received_qty` saat validasi tetapi masuk ke
+karantina, sehingga menghitungnya dari pergerakan stok akan menyisakan selisih sebesar jumlah yang
+ditolak.
+
+### Bukti
+
+11 uji baru pada `purchase-order-status.spec.ts`, seluruhnya tanpa basis data. `eslint` bersih,
+`tsc` bersih, 4028 uji API lulus.
+
+**Belum terbukti terhadap PostgreSQL sungguhan** — tidak ada basis data yang terjangkau dari mesin
+sesi ini. Yang terbukti adalah aturan keputusannya; penyambungan SQL-nya menunggu UAT ulang layar
+20 dengan skenario terima → balik → periksa status dan `received_qty`.
