@@ -82,7 +82,7 @@ describe('sales inventory legacy parity contract', () => {
     expect(provenScreens('web', 'view').size).toBe(48);
     expect(provenScreens('web').size).toBe(47);
     expect(provenScreens('windows').size).toBe(48);
-    expect(provenScreens('android').size).toBe(0);
+    expect(provenScreens('android').size).toBe(48);
     expect(provenScreens().size).toBe(0);
 
     const apiProof = PARITY_EVIDENCE.find((proof) => proof.screen === 1 && proof.surface === 'api');

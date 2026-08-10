@@ -217,6 +217,19 @@ const WINDOWS_NAVIGATION_EVIDENCE: ParityProof[] = Array.from(
   }),
 );
 
+const ANDROID_NAVIGATION_EVIDENCE: ParityProof[] = Array.from(
+  { length: 48 },
+  (_, index): ParityProof => ({
+    screen: index + 1,
+    surface: 'android',
+    capability: 'view',
+    kind: 'integration',
+    status: 'AUTOMATED_PROVEN',
+    reference:
+      'docs/implementation/inventory-sales-48/evidence/uat/2026-08-10-surface-release-readiness.md',
+  }),
+);
+
 /**
  * Evidence API lama dinormalisasi secara eksplisit sebagai bukti capability
  * `view` pada surface API. Dokumen UAT-nya dapat berisi capability lain, tetapi
@@ -231,6 +244,7 @@ export const PARITY_EVIDENCE: ParityProof[] = [
   })),
   ...WEB_ROUTE_EVIDENCE,
   ...WINDOWS_NAVIGATION_EVIDENCE,
+  ...ANDROID_NAVIGATION_EVIDENCE,
   {
     screen: 30,
     surface: 'web',

@@ -6,7 +6,7 @@ Dokumen ini mencatat bukti terpisah untuk Web, Flutter Windows, dan Flutter
 Android. Bukti navigasi tidak dianggap sebagai bukti transaksi, offline,
 cetak/ekspor, rekonsiliasi, UAT perangkat fisik, atau verifikasi produksi.
 
-Commit kandidat awal: `858ca21be2349be4ab2c115799f52455fd37122e`.
+Commit kandidat Android/Windows: `8f6684ae0292baa0da9558cd64f71369793996c1`.
 
 ## Baseline bersama
 
@@ -57,9 +57,24 @@ Commit kandidat awal: `858ca21be2349be4ab2c115799f52455fd37122e`.
 - Instalasi lama memakai debug certificate yang tidak konsisten. Rilis pertama
   dengan identity permanen membutuhkan satu kali uninstall/reinstall setelah
   outbox lokal tersinkron; rilis berikutnya dapat update in-place.
-- Hasil UAT emulator dan verifikasi certificate APK final dicatat setelah job
-  Android pada run final selesai; sebelum itu Android tidak dinaikkan ke
-  `AUTOMATED_PROVEN`.
+- Android instrumentation `connectedInventoryDebugAndroidTest` lulus pada
+  [run 31399086263](https://github.com/Zishof/eBisnis/actions/runs/31399086263).
+  Test membuka workspace lintas kelompok dan memastikan tombol layar 1–48
+  tersedia serta aktif. Capability `view` Android karenanya dinaikkan menjadi
+  `AUTOMATED_PROVEN`; ini bukan klaim UAT perangkat fisik atau transaksi.
+- APK kandidat `0.1.26-uji` diverifikasi ulang setelah diunduh dari artifact:
+  SHA-256 `c6d1ff40d9ca3a20747540300d03d7801fa272b4f3578c9e5e84ce4fa35d7428`,
+  checksum sidecar cocok, dan certificate SHA-256 cocok dengan identitas
+  permanen di atas.
+
+## Kandidat Windows final
+
+- Installer `0.1.26-uji` dari run 31399086263 memiliki SHA-256
+  `4291640a371fcc2f077b91e8611c0a571b69ad62810694c6f47533ce24e63409`;
+  checksum sidecar cocok.
+- Pemeriksaan Authenticode lokal menghasilkan `NotSigned`. Kandidat dapat
+  dipasang untuk UAT, tetapi publikasi stabil tetap diblokir sampai sertifikat
+  code-signing CA dan password tersedia sebagai secret workflow.
 
 ## Batas klaim
 
