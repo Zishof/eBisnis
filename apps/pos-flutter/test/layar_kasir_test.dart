@@ -178,7 +178,10 @@ void main() {
     await tester.scrollUntilVisible(
       tombol,
       300,
-      scrollable: find.byKey(const Key('bilah-pintasan')),
+      scrollable: find.descendant(
+        of: find.byKey(const Key('bilah-pintasan')),
+        matching: find.byType(Scrollable),
+      ),
     );
     await tester.tap(tombol);
     await tester.pumpAndSettle();
