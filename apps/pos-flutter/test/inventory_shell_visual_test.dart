@@ -83,6 +83,33 @@ class _ShellVisualClient extends InventoryApiClient {
           LotKpi('002847', 'Bodrex Extra', 'B2608F', '02 Sep 2026'),
         ],
       );
+
+  @override
+  Future<InventoryOperationsData> operations({
+    required bool includePayables,
+    bool includeSettled = false,
+    bool includeReceivableSettled = false,
+  }) async =>
+      const InventoryOperationsData(
+        receivables: [],
+        payables: [],
+        handovers: [],
+        purchaseOrders: [],
+        apPayments: [],
+        suppliers: [InventoryPriceParty('s1', 'SUP-01', 'Supplier Sehat')],
+        products: [
+          InventoryProductDemo(
+            id: 'p1',
+            uomId: 'u1',
+            code: 'P001',
+            name: 'Produk Uji',
+            price: 15000,
+            stock: 20,
+            imageUrl: '',
+          ),
+        ],
+        warehouses: [InventoryWarehouse('w1', 'GDG', 'Gudang Pusat')],
+      );
 }
 
 const _persona = PersonaInventory(
@@ -166,5 +193,13 @@ void main() {
     await tester.tap(find.byTooltip('Bantuan'));
     await tester.pumpAndSettle();
     expect(find.text('Panduan Penggunaan'), findsOneWidget);
+
+    await tester.tap(find.text('Pembelian & Piutang'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('purchase-create-header')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('purchase-create-header')));
+    await tester.pumpAndSettle();
+    expect(find.text('Purchase order baru'), findsOneWidget);
+    expect(find.text('Simpan PO'), findsOneWidget);
   });
 }

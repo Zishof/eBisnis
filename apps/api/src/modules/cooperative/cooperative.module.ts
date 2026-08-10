@@ -564,28 +564,19 @@ export class CooperativePortalController {
  *     Lapis pertama tidak menahan seratus mesin yang masing-masing mengirim
  *     sekali; lapis kedua menahannya.
  *
- * ## Lapis pertama lumpuh di belakang proxy, dan itu disebutkan di sini
+ * ## Lapis pertama di belakang proxy
  *
- * `ThrottlerGuard` menghitung per `req.ip`. Aplikasi ini **tidak** menyetel
- * `trust proxy`, sehingga di belakang Apache (`koperasi.ebisnis.id`) `req.ip`
- * bernilai alamat proxy untuk SETIAP pengunjung — seluruh internet berbagi satu
- * ember hitungan.
- *
- * Akibatnya bukan sekadar "pembatasnya tidak bekerja", melainkan lebih buruk:
- * batas yang ketat berubah menjadi penolakan layanan terhadap pelamar
- * sungguhan. Lima kiriman per jam per alamat akan menjadi lima kiriman per jam
- * bagi seluruh koperasi di seluruh platform, dan satu pengirim sampah cukup
- * untuk menutup pintu bagi semua orang.
- *
- * Sampai [IR-006](../../../../docs/integration-requests/cooperative/006-alamat-asli-di-belakang-proxy.md)
- * dikerjakan Core, angkanya dipilih supaya benar pada KEDUA keadaan:
+ * `ThrottlerGuard` menghitung per `req.ip`. Bootstrap API hanya memercayai
+ * reverse proxy loopback Apache, sehingga alamat yang ditambahkan proxy menjadi
+ * tracker tanpa menerima `X-Forwarded-For` palsu dari koneksi internet langsung.
+ * Angkanya tetap dipilih supaya aman pada kedua lapisan:
  *
  *   · **Pembacaan tidak diberi batas khusus.** Ia mewarisi batas umum seperti
  *     route lain. Memberinya batas lebih ketat justru membuat situs publik
  *     lebih rapuh daripada bagian API lainnya — kebalikan dari yang diinginkan.
  *   · **Penulisan diberi angka yang longgar** — cukup longgar untuk tidak
  *     menolak pelamar sungguhan ketika embernya berbagi, cukup ketat untuk
- *     tetap berguna setelah IR-006 mendudukkan alamat aslinya.
+ *     tetap berguna bersama pembatas per koperasi.
  *
  * Yang benar-benar menahan banjir tetap lapis kedua: batas harian per koperasi
  * dan jeda per nomor telepon, keduanya **tidak bergantung pada alamat IP** dan

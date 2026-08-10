@@ -230,6 +230,7 @@ class InventoryHomePage extends StatefulWidget {
 }
 
 class _InventoryHomePageState extends State<InventoryHomePage> {
+  final _operationsKey = GlobalKey<_InventoryOperationsPageState>();
   // Dashboard eksekutif (untuk pemilik/admin). Peran Sales tidak pernah
   // memakai future ini -- lihat _mySnapshot dan _content() di bawah -- tetapi
   // masih diambil di sini juga untuk peran itu supaya field `late` ini boleh
@@ -481,6 +482,7 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
     }
     if (_tab == 2) {
       return InventoryOperationsPage(
+        key: _operationsKey,
         client: widget.client,
         persona: widget.persona,
       );
@@ -553,7 +555,19 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
                               label: const Text('Filter Dashboard'),
                             ),
                           ]
-                        : const [],
+                        : _tab == 2 && widget.persona.role != 'Sales'
+                            ? [
+                                FilledButton.icon(
+                                  key: const Key('purchase-create-header'),
+                                  onPressed: () => _operationsKey.currentState
+                                      ?.openNewPurchase(),
+                                  icon: const Icon(
+                                      Icons.add_shopping_cart_outlined,
+                                      size: 18),
+                                  label: const Text('Pembelian Baru'),
+                                ),
+                              ]
+                            : const [],
                   ),
                   const SizedBox(height: 18),
                 ],
@@ -3585,6 +3599,23 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
       _data = _load();
       _message = null;
     });
+  }
+
+  Future<void> openNewPurchase() async {
+    setState(() {
+      _segment = 3;
+      _message = null;
+    });
+    try {
+      final data = await _data;
+      if (!mounted) return;
+      await _createPurchaseOrder(data);
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
   }
 
   Future<void> _settle(SettlementDocument document) async {
@@ -6775,9 +6806,18 @@ class InventoryApiClient {
         response.statusCode >= 300 ||
         decoded['success'] == false) {
       final error = decoded['error'] as Map<String, Object?>?;
+      final retryAfter = inventoryApiRetryAfter(
+        response.headers.value(HttpHeaders.retryAfterHeader),
+      );
       throw InventoryApiException(
-          (error?['message'] ?? 'Permintaan gagal (${response.statusCode}).')
-              .toString());
+        inventoryApiErrorMessage(
+          response.statusCode,
+          error?['message']?.toString(),
+          retryAfter: retryAfter,
+        ),
+        statusCode: response.statusCode,
+        retryAfter: retryAfter,
+      );
     }
     return decoded['data'] as T;
   }
@@ -6807,9 +6847,42 @@ bool inventoryApiDnsLookupFailed(SocketException error) {
       error.osError?.errorCode == 7;
 }
 
+Duration? inventoryApiRetryAfter(String? value, {DateTime? now}) {
+  if (value == null || value.trim().isEmpty) return null;
+  final seconds = int.tryParse(value.trim());
+  if (seconds != null) return Duration(seconds: seconds < 0 ? 0 : seconds);
+  try {
+    final target = HttpDate.parse(value.trim());
+    final delay = target.difference((now ?? DateTime.now()).toUtc());
+    return delay.isNegative ? Duration.zero : delay;
+  } on FormatException {
+    return null;
+  }
+}
+
+String inventoryApiErrorMessage(
+  int statusCode,
+  String? serverMessage, {
+  Duration? retryAfter,
+}) {
+  if (statusCode == HttpStatus.tooManyRequests) {
+    final wait = retryAfter != null && retryAfter.inSeconds > 0
+        ? ' Tunggu ${retryAfter.inSeconds} detik lalu coba lagi.'
+        : ' Tunggu sebentar lalu coba lagi.';
+    return 'Server sedang menerima terlalu banyak permintaan.$wait';
+  }
+  return serverMessage ?? 'Permintaan gagal ($statusCode).';
+}
+
 class InventoryApiException implements Exception {
-  const InventoryApiException(this.message);
+  const InventoryApiException(
+    this.message, {
+    this.statusCode,
+    this.retryAfter,
+  });
   final String message;
+  final int? statusCode;
+  final Duration? retryAfter;
   @override
   String toString() => message;
 }
