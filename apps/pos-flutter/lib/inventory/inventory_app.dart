@@ -581,6 +581,7 @@ class _InventoryHomePageState extends State<InventoryHomePage> {
           onRefresh: _refresh,
           onLogout: widget.onKeluar,
           onCekPembaruan: _cekPembaruanManual,
+          onHelp: () => _selectTab(7),
           content: _content(),
         );
       }
@@ -632,6 +633,7 @@ class _InventoryDesktopShell extends StatelessWidget {
     required this.onRefresh,
     required this.onLogout,
     required this.onCekPembaruan,
+    required this.onHelp,
     required this.content,
   });
 
@@ -644,6 +646,7 @@ class _InventoryDesktopShell extends StatelessWidget {
   final VoidCallback onRefresh;
   final VoidCallback onLogout;
   final VoidCallback onCekPembaruan;
+  final VoidCallback onHelp;
   final Widget content;
 
   @override
@@ -721,6 +724,7 @@ class _InventoryDesktopShell extends StatelessWidget {
                     onRefresh: onRefresh,
                     onLogout: onLogout,
                     onCekPembaruan: onCekPembaruan,
+                    onHelp: onHelp,
                   ),
                   Expanded(child: content),
                 ],
@@ -1085,6 +1089,7 @@ class _InventoryTopBar extends StatelessWidget {
     required this.onRefresh,
     required this.onLogout,
     required this.onCekPembaruan,
+    required this.onHelp,
   });
   final PersonaInventory persona;
   final int pending;
@@ -1093,6 +1098,7 @@ class _InventoryTopBar extends StatelessWidget {
   final VoidCallback onRefresh;
   final VoidCallback onLogout;
   final VoidCallback onCekPembaruan;
+  final VoidCallback onHelp;
 
   @override
   Widget build(BuildContext context) {
@@ -1149,7 +1155,7 @@ class _InventoryTopBar extends StatelessWidget {
           ),
           IconButton(
               tooltip: 'Bantuan',
-              onPressed: () {},
+              onPressed: onHelp,
               icon: const Icon(Icons.help_outline, size: 21)),
           const SizedBox(width: 4),
           const CircleAvatar(
@@ -1300,6 +1306,58 @@ class _InventoryDashboard extends StatelessWidget {
   final InventorySnapshot snapshot;
   final VoidCallback onCreateOrder;
 
+  Future<void> _showAll(
+    BuildContext context, {
+    required String title,
+    required List<Widget> rows,
+  }) {
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: FractionallySizedBox(
+          heightFactor: 0.72,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 12, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(title,
+                          style: Theme.of(sheetContext)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w900)),
+                    ),
+                    IconButton(
+                      tooltip: 'Tutup',
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: rows.isEmpty
+                    ? const Center(child: Text('Belum ada data.'))
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: rows.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (_, index) => rows[index],
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -1331,8 +1389,20 @@ class _InventoryDashboard extends StatelessWidget {
           final products = _SectionCard(
             title: 'Top Produk Terlaris',
             icon: Icons.leaderboard_outlined,
-            action:
-                TextButton(onPressed: () {}, child: const Text('Lihat semua')),
+            action: TextButton(
+                key: const Key('dashboard-products-view-all'),
+                onPressed: () => _showAll(
+                      context,
+                      title: 'Semua Produk Terlaris',
+                      rows: snapshot.topProducts
+                          .map((row) => ListTile(
+                                title: Text(row.name),
+                                subtitle: Text('${angka(row.quantity)} unit'),
+                                trailing: Text(rupiah(row.revenue)),
+                              ))
+                          .toList(),
+                    ),
+                child: const Text('Lihat semua')),
             child: Column(
               children: snapshot.topProducts
                   .take(5)
@@ -1383,8 +1453,21 @@ class _InventoryDashboard extends StatelessWidget {
           final stock = _SectionCard(
             title: 'Peringatan Stok',
             icon: Icons.warning_amber_outlined,
-            action:
-                TextButton(onPressed: () {}, child: const Text('Lihat semua')),
+            action: TextButton(
+                key: const Key('dashboard-stock-view-all'),
+                onPressed: () => _showAll(
+                      context,
+                      title: 'Semua Peringatan Stok',
+                      rows: snapshot.expiringLots
+                          .map((row) => ListTile(
+                                title: Text(row.productName),
+                                subtitle: Text(
+                                    '${row.productCode} • Lot ${row.lotNumber}'),
+                                trailing: Text(row.expiryDate),
+                              ))
+                          .toList(),
+                    ),
+                child: const Text('Lihat semua')),
             child: _CompactRiskTable(lots: snapshot.expiringLots),
           );
           final orders = _SectionCard(
@@ -1397,8 +1480,21 @@ class _InventoryDashboard extends StatelessWidget {
           final audit = _SectionCard(
             title: 'Aktivitas Audit Trail',
             icon: Icons.history_outlined,
-            action:
-                TextButton(onPressed: () {}, child: const Text('Lihat semua')),
+            action: TextButton(
+                key: const Key('dashboard-audit-view-all'),
+                onPressed: () => _showAll(
+                      context,
+                      title: 'Semua Aktivitas Audit',
+                      rows: snapshot.orders
+                          .map((row) => ListTile(
+                                title: Text(row.number),
+                                subtitle:
+                                    Text('${row.customer} • ${row.sales}'),
+                                trailing: Text(rupiah(row.total)),
+                              ))
+                          .toList(),
+                    ),
+                child: const Text('Lihat semua')),
             child: _DashboardAuditTrail(orders: snapshot.orders),
           );
           if (!wide) {
