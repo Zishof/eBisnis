@@ -467,3 +467,29 @@ export function pengamatanTerlambat(input: {
   const telat = berlalu - input.observationMinutes;
   return { overdue: telat > 0, minutesLate: Math.max(0, Math.round(telat)) };
 }
+
+/**
+ * Membuang identitas penghuni dari daftar tempat tidur.
+ *
+ * Daftar tempat tidur menjawab dua pertanyaan yang berbeda kepada dua orang
+ * yang berbeda. Pengurus sarana bertanya "tempat tidur mana yang siap dipakai";
+ * perawat bertanya "siapa yang ada di tempat tidur ini". Hanya pertanyaan kedua
+ * yang menuntut nama.
+ *
+ * UAT persona memperlihatkan akibat menjawab keduanya sekaligus: administrator
+ * eMedik menerima 403 pada indeks pasien dan pada papan bangsal, lalu
+ * memperoleh nama lengkap beserta nomor rawat inap dari daftar tempat tidur —
+ * salah satunya di kamar isolasi, yang dengan sendirinya sudah menyatakan
+ * sesuatu yang klinis tentang orang itu.
+ *
+ * Yang dibuang hanya nama dan nomor rawat inapnya. Keadaan tempat tidur tetap
+ * utuh, sebab menyembunyikannya tidak melindungi siapa pun dan justru
+ * melumpuhkan pengurus sarana.
+ */
+export function samarkanPenghuniTempatTidur<T extends { patient_name?: unknown; admission_number?: unknown }>(
+  baris: readonly T[],
+  bolehLihatPenghuni: boolean,
+): T[] {
+  if (bolehLihatPenghuni) return [...baris];
+  return baris.map((b) => ({ ...b, patient_name: null, admission_number: null }));
+}

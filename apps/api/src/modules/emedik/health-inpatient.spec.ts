@@ -13,6 +13,7 @@ import {
   lamaRawat,
   pengamatanTerlambat,
   pilihTempatTidur,
+  samarkanPenghuniTempatTidur,
   skorPeringatanDini,
   type KebutuhanPasien,
   type TempatTidur,
@@ -455,5 +456,56 @@ describe('keterlambatan pengamatan', () => {
     expect(pengamatanTerlambat({
       lastObservationAt: null, observationMinutes: 240, now: '2026-08-01T10:00:00Z',
     }).overdue).toBe(true);
+  });
+});
+
+describe('samarkanPenghuniTempatTidur', () => {
+  const baris = [
+    {
+      id: 'B1',
+      code: 'TT-ISO-01',
+      room_name: 'Kamar Isolasi',
+      status: 'OCCUPIED',
+      care_class: 'III',
+      patient_name: 'Sari Wulandari',
+      admission_number: 'INP-2026-0002',
+    },
+    { id: 'B2', code: 'TT-02', room_name: 'Melati', status: 'AVAILABLE', care_class: 'III', patient_name: null, admission_number: null },
+  ];
+
+  it('membiarkan nama penghuni bagi yang berwenang melihatnya', () => {
+    const hasil = samarkanPenghuniTempatTidur(baris, true);
+    expect(hasil[0].patient_name).toBe('Sari Wulandari');
+    expect(hasil[0].admission_number).toBe('INP-2026-0002');
+  });
+
+  it('membuang nama dan nomor rawat inap bagi yang tidak berwenang', () => {
+    const hasil = samarkanPenghuniTempatTidur(baris, false);
+    expect(hasil[0].patient_name).toBeNull();
+    expect(hasil[0].admission_number).toBeNull();
+  });
+
+  /*
+   * Inti temuan UAT persona: administrator eMedik ditolak indeks pasien, lalu
+   * memperoleh identitas yang sama lewat daftar tempat tidur. Yang membuatnya
+   * lebih dari sekadar kebocoran nama adalah kamar isolasinya — letak itu
+   * sendiri sudah menyatakan sesuatu yang klinis.
+   */
+  it('tetap menyebut kamar dan keadaan tempat tidurnya, sebab itulah yang dibutuhkan pengurus sarana', () => {
+    const hasil = samarkanPenghuniTempatTidur(baris, false);
+    expect(hasil[0].code).toBe('TT-ISO-01');
+    expect(hasil[0].room_name).toBe('Kamar Isolasi');
+    expect(hasil[0].status).toBe('OCCUPIED');
+    expect(hasil[0].care_class).toBe('III');
+  });
+
+  it('tidak mengubah larik masukannya', () => {
+    const salinan = JSON.parse(JSON.stringify(baris));
+    samarkanPenghuniTempatTidur(baris, false);
+    expect(baris).toEqual(salinan);
+  });
+
+  it('membiarkan baris kosong tetap kosong', () => {
+    expect(samarkanPenghuniTempatTidur([], false)).toEqual([]);
   });
 });
