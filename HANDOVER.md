@@ -22,8 +22,13 @@ Baca sesuai bidang yang akan dilanjutkan:
 | 4 | ePesantren, eSchool, dan Education Core | [`docs/santri-info/21-session-handoff-2026-08-10.md`](docs/santri-info/21-session-handoff-2026-08-10.md) | `aef9c93` |
 | 5 | POS/Inventory dan ekosistem lintas vertikal (konteks lengkap) | [`docs/pos-web-priority/18-serah-terima-claude-2026-08-10.md`](docs/pos-web-priority/18-serah-terima-claude-2026-08-10.md) | `9634dfb` |
 | 6 | POS/Inventory dan ekosistem (ringkasan sesi Codex) | [`docs/pos-web-priority/19-serah-terima-sesi-codex-2026-08-10.md`](docs/pos-web-priority/19-serah-terima-sesi-codex-2026-08-10.md) | `9634dfb` |
+| 7 | **POS/Inventory — untuk dikendalikan dari jarak jauh** (mulai dari sini bila memberi perintah dari ponsel) | [`docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md`](docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md) | serah-terima remote |
 
-Keenam dokumen tersebut saling melengkapi. Dokumen eMedik mencakup domain,
+Dokumen nomor 7 ditulis khusus untuk dipakai TANPA menjelajah repo lebih
+dahulu: keadaan hari ini, gap yang menunggu, larangan, dan perintah
+siap-tempel. Mulai dari sana bila pekerjaan dikendalikan dari jarak jauh.
+
+Keenam dokumen lainnya saling melengkapi. Dokumen eMedik mencakup domain,
 landing, storefront tenant, UI klinis, POS Apotik Web/Windows/Android, manual,
 unduhan, pembaruan, deploy, dan status Android signing. Ringkasan POS/Inventory
 mencakup CI, matrix build, auto-update, parity 48 layar, serta gap akuntansi dan
