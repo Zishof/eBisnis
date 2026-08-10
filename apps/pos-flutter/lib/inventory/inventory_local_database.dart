@@ -103,15 +103,20 @@ class InventoryLocalDatabase extends _$InventoryLocalDatabase {
     );
   }
 
-  Future<List<InventoryOutboxItem>> pendingOutbox({int limit = 100}) {
+  Future<List<InventoryOutboxItem>> pendingOutbox({
+    int limit = 100,
+    bool ignoreSchedule = false,
+  }) {
     final now = DateTime.now().toUtc();
-    return (select(inventoryOutboxItems)
-          ..where((table) =>
-              table.status.isIn(['PENDING', 'FAILED']) &
-              table.nextAttemptAt.isSmallerOrEqualValue(now))
-          ..orderBy([(table) => OrderingTerm.asc(table.createdAt)])
-          ..limit(limit))
-        .get();
+    final query = select(inventoryOutboxItems)
+      ..where((table) => table.status.isIn(['PENDING', 'FAILED']));
+    if (!ignoreSchedule) {
+      query.where((table) => table.nextAttemptAt.isSmallerOrEqualValue(now));
+    }
+    query
+      ..orderBy([(table) => OrderingTerm.asc(table.createdAt)])
+      ..limit(limit);
+    return query.get();
   }
 
   Future<void> markCompleted(String eventId) async {

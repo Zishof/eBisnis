@@ -59,6 +59,7 @@ class LayarKasir extends StatefulWidget {
     this.onKeluar,
     this.pembaruan,
     this.pembukuan,
+    this.sinkronisasi,
     this.mode = ModeKasir.penjualan,
     this.apiClient,
     super.key,
@@ -83,6 +84,7 @@ class LayarKasir extends StatefulWidget {
   final VoidCallback? onKeluar;
   final PengelolaPembaruan? pembaruan;
   final PembukuanKasir? pembukuan;
+  final SinkronisasiKasir? sinkronisasi;
   final ModeKasir mode;
   final PosApiClient? apiClient;
 
@@ -427,6 +429,21 @@ class _LayarKasirState extends State<LayarKasir> {
       case AksiKasir.hapusBaris:
         if (_baris.isNotEmpty) _hapusBaris(_baris.length - 1);
       case AksiKasir.tutupDialog:
+        _kembalikanFokus();
+      case AksiKasir.sinkronkan:
+        final sinkronisasi = widget.sinkronisasi;
+        if (sinkronisasi == null) {
+          _kabar('Sinkronisasi belum tersedia pada klien ini.');
+        } else {
+          try {
+            final jumlah = await sinkronisasi();
+            _kabar(jumlah == 0
+                ? 'Tidak ada transaksi tertunda.'
+                : '$jumlah transaksi tertunda berhasil disinkronkan.');
+          } on Object catch (error) {
+            _kabar('Sinkronisasi gagal: $error', galat: true);
+          }
+        }
         _kembalikanFokus();
       default:
         // Aksi yang perilakunya menuntut peladen belum tersambung. Dikatakan
@@ -1280,7 +1297,7 @@ class _LayarKasirState extends State<LayarKasir> {
         ),
         if (!ringkas) ...[
           const SizedBox(height: 10),
-          const _BilahPintasan(),
+          _BilahPintasan(onSelected: _jalankan),
         ],
       ],
     );
@@ -1651,7 +1668,9 @@ class _GuardrailFarmasi extends StatelessWidget {
 /// mana yang membayar. Isinya dibangkitkan dari `pintasan.dart`, sehingga peta
 /// tombol yang berubah tidak dapat meninggalkan bilah ini menampilkan yang lama.
 class _BilahPintasan extends StatelessWidget {
-  const _BilahPintasan();
+  const _BilahPintasan({required this.onSelected});
+
+  final Future<void> Function(AksiKasir aksi) onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -1664,26 +1683,34 @@ class _BilahPintasan extends StatelessWidget {
           for (final p in daftarPintasan())
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: hiasanKartu(radius: 8),
-                child: Row(
-                  children: [
-                    Text(
-                      keteranganAksi[p.aksi]!,
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  key: Key('aksi-${p.aksi.name}'),
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => onSelected(p.aksi),
+                  child: Ink(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: hiasanKartu(radius: 8),
+                    child: Row(
+                      children: [
+                        Text(
+                          keteranganAksi[p.aksi]!,
+                          style: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          p.tombol,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Warna.utama,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 7),
-                    Text(
-                      p.tombol,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Warna.utama,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

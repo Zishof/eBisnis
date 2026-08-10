@@ -113,6 +113,7 @@ Future<ValueNotifier<KeadaanPelanggan>> pasang(
   Pencetak? pencetak,
   List<MetodeBayar>? metode,
   PengelolaPembaruan? pembaruan,
+  SinkronisasiKasir? sinkronisasi,
   ModeKasir mode = ModeKasir.penjualan,
   Size ukuran = const Size(1600, 960),
 }) async {
@@ -146,6 +147,7 @@ Future<ValueNotifier<KeadaanPelanggan>> pasang(
         namaToko: 'Toko Uji',
         pelanggan: pelanggan,
         pembaruan: pembaruan,
+        sinkronisasi: sinkronisasi,
         mode: mode,
       ),
     ),
@@ -161,6 +163,27 @@ Future<void> pindai(WidgetTester tester, String kode) async {
 }
 
 void main() {
+  testWidgets('bilah pintasan dapat diklik dan sinkronisasi benar-benar jalan',
+      (tester) async {
+    var dipanggil = 0;
+    await pasang(
+      tester,
+      sinkronisasi: () async {
+        dipanggil += 1;
+        return 2;
+      },
+    );
+
+    final tombol = find.byKey(const Key('aksi-sinkronkan'));
+    await tester.ensureVisible(tombol);
+    await tester.tap(tombol);
+    await tester.pumpAndSettle();
+
+    expect(dipanggil, 1);
+    expect(find.text('2 transaksi tertunda berhasil disinkronkan.'),
+        findsOneWidget);
+  });
+
   testWidgets(
       'memindai barcode memasukkan barang, dan fokus kembali ke kotak pindai',
       (tester) async {

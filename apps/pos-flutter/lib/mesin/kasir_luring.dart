@@ -343,7 +343,10 @@ class KasirLuringEngine {
   /// Mengirim ulang transaksi yang masih tertahan di antrean. Dipanggil dari
   /// pemeriksa sambungan berkala atau tombol sinkronisasi manual.
   Future<int> sinkronkan() async {
-    final pending = await _database.pendingOutbox();
+    // Tombol sinkronisasi adalah permintaan eksplisit operator sesudah jaringan
+    // pulih. Ia tidak boleh diam-diam melewati item FAILED hanya karena jadwal
+    // backoff otomatisnya belum jatuh tempo.
+    final pending = await _database.pendingOutbox(ignoreSchedule: true);
     var terkirim = 0;
     for (final item in pending) {
       try {
