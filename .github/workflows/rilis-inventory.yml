@@ -136,10 +136,19 @@ jobs:
           } finally {
             if (Test-Path $pfx) { Remove-Item -LiteralPath $pfx -Force }
           }
+      - name: Buat checksum installer
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem keluaran\ebisnis-inventory-sales-*-windows.exe -File
+          if ($installer.Count -ne 1) { throw "Diharapkan satu installer, ditemukan $($installer.Count)." }
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $installer.FullName).Hash.ToLowerInvariant()
+          "$hash  $($installer.Name)" | Set-Content -NoNewline -Encoding ascii "$($installer.FullName).sha256"
       - uses: actions/upload-artifact@v4
         with:
           name: inventory-windows
-          path: keluaran/ebisnis-inventory-sales-*-windows.exe
+          path: |
+            keluaran/ebisnis-inventory-sales-*-windows.exe
+            keluaran/ebisnis-inventory-sales-*-windows.exe.sha256
           if-no-files-found: error
 
   android-uat:
@@ -321,13 +330,23 @@ jobs:
           fi
           cp build/app/outputs/flutter-apk/app-inventory-release.apk \
             "${GITHUB_WORKSPACE}/keluaran/${nama}"
+      - name: Verifikasi signature dan checksum APK
+        run: |
+          apk="$(find keluaran -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*.apk' -print -quit)"
+          test -n "$apk" || { echo "::error::APK keluaran tidak ditemukan."; exit 1; }
+          apksigner="$(find "${ANDROID_HOME}/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          test -x "$apksigner" || { echo "::error::apksigner tidak ditemukan."; exit 1; }
+          "$apksigner" verify --verbose --print-certs "$apk"
+          sha256sum "$apk" > "${apk}.sha256"
       - name: Hapus kunci dari runner
         if: always()
         run: rm -f "${JALUR}/android/key.properties" "${JALUR}/android/rilis.jks" "${RUNNER_TEMP}/inventory-keystore.base64" "${RUNNER_TEMP}/inventory-key-probe.p12"
       - uses: actions/upload-artifact@v4
         with:
           name: inventory-android
-          path: keluaran/ebisnis-inventory-sales-*.apk
+          path: |
+            keluaran/ebisnis-inventory-sales-*.apk
+            keluaran/ebisnis-inventory-sales-*.apk.sha256
           if-no-files-found: error
 
   terbitkan:
@@ -361,4 +380,6 @@ jobs:
             --title "eBisnis Inventory Sales $versi" \
             --notes "Perbaikan kontrol Sales Order, draft lokal, sinkronisasi, riwayat order, dan pembatalan order aman. $catatan" \
             berkas/inventory-windows/*.exe \
-            berkas/inventory-android/*.apk
+            berkas/inventory-windows/*.sha256 \
+            berkas/inventory-android/*.apk \
+            berkas/inventory-android/*.sha256
