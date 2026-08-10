@@ -235,6 +235,22 @@ export const PARITY_EVIDENCE: ParityProof[] = [
     status: 'AUTOMATED_PROVEN',
     reference: 'apps/pos-flutter/test/inventory_transaction_workspaces_test.dart',
   },
+  {
+    screen: 30,
+    surface: 'web',
+    capability: 'create',
+    kind: 'unit',
+    status: 'SOURCE_IMPLEMENTED',
+    reference: 'apps/web/src/pages/app/inventory-transaction-draft.test.ts',
+  },
+  {
+    screen: 30,
+    surface: 'web',
+    capability: 'offline',
+    kind: 'unit',
+    status: 'SOURCE_IMPLEMENTED',
+    reference: 'apps/web/src/pages/app/inventory-transaction-draft.test.ts',
+  },
 ];
 
 export const PROOF_SURFACES: ProofSurface[] = ['api', 'web', 'windows', 'android'];
@@ -250,6 +266,9 @@ export const PARITY_REQUIREMENTS: ParityRequirement[] = Array.from(
 ).flatMap((screen) => [
   ...PROOF_SURFACES.map((surface) => ({ screen, surface, capability: 'view' as const })),
   { screen, surface: 'api' as const, capability: 'reconciliation' as const },
+]).concat([
+  { screen: 30, surface: 'web', capability: 'create' },
+  { screen: 30, surface: 'web', capability: 'offline' },
 ]);
 
 const PROVEN_STATUSES = new Set<ProofStatus>([

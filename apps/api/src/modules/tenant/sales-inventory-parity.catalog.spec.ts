@@ -69,7 +69,7 @@ describe('sales inventory legacy parity contract', () => {
   });
 
   it('memisahkan evidence API dari Web, Windows, dan Android', () => {
-    expect(PARITY_REQUIREMENTS).toHaveLength(48 * 5);
+    expect(PARITY_REQUIREMENTS).toHaveLength(48 * 5 + 2);
     expect(provenScreens('api', 'view').size).toBe(48);
     expect(provenScreens('api').size).toBe(0);
     expect(provenScreens('web').size).toBe(0);
@@ -82,6 +82,8 @@ describe('sales inventory legacy parity contract', () => {
     expect(hasProof({ screen: 1, surface: 'api', capability: 'view' })).toBe(true);
     expect(hasProof({ screen: 1, surface: 'web', capability: 'view' })).toBe(false);
     expect(hasProof({ screen: 1, surface: 'api', capability: 'reconciliation' })).toBe(false);
+    expect(hasProof({ screen: 30, surface: 'web', capability: 'create' })).toBe(false);
+    expect(hasProof({ screen: 30, surface: 'web', capability: 'offline' })).toBe(false);
   });
 
   it('keeps finance reports tied to posted journals and correct normal balances', () => {

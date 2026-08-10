@@ -21,7 +21,9 @@
     { "screens": "1-48", "surface": "web", "capability": "view" },
     { "screens": "1-48", "surface": "windows", "capability": "view" },
     { "screens": "1-48", "surface": "android", "capability": "view" },
-    { "screens": "1-48", "surface": "api", "capability": "reconciliation" }
+    { "screens": "1-48", "surface": "api", "capability": "reconciliation" },
+    { "screens": "30", "surface": "web", "capability": "create" },
+    { "screens": "30", "surface": "web", "capability": "offline" }
   ],
   "currentEvidence": [
     {
@@ -50,12 +52,28 @@
         "apps/pos-flutter/test/inventory_purchasing_visual_test.dart",
         "apps/pos-flutter/test/inventory_transaction_workspaces_test.dart"
       ]
+    },
+    {
+      "screens": "30",
+      "surface": "web",
+      "capability": "create",
+      "kind": "unit",
+      "status": "SOURCE_IMPLEMENTED",
+      "referencePattern": "apps/web/src/pages/app/inventory-transaction-draft.test.ts"
+    },
+    {
+      "screens": "30",
+      "surface": "web",
+      "capability": "offline",
+      "kind": "unit",
+      "status": "SOURCE_IMPLEMENTED",
+      "referencePattern": "apps/web/src/pages/app/inventory-transaction-draft.test.ts"
     }
   ],
   "truthSummary": {
-    "requirements": 240,
+    "requirements": 242,
     "proven": { "apiView": 48, "apiAllRequired": 0, "web": 0, "windows": 2, "android": 0, "allSurfaces": 0 },
-    "pending": 190
+    "pending": 192
   },
   "incrementalRule": "Add capability-specific requirements and evidence per vertical slice; never infer one surface or capability from another.",
   "uatRule": "AUTOMATED_PROVEN is not DEVICE_UAT_PROVEN or PRODUCTION_VERIFIED. BLOCKED and NOT_REQUIRED require a reason."

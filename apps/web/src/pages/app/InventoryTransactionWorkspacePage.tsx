@@ -23,6 +23,12 @@ import {
 } from 'lucide-react';
 import { api, formatMoney } from '../../lib/api';
 import { ErrorState, LoadingState } from '../../components/ui';
+import {
+  createTransactionEventId,
+  deleteInventoryDraft,
+  loadInventoryDraft,
+  saveInventoryDraft,
+} from './inventory-transaction-draft';
 
 type Mode = 'sales' | 'purchase';
 type Party = { id: string; code: string; name: string; metadata?: Record<string, unknown> };
@@ -39,6 +45,14 @@ type Catalog = { customers: Party[]; products: Product[] };
 type MasterData = { suppliers: Party[] };
 type StockWorkspace = { warehouses: Array<{ id: string; code: string; name: string }> };
 type Line = Product & { qty: number; unitPrice: number; discount: number; batch: string; expiry: string };
+type DraftPayload = {
+  partyId?: string;
+  warehouseId?: string;
+  lines?: Line[];
+  taxPercent?: number;
+  paymentTerm?: string;
+  note?: string;
+};
 
 const steps: Record<Mode, string[]> = {
   sales: ['Pilih Customer', 'Cari Barang', 'Tambahkan ke Keranjang', 'Review & Kirim'],
@@ -55,29 +69,25 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
   const [paymentTerm, setPaymentTerm] = useState('Kredit 30 hari');
   const [note, setNote] = useState('');
   const [message, setMessage] = useState('');
+  const [eventId, setEventId] = useState(() => createTransactionEventId(mode));
 
   useEffect(() => {
-    const raw = window.sessionStorage.getItem(`inventory-${mode}-draft`);
-    if (!raw) return;
-    try {
-      const draft = JSON.parse(raw) as {
-        partyId?: string;
-        warehouseId?: string;
-        lines?: Line[];
-        taxPercent?: number;
-        paymentTerm?: string;
-        note?: string;
-      };
+    let cancelled = false;
+    void loadInventoryDraft<DraftPayload>(mode).then((record) => {
+      if (!record || cancelled) return;
+      const draft = record.payload;
       setPartyId(draft.partyId ?? '');
       setWarehouseId(draft.warehouseId ?? '');
       setLines(Array.isArray(draft.lines) ? draft.lines : []);
       setTaxPercent(draft.taxPercent ?? 11);
       setPaymentTerm(draft.paymentTerm ?? 'Kredit 30 hari');
       setNote(draft.note ?? '');
-      setMessage('Draft pada sesi ini berhasil dipulihkan.');
-    } catch {
-      window.sessionStorage.removeItem(`inventory-${mode}-draft`);
-    }
+      setEventId(record.eventId);
+      setMessage('Draft tahan-tutup berhasil dipulihkan dari perangkat ini.');
+    }).catch(() => {
+      if (!cancelled) setMessage('Penyimpanan draft perangkat belum dapat dibuka.');
+    });
+    return () => { cancelled = true; };
   }, [mode]);
 
   const catalog = useQuery({ queryKey: ['inventory-transaction-catalog'], queryFn: () => api.get<Catalog>('/inventory/mobile-catalog') });
@@ -119,7 +129,7 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
       if (mode === 'sales') {
         return api.post<{ order_number: string }>('/inventory/mobile-orders', {
           deviceId: 'web-inventory',
-          deviceEventId: `WEB_${Date.now()}_${lines.length}`,
+          deviceEventId: eventId,
           customerId: selectedPartyId,
           taxPercent,
           paymentTerm,
@@ -144,12 +154,13 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
         })),
       });
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       const number = 'order_number' in data ? data.order_number : data.purchase_order_number;
       setMessage(`${mode === 'sales' ? 'Order' : 'Purchase order'} ${number} berhasil disimpan.`);
       setLines([]);
       setNote('');
-      window.sessionStorage.removeItem(`inventory-${mode}-draft`);
+      await deleteInventoryDraft(mode);
+      setEventId(createTransactionEventId(mode));
     },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Transaksi belum tersimpan.'),
   });
@@ -167,14 +178,18 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
     setLines((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row));
   }
 
-  function saveDraft() {
-    window.sessionStorage.setItem(`inventory-${mode}-draft`, JSON.stringify({ partyId: selectedPartyId, warehouseId: selectedWarehouseId, lines, taxPercent, paymentTerm, note }));
-    setMessage('Draft tersimpan pada perangkat ini.');
+  async function saveDraft() {
+    try {
+      await saveInventoryDraft(mode, eventId, { partyId: selectedPartyId, warehouseId: selectedWarehouseId, lines, taxPercent, paymentTerm, note });
+      setMessage('Draft tersimpan tahan-tutup pada perangkat ini.');
+    } catch {
+      setMessage('Draft belum dapat disimpan pada perangkat ini.');
+    }
   }
 
-  function inspectDraft() {
-    const raw = window.sessionStorage.getItem(`inventory-${mode}-draft`);
-    setMessage(raw ? 'Draft lokal tersedia dan sudah dimuat ke workspace ini.' : 'Belum ada draft lokal untuk transaksi ini.');
+  async function inspectDraft() {
+    const record = await loadInventoryDraft(mode).catch(() => null);
+    setMessage(record ? 'Draft tahan-tutup tersedia dan sudah dimuat ke workspace ini.' : 'Belum ada draft lokal untuk transaksi ini.');
   }
 
   async function synchronizeWorkspace() {
@@ -238,14 +253,14 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
         <div><h1 className="text-2xl font-black text-slate-950 dark:text-white">{title}</h1><p className="text-sm text-slate-500">{description}</p></div>
         <div className="flex flex-wrap gap-2">
           {mode === 'sales' ? <>
-            <button className="btn-secondary" onClick={inspectDraft}><FileClock className="h-4 w-4" /> Riwayat Draft</button>
+            <button className="btn-secondary" onClick={() => void inspectDraft()}><FileClock className="h-4 w-4" /> Riwayat Draft</button>
             <button className="btn-secondary" onClick={() => void synchronizeWorkspace()}><History className="h-4 w-4" /> Sinkronkan</button>
           </> : <>
             <button className="btn-secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Cetak</button>
             <button className="btn-secondary" onClick={exportLines}><Download className="h-4 w-4" /> Export</button>
             <button className="btn-secondary" onClick={showAuditTrail}><FileText className="h-4 w-4" /> Audit Trail</button>
           </>}
-          <button className="btn-secondary" onClick={saveDraft}><Save className="h-4 w-4" /> Simpan Draft</button>
+          <button className="btn-secondary" onClick={() => void saveDraft()}><Save className="h-4 w-4" /> Simpan Draft</button>
           <button className="btn-primary" disabled={!selectedPartyId || lines.length === 0 || save.isPending} onClick={() => save.mutate()}>
             <Send className="h-4 w-4" /> {save.isPending ? 'Menyimpan...' : mode === 'sales' ? 'Kirim Order' : 'Simpan Pembelian'}
           </button>
@@ -288,7 +303,7 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
             <LineEditor lines={lines} purchase={mode === 'purchase'} onPatch={patchLine} onDelete={(id) => setLines((current) => current.filter((row) => row.id !== id))} />
           </div>
         </main>
-        <Summary mode={mode} party={party} lines={lines} discount={discount} subtotal={subtotal} tax={tax} total={total} taxPercent={taxPercent} onTax={setTaxPercent} paymentTerm={paymentTerm} onPaymentTerm={setPaymentTerm} note={note} onNote={setNote} warehouses={stock.data?.warehouses ?? []} warehouseId={selectedWarehouseId} onWarehouse={setWarehouseId} message={message} pending={save.isPending} onSubmit={() => save.mutate()} onDraft={saveDraft} />
+        <Summary mode={mode} party={party} lines={lines} discount={discount} subtotal={subtotal} tax={tax} total={total} taxPercent={taxPercent} onTax={setTaxPercent} paymentTerm={paymentTerm} onPaymentTerm={setPaymentTerm} note={note} onNote={setNote} warehouses={stock.data?.warehouses ?? []} warehouseId={selectedWarehouseId} onWarehouse={setWarehouseId} message={message} pending={save.isPending} onSubmit={() => save.mutate()} onDraft={() => void saveDraft()} />
       </div>
 
       {mode === 'purchase' && <PurchaseSupport />}
