@@ -134,4 +134,37 @@ void main() {
       matchesGoldenFile(goldenPath('inventory-shell-mobile.png')),
     );
   });
+
+  testWidgets('seluruh aksi dashboard dan bantuan mempunyai hasil nyata',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AplikasiInventory(
+      initialPersona: _persona,
+      client: _ShellVisualClient(),
+    ));
+    await tester.pumpAndSettle();
+
+    Future<void> openAndClose(Key key, String title) async {
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+      expect(find.text(title), findsOneWidget);
+      await tester.tap(find.byTooltip('Tutup'));
+      await tester.pumpAndSettle();
+    }
+
+    await openAndClose(
+        const Key('dashboard-products-view-all'), 'Semua Produk Terlaris');
+    await openAndClose(
+        const Key('dashboard-stock-view-all'), 'Semua Peringatan Stok');
+    await openAndClose(
+        const Key('dashboard-audit-view-all'), 'Semua Aktivitas Audit');
+
+    await tester.tap(find.byTooltip('Bantuan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Panduan Penggunaan'), findsOneWidget);
+  });
 }
