@@ -9,7 +9,7 @@ export class HospitalityHousekeepingService {
 
   board(schema: string, propertyId: string) {
     const S=`"${schema}"`;
-    return this.db.query(schema, `SELECT rm.id::text AS room_id,rm.nomor_kamar,rm.lantai,rt.nama AS room_type,
+    return this.db.query(schema, `SELECT rm.id::text AS room_id,rm.room_number AS nomor_kamar,rm.floor AS lantai,rt.name AS room_type,
       COALESCE(os.condition,CASE WHEN gs.status='CHECKED_OUT' THEN 'DIRTY' ELSE 'CLEAN' END) AS room_condition,
       COALESCE(os.dnd,FALSE) AS dnd,gs.status AS frontdesk_status,g.full_name AS guest_name,
       t.id::text AS task_id,t.task_kind,t.status AS task_status,t.priority,t.assigned_to::text,t.due_at::text,t.workload_points
@@ -18,7 +18,7 @@ export class HospitalityHousekeepingService {
       LEFT JOIN ${S}.hospitality_guest_stay gs ON gs.room_id=rm.id AND gs.status IN ('IN_HOUSE','CHECKED_OUT')
       LEFT JOIN ${S}.hospitality_guest g ON g.id=gs.guest_id
       LEFT JOIN LATERAL (SELECT * FROM ${S}.hospitality_housekeeping_task x WHERE x.room_id=rm.id AND x.status NOT IN ('CLOSED','REFUSED') ORDER BY x.created_at DESC LIMIT 1) t ON TRUE
-      WHERE rt.property_id=$1 AND rm.deleted_at IS NULL ORDER BY rm.lantai NULLS LAST,rm.nomor_kamar`, [propertyId]);
+      WHERE rt.property_id=$1 AND rm.deleted_at IS NULL ORDER BY rm.floor NULLS LAST,rm.room_number`, [propertyId]);
   }
 
   async createTask(schema: string, input: { propertyId:string; roomId:string; stayId?:string; taskKind:string; priority?:string; assignedTo?:string; shiftCode?:string; dueAt?:string; checklist?:unknown[]; roomSizeM2?:number; vip?:boolean; dueIn?:boolean }, key:string|undefined, actor:string) {
@@ -46,7 +46,7 @@ export class HospitalityHousekeepingService {
       if(!transisiTugasHkDiizinkan(from,to)) throw AppError.conflict(ErrorCodes.CONFLICT,`Transisi ${from} ke ${to} tidak diizinkan.`);
       await client.query(`INSERT INTO ${S}.hospitality_housekeeping_task_event(task_id,client_operation_id,action,from_status,to_status,note,supplies,linen,minibar,photos,occurred_at,actor_id)
         VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11,$12)`,[taskId,input.clientOperationId,input.action,from,to,clean(input.note),JSON.stringify(input.supplies??[]),JSON.stringify(input.linen??[]),JSON.stringify(input.minibar??[]),JSON.stringify(input.photos??[]),input.occurredAt,actor]);
-      await client.query(`UPDATE ${S}.hospitality_housekeeping_task SET status=$2,started_at=CASE WHEN $2='IN_PROGRESS' THEN COALESCE(started_at,now()) ELSE started_at END,completed_at=CASE WHEN $2='COMPLETED' THEN now() ELSE completed_at END,closed_at=CASE WHEN $2='CLOSED' THEN now() ELSE closed_at END,updated_at=now(),updated_by=$3,version=version+1 WHERE id=$1`,[taskId,to,actor]);
+      await client.query(`UPDATE ${S}.hospitality_housekeeping_task SET status=$2::varchar,started_at=CASE WHEN $2::varchar='IN_PROGRESS' THEN COALESCE(started_at,now()) ELSE started_at END,completed_at=CASE WHEN $2::varchar='COMPLETED' THEN now() ELSE completed_at END,closed_at=CASE WHEN $2::varchar='CLOSED' THEN now() ELSE closed_at END,updated_at=now(),updated_by=$3,version=version+1 WHERE id=$1`,[taskId,to,actor]);
       const condition=to==='IN_PROGRESS'?'CLEANING':to==='COMPLETED'?'CLEAN':to==='INSPECTED'||to==='CLOSED'?'INSPECTED':null;
       if(condition) await client.query(`INSERT INTO ${S}.hospitality_room_operation_state(room_id,property_id,condition,updated_by)
         SELECT room_id,property_id,$2,$3 FROM ${S}.hospitality_housekeeping_task WHERE id=$1

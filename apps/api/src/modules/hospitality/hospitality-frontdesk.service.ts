@@ -37,7 +37,7 @@ export class HospitalityFrontdeskService {
       schema,
       `SELECT rrs.id::text AS room_stay_id,r.id::text AS reservation_id,r.code,r.status AS reservation_status,
               g.full_name,rrs.checkin_date::text,rrs.checkout_date::text,rrs.room_id::text,
-              rm.nomor_kamar AS room_number,COALESCE(gs.status,'PRE_ARRIVAL') AS stay_status,gs.id::text AS stay_id,gs.eta::text
+              rm.room_number,COALESCE(gs.status,'PRE_ARRIVAL') AS stay_status,gs.id::text AS stay_id,gs.eta::text
          FROM ${S}.hospitality_reservation_room_stay rrs
          JOIN ${S}.hospitality_reservation r ON r.id=rrs.reservation_id AND r.deleted_at IS NULL
          JOIN ${S}.hospitality_guest g ON g.id=COALESCE(rrs.guest_id,r.guest_id)
@@ -146,8 +146,12 @@ export class HospitalityFrontdeskService {
       const replay = await client.query(`SELECT * FROM ${S}.hospitality_room_move WHERE idempotency_key=$1`, [idempotencyKey]);
       if (replay.rows[0]) return { move: replay.rows[0], replayed: true };
       const stay = await client.query<StayRow & { room_type_id: string; checkout_date: string }>(
-        `SELECT ${STAY_COLUMNS},rrs.room_type_id::text,rrs.checkout_date::text FROM ${S}.hospitality_guest_stay gs
-         JOIN ${S}.hospitality_reservation_room_stay rrs ON rrs.id=gs.room_stay_id WHERE gs.id=$1 FOR UPDATE`, [stayId]);
+        `SELECT gs.id::text,gs.reservation_id::text,gs.room_stay_id::text,gs.property_id::text,gs.guest_id::text,
+                gs.room_id::text,gs.status,gs.eta::text,gs.identity_verified,gs.guarantee_confirmed,gs.registration_card_signed,
+                gs.actual_checkin_at::text,gs.actual_checkout_at::text,gs.late_checkout_until::text,gs.version,
+                rrs.room_type_id::text,rrs.checkout_date::text
+           FROM ${S}.hospitality_guest_stay gs
+           JOIN ${S}.hospitality_reservation_room_stay rrs ON rrs.id=gs.room_stay_id WHERE gs.id=$1 FOR UPDATE`, [stayId]);
       const s = stay.rows[0];
       if (!s || s.status !== 'IN_HOUSE' || !s.room_id) throw AppError.conflict(ErrorCodes.CONFLICT, 'Hanya tamu in-house yang dapat dipindahkan.');
       const target = await client.query(`SELECT id FROM ${S}.hospitality_room WHERE id=$1 AND room_type_id=$2 AND status='AVAILABLE' AND deleted_at IS NULL FOR UPDATE`, [input.toRoomId, s.room_type_id]);

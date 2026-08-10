@@ -337,8 +337,8 @@ export class HospitalityGoLiveService {
         const attemptStatus = test ? 'ACKNOWLEDGED' : 'BLOCKED_PROVIDER_INPUT';
         await client.query(`INSERT INTO ${S}.hospitality_channel_delivery_attempt(distribution_job_id,attempt_number,adapter_key,status,request_hash,finished_at)
           VALUES($1,$2,$3,$4,$5,now())`, [job.id, attempt, job.provider_key, attemptStatus, job.payload_hash]);
-        await client.query(`UPDATE ${S}.hospitality_distribution_job SET status=$2,retry_count=$3,acknowledged_at=CASE WHEN $2='ACKNOWLEDGED' THEN now() ELSE acknowledged_at END,
-          error_code=CASE WHEN $2='ACKNOWLEDGED' THEN NULL ELSE 'BLOCKED_PROVIDER_INPUT' END,updated_at=now() WHERE id=$1`, [job.id, test ? 'ACKNOWLEDGED' : 'DEAD_LETTER', attempt]);
+        await client.query(`UPDATE ${S}.hospitality_distribution_job SET status=$2::varchar,retry_count=$3,acknowledged_at=CASE WHEN $2::varchar='ACKNOWLEDGED' THEN now() ELSE acknowledged_at END,
+          error_code=CASE WHEN $2::varchar='ACKNOWLEDGED' THEN NULL ELSE 'BLOCKED_PROVIDER_INPUT' END,updated_at=now() WHERE id=$1`, [job.id, test ? 'ACKNOWLEDGED' : 'DEAD_LETTER', attempt]);
         output.push({ id: job.id, status: attemptStatus, attempt });
       }
       return output;
