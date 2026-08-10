@@ -43,4 +43,29 @@ void main() {
       isFalse,
     );
   });
+
+  test('HTTP 429 ditampilkan sebagai pesan yang dapat ditindaklanjuti', () {
+    final retryAfter = inventoryApiRetryAfter('12');
+
+    expect(retryAfter, const Duration(seconds: 12));
+    expect(
+      inventoryApiErrorMessage(
+        429,
+        'ThrottlerException: Too Many Requests',
+        retryAfter: retryAfter,
+      ),
+      'Server sedang menerima terlalu banyak permintaan. '
+      'Tunggu 12 detik lalu coba lagi.',
+    );
+  });
+
+  test('Retry-After berbentuk tanggal HTTP ikut didukung', () {
+    expect(
+      inventoryApiRetryAfter(
+        'Tue, 11 Aug 2026 15:00:10 GMT',
+        now: DateTime.utc(2026, 8, 11, 15),
+      ),
+      const Duration(seconds: 10),
+    );
+  });
 }

@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
@@ -10,7 +11,14 @@ import { ResponseEnvelopeInterceptor } from './common/interceptors/response-enve
 import { assertEveryRouteIsMarked } from './common/security/route-authorization.audit';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: false,
+  });
+  // Produksi memakai Apache pada host yang sama. Memercayai hanya koneksi
+  // loopback membuat req.ip mengambil alamat yang ditambahkan Apache tanpa
+  // membiarkan klien langsung memalsukan X-Forwarded-For. Ini juga memastikan
+  // setiap perangkat mendapat ember rate-limit miliknya sendiri.
+  app.set('trust proxy', 'loopback');
   const config = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
