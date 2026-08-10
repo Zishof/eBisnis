@@ -1,6 +1,12 @@
 import { SALES_INVENTORY_PARITY, paritySummary, webRouteForScreen } from './sales-inventory-parity.catalog';
 import { reportSql } from './sales-inventory-operations.controller';
-import { PENDING_PROOF, provenScreens } from './parity-evidence.registry';
+import {
+  PARITY_EVIDENCE,
+  PARITY_REQUIREMENTS,
+  PENDING_PROOF,
+  hasProof,
+  provenScreens,
+} from './parity-evidence.registry';
 
 describe('sales inventory legacy parity contract', () => {
   it('keeps every one of the 48 documented screens in sequence', () => {
@@ -43,9 +49,9 @@ describe('sales inventory legacy parity contract', () => {
     // Sengaja TIDAK ada expect(...operational).toBe(48) / .toBe(0).
   });
 
-  it('setiap layar OPERATIONAL harus PROVEN atau tercatat PENDING_PROOF', () => {
+  it('setiap layar OPERATIONAL harus PROVEN lintas-surface atau tercatat PENDING_PROOF', () => {
     const proven = provenScreens();
-    const pending = new Set(PENDING_PROOF);
+    const pending = new Set(PENDING_PROOF.map((requirement) => requirement.screen));
     for (const scr of proven) {
       expect(pending.has(scr)).toBe(false); // PROVEN & PENDING tak boleh tumpang tindih
     }
@@ -58,8 +64,24 @@ describe('sales inventory legacy parity contract', () => {
   });
 
   it('PENDING_PROOF hanya boleh menyusut (regression guard)', () => {
-    // Turunkan ambang ini saat evidence bertambah. MENAIKKAN dilarang di review.
-    expect(PENDING_PROOF.length).toBeLessThanOrEqual(48);
+    // 48 layar x (4 surface view + 1 rekonsiliasi). Turunkan saat evidence bertambah.
+    expect(PENDING_PROOF.length).toBeLessThanOrEqual(48 * 5);
+  });
+
+  it('memisahkan evidence API dari Web, Windows, dan Android', () => {
+    expect(PARITY_REQUIREMENTS).toHaveLength(48 * 5);
+    expect(provenScreens('api', 'view').size).toBe(48);
+    expect(provenScreens('api').size).toBe(0);
+    expect(provenScreens('web').size).toBe(0);
+    expect(provenScreens('windows').size).toBe(0);
+    expect(provenScreens('android').size).toBe(0);
+    expect(provenScreens().size).toBe(0);
+
+    const apiProof = PARITY_EVIDENCE.find((proof) => proof.screen === 1 && proof.surface === 'api');
+    expect(apiProof?.capability).toBe('view');
+    expect(hasProof({ screen: 1, surface: 'api', capability: 'view' })).toBe(true);
+    expect(hasProof({ screen: 1, surface: 'web', capability: 'view' })).toBe(false);
+    expect(hasProof({ screen: 1, surface: 'api', capability: 'reconciliation' })).toBe(false);
   });
 
   it('keeps finance reports tied to posted journals and correct normal balances', () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   CalendarDays,
@@ -263,9 +263,12 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
         <h2 className="mb-3 font-black">{mode === 'sales' ? 'Pilih Customer' : 'Pilih Supplier'}</h2>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,2fr)]">
           <div className="space-y-2">
-            <select className="input w-full" value={selectedPartyId} onChange={(event) => setPartyId(event.target.value)}>
-              {parties.map((row) => <option key={row.id} value={row.id}>{row.code} - {row.name}</option>)}
-            </select>
+            <PartyAutocomplete
+              parties={parties}
+              value={selectedPartyId}
+              onChange={setPartyId}
+              label={mode === 'sales' ? 'Cari customer' : 'Cari supplier'}
+            />
             {party && <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-800"><div className="grid h-10 w-10 place-items-center rounded-full bg-blue-100 text-blue-700"><UserRound className="h-5 w-5" /></div><div><strong className="block">{party.name}</strong><span className="text-xs text-slate-500">{party.code} • Aktif</span></div></div>}
           </div>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -291,6 +294,79 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
       {mode === 'purchase' && <PurchaseSupport />}
     </div>
   );
+}
+
+export function PartyAutocomplete({ parties, value, onChange, label }: {
+  parties: Party[];
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+}) {
+  const listboxId = useId();
+  const selected = parties.find((party) => party.id === value);
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (selected) setQuery(`${selected.code} - ${selected.name}`);
+  }, [selected]);
+
+  const matches = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase('id-ID');
+    if (!normalized || selected && query === `${selected.code} - ${selected.name}`) return parties.slice(0, 12);
+    return parties.filter((party) =>
+      `${party.code} ${party.name}`.toLocaleLowerCase('id-ID').includes(normalized),
+    ).slice(0, 12);
+  }, [parties, query, selected]);
+
+  function choose(party: Party) {
+    onChange(party.id);
+    setQuery(`${party.code} - ${party.name}`);
+    setOpen(false);
+  }
+
+  return <div className="relative">
+    <label className="sr-only" htmlFor={`${listboxId}-input`}>{label}</label>
+    <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+    <input
+      id={`${listboxId}-input`}
+      role="combobox"
+      aria-autocomplete="list"
+      aria-controls={listboxId}
+      aria-expanded={open}
+      className="input w-full pl-9"
+      value={query}
+      placeholder={`${label} berdasarkan kode atau nama...`}
+      onFocus={() => setOpen(true)}
+      onChange={(event) => { setQuery(event.target.value); setOpen(true); }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setOpen(false);
+        if (event.key === 'Enter' && open && matches[0]) {
+          event.preventDefault();
+          choose(matches[0]);
+        }
+      }}
+    />
+    {open && <div
+      id={listboxId}
+      role="listbox"
+      className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+    >
+      {matches.map((party) => <button
+        key={party.id}
+        type="button"
+        role="option"
+        aria-selected={party.id === value}
+        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left hover:bg-blue-50 dark:hover:bg-slate-800"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => choose(party)}
+      >
+        <span><strong className="block text-sm">{party.name}</strong><span className="text-xs text-slate-500">{party.code}</span></span>
+        {party.id === value && <Check className="h-4 w-4 text-blue-600" />}
+      </button>)}
+      {matches.length === 0 && <p className="px-3 py-4 text-center text-sm text-slate-500">Pihak transaksi tidak ditemukan.</p>}
+    </div>}
+  </div>;
 }
 
 function Metric({ label, value, warning, success }: { label: string; value: string; warning?: boolean; success?: boolean }) {

@@ -1,0 +1,51 @@
+{
+  "$schema": "./parity-48.schema.json",
+  "schemaVersion": 1,
+  "asOf": "2026-08-10",
+  "baselineCommit": "b7172a330028f27be850e3a40890412d1fa26c31",
+  "screenRange": { "from": 1, "to": 48 },
+  "rangeNotation": "A-B means every integer screen from A through B, inclusive",
+  "sourceOfTruth": {
+    "catalog": "apps/api/src/modules/tenant/sales-inventory-parity.catalog.ts",
+    "registry": "apps/api/src/modules/tenant/parity-evidence.registry.ts",
+    "baseline": "docs/implementation/inventory-sales-48/evidence/baseline/2026-08-10-p0-baseline.md"
+  },
+  "allowed": {
+    "surfaces": ["api", "web", "windows", "android"],
+    "capabilities": ["view", "create", "update", "post", "reverse", "print", "export", "offline", "reconciliation", "hardware"],
+    "kinds": ["unit", "integration", "e2e", "golden", "uat"],
+    "statuses": ["NOT_STARTED", "SOURCE_IMPLEMENTED", "AUTOMATED_PROVEN", "DEVICE_UAT_PROVEN", "PRODUCTION_VERIFIED", "BLOCKED", "NOT_REQUIRED"]
+  },
+  "minimumRequirements": [
+    { "screens": "1-48", "surface": "api", "capability": "view" },
+    { "screens": "1-48", "surface": "web", "capability": "view" },
+    { "screens": "1-48", "surface": "windows", "capability": "view" },
+    { "screens": "1-48", "surface": "android", "capability": "view" },
+    { "screens": "1-48", "surface": "api", "capability": "reconciliation" }
+  ],
+  "currentEvidence": [
+    {
+      "screens": "1-48",
+      "surface": "api",
+      "capability": "view",
+      "kind": "uat",
+      "status": "AUTOMATED_PROVEN",
+      "referencePattern": "docs/pos-inventory-parity/evidence/screen-{screen:02}/uat.md"
+    },
+    {
+      "screens": "20,30",
+      "surface": "web",
+      "capability": "view",
+      "kind": "unit",
+      "status": "SOURCE_IMPLEMENTED",
+      "referencePattern": "apps/web/src/pages/app/InventoryTransactionWorkspacePage.test.tsx"
+    }
+  ],
+  "truthSummary": {
+    "requirements": 240,
+    "proven": { "apiView": 48, "apiAllRequired": 0, "web": 0, "windows": 0, "android": 0, "allSurfaces": 0 },
+    "pending": 192
+  },
+  "incrementalRule": "Add capability-specific requirements and evidence per vertical slice; never infer one surface or capability from another.",
+  "uatRule": "AUTOMATED_PROVEN is not DEVICE_UAT_PROVEN or PRODUCTION_VERIFIED. BLOCKED and NOT_REQUIRED require a reason."
+}
