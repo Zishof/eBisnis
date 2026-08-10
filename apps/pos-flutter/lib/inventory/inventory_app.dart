@@ -6634,8 +6634,32 @@ class InventoryApiClient {
     bool withoutToken = false,
     Map<String, String>? headers,
   }) async {
-    final uri =
-        baseUrl.resolve(path.startsWith('/') ? path.substring(1) : path);
+    final candidates = inventoryApiRequestUris(baseUrl, path);
+    for (var index = 0; index < candidates.length; index++) {
+      try {
+        return await _requestOnce<T>(
+          method,
+          candidates[index],
+          body: body,
+          withoutToken: withoutToken,
+          headers: headers,
+        );
+      } on SocketException catch (error) {
+        final isLast = index == candidates.length - 1;
+        if (isLast || !inventoryApiDnsLookupFailed(error)) rethrow;
+      }
+    }
+    throw const InventoryApiException(
+        'Alamat server inventory tidak tersedia.');
+  }
+
+  Future<T> _requestOnce<T extends Object?>(
+    String method,
+    Uri uri, {
+    Object? body,
+    required bool withoutToken,
+    Map<String, String>? headers,
+  }) async {
     final request =
         await _http.openUrl(method, uri).timeout(const Duration(seconds: 15));
     request.headers.contentType = ContentType.json;
@@ -6661,6 +6685,30 @@ class InventoryApiClient {
     }
     return decoded['data'] as T;
   }
+}
+
+/// Kandidat endpoint untuk permintaan Inventory.
+///
+/// Domain tenant tetap dicoba lebih dahulu agar branding/routing normal tidak
+/// berubah. Sebagian DNS operator seluler menyimpan jawaban negatif untuk
+/// subdomain tenant walau domain utama sudah sehat. Dalam kasus khusus endpoint
+/// produksi CMN, domain utama menjadi fallback karena tenant login tetap
+/// ditentukan oleh `tenantCode` dan request berikutnya oleh access token.
+List<Uri> inventoryApiRequestUris(Uri baseUrl, String path) {
+  final relative = path.startsWith('/') ? path.substring(1) : path;
+  final primary = baseUrl.resolve(relative);
+  if (baseUrl.scheme == 'https' &&
+      baseUrl.host.toLowerCase() == 'cmnmedika-inventory.ebisnis.id') {
+    return [primary, baseUrl.replace(host: 'ebisnis.id').resolve(relative)];
+  }
+  return [primary];
+}
+
+bool inventoryApiDnsLookupFailed(SocketException error) {
+  final message = error.message.toLowerCase();
+  return message.contains('failed host lookup') ||
+      message.contains('nodename nor servname provided') ||
+      error.osError?.errorCode == 7;
 }
 
 class InventoryApiException implements Exception {
