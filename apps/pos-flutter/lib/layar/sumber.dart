@@ -12,6 +12,8 @@ library;
 
 import '../aturan/harga_luring.dart';
 
+typedef SinkronisasiKasir = Future<int> Function();
+
 /// Satu produk pada salinan katalog di mesin ini.
 class ProdukLokal {
   const ProdukLokal({

@@ -8,6 +8,9 @@ export interface InventoryParityItem {
   webRoute: string;
   flutterModule: string;
   web: InventoryCoverage;
+  windows: InventoryCoverage;
+  android: InventoryCoverage;
+  /** @deprecated Gunakan `windows` dan `android`; hanya kompatibilitas pembaca lama. */
   flutter: InventoryCoverage;
 }
 
@@ -26,6 +29,8 @@ const item = (
   webRoute: webRouteForScreen(screen),
   flutterModule: 'Inventory Control',
   web,
+  windows: flutter,
+  android: flutter,
   flutter,
 });
 
@@ -104,7 +109,10 @@ export const SALES_INVENTORY_PARITY: InventoryParityItem[] = [
 ];
 
 export function paritySummary() {
-  const count = (surface: 'web' | 'flutter', coverage: InventoryCoverage) =>
+  const count = (
+    surface: 'web' | 'windows' | 'android' | 'flutter',
+    coverage: InventoryCoverage,
+  ) =>
     SALES_INVENTORY_PARITY.filter((entry) => entry[surface] === coverage).length;
   return {
     screens: SALES_INVENTORY_PARITY.length,
@@ -112,6 +120,16 @@ export function paritySummary() {
       operational: count('web', 'OPERATIONAL'),
       readOnly: count('web', 'READ_ONLY'),
       contractOnly: count('web', 'CONTRACT_ONLY'),
+    },
+    windows: {
+      operational: count('windows', 'OPERATIONAL'),
+      readOnly: count('windows', 'READ_ONLY'),
+      contractOnly: count('windows', 'CONTRACT_ONLY'),
+    },
+    android: {
+      operational: count('android', 'OPERATIONAL'),
+      readOnly: count('android', 'READ_ONLY'),
+      contractOnly: count('android', 'CONTRACT_ONLY'),
     },
     flutter: {
       operational: count('flutter', 'OPERATIONAL'),

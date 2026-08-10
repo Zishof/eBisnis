@@ -1,6 +1,12 @@
 import { SALES_INVENTORY_PARITY, paritySummary, webRouteForScreen } from './sales-inventory-parity.catalog';
 import { reportSql } from './sales-inventory-operations.controller';
-import { PENDING_PROOF, provenScreens } from './parity-evidence.registry';
+import {
+  PARITY_EVIDENCE,
+  PARITY_REQUIREMENTS,
+  PENDING_PROOF,
+  hasProof,
+  provenScreens,
+} from './parity-evidence.registry';
 
 describe('sales inventory legacy parity contract', () => {
   it('keeps every one of the 48 documented screens in sequence', () => {
@@ -18,6 +24,8 @@ describe('sales inventory legacy parity contract', () => {
       expect(item.webRoute).toBe(webRouteForScreen(item.screen));
       expect(item.webRoute).not.toBe('/app/inventory-control');
       expect(item.flutterModule).toBe('Inventory Control');
+      expect(item.windows).toBe(item.flutter);
+      expect(item.android).toBe(item.flutter);
     }
   });
 
@@ -39,18 +47,23 @@ describe('sales inventory legacy parity contract', () => {
     const summary = paritySummary();
     expect(summary.screens).toBe(48);
     expect(summary.web.operational + summary.web.readOnly + summary.web.contractOnly).toBe(48);
+    expect(summary.windows.operational + summary.windows.readOnly + summary.windows.contractOnly).toBe(48);
+    expect(summary.android.operational + summary.android.readOnly + summary.android.contractOnly).toBe(48);
     expect(summary.flutter.operational + summary.flutter.readOnly + summary.flutter.contractOnly).toBe(48);
     // Sengaja TIDAK ada expect(...operational).toBe(48) / .toBe(0).
   });
 
-  it('setiap layar OPERATIONAL harus PROVEN atau tercatat PENDING_PROOF', () => {
+  it('setiap layar OPERATIONAL harus PROVEN lintas-surface atau tercatat PENDING_PROOF', () => {
     const proven = provenScreens();
-    const pending = new Set(PENDING_PROOF);
+    const pending = new Set(PENDING_PROOF.map((requirement) => requirement.screen));
     for (const scr of proven) {
       expect(pending.has(scr)).toBe(false); // PROVEN & PENDING tak boleh tumpang tindih
     }
     for (const item of SALES_INVENTORY_PARITY) {
-      const claimsOperational = item.web === 'OPERATIONAL' || item.flutter === 'OPERATIONAL';
+      const claimsOperational =
+        item.web === 'OPERATIONAL' ||
+        item.windows === 'OPERATIONAL' ||
+        item.android === 'OPERATIONAL';
       if (claimsOperational) {
         expect(proven.has(item.screen) || pending.has(item.screen)).toBe(true);
       }
@@ -58,8 +71,27 @@ describe('sales inventory legacy parity contract', () => {
   });
 
   it('PENDING_PROOF hanya boleh menyusut (regression guard)', () => {
-    // Turunkan ambang ini saat evidence bertambah. MENAIKKAN dilarang di review.
-    expect(PENDING_PROOF.length).toBeLessThanOrEqual(48);
+    // 48 layar x (4 surface view + 1 rekonsiliasi). Turunkan saat evidence bertambah.
+    expect(PENDING_PROOF.length).toBeLessThanOrEqual(48 * 5);
+  });
+
+  it('memisahkan evidence API dari Web, Windows, dan Android', () => {
+    expect(PARITY_REQUIREMENTS).toHaveLength(48 * 5 + 2);
+    expect(provenScreens('api', 'view').size).toBe(48);
+    expect(provenScreens('api').size).toBe(0);
+    expect(provenScreens('web', 'view').size).toBe(48);
+    expect(provenScreens('web').size).toBe(47);
+    expect(provenScreens('windows').size).toBe(48);
+    expect(provenScreens('android').size).toBe(48);
+    expect(provenScreens().size).toBe(0);
+
+    const apiProof = PARITY_EVIDENCE.find((proof) => proof.screen === 1 && proof.surface === 'api');
+    expect(apiProof?.capability).toBe('view');
+    expect(hasProof({ screen: 1, surface: 'api', capability: 'view' })).toBe(true);
+    expect(hasProof({ screen: 1, surface: 'web', capability: 'view' })).toBe(true);
+    expect(hasProof({ screen: 1, surface: 'api', capability: 'reconciliation' })).toBe(false);
+    expect(hasProof({ screen: 30, surface: 'web', capability: 'create' })).toBe(false);
+    expect(hasProof({ screen: 30, surface: 'web', capability: 'offline' })).toBe(false);
   });
 
   it('keeps finance reports tied to posted journals and correct normal balances', () => {

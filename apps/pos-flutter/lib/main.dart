@@ -246,6 +246,7 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
         namaPengguna: sumber.namaPengguna ?? 'apoteker',
         pembaruan: _pembaruan,
         pembukuan: sumber.pembukuan,
+        sinkronisasi: sumber.sinkronisasi,
         mode: ModeKasir.apotik,
         apiClient: _clientApotik,
         onKeluar: _keluarApotik,
@@ -279,6 +280,7 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
           namaPengguna: persona.label,
           pembaruan: _pembaruan,
           pembukuan: sumber.pembukuan,
+          sinkronisasi: sumber.sinkronisasi,
         );
       },
     );
@@ -326,6 +328,7 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
       namaPengguna:
           client.displayName ?? client.authenticatedUsername ?? 'apoteker',
       pembukuan: mesin.bukukan,
+      sinkronisasi: mesin.sinkronkan,
     );
     if (!mounted) return;
     setState(() {
@@ -368,6 +371,7 @@ class _AplikasiKasirState extends State<AplikasiKasir> {
       namaPengguna:
           const String.fromEnvironment('POS_USERNAME', defaultValue: 'demo'),
       pembukuan: mesin.bukukan,
+      sinkronisasi: mesin.sinkronkan,
     );
   }
 
@@ -658,6 +662,7 @@ class _SumberKasir {
     this.koneksi,
     this.namaPengguna,
     this.pembukuan,
+    this.sinkronisasi,
   });
 
   factory _SumberKasir.contoh({bool apotik = false}) => _SumberKasir(
@@ -683,6 +688,7 @@ class _SumberKasir {
   final KeadaanKoneksi? koneksi;
   final String? namaPengguna;
   final PembukuanKasir? pembukuan;
+  final SinkronisasiKasir? sinkronisasi;
 }
 
 enum _JenisPersonaSalon { pelanggan, manajemen, pemilik }

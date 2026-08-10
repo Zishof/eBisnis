@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ebisnis.local/schemas/parity-48.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "screenRange", "allowed", "minimumRequirements", "currentEvidence", "truthSummary"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "screenRange": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "const": 1 },
+        "to": { "const": 48 }
+      },
+      "additionalProperties": false
+    },
+    "allowed": { "type": "object" },
+    "minimumRequirements": { "type": "array", "minItems": 4 },
+    "currentEvidence": { "type": "array" },
+    "truthSummary": { "type": "object" }
+  },
+  "additionalProperties": true
+}

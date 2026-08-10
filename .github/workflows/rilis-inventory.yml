@@ -3,6 +3,12 @@ name: Rilis Inventory Sales
 on:
   push:
     tags: ['inventory-v*']
+  workflow_dispatch:
+    inputs:
+      versi:
+        description: 'Versi untuk build kandidat (tidak diterbitkan)'
+        required: false
+        default: '0.0.0-uji'
 
 concurrency:
   group: rilis-inventory-${{ github.ref }}
@@ -39,6 +45,8 @@ jobs:
     needs: uji
     runs-on: windows-2022
     timeout-minutes: 35
+    outputs:
+      signing_mode: ${{ steps.signing.outputs.mode }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -49,12 +57,27 @@ jobs:
       - name: Tentukan versi
         id: versi
         shell: bash
-        run: echo "nilai=${GITHUB_REF_NAME#inventory-v}" >> "$GITHUB_OUTPUT"
-      - name: Bangun Windows
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            nilai="${GITHUB_REF_NAME#inventory-v}"
+          else
+            nilai="${{ github.event.inputs.versi }}"
+          fi
+          echo "nilai=$nilai" >> "$GITHUB_OUTPUT"
+      - name: UAT navigasi Windows Inventory
         working-directory: ${{ env.JALUR }}
         shell: pwsh
         run: |
           flutter pub get
+          flutter test `
+            test/inventory_parity_navigation_test.dart `
+            test/inventory_app_test.dart `
+            test/inventory_supplier_workspace_test.dart `
+            test/inventory_transaction_workspaces_test.dart
+      - name: Bangun Windows
+        working-directory: ${{ env.JALUR }}
+        shell: pwsh
+        run: |
           flutter build windows --release --target=lib/main_inventory.dart `
             --dart-define=VERSI=${{ steps.versi.outputs.nilai }} `
             --dart-define=APP_PRODUCT=inventory
@@ -73,11 +96,99 @@ jobs:
             "/DSumber=$PWD\${{ env.JALUR }}\build\windows\x64\runner\Release" `
             "/DKeluaran=$PWD\keluaran" `
             "${{ env.JALUR }}\windows\pemasang.iss"
+      - name: Tandatangani dan verifikasi installer
+        id: signing
+        shell: pwsh
+        env:
+          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_CODE_SIGNING_PFX_BASE64 }}
+          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_CODE_SIGNING_PASSWORD }}
+        run: |
+          $isRelease = '${{ github.event_name }}' -eq 'push'
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_PFX_BASE64) -or
+              [string]::IsNullOrWhiteSpace($env:WINDOWS_PFX_PASSWORD)) {
+            if ($isRelease) {
+              throw 'Sertifikat Authenticode produksi belum lengkap. Tag tidak boleh menerbitkan installer unsigned.'
+            }
+            Write-Warning 'Sertifikat Authenticode belum tersedia; kandidat UAT tetap dibangun tetapi tidak diterbitkan.'
+            "mode=unsigned" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          $pfx = Join-Path $env:RUNNER_TEMP 'ebisnis-inventory-signing.pfx'
+          try {
+            $normalized = $env:WINDOWS_PFX_BASE64 -replace '\s', ''
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($normalized))
+            $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
+              -Filter signtool.exe -Recurse | Where-Object FullName -Match '\\x64\\' | `
+              Sort-Object FullName -Descending | Select-Object -First 1
+            if (-not $signtool) { throw 'signtool.exe x64 tidak ditemukan.' }
+            $installer = Get-ChildItem keluaran\ebisnis-inventory-sales-*-windows.exe -File
+            if ($installer.Count -ne 1) { throw "Diharapkan satu installer, ditemukan $($installer.Count)." }
+            & $signtool.FullName sign /fd SHA256 /td SHA256 `
+              /tr http://timestamp.digicert.com /f $pfx /p $env:WINDOWS_PFX_PASSWORD `
+              $installer.FullName
+            if ($LASTEXITCODE -ne 0) { throw "signtool gagal dengan exit code $LASTEXITCODE." }
+            $signature = Get-AuthenticodeSignature -LiteralPath $installer.FullName
+            if ($signature.Status -ne 'Valid') {
+              throw "Verifikasi Authenticode gagal: $($signature.Status)."
+            }
+            "mode=signed" >> $env:GITHUB_OUTPUT
+          } finally {
+            if (Test-Path $pfx) { Remove-Item -LiteralPath $pfx -Force }
+          }
+      - name: Buat checksum installer
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem keluaran\ebisnis-inventory-sales-*-windows.exe -File
+          if ($installer.Count -ne 1) { throw "Diharapkan satu installer, ditemukan $($installer.Count)." }
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $installer.FullName).Hash.ToLowerInvariant()
+          "$hash  $($installer.Name)" | Set-Content -NoNewline -Encoding ascii "$($installer.FullName).sha256"
       - uses: actions/upload-artifact@v4
         with:
           name: inventory-windows
-          path: keluaran/ebisnis-inventory-sales-*-windows.exe
+          path: |
+            keluaran/ebisnis-inventory-sales-*-windows.exe
+            keluaran/ebisnis-inventory-sales-*-windows.exe.sha256
           if-no-files-found: error
+
+  android-uat:
+    name: UAT emulator Android Inventory
+    needs: uji
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Ambil dependensi
+        working-directory: ${{ env.JALUR }}
+        run: flutter pub get
+      - name: Jalankan UAT pada Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -no-snapshot -noaudio
+            -no-boot-anim -camera-back none
+          script: >-
+            cd apps/pos-flutter &&
+            flutter build apk
+            --debug
+            --flavor inventory
+            --target integration_test/inventory_android_uat_test.dart &&
+            cd android &&
+            ./gradlew app:connectedInventoryDebugAndroidTest
+            -Ptarget=$(pwd)/../integration_test/inventory_android_uat_test.dart
 
   android:
     name: Bangun APK Android Inventory
@@ -99,7 +210,13 @@ jobs:
           cache: true
       - name: Tentukan versi
         id: versi
-        run: echo "nilai=${GITHUB_REF_NAME#inventory-v}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            nilai="${GITHUB_REF_NAME#inventory-v}"
+          else
+            nilai="${{ github.event.inputs.versi }}"
+          fi
+          echo "nilai=$nilai" >> "$GITHUB_OUTPUT"
       - name: Siapkan kunci release
         id: signing
         env:
@@ -109,7 +226,11 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           fallback() {
-            echo "::warning::Kunci release lama tidak dapat dipakai; membangun APK fresh-install dengan signing debug."
+            if [ "${{ github.event_name }}" = "push" ]; then
+              echo "::error::Kunci release Android tidak dapat dipakai. Tag produksi tidak boleh menerbitkan APK debug."
+              exit 1
+            fi
+            echo "::warning::Kunci release tidak dapat dipakai; kandidat UAT dibangun dengan signing debug dan tidak diterbitkan."
             rm -f "${JALUR}/android/key.properties" "${JALUR}/android/rilis.jks" \
               "${RUNNER_TEMP}/inventory-keystore.base64" "${RUNNER_TEMP}/inventory-key-probe.p12"
             echo "mode=fresh-install" >> "$GITHUB_OUTPUT"
@@ -208,18 +329,29 @@ jobs:
           fi
           cp build/app/outputs/flutter-apk/app-inventory-release.apk \
             "${GITHUB_WORKSPACE}/keluaran/${nama}"
+      - name: Verifikasi signature dan checksum APK
+        run: |
+          apk="$(find keluaran -maxdepth 1 -type f -name 'ebisnis-inventory-sales-*.apk' -print -quit)"
+          test -n "$apk" || { echo "::error::APK keluaran tidak ditemukan."; exit 1; }
+          apksigner="$(find "${ANDROID_HOME}/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          test -x "$apksigner" || { echo "::error::apksigner tidak ditemukan."; exit 1; }
+          "$apksigner" verify --verbose --print-certs "$apk"
+          sha256sum "$apk" > "${apk}.sha256"
       - name: Hapus kunci dari runner
         if: always()
         run: rm -f "${JALUR}/android/key.properties" "${JALUR}/android/rilis.jks" "${RUNNER_TEMP}/inventory-keystore.base64" "${RUNNER_TEMP}/inventory-key-probe.p12"
       - uses: actions/upload-artifact@v4
         with:
           name: inventory-android
-          path: keluaran/ebisnis-inventory-sales-*.apk
+          path: |
+            keluaran/ebisnis-inventory-sales-*.apk
+            keluaran/ebisnis-inventory-sales-*.apk.sha256
           if-no-files-found: error
 
   terbitkan:
     name: Terbitkan GitHub Release Inventory
-    needs: [windows, android]
+    needs: [windows, android, android-uat]
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -232,16 +364,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SIGNING_MODE: ${{ needs.android.outputs.signing_mode }}
+          WINDOWS_SIGNING_MODE: ${{ needs.windows.outputs.signing_mode }}
         run: |
           versi="${GITHUB_REF_NAME#inventory-v}"
-          if [ "$SIGNING_MODE" = "release" ]; then
-            catatan="APK ditandatangani dengan kunci release dan dapat memperbarui instalasi yang memakai kunci sama."
-          else
-            catatan="PERHATIAN: APK berlabel fresh-install memakai signing debug karena password keystore lama tidak valid. Copot aplikasi lama sebelum memasang; data lokal yang belum tersinkron dapat terhapus."
-          fi
+          test "$SIGNING_MODE" = "release" || {
+            echo "::error::APK bukan release-signed; publikasi dibatalkan."; exit 1;
+          }
+          test "$WINDOWS_SIGNING_MODE" = "signed" || {
+            echo "::error::Installer Windows belum ditandatangani; publikasi dibatalkan."; exit 1;
+          }
+          catatan="APK dan installer Windows telah ditandatangani serta diverifikasi oleh workflow rilis."
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --title "eBisnis Inventory Sales $versi" \
             --notes "Perbaikan kontrol Sales Order, draft lokal, sinkronisasi, riwayat order, dan pembatalan order aman. $catatan" \
             berkas/inventory-windows/*.exe \
-            berkas/inventory-android/*.apk
+            berkas/inventory-windows/*.sha256 \
+            berkas/inventory-android/*.apk \
+            berkas/inventory-android/*.sha256

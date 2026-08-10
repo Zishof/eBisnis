@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   CalendarDays,
@@ -23,6 +23,12 @@ import {
 } from 'lucide-react';
 import { api, formatMoney } from '../../lib/api';
 import { ErrorState, LoadingState } from '../../components/ui';
+import {
+  createTransactionEventId,
+  deleteInventoryDraft,
+  loadInventoryDraft,
+  saveInventoryDraft,
+} from './inventory-transaction-draft';
 
 type Mode = 'sales' | 'purchase';
 type Party = { id: string; code: string; name: string; metadata?: Record<string, unknown> };
@@ -39,6 +45,14 @@ type Catalog = { customers: Party[]; products: Product[] };
 type MasterData = { suppliers: Party[] };
 type StockWorkspace = { warehouses: Array<{ id: string; code: string; name: string }> };
 type Line = Product & { qty: number; unitPrice: number; discount: number; batch: string; expiry: string };
+type DraftPayload = {
+  partyId?: string;
+  warehouseId?: string;
+  lines?: Line[];
+  taxPercent?: number;
+  paymentTerm?: string;
+  note?: string;
+};
 
 const steps: Record<Mode, string[]> = {
   sales: ['Pilih Customer', 'Cari Barang', 'Tambahkan ke Keranjang', 'Review & Kirim'],
@@ -55,29 +69,25 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
   const [paymentTerm, setPaymentTerm] = useState('Kredit 30 hari');
   const [note, setNote] = useState('');
   const [message, setMessage] = useState('');
+  const [eventId, setEventId] = useState(() => createTransactionEventId(mode));
 
   useEffect(() => {
-    const raw = window.sessionStorage.getItem(`inventory-${mode}-draft`);
-    if (!raw) return;
-    try {
-      const draft = JSON.parse(raw) as {
-        partyId?: string;
-        warehouseId?: string;
-        lines?: Line[];
-        taxPercent?: number;
-        paymentTerm?: string;
-        note?: string;
-      };
+    let cancelled = false;
+    void loadInventoryDraft<DraftPayload>(mode).then((record) => {
+      if (!record || cancelled) return;
+      const draft = record.payload;
       setPartyId(draft.partyId ?? '');
       setWarehouseId(draft.warehouseId ?? '');
       setLines(Array.isArray(draft.lines) ? draft.lines : []);
       setTaxPercent(draft.taxPercent ?? 11);
       setPaymentTerm(draft.paymentTerm ?? 'Kredit 30 hari');
       setNote(draft.note ?? '');
-      setMessage('Draft pada sesi ini berhasil dipulihkan.');
-    } catch {
-      window.sessionStorage.removeItem(`inventory-${mode}-draft`);
-    }
+      setEventId(record.eventId);
+      setMessage('Draft tahan-tutup berhasil dipulihkan dari perangkat ini.');
+    }).catch(() => {
+      if (!cancelled) setMessage('Penyimpanan draft perangkat belum dapat dibuka.');
+    });
+    return () => { cancelled = true; };
   }, [mode]);
 
   const catalog = useQuery({ queryKey: ['inventory-transaction-catalog'], queryFn: () => api.get<Catalog>('/inventory/mobile-catalog') });
@@ -119,7 +129,7 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
       if (mode === 'sales') {
         return api.post<{ order_number: string }>('/inventory/mobile-orders', {
           deviceId: 'web-inventory',
-          deviceEventId: `WEB_${Date.now()}_${lines.length}`,
+          deviceEventId: eventId,
           customerId: selectedPartyId,
           taxPercent,
           paymentTerm,
@@ -144,12 +154,13 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
         })),
       });
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       const number = 'order_number' in data ? data.order_number : data.purchase_order_number;
       setMessage(`${mode === 'sales' ? 'Order' : 'Purchase order'} ${number} berhasil disimpan.`);
       setLines([]);
       setNote('');
-      window.sessionStorage.removeItem(`inventory-${mode}-draft`);
+      await deleteInventoryDraft(mode);
+      setEventId(createTransactionEventId(mode));
     },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Transaksi belum tersimpan.'),
   });
@@ -167,14 +178,18 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
     setLines((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row));
   }
 
-  function saveDraft() {
-    window.sessionStorage.setItem(`inventory-${mode}-draft`, JSON.stringify({ partyId: selectedPartyId, warehouseId: selectedWarehouseId, lines, taxPercent, paymentTerm, note }));
-    setMessage('Draft tersimpan pada perangkat ini.');
+  async function saveDraft() {
+    try {
+      await saveInventoryDraft(mode, eventId, { partyId: selectedPartyId, warehouseId: selectedWarehouseId, lines, taxPercent, paymentTerm, note });
+      setMessage('Draft tersimpan tahan-tutup pada perangkat ini.');
+    } catch {
+      setMessage('Draft belum dapat disimpan pada perangkat ini.');
+    }
   }
 
-  function inspectDraft() {
-    const raw = window.sessionStorage.getItem(`inventory-${mode}-draft`);
-    setMessage(raw ? 'Draft lokal tersedia dan sudah dimuat ke workspace ini.' : 'Belum ada draft lokal untuk transaksi ini.');
+  async function inspectDraft() {
+    const record = await loadInventoryDraft(mode).catch(() => null);
+    setMessage(record ? 'Draft tahan-tutup tersedia dan sudah dimuat ke workspace ini.' : 'Belum ada draft lokal untuk transaksi ini.');
   }
 
   async function synchronizeWorkspace() {
@@ -238,14 +253,14 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
         <div><h1 className="text-2xl font-black text-slate-950 dark:text-white">{title}</h1><p className="text-sm text-slate-500">{description}</p></div>
         <div className="flex flex-wrap gap-2">
           {mode === 'sales' ? <>
-            <button className="btn-secondary" onClick={inspectDraft}><FileClock className="h-4 w-4" /> Riwayat Draft</button>
+            <button className="btn-secondary" onClick={() => void inspectDraft()}><FileClock className="h-4 w-4" /> Riwayat Draft</button>
             <button className="btn-secondary" onClick={() => void synchronizeWorkspace()}><History className="h-4 w-4" /> Sinkronkan</button>
           </> : <>
             <button className="btn-secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Cetak</button>
             <button className="btn-secondary" onClick={exportLines}><Download className="h-4 w-4" /> Export</button>
             <button className="btn-secondary" onClick={showAuditTrail}><FileText className="h-4 w-4" /> Audit Trail</button>
           </>}
-          <button className="btn-secondary" onClick={saveDraft}><Save className="h-4 w-4" /> Simpan Draft</button>
+          <button className="btn-secondary" onClick={() => void saveDraft()}><Save className="h-4 w-4" /> Simpan Draft</button>
           <button className="btn-primary" disabled={!selectedPartyId || lines.length === 0 || save.isPending} onClick={() => save.mutate()}>
             <Send className="h-4 w-4" /> {save.isPending ? 'Menyimpan...' : mode === 'sales' ? 'Kirim Order' : 'Simpan Pembelian'}
           </button>
@@ -263,9 +278,12 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
         <h2 className="mb-3 font-black">{mode === 'sales' ? 'Pilih Customer' : 'Pilih Supplier'}</h2>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,2fr)]">
           <div className="space-y-2">
-            <select className="input w-full" value={selectedPartyId} onChange={(event) => setPartyId(event.target.value)}>
-              {parties.map((row) => <option key={row.id} value={row.id}>{row.code} - {row.name}</option>)}
-            </select>
+            <PartyAutocomplete
+              parties={parties}
+              value={selectedPartyId}
+              onChange={setPartyId}
+              label={mode === 'sales' ? 'Cari customer' : 'Cari supplier'}
+            />
             {party && <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-800"><div className="grid h-10 w-10 place-items-center rounded-full bg-blue-100 text-blue-700"><UserRound className="h-5 w-5" /></div><div><strong className="block">{party.name}</strong><span className="text-xs text-slate-500">{party.code} • Aktif</span></div></div>}
           </div>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -285,12 +303,85 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
             <LineEditor lines={lines} purchase={mode === 'purchase'} onPatch={patchLine} onDelete={(id) => setLines((current) => current.filter((row) => row.id !== id))} />
           </div>
         </main>
-        <Summary mode={mode} party={party} lines={lines} discount={discount} subtotal={subtotal} tax={tax} total={total} taxPercent={taxPercent} onTax={setTaxPercent} paymentTerm={paymentTerm} onPaymentTerm={setPaymentTerm} note={note} onNote={setNote} warehouses={stock.data?.warehouses ?? []} warehouseId={selectedWarehouseId} onWarehouse={setWarehouseId} message={message} pending={save.isPending} onSubmit={() => save.mutate()} onDraft={saveDraft} />
+        <Summary mode={mode} party={party} lines={lines} discount={discount} subtotal={subtotal} tax={tax} total={total} taxPercent={taxPercent} onTax={setTaxPercent} paymentTerm={paymentTerm} onPaymentTerm={setPaymentTerm} note={note} onNote={setNote} warehouses={stock.data?.warehouses ?? []} warehouseId={selectedWarehouseId} onWarehouse={setWarehouseId} message={message} pending={save.isPending} onSubmit={() => save.mutate()} onDraft={() => void saveDraft()} />
       </div>
 
       {mode === 'purchase' && <PurchaseSupport />}
     </div>
   );
+}
+
+export function PartyAutocomplete({ parties, value, onChange, label }: {
+  parties: Party[];
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+}) {
+  const listboxId = useId();
+  const selected = parties.find((party) => party.id === value);
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (selected) setQuery(`${selected.code} - ${selected.name}`);
+  }, [selected]);
+
+  const matches = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase('id-ID');
+    if (!normalized || selected && query === `${selected.code} - ${selected.name}`) return parties.slice(0, 12);
+    return parties.filter((party) =>
+      `${party.code} ${party.name}`.toLocaleLowerCase('id-ID').includes(normalized),
+    ).slice(0, 12);
+  }, [parties, query, selected]);
+
+  function choose(party: Party) {
+    onChange(party.id);
+    setQuery(`${party.code} - ${party.name}`);
+    setOpen(false);
+  }
+
+  return <div className="relative">
+    <label className="sr-only" htmlFor={`${listboxId}-input`}>{label}</label>
+    <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+    <input
+      id={`${listboxId}-input`}
+      role="combobox"
+      aria-autocomplete="list"
+      aria-controls={listboxId}
+      aria-expanded={open}
+      className="input w-full pl-9"
+      value={query}
+      placeholder={`${label} berdasarkan kode atau nama...`}
+      onFocus={() => setOpen(true)}
+      onChange={(event) => { setQuery(event.target.value); setOpen(true); }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setOpen(false);
+        if (event.key === 'Enter' && open && matches[0]) {
+          event.preventDefault();
+          choose(matches[0]);
+        }
+      }}
+    />
+    {open && <div
+      id={listboxId}
+      role="listbox"
+      className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+    >
+      {matches.map((party) => <button
+        key={party.id}
+        type="button"
+        role="option"
+        aria-selected={party.id === value}
+        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left hover:bg-blue-50 dark:hover:bg-slate-800"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => choose(party)}
+      >
+        <span><strong className="block text-sm">{party.name}</strong><span className="text-xs text-slate-500">{party.code}</span></span>
+        {party.id === value && <Check className="h-4 w-4 text-blue-600" />}
+      </button>)}
+      {matches.length === 0 && <p className="px-3 py-4 text-center text-sm text-slate-500">Pihak transaksi tidak ditemukan.</p>}
+    </div>}
+  </div>;
 }
 
 function Metric({ label, value, warning, success }: { label: string; value: string; warning?: boolean; success?: boolean }) {

@@ -152,7 +152,8 @@ class KasirLuringEngine {
   /// Benar bila penjualan luring dapat ditawarkan pada mesin ini sekarang:
   /// tenant mengizinkannya (dibuktikan dari jatah yang berhasil dimuat/dipesan)
   /// dan jatahnya belum habis.
-  bool get luringTersedia => _jatah != null && _jatah!.nextNumber <= _jatah!.toNumber;
+  bool get luringTersedia =>
+      _jatah != null && _jatah!.nextNumber <= _jatah!.toNumber;
 
   /// Dipanggil sekali setelah masuk, selagi (mudah-mudahan) masih daring.
   /// Memuat jatah nomor struk yang sudah aktif, atau memesan yang baru bila
@@ -258,11 +259,13 @@ class KasirLuringEngine {
     }
 
     final nomor = jatah.nextNumber;
-    final nomorStruk = '${jatah.prefix}${nomor.toString().padLeft(jatah.padding, '0')}';
+    final nomorStruk =
+        '${jatah.prefix}${nomor.toString().padLeft(jatah.padding, '0')}';
     _jatah = jatah.denganNomorBerikutnya(nomor + 1);
     await _simpanJatah(_jatah!);
 
-    final offlineId = '${identitas.id}-${DateTime.now().microsecondsSinceEpoch}';
+    final offlineId =
+        '${identitas.id}-${DateTime.now().microsecondsSinceEpoch}';
     final payload = <String, Object?>{
       'offlineId': offlineId,
       'outletId': sesi.outletId,
@@ -343,7 +346,10 @@ class KasirLuringEngine {
   /// Mengirim ulang transaksi yang masih tertahan di antrean. Dipanggil dari
   /// pemeriksa sambungan berkala atau tombol sinkronisasi manual.
   Future<int> sinkronkan() async {
-    final pending = await _database.pendingOutbox();
+    // Tombol sinkronisasi adalah permintaan eksplisit operator sesudah jaringan
+    // pulih. Ia tidak boleh diam-diam melewati item FAILED hanya karena jadwal
+    // backoff otomatisnya belum jatuh tempo.
+    final pending = await _database.pendingOutbox(ignoreSchedule: true);
     var terkirim = 0;
     for (final item in pending) {
       try {
@@ -388,7 +394,8 @@ class _JatahLokal {
         padding: _keInt(json['padding']) ?? 6,
         fromNumber: _keInt(json['fromNumber']) ?? 0,
         toNumber: _keInt(json['toNumber']) ?? 0,
-        nextNumber: _keInt(json['nextNumber']) ?? _keInt(json['fromNumber']) ?? 0,
+        nextNumber:
+            _keInt(json['nextNumber']) ?? _keInt(json['fromNumber']) ?? 0,
       );
 
   _JatahLokal denganNomorBerikutnya(int n) => _JatahLokal(

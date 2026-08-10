@@ -30,6 +30,27 @@ export const inventoryTabRoutes: Record<InventoryTabKey, string> = {
   periodClose: '/app/finance/profit-loss?panel=period-close',
 };
 
+export function inventoryRouteForLegacyScreen(screen: number): string {
+  if (!Number.isInteger(screen) || screen < 1 || screen > 48) {
+    throw new RangeError(`Nomor layar inventory tidak valid: ${screen}`);
+  }
+  if (screen <= 3) return '/app/master/suppliers';
+  if (screen <= 6) return '/app/master/customers';
+  if (screen === 7) return '/app/master/salespeople';
+  if (screen === 8) return '/app/inventory/stock';
+  if (screen <= 10) return '/app/inventory/stock-opnames';
+  if (screen <= 19) return '/app/inventory/pricing';
+  if (screen === 20) return '/app/purchasing/invoices';
+  if (screen <= 27) return '/app/purchasing/payables';
+  if (screen <= 29) return '/app/purchasing/reports';
+  if (screen === 30) return '/app/sales/invoices';
+  if (screen <= 38) return '/app/sales/receivables';
+  if (screen <= 40) return '/app/sales/note-custody';
+  if (screen <= 42) return '/app/sales/receivable-reports';
+  if (screen <= 44) return '/app/finance/journals';
+  return '/app/finance/profit-loss';
+}
+
 const contexts: Array<[string, InventoryRouteContext]> = [
   ['/app/master/suppliers', { tab: 'suppliers', title: 'Master Supplier', screenRange: '01-03', route: '/app/master/suppliers' }],
   ['/app/master/customers', { tab: 'customers', title: 'Master Customer', screenRange: '04-06', route: '/app/master/customers' }],

@@ -38,6 +38,11 @@ import {
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { paritySummary, SALES_INVENTORY_PARITY } from './sales-inventory-parity.catalog';
+import {
+  PARITY_EVIDENCE,
+  PARITY_REQUIREMENTS,
+  PENDING_PROOF,
+} from './parity-evidence.registry';
 
 class AllocationDto {
   @ApiProperty()
@@ -435,9 +440,15 @@ export class SalesInventoryOperationsController {
 
   @Get('inventory/parity-contract')
   @Permissions('SALES.READ')
-  @ApiOperation({ summary: 'Kontrak bukti paritas 48 layar untuk Web dan Flutter' })
+  @ApiOperation({ summary: 'Kontrak bukti paritas 48 layar per surface dan capability' })
   parityContract() {
-    return { summary: paritySummary(), items: SALES_INVENTORY_PARITY };
+    return {
+      summary: paritySummary(),
+      items: SALES_INVENTORY_PARITY,
+      requirements: PARITY_REQUIREMENTS,
+      evidence: PARITY_EVIDENCE,
+      pending: PENDING_PROOF,
+    };
   }
 
   @Get('inventory/party-master-balances/:kind')

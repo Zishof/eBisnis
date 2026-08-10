@@ -1,6 +1,7 @@
 import 'package:ebisnis_pos/inventory/inventory_app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'golden_path.dart';
 
 class _ShellVisualClient extends InventoryApiClient {
   _ShellVisualClient()
@@ -109,7 +110,7 @@ void main() {
     expect(find.text('Transaksi Terbaru'), findsOneWidget);
     await expectLater(
       find.byType(InventoryHomePage),
-      matchesGoldenFile('goldens/inventory-shell-desktop.png'),
+      matchesGoldenFile(goldenPath('inventory-shell-desktop.png')),
     );
   });
 
@@ -130,7 +131,7 @@ void main() {
     expect(find.text('Paritas'), findsOneWidget);
     await expectLater(
       find.byType(InventoryHomePage),
-      matchesGoldenFile('goldens/inventory-shell-mobile.png'),
+      matchesGoldenFile(goldenPath('inventory-shell-mobile.png')),
     );
   });
 }
