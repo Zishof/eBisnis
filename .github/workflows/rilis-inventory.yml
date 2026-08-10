@@ -164,16 +164,23 @@ jobs:
       - name: Jalankan UAT pada Android
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 33
           arch: x86_64
           profile: pixel_6
           disable-animations: true
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -no-snapshot -noaudio
+            -no-boot-anim -camera-back none
           script: >-
             cd apps/pos-flutter &&
-            flutter test integration_test/inventory_android_uat_test.dart
+            flutter drive
+            --driver=test_driver/integration_test.dart
+            --target=integration_test/inventory_android_uat_test.dart
             -d emulator-5554
             --flavor inventory
             --dart-define=APP_PRODUCT=inventory
+            --enable-software-rendering
+            --device-timeout=120
 
   android:
     name: Bangun APK Android Inventory
