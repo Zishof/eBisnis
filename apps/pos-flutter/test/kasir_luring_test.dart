@@ -34,7 +34,8 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 /// `path_provider` palsu yang selalu gagal -- deterministik, tanpa bergantung
 /// pada bagaimana kanal platform tanpa handler berperilaku di versi Flutter
 /// yang sedang dipakai CI.
-class _PathProviderGagal extends PathProviderPlatform with MockPlatformInterfaceMixin {
+class _PathProviderGagal extends PathProviderPlatform
+    with MockPlatformInterfaceMixin {
   @override
   Future<String?> getApplicationSupportPath() async {
     throw PlatformException(

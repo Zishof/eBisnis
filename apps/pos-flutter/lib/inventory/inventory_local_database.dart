@@ -156,7 +156,8 @@ class InventoryLocalDatabase extends _$InventoryLocalDatabase {
   }
 
   Future<String> getOrCreateDeviceId() async {
-    final existing = await (select(inventorySyncStates)..limit(1)).getSingleOrNull();
+    final existing =
+        await (select(inventorySyncStates)..limit(1)).getSingleOrNull();
     if (existing != null) return existing.deviceId;
     final deviceId = 'inventory-${DateTime.now().microsecondsSinceEpoch}-$pid';
     await into(inventorySyncStates).insert(
