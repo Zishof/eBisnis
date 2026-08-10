@@ -175,7 +175,11 @@ void main() {
     );
 
     final tombol = find.byKey(const Key('aksi-sinkronkan'));
-    await tester.ensureVisible(tombol);
+    await tester.scrollUntilVisible(
+      tombol,
+      300,
+      scrollable: find.byKey(const Key('bilah-pintasan')),
+    );
     await tester.tap(tombol);
     await tester.pumpAndSettle();
 

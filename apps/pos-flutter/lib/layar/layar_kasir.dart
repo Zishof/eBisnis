@@ -1683,13 +1683,14 @@ class _BilahPintasan extends StatelessWidget {
           for (final p in daftarPintasan())
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
+              child: Semantics(
+                button: true,
+                label: keteranganAksi[p.aksi]!,
+                child: GestureDetector(
                   key: Key('aksi-${p.aksi.name}'),
-                  borderRadius: BorderRadius.circular(8),
                   onTap: () => onSelected(p.aksi),
-                  child: Ink(
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: hiasanKartu(radius: 8),
                     child: Row(
