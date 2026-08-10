@@ -109,7 +109,23 @@ jobs:
           test -n "$STORE_PASSWORD" && test -n "$KEY_PASSWORD" && test -n "$KEY_ALIAS" || {
             echo "::error::Konfigurasi signing Android belum lengkap."; exit 1;
           }
-          printf '%s' "$KEYSTORE" | base64 -d > "${JALUR}/android/rilis.jks"
+          # Secret yang disalin dari PowerShell/portal kadang terbungkus kutip,
+          # BOM, spasi, atau awalan data URI. Normalisasi semuanya tanpa pernah
+          # mencetak isi private key ke log Actions.
+          normalized="${RUNNER_TEMP}/inventory-keystore.base64"
+          printf '%s' "$KEYSTORE" \
+            | sed $'s/^\xEF\xBB\xBF//; s/^"//; s/"$//; s#^data:application/[^;]*;base64,##' \
+            | tr -d '\r\n\t ' > "$normalized"
+          if ! base64 -d "$normalized" > "${JALUR}/android/rilis.jks"; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 tidak dapat didekode setelah normalisasi."
+            exit 1
+          fi
+          rm -f "$normalized"
+          if ! keytool -list -keystore "${JALUR}/android/rilis.jks" \
+            -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null; then
+            echo "::error::Keystore, store password, atau alias Android tidak cocok."
+            exit 1
+          fi
           {
             echo "storeFile=rilis.jks"
             echo "storePassword=${STORE_PASSWORD}"
@@ -130,7 +146,7 @@ jobs:
             "${GITHUB_WORKSPACE}/keluaran/ebisnis-inventory-sales-${{ steps.versi.outputs.nilai }}.apk"
       - name: Hapus kunci dari runner
         if: always()
-        run: rm -f "${JALUR}/android/key.properties" "${JALUR}/android/rilis.jks"
+        run: rm -f "${JALUR}/android/key.properties" "${JALUR}/android/rilis.jks" "${RUNNER_TEMP}/inventory-keystore.base64"
       - uses: actions/upload-artifact@v4
         with:
           name: inventory-android
