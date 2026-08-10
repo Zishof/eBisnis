@@ -176,3 +176,36 @@ ditolak.
 **Belum terbukti terhadap PostgreSQL sungguhan** — tidak ada basis data yang terjangkau dari mesin
 sesi ini. Yang terbukti adalah aturan keputusannya; penyambungan SQL-nya menunggu UAT ulang layar
 20 dengan skenario terima → balik → periksa status dan `received_qty`.
+
+### UAT PostgreSQL sesudah merge PR #117 — 2026-08-10
+
+**Commit awal:** `e5e896e5` (merge PR #117)
+
+**Environment:** Windows, PostgreSQL 16.4 lokal, database `ebisnis`, schema khusus
+`uat_purchase_ap_19222` (bukan tenant produksi).
+
+**Pelaku:** `codex-uat-pr117`, memakai subject fixture UAT yang sudah ada.
+
+Percobaan pertama menemukan gap integrasi yang tidak tertangkap unit test: PostgreSQL menolak
+parameter alasan pada `jsonb_build_object('reversalReason', $2)` dengan galat
+`could not determine data type of parameter $2`. Karena berada dalam transaksi, seluruh reversal
+rollback; tidak ada status/saldo parsial yang tersimpan. Perbaikan minimal memberi tipe eksplisit
+`$2::text`, kemudian skenario dijalankan ulang dari dokumen baru.
+
+**Dokumen read-back:** `PO-000006` / `GR-000006`.
+
+| Bukti | Sebelum reversal | Sesudah reversal | Hasil |
+| --- | --- | --- | --- |
+| Status PO | `RECEIVED` | `APPROVED` | PASS |
+| `purchase_order_line.received_qty` | `3.000000` | `0.000000` | PASS |
+| Status GR | `STOCK_POSTED` | `CORRECTION_REQUIRED` / `REVERSED` | PASS |
+| Payable | `is_settled=false` | `is_settled=true` | PASS |
+| Accounting event | `PENDING` | `SKIPPED` | PASS |
+| Movement pembalik | belum ada | 1 `GOODS_RECEIPT_REVERSAL` | PASS |
+| Audit reversal | belum ada | 1 baris `goods_receipt_validation.REVERSE` | PASS |
+| Stok gudang | on-hand/available `53.000000` | kembali `53.000000` | PASS |
+
+**Kesimpulan:** alur nyata PO → GR → validate → reverse sekarang menurunkan `received_qty`,
+mengembalikan status PO, menyelesaikan payable, melewati accounting event yang belum diposting,
+membuat movement lawan, dan merekonsiliasi saldo stok. Gap jurnal pembalik untuk accounting event
+yang sudah `POSTED` tetap terbuka dan tidak diklaim selesai oleh bukti ini.
