@@ -251,6 +251,22 @@ export const PARITY_EVIDENCE: ParityProof[] = [
     status: 'SOURCE_IMPLEMENTED',
     reference: 'apps/web/src/pages/app/inventory-transaction-draft.test.ts',
   },
+  {
+    screen: 20,
+    surface: 'web',
+    capability: 'view',
+    kind: 'e2e',
+    status: 'AUTOMATED_PROVEN',
+    reference: 'apps/web/e2e/auth-and-erp.spec.ts',
+  },
+  {
+    screen: 30,
+    surface: 'web',
+    capability: 'view',
+    kind: 'e2e',
+    status: 'AUTOMATED_PROVEN',
+    reference: 'apps/web/e2e/auth-and-erp.spec.ts',
+  },
 ];
 
 export const PROOF_SURFACES: ProofSurface[] = ['api', 'web', 'windows', 'android'];

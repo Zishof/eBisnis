@@ -68,12 +68,20 @@
       "kind": "unit",
       "status": "SOURCE_IMPLEMENTED",
       "referencePattern": "apps/web/src/pages/app/inventory-transaction-draft.test.ts"
+    },
+    {
+      "screens": "20,30",
+      "surface": "web",
+      "capability": "view",
+      "kind": "e2e",
+      "status": "AUTOMATED_PROVEN",
+      "referencePattern": "apps/web/e2e/auth-and-erp.spec.ts"
     }
   ],
   "truthSummary": {
     "requirements": 242,
-    "proven": { "apiView": 48, "apiAllRequired": 0, "web": 0, "windows": 2, "android": 0, "allSurfaces": 0 },
-    "pending": 192
+    "proven": { "apiView": 48, "apiAllRequired": 0, "webView": 2, "webAllRequired": 1, "windows": 2, "android": 0, "allSurfaces": 0 },
+    "pending": 190
   },
   "incrementalRule": "Add capability-specific requirements and evidence per vertical slice; never infer one surface or capability from another.",
   "uatRule": "AUTOMATED_PROVEN is not DEVICE_UAT_PROVEN or PRODUCTION_VERIFIED. BLOCKED and NOT_REQUIRED require a reason."

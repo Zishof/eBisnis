@@ -29,6 +29,8 @@ async function openMenu(page: Page, label: string): Promise<void> {
     'Monitoring Stok': '/app/stock-tree',
     'Data Contoh': '/app/sample-data',
     'Stock Opname': '/app/stock-counts',
+    'Transaksi Pembelian': '/app/purchasing/invoices',
+    'Sales Order': '/app/sales/invoices',
   };
   const route = routes[label];
   if (route) {
@@ -222,5 +224,31 @@ test.describe.serial('Portal tenant', () => {
       timeout: 15_000,
     });
     await expect(page.getByRole('button', { name: /sinkronkan/i })).toBeVisible();
+  });
+
+  test('layar 20 mencari supplier tanpa dropdown statis', async () => {
+    await openMenu(page, 'Transaksi Pembelian');
+    await expect(page).toHaveURL(/\/app\/purchasing\/invoices/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Transaksi Pembelian' })).toBeVisible({
+      timeout: 15_000,
+    });
+    const supplier = page.getByRole('combobox', { name: 'Cari supplier' });
+    await expect(supplier).toBeVisible();
+    await supplier.fill('SUP');
+    await expect(page.getByRole('listbox').getByRole('option').first()).toBeVisible();
+  });
+
+  test('layar 30 mencari customer dan memakai draft tahan-tutup', async () => {
+    await openMenu(page, 'Sales Order');
+    await expect(page).toHaveURL(/\/app\/sales\/invoices/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Sales Order' })).toBeVisible({
+      timeout: 15_000,
+    });
+    const customer = page.getByRole('combobox', { name: 'Cari customer' });
+    await expect(customer).toBeVisible();
+    await customer.fill('CUS');
+    await page.getByRole('listbox').getByRole('option').first().click();
+    await page.getByRole('button', { name: /simpan draft/i }).first().click();
+    await expect(page.getByText(/draft tersimpan tahan-tutup/i)).toBeVisible();
   });
 });

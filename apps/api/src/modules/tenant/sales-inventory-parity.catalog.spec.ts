@@ -72,7 +72,8 @@ describe('sales inventory legacy parity contract', () => {
     expect(PARITY_REQUIREMENTS).toHaveLength(48 * 5 + 2);
     expect(provenScreens('api', 'view').size).toBe(48);
     expect(provenScreens('api').size).toBe(0);
-    expect(provenScreens('web').size).toBe(0);
+    expect(provenScreens('web', 'view').size).toBe(2);
+    expect(provenScreens('web').size).toBe(1);
     expect(provenScreens('windows').size).toBe(2);
     expect(provenScreens('android').size).toBe(0);
     expect(provenScreens().size).toBe(0);
