@@ -6773,7 +6773,14 @@ class InventoryApiClient {
         );
       } on SocketException catch (error) {
         final isLast = index == candidates.length - 1;
-        if (isLast || !inventoryApiDnsLookupFailed(error)) rethrow;
+        if (!inventoryApiDnsLookupFailed(error)) rethrow;
+        if (isLast) {
+          throw const InventoryApiException(
+            'DNS jaringan tidak dapat menemukan server eBisnis. '
+            'Aktifkan Mode Pesawat selama 10 detik atau gunakan Private DNS '
+            'dns.google, lalu coba lagi.',
+          );
+        }
       }
     }
     throw const InventoryApiException(
@@ -6826,16 +6833,20 @@ class InventoryApiClient {
 /// Kandidat endpoint untuk permintaan Inventory.
 ///
 /// Domain tenant tetap dicoba lebih dahulu agar branding/routing normal tidak
-/// berubah. Sebagian DNS operator seluler menyimpan jawaban negatif untuk
-/// subdomain tenant walau domain utama sudah sehat. Dalam kasus khusus endpoint
-/// produksi CMN, domain utama menjadi fallback karena tenant login tetap
+/// berubah. Sebagian resolver operator seluler menyimpan jawaban negatif untuk
+/// seluruh zona `ebisnis.id`. Karena itu endpoint produksi CMN memakai dua
+/// domain transport milik eBisnis pada zona DNS berbeda. Tenant login tetap
 /// ditentukan oleh `tenantCode` dan request berikutnya oleh access token.
 List<Uri> inventoryApiRequestUris(Uri baseUrl, String path) {
   final relative = path.startsWith('/') ? path.substring(1) : path;
   final primary = baseUrl.resolve(relative);
   if (baseUrl.scheme == 'https' &&
       baseUrl.host.toLowerCase() == 'cmnmedika-inventory.ebisnis.id') {
-    return [primary, baseUrl.replace(host: 'ebisnis.id').resolve(relative)];
+    return [
+      primary,
+      baseUrl.replace(host: 'app.emedik.id').resolve(relative),
+      baseUrl.replace(host: 'app.santri.info').resolve(relative),
+    ];
   }
   return [primary];
 }
