@@ -35,23 +35,20 @@
       "referencePattern": "docs/pos-inventory-parity/evidence/screen-{screen:02}/uat.md"
     },
     {
-      "screens": "20,30",
+      "screens": "1-48",
       "surface": "web",
       "capability": "view",
       "kind": "unit",
       "status": "SOURCE_IMPLEMENTED",
-      "referencePattern": "apps/web/src/pages/app/InventoryTransactionWorkspacePage.test.tsx"
+      "referencePattern": "apps/web/src/pages/app/inventory-route-context.test.ts"
     },
     {
-      "screens": "20,30",
+      "screens": "1-48",
       "surface": "windows",
       "capability": "view",
-      "kind": "golden",
+      "kind": "uat",
       "status": "AUTOMATED_PROVEN",
-      "references": [
-        "apps/pos-flutter/test/inventory_purchasing_visual_test.dart",
-        "apps/pos-flutter/test/inventory_transaction_workspaces_test.dart"
-      ]
+      "referencePattern": "docs/implementation/inventory-sales-48/evidence/uat/2026-08-10-surface-release-readiness.md"
     },
     {
       "screens": "30",
@@ -80,8 +77,8 @@
   ],
   "truthSummary": {
     "requirements": 242,
-    "proven": { "apiView": 48, "apiAllRequired": 0, "webView": 2, "webAllRequired": 1, "windows": 2, "android": 0, "allSurfaces": 0 },
-    "pending": 190
+    "proven": { "apiView": 48, "apiAllRequired": 0, "webView": 2, "webAllRequired": 1, "windows": 48, "android": 0, "allSurfaces": 0 },
+    "pending": 144
   },
   "incrementalRule": "Add capability-specific requirements and evidence per vertical slice; never infer one surface or capability from another.",
   "uatRule": "AUTOMATED_PROVEN is not DEVICE_UAT_PROVEN or PRODUCTION_VERIFIED. BLOCKED and NOT_REQUIRED require a reason."

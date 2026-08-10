@@ -191,6 +191,31 @@ const API_UAT_EVIDENCE = [
   { screen: 44, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-44/uat.md' },
 ] as const;
 
+const WEB_ROUTE_EVIDENCE: ParityProof[] = Array.from(
+  { length: 48 },
+  (_, index): ParityProof => ({
+    screen: index + 1,
+    surface: 'web',
+    capability: 'view',
+    kind: 'unit',
+    status: 'SOURCE_IMPLEMENTED',
+    reference: 'apps/web/src/pages/app/inventory-route-context.test.ts',
+  }),
+);
+
+const WINDOWS_NAVIGATION_EVIDENCE: ParityProof[] = Array.from(
+  { length: 48 },
+  (_, index): ParityProof => ({
+    screen: index + 1,
+    surface: 'windows',
+    capability: 'view',
+    kind: 'uat',
+    status: 'AUTOMATED_PROVEN',
+    reference:
+      'docs/implementation/inventory-sales-48/evidence/uat/2026-08-10-surface-release-readiness.md',
+  }),
+);
+
 /**
  * Evidence API lama dinormalisasi secara eksplisit sebagai bukti capability
  * `view` pada surface API. Dokumen UAT-nya dapat berisi capability lain, tetapi
@@ -203,38 +228,8 @@ export const PARITY_EVIDENCE: ParityProof[] = [
     capability: 'view',
     status: 'AUTOMATED_PROVEN',
   })),
-  {
-    screen: 20,
-    surface: 'web',
-    capability: 'view',
-    kind: 'unit',
-    status: 'SOURCE_IMPLEMENTED',
-    reference: 'apps/web/src/pages/app/InventoryTransactionWorkspacePage.test.tsx',
-  },
-  {
-    screen: 30,
-    surface: 'web',
-    capability: 'view',
-    kind: 'unit',
-    status: 'SOURCE_IMPLEMENTED',
-    reference: 'apps/web/src/pages/app/InventoryTransactionWorkspacePage.test.tsx',
-  },
-  {
-    screen: 20,
-    surface: 'windows',
-    capability: 'view',
-    kind: 'golden',
-    status: 'AUTOMATED_PROVEN',
-    reference: 'apps/pos-flutter/test/inventory_purchasing_visual_test.dart',
-  },
-  {
-    screen: 30,
-    surface: 'windows',
-    capability: 'view',
-    kind: 'golden',
-    status: 'AUTOMATED_PROVEN',
-    reference: 'apps/pos-flutter/test/inventory_transaction_workspaces_test.dart',
-  },
+  ...WEB_ROUTE_EVIDENCE,
+  ...WINDOWS_NAVIGATION_EVIDENCE,
   {
     screen: 30,
     surface: 'web',

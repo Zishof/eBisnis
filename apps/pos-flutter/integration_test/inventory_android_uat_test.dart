@@ -1,5 +1,5 @@
 import 'package:ebisnis_pos/inventory/inventory_app.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -109,6 +109,15 @@ void main() {
     await tester.ensureVisible(parityNavigation);
     await tester.tap(parityNavigation);
     await tester.pumpAndSettle();
+    for (var screen = 1; screen <= 48; screen++) {
+      final button = find.byKey(Key('open-legacy-screen-$screen'));
+      expect(button, findsOneWidget, reason: 'Tombol layar $screen harus tersedia');
+      expect(
+        tester.widget<OutlinedButton>(button).onPressed,
+        isNotNull,
+        reason: 'Tombol layar $screen harus aktif',
+      );
+    }
     final lastScreen = find.byKey(const Key('open-legacy-screen-48'));
     await tester.ensureVisible(lastScreen);
     await tester.pumpAndSettle();
