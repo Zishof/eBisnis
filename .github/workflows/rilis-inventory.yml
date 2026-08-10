@@ -109,6 +109,9 @@ jobs:
           test -n "$STORE_PASSWORD" && test -n "$KEY_PASSWORD" && test -n "$KEY_ALIAS" || {
             echo "::error::Konfigurasi signing Android belum lengkap."; exit 1;
           }
+          STORE_PASSWORD="$(printf '%s' "$STORE_PASSWORD" | sed 's/\r$//; s/^"//; s/"$//')"
+          KEY_PASSWORD="$(printf '%s' "$KEY_PASSWORD" | sed 's/\r$//; s/^"//; s/"$//')"
+          KEY_ALIAS="$(printf '%s' "$KEY_ALIAS" | sed 's/\r$//; s/^"//; s/"$//')"
           # Secret yang disalin dari PowerShell/portal kadang terbungkus kutip,
           # BOM, spasi, atau awalan data URI. Normalisasi semuanya tanpa pernah
           # mencetak isi private key ke log Actions.
@@ -122,9 +125,19 @@ jobs:
           fi
           rm -f "$normalized"
           if ! keytool -list -keystore "${JALUR}/android/rilis.jks" \
-            -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null; then
-            echo "::error::Keystore, store password, atau alias Android tidak cocok."
+            -storepass "$STORE_PASSWORD" >/dev/null; then
+            echo "::error::Store password Android tidak cocok dengan keystore."
             exit 1
+          fi
+          if ! keytool -list -keystore "${JALUR}/android/rilis.jks" \
+            -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            detected_alias="$(keytool -list -keystore "${JALUR}/android/rilis.jks" \
+              -storepass "$STORE_PASSWORD" 2>/dev/null | awk -F, '/PrivateKeyEntry/{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1; exit}')"
+            test -n "$detected_alias" || {
+              echo "::error::Keystore tidak memiliki PrivateKeyEntry yang dapat dipakai."; exit 1;
+            }
+            echo "::warning::ANDROID_KEY_ALIAS tidak cocok; memakai alias PrivateKeyEntry dari keystore."
+            KEY_ALIAS="$detected_alias"
           fi
           {
             echo "storeFile=rilis.jks"
