@@ -187,7 +187,6 @@ jobs:
             -d emulator-5554
             --flavor inventory
             --dart-define=APP_PRODUCT=inventory
-            --enable-software-rendering
             --no-dds
             --timeout=10m
 
