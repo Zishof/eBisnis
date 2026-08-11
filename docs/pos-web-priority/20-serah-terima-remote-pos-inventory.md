@@ -141,7 +141,7 @@ ada urutannya di `gap-analysis-video-48-2026-08-11.md` §6:
 
 | Prioritas | Inti |
 | --- | --- |
-| **P0** | Turunkan klaim katalog yang belum berbukti; permission report per domain (sekarang semua memakai `SALES.READ`, termasuk finance/P&L) |
+| **P0** | Kejujuran klaim katalog — **sudah dikerjakan, lihat di bawah**; permission report per domain (sekarang semua memakai `SALES.READ`, termasuk finance/P&L) — masih terbuka |
 | **P1** | Vertical slice transaksi lengkap per rentang layar (20–29, 30–42, 08–19, 43–48) |
 | **P2** | ID test `NORMAL`/`VALIDATION`/`RBAC`/`AUDIT`/`PRINT-EXPORT`/`OFFLINE-RETRY`/`RECONCILIATION`/`VISUAL` per layar, lalu UAT perangkat nyata |
 
@@ -149,6 +149,46 @@ Gap yang berulang di ketiga surface, layak diketahui sebelum mulai: **outbox
 Flutter belum dipakai** pembelian/AP/AR/nota/opname/price book/jurnal; **cetak
 dan ekspor** umumnya dari data live, bukan snapshot server yang punya print log;
 **bukti Windows dan Android** masih navigasi, belum transaksi.
+
+#### P0 kejujuran klaim — selesai, dan apa yang ditemukan
+
+Katalog menjawab "alurnya ada"; registry menjawab "sudah dibuktikan". Keduanya
+sempat terbaca sebagai satu hal, dan yang terbaca orang adalah katalognya.
+
+Dua cacat ditemukan pada penjaganya, keduanya sekaligus:
+
+1. **`ensureCatalogWired()` tidak pernah dapat gagal.** Ia menuntut setiap layar
+   `OPERATIONAL` tercatat pada `provenScreens()` **atau** `PENDING_PROOF`. Ketika
+   registry masih menghitung `view` saja, syarat itu berarti sesuatu. Setelah
+   registry diperluas menjadi 606 requirement dengan 414 pending, `PENDING_PROOF`
+   memuat **seluruh 48 layar** — sehingga syaratnya dipenuhi tanpa kecuali.
+   Penjaganya melemah justru ketika paling dibutuhkan.
+2. **`ensureCatalogWired()` tidak pernah dipanggil dari mana pun.** Penjaga yang
+   tidak dijalankan sama saja dengan penjaga yang tidak ada.
+
+Yang sekarang berlaku:
+
+- `surfaceEvidence(screen, surface)` melaporkan `required`/`proven`/`missing`
+  per layar per surface, dengan **nama capability** yang kurang — bukan sekadar
+  jumlah, sebab angka tanpa nama tidak dapat ditindaklanjuti.
+- `/inventory/parity-contract` **tidak pernah lagi mengirim label sendirian**:
+  setiap item membawa `evidence` per surface, plus `evidenceSummary` terpisah
+  dari `summary` label.
+- `catalogOverclaims()` menolak klaim tanpa bukti-buka pada surface itu, dan
+  `ensureCatalogWired()` kini benar-benar dijalankan pada tiap CI.
+
+Angka jujurnya, yang dulu tersamar:
+
+| Surface | `view` terbukti | **Seluruh capability terbukti** | Requirement | Pending |
+| --- | --- | --- | --- | --- |
+| API | 48 | **0** | 168 | 120 |
+| Web | 48 | **12** | 138 | 90 |
+| Windows | 48 | **12** | 150 | 102 |
+| Android | 48 | **12** | 150 | 102 |
+
+Keduabelas layar itu memang hanya menuntut dapat dibuka (mis. "Membuka Daftar
+Supplier"). API nol karena setiap layar masih menunggu bukti `reconciliation`.
+Tidak ada satu layar pun yang lengkap pada semua surface sekaligus.
 
 ---
 

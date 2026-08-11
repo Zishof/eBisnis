@@ -40,9 +40,12 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { paritySummary, SALES_INVENTORY_PARITY } from './sales-inventory-parity.catalog';
 import {
+  CATALOG_SURFACES,
   PARITY_EVIDENCE,
   PARITY_REQUIREMENTS,
   PENDING_PROOF,
+  parityEvidenceSummary,
+  surfaceEvidence,
 } from './parity-evidence.registry';
 
 class AllocationDto {
@@ -642,9 +645,27 @@ export class SalesInventoryOperationsController {
   @Permissions('SALES.READ')
   @ApiOperation({ summary: 'Kontrak bukti paritas 48 layar per surface dan capability' })
   parityContract() {
+    /*
+     * Label jangkauan tidak pernah dikirim sendirian.
+     *
+     * `coverage` menjawab "alurnya ada", `evidence` menjawab "sudah dibuktikan
+     * sejauh mana". Ketika hanya yang pertama yang terkirim, pembacanya wajar
+     * menyimpulkan bahwa OPERATIONAL berarti selesai -- dan itulah yang membuat
+     * seluruh 48 layar sempat terbaca lunas padahal 414 dari 606 requirement
+     * masih menunggu bukti.
+     */
+    const items = SALES_INVENTORY_PARITY.map((item) => ({
+      ...item,
+      evidence: Object.fromEntries(
+        CATALOG_SURFACES.map((surface) => [surface, surfaceEvidence(item.screen, surface)]),
+      ),
+      apiEvidence: surfaceEvidence(item.screen, 'api'),
+    }));
+
     return {
       summary: paritySummary(),
-      items: SALES_INVENTORY_PARITY,
+      evidenceSummary: parityEvidenceSummary(),
+      items,
       requirements: PARITY_REQUIREMENTS,
       evidence: PARITY_EVIDENCE,
       pending: PENDING_PROOF,
