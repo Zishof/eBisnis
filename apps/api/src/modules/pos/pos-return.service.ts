@@ -1,7 +1,7 @@
 /**
  * Pembatalan, retur, dan refund kasir.
  *
- * Tiga aturan menentukan bentuk berkas ini, dan ketiganya soal uang:
+ * Empat aturan menentukan bentuk berkas ini, dan keempatnya soal uang:
  *
  * 1. **Transaksi yang sudah selesai tidak dihapus, melainkan dibalik.** Void
  *    membentuk peristiwa akuntansi pembalik dan mengembalikan stok; barisnya
@@ -17,6 +17,13 @@
  *    disposisinya — layak jual, rusak, atau dimusnahkan. Mengembalikan semuanya
  *    ke stok jual adalah cara tercepat membuat catatan stok berbeda dari
  *    kenyataan di rak.
+ *
+ * 4. **Barang yang kembali membawa nilainya, atau tidak menyentuh nilai sama
+ *    sekali.** Kuantitas yang kembali tanpa biayanya akan mengencerkan
+ *    `average_cost` pada setiap retur — dan angka itu yang dibaca laporan nilai
+ *    stok serta HPP penjualan berikutnya. Aturannya di `pos-biaya-retur.ts`;
+ *    biaya yang tidak diketahui menolak menyentuh rata-rata, bukan dianggap
+ *    nol.
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -33,6 +40,7 @@ import {
   type PosSaleStatus,
 } from './pos-sale-state';
 import { emberTujuanRetur, type Disposisi } from './pos-stock';
+import { biayaMasukRetur } from './pos-biaya-retur';
 
 export interface BarisRetur {
   saleLineId: string;
@@ -707,15 +715,57 @@ export class PosReturnService {
 
     if (ctx.warehouseId && ctx.ember) {
       const kolom = ctx.ember === 'DAMAGED' ? 'damaged_qty' : 'on_hand_qty';
+
+      /*
+       * Rata-rata biaya ikut dihitung ulang, tetapi hanya bila biayanya benar
+       * benar diketahui — keputusannya di `pos-biaya-retur.ts`, yang dapat
+       * dibuktikan tanpa basis data.
+       *
+       * Sebelumnya kuantitas kembali tanpa nilainya ikut kembali: persediaan
+       * bertambah banyaknya tanpa bertambah nilainya, sehingga setiap retur
+       * mengencerkan `average_cost` — dan `average_cost` itulah yang dibaca
+       * laporan nilai stok DAN HPP penjualan berikutnya yang dijurnal sebagai
+       * COGS.
+       *
+       * Biayanya diambil dari `cost_snapshot` saat barang DIJUAL, bukan
+       * rata-rata hari ini, supaya nilai persediaan yang bertambah persis
+       * sebesar COGS yang dibalik.
+       *
+       * `$5::numeric IS NULL` berarti jangan sentuh sama sekali. Ekspresi ini
+       * cerminan `rataRataSesudahRetur()`; bila salah satu berubah, yang lain
+       * harus ikut. `$4::boolean` diperiksa lagi di sini supaya SQL ini tetap
+       * benar walau suatu saat dipanggil dengan ember rusak dan biaya terisi.
+       */
+      const biaya = biayaMasukRetur({
+        ember: ctx.ember,
+        quantity: ctx.quantity,
+        costSnapshot: ctx.unitCost,
+        warehouseId: ctx.warehouseId,
+      });
+
       await client.query(
         `UPDATE "${schemaName}".stock_balance
             SET ${kolom} = ${kolom} + $3,
                 available_qty = CASE WHEN $4::boolean
                                      THEN (on_hand_qty + $3) - reserved_qty
                                      ELSE available_qty END,
+                average_cost = CASE
+                  WHEN $5::numeric IS NULL OR NOT $4::boolean THEN average_cost
+                  WHEN on_hand_qty > 0
+                    THEN GREATEST(
+                           (on_hand_qty * average_cost + $3 * $5::numeric)
+                             / (on_hand_qty + $3), 0)
+                  ELSE GREATEST($5::numeric, 0)
+                END,
                 last_movement_at = now(), updated_at = now(), version = version + 1
           WHERE warehouse_id = $1 AND product_id = $2 AND lot_id IS NULL`,
-        [ctx.warehouseId, ctx.productId, ctx.quantity, ctx.ember === 'AVAILABLE'],
+        [
+          ctx.warehouseId,
+          ctx.productId,
+          ctx.quantity,
+          ctx.ember === 'AVAILABLE',
+          biaya.inboundCost,
+        ],
       );
     }
 

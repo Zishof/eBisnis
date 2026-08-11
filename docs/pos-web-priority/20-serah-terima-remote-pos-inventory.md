@@ -70,16 +70,30 @@ mengisinya di `erp-purchasing.service.ts:1519`.
 
 Tidak perlu dikerjakan lagi.
 
-### 2.2 Pengaruh retur/void POS terhadap rata-rata biaya — **TERBUKA**
+### 2.2 Pengaruh retur/void POS terhadap rata-rata biaya — **SELESAI**
 
-Barang yang kembali ke stok lewat retur tidak memutakhirkan `average_cost`.
+Dulu: barang kembali ke stok lewat retur atau pembatalan tanpa memutakhirkan
+`average_cost` — kuantitas bertambah tanpa nilainya ikut bertambah, sehingga
+setiap retur mengencerkan nilai persediaan dan HPP penjualan berikutnya.
 
-Diverifikasi: di seluruh `apps/api/src/modules/` hanya **dua** pemanggil yang
-mengirim data biaya ke `applyBalanceDelta()`, dan keduanya di jalur pembelian
-(`erp-purchasing.service.ts:1156` dan `:1519`). Jalur POS tidak mengirim
-apa pun.
+Aturannya sekarang di modul murni `apps/api/src/modules/pos/pos-biaya-retur.ts`,
+dipakai `kembalikanStok()` pada `pos-return.service.ts` — satu-satunya jalur
+yang mengembalikan barang, dipakai baik oleh retur maupun pembatalan.
 
-Menyentuh HPP penjualan yang dijurnal sebagai COGS.
+Yang perlu diketahui bila menyentuhnya lagi:
+
+- Biaya diambil dari `cost_snapshot` saat barang **dijual**, bukan rata-rata
+  hari ini. Dengan begitu nilai persediaan bertambah persis sebesar COGS yang
+  dibalik.
+- **Biaya nol ditolak, bukan dicampur.** `cost_snapshot` bertipe `NOT NULL
+  DEFAULT 0` dan diisi dari `COALESCE(average_cost, 0)`; seluruh penjualan
+  sebelum 10 Agustus 2026 menyimpan nol. Mencampurkan nol akan menarik valuasi
+  produk itu ke bawah selamanya, diam-diam.
+- Hanya barang yang kembali ke stok jual yang menggeser rata-rata. Barang rusak
+  masuk `damaged_qty`; barang dimusnahkan tidak kembali ke mana pun.
+- Ekspresi SQL `average_cost` pada `kembalikanStok()` adalah cerminan
+  `rataRataSesudahRetur()`. Bila salah satu berubah, yang lain harus ikut —
+  ada penjaga yang membaca sumbernya di `pos-biaya-retur.spec.ts`.
 
 ### 2.3 Biaya penerimaan transfer antar-gudang — **TERBUKA, perlu keputusan**
 
@@ -87,14 +101,38 @@ Jalur transfer tidak punya data biaya sama sekali. Ini bukan sekadar
 menyambungkan — perlu keputusan dari mana biayanya diambil (rata-rata gudang
 asal, atau biaya lot). **Tanyakan pemilik sebelum membangun** (§5 nomor 2).
 
-### 2.4 Jurnal pembalik untuk `accounting_event` yang sudah `POSTED` — **TERBUKA**
+### 2.4 Jurnal pembalik untuk `accounting_event` yang sudah `POSTED` — **SELESAI**
 
-Pembalikan hanya menyetel `SKIPPED` untuk event yang masih `PENDING`; yang sudah
-terjurnal dibiarkan berdiri. Komentarnya sendiri mencatat ini sebagai di luar
-cakupan — `erp-purchasing.service.ts:1589-1592` — dan menunjuk pola
-`reversal_of_id` yang sudah ada di `journal_entry`.
+Dulu: pembalikan hanya menyetel `SKIPPED` untuk event yang masih `PENDING`;
+yang sudah terjurnal dibiarkan berdiri. Stok dan hutang dagang kembali, tetapi
+jurnalnya tidak — selisih permanen tanpa galat apa pun.
 
-Jarang terjadi karena aturan posting tidak disemai default per tenant.
+Sekarang `AccountingPostingService.reversePostedEvents()` membentuk jurnal BARU
+yang ditautkan lewat `journal_entry.reversal_of_id`, dipanggil dari dalam
+transaksi yang sama dengan pembalikan dokumennya. Aturannya di modul murni
+`apps/api/src/modules/accounting/reversal-journal.ts`.
+
+Empat keputusan yang perlu diketahui bila menyentuhnya lagi:
+
+- **Dibalik dari baris jurnal yang tercatat, bukan dihitung ulang dari aturan
+  posting.** Aturan dapat diubah tanpa rilis; menghitung ulang akan menghasilkan
+  angka berbeda begitu aturannya pernah disunting.
+- **Peristiwa aslinya tetap `POSTED`.** Ia memang pernah terjurnal; itu riwayat.
+  Pembaliknya dicatat pada `metadata` dan lewat `reversal_of_id`.
+- **Kunci pembalik deterministik** (`ACCOUNTING_EVENT_REVERSAL:<id>`,
+  `AER-<tanggal>-<hex>`) sehingga indeks unik menolak pembalik kedua. Membalik
+  dua kali akan melewati nol dan berbalik arah — dan neracanya tetap seimbang,
+  jadi tidak ada yang menandainya.
+- **Periode pembalik adalah HARI INI dan wajib terbuka.** Tidak pernah
+  ditanggalkan mundur ke periode yang sudah ditutup. Bila tidak ada periode
+  terbuka, seluruh pembatalan digulung balik dengan pesan yang menyuruh membuka
+  periode — disengaja, sebab membalik stok tanpa membalik jurnalnya adalah
+  persis cacat yang baru saja ditutup ini. **Bila pemilik menghendaki
+  pembatalan tetap jalan tanpa jurnal, ini titik yang diubah.**
+
+Berlaku untuk pembatalan penerimaan barang. Jalur lain yang membalik dokumen
+dapat memanggil `reversePostedEvents()` yang sama dengan `sourceType` masing
+masing.
 
 ### 2.5 Matriks capability 48 layar — **TERBUKA, dan sekarang front terbesar**
 
@@ -200,10 +238,9 @@ node_modules atau Prisma bermasalah. Jangan menyentuh worktree lain.
 ### Mengerjakan gap berikutnya
 
 ```text
-Baca docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md bagian 2.2,
-kerjakan pengaruh retur/void POS terhadap rata-rata biaya. Aturannya di modul
-murni yang dapat diuji tanpa basis data, buktikan merah lebih dahulu, lalu
-buka PR.
+Baca docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md bagian 2.2
+sebagai contoh bentuk yang diinginkan, lalu kerjakan bagian 2.3 SETELAH saya
+memutuskan sumber biayanya. Jangan mulai sebelum keputusan itu ada.
 ```
 
 ```text

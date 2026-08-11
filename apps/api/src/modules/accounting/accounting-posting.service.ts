@@ -5,6 +5,15 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { buildJournalLines, type AccountingEvent, type PostingRule } from './posting-engine';
+import {
+  decideReversal,
+  reversalJournalNumber,
+  reversalPostingKey,
+  reverseLines,
+  totalsOf,
+  type PostedJournalLine,
+  type ReversalRefusal,
+} from './reversal-journal';
 
 interface EventRow {
   id: string;
@@ -24,6 +33,13 @@ export interface PostingAttempt {
   status: 'POSTED' | 'FAILED';
   journalEntryId?: string;
   issues?: string[];
+}
+
+export interface ReversalAttempt {
+  eventId: string;
+  status: 'REVERSED' | 'ALREADY_REVERSED' | 'SKIPPED';
+  journalEntryId?: string;
+  reason?: ReversalRefusal;
 }
 
 @Injectable()
@@ -260,6 +276,210 @@ export class AccountingPostingService {
     }
     await this.markPosted(client, schemaName, row.id, journal.rows[0].id);
     return { eventId: row.id, status: 'POSTED', journalEntryId: journal.rows[0].id };
+  }
+
+  /**
+   * Membentuk jurnal pembalik bagi seluruh peristiwa satu dokumen yang sudah
+   * terjurnal.
+   *
+   * Dipanggil DI DALAM transaksi bisnis yang membalik dokumennya, dengan
+   * `client` yang sama — supaya stok, hutang, dan buku besar bergerak bersama
+   * atau tidak sama sekali.
+   *
+   * Peristiwa aslinya sengaja TETAP `POSTED`. Ia memang pernah terjurnal, dan
+   * itu bagian dari riwayat yang tidak boleh dihapus; pembaliknya ditautkan
+   * lewat `journal_entry.reversal_of_id` dan dicatat pada `metadata`.
+   */
+  async reversePostedEvents(
+    client: PoolClient,
+    schemaName: string,
+    ctx: { sourceType: string; sourceId: string; reason: string; userId: string | null },
+  ): Promise<ReversalAttempt[]> {
+    const events = await client.query<{ id: string }>(
+      `SELECT ae.id::text
+         FROM "${schemaName}".accounting_event ae
+        WHERE ae.source_type = $1 AND ae.source_id = $2::uuid AND ae.status = 'POSTED'
+        ORDER BY ae.occurred_at, ae.created_at
+        FOR UPDATE`,
+      [ctx.sourceType, ctx.sourceId],
+    );
+
+    const attempts: ReversalAttempt[] = [];
+    for (const row of events.rows) {
+      attempts.push(await this.reverseOneEvent(client, schemaName, row.id, ctx));
+    }
+    return attempts;
+  }
+
+  private async reverseOneEvent(
+    client: PoolClient,
+    schemaName: string,
+    eventId: string,
+    ctx: { reason: string; userId: string | null },
+  ): Promise<ReversalAttempt> {
+    const postingKey = reversalPostingKey(eventId);
+
+    const info = await client.query<{
+      event_status: string;
+      journal_entry_id: string | null;
+      journal_status: string | null;
+      journal_is_reversal: boolean | null;
+      existing_reversal_id: string | null;
+      line_count: string;
+      legal_entity_id: string | null;
+      currency_code: string;
+      source_type: string;
+      source_id: string;
+      source_number: string | null;
+      event_code: string;
+    }>(
+      `SELECT ae.status AS event_status,
+              ae.journal_entry_id::text AS journal_entry_id,
+              ae.legal_entity_id::text AS legal_entity_id,
+              ae.currency_code, ae.source_type, ae.source_id::text AS source_id,
+              ae.source_number, ae.event_code,
+              je.status AS journal_status,
+              (je.reversal_of_id IS NOT NULL) AS journal_is_reversal,
+              (SELECT r.id::text FROM "${schemaName}".journal_entry r
+                WHERE r.posting_key = $2) AS existing_reversal_id,
+              (SELECT count(*)::text FROM "${schemaName}".journal_entry_line l
+                WHERE l.journal_entry_id = je.id) AS line_count
+         FROM "${schemaName}".accounting_event ae
+    LEFT JOIN "${schemaName}".journal_entry je ON je.id = ae.journal_entry_id
+        WHERE ae.id = $1::uuid
+          FOR UPDATE OF ae`,
+      [eventId, postingKey],
+    );
+    const e = info.rows[0];
+    if (!e) return { eventId, status: 'SKIPPED', reason: 'NO_JOURNAL' };
+
+    const decision = decideReversal({
+      eventStatus: e.event_status,
+      journalEntryId: e.journal_entry_id,
+      journalStatus: e.journal_status,
+      journalIsReversal: e.journal_is_reversal === true,
+      existingReversalId: e.existing_reversal_id,
+      lineCount: Number(e.line_count ?? 0),
+    });
+    if (decision.action === 'ALREADY_REVERSED') {
+      return {
+        eventId,
+        status: 'ALREADY_REVERSED',
+        journalEntryId: decision.journalEntryId,
+      };
+    }
+    if (decision.action === 'SKIP') {
+      return { eventId, status: 'SKIPPED', reason: decision.reason };
+    }
+
+    const original = await client.query<{
+      account_id: string;
+      line_no: number;
+      debit: string;
+      credit: string;
+      description: string | null;
+    }>(
+      `SELECT account_id::text, line_no, debit::text, credit::text, description
+         FROM "${schemaName}".journal_entry_line
+        WHERE journal_entry_id = $1::uuid
+        ORDER BY line_no`,
+      [e.journal_entry_id],
+    );
+    const lines: PostedJournalLine[] = original.rows.map((l) => ({
+      accountId: l.account_id,
+      lineNo: l.line_no,
+      debit: Number(l.debit),
+      credit: Number(l.credit),
+      description: l.description,
+    }));
+    const balikan = reverseLines(lines);
+    const total = totalsOf(balikan);
+
+    /*
+     * Periode fiskal pembalik: HARI INI, dan wajib terbuka.
+     *
+     * Pembalik tidak pernah ditanggalkan mundur ke periode aslinya. Periode
+     * yang sudah ditutup berarti angkanya sudah dilaporkan; menyisipkan jurnal
+     * ke dalamnya membuat laporan yang sudah tercetak tidak lagi cocok dengan
+     * basis data, dan tidak ada yang tahu mana yang benar.
+     *
+     * Bila tidak ada periode terbuka, seluruh pembalikan dokumen ini digulung
+     * balik. Itu disengaja: membalik stok tetapi meninggalkan jurnalnya berdiri
+     * adalah persis selisih diam-diam yang pembalik ini ada untuk mencegah.
+     * Yang dibutuhkan pemakainya adalah membuka periode, bukan pembatalan yang
+     * setengah jadi.
+     */
+    const period = await client.query<{ id: string; today: string }>(
+      `SELECT id::text, CURRENT_DATE::text AS today
+         FROM "${schemaName}".fiscal_period
+        WHERE deleted_at IS NULL AND status = 'OPEN'
+          AND CURRENT_DATE BETWEEN start_date AND end_date
+        ORDER BY period_no
+        LIMIT 1
+        FOR UPDATE`,
+    );
+    if (!period.rowCount) {
+      throw AppError.conflict(
+        ErrorCodes.CONFLICT,
+        'Tidak ada periode akuntansi yang terbuka hari ini, sehingga jurnal pembalik tidak dapat dibentuk. ' +
+          'Buka periode berjalan lebih dahulu, lalu ulangi pembatalan ini.',
+      );
+    }
+
+    const reversal = await client.query<{ id: string }>(
+      `INSERT INTO "${schemaName}".journal_entry
+         (legal_entity_id, fiscal_period_id, journal_number, journal_date,
+          source_type, source_id, posting_key, description, currency_code,
+          total_debit, total_credit, status, posted_at, posted_by,
+          reversal_of_id, created_by)
+       VALUES ($1::uuid, $2::uuid, $3, CURRENT_DATE,
+               $4, $5::uuid, $6, $7, $8,
+               $9, $10, 'POSTED', now(), $11::uuid,
+               $12::uuid, $11::uuid)
+       RETURNING id::text`,
+      [
+        e.legal_entity_id,
+        period.rows[0].id,
+        reversalJournalNumber(period.rows[0].today, eventId),
+        e.source_type,
+        e.source_id,
+        postingKey,
+        `PEMBALIK ${e.event_code} ${e.source_number ?? e.source_id} — ${ctx.reason}`,
+        e.currency_code,
+        total.totalDebit,
+        total.totalCredit,
+        ctx.userId,
+        e.journal_entry_id,
+      ],
+    );
+    const reversalId = reversal.rows[0].id;
+
+    for (const line of balikan) {
+      await client.query(
+        `INSERT INTO "${schemaName}".journal_entry_line
+           (journal_entry_id, account_id, line_no, debit, credit, description)
+         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6)`,
+        [reversalId, line.accountId, line.lineNo, line.debit, line.credit, line.description],
+      );
+    }
+
+    await client.query(
+      `UPDATE "${schemaName}".accounting_event
+          SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+                'reversedAt', now(),
+                'reversedBy', $2::text,
+                'reversalReason', $3::text,
+                'reversalJournalEntryId', $4::text
+              ),
+              updated_at = now(), updated_by = $2::uuid, version = version + 1
+        WHERE id = $1::uuid`,
+      [eventId, ctx.userId, ctx.reason, reversalId],
+    );
+
+    this.logger.log(
+      `Jurnal pembalik dibentuk untuk peristiwa ${eventId} (${e.event_code}) -> ${reversalId}`,
+    );
+    return { eventId, status: 'REVERSED', journalEntryId: reversalId };
   }
 
   private markPosted(client: PoolClient, schemaName: string, eventId: string, journalId: string) {
