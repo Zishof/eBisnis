@@ -1,6 +1,7 @@
 import 'package:ebisnis_pos/inventory/inventory_supplier_workspace.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'golden_path.dart';
 
 Map<String, Object?> _workspace() => {
       'summary': {
@@ -102,7 +103,7 @@ void main() {
     expect(find.text('PT Sumber Makmur Abadi'), findsWidgets);
     await expectLater(
       find.byType(Scaffold),
-      matchesGoldenFile('goldens/inventory_supplier_workspace_desktop.png'),
+      matchesGoldenFile(goldenPath('inventory_supplier_workspace_desktop.png')),
     );
     await tester.tap(find.text('Detail'));
     await tester.pumpAndSettle();
@@ -119,8 +120,7 @@ void main() {
 
     await tester.tap(find.text('Analisis'));
     await tester.pumpAndSettle();
-    expect(
-        find.text('Peringkat supplier berdasarkan pembelian YTD'),
+    expect(find.text('Peringkat supplier berdasarkan pembelian YTD'),
         findsOneWidget);
   });
 
@@ -138,7 +138,7 @@ void main() {
     expect(find.text('PT Sumber Makmur Abadi'), findsOneWidget);
     await expectLater(
       find.byType(Scaffold),
-      matchesGoldenFile('goldens/inventory_supplier_workspace_mobile.png'),
+      matchesGoldenFile(goldenPath('inventory_supplier_workspace_mobile.png')),
     );
     await tester.tap(find.byType(NavigationDestination).at(3));
     await tester.pumpAndSettle();

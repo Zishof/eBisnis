@@ -103,15 +103,20 @@ class InventoryLocalDatabase extends _$InventoryLocalDatabase {
     );
   }
 
-  Future<List<InventoryOutboxItem>> pendingOutbox({int limit = 100}) {
+  Future<List<InventoryOutboxItem>> pendingOutbox({
+    int limit = 100,
+    bool ignoreSchedule = false,
+  }) {
     final now = DateTime.now().toUtc();
-    return (select(inventoryOutboxItems)
-          ..where((table) =>
-              table.status.isIn(['PENDING', 'FAILED']) &
-              table.nextAttemptAt.isSmallerOrEqualValue(now))
-          ..orderBy([(table) => OrderingTerm.asc(table.createdAt)])
-          ..limit(limit))
-        .get();
+    final query = select(inventoryOutboxItems)
+      ..where((table) => table.status.isIn(['PENDING', 'FAILED']));
+    if (!ignoreSchedule) {
+      query.where((table) => table.nextAttemptAt.isSmallerOrEqualValue(now));
+    }
+    query
+      ..orderBy([(table) => OrderingTerm.asc(table.createdAt)])
+      ..limit(limit);
+    return query.get();
   }
 
   Future<void> markCompleted(String eventId) async {
@@ -151,7 +156,8 @@ class InventoryLocalDatabase extends _$InventoryLocalDatabase {
   }
 
   Future<String> getOrCreateDeviceId() async {
-    final existing = await (select(inventorySyncStates)..limit(1)).getSingleOrNull();
+    final existing =
+        await (select(inventorySyncStates)..limit(1)).getSingleOrNull();
     if (existing != null) return existing.deviceId;
     final deviceId = 'inventory-${DateTime.now().microsecondsSinceEpoch}-$pid';
     await into(inventorySyncStates).insert(

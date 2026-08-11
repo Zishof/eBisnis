@@ -1,13 +1,43 @@
 import { SALES_INVENTORY_PARITY } from './sales-inventory-parity.catalog';
 
-export type ProofKind = 'unit' | 'integration' | 'e2e' | 'uat';
+export type ProofSurface = 'api' | 'web' | 'windows' | 'android';
+export type ProofCapability =
+  | 'view'
+  | 'create'
+  | 'update'
+  | 'post'
+  | 'reverse'
+  | 'print'
+  | 'export'
+  | 'offline'
+  | 'reconciliation'
+  | 'hardware';
+export type ProofKind = 'unit' | 'integration' | 'e2e' | 'golden' | 'uat';
+export type ProofStatus =
+  | 'NOT_STARTED'
+  | 'SOURCE_IMPLEMENTED'
+  | 'AUTOMATED_PROVEN'
+  | 'DEVICE_UAT_PROVEN'
+  | 'PRODUCTION_VERIFIED'
+  | 'BLOCKED'
+  | 'NOT_REQUIRED';
 
 export interface ParityProof {
   screen: number;
-  surface: 'web' | 'flutter' | 'api';
+  surface: ProofSurface;
+  capability: ProofCapability;
   kind: ProofKind;
+  status: ProofStatus;
   /** Path test, id UAT, atau commit SHA yang membuktikan operasi nyata. */
   reference: string;
+  /** Wajib bila status BLOCKED atau NOT_REQUIRED. */
+  reason?: string;
+}
+
+export interface ParityRequirement {
+  screen: number;
+  surface: ProofSurface;
+  capability: ProofCapability;
 }
 
 /**
@@ -21,7 +51,7 @@ export interface ParityProof {
  * memverifikasi angka tidak berubah setelah data sumber berubah. Lihat
  * docs/pos-inventory-parity/evidence/screen-45..48/uat.md.
  */
-export const PARITY_EVIDENCE: ParityProof[] = [
+const API_UAT_EVIDENCE = [
   { screen: 45, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-45/uat.md' },
   { screen: 46, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-46/uat.md' },
   { screen: 47, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-47/uat.md' },
@@ -159,7 +189,157 @@ export const PARITY_EVIDENCE: ParityProof[] = [
   // khusus UAT: create COA -> create jurnal seimbang -> post -> reverse -> read-back.
   { screen: 43, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-43/uat.md' },
   { screen: 44, surface: 'api', kind: 'uat', reference: 'docs/pos-inventory-parity/evidence/screen-44/uat.md' },
+] as const;
+
+const WEB_ROUTE_EVIDENCE: ParityProof[] = Array.from(
+  { length: 48 },
+  (_, index): ParityProof => ({
+    screen: index + 1,
+    surface: 'web',
+    capability: 'view',
+    kind: 'e2e',
+    status: 'AUTOMATED_PROVEN',
+    reference:
+      'docs/implementation/inventory-sales-48/evidence/uat/2026-08-10-surface-release-readiness.md',
+  }),
+);
+
+const WINDOWS_NAVIGATION_EVIDENCE: ParityProof[] = Array.from(
+  { length: 48 },
+  (_, index): ParityProof => ({
+    screen: index + 1,
+    surface: 'windows',
+    capability: 'view',
+    kind: 'uat',
+    status: 'AUTOMATED_PROVEN',
+    reference:
+      'docs/implementation/inventory-sales-48/evidence/uat/2026-08-10-surface-release-readiness.md',
+  }),
+);
+
+const ANDROID_NAVIGATION_EVIDENCE: ParityProof[] = Array.from(
+  { length: 48 },
+  (_, index): ParityProof => ({
+    screen: index + 1,
+    surface: 'android',
+    capability: 'view',
+    kind: 'integration',
+    status: 'AUTOMATED_PROVEN',
+    reference:
+      'docs/implementation/inventory-sales-48/evidence/uat/2026-08-10-surface-release-readiness.md',
+  }),
+);
+
+/**
+ * Evidence API lama dinormalisasi secara eksplisit sebagai bukti capability
+ * `view` pada surface API. Dokumen UAT-nya dapat berisi capability lain, tetapi
+ * registry tidak menaikkan capability itu sebelum setiap klaim dimigrasikan
+ * dan diperiksa satu per satu.
+ */
+export const PARITY_EVIDENCE: ParityProof[] = [
+  ...API_UAT_EVIDENCE.map((proof): ParityProof => ({
+    ...proof,
+    capability: 'view',
+    status: 'AUTOMATED_PROVEN',
+  })),
+  ...WEB_ROUTE_EVIDENCE,
+  ...WINDOWS_NAVIGATION_EVIDENCE,
+  ...ANDROID_NAVIGATION_EVIDENCE,
+  {
+    screen: 30,
+    surface: 'web',
+    capability: 'create',
+    kind: 'unit',
+    status: 'SOURCE_IMPLEMENTED',
+    reference: 'apps/web/src/pages/app/inventory-transaction-draft.test.ts',
+  },
+  {
+    screen: 30,
+    surface: 'web',
+    capability: 'offline',
+    kind: 'unit',
+    status: 'SOURCE_IMPLEMENTED',
+    reference: 'apps/web/src/pages/app/inventory-transaction-draft.test.ts',
+  },
 ];
+
+export const PROOF_SURFACES: ProofSurface[] = ['api', 'web', 'windows', 'android'];
+
+const MUTATION_CAPABILITIES: Partial<Record<number, ProofCapability[]>> = {
+  1: ['create', 'update'], 4: ['create', 'update'], 7: ['create', 'update'],
+  9: ['create', 'update', 'post', 'reverse'],
+  17: ['create', 'update', 'post'], 18: ['create', 'update', 'post'],
+  19: ['create', 'update', 'post'],
+  20: ['create', 'update', 'post', 'reverse'],
+  24: ['create', 'post', 'reverse'],
+  30: ['create', 'update', 'post', 'reverse'],
+  34: ['create', 'post', 'reverse'],
+  39: ['create', 'update', 'post', 'reverse'],
+  43: ['create', 'update', 'post', 'reverse'],
+  44: ['create', 'update'],
+};
+
+const PRINT_SCREENS = new Set([10, 13, 15, 16, 26, 27, 28, 29, 36, 37, 38, 40, 41, 42, 46, 47, 48]);
+const EXPORT_SCREENS = new Set([14, 15, 16, 27, 29, 37, 38, 41, 42, 46, 47, 48]);
+const OFFLINE_SCREENS = new Set([1, 4, 7, 8, 9, 11, 17, 18, 19, 20, 22, 24, 29, 30, 32, 34, 39, 43]);
+const HARDWARE_SCREENS = new Set([10, 13, 15, 20, 26, 28, 30, 36, 40, 42, 46, 48]);
+
+function requirementsForScreen(screen: number): ParityRequirement[] {
+  const requirements: ParityRequirement[] = PROOF_SURFACES.map((surface) => ({
+    screen,
+    surface,
+    capability: 'view',
+  }));
+  requirements.push({ screen, surface: 'api', capability: 'reconciliation' });
+
+  for (const capability of MUTATION_CAPABILITIES[screen] ?? []) {
+    for (const surface of PROOF_SURFACES) requirements.push({ screen, surface, capability });
+  }
+  if (PRINT_SCREENS.has(screen)) {
+    for (const surface of PROOF_SURFACES) requirements.push({ screen, surface, capability: 'print' });
+  }
+  if (EXPORT_SCREENS.has(screen)) {
+    for (const surface of PROOF_SURFACES) requirements.push({ screen, surface, capability: 'export' });
+  }
+  if (OFFLINE_SCREENS.has(screen)) {
+    for (const surface of ['web', 'windows', 'android'] as const) {
+      requirements.push({ screen, surface, capability: 'offline' });
+    }
+  }
+  if (HARDWARE_SCREENS.has(screen)) {
+    for (const surface of ['windows', 'android'] as const) {
+      requirements.push({ screen, surface, capability: 'hardware' });
+    }
+  }
+  return requirements;
+}
+
+/**
+ * Kontrak minimum P0: setiap layar harus memiliki bukti terpisah pada setiap
+ * surface. Capability tambahan (print/export/offline/hardware dan operasi
+ * mutasi) ditambahkan per vertical slice; tidak boleh disimpulkan dari `view`.
+ */
+export const PARITY_REQUIREMENTS: ParityRequirement[] = Array.from(
+  { length: 48 },
+  (_, index) => index + 1,
+).flatMap(requirementsForScreen);
+
+const PROVEN_STATUSES = new Set<ProofStatus>([
+  'AUTOMATED_PROVEN',
+  'DEVICE_UAT_PROVEN',
+  'PRODUCTION_VERIFIED',
+  'NOT_REQUIRED',
+]);
+
+export function hasProof(requirement: ParityRequirement): boolean {
+  return PARITY_EVIDENCE.some(
+    (proof) =>
+      proof.screen === requirement.screen &&
+      proof.surface === requirement.surface &&
+      proof.capability === requirement.capability &&
+      PROVEN_STATUSES.has(proof.status),
+  );
+}
 
 /**
  * Layar yang dideklarasikan OPERATIONAL (wired) tetapi BELUM PROVEN.
@@ -168,20 +348,33 @@ export const PARITY_EVIDENCE: ParityProof[] = [
  * disinkronkan) -- awalnya seluruh 48 layar, menyusut otomatis begitu sebuah
  * layar mendapat entri bukti di atas.
  */
-export const PENDING_PROOF: number[] = Array.from({ length: 48 }, (_, i) => i + 1).filter(
-  (screen) => !PARITY_EVIDENCE.some((p) => p.screen === screen),
+export const PENDING_PROOF: ParityRequirement[] = PARITY_REQUIREMENTS.filter(
+  (requirement) => !hasProof(requirement),
 );
 
-export function provenScreens(): Set<number> {
-  return new Set(PARITY_EVIDENCE.map((p) => p.screen));
+export function provenScreens(surface?: ProofSurface, capability?: ProofCapability): Set<number> {
+  return new Set(
+    Array.from({ length: 48 }, (_, index) => index + 1).filter((screen) => {
+      const requirements = PARITY_REQUIREMENTS.filter(
+        (requirement) =>
+          requirement.screen === screen &&
+          (!surface || requirement.surface === surface) &&
+          (!capability || requirement.capability === capability),
+      );
+      return requirements.length > 0 && requirements.every(hasProof);
+    }),
+  );
 }
 
 export function ensureCatalogWired(): void {
   // Setiap layar OPERATIONAL harus tercatat sebagai PROVEN atau PENDING_PROOF.
   const proven = provenScreens();
-  const pending = new Set(PENDING_PROOF);
+  const pending = new Set(PENDING_PROOF.map((requirement) => requirement.screen));
   for (const item of SALES_INVENTORY_PARITY) {
-    const claimsOperational = item.web === 'OPERATIONAL' || item.flutter === 'OPERATIONAL';
+    const claimsOperational =
+      item.web === 'OPERATIONAL' ||
+      item.windows === 'OPERATIONAL' ||
+      item.android === 'OPERATIONAL';
     if (claimsOperational && !proven.has(item.screen) && !pending.has(item.screen)) {
       throw new Error(`Layar ${item.screen} klaim OPERATIONAL tanpa bukti/PENDING_PROOF`);
     }

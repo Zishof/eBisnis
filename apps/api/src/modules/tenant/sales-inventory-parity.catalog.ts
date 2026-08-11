@@ -8,6 +8,9 @@ export interface InventoryParityItem {
   webRoute: string;
   flutterModule: string;
   web: InventoryCoverage;
+  windows: InventoryCoverage;
+  android: InventoryCoverage;
+  /** @deprecated Gunakan `windows` dan `android`; hanya kompatibilitas pembaca lama. */
   flutter: InventoryCoverage;
 }
 
@@ -26,6 +29,8 @@ const item = (
   webRoute: webRouteForScreen(screen),
   flutterModule: 'Inventory Control',
   web,
+  windows: flutter,
+  android: flutter,
   flutter,
 });
 
@@ -93,8 +98,8 @@ export const SALES_INVENTORY_PARITY: InventoryParityItem[] = [
   item(38, 'Analisis Piutang per Sales', 'SALES_AR', ['/reports/ar-aging-sales/snapshot'], 'OPERATIONAL', 'OPERATIONAL'),
   item(39, 'Sales Membawa Nota', 'SALES_AR', ['/sales-note-handovers'], 'OPERATIONAL', 'OPERATIONAL'),
   item(40, 'Nota Sales', 'SALES_AR', ['/sales-note-handovers/:id', '/reports/sales-note-handover/snapshot'], 'OPERATIONAL', 'OPERATIONAL'),
-  item(41, 'Laporan Piutang', 'SALES_AR', ['/reports/ar-outstanding/snapshot'], 'OPERATIONAL', 'OPERATIONAL'),
-  item(42, 'Mencetak Laporan Piutang', 'SALES_AR', ['/reports/ar-outstanding/snapshot', '/report-snapshots/:id'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(41, 'Laporan Piutang', 'SALES_AR', ['/reports/sales-by-product/preview', '/reports/ar-outstanding/preview', '/reports/ar-event-register/preview'], 'OPERATIONAL', 'OPERATIONAL'),
+  item(42, 'Mencetak Laporan Piutang', 'SALES_AR', ['/reports/sales-by-product/snapshot', '/reports/ar-outstanding/snapshot', '/reports/ar-event-register/snapshot', '/report-snapshots/:id'], 'OPERATIONAL', 'OPERATIONAL'),
   item(43, 'Kas dan Jurnal', 'FINANCE', ['/inventory/finance-workspace', '/inventory/journals', '/inventory/journals/:id/post', '/inventory/journals/:id/reverse'], 'OPERATIONAL', 'OPERATIONAL'),
   item(44, 'Membuat Perkiraan Baru', 'FINANCE', ['/inventory/chart-accounts'], 'OPERATIONAL', 'OPERATIONAL'),
   item(45, 'Menu Laba/Rugi', 'FINANCE', ['/reports/gross-profit/preview', '/reports/profit-loss/preview'], 'OPERATIONAL', 'OPERATIONAL'),
@@ -104,7 +109,10 @@ export const SALES_INVENTORY_PARITY: InventoryParityItem[] = [
 ];
 
 export function paritySummary() {
-  const count = (surface: 'web' | 'flutter', coverage: InventoryCoverage) =>
+  const count = (
+    surface: 'web' | 'windows' | 'android' | 'flutter',
+    coverage: InventoryCoverage,
+  ) =>
     SALES_INVENTORY_PARITY.filter((entry) => entry[surface] === coverage).length;
   return {
     screens: SALES_INVENTORY_PARITY.length,
@@ -112,6 +120,16 @@ export function paritySummary() {
       operational: count('web', 'OPERATIONAL'),
       readOnly: count('web', 'READ_ONLY'),
       contractOnly: count('web', 'CONTRACT_ONLY'),
+    },
+    windows: {
+      operational: count('windows', 'OPERATIONAL'),
+      readOnly: count('windows', 'READ_ONLY'),
+      contractOnly: count('windows', 'CONTRACT_ONLY'),
+    },
+    android: {
+      operational: count('android', 'OPERATIONAL'),
+      readOnly: count('android', 'READ_ONLY'),
+      contractOnly: count('android', 'CONTRACT_ONLY'),
     },
     flutter: {
       operational: count('flutter', 'OPERATIONAL'),

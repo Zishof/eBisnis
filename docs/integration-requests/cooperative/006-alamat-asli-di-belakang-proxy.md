@@ -3,8 +3,16 @@
 - **Diajukan oleh:** sesi eKoperasi (K-15)
 - **Tanggal:** 2026-08-01
 - **Kepada:** sesi Core
-- **Status:** menunggu
-- **Berkas Core yang tersentuh:** `apps/api/src/main.ts` (satu baris), `apps/api/src/config/configuration.ts` (satu kunci)
+- **Status:** selesai — bootstrap memercayai proxy loopback saja
+- **Berkas Core yang tersentuh:** `apps/api/src/main.ts`
+
+## Resolusi
+
+Bootstrap API memercayai subnet bawaan Express `loopback`, bukan seluruh header
+proxy dan bukan jumlah lompatan yang dapat berbeda antarjalur. Karena Apache
+produksi terhubung ke API dari host yang sama, Express berhenti pada alamat
+pengunjung yang ditambahkan Apache. Koneksi langsung dari internet tetap tidak
+dipercaya. Solusi ini tidak memerlukan kunci environment baru.
 
 ## Ringkasan
 

@@ -52,11 +52,13 @@ class TransactionLineDraft {
   double quantity;
   double unitPrice;
   double discountPercent = 0;
+  double discountPercent2 = 0;
   String batch = '';
   DateTime? expiryDate;
 
   double get gross => quantity * unitPrice;
-  double get subtotal => gross * (1 - discountPercent / 100);
+  double get subtotal =>
+      gross * (1 - discountPercent / 100) * (1 - discountPercent2 / 100);
 }
 
 class SalesOrderWorkspaceSubmission {
@@ -144,6 +146,9 @@ typedef SalesWorkspaceLoadOrders = Future<List<SalesOrderHistoryItem>>
     Function();
 typedef SalesWorkspaceCancelOrder = Future<void> Function(
     String id, String reason);
+typedef SalesWorkspaceInvoiceOrder = Future<void> Function(String id);
+typedef SalesWorkspaceCustomerChanged = Future<List<TransactionProduct>>
+    Function(String customerId);
 typedef PurchaseWorkspaceSubmit = Future<String> Function(
     PurchaseWorkspaceSubmission value);
 
@@ -160,6 +165,8 @@ class InventorySalesOrderWorkspace extends StatefulWidget {
     this.onSynchronize,
     this.onLoadOrders,
     this.onCancelOrder,
+    this.onCustomerChanged,
+    this.onInvoiceOrder,
   });
 
   final List<TransactionParty> customers;
@@ -172,6 +179,8 @@ class InventorySalesOrderWorkspace extends StatefulWidget {
   final Future<String> Function()? onSynchronize;
   final SalesWorkspaceLoadOrders? onLoadOrders;
   final SalesWorkspaceCancelOrder? onCancelOrder;
+  final SalesWorkspaceCustomerChanged? onCustomerChanged;
+  final SalesWorkspaceInvoiceOrder? onInvoiceOrder;
 
   @override
   State<InventorySalesOrderWorkspace> createState() =>
@@ -183,6 +192,8 @@ class _InventorySalesOrderWorkspaceState
   final _search = TextEditingController();
   final _note = TextEditingController();
   final List<TransactionLineDraft> _lines = [];
+  List<TransactionProduct>? _customerProducts;
+  String? _loadingCustomerId;
   String? _partyId;
   String _paymentTerm = 'Kredit 30 hari';
   String _productFilter = 'Semua';
@@ -209,9 +220,58 @@ class _InventorySalesOrderWorkspaceState
     return null;
   }
 
+  List<TransactionProduct> get _products =>
+      _customerProducts ?? widget.products;
+
+  Future<void> _changeCustomer(String? value) async {
+    if (value == null ||
+        _loadingCustomerId == value ||
+        (value == _partyId && _customerProducts != null)) {
+      return;
+    }
+    setState(() {
+      _partyId = value;
+      _loadingCustomerId = value;
+      _message = widget.onCustomerChanged == null
+          ? null
+          : 'Memuat harga khusus customer...';
+    });
+    final loader = widget.onCustomerChanged;
+    if (loader == null) return;
+    try {
+      final products = await loader(value);
+      if (!mounted || _partyId != value) return;
+      final repriced = <TransactionLineDraft>[];
+      for (final old in _lines) {
+        final matches = products.where((row) => row.id == old.product.id);
+        if (matches.isEmpty) continue;
+        final line = TransactionLineDraft(
+            product: matches.first, quantity: old.quantity);
+        line.discountPercent = old.discountPercent;
+        repriced.add(line);
+      }
+      setState(() {
+        _customerProducts = products;
+        _loadingCustomerId = null;
+        _lines
+          ..clear()
+          ..addAll(repriced);
+        _message =
+            'Harga katalog sudah disesuaikan untuk ${_party?.name ?? 'customer'}.';
+      });
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() {
+          if (_loadingCustomerId == value) _loadingCustomerId = null;
+          _message = 'Harga khusus gagal dimuat: $error';
+        });
+      }
+    }
+  }
+
   List<TransactionProduct> get _filteredProducts {
     final q = _search.text.trim().toLowerCase();
-    return widget.products
+    return _products
         .where((p) =>
             (q.isEmpty ||
                 p.name.toLowerCase().contains(q) ||
@@ -347,7 +407,7 @@ class _InventorySalesOrderWorkspaceState
     final restored = <TransactionLineDraft>[];
     for (final raw in selected.lines) {
       final productId = (raw['productId'] ?? '').toString();
-      final products = widget.products.where((p) => p.id == productId);
+      final products = _products.where((p) => p.id == productId);
       if (products.isEmpty) continue;
       final line = TransactionLineDraft(
         product: products.first,
@@ -356,6 +416,8 @@ class _InventorySalesOrderWorkspaceState
       line.unitPrice =
           (raw['unitPrice'] as num?)?.toDouble() ?? line.product.price;
       line.discountPercent = (raw['discountPercent'] as num?)?.toDouble() ?? 0;
+      line.discountPercent2 =
+          (raw['discountPercent2'] as num?)?.toDouble() ?? 0;
       restored.add(line);
     }
     setState(() {
@@ -394,40 +456,65 @@ class _InventorySalesOrderWorkspaceState
                         title: Text('${order.number} • ${order.customerName}'),
                         subtitle: Text(
                             '${order.date} • ${order.lineCount} item • ${_money(order.total)} • ${order.status}'),
-                        trailing:
-                            order.canCancel && widget.onCancelOrder != null
-                                ? TextButton(
-                                    key: Key('cancel-sales-order-${order.id}'),
-                                    onPressed: () async {
-                                      final reason =
-                                          await _askCancelReason(dialogContext);
-                                      if (reason == null ||
-                                          !dialogContext.mounted) {
-                                        return;
-                                      }
-                                      try {
-                                        await widget.onCancelOrder!(
-                                            order.id, reason);
-                                        if (dialogContext.mounted) {
-                                          Navigator.pop(dialogContext);
-                                        }
-                                        if (mounted) {
-                                          setState(() => _message =
-                                              'Order ${order.number} berhasil dibatalkan.');
-                                        }
-                                      } on Object catch (error) {
-                                        if (dialogContext.mounted) {
-                                          Navigator.pop(dialogContext);
-                                        }
-                                        if (mounted) {
-                                          setState(() => _message =
-                                              'Order gagal dibatalkan: $error');
-                                        }
-                                      }
-                                    },
-                                    child: const Text('Batalkan'),
-                                  )
-                                : null,
+                        trailing: Wrap(
+                          spacing: 8,
+                          children: [
+                            if (order.canCancel &&
+                                widget.onInvoiceOrder != null)
+                              FilledButton.tonal(
+                                onPressed: () async {
+                                  try {
+                                    await widget.onInvoiceOrder!(order.id);
+                                    if (dialogContext.mounted) {
+                                      Navigator.pop(dialogContext);
+                                    }
+                                    if (mounted) {
+                                      setState(() => _message =
+                                          'Order ${order.number} sudah diposting menjadi faktur dan stok FEFO diperbarui.');
+                                    }
+                                  } on Object catch (error) {
+                                    if (mounted) {
+                                      setState(() => _message =
+                                          'Posting faktur gagal: $error');
+                                    }
+                                  }
+                                },
+                                child: const Text('Posting Faktur'),
+                              ),
+                            if (order.canCancel && widget.onCancelOrder != null)
+                              TextButton(
+                                key: Key('cancel-sales-order-${order.id}'),
+                                onPressed: () async {
+                                  final reason =
+                                      await _askCancelReason(dialogContext);
+                                  if (reason == null ||
+                                      !dialogContext.mounted) {
+                                    return;
+                                  }
+                                  try {
+                                    await widget.onCancelOrder!(
+                                        order.id, reason);
+                                    if (dialogContext.mounted) {
+                                      Navigator.pop(dialogContext);
+                                    }
+                                    if (mounted) {
+                                      setState(() => _message =
+                                          'Order ${order.number} berhasil dibatalkan.');
+                                    }
+                                  } on Object catch (error) {
+                                    if (dialogContext.mounted) {
+                                      Navigator.pop(dialogContext);
+                                    }
+                                    if (mounted) {
+                                      setState(() => _message =
+                                          'Order gagal dibatalkan: $error');
+                                    }
+                                  }
+                                },
+                                child: const Text('Batalkan'),
+                              ),
+                          ],
+                        ),
                       );
                     },
                   ),
@@ -499,7 +586,13 @@ class _InventorySalesOrderWorkspaceState
 
   @override
   Widget build(BuildContext context) {
-    _partyId ??= widget.customers.isEmpty ? null : widget.customers.first.id;
+    if (_partyId == null && widget.customers.isNotEmpty) {
+      _partyId = widget.customers.first.id;
+      if (widget.onCustomerChanged != null) {
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => _changeCustomer(_partyId));
+      }
+    }
     return Material(
       color: const Color(0xFFF8FAFC),
       child: LayoutBuilder(builder: (context, box) {
@@ -545,7 +638,7 @@ class _InventorySalesOrderWorkspaceState
                 label: 'Pilih Customer',
                 parties: widget.customers,
                 value: _partyId,
-                onChanged: (value) => setState(() => _partyId = value),
+                onChanged: _changeCustomer,
                 trailing: _party == null
                     ? null
                     : Wrap(spacing: 8, runSpacing: 8, children: [
@@ -1707,12 +1800,23 @@ class _LineEditor extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
                 child: _NumberField(
-                    label: 'Diskon %',
+                    label: purchase ? 'Diskon 1 %' : 'Diskon %',
                     value: line.discountPercent,
                     onChanged: (v) {
                       line.discountPercent = v.clamp(0, 100);
                       onChanged();
                     })),
+            if (purchase) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                  child: _NumberField(
+                      label: 'Diskon 2 %',
+                      value: line.discountPercent2,
+                      onChanged: (v) {
+                        line.discountPercent2 = v.clamp(0, 100);
+                        onChanged();
+                      })),
+            ],
           ]),
           if (purchase) ...[
             const SizedBox(height: 8),

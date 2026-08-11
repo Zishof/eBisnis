@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import {
   ArrayMinSize,
@@ -38,6 +39,11 @@ import {
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
 import { paritySummary, SALES_INVENTORY_PARITY } from './sales-inventory-parity.catalog';
+import {
+  PARITY_EVIDENCE,
+  PARITY_REQUIREMENTS,
+  PENDING_PROOF,
+} from './parity-evidence.registry';
 
 class AllocationDto {
   @ApiProperty()
@@ -124,6 +130,11 @@ class CreateHandoverDto {
   @ValidateNested({ each: true })
   @Type(() => HandoverLineDto)
   lines!: HandoverLineDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsObject()
+  handoverEvidence?: Record<string, unknown>;
 }
 
 class ReturnHandoverLineDto {
@@ -131,8 +142,8 @@ class ReturnHandoverLineDto {
   @IsUUID()
   lineId!: string;
 
-  @ApiProperty({ enum: ['RETURNED', 'COLLECTED', 'LOST'] })
-  @IsIn(['RETURNED', 'COLLECTED', 'LOST'])
+  @ApiProperty({ enum: ['RETURNED', 'COLLECTED', 'LOST', 'DISPUTED'] })
+  @IsIn(['RETURNED', 'COLLECTED', 'LOST', 'DISPUTED'])
   status!: string;
 
   @ApiPropertyOptional()
@@ -160,6 +171,70 @@ class CancelHandoverDto {
   reason!: string;
 }
 
+class ReconcileHandoverDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  note!: string;
+}
+
+class ResolveHandoverExceptionDto {
+  @ApiProperty()
+  @IsUUID()
+  lineId!: string;
+
+  @ApiProperty({ enum: ['RETURNED'], description: 'Dana yang ditemukan harus dicatat dahulu melalui endpoint collect agar mempunyai receipt.' })
+  @IsIn(['RETURNED'])
+  resolution!: 'RETURNED';
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  amount!: number;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason!: string;
+}
+
+class CollectHandoverDto {
+  @ApiProperty()
+  @IsUUID()
+  lineId!: string;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.01)
+  amount!: number;
+
+  @ApiProperty({ enum: ['CASH', 'TRANSFER', 'GIRO', 'OTHER'] })
+  @IsIn(['CASH', 'TRANSFER', 'GIRO', 'OTHER'])
+  method!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  bankName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(96)
+  referenceNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
 class ReportDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -182,6 +257,93 @@ class PrintLogDto {
   @IsString()
   @MaxLength(96)
   documentNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pageCount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reprintReason?: string;
+}
+
+class SnapshotApprovalDto {
+  @ApiProperty({ enum: ['APPROVED', 'REJECTED'] })
+  @IsIn(['APPROVED', 'REJECTED'])
+  action!: 'APPROVED' | 'REJECTED';
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  note!: string;
+}
+
+export interface InventoryReportFilters {
+  startDate?: string;
+  partyId?: string;
+  documentId?: string;
+  warehouseId?: string;
+  status?: string;
+}
+
+function validIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function validUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+export function normalizeReportFilters(
+  raw: Record<string, unknown> | undefined,
+  asOfDate: string,
+): InventoryReportFilters {
+  const filters: InventoryReportFilters = {};
+  if (!raw) return filters;
+
+  const startDate = typeof raw.startDate === 'string' ? raw.startDate.trim() : '';
+  if (startDate) {
+    if (!validIsoDate(startDate) || startDate > asOfDate) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Tanggal awal laporan tidak valid atau melewati tanggal akhir.',
+      );
+    }
+    filters.startDate = startDate;
+  }
+
+  for (const key of ['partyId', 'documentId', 'warehouseId'] as const) {
+    const value = typeof raw[key] === 'string' ? raw[key].trim() : '';
+    if (!value) continue;
+    if (!validUuid(value)) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, `Filter ${key} harus UUID yang valid.`);
+    }
+    filters[key] = value;
+  }
+
+  const status = typeof raw.status === 'string' ? raw.status.trim().toUpperCase() : '';
+  if (status) {
+    if (!/^[A-Z][A-Z0-9_]{0,31}$/.test(status)) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Filter status laporan tidak valid.');
+    }
+    filters.status = status;
+  }
+  return filters;
+}
+
+function reportParameterCount(sql: string): number {
+  return Array.from(sql.matchAll(/\$(\d+)/g)).reduce(
+    (highest, match) => Math.max(highest, Number(match[1])),
+    0,
+  );
 }
 
 class SyncDeviceDto {
@@ -213,6 +375,49 @@ class ResolveConflictDto {
   @ApiProperty({ enum: ['CLIENT_WINS', 'SERVER_WINS', 'MERGED', 'DUPLICATE'] })
   @IsIn(['CLIENT_WINS', 'SERVER_WINS', 'MERGED', 'DUPLICATE'])
   resolution!: string;
+}
+
+class RegisterConflictDto {
+  @ApiProperty()
+  @IsString()
+  @MaxLength(160)
+  deviceId!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(160)
+  eventId!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(96)
+  entityType!: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUUID()
+  entityId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  clientVersion?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  serverVersion?: number;
+
+  @ApiProperty({ type: Object })
+  @IsObject()
+  clientPayload!: Record<string, unknown>;
+
+  @ApiProperty({ type: Object, required: false })
+  @IsOptional()
+  @IsObject()
+  serverPayload?: Record<string, unknown>;
 }
 
 class CreateStockOpnameDto {
@@ -435,9 +640,15 @@ export class SalesInventoryOperationsController {
 
   @Get('inventory/parity-contract')
   @Permissions('SALES.READ')
-  @ApiOperation({ summary: 'Kontrak bukti paritas 48 layar untuk Web dan Flutter' })
+  @ApiOperation({ summary: 'Kontrak bukti paritas 48 layar per surface dan capability' })
   parityContract() {
-    return { summary: paritySummary(), items: SALES_INVENTORY_PARITY };
+    return {
+      summary: paritySummary(),
+      items: SALES_INVENTORY_PARITY,
+      requirements: PARITY_REQUIREMENTS,
+      evidence: PARITY_EVIDENCE,
+      pending: PENDING_PROOF,
+    };
   }
 
   @Get('inventory/party-master-balances/:kind')
@@ -1369,7 +1580,10 @@ export class SalesInventoryOperationsController {
                 JOIN ${S}.sales_note_handover existing_header
                   ON existing_header.id = existing_line.handover_id
                WHERE existing_line.receivable_ledger_id = lr.id
-                 AND existing_header.status IN ('DRAFT', 'HANDED_OVER')
+                 AND existing_header.status IN (
+                   'READY', 'HANDED_OVER', 'CARRIED', 'PARTIAL_COLLECTED',
+                   'RETURNED', 'LOST', 'DISPUTED'
+                 )
             )
           FOR UPDATE OF lr`,
         [uniqueIds, body.salespersonId],
@@ -1389,10 +1603,13 @@ export class SalesInventoryOperationsController {
       const handoverNumber = `NOTA-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36).toUpperCase()}`;
       const created = await client.query<{ id: string; handover_number: string }>(
         `INSERT INTO ${S}.sales_note_handover
-           (handover_number, salesperson_id, handover_date, note, created_by)
-         VALUES ($1, $2::uuid, COALESCE($3::date, CURRENT_DATE), $4, $5::uuid)
+           (handover_number, salesperson_id, handover_date, note, created_by,
+            status, handover_evidence)
+         VALUES ($1, $2::uuid, COALESCE($3::date, CURRENT_DATE), $4, $5::uuid,
+                 'READY', $6::jsonb)
          RETURNING id::text, handover_number`,
-        [handoverNumber, body.salespersonId, body.handoverDate ?? null, body.note ?? null, subjectId],
+        [handoverNumber, body.salespersonId, body.handoverDate ?? null,
+          body.note ?? null, subjectId, JSON.stringify(body.handoverEvidence ?? {})],
       );
       for (const row of ledgers.rows) {
         await client.query(
@@ -1407,7 +1624,7 @@ export class SalesInventoryOperationsController {
       await client.query(
         `INSERT INTO ${S}.sales_note_custody_event
            (handover_id, event_type, from_status, to_status, actor_id, metadata)
-         VALUES ($1::uuid, 'CREATED', NULL, 'DRAFT', $2::uuid, $3::jsonb)`,
+         VALUES ($1::uuid, 'CREATED', NULL, 'READY', $2::uuid, $3::jsonb)`,
         [created.rows[0].id, subjectId, JSON.stringify({ invoiceCount: ledgers.rowCount })],
       );
       return created.rows[0];
@@ -1422,7 +1639,132 @@ export class SalesInventoryOperationsController {
     @CurrentUser() user: AuthenticatedUser,
     @RequestContext() meta: RequestMeta,
   ) {
-    return this.transitionHandover(id, 'DRAFT', 'HANDED_OVER', user, meta);
+    return this.transitionHandover(id, 'READY', 'HANDED_OVER', user, meta);
+  }
+
+  @Post('sales-note-handovers/:id/carry')
+  @BlockDemo()
+  @Permissions('SALES_ORDER.CREATE')
+  carryHandover(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    return this.transitionHandover(id, 'HANDED_OVER', 'CARRIED', user, meta);
+  }
+
+  @Post('sales-note-handovers/:id/collect')
+  @BlockDemo()
+  @Permissions('SALES_ORDER.CREATE')
+  collectHandover(
+    @Param('id') id: string,
+    @Body() body: CollectHandoverDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    return this.tenantDb.transaction(schema, async (client) => {
+      const subjectId = await subjectIdOf(client, S, user.userId);
+      const line = await client.query<{
+        line_id: string;
+        ledger_id: string;
+        customer_id: string;
+        outstanding_amount: string;
+        collected_amount: string;
+        header_status: string;
+      }>(
+        `SELECT l.id::text AS line_id, l.receivable_ledger_id::text AS ledger_id,
+                ledger.customer_id::text, l.outstanding_amount::text,
+                l.collected_amount::text, h.status AS header_status
+           FROM ${S}.sales_note_handover_line l
+           JOIN ${S}.sales_note_handover h ON h.id = l.handover_id
+           JOIN ${S}.legacy_receivable_ledger ledger ON ledger.id = l.receivable_ledger_id
+          WHERE h.id = $1::uuid AND l.id = $2::uuid
+            AND h.status IN ('CARRIED', 'PARTIAL_COLLECTED')
+          FOR UPDATE OF h, l, ledger`,
+        [id, body.lineId],
+      );
+      if (!line.rowCount) {
+        throw invalidTransition('Penerimaan hanya dapat dicatat untuk nota berstatus CARRIED/PARTIAL_COLLECTED.');
+      }
+      const current = line.rows[0];
+      const remaining = Number(current.outstanding_amount) - Number(current.collected_amount);
+      if (body.amount > remaining) {
+        throw AppError.badRequest(
+          ErrorCodes.VALIDATION_FAILED,
+          'Penerimaan nota tidak boleh melebihi saldo yang dibawa sales.',
+        );
+      }
+      const receiptNumber = `AR-NOTA-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36).toUpperCase()}`;
+      const receipt = await client.query<{ id: string }>(
+        `INSERT INTO ${S}.inventory_ar_receipt
+           (receipt_number, customer_id, receipt_date, method, bank_name,
+            reference_number, total_amount, status, idempotency_key, note,
+            posted_at, posted_by, created_by)
+         VALUES ($1, $2::uuid, CURRENT_DATE, $3, $4, $5, $6, 'POSTED',
+                 $7, $8, now(), $9::uuid, $9::uuid)
+         RETURNING id::text`,
+        [receiptNumber, current.customer_id, body.method, body.bankName ?? null,
+          body.referenceNumber ?? null, body.amount,
+          meta.idempotencyKey ?? `NOTA_${id}_${body.lineId}_${Date.now()}`,
+          body.note ?? `Penerimaan melalui custody nota ${id}`, subjectId],
+      );
+      await client.query(
+        `INSERT INTO ${S}.inventory_ar_receipt_allocation
+           (receipt_id, receivable_ledger_id, allocated_amount)
+         VALUES ($1::uuid, $2::uuid, $3)`,
+        [receipt.rows[0].id, current.ledger_id, body.amount],
+      );
+      const updatedCollected = Number(current.collected_amount) + body.amount;
+      const lineStatus = updatedCollected >= Number(current.outstanding_amount)
+        ? 'COLLECTED'
+        : 'PARTIAL_COLLECTED';
+      await client.query(
+        `UPDATE ${S}.sales_note_handover_line
+            SET collected_amount = $2, status = $3
+          WHERE id = $1::uuid`,
+        [body.lineId, updatedCollected, lineStatus],
+      );
+      await client.query(
+        `UPDATE ${S}.legacy_receivable_ledger
+            SET is_settled = (
+              SELECT COALESCE(sum(a.allocated_amount), 0) >= abs(legacy_receivable_ledger.amount)
+                FROM ${S}.inventory_ar_receipt_allocation a
+                JOIN ${S}.inventory_ar_receipt r ON r.id = a.receipt_id
+               WHERE a.receivable_ledger_id = legacy_receivable_ledger.id
+                 AND r.status = 'POSTED'
+            )
+          WHERE id = $1::uuid`,
+        [current.ledger_id],
+      );
+      await client.query(
+        `UPDATE ${S}.sales_note_handover
+            SET status = 'PARTIAL_COLLECTED', updated_at = now(), version = version + 1
+          WHERE id = $1::uuid`,
+        [id],
+      );
+      await client.query(
+        `INSERT INTO ${S}.sales_note_custody_event
+           (handover_id, event_type, from_status, to_status, actor_id, metadata)
+         VALUES ($1::uuid, 'PARTIAL_COLLECTED', $2, 'PARTIAL_COLLECTED',
+                 $3::uuid, $4::jsonb)`,
+        [id, current.header_status, subjectId, JSON.stringify({
+          lineId: body.lineId,
+          amount: body.amount,
+          receiptId: receipt.rows[0].id,
+          receiptNumber,
+          lineStatus,
+        })],
+      );
+      return {
+        id,
+        status: 'PARTIAL_COLLECTED',
+        lineStatus,
+        receiptId: receipt.rows[0].id,
+        receiptNumber,
+      };
+    }, auditOf(user, meta, 'SALES_NOTE_HANDOVER', 'PARTIAL_COLLECTED'));
   }
 
   @Post('sales-note-handovers/:id/return')
@@ -1438,34 +1780,178 @@ export class SalesInventoryOperationsController {
     const S = quotedSchema(user);
     return this.tenantDb.transaction(schema, async (client) => {
       const subjectId = await subjectIdOf(client, S, user.userId);
+      const nextStatus = body.lines.some((line) => line.status === 'DISPUTED')
+        ? 'DISPUTED'
+        : body.lines.some((line) => line.status === 'LOST')
+          ? 'LOST'
+          : 'RETURNED';
+      const currentHeader = await client.query<{ status: string }>(
+        `SELECT status FROM ${S}.sales_note_handover
+          WHERE id = $1::uuid
+            AND status IN ('HANDED_OVER', 'CARRIED', 'PARTIAL_COLLECTED')
+          FOR UPDATE`,
+        [id],
+      );
+      if (!currentHeader.rowCount) throw invalidTransition('Nota hanya dapat dikembalikan setelah diserahterimakan/dibawa.');
       const changed = await client.query(
         `UPDATE ${S}.sales_note_handover
-            SET status = 'RETURNED', returned_at = now(), returned_by = $2::uuid,
+            SET status = $3, returned_at = now(), returned_by = $2::uuid,
                 updated_at = now(), version = version + 1
-          WHERE id = $1::uuid AND status = 'HANDED_OVER' RETURNING id`,
-        [id, subjectId],
+          WHERE id = $1::uuid
+            AND status IN ('HANDED_OVER', 'CARRIED', 'PARTIAL_COLLECTED')
+          RETURNING id, status`,
+        [id, subjectId, nextStatus],
       );
-      if (!changed.rowCount) throw invalidTransition('Nota hanya dapat dikembalikan setelah diserahterimakan.');
+      if (!changed.rowCount) throw invalidTransition('Status nota berubah; muat ulang sebelum melanjutkan.');
       for (const line of body.lines) {
         const amount = line.amount ?? 0;
         const updated = await client.query(
           `UPDATE ${S}.sales_note_handover_line
               SET status = $3::text,
                   returned_amount = CASE WHEN $3::text = 'RETURNED' THEN $4::numeric ELSE returned_amount END,
-                  collected_amount = CASE WHEN $3::text = 'COLLECTED' THEN $4::numeric ELSE collected_amount END
-            WHERE id = $1::uuid AND handover_id = $2::uuid`,
+                  collected_amount = CASE WHEN $3::text = 'COLLECTED' THEN GREATEST(collected_amount, $4::numeric) ELSE collected_amount END,
+                  exception_reason = CASE WHEN $3::text IN ('LOST', 'DISPUTED') THEN COALESCE(collection_note, 'Perlu tindak lanjut') ELSE exception_reason END
+            WHERE id = $1::uuid AND handover_id = $2::uuid
+              AND CASE WHEN $3::text = 'RETURNED' THEN $4::numeric ELSE returned_amount END
+                  + CASE WHEN $3::text = 'COLLECTED' THEN GREATEST(collected_amount, $4::numeric) ELSE collected_amount END
+                  <= outstanding_amount`,
           [line.lineId, id, line.status, amount],
         );
-        if (!updated.rowCount) throw AppError.notFound(ErrorCodes.NOT_FOUND, `Baris nota ${line.lineId} tidak ditemukan.`);
+        if (!updated.rowCount) {
+          throw AppError.badRequest(
+            ErrorCodes.VALIDATION_FAILED,
+            `Baris nota ${line.lineId} tidak ditemukan atau jumlahnya melebihi outstanding.`,
+          );
+        }
       }
       await client.query(
         `INSERT INTO ${S}.sales_note_custody_event
            (handover_id, event_type, from_status, to_status, actor_id, metadata)
-         VALUES ($1::uuid, 'RETURNED', 'HANDED_OVER', 'RETURNED', $2::uuid, $3::jsonb)`,
-        [id, subjectId, JSON.stringify({ lines: body.lines })],
+         VALUES ($1::uuid, $2, $3, $2, $4::uuid, $5::jsonb)`,
+        [id, nextStatus, currentHeader.rows[0].status, subjectId, JSON.stringify({ lines: body.lines })],
       );
-      return { id, status: 'RETURNED' };
+      return { id, status: nextStatus };
     }, auditOf(user, meta, 'SALES_NOTE_HANDOVER', 'RETURN'));
+  }
+
+  @Post('sales-note-handovers/:id/reconcile')
+  @BlockDemo()
+  @Permissions('SALES_ORDER.CREATE')
+  reconcileHandover(
+    @Param('id') id: string,
+    @Body() body: ReconcileHandoverDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    return this.tenantDb.transaction(schema, async (client) => {
+      const subjectId = await subjectIdOf(client, S, user.userId);
+      const unresolved = await client.query(
+        `SELECT id
+           FROM ${S}.sales_note_handover_line
+          WHERE handover_id = $1::uuid
+            AND status IN ('READY', 'CARRIED', 'PARTIAL_COLLECTED', 'LOST', 'DISPUTED')
+          LIMIT 1`,
+        [id],
+      );
+      if (unresolved.rowCount) {
+        throw invalidTransition('Seluruh nota harus returned/collected dan exception harus diselesaikan sebelum rekonsiliasi.');
+      }
+      const changed = await client.query(
+        `UPDATE ${S}.sales_note_handover
+            SET status = 'RECONCILED', reconciled_at = now(), reconciled_by = $2::uuid,
+                reconciliation_note = $3, updated_at = now(), version = version + 1
+          WHERE id = $1::uuid AND status = 'RETURNED'
+          RETURNING id`,
+        [id, subjectId, body.note.trim()],
+      );
+      if (!changed.rowCount) throw invalidTransition('Hanya paket RETURNED tanpa exception yang dapat direkonsiliasi.');
+      await client.query(
+        `UPDATE ${S}.sales_note_handover_line
+            SET status = 'RECONCILED', reconciled_amount = returned_amount + collected_amount
+          WHERE handover_id = $1::uuid`,
+        [id],
+      );
+      await client.query(
+        `INSERT INTO ${S}.sales_note_custody_event
+           (handover_id, event_type, from_status, to_status, actor_id, metadata)
+         VALUES ($1::uuid, 'RECONCILED', 'RETURNED', 'RECONCILED', $2::uuid, $3::jsonb)`,
+        [id, subjectId, JSON.stringify({ note: body.note.trim() })],
+      );
+      return { id, status: 'RECONCILED' };
+    }, auditOf(user, meta, 'SALES_NOTE_HANDOVER', 'RECONCILED'));
+  }
+
+  @Post('sales-note-handovers/:id/resolve-exception')
+  @BlockDemo()
+  @Permissions('SALES_ORDER.CREATE')
+  resolveHandoverException(
+    @Param('id') id: string,
+    @Body() body: ResolveHandoverExceptionDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const schema = schemaOf(user);
+    const S = quotedSchema(user);
+    return this.tenantDb.transaction(schema, async (client) => {
+      const subjectId = await subjectIdOf(client, S, user.userId);
+      const current = await client.query<{
+        status: string; outstanding_amount: string; returned_amount: string; collected_amount: string;
+      }>(
+        `SELECT l.status, l.outstanding_amount::text, l.returned_amount::text,
+                l.collected_amount::text
+           FROM ${S}.sales_note_handover_line l
+           JOIN ${S}.sales_note_handover h ON h.id = l.handover_id
+          WHERE h.id = $1::uuid AND l.id = $2::uuid
+            AND h.status IN ('LOST', 'DISPUTED')
+            AND l.status IN ('LOST', 'DISPUTED')
+          FOR UPDATE OF h, l`,
+        [id, body.lineId],
+      );
+      if (!current.rowCount) {
+        throw invalidTransition('Exception nota sudah diselesaikan atau paket tidak berstatus LOST/DISPUTED.');
+      }
+      const line = current.rows[0];
+      const otherAmount = Number(line.collected_amount);
+      if (body.amount + otherAmount > Number(line.outstanding_amount)) {
+        throw AppError.badRequest(
+          ErrorCodes.VALIDATION_FAILED,
+          'Jumlah penyelesaian exception melebihi outstanding nota.',
+        );
+      }
+      await client.query(
+        `UPDATE ${S}.sales_note_handover_line
+            SET status = $3,
+                returned_amount = $4,
+                exception_reason = concat_ws(E'\n', exception_reason, $5)
+          WHERE handover_id = $1::uuid AND id = $2::uuid`,
+        [id, body.lineId, body.resolution, body.amount, `Diselesaikan: ${body.reason.trim()}`],
+      );
+      const unresolved = await client.query(
+        `SELECT 1 FROM ${S}.sales_note_handover_line
+          WHERE handover_id = $1::uuid AND status IN ('LOST', 'DISPUTED') LIMIT 1`,
+        [id],
+      );
+      if (!unresolved.rowCount) {
+        await client.query(
+          `UPDATE ${S}.sales_note_handover
+              SET status = 'RETURNED', exception_note = concat_ws(E'\n', exception_note, $2),
+                  updated_at = now(), version = version + 1
+            WHERE id = $1::uuid`,
+          [id, `Seluruh exception diselesaikan: ${body.reason.trim()}`],
+        );
+      }
+      await client.query(
+        `INSERT INTO ${S}.sales_note_custody_event
+           (handover_id, event_type, from_status, to_status, actor_id, metadata)
+         VALUES ($1::uuid, 'EXCEPTION_RESOLVED', $2, $3, $4::uuid, $5::jsonb)`,
+        [id, line.status, unresolved.rowCount ? line.status : 'RETURNED', subjectId,
+          JSON.stringify({ lineId: body.lineId, resolution: body.resolution, amount: body.amount, reason: body.reason.trim() })],
+      );
+      return { id, lineId: body.lineId, lineStatus: body.resolution,
+        status: unresolved.rowCount ? line.status : 'RETURNED' };
+    }, auditOf(user, meta, 'SALES_NOTE_HANDOVER', 'EXCEPTION_RESOLVED'));
   }
 
   @Post('sales-note-handovers/:id/close')
@@ -1476,7 +1962,7 @@ export class SalesInventoryOperationsController {
     @CurrentUser() user: AuthenticatedUser,
     @RequestContext() meta: RequestMeta,
   ) {
-    return this.transitionHandover(id, 'RETURNED', 'CLOSED', user, meta);
+    return this.transitionHandover(id, 'RECONCILED', 'CLOSED', user, meta);
   }
 
   @Post('sales-note-handovers/:id/cancel')
@@ -1496,16 +1982,16 @@ export class SalesInventoryOperationsController {
         `UPDATE ${S}.sales_note_handover
             SET status = 'CANCELLED', note = concat_ws(E'\n', note, $2::text),
                 updated_at = now(), version = version + 1
-          WHERE id = $1::uuid AND status = 'DRAFT' RETURNING id`,
+          WHERE id = $1::uuid AND status = 'READY' RETURNING id`,
         [id, `Dibatalkan: ${body.reason}`],
       );
       if (!changed.rowCount) {
-        throw invalidTransition('Hanya paket nota DRAFT yang dapat dibatalkan; paket yang sudah dibawa harus dikembalikan.');
+        throw invalidTransition('Hanya paket nota READY yang dapat dibatalkan; paket yang sudah dibawa harus dikembalikan.');
       }
       await client.query(
         `INSERT INTO ${S}.sales_note_custody_event
            (handover_id, event_type, from_status, to_status, actor_id, metadata)
-         VALUES ($1::uuid, 'CANCELLED', 'DRAFT', 'CANCELLED', $2::uuid, $3::jsonb)`,
+         VALUES ($1::uuid, 'CANCELLED', 'READY', 'CANCELLED', $2::uuid, $3::jsonb)`,
         [id, subjectId, JSON.stringify({ reason: body.reason })],
       );
       return { id, status: 'CANCELLED' };
@@ -1529,13 +2015,30 @@ export class SalesInventoryOperationsController {
     const result = await this.buildReport(code, body.asOfDate, body.filters, user);
     const S = quotedSchema(user);
     const subjectId = await this.subjectId(user);
+    const resultPayload = JSON.stringify(result);
+    const resultSha256 = createHash('sha256').update(resultPayload).digest('hex');
+    const columns = Object.keys(result.rows[0] ?? {});
     return this.tenantDb.queryOne<Record<string, unknown>>(
       schemaOf(user),
       `INSERT INTO ${S}.inventory_report_snapshot
-         (report_code, as_of_date, filter_payload, result_payload, row_count, generated_by, source_revision)
-       VALUES ($1, $2::date, $3::jsonb, $4::jsonb, $5, $6::uuid, 'V047')
-       RETURNING id::text, report_code, as_of_date::text, row_count, generated_at::text, source_revision`,
-      [code, result.asOfDate, JSON.stringify(body.filters ?? {}), JSON.stringify(result), result.rows.length, subjectId],
+         (report_code, as_of_date, filter_payload, result_payload, row_count,
+          generated_by, source_revision, report_version, column_payload,
+          sort_payload, result_sha256, approval_status)
+       VALUES ($1, $2::date, $3::jsonb, $4::jsonb, $5, $6::uuid, 'V064',
+               1, $7::jsonb, '[]'::jsonb, $8, 'DRAFT')
+       RETURNING id::text, report_code, as_of_date::text, row_count,
+                 generated_at::text, source_revision, report_version,
+                 result_sha256, approval_status`,
+      [
+        code,
+        result.asOfDate,
+        JSON.stringify(result.filters),
+        resultPayload,
+        result.rows.length,
+        subjectId,
+        JSON.stringify(columns),
+        resultSha256,
+      ],
     );
   }
 
@@ -1546,11 +2049,46 @@ export class SalesInventoryOperationsController {
     const row = await this.tenantDb.queryOne<Record<string, unknown>>(
       schemaOf(user),
       `SELECT id::text, report_code, as_of_date::text, filter_payload, result_payload,
-              row_count, generated_at::text, source_revision
+              row_count, generated_at::text, source_revision, report_version,
+              column_payload, sort_payload, result_sha256, approval_status,
+              approved_at::text, page_count, watermark
          FROM ${S}.inventory_report_snapshot WHERE id = $1::uuid`,
       [id],
     );
     if (!row) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Snapshot laporan tidak ditemukan.');
+    return row;
+  }
+
+  @Post('report-snapshots/:id/approval')
+  @HttpCode(200)
+  @BlockDemo()
+  @Permissions('FINANCE_JOURNAL.POST')
+  async approveReportSnapshot(
+    @Param('id') id: string,
+    @Body() body: SnapshotApprovalDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const S = quotedSchema(user);
+    const subjectId = await this.subjectId(user);
+    const row = await this.tenantDb.queryOne<Record<string, unknown>>(
+      schemaOf(user),
+      `UPDATE ${S}.inventory_report_snapshot
+          SET approval_status = $2,
+              approved_by = CASE WHEN $2 = 'APPROVED' THEN $3::uuid ELSE NULL END,
+              approved_at = CASE WHEN $2 = 'APPROVED' THEN now() ELSE NULL END,
+              approval_note = $4
+        WHERE id = $1::uuid
+          AND approval_status = 'DRAFT'
+          AND generated_by IS DISTINCT FROM $3::uuid
+        RETURNING id::text, report_code, approval_status,
+                  approved_by::text, approved_at::text, approval_note`,
+      [id, body.action, subjectId, body.note.trim()],
+    );
+    if (!row) {
+      throw invalidTransition(
+        'Snapshot tidak ditemukan, sudah diputuskan, atau pembuat tidak boleh menyetujui snapshot sendiri.',
+      );
+    }
     return row;
   }
 
@@ -1564,16 +2102,55 @@ export class SalesInventoryOperationsController {
   ) {
     const S = quotedSchema(user);
     const subjectId = await this.subjectId(user);
+    const snapshot = await this.tenantDb.queryOne<{
+      report_code: string;
+      next_copy: number;
+    }>(
+      schemaOf(user),
+      `SELECT s.report_code,
+              COALESCE(max(l.copy_number), 0)::int + 1 AS next_copy
+         FROM ${S}.inventory_report_snapshot s
+         LEFT JOIN ${S}.inventory_print_log l ON l.snapshot_id = s.id
+        WHERE s.id = $1::uuid
+        GROUP BY s.id, s.report_code`,
+      [id],
+    );
+    if (!snapshot) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Snapshot laporan tidak ditemukan.');
+    if (snapshot.next_copy > 1 && !body.reprintReason?.trim()) {
+      throw AppError.badRequest(
+        ErrorCodes.VALIDATION_FAILED,
+        'Alasan cetak ulang wajib diisi untuk salinan kedua dan seterusnya.',
+      );
+    }
+    const watermark = snapshot.next_copy > 1 ? `SALINAN-${snapshot.next_copy}` : 'ASLI';
     const row = await this.tenantDb.queryOne<Record<string, unknown>>(
       schemaOf(user),
       `INSERT INTO ${S}.inventory_print_log
-         (report_code, snapshot_id, output_format, document_number, printed_by)
-       SELECT report_code, id, $2, $3, $4::uuid
-         FROM ${S}.inventory_report_snapshot WHERE id = $1::uuid
-       RETURNING id::text, report_code, output_format, printed_at::text`,
-      [id, body.format, body.documentNumber ?? null, subjectId],
+         (report_code, snapshot_id, output_format, document_number, copy_number,
+          printed_by, reprint_reason, page_count, watermark)
+       VALUES ($1, $2::uuid, $3, $4, $5, $6::uuid, $7, $8, $9)
+       RETURNING id::text, report_code, output_format, copy_number,
+                 watermark, printed_at::text`,
+      [
+        snapshot.report_code,
+        id,
+        body.format,
+        body.documentNumber ?? null,
+        snapshot.next_copy,
+        subjectId,
+        body.reprintReason?.trim() || null,
+        body.pageCount ?? null,
+        watermark,
+      ],
     );
-    if (!row) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Snapshot laporan tidak ditemukan.');
+    await this.tenantDb.queryOne(
+      schemaOf(user),
+      `UPDATE ${S}.inventory_report_snapshot
+          SET page_count = COALESCE($2::int, page_count), watermark = $3
+        WHERE id = $1::uuid
+        RETURNING id`,
+      [id, body.pageCount ?? null, watermark],
+    );
     return row;
   }
 
@@ -1680,9 +2257,38 @@ export class SalesInventoryOperationsController {
     return this.tenantDb.query<Record<string, unknown>>(
       schemaOf(user),
       `SELECT id::text, device_id, entity_type, entity_id::text, client_version,
-              server_version, status, resolution, created_at::text, resolved_at::text
+              server_version, client_payload->>'eventId' AS event_id,
+              status, resolution, created_at::text, resolved_at::text
          FROM ${S}.inventory_sync_conflict ORDER BY created_at DESC LIMIT $1`,
       [pageSize],
+    );
+  }
+
+  @Post('sync/conflicts')
+  @BlockDemo()
+  @Permissions('SALES_ORDER.CREATE')
+  async registerConflict(
+    @Body() body: RegisterConflictDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const S = quotedSchema(user);
+    const subjectId = await this.subjectId(user);
+    return this.tenantDb.queryOne<Record<string, unknown>>(
+      schemaOf(user),
+      `INSERT INTO ${S}.inventory_sync_conflict
+         (device_id, entity_type, entity_id, client_version, server_version,
+          client_payload, server_payload)
+       SELECT $1, $2, $3::uuid, $4, $5, $6::jsonb, $7::jsonb
+        WHERE NOT EXISTS (
+          SELECT 1 FROM ${S}.inventory_sync_conflict
+           WHERE device_id = $1 AND status = 'OPEN'
+             AND client_payload->>'eventId' = $8
+        )
+       RETURNING id::text, status, created_at::text`,
+      [body.deviceId.trim(), body.entityType.trim().toUpperCase(), body.entityId ?? null,
+        body.clientVersion ?? null, body.serverVersion ?? null,
+        JSON.stringify({ ...body.clientPayload, eventId: body.eventId, registeredBy: subjectId }),
+        JSON.stringify(body.serverPayload ?? {}), body.eventId],
     );
   }
 
@@ -1861,7 +2467,7 @@ export class SalesInventoryOperationsController {
   private transitionHandover(
     id: string,
     expected: string,
-    next: 'HANDED_OVER' | 'CLOSED',
+    next: 'HANDED_OVER' | 'CARRIED' | 'CLOSED',
     user: AuthenticatedUser,
     meta: RequestMeta,
   ) {
@@ -1871,7 +2477,9 @@ export class SalesInventoryOperationsController {
       const subjectId = await subjectIdOf(client, S, user.userId);
       const columns = next === 'HANDED_OVER'
         ? 'handed_over_at = now(), handed_over_by = $2::uuid'
-        : 'closed_at = now(), closed_by = $2::uuid';
+        : next === 'CARRIED'
+          ? 'carried_at = now(), carried_by = $2::uuid'
+          : 'closed_at = now(), closed_by = $2::uuid';
       const row = await client.query(
         `UPDATE ${S}.sales_note_handover SET status = $3, ${columns},
                 updated_at = now(), version = version + 1
@@ -1879,6 +2487,14 @@ export class SalesInventoryOperationsController {
         [id, subjectId, next, expected],
       );
       if (!row.rowCount) throw invalidTransition(`Serah-terima harus berstatus ${expected}.`);
+      if (next === 'CARRIED') {
+        await client.query(
+          `UPDATE ${S}.sales_note_handover_line
+              SET status = 'CARRIED'
+            WHERE handover_id = $1::uuid AND status = 'READY'`,
+          [id],
+        );
+      }
       await client.query(
         `INSERT INTO ${S}.sales_note_custody_event
            (handover_id, event_type, from_status, to_status, actor_id)
@@ -2014,22 +2630,31 @@ export class SalesInventoryOperationsController {
     user: AuthenticatedUser,
   ) {
     const asOfDate = asOfRaw ?? new Date().toISOString().slice(0, 10);
+    if (!validIsoDate(asOfDate)) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Tanggal akhir laporan tidak valid.');
+    }
+    const canonicalFilters = normalizeReportFilters(filters, asOfDate);
     const S = quotedSchema(user);
-    const report = reportSql(code, S);
+    const report = reportSql(code, S, canonicalFilters);
     if (!report) throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, `Kode laporan ${code} tidak didukung.`);
-    // Sebagian laporan (mis. stock-list, supplier-list, customer-list) tidak
-    // memakai $1 sama sekali -- mengirim [asOfDate] tetap ke query itu bikin
-    // Postgres menolak dengan "bind message supplies 1 parameters, but
-    // prepared statement requires 0". Hanya sertakan parameter bila SQL-nya
-    // benar-benar mereferensikan $1.
-    const params = report.sql.includes('$1') ? [asOfDate] : [];
+    // Posisi parameter sengaja tetap lintas report agar filter tersimpan dan
+    // query tidak perlu menyusun SQL dari input pengguna. Slice mengikuti
+    // placeholder tertinggi; mengirim parameter berlebih ditolak PostgreSQL.
+    const params = [
+      asOfDate,
+      canonicalFilters.startDate ?? null,
+      canonicalFilters.partyId ?? null,
+      canonicalFilters.documentId ?? null,
+      canonicalFilters.warehouseId ?? null,
+      canonicalFilters.status ?? null,
+    ].slice(0, reportParameterCount(report.sql));
     const rows = await this.tenantDb.query<Record<string, unknown>>(schemaOf(user), report.sql, params);
     const totalKey = report.totalKey;
     return {
       reportCode: code,
       title: report.title,
       asOfDate,
-      filters: filters ?? {},
+      filters: canonicalFilters,
       rowCount: rows.length,
       totals: totalKey
         ? { [totalKey]: rows.reduce((sum, row) => sum + Number(row[totalKey] ?? 0), 0).toString() }
@@ -2151,7 +2776,11 @@ function settlementConfig(kind: 'AP' | 'AR') {
       };
 }
 
-export function reportSql(code: string, S: string): { title: string; sql: string; totalKey?: string } | null {
+export function reportSql(
+  code: string,
+  S: string,
+  _filters: InventoryReportFilters = {},
+): { title: string; sql: string; totalKey?: string } | null {
   const reports: Record<string, { title: string; sql: string; totalKey?: string }> = {
     'supplier-list': {
       title: 'Daftar Supplier',
@@ -2168,6 +2797,7 @@ export function reportSql(code: string, S: string): { title: string; sql: string
                    COALESCE(sum(sb.on_hand_qty * sb.average_cost), 0)::text AS stock_value
               FROM ${S}.product p JOIN ${S}.uom u ON u.id = p.base_uom_id
               LEFT JOIN ${S}.stock_balance sb ON sb.product_id = p.id
+               AND ($5::uuid IS NULL OR sb.warehouse_id = $5::uuid)
              WHERE p.deleted_at IS NULL GROUP BY p.id, u.code ORDER BY p.code`,
     },
     'stock-opname': {
@@ -2182,33 +2812,42 @@ export function reportSql(code: string, S: string): { title: string; sql: string
               FROM (
                 SELECT o.opname_date AS opname_date, p.code AS code, p.name AS name,
                        l.system_qty AS system_qty, l.physical_qty AS physical_qty,
-                       l.variance_qty AS variance_qty, l.unit_cost AS unit_cost
+                       l.variance_qty AS variance_qty, l.unit_cost AS unit_cost,
+                       o.warehouse_id AS warehouse_id
                   FROM ${S}.inventory_stock_opname_session o
                   JOIN ${S}.inventory_stock_opname_line l ON l.opname_id = o.id
                   LEFT JOIN ${S}.product p ON p.id = l.product_id
                  WHERE o.status IN ('APPROVED', 'POSTED')
                 UNION ALL
-                SELECT l.opname_date, p.code, p.name, l.system_qty, l.physical_qty, l.variance_qty, l.unit_cost
+                SELECT l.opname_date, p.code, p.name, l.system_qty, l.physical_qty,
+                       l.variance_qty, l.unit_cost, NULL::uuid AS warehouse_id
                   FROM ${S}.legacy_stock_opname l LEFT JOIN ${S}.product p ON p.id = l.product_id
               ) gabungan
-             WHERE opname_date <= $1::date ORDER BY opname_date DESC, code`,
+             WHERE opname_date <= $1::date
+               AND ($2::date IS NULL OR opname_date >= $2::date)
+               AND ($5::uuid IS NULL OR warehouse_id = $5::uuid)
+             ORDER BY opname_date DESC, code`,
     },
     'price-sale': {
       title: 'Daftar Harga Jual Customer', totalKey: 'price',
       sql: `SELECT c.code AS customer_code, c.name AS customer_name, p.code AS product_code,
                    p.name AS product_name, h.effective_date::text, h.price::text
-              FROM ${S}.legacy_price_history h LEFT JOIN ${S}.customer c ON c.id = h.customer_id
+             FROM ${S}.legacy_price_history h LEFT JOIN ${S}.customer c ON c.id = h.customer_id
               LEFT JOIN ${S}.product p ON p.id = h.product_id
              WHERE h.party_type = 'CUSTOMER' AND COALESCE(h.effective_date, $1::date) <= $1::date
+               AND ($2::date IS NULL OR COALESCE(h.effective_date, $2::date) >= $2::date)
+               AND ($3::uuid IS NULL OR h.customer_id = $3::uuid)
              ORDER BY c.code, p.code, h.effective_date DESC`,
     },
     'price-purchase': {
       title: 'Daftar Harga Beli Supplier', totalKey: 'price',
       sql: `SELECT s.code AS supplier_code, s.name AS supplier_name, p.code AS product_code,
                    p.name AS product_name, h.effective_date::text, h.price::text
-              FROM ${S}.legacy_price_history h LEFT JOIN ${S}.supplier s ON s.id = h.supplier_id
+             FROM ${S}.legacy_price_history h LEFT JOIN ${S}.supplier s ON s.id = h.supplier_id
               LEFT JOIN ${S}.product p ON p.id = h.product_id
              WHERE h.party_type = 'SUPPLIER' AND COALESCE(h.effective_date, $1::date) <= $1::date
+               AND ($2::date IS NULL OR COALESCE(h.effective_date, $2::date) >= $2::date)
+               AND ($3::uuid IS NULL OR h.supplier_id = $3::uuid)
              ORDER BY s.code, p.code, h.effective_date DESC`,
     },
     'purchase-invoice': {
@@ -2220,9 +2859,14 @@ export function reportSql(code: string, S: string): { title: string; sql: string
                    pol.line_total::text, po.status
               FROM ${S}.purchase_order po JOIN ${S}.supplier s ON s.id = po.supplier_id
               JOIN ${S}.purchase_order_line pol ON pol.purchase_order_id = po.id
-              JOIN ${S}.product p ON p.id = pol.product_id
+             JOIN ${S}.product p ON p.id = pol.product_id
               JOIN ${S}.uom u ON u.id = pol.uom_id
              WHERE po.deleted_at IS NULL AND po.order_date <= $1::date
+               AND ($2::date IS NULL OR po.order_date >= $2::date)
+               AND ($3::uuid IS NULL OR po.supplier_id = $3::uuid)
+               AND ($4::uuid IS NULL OR po.id = $4::uuid)
+               AND ($5::uuid IS NULL OR po.warehouse_id = $5::uuid)
+               AND ($6::text IS NULL OR po.status = $6::text)
              ORDER BY po.order_date DESC, po.purchase_order_number, pol.line_no`,
     },
     'purchase-register': {
@@ -2233,6 +2877,10 @@ export function reportSql(code: string, S: string): { title: string; sql: string
                    po.grand_total::text
               FROM ${S}.purchase_order po JOIN ${S}.supplier s ON s.id = po.supplier_id
              WHERE po.deleted_at IS NULL AND po.order_date <= $1::date
+               AND ($2::date IS NULL OR po.order_date >= $2::date)
+               AND ($3::uuid IS NULL OR po.supplier_id = $3::uuid)
+               AND ($5::uuid IS NULL OR po.warehouse_id = $5::uuid)
+               AND ($6::text IS NULL OR po.status = $6::text)
              ORDER BY po.order_date DESC, po.purchase_order_number`,
     },
     'ap-payment-register': {
@@ -2240,14 +2888,22 @@ export function reportSql(code: string, S: string): { title: string; sql: string
       sql: `SELECT p.payment_number, p.payment_date::text, s.code AS supplier_code, s.name AS supplier_name,
                    p.method, p.reference_number, p.total_amount::text, p.status
               FROM ${S}.inventory_ap_payment p JOIN ${S}.supplier s ON s.id = p.supplier_id
-             WHERE p.payment_date <= $1::date ORDER BY p.payment_date, p.payment_number`,
+             WHERE p.payment_date <= $1::date
+               AND ($2::date IS NULL OR p.payment_date >= $2::date)
+               AND ($3::uuid IS NULL OR p.supplier_id = $3::uuid)
+               AND ($6::text IS NULL OR p.status = $6::text)
+             ORDER BY p.payment_date, p.payment_number`,
     },
     'ar-receipt-register': {
       title: 'Register Penerimaan Piutang', totalKey: 'total_amount',
       sql: `SELECT r.receipt_number, r.receipt_date::text, c.code AS customer_code, c.name AS customer_name,
                    r.method, r.reference_number, r.total_amount::text, r.status
               FROM ${S}.inventory_ar_receipt r JOIN ${S}.customer c ON c.id = r.customer_id
-             WHERE r.receipt_date <= $1::date ORDER BY r.receipt_date, r.receipt_number`,
+             WHERE r.receipt_date <= $1::date
+               AND ($2::date IS NULL OR r.receipt_date >= $2::date)
+               AND ($3::uuid IS NULL OR r.customer_id = $3::uuid)
+               AND ($6::text IS NULL OR r.status = $6::text)
+             ORDER BY r.receipt_date, r.receipt_number`,
     },
     'ap-aging': {
       title: 'Aging Hutang Supplier', totalKey: 'amount',
@@ -2275,6 +2931,8 @@ export function reportSql(code: string, S: string): { title: string; sql: string
                  WHERE a.receivable_ledger_id = l.id AND r.status = 'POSTED'
               ) settlement ON TRUE
              WHERE NOT l.is_settled AND l.amount > 0 AND COALESCE(l.transaction_date, $1::date) <= $1::date
+               AND ($2::date IS NULL OR COALESCE(l.transaction_date, $2::date) >= $2::date)
+               AND ($3::uuid IS NULL OR l.salesperson_id = $3::uuid)
              ORDER BY us.name, overdue_days DESC`,
     },
     'ar-outstanding': {
@@ -2287,18 +2945,70 @@ export function reportSql(code: string, S: string): { title: string; sql: string
                    l.invoice_number, l.customer_name, l.due_date::text, l.outstanding_amount::text, l.status
               FROM ${S}.sales_note_handover h JOIN ${S}.user_subject us ON us.id = h.salesperson_id
               JOIN ${S}.sales_note_handover_line l ON l.handover_id = h.id
-             WHERE h.handover_date <= $1::date ORDER BY h.handover_date, h.handover_number, l.invoice_number`,
+             WHERE h.handover_date <= $1::date
+               AND ($2::date IS NULL OR h.handover_date >= $2::date)
+               AND ($3::uuid IS NULL OR h.salesperson_id = $3::uuid)
+             ORDER BY h.handover_date, h.handover_number, l.invoice_number`,
     },
     'gross-profit': {
       title: 'Laba Kotor Penjualan', totalKey: 'gross_profit',
       sql: `SELECT so.order_number, so.order_date::text, p.code AS product_code, p.name AS product_name,
+                   COALESCE(us.name, us.username_snapshot, 'Tanpa sales') AS salesperson_name,
                    sol.ordered_qty::text, sol.line_total::text AS revenue,
                    (sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost))::text AS cogs,
-                   (sol.line_total - sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost))::text AS gross_profit
+                   (sol.line_total - sol.ordered_qty * COALESCE(sol.legacy_unit_cost, p.standard_cost))::text AS gross_profit,
+                   sol.cost_source, sol.price_source
               FROM ${S}.sales_order so JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
               JOIN ${S}.product p ON p.id = sol.product_id
+              LEFT JOIN ${S}.user_subject us ON us.id = COALESCE(so.salesperson_id, so.created_by)
              WHERE so.status = 'INVOICED' AND so.order_date <= $1::date
+               AND ($2::date IS NULL OR so.order_date >= $2::date)
+               AND ($3::uuid IS NULL OR so.customer_id = $3::uuid)
              ORDER BY so.order_date, so.order_number, sol.line_no`,
+    },
+    'sales-by-product': {
+      title: 'Rekap Penjualan Barang', totalKey: 'amount',
+      sql: `SELECT p.code AS product_code, p.name AS product_name, u.code AS uom,
+                   sum(sol.ordered_qty)::text AS qty,
+                   sum(sol.line_total)::text AS amount
+              FROM ${S}.sales_order so
+              JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
+              JOIN ${S}.product p ON p.id = sol.product_id
+              JOIN ${S}.uom u ON u.id = sol.uom_id
+             WHERE so.status = 'INVOICED' AND so.order_date <= $1::date
+               AND ($2::date IS NULL OR so.order_date >= $2::date)
+               AND ($3::uuid IS NULL OR so.customer_id = $3::uuid)
+             GROUP BY p.id, u.code ORDER BY p.code`,
+    },
+    'ar-event-register': {
+      title: 'Register Event Piutang', totalKey: 'amount',
+      sql: `SELECT event_date::text, event_type, document_number, customer_code,
+                   customer_name, salesperson_name, amount::text, status
+              FROM (
+                SELECT COALESCE(l.transaction_date, l.due_date) AS event_date,
+                       'INVOICE'::text AS event_type, l.legacy_invoice_number AS document_number,
+                       c.code AS customer_code, c.name AS customer_name,
+                       COALESCE(us.name, 'Tanpa sales') AS salesperson_name,
+                       abs(l.amount) AS amount,
+                       CASE WHEN l.is_settled THEN 'SETTLED' ELSE 'OPEN' END AS status,
+                       l.customer_id AS party_id
+                  FROM ${S}.legacy_receivable_ledger l
+                  LEFT JOIN ${S}.customer c ON c.id = l.customer_id
+                  LEFT JOIN ${S}.user_subject us ON us.id = l.salesperson_id
+                UNION ALL
+                SELECT r.receipt_date, 'RECEIPT', r.receipt_number,
+                       c.code, c.name, COALESCE(us.name, 'Tanpa sales'),
+                       -abs(a.allocated_amount), r.status, r.customer_id
+                  FROM ${S}.inventory_ar_receipt r
+                  JOIN ${S}.inventory_ar_receipt_allocation a ON a.receipt_id = r.id
+                  LEFT JOIN ${S}.legacy_receivable_ledger l ON l.id = a.receivable_ledger_id
+                  LEFT JOIN ${S}.customer c ON c.id = r.customer_id
+                  LEFT JOIN ${S}.user_subject us ON us.id = l.salesperson_id
+              ) events
+             WHERE event_date <= $1::date
+               AND ($2::date IS NULL OR event_date >= $2::date)
+               AND ($3::uuid IS NULL OR party_id = $3::uuid)
+             ORDER BY event_date, document_number, event_type`,
     },
   };
   if (code === 'profit-loss') {
@@ -2306,6 +3016,7 @@ export function reportSql(code: string, S: string): { title: string; sql: string
       title: 'Laporan Laba Rugi Akuntansi', totalKey: 'balance',
       sql: `SELECT coa.code, coa.name, at.category AS account_type,
                    COALESCE(sum(CASE
+                     WHEN je.id IS NULL THEN 0
                      WHEN coa.normal_balance = 'DEBIT' THEN jel.debit - jel.credit
                      ELSE jel.credit - jel.debit
                    END), 0)::text AS balance
@@ -2314,6 +3025,7 @@ export function reportSql(code: string, S: string): { title: string; sql: string
               LEFT JOIN ${S}.journal_entry_line jel ON jel.account_id = coa.id
               LEFT JOIN ${S}.journal_entry je ON je.id = jel.journal_entry_id
                AND je.status = 'POSTED' AND je.journal_date <= $1::date
+               AND ($2::date IS NULL OR je.journal_date >= $2::date)
              WHERE coa.deleted_at IS NULL AND at.category IN ('REVENUE', 'EXPENSE')
              GROUP BY coa.id, at.category ORDER BY coa.code`,
     };
@@ -2347,7 +3059,9 @@ function agingReport(S: string, ledger: string, party: string, partyId: string):
                 FROM ${S}.${allocationTable} a
                 JOIN ${S}.${parentTable} par ON par.id = a.${parentColumn}
                WHERE a.${ledgerColumn} = l.id AND par.status = 'POSTED'
-            ) settlement ON TRUE
-           WHERE NOT l.is_settled AND l.amount > 0 AND COALESCE(l.transaction_date, $1::date) <= $1::date
-           ORDER BY p.name, overdue_days DESC`;
+             ) settlement ON TRUE
+             WHERE NOT l.is_settled AND l.amount > 0 AND COALESCE(l.transaction_date, $1::date) <= $1::date
+               AND ($2::date IS NULL OR COALESCE(l.transaction_date, $2::date) >= $2::date)
+               AND ($3::uuid IS NULL OR l.${partyId} = $3::uuid)
+             ORDER BY p.name, overdue_days DESC`;
 }

@@ -74,7 +74,8 @@ as_app() { sudo -u "$APP_USER" bash -lc "$*"; }
 # Menyalin .exe/.apk terbaru dari GitHub Release ke folder unduhan publik.
 #
 # WAJIB dipanggil TANPA PEDULI apakah commit `main` berubah. Rilis POS
-# (tag `pos-v*`/`inventory-v*`) ditandai ulang lewat CI-nya SENDIRI,
+# (tag `pos-v*`/`inventory-v*`/`inventory-pos-v*`) diterbitkan lewat CI
+# atau alur kandidat manualnya sendiri,
 # independen dari commit `main` -- build ulang exe yang salah isinya, atau
 # perbaikan lain di alur rilis Flutter, tidak selalu menyertakan commit baru
 # di sini. Ditemukan langsung di produksi: exe yang benar sudah terbit di
@@ -164,8 +165,12 @@ sinkronkan_unduhan_pos() {
 const fs = require('fs');
 const releases = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const lines = [];
-for (const prefix of ['pos-v', 'inventory-v']) {
-  const release = releases.find((r) => !r.draft && !r.prerelease && String(r.tag_name || '').startsWith(prefix));
+for (const prefixes of [['pos-v'], ['inventory-v', 'inventory-pos-v']]) {
+  const release = releases.find((r) =>
+    !r.draft &&
+    !r.prerelease &&
+    prefixes.some((prefix) => String(r.tag_name || '').startsWith(prefix)),
+  );
   for (const asset of release?.assets || []) {
     if (/\.(exe|apk)$/i.test(asset.name)) lines.push(`${asset.name}\t${asset.url}`);
   }

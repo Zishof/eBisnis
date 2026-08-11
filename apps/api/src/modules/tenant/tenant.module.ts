@@ -268,6 +268,14 @@ class PurchaseOrderLineDto {
   @Max(100)
   discountPercent?: number;
 
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  discountPercent2?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -443,6 +451,32 @@ class CreateBackorderDto {
   @IsString()
   @MaxLength(32)
   dueDate?: string;
+}
+
+class FinalizeSupplierInvoiceDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  invoiceNumber!: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
+  invoiceDate!: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
+  dueDate!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 }
 
 class AssignSupplierDto {
@@ -1258,6 +1292,106 @@ export class ErpController {
     return this.purchasing.reverseGoodsReceiptValidation(context(user, meta), id, dto.reason);
   }
 
+  @Get('supplier-invoices')
+  @Permissions('PURCHASING_RECEIPT.READ')
+  listSupplierInvoices(@CurrentUser() user: AuthenticatedUser) {
+    const schema = schemaOf(user);
+    return this.tenantDb.query<Record<string, unknown>>(
+      schema,
+      `SELECT si.id::text, si.invoice_number, si.invoice_date::text, si.due_date::text,
+              si.subtotal::text, si.tax_total::text, si.grand_total::text,
+              si.paid_total::text, si.match_status, si.status,
+              si.goods_receipt_id::text, gr.receipt_number,
+              si.purchase_order_id::text, po.purchase_order_number,
+              s.id::text AS supplier_id, s.code AS supplier_code, s.name AS supplier_name
+         FROM "${schema}".supplier_invoice si
+         JOIN "${schema}".supplier s ON s.id = si.supplier_id
+         LEFT JOIN "${schema}".goods_receipt gr ON gr.id = si.goods_receipt_id
+         LEFT JOIN "${schema}".purchase_order po ON po.id = si.purchase_order_id
+        ORDER BY si.invoice_date DESC, si.created_at DESC LIMIT 500`,
+    );
+  }
+
+  @Post('goods-receipts/:id/supplier-invoice')
+  @HttpCode(201)
+  @BlockDemo()
+  @Permissions('PURCHASING_RECEIPT.POST')
+  async finalizeSupplierInvoice(
+    @Param('id') id: string,
+    @Body() dto: FinalizeSupplierInvoiceDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dto.invoiceDate) || !/^\d{4}-\d{2}-\d{2}$/.test(dto.dueDate)) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Tanggal faktur dan jatuh tempo harus YYYY-MM-DD.');
+    }
+    if (dto.dueDate < dto.invoiceDate) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Jatuh tempo tidak boleh sebelum tanggal faktur.');
+    }
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    return this.tenantDb.transaction(ctx.schemaName, async (client) => {
+      const receipt = await client.query<{
+        supplier_id: string; purchase_order_id: string | null; status: string;
+        subtotal: string; tax_total: string; grand_total: string;
+      }>(
+        `SELECT gr.supplier_id::text, gr.purchase_order_id::text, gr.status,
+                receipt_value.subtotal::text,
+                (receipt_value.subtotal * COALESCE(po.tax_total / NULLIF(po.subtotal - po.discount_total, 0), 0))::text AS tax_total,
+                (receipt_value.subtotal * (1 + COALESCE(po.tax_total / NULLIF(po.subtotal - po.discount_total, 0), 0)))::text AS grand_total
+           FROM ${S}.goods_receipt gr
+           LEFT JOIN ${S}.purchase_order po ON po.id = gr.purchase_order_id
+           CROSS JOIN LATERAL (
+             SELECT COALESCE(sum(grl.accepted_qty * grl.unit_cost), 0) AS subtotal
+               FROM ${S}.goods_receipt_line grl WHERE grl.goods_receipt_id = gr.id
+           ) receipt_value
+          WHERE gr.id = $1::uuid
+          FOR UPDATE OF gr`,
+        [id],
+      );
+      if (!receipt.rowCount) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Penerimaan barang tidak ditemukan.');
+      const row = receipt.rows[0];
+      if (row.status !== 'STOCK_POSTED' || !row.supplier_id) {
+        throw AppError.conflict(ErrorCodes.CONFLICT, 'Faktur hanya dapat dicatat setelah penerimaan supplier divalidasi dan stok diposting.');
+      }
+      const subject = await client.query<{ id: string }>(
+        `SELECT id::text FROM ${S}.user_subject WHERE id = $1::uuid OR platform_user_id = $1::uuid LIMIT 1`,
+        [ctx.userId],
+      );
+      const actorId = subject.rows[0]?.id ?? ctx.userId;
+      const created = await client.query<{ id: string }>(
+        `INSERT INTO ${S}.supplier_invoice
+           (supplier_id, purchase_order_id, goods_receipt_id, invoice_number,
+            invoice_date, due_date, subtotal, tax_total, grand_total,
+            match_status, status, approved_at, approved_by, note, created_by)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5::date, $6::date,
+                 $7, $8, $9, 'MATCHED', 'APPROVED', now(), $10::uuid, $11, $10::uuid)
+         ON CONFLICT (goods_receipt_id) WHERE goods_receipt_id IS NOT NULL
+         DO UPDATE SET invoice_number = EXCLUDED.invoice_number,
+           invoice_date = EXCLUDED.invoice_date, due_date = EXCLUDED.due_date,
+           note = EXCLUDED.note, updated_at = now(), version = ${S}.supplier_invoice.version + 1
+         RETURNING id::text`,
+        [row.supplier_id, row.purchase_order_id, id, dto.invoiceNumber.trim(),
+          dto.invoiceDate, dto.dueDate, row.subtotal, row.tax_total, row.grand_total,
+          actorId, dto.note?.trim() || null],
+      );
+      const payable = await client.query(
+        `UPDATE ${S}.legacy_payable_ledger
+            SET legacy_invoice_number = $2, transaction_date = $3::date,
+                due_date = $4::date, supplier_invoice_id = $5::uuid,
+                metadata = metadata || $6::jsonb
+          WHERE metadata->>'goodsReceiptId' = $1
+          RETURNING id`,
+        [id, dto.invoiceNumber.trim(), dto.invoiceDate, dto.dueDate, created.rows[0].id,
+          JSON.stringify({ supplierInvoiceId: created.rows[0].id, supplierInvoiceNumber: dto.invoiceNumber.trim() })],
+      );
+      if (!payable.rowCount) {
+        throw AppError.conflict(ErrorCodes.CONFLICT, 'Ledger hutang penerimaan belum tersedia; faktur tidak disimpan agar tidak terlepas dari hutang.');
+      }
+      return { id: created.rows[0].id, invoiceNumber: dto.invoiceNumber.trim(), status: 'APPROVED', payableLinked: true };
+    });
+  }
+
   @Post('goods-receipts/:id/create-backorder')
   @HttpCode(201)
   @BlockDemo()
@@ -1439,7 +1573,7 @@ export class ErpController {
               COALESCE(sum(sol.delivered_qty), 0)::text AS delivered_qty
          FROM ${S}.sales_order so
          LEFT JOIN ${S}.customer c ON c.id = so.customer_id
-         LEFT JOIN ${S}.user_subject us ON us.id = so.created_by
+         LEFT JOIN ${S}.user_subject us ON us.id = COALESCE(so.salesperson_id, so.created_by)
          LEFT JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
         WHERE ($1::text IS NULL
            OR so.order_number ILIKE '%' || $1 || '%'
@@ -1472,7 +1606,7 @@ export class ErpController {
               COALESCE(us.name, us.username_snapshot, 'Tanpa sales') AS sales_name
          FROM ${S}.sales_order so
          LEFT JOIN ${S}.customer c ON c.id = so.customer_id
-         LEFT JOIN ${S}.user_subject us ON us.id = so.created_by
+         LEFT JOIN ${S}.user_subject us ON us.id = COALESCE(so.salesperson_id, so.created_by)
         WHERE so.id = $1`,
       [id],
     );
@@ -1481,7 +1615,9 @@ export class ErpController {
       ctx,
       `SELECT sol.id::text, sol.line_no, sol.ordered_qty::text, sol.delivered_qty::text,
               sol.unit_price::text, sol.discount_amount::text, sol.tax_amount::text,
-              sol.line_total::text, p.code AS product_code, p.name AS product_name, u.code AS uom_code
+              sol.line_total::text, sol.price_source, sol.price_rule_snapshot,
+              sol.legacy_unit_cost::text AS unit_cost, sol.cost_source,
+              p.code AS product_code, p.name AS product_name, u.code AS uom_code
          FROM ${S}.sales_order_line sol
          JOIN ${S}.product p ON p.id = sol.product_id
          JOIN ${S}.uom u ON u.id = sol.uom_id
@@ -1509,7 +1645,7 @@ export class ErpController {
          FROM ${S}.sales_order so
          LEFT JOIN ${S}.customer c ON c.id = so.customer_id
          LEFT JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
-        WHERE so.created_by = (
+        WHERE COALESCE(so.salesperson_id, so.created_by) = (
           SELECT us.id FROM ${S}.user_subject us
            WHERE us.id = $1::uuid OR us.platform_user_id = $1::uuid LIMIT 1
         )
@@ -1548,7 +1684,7 @@ export class ErpController {
           `SELECT so.id::text, so.order_number, so.status
              FROM ${S}.sales_order so
             WHERE so.id = $1::uuid
-              AND so.created_by = (
+              AND COALESCE(so.salesperson_id, so.created_by) = (
                 SELECT us.id FROM ${S}.user_subject us
                  WHERE us.id = $2::uuid OR us.platform_user_id = $2::uuid LIMIT 1
               )
@@ -1646,11 +1782,12 @@ export class ErpController {
           tax_total: string;
           grand_total: string;
           created_by: string | null;
+          salesperson_id: string | null;
         }>(
           `SELECT id::text, order_number, status, customer_id::text AS customer_id,
                   outlet_id::text AS outlet_id, order_date::text, currency_code,
                   subtotal::text, discount_total::text, tax_total::text, grand_total::text,
-                  created_by::text AS created_by
+                  created_by::text AS created_by, salesperson_id::text AS salesperson_id
              FROM ${S}.sales_order WHERE id = $1 FOR UPDATE`,
           [id],
         );
@@ -1714,7 +1851,7 @@ export class ErpController {
 
           const idempotencyKey = `SALES_ORDER:${id}:${line.id}`;
           const sudah = await client.query(
-            `SELECT id FROM ${S}.stock_movement WHERE idempotency_key = $1`,
+            `SELECT id FROM ${S}.stock_movement WHERE idempotency_key LIKE $1 || '%'`,
             [idempotencyKey],
           );
           if (sudah.rowCount) continue;
@@ -1734,35 +1871,81 @@ export class ErpController {
             }
           }
 
-          const unitCost = Number(line.legacy_unit_cost ?? 0);
-          await client.query(
-            `INSERT INTO ${S}.stock_movement
-               (movement_number, movement_type, product_id, uom_id, quantity, unit_cost,
-                source_warehouse_id, bucket_from, bucket_to, reference_type, reference_id,
-                reference_number, posting_key, idempotency_key, occurred_at, created_by, note)
-             VALUES ($1, 'SALES_ORDER_ISSUE', $2, $3, $4, $5, $6, 'AVAILABLE', 'SOLD',
-                     'sales_order', $7, $8, $9, $9, now(), $10, 'Faktur pesanan penjualan')`,
-            [
-              `SO-${id.slice(0, 8)}-${line.id.slice(0, 8)}`,
-              line.product_id,
-              line.uom_id,
-              sisa.toFixed(6),
-              unitCost,
-              warehouseId,
-              id,
-              so.order_number,
-              idempotencyKey,
-              ctx.userId,
-            ],
+          const balances = await client.query<{
+            lot_id: string | null; available_qty: string; average_cost: string;
+          }>(
+            `SELECT sb.lot_id::text, sb.available_qty::text, sb.average_cost::text
+               FROM ${S}.stock_balance sb
+               LEFT JOIN ${S}.inventory_lot lot ON lot.id = sb.lot_id
+              WHERE sb.warehouse_id = $1::uuid AND sb.product_id = $2::uuid
+                AND sb.available_qty > 0
+                AND (lot.id IS NULL OR (lot.deleted_at IS NULL AND lot.is_active
+                  AND lot.quality_status = 'GOOD'
+                  AND (lot.expiry_date IS NULL OR lot.expiry_date >= CURRENT_DATE)))
+              ORDER BY lot.expiry_date ASC NULLS LAST, lot.production_date ASC NULLS LAST,
+                       lot.lot_number ASC NULLS LAST, sb.created_at
+              FOR UPDATE OF sb`,
+            [warehouseId, line.product_id],
           );
-          await applyBalanceDelta(client, S, {
-            warehouseId,
-            productId: line.product_id,
-            lotId: null,
-            onHandDelta: -sisa.toNumber(),
-            availableDelta: -sisa.toNumber(),
-          });
-          totalCost = totalCost.plus(sisa.times(unitCost));
+          let remaining = sisa;
+          let movementIndex = 0;
+          for (const balance of balances.rows) {
+            if (remaining.lessThanOrEqualTo(0)) break;
+            const available = new Decimal(balance.available_qty);
+            const issued = Decimal.min(remaining, available);
+            if (issued.lessThanOrEqualTo(0)) continue;
+            const unitCost = Number(balance.average_cost || line.legacy_unit_cost || 0);
+            const movementKey = `${idempotencyKey}:${movementIndex}`;
+            await client.query(
+              `INSERT INTO ${S}.stock_movement
+                 (movement_number, movement_type, product_id, uom_id, lot_id, quantity, unit_cost,
+                  source_warehouse_id, bucket_from, bucket_to, reference_type, reference_id,
+                  reference_number, posting_key, idempotency_key, occurred_at, created_by, note)
+               VALUES ($1, 'SALES_ORDER_ISSUE', $2, $3, $4::uuid, $5, $6, $7,
+                       'AVAILABLE', 'SOLD', 'sales_order', $8, $9, $10, $10, now(), $11,
+                       'Faktur pesanan penjualan - alokasi FEFO')`,
+              [`SO-${id.slice(0, 8)}-${line.id.slice(0, 8)}-${movementIndex}`,
+                line.product_id, line.uom_id, balance.lot_id, issued.toFixed(6), unitCost,
+                warehouseId, id, so.order_number, movementKey, ctx.userId],
+            );
+            await applyBalanceDelta(client, S, {
+              warehouseId,
+              productId: line.product_id,
+              lotId: balance.lot_id,
+              onHandDelta: -issued.toNumber(),
+              availableDelta: -issued.toNumber(),
+            });
+            totalCost = totalCost.plus(issued.times(unitCost));
+            remaining = remaining.minus(issued);
+            movementIndex += 1;
+          }
+          if (remaining.greaterThan(0)) {
+            if (!line.allow_negative_stock) {
+              throw AppError.unprocessable(
+                ErrorCodes.INSUFFICIENT_STOCK,
+                `Stok batch FEFO ${line.product_code} tidak mencukupi untuk faktur ini.`,
+              );
+            }
+            const unitCost = Number(line.legacy_unit_cost ?? 0);
+            const movementKey = `${idempotencyKey}:${movementIndex}`;
+            await client.query(
+              `INSERT INTO ${S}.stock_movement
+                 (movement_number, movement_type, product_id, uom_id, quantity, unit_cost,
+                  source_warehouse_id, bucket_from, bucket_to, reference_type, reference_id,
+                  reference_number, posting_key, idempotency_key, occurred_at, created_by, note)
+               VALUES ($1, 'SALES_ORDER_ISSUE', $2, $3, $4, $5, $6, 'AVAILABLE', 'SOLD',
+                       'sales_order', $7, $8, $9, $9, now(), $10,
+                       'Faktur pesanan penjualan - stok negatif diizinkan')`,
+              [`SO-${id.slice(0, 8)}-${line.id.slice(0, 8)}-${movementIndex}`,
+                line.product_id, line.uom_id, remaining.toFixed(6), unitCost,
+                warehouseId, id, so.order_number, movementKey, ctx.userId],
+            );
+            await applyBalanceDelta(client, S, {
+              warehouseId, productId: line.product_id, lotId: null,
+              onHandDelta: -remaining.toNumber(), availableDelta: -remaining.toNumber(),
+            });
+            totalCost = totalCost.plus(remaining.times(unitCost));
+          }
 
           await client.query(
             `UPDATE ${S}.sales_order_line SET delivered_qty = ordered_qty, version = version + 1
@@ -1812,7 +1995,7 @@ export class ErpController {
           [
             so.order_number,
             so.customer_id,
-            so.created_by,
+            so.salesperson_id ?? so.created_by,
             so.order_date,
             dueDays,
             so.grand_total,
@@ -1966,7 +2149,7 @@ export class ErpController {
              FROM ${S}.sales_order so
              JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
              JOIN ${S}.product p ON p.id = sol.product_id
-             LEFT JOIN ${S}.user_subject us ON us.id = so.created_by
+             LEFT JOIN ${S}.user_subject us ON us.id = COALESCE(so.salesperson_id, so.created_by)
             WHERE so.order_date >= date_trunc('month', CURRENT_DATE)::date
             GROUP BY us.name, us.username_snapshot
             ORDER BY COALESCE(sum(sol.line_total), 0) DESC
@@ -2017,7 +2200,7 @@ export class ErpController {
                   COALESCE(us.name, us.username_snapshot, 'Tanpa sales') AS sales_name
              FROM ${S}.sales_order so
              LEFT JOIN ${S}.customer c ON c.id = so.customer_id
-             LEFT JOIN ${S}.user_subject us ON us.id = so.created_by
+             LEFT JOIN ${S}.user_subject us ON us.id = COALESCE(so.salesperson_id, so.created_by)
             ORDER BY so.order_date DESC, so.created_at DESC
             LIMIT 12`,
         ),
@@ -2066,11 +2249,11 @@ export class ErpController {
       this.inventoryQuery(
         ctx,
         `SELECT
-           (SELECT count(*)::int FROM ${S}.sales_order WHERE created_by = $1 AND order_date = CURRENT_DATE) AS orders_today,
-           (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE created_by = $1 AND order_date = CURRENT_DATE) AS revenue_today,
-           (SELECT count(*)::int FROM ${S}.sales_order WHERE created_by = $1 AND order_date >= date_trunc('month', CURRENT_DATE)::date) AS orders_month,
-           (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE created_by = $1 AND order_date >= date_trunc('month', CURRENT_DATE)::date) AS revenue_month,
-           (SELECT count(DISTINCT customer_id)::int FROM ${S}.sales_order WHERE created_by = $1 AND order_date >= date_trunc('month', CURRENT_DATE)::date) AS customers_month`,
+           (SELECT count(*)::int FROM ${S}.sales_order WHERE COALESCE(salesperson_id, created_by) = $1 AND order_date = CURRENT_DATE) AS orders_today,
+           (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE COALESCE(salesperson_id, created_by) = $1 AND order_date = CURRENT_DATE) AS revenue_today,
+           (SELECT count(*)::int FROM ${S}.sales_order WHERE COALESCE(salesperson_id, created_by) = $1 AND order_date >= date_trunc('month', CURRENT_DATE)::date) AS orders_month,
+           (SELECT COALESCE(sum(grand_total), 0)::text FROM ${S}.sales_order WHERE COALESCE(salesperson_id, created_by) = $1 AND order_date >= date_trunc('month', CURRENT_DATE)::date) AS revenue_month,
+           (SELECT count(DISTINCT customer_id)::int FROM ${S}.sales_order WHERE COALESCE(salesperson_id, created_by) = $1 AND order_date >= date_trunc('month', CURRENT_DATE)::date) AS customers_month`,
         [subjectId],
       ),
       this.inventoryQuery(
@@ -2079,7 +2262,7 @@ export class ErpController {
                 so.grand_total::text, COALESCE(c.name, 'Pelanggan umum') AS customer_name
            FROM ${S}.sales_order so
            LEFT JOIN ${S}.customer c ON c.id = so.customer_id
-          WHERE so.created_by = $1
+          WHERE COALESCE(so.salesperson_id, so.created_by) = $1
           ORDER BY so.order_date DESC, so.created_at DESC
           LIMIT 12`,
         [subjectId],
@@ -2091,7 +2274,7 @@ export class ErpController {
                 COALESCE(sum(so.grand_total), 0)::text AS revenue
            FROM ${S}.sales_order so
            LEFT JOIN ${S}.customer c ON c.id = so.customer_id
-          WHERE so.created_by = $1
+          WHERE COALESCE(so.salesperson_id, so.created_by) = $1
             AND so.order_date >= date_trunc('month', CURRENT_DATE)::date
           GROUP BY c.name
           ORDER BY COALESCE(sum(so.grand_total), 0) DESC
@@ -2111,32 +2294,74 @@ export class ErpController {
   @Permissions('SALES_ORDER.READ')
   @ApiOperation({ summary: 'Katalog ringkas customer dan produk untuk klien Flutter sales' })
   async mobileInventoryCatalog(
+    @Query('customerId') customerIdRaw: string | undefined,
     @CurrentUser() user: AuthenticatedUser,
     @RequestContext() meta: RequestMeta,
   ) {
     const ctx = context(user, meta);
     const S = `"${ctx.schemaName}"`;
+    const customerId = customerIdRaw?.trim() || null;
+    if (customerId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(customerId)) {
+      throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Customer katalog tidak valid.');
+    }
     const [customers, products] = await Promise.all([
       this.inventoryQuery(
         ctx,
-        `SELECT id::text, code, name
-           FROM ${S}.customer
-          WHERE deleted_at IS NULL AND is_active
-          ORDER BY name
+        `SELECT c.id::text, c.code, c.name, c.credit_limit::text,
+                c.legacy_payment_days,
+                COALESCE(ar.outstanding_amount, 0)::text AS receivable_balance,
+                GREATEST(c.credit_limit - COALESCE(ar.outstanding_amount, 0), 0)::text AS available_credit
+           FROM ${S}.customer c
+           LEFT JOIN LATERAL (
+             SELECT COALESCE(sum(GREATEST(abs(l.amount) - COALESCE(paid.amount, 0), 0)), 0) AS outstanding_amount
+               FROM ${S}.legacy_receivable_ledger l
+               LEFT JOIN LATERAL (
+                 SELECT COALESCE(sum(a.allocated_amount), 0) AS amount
+                   FROM ${S}.inventory_ar_receipt_allocation a
+                   JOIN ${S}.inventory_ar_receipt r ON r.id = a.receipt_id
+                  WHERE a.receivable_ledger_id = l.id AND r.status = 'POSTED'
+               ) paid ON TRUE
+              WHERE l.customer_id = c.id AND NOT l.is_settled
+           ) ar ON TRUE
+          WHERE c.deleted_at IS NULL AND c.is_active
+          ORDER BY c.name
           LIMIT 1000`,
       ),
       this.inventoryQuery(
         ctx,
         `SELECT p.id::text, p.code, p.name, p.base_uom_id::text AS uom_id,
-                p.default_sale_price::text AS price,
+                COALESCE(price.price, p.default_sale_price)::text AS price,
+                COALESCE(price.price_source, 'PRODUCT_DEFAULT') AS price_source,
                 COALESCE(sum(sb.available_qty), 0)::text AS available_qty,
                 '/inventory/public/products/' || p.id::text || '/image' AS image_url
            FROM ${S}.product p
            LEFT JOIN ${S}.stock_balance sb ON sb.product_id = p.id
+           LEFT JOIN LATERAL (
+             SELECT pbi.price,
+                    CASE WHEN pb.scope_type = 'CUSTOMER' THEN 'CUSTOMER_PRICE_BOOK'
+                         ELSE 'TENANT_PRICE_BOOK' END AS price_source
+               FROM ${S}.price_book_item pbi
+               JOIN ${S}.price_book pb ON pb.id = pbi.price_book_id
+              WHERE pbi.product_id = p.id
+                AND pbi.minimum_qty <= 1
+                AND pbi.deleted_at IS NULL AND pbi.is_active
+                AND pb.deleted_at IS NULL AND pb.is_active
+                AND pb.approval_status = 'APPROVED'
+                AND pb.valid_from <= CURRENT_DATE
+                AND (pb.valid_until IS NULL OR pb.valid_until >= CURRENT_DATE)
+                AND pbi.valid_from <= CURRENT_DATE
+                AND (pbi.valid_until IS NULL OR pbi.valid_until >= CURRENT_DATE)
+                AND ((pb.scope_type = 'CUSTOMER' AND pb.scope_id = $1::uuid)
+                  OR pb.scope_type = 'TENANT')
+              ORDER BY CASE WHEN pb.scope_type = 'CUSTOMER' THEN 0 ELSE 1 END,
+                       pbi.minimum_qty DESC, pb.sort_order, pb.updated_at DESC
+              LIMIT 1
+           ) price ON TRUE
           WHERE p.deleted_at IS NULL AND p.is_active AND p.is_sellable
-          GROUP BY p.id
+          GROUP BY p.id, price.price, price.price_source
           ORDER BY p.name
           LIMIT 1000`,
+        [customerId],
       ),
     ]);
     return { customers, products };
@@ -2239,58 +2464,148 @@ export class ErpController {
           'Profil sales tidak aktif; order baru tidak dapat dikirim.',
         );
       }
-      const customer = await client.query<{ id: string }>(
-        `SELECT id::text FROM ${S}.customer WHERE id = $1::uuid AND deleted_at IS NULL AND is_active`,
+      const customer = await client.query<{ id: string; credit_limit: string; outstanding_amount: string }>(
+        `SELECT c.id::text, c.credit_limit::text,
+                COALESCE(sum(GREATEST(abs(l.amount) - COALESCE(paid.amount, 0), 0)), 0)::text AS outstanding_amount
+           FROM ${S}.customer c
+           LEFT JOIN ${S}.legacy_receivable_ledger l
+             ON l.customer_id = c.id AND NOT l.is_settled
+           LEFT JOIN LATERAL (
+             SELECT COALESCE(sum(a.allocated_amount), 0) AS amount
+               FROM ${S}.inventory_ar_receipt_allocation a
+               JOIN ${S}.inventory_ar_receipt r ON r.id = a.receipt_id
+              WHERE a.receivable_ledger_id = l.id AND r.status = 'POSTED'
+           ) paid ON TRUE
+          WHERE c.id = $1::uuid AND c.deleted_at IS NULL AND c.is_active
+          GROUP BY c.id, c.credit_limit`,
         [body.customerId],
       );
       if (!customer.rowCount) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Customer tidak ditemukan atau tidak aktif.');
       const productIds = Array.from(new Set(body.lines.map((line) => line.productId)));
-      const products = await client.query<{ id: string; standard_cost: string; default_sale_price: string }>(
-        `SELECT id::text, standard_cost::text, default_sale_price::text
+      const products = await client.query<{
+        id: string; standard_cost: string; default_sale_price: string; weighted_average_cost: string | null;
+      }>(
+        `SELECT p.id::text, p.standard_cost::text, p.default_sale_price::text,
+                CASE WHEN COALESCE(sum(sb.on_hand_qty), 0) > 0
+                  THEN (sum(sb.on_hand_qty * sb.average_cost) / sum(sb.on_hand_qty))::text
+                  ELSE NULL END AS weighted_average_cost
            FROM ${S}.product
-          WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL AND is_active AND is_sellable`,
+             p LEFT JOIN ${S}.stock_balance sb
+               ON sb.product_id = p.id AND sb.on_hand_qty > 0
+          WHERE p.id = ANY($1::uuid[]) AND p.deleted_at IS NULL AND p.is_active AND p.is_sellable
+          GROUP BY p.id`,
         [productIds],
       );
       const productMap = new Map(products.rows.map((row) => [row.id, row]));
       if (productMap.size !== productIds.length) {
         throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Satu atau lebih produk tidak tersedia untuk dijual.');
       }
-      const calculatedLines = body.lines.map((line) => {
+      const calculatedLines: Array<{
+        line: MobileSalesOrderLineDto;
+        product: (typeof products.rows)[number];
+        unitPrice: number;
+        clientUnitPrice: number | null;
+        priceBookItemId: string | null;
+        priceSource: string;
+        discountAmount: number;
+        taxAmount: number;
+        lineTotal: number;
+        unitCost: number;
+        costSource: string;
+      }> = [];
+      for (const line of body.lines) {
         const product = productMap.get(line.productId)!;
-        const unitPrice = line.unitPrice ?? Number(product.default_sale_price);
+        const resolvedPrice = await client.query<{
+          item_id: string; price: string; scope_type: string;
+        }>(
+          `SELECT pbi.id::text AS item_id, pbi.price::text, pb.scope_type
+             FROM ${S}.price_book_item pbi
+             JOIN ${S}.price_book pb ON pb.id = pbi.price_book_id
+            WHERE pbi.product_id = $1::uuid
+              AND (pbi.uom_id IS NULL OR pbi.uom_id = $2::uuid)
+              AND pbi.minimum_qty <= $3
+              AND pbi.deleted_at IS NULL AND pbi.is_active
+              AND pb.deleted_at IS NULL AND pb.is_active
+              AND pb.approval_status = 'APPROVED'
+              AND pb.valid_from <= CURRENT_DATE
+              AND (pb.valid_until IS NULL OR pb.valid_until >= CURRENT_DATE)
+              AND pbi.valid_from <= CURRENT_DATE
+              AND (pbi.valid_until IS NULL OR pbi.valid_until >= CURRENT_DATE)
+              AND ((pb.scope_type = 'CUSTOMER' AND pb.scope_id = $4::uuid)
+                OR pb.scope_type = 'TENANT')
+            ORDER BY CASE WHEN pb.scope_type = 'CUSTOMER' THEN 0 ELSE 1 END,
+                     pbi.minimum_qty DESC, pb.sort_order, pb.updated_at DESC
+            LIMIT 1`,
+          [line.productId, line.uomId, line.qty, body.customerId],
+        );
+        const selected = resolvedPrice.rows[0];
+        const unitPrice = selected ? Number(selected.price) : Number(product.default_sale_price);
+        const priceSource = selected
+          ? (selected.scope_type === 'CUSTOMER' ? 'CUSTOMER_PRICE_BOOK' : 'TENANT_PRICE_BOOK')
+          : 'PRODUCT_DEFAULT';
         const gross = line.qty * unitPrice;
         const discountAmount = gross * (line.discountPercent ?? 0) / 100;
         const net = gross - discountAmount;
         const taxAmount = net * (body.taxPercent ?? 0) / 100;
-        return { line, product, unitPrice, discountAmount, taxAmount, lineTotal: net + taxAmount };
-      });
+        const hasAverageCost = product.weighted_average_cost !== null;
+        calculatedLines.push({
+          line, product, unitPrice, clientUnitPrice: line.unitPrice ?? null,
+          priceBookItemId: selected?.item_id ?? null, priceSource,
+          discountAmount, taxAmount, lineTotal: net + taxAmount,
+          unitCost: hasAverageCost ? Number(product.weighted_average_cost) : Number(product.standard_cost),
+          costSource: hasAverageCost ? 'STOCK_WEIGHTED_AVERAGE' : 'PRODUCT_STANDARD',
+        });
+      }
       const subtotal = calculatedLines.reduce((sum, item) => sum + item.line.qty * item.unitPrice, 0);
       const discountTotal = calculatedLines.reduce((sum, item) => sum + item.discountAmount, 0);
       const taxTotal = calculatedLines.reduce((sum, item) => sum + item.taxAmount, 0);
       const grandTotal = subtotal - discountTotal + taxTotal;
+      const creditLimit = Number(customer.rows[0].credit_limit);
+      const outstandingAmount = Number(customer.rows[0].outstanding_amount);
+      const requestsCredit = (body.paymentTerm?.trim() || '').toUpperCase().includes('KREDIT');
+      if (requestsCredit && creditLimit <= 0) {
+        throw AppError.badRequest(
+          ErrorCodes.VALIDATION_FAILED,
+          'Customer tidak memiliki limit kredit. Gunakan pembayaran tunai atau minta persetujuan limit.',
+        );
+      }
+      if (requestsCredit && outstandingAmount + grandTotal > creditLimit) {
+        throw AppError.badRequest(
+          ErrorCodes.VALIDATION_FAILED,
+          `Order melewati limit kredit customer. Sisa kredit Rp ${Math.max(creditLimit - outstandingAmount, 0).toLocaleString('id-ID')}.`,
+        );
+      }
       const orderNumber = `MOB-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${body.deviceEventId.replace(/[^a-zA-Z0-9]/g, '').slice(-16)}`.slice(0, 48);
       const outlet = await client.query<{ id: string }>(`SELECT id::text FROM ${S}.outlet WHERE deleted_at IS NULL ORDER BY created_at LIMIT 1`);
       const order = await client.query<{ id: string; order_number: string }>(
         `INSERT INTO ${S}.sales_order
            (customer_id, outlet_id, order_number, order_date, delivery_date, channel,
             subtotal, discount_total, tax_total, grand_total, payment_term_label, note,
-            status, created_by, source_event_id)
+            status, created_by, salesperson_id, pricing_snapshot_at, source_event_id)
          VALUES ($1::uuid, $2::uuid, $3, CURRENT_DATE, $4::date, 'FIELD_SALES',
-                 $5, $6, $7, $8, $9, $10, 'CONFIRMED', $11::uuid, $12)
+                 $5, $6, $7, $8, $9, $10, 'CONFIRMED', $11::uuid, $11::uuid, now(), $12)
          RETURNING id::text, order_number`,
         [body.customerId, outlet.rows[0]?.id ?? null, orderNumber, body.deliveryDate ?? null,
           subtotal, discountTotal, taxTotal, grandTotal, body.paymentTerm?.trim() || null,
           body.note?.trim() || null, subjectId, body.deviceEventId],
       );
       for (const [index, item] of calculatedLines.entries()) {
-        const { line, product, unitPrice, discountAmount, taxAmount, lineTotal } = item;
+        const { line, unitPrice, clientUnitPrice, priceBookItemId, priceSource,
+          discountAmount, taxAmount, lineTotal, unitCost, costSource } = item;
         await client.query(
           `INSERT INTO ${S}.sales_order_line
              (sales_order_id, product_id, uom_id, line_no, ordered_qty, unit_price,
-              discount_amount, tax_amount, line_total, legacy_unit_cost)
-           VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9, $10)`,
+              discount_amount, tax_amount, line_total, legacy_unit_cost,
+              price_book_item_id, price_source, price_rule_snapshot, cost_source, cost_snapshot_at)
+           VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9, $10,
+                   $11::uuid, $12, $13::jsonb, $14, now())`,
           [order.rows[0].id, line.productId, line.uomId, index + 1, line.qty,
-            unitPrice, discountAmount, taxAmount, lineTotal, Number(product.standard_cost)],
+            unitPrice, discountAmount, taxAmount, lineTotal, unitCost,
+            priceBookItemId, priceSource, JSON.stringify({
+              source: priceSource, serverUnitPrice: unitPrice, clientUnitPrice,
+              clientPriceCorrected: clientUnitPrice !== null && Math.abs(clientUnitPrice - unitPrice) > 0.0001,
+              customerId: body.customerId, quantity: line.qty,
+            }), costSource],
         );
       }
       const result = {
@@ -2308,7 +2623,12 @@ export class ErpController {
         `INSERT INTO ${S}.inventory_sync_event
            (aggregate_type, aggregate_id, event_type, payload, actor_id)
          VALUES ('SALES_ORDER', $1, 'SALES_ORDER_CREATED', $2::jsonb, $3::uuid)`,
-        [order.rows[0].id, JSON.stringify({ orderNumber: order.rows[0].order_number }), subjectId],
+        [order.rows[0].id, JSON.stringify({
+          orderNumber: order.rows[0].order_number,
+          salespersonId: subjectId,
+          pricingCorrected: calculatedLines.some((item) => item.clientUnitPrice !== null
+            && Math.abs(item.clientUnitPrice - item.unitPrice) > 0.0001),
+        }), subjectId],
       );
       return result;
     });
@@ -2354,7 +2674,7 @@ export class ErpController {
            FROM ${S}.sales_order so
            JOIN ${S}.sales_order_line sol ON sol.sales_order_id = so.id
            JOIN ${S}.product p ON p.id = sol.product_id
-           LEFT JOIN ${S}.user_subject us ON us.id = so.created_by
+           LEFT JOIN ${S}.user_subject us ON us.id = COALESCE(so.salesperson_id, so.created_by)
           WHERE so.order_date <= COALESCE($1::date, CURRENT_DATE)
           GROUP BY us.name, us.username_snapshot
           ORDER BY sum(sol.line_total) DESC`,

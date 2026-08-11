@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   CalendarDays,
@@ -23,6 +23,12 @@ import {
 } from 'lucide-react';
 import { api, formatMoney } from '../../lib/api';
 import { ErrorState, LoadingState } from '../../components/ui';
+import {
+  createTransactionEventId,
+  deleteInventoryDraft,
+  loadInventoryDraft,
+  saveInventoryDraft,
+} from './inventory-transaction-draft';
 
 type Mode = 'sales' | 'purchase';
 type Party = { id: string; code: string; name: string; metadata?: Record<string, unknown> };
@@ -38,7 +44,18 @@ type Product = {
 type Catalog = { customers: Party[]; products: Product[] };
 type MasterData = { suppliers: Party[] };
 type StockWorkspace = { warehouses: Array<{ id: string; code: string; name: string }> };
-type Line = Product & { qty: number; unitPrice: number; discount: number; batch: string; expiry: string };
+type Line = Product & { qty: number; unitPrice: number; discount: number; discount2: number; batch: string; expiry: string };
+type DraftPayload = {
+  partyId?: string;
+  warehouseId?: string;
+  lines?: Line[];
+  taxPercent?: number;
+  paymentTerm?: string;
+  note?: string;
+  supplierInvoiceNumber?: string;
+  supplierInvoiceDate?: string;
+  supplierInvoiceDueDate?: string;
+};
 
 const steps: Record<Mode, string[]> = {
   sales: ['Pilih Customer', 'Cari Barang', 'Tambahkan ke Keranjang', 'Review & Kirim'],
@@ -54,33 +71,40 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
   const [taxPercent, setTaxPercent] = useState(11);
   const [paymentTerm, setPaymentTerm] = useState('Kredit 30 hari');
   const [note, setNote] = useState('');
+  const [supplierInvoiceNumber, setSupplierInvoiceNumber] = useState('');
+  const [supplierInvoiceDate, setSupplierInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [supplierInvoiceDueDate, setSupplierInvoiceDueDate] = useState(() => new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10));
   const [message, setMessage] = useState('');
+  const [eventId, setEventId] = useState(() => createTransactionEventId(mode));
 
   useEffect(() => {
-    const raw = window.sessionStorage.getItem(`inventory-${mode}-draft`);
-    if (!raw) return;
-    try {
-      const draft = JSON.parse(raw) as {
-        partyId?: string;
-        warehouseId?: string;
-        lines?: Line[];
-        taxPercent?: number;
-        paymentTerm?: string;
-        note?: string;
-      };
+    let cancelled = false;
+    void loadInventoryDraft<DraftPayload>(mode).then((record) => {
+      if (!record || cancelled) return;
+      const draft = record.payload;
       setPartyId(draft.partyId ?? '');
       setWarehouseId(draft.warehouseId ?? '');
-      setLines(Array.isArray(draft.lines) ? draft.lines : []);
+      setLines(Array.isArray(draft.lines) ? draft.lines.map((row) => ({ ...row, discount2: row.discount2 ?? 0 })) : []);
       setTaxPercent(draft.taxPercent ?? 11);
       setPaymentTerm(draft.paymentTerm ?? 'Kredit 30 hari');
       setNote(draft.note ?? '');
-      setMessage('Draft pada sesi ini berhasil dipulihkan.');
-    } catch {
-      window.sessionStorage.removeItem(`inventory-${mode}-draft`);
-    }
+      setSupplierInvoiceNumber(draft.supplierInvoiceNumber ?? '');
+      setSupplierInvoiceDate(draft.supplierInvoiceDate ?? new Date().toISOString().slice(0, 10));
+      setSupplierInvoiceDueDate(draft.supplierInvoiceDueDate ?? new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10));
+      setEventId(record.eventId);
+      setMessage('Draft tahan-tutup berhasil dipulihkan dari perangkat ini.');
+    }).catch(() => {
+      if (!cancelled) setMessage('Penyimpanan draft perangkat belum dapat dibuka.');
+    });
+    return () => { cancelled = true; };
   }, [mode]);
 
-  const catalog = useQuery({ queryKey: ['inventory-transaction-catalog'], queryFn: () => api.get<Catalog>('/inventory/mobile-catalog') });
+  const catalog = useQuery({
+    queryKey: ['inventory-transaction-catalog', mode === 'sales' ? partyId : 'purchase'],
+    queryFn: () => api.get<Catalog>(mode === 'sales' && partyId
+      ? `/inventory/mobile-catalog?customerId=${encodeURIComponent(partyId)}`
+      : '/inventory/mobile-catalog'),
+  });
   const masters = useQuery({
     queryKey: ['inventory-transaction-master'],
     queryFn: () => api.get<MasterData>('/inventory/master-data'),
@@ -108,10 +132,27 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
     }).slice(0, 24);
   }, [products, search, productFilter]);
   const gross = lines.reduce((sum, row) => sum + row.qty * row.unitPrice, 0);
-  const subtotal = lines.reduce((sum, row) => sum + row.qty * row.unitPrice * (1 - row.discount / 100), 0);
+  const subtotal = lines.reduce((sum, row) => sum + row.qty * row.unitPrice * (1 - row.discount / 100) * (1 - (row.discount2 ?? 0) / 100), 0);
   const discount = gross - subtotal;
   const tax = subtotal * taxPercent / 100;
   const total = subtotal + tax;
+
+  useEffect(() => {
+    if (mode === 'sales' && !partyId && catalog.data?.customers[0]?.id) {
+      setPartyId(catalog.data.customers[0].id);
+    }
+  }, [catalog.data?.customers, mode, partyId]);
+
+  useEffect(() => {
+    if (mode !== 'sales' || !partyId || !catalog.data?.products) return;
+    const priceByProduct = new Map(catalog.data.products.map((row) => [row.id, Number(row.price)]));
+    setLines((current) => current.map((row) => {
+      const customerPrice = priceByProduct.get(row.id);
+      return customerPrice == null || customerPrice === row.unitPrice
+        ? row
+        : { ...row, unitPrice: customerPrice };
+    }));
+  }, [catalog.data?.products, mode, partyId]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -119,7 +160,7 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
       if (mode === 'sales') {
         return api.post<{ order_number: string }>('/inventory/mobile-orders', {
           deviceId: 'web-inventory',
-          deviceEventId: `WEB_${Date.now()}_${lines.length}`,
+          deviceEventId: eventId,
           customerId: selectedPartyId,
           taxPercent,
           paymentTerm,
@@ -131,7 +172,13 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
         });
       }
       if (!selectedWarehouseId) throw new Error('Gudang tujuan harus dipilih.');
-      return api.post<{ purchase_order_number: string }>('/purchase-orders', {
+      if (!supplierInvoiceNumber.trim()) throw new Error('Nomor faktur supplier wajib diisi untuk memposting pembelian.');
+      if (!supplierInvoiceDate || !supplierInvoiceDueDate || supplierInvoiceDueDate < supplierInvoiceDate) {
+        throw new Error('Tanggal faktur dan jatuh tempo supplier belum valid.');
+      }
+      type PurchaseLine = { id: string; product_id: string; ordered_qty: string };
+      type PurchaseResult = { id: string; purchase_order_number: string; status: string; lines: PurchaseLine[] };
+      const purchase = await api.post<PurchaseResult>('/purchase-orders', {
         supplierId: selectedPartyId,
         warehouseId: selectedWarehouseId,
         expectedDate: new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10),
@@ -140,16 +187,66 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
         lines: lines.map((row) => ({
           productId: row.id, uomId: row.uom_id, orderedQty: row.qty,
           unitPrice: row.unitPrice, discountPercent: row.discount,
+          discountPercent2: row.discount2,
           batchNumber: row.batch || undefined, expiryDate: row.expiry || undefined,
         })),
+      }, { headers: { 'Idempotency-Key': eventId } });
+      let current = purchase;
+      if (current.status === 'DRAFT') current = await api.post<PurchaseResult>(`/purchase-orders/${current.id}/submit`);
+      if (current.status === 'WAITING_APPROVAL') current = await api.post<PurchaseResult>(`/purchase-orders/${current.id}/approve`);
+      if (current.status === 'APPROVED') current = await api.post<PurchaseResult>(`/purchase-orders/${current.id}/send`);
+
+      type ReceiptLine = { id: string; purchase_order_line_id: string; received_qty: string };
+      type ReceiptResult = { id: string; receipt_number: string; status: string; lines: ReceiptLine[] };
+      const lineByProduct = new Map(current.lines.map((row) => [row.product_id, row]));
+      if (lines.some((row) => !lineByProduct.get(row.id)?.id)) {
+        throw new Error('Baris Purchase Order dari server tidak lengkap; penerimaan dibatalkan agar stok tidak salah.');
+      }
+      let receipt = await api.post<ReceiptResult>('/goods-receipts', {
+        purchaseOrderId: current.id,
+        warehouseId: selectedWarehouseId,
+        supplierDoNumber: supplierInvoiceNumber.trim(),
+        note: note || 'Penerimaan otomatis dari workspace Inventory Web',
+        lines: lines.map((row) => ({
+          purchaseOrderLineId: lineByProduct.get(row.id)!.id,
+          receivedQty: row.qty,
+          batchNumber: row.batch || undefined,
+          expiryDate: row.expiry || undefined,
+        })),
+      }, { headers: { 'Idempotency-Key': `${eventId}:RECEIPT` } });
+      if (receipt.status === 'DRAFT') {
+        receipt = await api.post<ReceiptResult>(`/goods-receipts/${receipt.id}/inspect`, {
+          result: 'ACCEPTED',
+          notes: 'Disetujui otomatis sesuai kebijakan pengguna.',
+          lines: receipt.lines.map((row) => ({
+            lineId: row.id,
+            acceptedQty: Number(row.received_qty),
+            rejectedQty: 0,
+            qualityStatus: 'GOOD',
+          })),
+        });
+      }
+      if (receipt.status !== 'STOCK_POSTED') {
+        receipt = await api.post<ReceiptResult>(`/goods-receipts/${receipt.id}/validate`);
+      }
+      await api.post(`/goods-receipts/${receipt.id}/supplier-invoice`, {
+        invoiceNumber: supplierInvoiceNumber.trim(),
+        invoiceDate: supplierInvoiceDate,
+        dueDate: supplierInvoiceDueDate,
+        note: note || 'Faktur supplier dari workspace Inventory Web',
       });
+      return { ...current, receipt_number: receipt.receipt_number };
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       const number = 'order_number' in data ? data.order_number : data.purchase_order_number;
-      setMessage(`${mode === 'sales' ? 'Order' : 'Purchase order'} ${number} berhasil disimpan.`);
+      setMessage(mode === 'sales'
+        ? `Order ${number} berhasil disimpan.`
+        : `Purchase order ${number} berhasil disimpan; penerimaan stok dan hutang supplier sudah diposting.`);
       setLines([]);
       setNote('');
-      window.sessionStorage.removeItem(`inventory-${mode}-draft`);
+      setSupplierInvoiceNumber('');
+      await deleteInventoryDraft(mode);
+      setEventId(createTransactionEventId(mode));
     },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Transaksi belum tersimpan.'),
   });
@@ -158,7 +255,7 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
     setLines((current) => {
       const found = current.find((row) => row.id === product.id);
       if (found) return current.map((row) => row.id === product.id ? { ...row, qty: row.qty + 1 } : row);
-      return [...current, { ...product, qty: 1, unitPrice: Number(product.price), discount: 0, batch: '', expiry: '' }];
+      return [...current, { ...product, qty: 1, unitPrice: Number(product.price), discount: 0, discount2: 0, batch: '', expiry: '' }];
     });
     setMessage('');
   }
@@ -167,14 +264,18 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
     setLines((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row));
   }
 
-  function saveDraft() {
-    window.sessionStorage.setItem(`inventory-${mode}-draft`, JSON.stringify({ partyId: selectedPartyId, warehouseId: selectedWarehouseId, lines, taxPercent, paymentTerm, note }));
-    setMessage('Draft tersimpan pada perangkat ini.');
+  async function saveDraft() {
+    try {
+      await saveInventoryDraft(mode, eventId, { partyId: selectedPartyId, warehouseId: selectedWarehouseId, lines, taxPercent, paymentTerm, note, supplierInvoiceNumber, supplierInvoiceDate, supplierInvoiceDueDate });
+      setMessage('Draft tersimpan tahan-tutup pada perangkat ini.');
+    } catch {
+      setMessage('Draft belum dapat disimpan pada perangkat ini.');
+    }
   }
 
-  function inspectDraft() {
-    const raw = window.sessionStorage.getItem(`inventory-${mode}-draft`);
-    setMessage(raw ? 'Draft lokal tersedia dan sudah dimuat ke workspace ini.' : 'Belum ada draft lokal untuk transaksi ini.');
+  async function inspectDraft() {
+    const record = await loadInventoryDraft(mode).catch(() => null);
+    setMessage(record ? 'Draft tahan-tutup tersedia dan sudah dimuat ke workspace ini.' : 'Belum ada draft lokal untuk transaksi ini.');
   }
 
   async function synchronizeWorkspace() {
@@ -238,14 +339,14 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
         <div><h1 className="text-2xl font-black text-slate-950 dark:text-white">{title}</h1><p className="text-sm text-slate-500">{description}</p></div>
         <div className="flex flex-wrap gap-2">
           {mode === 'sales' ? <>
-            <button className="btn-secondary" onClick={inspectDraft}><FileClock className="h-4 w-4" /> Riwayat Draft</button>
+            <button className="btn-secondary" onClick={() => void inspectDraft()}><FileClock className="h-4 w-4" /> Riwayat Draft</button>
             <button className="btn-secondary" onClick={() => void synchronizeWorkspace()}><History className="h-4 w-4" /> Sinkronkan</button>
           </> : <>
             <button className="btn-secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Cetak</button>
             <button className="btn-secondary" onClick={exportLines}><Download className="h-4 w-4" /> Export</button>
             <button className="btn-secondary" onClick={showAuditTrail}><FileText className="h-4 w-4" /> Audit Trail</button>
           </>}
-          <button className="btn-secondary" onClick={saveDraft}><Save className="h-4 w-4" /> Simpan Draft</button>
+          <button className="btn-secondary" onClick={() => void saveDraft()}><Save className="h-4 w-4" /> Simpan Draft</button>
           <button className="btn-primary" disabled={!selectedPartyId || lines.length === 0 || save.isPending} onClick={() => save.mutate()}>
             <Send className="h-4 w-4" /> {save.isPending ? 'Menyimpan...' : mode === 'sales' ? 'Kirim Order' : 'Simpan Pembelian'}
           </button>
@@ -263,9 +364,12 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
         <h2 className="mb-3 font-black">{mode === 'sales' ? 'Pilih Customer' : 'Pilih Supplier'}</h2>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,2fr)]">
           <div className="space-y-2">
-            <select className="input w-full" value={selectedPartyId} onChange={(event) => setPartyId(event.target.value)}>
-              {parties.map((row) => <option key={row.id} value={row.id}>{row.code} - {row.name}</option>)}
-            </select>
+            <PartyAutocomplete
+              parties={parties}
+              value={selectedPartyId}
+              onChange={setPartyId}
+              label={mode === 'sales' ? 'Cari customer' : 'Cari supplier'}
+            />
             {party && <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-800"><div className="grid h-10 w-10 place-items-center rounded-full bg-blue-100 text-blue-700"><UserRound className="h-5 w-5" /></div><div><strong className="block">{party.name}</strong><span className="text-xs text-slate-500">{party.code} • Aktif</span></div></div>}
           </div>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -279,18 +383,105 @@ export function InventoryTransactionWorkspacePage({ mode }: { mode: Mode }) {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <main className="space-y-4">
-          {mode === 'purchase' && <PurchaseMeta warehouses={stock.data?.warehouses ?? []} warehouseId={selectedWarehouseId} onWarehouse={setWarehouseId} taxPercent={taxPercent} onTax={setTaxPercent} note={note} onNote={setNote} />}
+          {mode === 'purchase' && <PurchaseMeta
+            warehouses={stock.data?.warehouses ?? []}
+            warehouseId={selectedWarehouseId}
+            onWarehouse={setWarehouseId}
+            taxPercent={taxPercent}
+            onTax={setTaxPercent}
+            note={note}
+            onNote={setNote}
+            invoiceNumber={supplierInvoiceNumber}
+            onInvoiceNumber={setSupplierInvoiceNumber}
+            invoiceDate={supplierInvoiceDate}
+            onInvoiceDate={setSupplierInvoiceDate}
+            dueDate={supplierInvoiceDueDate}
+            onDueDate={setSupplierInvoiceDueDate}
+          />}
           <div className={`grid gap-4 ${mode === 'sales' ? 'lg:grid-cols-2' : ''}`}>
             <ProductPicker products={filtered} selected={lines} search={search} onSearch={setSearch} onAdd={addProduct} horizontal={mode === 'purchase'} filter={productFilter} onFilter={setProductFilter} onNotice={setMessage} />
             <LineEditor lines={lines} purchase={mode === 'purchase'} onPatch={patchLine} onDelete={(id) => setLines((current) => current.filter((row) => row.id !== id))} />
           </div>
         </main>
-        <Summary mode={mode} party={party} lines={lines} discount={discount} subtotal={subtotal} tax={tax} total={total} taxPercent={taxPercent} onTax={setTaxPercent} paymentTerm={paymentTerm} onPaymentTerm={setPaymentTerm} note={note} onNote={setNote} warehouses={stock.data?.warehouses ?? []} warehouseId={selectedWarehouseId} onWarehouse={setWarehouseId} message={message} pending={save.isPending} onSubmit={() => save.mutate()} onDraft={saveDraft} />
+        <Summary mode={mode} party={party} lines={lines} discount={discount} subtotal={subtotal} tax={tax} total={total} taxPercent={taxPercent} onTax={setTaxPercent} paymentTerm={paymentTerm} onPaymentTerm={setPaymentTerm} note={note} onNote={setNote} warehouses={stock.data?.warehouses ?? []} warehouseId={selectedWarehouseId} onWarehouse={setWarehouseId} message={message} pending={save.isPending} onSubmit={() => save.mutate()} onDraft={() => void saveDraft()} />
       </div>
 
       {mode === 'purchase' && <PurchaseSupport />}
     </div>
   );
+}
+
+export function PartyAutocomplete({ parties, value, onChange, label }: {
+  parties: Party[];
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+}) {
+  const listboxId = useId();
+  const selected = parties.find((party) => party.id === value);
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (selected) setQuery(`${selected.code} - ${selected.name}`);
+  }, [selected]);
+
+  const matches = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase('id-ID');
+    if (!normalized || selected && query === `${selected.code} - ${selected.name}`) return parties.slice(0, 12);
+    return parties.filter((party) =>
+      `${party.code} ${party.name}`.toLocaleLowerCase('id-ID').includes(normalized),
+    ).slice(0, 12);
+  }, [parties, query, selected]);
+
+  function choose(party: Party) {
+    onChange(party.id);
+    setQuery(`${party.code} - ${party.name}`);
+    setOpen(false);
+  }
+
+  return <div className="relative">
+    <label className="sr-only" htmlFor={`${listboxId}-input`}>{label}</label>
+    <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+    <input
+      id={`${listboxId}-input`}
+      role="combobox"
+      aria-autocomplete="list"
+      aria-controls={listboxId}
+      aria-expanded={open}
+      className="input w-full pl-9"
+      value={query}
+      placeholder={`${label} berdasarkan kode atau nama...`}
+      onFocus={() => setOpen(true)}
+      onChange={(event) => { setQuery(event.target.value); setOpen(true); }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setOpen(false);
+        if (event.key === 'Enter' && open && matches[0]) {
+          event.preventDefault();
+          choose(matches[0]);
+        }
+      }}
+    />
+    {open && <div
+      id={listboxId}
+      role="listbox"
+      className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+    >
+      {matches.map((party) => <button
+        key={party.id}
+        type="button"
+        role="option"
+        aria-selected={party.id === value}
+        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left hover:bg-blue-50 dark:hover:bg-slate-800"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => choose(party)}
+      >
+        <span><strong className="block text-sm">{party.name}</strong><span className="text-xs text-slate-500">{party.code}</span></span>
+        {party.id === value && <Check className="h-4 w-4 text-blue-600" />}
+      </button>)}
+      {matches.length === 0 && <p className="px-3 py-4 text-center text-sm text-slate-500">Pihak transaksi tidak ditemukan.</p>}
+    </div>}
+  </div>;
 }
 
 function Metric({ label, value, warning, success }: { label: string; value: string; warning?: boolean; success?: boolean }) {
@@ -334,13 +525,14 @@ function LineEditor({ lines, purchase, onPatch, onDelete }: {
     {lines.length === 0 ? <div className="grid min-h-56 place-items-center text-center text-sm text-slate-500"><div><ShoppingCart className="mx-auto mb-2 h-9 w-9 text-slate-300" />Pilih produk untuk mulai transaksi.</div></div> : <div className="max-h-[520px] space-y-2 overflow-auto">
       {lines.map((row) => <article key={row.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
         <div className="mb-2 flex items-center gap-2"><ProductImage product={row} /><div className="min-w-0 flex-1"><strong className="block truncate text-sm">{row.name}</strong><span className="text-xs text-slate-500">{row.code}</span></div><button className="icon-btn text-red-600" onClick={() => onDelete(row.id)} title="Hapus"><Trash2 className="h-4 w-4" /></button></div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className={`grid gap-2 ${purchase ? 'grid-cols-4' : 'grid-cols-3'}`}>
           <QtyField value={row.qty} uom={row.uom_id ? 'Unit' : 'Pcs'} onChange={(value) => onPatch(row.id, { qty: Math.max(1, value) })} />
           <Field label={purchase ? 'Harga Beli' : 'Harga'} value={row.unitPrice} onChange={(value) => onPatch(row.id, { unitPrice: Math.max(0, value) })} />
-          <Field label="Diskon %" value={row.discount} onChange={(value) => onPatch(row.id, { discount: Math.min(100, Math.max(0, value)) })} />
+          <Field label={purchase ? 'Diskon 1 %' : 'Diskon %'} value={row.discount} onChange={(value) => onPatch(row.id, { discount: Math.min(100, Math.max(0, value)) })} />
+          {purchase && <Field label="Diskon 2 %" value={row.discount2} onChange={(value) => onPatch(row.id, { discount2: Math.min(100, Math.max(0, value)) })} />}
         </div>
         {purchase && <div className="mt-2 grid grid-cols-2 gap-2"><label className="text-xs text-slate-500">Batch<input className="input mt-1 w-full" value={row.batch} onChange={(event) => onPatch(row.id, { batch: event.target.value })} /></label><label className="text-xs text-slate-500">Expiry<input type="date" className="input mt-1 w-full" value={row.expiry} onChange={(event) => onPatch(row.id, { expiry: event.target.value })} /></label></div>}
-        <strong className="mt-2 block text-right text-sm">Subtotal {formatMoney(row.qty * row.unitPrice * (1 - row.discount / 100))}</strong>
+        <strong className="mt-2 block text-right text-sm">Harga neto {formatMoney(row.unitPrice * (1 - row.discount / 100) * (1 - row.discount2 / 100))} • Subtotal {formatMoney(row.qty * row.unitPrice * (1 - row.discount / 100) * (1 - row.discount2 / 100))}</strong>
       </article>)}
     </div>}
   </section>;
@@ -354,18 +546,22 @@ function QtyField({ value, uom, onChange }: { value: number; uom: string; onChan
   return <label className="text-xs text-slate-500">Qty ({uom})<span className="mt-1 flex overflow-hidden rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"><button type="button" className="w-8 text-blue-600" onClick={() => onChange(Math.max(1, value - 1))}>-</button><input type="number" min="1" className="min-w-0 flex-1 border-x border-slate-200 bg-transparent px-2 text-center dark:border-slate-700" value={value} onChange={(event) => onChange(Number(event.target.value))} /><button type="button" className="w-8 text-blue-600" onClick={() => onChange(value + 1)}>+</button></span></label>;
 }
 
-function PurchaseMeta({ warehouses, warehouseId, onWarehouse, taxPercent, onTax, note, onNote }: {
+function PurchaseMeta({ warehouses, warehouseId, onWarehouse, taxPercent, onTax, note, onNote,
+  invoiceNumber, onInvoiceNumber, invoiceDate, onInvoiceDate, dueDate, onDueDate }: {
   warehouses: StockWorkspace['warehouses']; warehouseId: string; onWarehouse: (value: string) => void;
   taxPercent: number; onTax: (value: number) => void; note: string; onNote: (value: string) => void;
+  invoiceNumber: string; onInvoiceNumber: (value: string) => void;
+  invoiceDate: string; onInvoiceDate: (value: string) => void;
+  dueDate: string; onDueDate: (value: string) => void;
 }) {
-  const due = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
   return <section className="panel p-4">
     <h2 className="mb-3 font-black">Informasi Transaksi</h2>
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <label className="text-xs text-slate-500">No. Pembelian<input className="input mt-1 w-full" value="Otomatis saat posting" readOnly /></label>
-      <label className="text-xs text-slate-500">No. Faktur Supplier<input className="input mt-1 w-full" placeholder="Masukkan nomor faktur" /></label>
+      <label className="text-xs text-slate-500">No. Faktur Supplier<input className="input mt-1 w-full" value={invoiceNumber} onChange={(event) => onInvoiceNumber(event.target.value)} placeholder="Masukkan nomor faktur" /></label>
       <label className="text-xs text-slate-500">Gudang<select className="input mt-1 w-full" value={warehouseId} onChange={(event) => onWarehouse(event.target.value)}>{warehouses.map((row) => <option key={row.id} value={row.id}>{row.code} - {row.name}</option>)}</select></label>
-      <label className="text-xs text-slate-500">Tanggal Jatuh Tempo<input type="date" className="input mt-1 w-full" defaultValue={due} /></label>
+      <label className="text-xs text-slate-500">Tanggal Faktur<input type="date" className="input mt-1 w-full" value={invoiceDate} onChange={(event) => onInvoiceDate(event.target.value)} /></label>
+      <label className="text-xs text-slate-500">Tanggal Jatuh Tempo<input type="date" className="input mt-1 w-full" value={dueDate} min={invoiceDate} onChange={(event) => onDueDate(event.target.value)} /></label>
       <label className="text-xs text-slate-500">Mata Uang<input className="input mt-1 w-full" value="IDR - Rupiah" readOnly /></label>
       <label className="text-xs text-slate-500">Pajak<select className="input mt-1 w-full" value={taxPercent} onChange={(event) => onTax(Number(event.target.value))}><option value="0">Tanpa pajak</option><option value="11">PPN 11%</option></select></label>
       <label className="text-xs text-slate-500 sm:col-span-2">Referensi / Catatan<input className="input mt-1 w-full" value={note} onChange={(event) => onNote(event.target.value)} placeholder="No. PO, termin, FOB/ongkir, atau catatan" /></label>

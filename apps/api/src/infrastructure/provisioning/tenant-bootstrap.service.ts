@@ -1175,7 +1175,9 @@ export async function assertWarehouseNotFrozen(
 /**
  * Update projection saldo stok secara atomik.
  *
- * `average_cost` HANYA dihitung ulang bila `inboundCost` diisi -- artinya
+ * `average_cost` dihitung ulang bila `inboundCost` diisi, atau dibalik secara
+ * matematis bila `outboundCost` diisi untuk reversal penerimaan. Pengeluaran
+ * biasa tidak mengubah rata-rata.
  * delta ini benar-benar penerimaan dengan biaya nyata baru (mis. goods
  * receipt), bukan sekadar mutasi kuantitas (keluar POS, reservasi, transfer
  * tanpa data biaya, dst). Rumus moving-average-cost standar: rata-rata
@@ -1201,6 +1203,7 @@ export async function applyBalanceDelta(
     quarantineDelta?: number;
     damagedDelta?: number;
     inboundCost?: number;
+    outboundCost?: number;
   },
 ): Promise<void> {
   await client.query(
@@ -1226,6 +1229,17 @@ export async function applyBalanceDelta(
              / NULLIF(${schemaLiteral}.stock_balance.on_hand_qty + EXCLUDED.on_hand_qty, 0),
              $11::numeric
            )
+         WHEN $12::numeric IS NOT NULL AND EXCLUDED.on_hand_qty < 0 THEN
+           CASE
+             WHEN ${schemaLiteral}.stock_balance.on_hand_qty + EXCLUDED.on_hand_qty > 0 THEN
+               GREATEST(
+                 (${schemaLiteral}.stock_balance.on_hand_qty * ${schemaLiteral}.stock_balance.average_cost
+                    + EXCLUDED.on_hand_qty * $12::numeric)
+                 / NULLIF(${schemaLiteral}.stock_balance.on_hand_qty + EXCLUDED.on_hand_qty, 0),
+                 0
+               )
+             ELSE 0
+           END
          ELSE ${schemaLiteral}.stock_balance.average_cost
        END,
        last_movement_at = now(),
@@ -1243,6 +1257,7 @@ export async function applyBalanceDelta(
       delta.quarantineDelta ?? 0,
       delta.damagedDelta ?? 0,
       delta.inboundCost ?? null,
+      delta.outboundCost ?? null,
     ],
   );
 }

@@ -7,70 +7,110 @@ sendiri: apa yang dikerjakan, di berkas mana, dan apa yang menandakan selesai.
 Bila hanya membaca satu bagian: baca **§2 (yang menunggu)** lalu **§6 (perintah
 siap-tempel)**.
 
+> **Dikoreksi 2026-08-11.** Versi pertama dokumen ini (10 Agustus) menyatakan
+> paritas 48 layar "sudah selesai, jangan diaudit ulang". Pernyataan itu benar
+> untuk tolok ukur yang berlaku saat itu, tetapi tolok ukurnya **diperlebar pada
+> 11 Agustus** dan sekarang menyesatkan. Lihat §1 dan §9.
+
 ---
 
 ## 1. Keadaan hari ini
 
-Repo: `Zishof/eBisnis` (privat). `main` mutakhir per serah-terima ini.
+Repo: `Zishof/eBisnis` (privat). Baseline dokumen ini: `d298929`.
 
-### Dua PR menunggu digabung — keduanya HIJAU dan MERGEABLE
+### Dua PR yang dulu menunggu — SUDAH DIGABUNG
 
-| PR | Isi | Mengapa perlu |
+| PR | Isi | Digabung |
 | --- | --- | --- |
-| [#116](https://github.com/Zishof/eBisnis/pull/116) | Layar **Transaksi Ditahan** + `GET /pos/held` | Menu "Transaksi Ditahan" menunjuk `/app/pos/ditahan` sejak lama dan **rutenya tidak pernah ada** — kasir yang menahan keranjang tidak punya jalan mengambilnya kembali |
-| [#117](https://github.com/Zishof/eBisnis/pull/117) | Status PO ikut turun ketika penerimaan barangnya dibatalkan | PO tetap `RECEIVED` untuk barang yang tidak jadi masuk → tidak ada yang menagih pemasok; `received_qty` menggelembung → sisa pesanan salah selamanya |
+| [#117](https://github.com/Zishof/eBisnis/pull/117) | Status PO ikut turun ketika penerimaan barangnya dibatalkan | 10 Agu 2026 → `e5e896e` |
+| [#116](https://github.com/Zishof/eBisnis/pull/116) | Layar **Transaksi Ditahan** + `GET /pos/held` | 10 Agu 2026 → `b7172a3` |
 
-**Gabungkan #117 lebih dahulu** (menyentuh uang/stok), lalu #116.
+Keduanya sudah ada di `main`. Tidak ada yang perlu digabung lagi dari daftar ini.
 
-### Paritas 48 layar Inventory — sudah selesai, jangan diaudit ulang
+### Paritas 48 layar Inventory — tolok ukurnya berubah, JANGAN pakai angka lama
 
-Diperiksa langsung ke kode pada sesi ini, bukan ke dokumennya saja:
+Ini bagian terpenting dokumen ini, dan bagian yang paling mudah salah dibaca.
 
-| Yang dicek | Kenyataannya |
-| --- | --- |
-| Registry bukti | **48 PROVEN, `PENDING_PROOF` kosong** |
-| Test paritas yang dulu "mengunci klaim 48/48" | Sudah diperbaiki — kini eksplisit tidak mengunci, plus penjaga regresi |
-| `invoiceSalesOrder` tidak cek stok | Sudah diperbaiki (stok sempat −15 pada produk `allow_negative_stock: false`) |
-| AP_PAYMENT/AR_RECEIPT tidak teraudit | Sudah diperbaiki |
+Pada 11 Agustus commit `e20b913` memperlebar model paritas: registry tidak lagi
+menghitung hanya kemampuan **melihat** layar, melainkan `screen × surface ×
+capability` — termasuk `create/update/post/reverse`, `print/export`, `offline`,
+`reconciliation`, dan `hardware`.
 
-Jangan memulai ulang audit paritas. Yang tersisa ada di §2.
+| Ukuran | 10 Agu (model lama) | 11 Agu (model sekarang) |
+| --- | --- | --- |
+| Requirement di registry | 242 | **606** |
+| Masih pending | 0 | **414** |
+| Bukti `view` per surface | 48/48 | 48/48 (tidak berubah) |
+| Layar lengkap di semua capability | tidak diukur | **0 / 48** |
+
+Kedua angka itu benar. Yang berubah bukan kualitas kodenya, melainkan **apa yang
+dihitung sebagai bukti**. Karena itu:
+
+- **Jangan** mengatakan "paritas 48 layar sudah selesai". Menurut sumber
+  kebenaran sekarang (`parity-48.json` + `parity-evidence.registry.ts`), seluruh
+  layar berstatus **PARTIAL / EVIDENCE GAP**.
+- **Jangan** pula memulai audit paritas dari nol. Auditnya sudah ada dan baru:
+  `docs/implementation/inventory-sales-48/gap-analysis-video-48-2026-08-11.md`
+  (374 baris, lengkap dengan prioritas P0/P1/P2). Kerjakan dari sana.
 
 ---
 
 ## 2. Yang menunggu dikerjakan, berurutan
 
-Empat gap Inventory yang **sudah dikonfirmasi nyata** dan dicatat sebagai "di
-luar cakupan" pada pass sebelumnya. Urutan di bawah dari yang paling jelas
-batasnya.
+Nomor **tidak pernah diubah** walau isinya selesai — perintah yang sudah
+tersimpan di ponsel menunjuk nomor ini, dan nomor yang bergeser membuat perintah
+lama mengerjakan hal yang salah. Yang selesai ditandai, bukan dihapus.
 
-### 2.1 Un-blending rata-rata biaya saat pembalikan penerimaan
+### 2.1 Un-blending rata-rata biaya saat pembalikan penerimaan — **SELESAI**
 
-`stock_balance.average_cost` dihitung moving-average saat barang diterima.
-Ketika penerimaan itu **dibalik**, rata-ratanya tidak dikembalikan — biaya
-sisa tetap tercampur dengan biaya penerimaan yang sudah dibatalkan.
+Ditutup pada `e20b913`. Diverifikasi ke kode, bukan ke dokumennya:
+`applyBalanceDelta()` kini menerima `outboundCost` dan membalik rata-ratanya
+secara matematis (`tenant-bootstrap.service.ts`), dan jalur pembalikan GR
+mengisinya di `erp-purchasing.service.ts:1519`.
 
-Menyentuh HPP penjualan POS (dijurnal sebagai COGS) dan valuasi stok.
+Tidak perlu dikerjakan lagi.
 
-Berkas: `applyBalanceDelta()` dan `reverseGoodsReceiptValidation()` di
-`apps/api/src/modules/tenant/erp-purchasing.service.ts`.
+### 2.2 Pengaruh retur/void POS terhadap rata-rata biaya — **TERBUKA**
 
-### 2.2 Pengaruh retur/void POS terhadap rata-rata biaya
+Barang yang kembali ke stok lewat retur tidak memutakhirkan `average_cost`.
 
-Sama seperti 2.1 tetapi dari arah penjualan: barang yang kembali ke stok lewat
-retur tidak memutakhirkan `average_cost`.
+Diverifikasi: di seluruh `apps/api/src/modules/` hanya **dua** pemanggil yang
+mengirim data biaya ke `applyBalanceDelta()`, dan keduanya di jalur pembelian
+(`erp-purchasing.service.ts:1156` dan `:1519`). Jalur POS tidak mengirim
+apa pun.
 
-### 2.3 Biaya penerimaan transfer antar-gudang
+Menyentuh HPP penjualan yang dijurnal sebagai COGS.
 
-Jalur transfer **tidak punya data biaya sama sekali**. Ini bukan sekadar
+### 2.3 Biaya penerimaan transfer antar-gudang — **TERBUKA, perlu keputusan**
+
+Jalur transfer tidak punya data biaya sama sekali. Ini bukan sekadar
 menyambungkan — perlu keputusan dari mana biayanya diambil (rata-rata gudang
-asal, atau biaya lot). **Tanyakan pemilik sebelum membangun.**
+asal, atau biaya lot). **Tanyakan pemilik sebelum membangun** (§5 nomor 2).
 
-### 2.4 Jurnal pembalik untuk `accounting_event` yang sudah `POSTED`
+### 2.4 Jurnal pembalik untuk `accounting_event` yang sudah `POSTED` — **TERBUKA**
 
-Saat ini pembalikan hanya melewati event yang masih `PENDING`. Yang sudah
-terjurnal butuh jurnal pembalik terpisah mengikuti pola `reversal_of_id` yang
-sudah ada di `journal_entry`. Jarang terjadi karena aturan posting tidak
-disemai default per tenant.
+Pembalikan hanya menyetel `SKIPPED` untuk event yang masih `PENDING`; yang sudah
+terjurnal dibiarkan berdiri. Komentarnya sendiri mencatat ini sebagai di luar
+cakupan — `erp-purchasing.service.ts:1589-1592` — dan menunjuk pola
+`reversal_of_id` yang sudah ada di `journal_entry`.
+
+Jarang terjadi karena aturan posting tidak disemai default per tenant.
+
+### 2.5 Matriks capability 48 layar — **TERBUKA, dan sekarang front terbesar**
+
+414 dari 606 requirement masih pending. Jangan menyusun rencana sendiri; sudah
+ada urutannya di `gap-analysis-video-48-2026-08-11.md` §6:
+
+| Prioritas | Inti |
+| --- | --- |
+| **P0** | Turunkan klaim katalog yang belum berbukti; permission report per domain (sekarang semua memakai `SALES.READ`, termasuk finance/P&L) |
+| **P1** | Vertical slice transaksi lengkap per rentang layar (20–29, 30–42, 08–19, 43–48) |
+| **P2** | ID test `NORMAL`/`VALIDATION`/`RBAC`/`AUDIT`/`PRINT-EXPORT`/`OFFLINE-RETRY`/`RECONCILIATION`/`VISUAL` per layar, lalu UAT perangkat nyata |
+
+Gap yang berulang di ketiga surface, layak diketahui sebelum mulai: **outbox
+Flutter belum dipakai** pembelian/AP/AR/nota/opname/price book/jurnal; **cetak
+dan ekspor** umumnya dari data live, bukan snapshot server yang punya print log;
+**bukti Windows dan Android** masih navigasi, belum transaksi.
 
 ---
 
@@ -91,6 +131,9 @@ disemai default per tenant.
    `pos-held.ts`). SQL hanya mengambil data; keputusannya di modul murni.
 8. **Buktikan merah lebih dahulu.** Setiap penjaga baru disimulasikan cacatnya,
    dilihat merah, lalu dikembalikan.
+9. **Klaim status diverifikasi ke kode, bukan ke dokumen** — termasuk dokumen
+   ini. Kekeliruan yang dikoreksi pada §9 lolos justru karena dokumennya dibaca
+   sebagai bukti.
 
 ---
 
@@ -98,21 +141,23 @@ disemai default per tenant.
 
 | Hal | Kenyataannya |
 | --- | --- |
-| Worktree | Banyak worktree berbagi satu repo. **`git worktree list` sebelum apa pun.** Jangan mengganti checkout worktree yang sedang dipakai sesi lain |
+| Worktree | Banyak worktree berbagi satu repo. **`git worktree list` sebelum apa pun.** Jangan mengganti checkout worktree yang sedang dipakai sesi lain. `main` sendiri biasanya sudah di-checkout salah satu worktree, sehingga `git checkout main` gagal — buat cabang dari `origin/main` |
 | `node_modules` | **Per worktree.** `pnpm install --frozen-lockfile` di worktree baru makan belasan menit — jalankan lebih awal, di latar belakang |
 | Prisma | `pnpm db:generate` **wajib** sebelum `tsc`, kalau tidak ratusan galat palsu "Property does not exist on type 'PrismaService'" |
-| Postgres lokal | **Tidak terjangkau** dari mesin sesi ini. Karena itu aturan uang sengaja dipisah ke modul murni |
+| Postgres lokal | Tidak selalu terjangkau. Karena itu aturan uang sengaja dipisah ke modul murni. Migrasi V064–V068 sudah diterapkan pada 16 schema tenant lokal di komputer yang menjalankan pass 11 Agustus |
 | Git Bash | `git show "origin/main:path"` dipelintir jadi path Windows. Pakai `export MSYS_NO_PATHCONV=1`. Pernah membuat saya salah menyimpulkan berkas hilang dari `main` |
 | `tsc -p tsconfig.json` | Menyertakan `.spec` dan memunculkan galat lama milik modul lain. Yang penting: tidak ada galat pada berkas yang sedang dikerjakan |
 | `rich-text-sanitizer.spec.ts` | **Sudah rusak sebelum sesi ini** — galat transform Jest pada `sanitize-html`. Suite ini gagal DIMUAT, bukan gagal uji. Tercatat pada ringkasan 10 Agustus §6. Jangan dikira regresi Anda |
+| Golden Flutter | Dibuat di Ubuntu CI, bukan Windows. Ada workflow `perbarui-golden-pos.yml` |
 
-Perintah uji:
+Perintah uji, beserta hitungan yang tercatat pada pass 11 Agustus:
 
 ```bash
-pnpm --filter @ebisnis/api test      # ~4030 uji
+pnpm --filter @ebisnis/api test      # Jest lulus seluruhnya
+pnpm --filter @ebisnis/web test      # 46 berkas / 511 uji
 pnpm --filter @ebisnis/api lint
 pnpm --filter @ebisnis/web lint
-cd apps/pos-flutter && flutter test  # ~147 uji
+cd apps/pos-flutter && flutter analyze && flutter test   # 203 uji
 ```
 
 ---
@@ -127,6 +172,7 @@ Jangan mulai pekerjaan yang bergantung pada ini.
 | 2 | Sumber biaya untuk transfer antar-gudang (§2.3) | Gap 2.3 |
 | 3 | Member POS: pakai anggota koperasi, atau entitas sendiri | Saldo/PIN kasir (§3.5–3.6 spesifikasi AIS) |
 | 4 | Katalog kasir: hanya cache, atau live saat daring | §3.2 spesifikasi AIS |
+| 5 | Keputusan UAT yang terdaftar di `gap-analysis-video-48-2026-08-11.md` §7: custody nota, mapping akun sales legacy, perilaku retur/void/write-off, kebijakan `HPP Tambah (%)`, definisi tiga laporan layar 41, dan perangkat lapangan | Sebagian besar P1 dan seluruh P2 |
 
 ---
 
@@ -134,11 +180,13 @@ Jangan mulai pekerjaan yang bergantung pada ini.
 
 Dirancang untuk dikirim apa adanya dari ponsel. Masing-masing berdiri sendiri.
 
-### Menggabungkan yang sudah siap
+### Memeriksa keadaan
 
 ```text
-Gabungkan PR #117 lalu #116 dengan squash-merge. Pastikan checknya hijau
-lebih dahulu; kalau ada yang merah, laporkan dan jangan digabung.
+Laporkan: PR apa saja yang terbuka beserta status checknya, commit terakhir
+di main, dan apakah ada gap Inventory yang sudah ditutup sejak dokumen
+serah-terima remote ditulis. Verifikasi ke kode, bukan ke dokumen.
+Jangan mengerjakan apa pun dulu.
 ```
 
 ### Menyiapkan komputer baru
@@ -152,24 +200,25 @@ node_modules atau Prisma bermasalah. Jangan menyentuh worktree lain.
 ### Mengerjakan gap berikutnya
 
 ```text
-Baca docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md bagian 2.1,
-lalu kerjakan un-blending rata-rata biaya saat pembalikan penerimaan. Taruh
-aturannya di modul murni yang dapat diuji tanpa basis data, buktikan merah
-lebih dahulu, lalu buka PR.
+Baca docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md bagian 2.2,
+kerjakan pengaruh retur/void POS terhadap rata-rata biaya. Aturannya di modul
+murni yang dapat diuji tanpa basis data, buktikan merah lebih dahulu, lalu
+buka PR.
 ```
 
 ```text
-Baca dokumen serah-terima remote POS/Inventory bagian 2.2, kerjakan pengaruh
-retur/void POS terhadap rata-rata biaya. Aturan di modul murni, uji tanpa
-basis data, PR terpisah.
+Baca dokumen serah-terima remote POS/Inventory bagian 2.4, kerjakan jurnal
+pembalik untuk accounting_event yang sudah POSTED, mengikuti pola
+reversal_of_id yang sudah ada di journal_entry. PR terpisah.
 ```
 
-### Memeriksa keadaan
+### Mengerjakan matriks capability 48 layar
 
 ```text
-Laporkan: PR apa saja yang terbuka beserta status checknya, commit terakhir
-di main, dan apakah ada gap Inventory yang sudah ditutup sejak dokumen
-serah-terima remote ditulis. Jangan mengerjakan apa pun dulu.
+Baca docs/implementation/inventory-sales-48/gap-analysis-video-48-2026-08-11.md
+bagian 6, lalu kerjakan P0 nomor 1: turunkan klaim katalog yang belum punya
+bukti di registry. Jangan menaikkan status apa pun tanpa test yang membuktikan
+capability itu persis pada surface itu. Satu PR.
 ```
 
 ### Rilis aplikasi kasir
@@ -193,7 +242,13 @@ Laporkan hasilnya. Jangan membuat tag rilis tanpa persetujuan saya.
   tetapi bukan syarat deploy dan tidak boleh jadi pekerjaan besar sendiri.
 - Meregenerasi golden Flutter dari Windows. Golden dibuat di Ubuntu CI; ada
   workflow khusus `perbarui-golden-pos.yml` untuk itu.
-- Mengaudit ulang paritas 48 layar. Sudah 48/48 dengan bukti.
+- **Memulai audit paritas 48 layar dari nol.** Bukan karena paritasnya sudah
+  selesai — ia belum, lihat §1 — melainkan karena auditnya sudah ada dan baru
+  (`gap-analysis-video-48-2026-08-11.md`, 11 Agustus). Menulis audit kelima
+  hanya menambah dokumen yang saling bertentangan. Kerjakan P0/P1/P2-nya.
+- **Menaikkan status di `parity-evidence.registry.ts` tanpa test atau UAT yang
+  membuktikan capability itu persis pada surface itu.** Registry adalah sumber
+  kebenaran; menaikkannya tanpa bukti membuat seluruh angka §1 tidak berarti.
 
 ---
 
@@ -202,8 +257,41 @@ Laporkan hasilnya. Jangan membuat tag rilis tanpa persetujuan saya.
 | Dokumen | Isi |
 | --- | --- |
 | `HANDOVER.md` (akar) | Indeks seluruh serah-terima aktif |
+| `docs/implementation/inventory-sales-48/gap-analysis-video-48-2026-08-11.md` | **Audit paritas terbaru** — matriks per layar, P0/P1/P2, keputusan UAT terbuka |
+| `docs/implementation/inventory-sales-48/parity-48.json` | Sumber kebenaran angka paritas (606 requirement) |
 | `docs/session-notes/2026-08-10-ringkasan-sesi.md` | CI/CD, matrix build rilis, auto-update, empat perbaikan integritas |
-| `docs/pos-inventory-parity/00-INDEX.md` | Dashboard paritas 48 layar + bukti per layar |
+| `docs/pos-inventory-parity/00-INDEX.md` | Dashboard paritas per layar + bukti |
 | `docs/pos-inventory-parity/evidence/screen-20/uat.md` | Bukti penerimaan barang, termasuk tindak lanjut status PO |
 | `docs/pos-web-priority/16-peta-spesifikasi-ais.md` | Peta selisih terhadap spesifikasi AIS + urutan tahap |
 | `docs/pos-web-priority/15-rilis-dan-pembaruan.md` | Alur rilis `.exe`/`.apk` dan cek pembaruan |
+
+---
+
+## 9. Riwayat koreksi
+
+Dicatat, bukan disunting diam-diam: dokumen ini pernah dipakai sebagai bukti,
+jadi yang berubah harus dapat ditelusuri.
+
+**11 Agustus 2026** — versi pertama (10 Agustus, PR #118) menyatakan:
+
+> "Paritas 48 layar Inventory — sudah selesai, jangan diaudit ulang … Registry
+> bukti: 48 PROVEN, `PENDING_PROOF` kosong"
+
+dan mencantumkan "mengaudit ulang paritas 48 layar" pada daftar §7 sebagai hal
+yang tidak boleh dikerjakan.
+
+Pernyataan itu benar terhadap model 242-requirement yang berlaku 10 Agustus.
+Tetapi commit `e20b913` (11 Agustus) memperlebar registry menjadi 606
+requirement lintas capability, dan 414 di antaranya pending. Akibatnya kalimat
+di atas justru **melarang pekerjaan yang kini paling terbuka** — persis
+kegagalan yang paling mahal untuk dokumen yang dirancang diikuti tanpa membaca
+repo lebih dahulu.
+
+Yang diubah: §1 (angka paritas), §2 (2.1 ditandai selesai, 2.5 ditambahkan),
+§4 (hitungan uji dan catatan `main` sudah ter-checkout worktree lain), §5
+(keputusan UAT), §6 (perintah gabung PR dihapus karena sudah digabung; perintah
+P0 ditambahkan), §7 (larangan diganti dengan alasan yang benar), §8
+(audit baru didaftarkan).
+
+Nomor §2.1–§2.4 sengaja **tidak digeser** agar perintah yang sudah tersimpan di
+ponsel tetap menunjuk pekerjaan yang sama.

@@ -46,11 +46,26 @@ void main() {
           'status': 'POSTED',
         }
       ],
+      [
+        {
+          'id': 'conflict-1',
+          'event_id': 'device-master-1',
+          'device_id': 'windows-1',
+          'entity_type': 'CUSTOMERS',
+          'entity_id': 'customer-1',
+          'client_version': 2,
+          'server_version': 3,
+          'status': 'OPEN',
+          'created_at': '2026-08-11T08:00:00Z',
+        }
+      ],
     );
 
     expect(data.receivables.first.salesName, 'Masrukin');
     expect(data.receivables.last.isSettled, isTrue);
     expect(data.arReceipts.single.customerName, 'Toko Sejahtera');
     expect(data.arReceipts.single.total, 350000);
+    expect(data.syncConflicts.single.eventId, 'device-master-1');
+    expect(data.syncConflicts.single.serverVersion, 3);
   });
 }

@@ -1,0 +1,87 @@
+{
+  "$schema": "./parity-48.schema.json",
+  "schemaVersion": 1,
+  "asOf": "2026-08-11",
+  "baselineCommit": "e5c339935ad0f90dd20b3b4c201c5aab8ae6e47c",
+  "screenRange": { "from": 1, "to": 48 },
+  "rangeNotation": "A-B means every integer screen from A through B, inclusive",
+  "sourceOfTruth": {
+    "catalog": "apps/api/src/modules/tenant/sales-inventory-parity.catalog.ts",
+    "registry": "apps/api/src/modules/tenant/parity-evidence.registry.ts",
+    "baseline": "docs/implementation/inventory-sales-48/evidence/baseline/2026-08-10-p0-baseline.md"
+  },
+  "allowed": {
+    "surfaces": ["api", "web", "windows", "android"],
+    "capabilities": ["view", "create", "update", "post", "reverse", "print", "export", "offline", "reconciliation", "hardware"],
+    "kinds": ["unit", "integration", "e2e", "golden", "uat"],
+    "statuses": ["NOT_STARTED", "SOURCE_IMPLEMENTED", "AUTOMATED_PROVEN", "DEVICE_UAT_PROVEN", "PRODUCTION_VERIFIED", "BLOCKED", "NOT_REQUIRED"]
+  },
+  "minimumRequirements": [
+    { "screens": "1-48", "surface": "api", "capability": "view" },
+    { "screens": "1-48", "surface": "web", "capability": "view" },
+    { "screens": "1-48", "surface": "windows", "capability": "view" },
+    { "screens": "1-48", "surface": "android", "capability": "view" },
+    { "screens": "1-48", "surface": "api", "capability": "reconciliation" },
+    { "screens": "1,4,7,9,17-20,24,30,34,39,43-44", "surface": "api,web,windows,android", "capability": "create/update/post/reverse as applicable" },
+    { "screens": "10,13,15-16,26-29,36-38,40-42,46-48", "surface": "api,web,windows,android", "capability": "print/export as applicable" },
+    { "screens": "1,4,7-9,11,17-20,22,24,29-30,32,34,39,43", "surface": "web,windows,android", "capability": "offline" },
+    { "screens": "10,13,15,20,26,28,30,36,40,42,46,48", "surface": "windows,android", "capability": "hardware" }
+  ],
+  "currentEvidence": [
+    {
+      "screens": "1-48",
+      "surface": "api",
+      "capability": "view",
+      "kind": "uat",
+      "status": "AUTOMATED_PROVEN",
+      "referencePattern": "docs/pos-inventory-parity/evidence/screen-{screen:02}/uat.md"
+    },
+    {
+      "screens": "1-48",
+      "surface": "web",
+      "capability": "view",
+      "kind": "e2e",
+      "status": "AUTOMATED_PROVEN",
+      "referencePattern": "docs/implementation/inventory-sales-48/evidence/uat/2026-08-10-surface-release-readiness.md"
+    },
+    {
+      "screens": "1-48",
+      "surface": "windows",
+      "capability": "view",
+      "kind": "uat",
+      "status": "AUTOMATED_PROVEN",
+      "referencePattern": "docs/implementation/inventory-sales-48/evidence/uat/2026-08-10-surface-release-readiness.md"
+    },
+    {
+      "screens": "1-48",
+      "surface": "android",
+      "capability": "view",
+      "kind": "integration",
+      "status": "AUTOMATED_PROVEN",
+      "referencePattern": "docs/implementation/inventory-sales-48/evidence/uat/2026-08-10-surface-release-readiness.md"
+    },
+    {
+      "screens": "30",
+      "surface": "web",
+      "capability": "create",
+      "kind": "unit",
+      "status": "SOURCE_IMPLEMENTED",
+      "referencePattern": "apps/web/src/pages/app/inventory-transaction-draft.test.ts"
+    },
+    {
+      "screens": "30",
+      "surface": "web",
+      "capability": "offline",
+      "kind": "unit",
+      "status": "SOURCE_IMPLEMENTED",
+      "referencePattern": "apps/web/src/pages/app/inventory-transaction-draft.test.ts"
+    }
+  ],
+  "truthSummary": {
+    "requirements": 606,
+    "proven": { "apiView": 48, "apiAllRequired": 0, "webView": 48, "webAllRequired": 0, "windowsView": 48, "windowsAllRequired": 0, "androidView": 48, "androidAllRequired": 0, "allSurfaces": 0 },
+    "pending": 414
+  },
+  "incrementalRule": "Add capability-specific requirements and evidence per vertical slice; never infer one surface or capability from another.",
+  "uatRule": "AUTOMATED_PROVEN is not DEVICE_UAT_PROVEN or PRODUCTION_VERIFIED. BLOCKED and NOT_REQUIRED require a reason."
+}

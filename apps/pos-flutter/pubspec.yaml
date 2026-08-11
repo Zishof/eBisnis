@@ -3,7 +3,7 @@ description: >-
   Klien kasir eBisnis.id untuk tablet Android dan Windows. Klien KEDUA dari
   sistem yang sama, bukan POS berdiri sendiri — lihat ADR-012.
 publish_to: none
-version: 0.1.21+22
+version: 0.1.35+35
 
 environment:
   sdk: ^3.6.0
@@ -22,6 +22,8 @@ dependencies:
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
   build_runner: ^2.4.14
   drift_dev: ^2.25.1

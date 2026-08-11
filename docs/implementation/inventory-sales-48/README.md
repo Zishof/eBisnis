@@ -19,6 +19,8 @@ permission, audit, UI, laporan/ekspor, pengujian, dan bukti UAT tersedia.
 - `source-manifest.md`: sumber kebenaran dan checksum.
 - `repository-map.md`: pemetaan source aktual.
 - `gap-analysis.md`: baseline jujur dan urutan penutupan gap.
+- `gap-analysis-video-48-2026-08-11.md`: perbandingan code existing commit
+  `e5c3399` dengan kontrak analisis video dan 48 frame dari Google Drive.
 - `requirement-ledger.csv`: satu baris per layar.
 - `route-map.md`, `api-map.md`, `permission-map.md`: kontrak lintas permukaan.
 - `offline-sync-contract.md`: aturan cache, outbox, cursor, retry, dan konflik.
@@ -31,6 +33,10 @@ Evidence disimpan di `evidence/screens`, `evidence/reports`, dan
 
 ## Hasil Akhir
 
-- Seluruh 48 layar berstatus `OPERATIONAL` pada Web dan Flutter Windows/Android.
-- Bukti build produksi dan checksum paket tersedia di
-  `evidence/uat/release-build-0.1.6.md`.
+- Implementasi Web dan Flutter Windows/Android untuk 48 layar telah tersedia dan
+  seluruh gate otomatis kandidat UAT lulus.
+- Status paritas 100% tetap menunggu UAT perangkat fisik, rekonsiliasi data legacy,
+  serta persetujuan pemilik proses; item tersebut tidak boleh dinyatakan selesai
+  hanya berdasarkan test otomatis.
+- Bukti build dan checksum terakhir tersedia di
+  [`evidence/uat/2026-08-11-inventory-0.1.35-release.md`](./evidence/uat/2026-08-11-inventory-0.1.35-release.md).

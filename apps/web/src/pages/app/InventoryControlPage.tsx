@@ -25,7 +25,7 @@ import {
 import { api, formatDate, formatMoney, formatNumber } from '../../lib/api';
 import { downloadExcel, downloadPdf, type ExportColumn } from '../../lib/export-table';
 import { Code, DataGrid, PageHeader, StatusBadge, type GridColumn } from '../../components/ui';
-import { inventoryRouteContext, inventoryTabRoutes, type InventoryTabKey } from './inventory-route-context';
+import { inventoryRouteContext, inventoryRouteForLegacyScreen, inventoryTabRoutes, type InventoryTabKey } from './inventory-route-context';
 
 type TabKey = InventoryTabKey;
 
@@ -66,6 +66,20 @@ type ReconciliationData = {
     stock_opname_rows: number;
   };
   salesMap: Array<{ legacy_code: string; legacy_name: string; mapped_username: string | null; mapped_name: string | null }>;
+};
+
+type SyncConflictRow = {
+  id: string;
+  device_id: string;
+  entity_type: string;
+  entity_id: string | null;
+  event_id: string | null;
+  client_version: string | null;
+  server_version: string | null;
+  status: 'OPEN' | 'RESOLVED';
+  resolution: string | null;
+  created_at: string;
+  resolved_at: string | null;
 };
 
 type InventoryMasterData = {
@@ -126,6 +140,7 @@ type ParityContract = {
     legacyName: string;
     domain: string;
     api: string[];
+    webRoute?: string;
     web: 'OPERATIONAL' | 'READ_ONLY' | 'CONTRACT_ONLY';
     flutter: 'OPERATIONAL' | 'READ_ONLY' | 'CONTRACT_ONLY';
   }>;
@@ -333,6 +348,11 @@ export function InventoryControlPage() {
     queryFn: () => api.get<StockBalanceRow[]>('/inventory/balances'),
     enabled: active === 'stock',
   });
+  const syncConflicts = useQuery({
+    queryKey: ['inventory-sync-conflicts'],
+    queryFn: () => api.get<SyncConflictRow[]>('/sync/conflicts?pageSize=200'),
+    enabled: active === 'periodClose',
+  });
 
   const view = useMemo(() => buildView(active, {
     dashboard: dashboard.data,
@@ -365,7 +385,7 @@ export function InventoryControlPage() {
     active === 'salesOrders' ? receivables.isLoading :
     false
   );
-  const error = [dashboard.error, reconciliation.error, parity.error, parityContract.error, masterData.error, receivables.error, payables.error, prices.error, opname.error, priceBooks.error, finance.error, stockOpnames.error, stockBalances.error]
+  const error = [dashboard.error, reconciliation.error, parity.error, parityContract.error, masterData.error, receivables.error, payables.error, prices.error, opname.error, priceBooks.error, finance.error, stockOpnames.error, stockBalances.error, syncConflicts.error]
     .filter(Boolean)
     .map(errorMessage)[0];
 
@@ -431,6 +451,24 @@ export function InventoryControlPage() {
             </details>
           ))}
         </div>
+        <details className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 lg:col-span-2">
+          <summary className="cursor-pointer text-sm font-black">Daftar 48 layar dan route operasional</summary>
+          <p className="mt-2 text-xs text-slate-500">Setiap tautan membuka workspace yang menjalankan fungsi terkait; daftar ini bukan pengganti UAT transaksi.</p>
+          <ol className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {(parityContract.data?.items ?? []).map((item) => (
+              <li key={item.screen} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+                <span className="min-w-0 text-xs"><strong>{String(item.screen).padStart(2, '0')}</strong> — {item.legacyName}</span>
+                <Link
+                  aria-label={`Buka layar ${item.screen}`}
+                  className="shrink-0 text-xs font-black text-brand-700 hover:underline dark:text-brand-300"
+                  to={item.webRoute ?? inventoryRouteForLegacyScreen(item.screen)}
+                >
+                  Buka
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </details>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -528,7 +566,15 @@ export function InventoryControlPage() {
           />
         )}
 
+        {active === 'periodClose' && (
+          <SyncConflictPanel
+            conflicts={syncConflicts.data ?? []}
+            onChanged={() => void queryClient.invalidateQueries({ queryKey: ['inventory-sync-conflicts'] })}
+          />
+        )}
+
         {active === 'profit' && <FinancialReportPanel asOf={asOf} />}
+        {active === 'salesOrders' && <ReceivableReportPanel asOf={asOf} />}
 
         <DataGrid
           columns={view.columns}
@@ -540,6 +586,46 @@ export function InventoryControlPage() {
         />
       </section>
     </div>
+  );
+}
+
+function SyncConflictPanel({ conflicts, onChanged }: { conflicts: SyncConflictRow[]; onChanged: () => void }) {
+  const [message, setMessage] = useState('');
+  const resolve = useMutation({
+    mutationFn: (id: string) => api.post(`/sync/conflicts/${id}/resolve`, { resolution: 'SERVER_WINS' }),
+    onSuccess: () => {
+      setMessage('Konflik ditutup dengan versi server. Event lokal terkait tetap tercatat untuk audit.');
+      onChanged();
+    },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+  const open = conflicts.filter((row) => row.status === 'OPEN');
+  return (
+    <section className="mb-4 rounded-xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900 dark:bg-amber-950/20">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="font-black text-slate-900 dark:text-white">Konflik sinkronisasi</h3>
+          <p className="text-xs text-slate-500">Penyelesaian aman hanya memakai versi server; data client tidak ditimpa sebagai hasil gabungan palsu.</p>
+        </div>
+        <StatusBadge status={`${open.length} terbuka`} tone={open.length ? 'warning' : 'success'} />
+      </div>
+      <div className="mt-3 space-y-2">
+        {open.map((row) => (
+          <div key={row.id} className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-white p-3 dark:border-amber-900 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 text-xs">
+              <strong className="block text-sm">{row.entity_type} · {row.device_id}</strong>
+              <span className="block truncate text-slate-500">Event {row.event_id ?? '-'} · client {row.client_version ?? '-'} / server {row.server_version ?? '-'}</span>
+              <span className="text-slate-400">{formatDate(row.created_at)}</span>
+            </div>
+            <button type="button" className="btn-secondary shrink-0" disabled={resolve.isPending} onClick={() => resolve.mutate(row.id)}>
+              <ShieldCheck className="h-4 w-4" aria-hidden /> Gunakan Server
+            </button>
+          </div>
+        ))}
+        {open.length === 0 && <p className="rounded-lg bg-white p-3 text-sm text-emerald-700 dark:bg-slate-950">Tidak ada konflik sinkronisasi terbuka.</p>}
+      </div>
+      {message && <p className="mt-3 text-xs font-bold text-slate-700 dark:text-slate-200">{message}</p>}
+    </section>
   );
 }
 
@@ -901,6 +987,80 @@ function FinancialReportPanel({ asOf }: { asOf: string }) {
   );
 }
 
+type ReceivableReportCode = 'sales-by-product' | 'ar-outstanding' | 'ar-event-register';
+
+function ReceivableReportPanel({ asOf }: { asOf: string }) {
+  const [startDate, setStartDate] = useState(() => `${asOf.slice(0, 7)}-01`);
+  const [report, setReport] = useState<InventoryFinancialReport>();
+  const [message, setMessage] = useState('');
+
+  const preview = useMutation({
+    mutationFn: (code: ReceivableReportCode) => api.post<InventoryFinancialReport>(
+      `/reports/${code}/preview`,
+      { asOfDate: asOf, filters: { startDate } },
+    ),
+    onSuccess: (value) => { setReport(value); setMessage(''); },
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+
+  const output = useMutation({
+    mutationFn: async (format: 'PDF' | 'EXCEL') => {
+      if (!report) throw new Error('Tampilkan laporan terlebih dahulu.');
+      const filters = { startDate };
+      const snapshot = await api.post<{ id: string }>(`/reports/${report.reportCode}/snapshot`, {
+        asOfDate: report.asOfDate,
+        filters,
+      });
+      const keys = Object.keys(report.rows[0] ?? {});
+      const columns = keys.map((key) => ({
+        key,
+        label: key.replaceAll('_', ' '),
+      })) as ExportColumn<Record<string, unknown>>[];
+      const filename = `${report.reportCode}-${startDate}-${report.asOfDate}`;
+      if (format === 'PDF') downloadPdf(filename, report.title, columns, report.rows);
+      else downloadExcel(filename, columns, report.rows);
+      await api.post(`/report-snapshots/${snapshot.id}/print-log`, {
+        format,
+        documentNumber: `${filename}.${format === 'PDF' ? 'pdf' : 'xlsx'}`,
+      });
+      return { id: snapshot.id, format };
+    },
+    onSuccess: ({ id, format }) => setMessage(`${format} dibuat dari snapshot ${id}; jejak output sudah dicatat.`),
+    onError: (error) => setMessage(errorMessage(error)),
+  });
+
+  const total = report ? Object.values(report.totals)[0] ?? '0' : '0';
+  return (
+    <div className="mb-4 rounded-xl border border-brand-200 bg-brand-50/50 p-4 dark:border-brand-900 dark:bg-brand-950/20">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h3 className="text-sm font-black text-slate-900 dark:text-white">Laporan Piutang — layar 41/42</h3>
+          <p className="text-xs text-slate-500">Jenis, judul, kolom, periode, snapshot, dan jejak output dipisahkan secara eksplisit.</p>
+        </div>
+        <label className="text-xs font-bold text-slate-600 dark:text-slate-300">
+          Periode awal
+          <input type="date" max={asOf} value={startDate} onChange={(event) => setStartDate(event.target.value)} className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-950" />
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-secondary" disabled={preview.isPending} onClick={() => preview.mutate('sales-by-product')}>Rekap Penjualan Barang</button>
+          <button type="button" className="btn-secondary" disabled={preview.isPending} onClick={() => preview.mutate('ar-outstanding')}>Outstanding Piutang</button>
+          <button type="button" className="btn-secondary" disabled={preview.isPending} onClick={() => preview.mutate('ar-event-register')}>Register Event Piutang</button>
+        </div>
+      </div>
+      {report && (
+        <div className="mt-4 flex flex-col gap-3 rounded-lg bg-white p-3 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+          <div><p className="font-black">{report.title}</p><p className="text-xs text-slate-500">{formatDate(startDate)}–{formatDate(report.asOfDate)} · {formatNumber(report.rowCount)} baris · total {formatMoney(total)}</p></div>
+          <div className="flex gap-2">
+            <button type="button" className="btn-secondary" disabled={output.isPending} onClick={() => output.mutate('EXCEL')}><Download className="h-4 w-4" />Excel snapshot</button>
+            <button type="button" className="btn-primary" disabled={output.isPending} onClick={() => output.mutate('PDF')}><Printer className="h-4 w-4" />PDF snapshot</button>
+          </div>
+        </div>
+      )}
+      {message && <p className="mt-3 text-sm font-bold">{message}</p>}
+    </div>
+  );
+}
+
 function SettlementWorkflowPanel({
   kind,
   payables,
@@ -959,6 +1119,7 @@ function SettlementWorkflowPanel({
         lines: [{ receivableLedgerId: selected.id }],
       });
       await api.post(`/sales-note-handovers/${created.id}/handover`);
+      await api.post(`/sales-note-handovers/${created.id}/carry`);
       return created;
     },
     onSuccess: (created) => setMessage(`Nota ${created.handover_number} sudah diserahterimakan.`),

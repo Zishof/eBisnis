@@ -1,6 +1,7 @@
 import 'package:ebisnis_pos/inventory/inventory_app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'golden_path.dart';
 
 class _StockVisualClient extends InventoryApiClient {
   _StockVisualClient()
@@ -49,7 +50,7 @@ void main() {
 
     await expectLater(
       find.byType(InventoryStockPricingPage),
-      matchesGoldenFile('goldens/inventory-stock-pricing-desktop.png'),
+      matchesGoldenFile(goldenPath('inventory-stock-pricing-desktop.png')),
     );
   });
 }

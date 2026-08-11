@@ -1,6 +1,7 @@
 import 'package:ebisnis_pos/inventory/inventory_app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'golden_path.dart';
 
 class _ShellVisualClient extends InventoryApiClient {
   _ShellVisualClient()
@@ -82,6 +83,33 @@ class _ShellVisualClient extends InventoryApiClient {
           LotKpi('002847', 'Bodrex Extra', 'B2608F', '02 Sep 2026'),
         ],
       );
+
+  @override
+  Future<InventoryOperationsData> operations({
+    required bool includePayables,
+    bool includeSettled = false,
+    bool includeReceivableSettled = false,
+  }) async =>
+      const InventoryOperationsData(
+        receivables: [],
+        payables: [],
+        handovers: [],
+        purchaseOrders: [],
+        apPayments: [],
+        suppliers: [InventoryPriceParty('s1', 'SUP-01', 'Supplier Sehat')],
+        products: [
+          InventoryProductDemo(
+            id: 'p1',
+            uomId: 'u1',
+            code: 'P001',
+            name: 'Produk Uji',
+            price: 15000,
+            stock: 20,
+            imageUrl: '',
+          ),
+        ],
+        warehouses: [InventoryWarehouse('w1', 'GDG', 'Gudang Pusat')],
+      );
 }
 
 const _persona = PersonaInventory(
@@ -105,11 +133,14 @@ void main() {
 
     expect(find.text('Caruban Medika Nusantara'), findsOneWidget);
     expect(find.text('Gudang Pusat'), findsOneWidget);
+    expect(find.byKey(const Key('inventory-update-button')), findsOneWidget);
+    expect(find.text('Update Baru'), findsOneWidget);
+    expect(find.text('v0.1.35  -  eBisnis Suite'), findsOneWidget);
     expect(find.text('Tren Penjualan'), findsOneWidget);
     expect(find.text('Transaksi Terbaru'), findsOneWidget);
     await expectLater(
       find.byType(InventoryHomePage),
-      matchesGoldenFile('goldens/inventory-shell-desktop.png'),
+      matchesGoldenFile(goldenPath('inventory-shell-desktop.png')),
     );
   });
 
@@ -130,7 +161,48 @@ void main() {
     expect(find.text('Paritas'), findsOneWidget);
     await expectLater(
       find.byType(InventoryHomePage),
-      matchesGoldenFile('goldens/inventory-shell-mobile.png'),
+      matchesGoldenFile(goldenPath('inventory-shell-mobile.png')),
     );
+  });
+
+  testWidgets('seluruh aksi dashboard dan bantuan mempunyai hasil nyata',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AplikasiInventory(
+      initialPersona: _persona,
+      client: _ShellVisualClient(),
+    ));
+    await tester.pumpAndSettle();
+
+    Future<void> openAndClose(Key key, String title) async {
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+      expect(find.text(title), findsOneWidget);
+      await tester.tap(find.byTooltip('Tutup'));
+      await tester.pumpAndSettle();
+    }
+
+    await openAndClose(
+        const Key('dashboard-products-view-all'), 'Semua Produk Terlaris');
+    await openAndClose(
+        const Key('dashboard-stock-view-all'), 'Semua Peringatan Stok');
+    await openAndClose(
+        const Key('dashboard-audit-view-all'), 'Semua Aktivitas Audit');
+
+    await tester.tap(find.byTooltip('Bantuan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Panduan Penggunaan'), findsOneWidget);
+
+    await tester.tap(find.text('Pembelian & Piutang'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('purchase-create-header')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('purchase-create-header')));
+    await tester.pumpAndSettle();
+    expect(find.text('Purchase order baru'), findsOneWidget);
+    expect(find.text('Simpan PO'), findsOneWidget);
   });
 }

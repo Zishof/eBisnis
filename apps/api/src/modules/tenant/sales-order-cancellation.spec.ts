@@ -12,7 +12,7 @@ describe('sales order cancellation contract', () => {
   });
 
   it('limits cancellation to the current sales owner and an untouched confirmed order', () => {
-    expect(source).toContain('AND so.created_by = (');
+    expect(source).toContain('AND COALESCE(so.salesperson_id, so.created_by) = (');
     expect(source).toContain("current.status !== 'CONFIRMED'");
     expect(source).toContain("new Decimal(delivery.rows[0]?.delivered_qty ?? 0).greaterThan(0)");
     expect(source).toContain("SET status = 'CANCELLED'");

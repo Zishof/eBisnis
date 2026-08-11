@@ -164,13 +164,8 @@ sertifikatnya **sebelum** memberitahukan alamatnya kepada calon anggota:
 sudo certbot --apache -d koperasi.ebisnis.id
 ```
 
-**Pembatas laju per alamat IP belum bekerja di belakang Apache.**
-`ThrottlerGuard` menghitung per `req.ip`, dan aplikasi belum menyetel
-`trust proxy` — sehingga setiap pengunjung tampak datang dari alamat proxy.
-Diajukan lewat [IR-006](../docs/integration-requests/cooperative/006-alamat-asli-di-belakang-proxy.md);
-perbaikannya satu baris pada `main.ts` dan milik sesi Core.
-
-Sampai itu dikerjakan, yang menahan banjir adalah batas yang **tidak
-bergantung pada alamat IP**: 50 lamaran per koperasi per hari dan jeda 6 jam
-per nomor telepon. Batas kerusakan terburuk: 50 baris karantina per koperasi
-per hari, tanpa satu pun baris anggota terbentuk.
+**Pembatas laju per alamat IP bekerja di belakang Apache.** Aplikasi hanya
+memercayai reverse proxy yang terhubung dari loopback, sehingga `req.ip`
+menggunakan alamat pengunjung yang ditambahkan Apache tanpa memercayai header
+dari koneksi internet langsung. Batas harian per koperasi dan jeda per nomor
+telepon tetap menjadi lapisan perlindungan kedua.
