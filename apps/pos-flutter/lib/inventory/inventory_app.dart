@@ -17,6 +17,7 @@ import '../pembaruan/pengelola_pembaruan.dart';
 import '../pembaruan/sumber_pembaruan.dart';
 import '../pembaruan/versi.dart';
 import '../pembaruan/versi_aplikasi.dart';
+import 'antrean_luring.dart';
 import 'inventory_local_database.dart';
 import 'inventory_parity_navigation.dart';
 import 'inventory_supplier_workspace.dart';
@@ -6897,13 +6898,11 @@ class InventoryApiClient {
         unitPrice < 0) {
       throw const InventoryApiException('Data purchase order belum lengkap.');
     }
-    final created = await _request<Map<String, Object?>>(
+    final tanda = await _tandaPeristiwa('PO');
+    final hasil = await _kirimAtauAntre(
       'POST',
       '/purchase-orders',
-      headers: {
-        'Idempotency-Key':
-            'PO_${DateTime.now().microsecondsSinceEpoch}_${product.id}'
-      },
+      tandaPeristiwa: tanda,
       body: {
         'supplierId': supplierId,
         'warehouseId': warehouseId,
@@ -6920,12 +6919,21 @@ class InventoryApiClient {
         ],
       },
     );
-    return (created['purchase_order_number'] ??
-            created['purchaseOrderNumber'] ??
-            created['id'] ??
+    if (hasil.queued) return _nomorTertunda(tanda);
+    return (hasil.row['purchase_order_number'] ??
+            hasil.row['purchaseOrderNumber'] ??
+            hasil.row['id'] ??
             '-')
         .toString();
   }
+
+  /// Penanda untuk dokumen yang masih menunggu di antrean.
+  ///
+  /// Sengaja BUKAN nomor yang menyerupai nomor dokumen sungguhan: peladen belum
+  /// memberi nomor, dan menampilkan sesuatu yang terlihat resmi akan membuat
+  /// orang mencatat nomor yang tidak akan pernah ada.
+  String _nomorTertunda(String tanda) =>
+      'TERTUNDA-${tanda.substring(tanda.length - 8)}';
 
   Future<String> createPurchaseOrderWorkspace(
       PurchaseWorkspaceSubmission submission) async {
@@ -6939,13 +6947,11 @@ class InventoryApiClient {
             line.unitPrice < 0)) {
       throw const InventoryApiException('Data purchase order belum lengkap.');
     }
-    final created = await _request<Map<String, Object?>>(
+    final tanda = await _tandaPeristiwa('PO');
+    final hasil = await _kirimAtauAntre(
       'POST',
       '/purchase-orders',
-      headers: {
-        'Idempotency-Key':
-            'PO_${DateTime.now().microsecondsSinceEpoch}_${submission.lines.length}'
-      },
+      tandaPeristiwa: tanda,
       body: {
         'supplierId': submission.supplierId,
         'warehouseId': submission.warehouseId,
@@ -6971,19 +6977,27 @@ class InventoryApiClient {
             .toList(),
       },
     );
-    return (created['purchase_order_number'] ??
-            created['purchaseOrderNumber'] ??
-            created['id'] ??
+    if (hasil.queued) return _nomorTertunda(tanda);
+    return (hasil.row['purchase_order_number'] ??
+            hasil.row['purchaseOrderNumber'] ??
+            hasil.row['id'] ??
             '-')
         .toString();
   }
 
-  Future<void> transitionPurchaseOrder(String id, String action) async {
+  /// Transisi purchase order. Mengembalikan `true` bila masih menunggu antrean.
+  Future<bool> transitionPurchaseOrder(String id, String action) async {
     if (!const ['submit', 'approve', 'send'].contains(action)) {
       throw const InventoryApiException('Transisi purchase order tidak valid.');
     }
-    await _request<Map<String, Object?>>(
-        'POST', '/purchase-orders/$id/$action');
+    final tanda = await _tandaPeristiwa('PO_${action.toUpperCase()}');
+    final hasil = await _kirimAtauAntre(
+      'POST',
+      '/purchase-orders/$id/$action',
+      tandaPeristiwa: tanda,
+      body: const <String, Object?>{},
+    );
+    return hasil.queued;
   }
 
   Future<Map<String, Object?>> purchaseOrderDetail(String id) =>
@@ -7468,6 +7482,69 @@ class InventoryApiClient {
     await _localDatabase?.putCache(_salesOrderHistoryCacheKey, {'items': rows});
   }
 
+  /// Hasil satu perintah yang mungkin menunggu di antrean.
+  ///
+  /// `row` kosong ketika `queued` benar: peladen belum pernah menjawab, jadi
+  /// tidak ada nomor dokumen yang jujur untuk ditampilkan.
+  ///
+  /// Perintah yang DITOLAK peladen tidak mengembalikan ini — galatnya
+  /// dilemparkan kembali supaya pemakainya melihat penolakannya sekarang, bukan
+  /// mengira pekerjaannya tersimpan.
+  Future<({Map<String, Object?> row, bool queued})> _kirimAtauAntre(
+    String method,
+    String path, {
+    required Map<String, Object?> body,
+    required String tandaPeristiwa,
+  }) async {
+    final database = _localDatabase;
+    if (database == null || !bolehDiantre(method, path)) {
+      final row = await _request<Map<String, Object?>>(method, path,
+          body: body, headers: {'Idempotency-Key': tandaPeristiwa});
+      return (row: row, queued: false);
+    }
+
+    /*
+     * Diantrekan LEBIH DAHULU, baru dikirim.
+     *
+     * Urutannya menentukan: perintah yang dikirim tanpa tercatat lebih dahulu
+     * akan hilang bila aplikasi tertutup tepat sesudah jaringan putus — dan
+     * pemakainya tidak punya cara mengetahui pekerjaannya tidak pernah sampai.
+     */
+    await database.enqueue(
+      eventId: tandaPeristiwa,
+      method: method,
+      path: path,
+      payload: body,
+    );
+    try {
+      final row = await _request<Map<String, Object?>>(method, path,
+          body: body, headers: {'Idempotency-Key': tandaPeristiwa});
+      await database.markCompleted(tandaPeristiwa);
+      return (row: row, queued: false);
+    } on Object catch (error) {
+      final keputusan = putuskanKegagalan(
+        statusCode: error is InventoryApiException ? error.statusCode : null,
+      );
+      final item = await _outboxItem(tandaPeristiwa);
+      if (item != null) {
+        await database.markFailed(item, error, keputusan: keputusan);
+      }
+      // Hanya "peladen tidak terjangkau" yang boleh dilaporkan sebagai
+      // tertunda. Penolakan dan konflik harus terlihat sekarang.
+      if (keputusan == KeputusanAntrean.ulangiNanti) {
+        return (row: const <String, Object?>{}, queued: true);
+      }
+      rethrow;
+    }
+  }
+
+  /// Tanda peristiwa yang dipakai sebagai `Idempotency-Key` sekaligus kunci
+  /// antrean, sehingga pengiriman ulang tidak pernah menggandakan dokumen.
+  Future<String> _tandaPeristiwa(String jenis) async {
+    final deviceId = await _localDatabase?.getOrCreateDeviceId() ?? tenantCode;
+    return '${deviceId}_${jenis}_${DateTime.now().microsecondsSinceEpoch}';
+  }
+
   Future<Map<String, Object?>> _queuedOrder(
       String eventId, Object error) async {
     final item = await _outboxItem(eventId);
@@ -7498,7 +7575,21 @@ class InventoryApiClient {
         await database.markCompleted(item.eventId);
         sent += 1;
       } on Object catch (error) {
-        if (error is InventoryApiException && error.statusCode == 409) {
+        /*
+         * Nasib perintah ini diputuskan `antrean_luring.dart`, tidak ditebak
+         * dari jenis galatnya di sini.
+         *
+         * Sebelumnya SEMUA kegagalan diperlakukan sama: ditandai `FAILED` lalu
+         * `break`. Satu perintah yang ditolak peladen secara sah — 400 karena
+         * datanya salah, 403 karena haknya kurang — diulang tiap jam selamanya,
+         * dan `break` membuat setiap perintah di belakangnya TIDAK PERNAH
+         * terkirim. Tanpa satu pun galat yang memberi tahu pemakainya.
+         */
+        final keputusan = putuskanKegagalan(
+          statusCode: error is InventoryApiException ? error.statusCode : null,
+        );
+
+        if (keputusan == KeputusanAntrean.konflik) {
           final payload = jsonDecode(item.payload) as Map<String, Object?>;
           final entityId = RegExp(
                   r'/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:/|$)',
@@ -7535,8 +7626,14 @@ class InventoryApiClient {
             // akan dicoba kembali pada siklus sinkronisasi berikutnya.
           }
         }
-        await database.markFailed(item, error);
-        break;
+        await database.markFailed(item, error, keputusan: keputusan);
+
+        /*
+         * Berhenti HANYA ketika peladen tidak terjangkau: perintah berikutnya
+         * pasti gagal dengan sebab yang sama. Untuk penolakan dan konflik,
+         * pengurasan jalan terus — di situlah racunnya dulu.
+         */
+        if (!lanjutkanPengurasan(keputusan)) break;
       }
     }
     final pendingCount = await database.pendingCount();
