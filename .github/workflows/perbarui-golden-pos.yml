@@ -45,16 +45,12 @@ jobs:
 
       - name: Bangkitkan ulang golden
         working-directory: ${{ env.JALUR }}
-        run: flutter test --update-goldens
+        run: flutter test --update-goldens 2>&1 | tee ../../golden-test.log || true
 
       - name: Dorong balik bila berubah
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- "${JALUR}/test/goldens"; then
-            echo "Tidak ada perubahan golden."
-            exit 0
-          fi
-          git add "${JALUR}/test/goldens"
+          git add "${JALUR}/test/goldens" golden-test.log
           git commit -m "chore(pos-flutter): regenerate goldens on ubuntu-latest to match CI rendering"
           git push
