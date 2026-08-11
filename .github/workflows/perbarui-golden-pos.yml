@@ -51,6 +51,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "${JALUR}/test/goldens" golden-test.log
+          git add "${JALUR}/test/goldens"
+          git add -f golden-test.log
           git commit -m "chore(pos-flutter): regenerate goldens on ubuntu-latest to match CI rendering"
           git push
