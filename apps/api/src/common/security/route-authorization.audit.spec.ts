@@ -1,11 +1,15 @@
 import { Controller, Get, Module, Post } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
+import * as decorators from '../decorators';
 import {
+  AUTHORIZATION_MARKER_KEYS,
   AuthenticatedOnly,
+  DEMO_BLOCKED_KEY,
   Permissions,
   PlatformPermissions,
   Public,
+  ReportPermission,
   ResourcePermission,
 } from '../decorators';
 import { assertEveryRouteIsMarked, findUnmarkedRoutes } from './route-authorization.audit';
@@ -39,6 +43,12 @@ class MarkedController {
   @Post(':resource')
   @ResourcePermission('CREATE')
   resourceRoute() {
+    return null;
+  }
+
+  @Post('reports/:code/preview')
+  @ReportPermission()
+  reportRoute() {
     return null;
   }
 
@@ -94,5 +104,57 @@ describe('audit otorisasi route', () => {
     const app = await Test.createTestingModule({ imports: [MarkedModule] }).compile();
     expect(findUnmarkedRoutes(app).some((r) => r.handler === 'helper')).toBe(false);
     await app.close();
+  });
+
+  it('menerima @ReportPermission sebagai penanda', async () => {
+    /*
+     * Penanda ini sempat ditambahkan ke `PermissionGuard` SAJA. Akibatnya bukan
+     * endpoint yang lolos, melainkan aplikasi yang tidak dapat menyala sama
+     * sekali -- audit ini berjalan pada bootstrap dan menolak dua route laporan.
+     * Ketahuan dari uji peramban, bukan dari uji satuan mana pun.
+     */
+    const app = await Test.createTestingModule({ imports: [MarkedModule] }).compile();
+    expect(findUnmarkedRoutes(app).some((r) => r.handler === 'reportRoute')).toBe(false);
+    await app.close();
+  });
+});
+
+describe('daftar penanda otorisasi', () => {
+  /**
+   * Kunci metadata yang SENGAJA bukan penanda otorisasi.
+   *
+   * `@BlockDemo` melarang aksi pada tenant demo; ia tidak menyatakan hak akses,
+   * jadi route yang hanya memilikinya tetap harus ditolak.
+   */
+  const BUKAN_PENANDA = new Set<string>([DEMO_BLOCKED_KEY]);
+
+  it('setiap kunci metadata sudah diputuskan: penanda atau bukan', () => {
+    /*
+     * Penjaga terhadap penyimpangan yang baru saja terjadi.
+     *
+     * Menambahkan kunci baru tanpa memasukkannya ke `AUTHORIZATION_MARKER_KEYS`
+     * membuat penjaga dan audit berbeda pendapat, dan bedanya baru terlihat saat
+     * aplikasi gagal menyala. Uji ini memaksa keputusannya diambil di sini,
+     * pada saat kuncinya ditulis.
+     */
+    const semuaKunci = Object.entries(decorators)
+      .filter(([nama, nilai]) => nama.endsWith('_KEY') && typeof nilai === 'string')
+      .map(([, nilai]) => nilai as string);
+
+    const penanda = new Set<string>(AUTHORIZATION_MARKER_KEYS);
+    const belumDiputuskan = semuaKunci.filter(
+      (kunci) => !penanda.has(kunci) && !BUKAN_PENANDA.has(kunci),
+    );
+
+    expect(belumDiputuskan).toEqual([]);
+  });
+
+  it('penanda dan bukan-penanda tidak tumpang tindih', () => {
+    const tumpang = AUTHORIZATION_MARKER_KEYS.filter((kunci) => BUKAN_PENANDA.has(kunci));
+    expect(tumpang).toEqual([]);
+  });
+
+  it('memuat penanda laporan', () => {
+    expect(AUTHORIZATION_MARKER_KEYS).toContain(decorators.REPORT_PERMISSION_KEY);
   });
 });

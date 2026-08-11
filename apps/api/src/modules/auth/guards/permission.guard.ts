@@ -4,17 +4,19 @@ import { Request } from 'express';
 import { StepUpPurpose } from '@prisma/client';
 import { AppError, ErrorCodes } from '../../../common/errors/app-error';
 import {
-  AUTHENTICATED_ONLY_KEY,
+  AUTHORIZATION_MARKER_KEYS,
   AuthenticatedUser,
   IS_PUBLIC_KEY,
   PERMISSIONS_KEY,
   PLATFORM_PERMISSIONS_KEY,
+  REPORT_PERMISSION_KEY,
   RESOURCE_PERMISSION_KEY,
   STEP_UP_KEY,
 } from '../../../common/decorators';
 import { AuthService } from '../auth.service';
 import { TenantPermissionService } from '../tenant-permission.service';
 import { MASTER_RESOURCES } from '../../tenant/master-resource.registry';
+import { izinUntukLaporan } from '../../tenant/izin-laporan';
 import { bolehSaatWajibGantiKataSandi } from './password-change-allowlist';
 
 /** Peta kode sumber daya master ke kode menunya, untuk `@ResourcePermission`. */
@@ -60,17 +62,22 @@ export class PermissionGuard implements CanActivate {
       RESOURCE_PERMISSION_KEY,
       targets,
     );
-    const authenticatedOnly = this.reflector.getAllAndOverride<boolean>(
-      AUTHENTICATED_ONLY_KEY,
+    const reportPermission = this.reflector.getAllAndOverride<boolean>(
+      REPORT_PERMISSION_KEY,
       targets,
     );
-
-    const hasMarker =
-      Boolean(platformPermissions?.length) ||
-      Boolean(tenantPermissions?.length) ||
-      Boolean(resourceAction) ||
-      Boolean(stepUpPurpose) ||
-      Boolean(authenticatedOnly);
+    /*
+     * Dihitung dari daftar penanda yang SAMA dengan `assertEveryRouteIsMarked`.
+     *
+     * Sebelumnya keduanya menyebut penandanya satu per satu, masing-masing di
+     * berkasnya sendiri. `@ReportPermission` sempat ditambahkan ke sini saja,
+     * dan akibatnya bukan endpoint yang lolos melainkan aplikasi yang tidak
+     * dapat menyala sama sekali -- audit itu berjalan saat bootstrap.
+     */
+    const hasMarker = AUTHORIZATION_MARKER_KEYS.some((key) => {
+      const value = this.reflector.getAllAndOverride<unknown>(key, targets);
+      return Array.isArray(value) ? value.length > 0 : Boolean(value);
+    });
 
     if (!hasMarker) {
       throw AppError.forbidden(
@@ -129,6 +136,25 @@ export class PermissionGuard implements CanActivate {
         );
       }
       requiredTenantPermissions.push(`${menuCode}.${resourceAction}`);
+    }
+
+    if (reportPermission) {
+      const code = (request.params as Record<string, string> | undefined)?.code;
+      const izin = izinUntukLaporan(code);
+      if (!izin) {
+        /*
+         * Laporan tak dikenal ditolak, bukan diloloskan -- alasan yang sama
+         * dengan sumber daya master di atas.
+         *
+         * Bila laporan baru diloloskan dengan hak bawaan, ia terbuka bagi semua
+         * orang tanpa seorang pun menyadarinya. Itu persis cara seluruh laporan,
+         * termasuk laba rugi, sempat dijaga `SALES.READ` saja.
+         */
+        throw AppError.forbidden(ErrorCodes.PERMISSION_DENIED, 'Kode laporan tidak dikenal.', {
+          report: code ?? null,
+        });
+      }
+      requiredTenantPermissions.push(izin);
     }
 
     if (requiredTenantPermissions.length) {

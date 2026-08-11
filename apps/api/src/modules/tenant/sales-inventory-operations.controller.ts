@@ -33,11 +33,14 @@ import {
   BlockDemo,
   CurrentUser,
   Permissions,
+  ReportPermission,
   RequestContext,
   RequestMeta,
 } from '../../common/decorators';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { TenantConnectionService } from '../../infrastructure/database/tenant-connection.service';
+import { TenantPermissionService } from '../auth/tenant-permission.service';
+import { izinUntukLaporan } from './izin-laporan';
 import { paritySummary, SALES_INVENTORY_PARITY } from './sales-inventory-parity.catalog';
 import {
   CATALOG_SURFACES,
@@ -639,7 +642,10 @@ class CreateInventoryAccountDto {
 @ApiBearerAuth('access-token')
 @Controller()
 export class SalesInventoryOperationsController {
-  constructor(private readonly tenantDb: TenantConnectionService) {}
+  constructor(
+    private readonly tenantDb: TenantConnectionService,
+    private readonly tenantPermissions: TenantPermissionService,
+  ) {}
 
   @Get('inventory/parity-contract')
   @Permissions('SALES.READ')
@@ -1261,7 +1267,7 @@ export class SalesInventoryOperationsController {
   }
 
   @Get('ap/payments')
-  @Permissions('SALES.READ')
+  @Permissions('PURCHASING.READ')
   listApPayments(@CurrentUser() user: AuthenticatedUser) {
     const S = quotedSchema(user);
     return this.tenantDb.query<Record<string, unknown>>(
@@ -2020,14 +2026,14 @@ export class SalesInventoryOperationsController {
   }
 
   @Post('reports/:code/preview')
-  @Permissions('SALES.READ')
+  @ReportPermission()
   previewReport(@Param('code') code: string, @Body() body: ReportDto, @CurrentUser() user: AuthenticatedUser) {
     return this.buildReport(code, body.asOfDate, body.filters, user);
   }
 
   @Post('reports/:code/snapshot')
   @HttpCode(201)
-  @Permissions('SALES.READ')
+  @ReportPermission()
   async snapshotReport(
     @Param('code') code: string,
     @Body() body: ReportDto,
@@ -2077,7 +2083,45 @@ export class SalesInventoryOperationsController {
       [id],
     );
     if (!row) throw AppError.notFound(ErrorCodes.NOT_FOUND, 'Snapshot laporan tidak ditemukan.');
+
+    /*
+     * Hak diperiksa SESUDAH baris dibaca, karena kode laporannya ada di dalam
+     * baris, bukan di dalam URL -- penjaga tidak dapat mengetahuinya lebih
+     * dahulu.
+     *
+     * Tanpa ini seluruh perbaikan hanya kosmetik: laba rugi yang tersimpan
+     * sebagai snapshot tetap terbaca oleh siapa pun yang punya `SALES.READ`,
+     * cukup dengan idnya. Snapshot justru bentuk yang paling mudah beredar --
+     * ia ditautkan, dicetak, dan dikirim ulang.
+     */
+    await this.pastikanBolehMembacaLaporan(user, row.report_code as string | null);
     return row;
+  }
+
+  /** Menegakkan hak baca laporan ketika kodenya baru diketahui dari datanya. */
+  private async pastikanBolehMembacaLaporan(
+    user: AuthenticatedUser,
+    reportCode: string | null,
+  ): Promise<void> {
+    const izin = izinUntukLaporan(reportCode);
+    if (!izin) {
+      // Kode tak dikenal ditolak, sama seperti pada penjaganya.
+      throw AppError.forbidden(ErrorCodes.PERMISSION_DENIED, 'Kode laporan tidak dikenal.', {
+        report: reportCode ?? null,
+      });
+    }
+    const missing = await this.tenantPermissions.findMissing(
+      schemaOf(user),
+      user.userId,
+      [izin],
+      { isDemo: user.isDemo, activeRoleId: user.activeRoleId },
+    );
+    if (missing.length) {
+      throw AppError.forbidden(ErrorCodes.PERMISSION_DENIED, 'Hak akses tidak mencukupi.', {
+        missing,
+        ...(user.activeRoleCode ? { activeRole: user.activeRoleCode } : {}),
+      });
+    }
   }
 
   @Post('report-snapshots/:id/approval')

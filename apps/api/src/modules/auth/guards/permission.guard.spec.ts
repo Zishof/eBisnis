@@ -7,6 +7,7 @@ import {
   IS_PUBLIC_KEY,
   PERMISSIONS_KEY,
   PLATFORM_PERMISSIONS_KEY,
+  REPORT_PERMISSION_KEY,
   RESOURCE_PERMISSION_KEY,
   STEP_UP_KEY,
 } from '../../../common/decorators';
@@ -190,6 +191,68 @@ describe('PermissionGuard', () => {
       );
       await expect(guard.canActivate(context)).resolves.toBe(true);
       expect(consumeStepUp).toHaveBeenCalledWith('user-1', StepUpPurpose.HARD_DELETE, 'tok-1');
+    });
+  });
+
+  describe('hak per laporan (@ReportPermission)', () => {
+    /*
+     * Diuji lewat PERILAKU penjaganya, bukan lewat teks sumbernya.
+     *
+     * Penjaga berbasis teks sempat meloloskan satu cacat: `izinUntukLaporan(code)
+     * ?? 'SALES.READ'` di dalam penjaga membuat laporan tak dikenal jatuh kembali
+     * ke hak bawaan, dan tidak ada satu pun uji yang gagal. Blok inilah yang
+     * menutupnya.
+     */
+    const laporan = (code: string, granted: string[]) =>
+      build({ [REPORT_PERMISSION_KEY]: true }, { user: user(), params: { code }, granted });
+
+    it('menuntut hak keuangan untuk laba rugi', async () => {
+      const { guard, context, findMissing } = laporan('profit-loss', ['FINANCE_JOURNAL.READ']);
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(findMissing).toHaveBeenCalledWith(
+        'tokosaya',
+        'user-1',
+        ['FINANCE_JOURNAL.READ'],
+        expect.anything(),
+      );
+    });
+
+    it('MENOLAK pemegang SALES.READ membuka laba rugi', async () => {
+      // Inti seluruh perubahan ini.
+      const { guard, context } = laporan('profit-loss', ['SALES.READ', 'SALES_REPORT.READ']);
+      await expect(guard.canActivate(context)).rejects.toThrow(/Hak akses tidak mencukupi/);
+    });
+
+    it('MENOLAK pemegang SALES.READ membuka laba kotor', async () => {
+      const { guard, context } = laporan('gross-profit', ['SALES.READ']);
+      await expect(guard.canActivate(context)).rejects.toThrow(/Hak akses tidak mencukupi/);
+    });
+
+    it('menuntut hak pembelian untuk umur hutang pemasok', async () => {
+      const { guard, context } = laporan('ap-aging', ['PURCHASING.READ']);
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+    });
+
+    it('menolak kode laporan tak dikenal, tanpa jatuh ke hak bawaan', async () => {
+      const { guard, context, findMissing } = laporan('laporan-karangan', ['SALES.READ']);
+      await expect(guard.canActivate(context)).rejects.toThrow(/Kode laporan tidak dikenal/);
+      // Ditolak SEBELUM hak apa pun diperiksa, bukan diperiksa lalu kebetulan gagal.
+      expect(findMissing).not.toHaveBeenCalled();
+    });
+
+    it('menolak permintaan tanpa parameter kode sama sekali', async () => {
+      const { guard, context } = build(
+        { [REPORT_PERMISSION_KEY]: true },
+        { user: user(), params: {}, granted: ['SALES.READ'] },
+      );
+      await expect(guard.canActivate(context)).rejects.toThrow(/Kode laporan tidak dikenal/);
+    });
+
+    it('penanda ini sendiri sudah cukup sebagai penanda otorisasi', async () => {
+      // Tanpa ini endpoint laporan akan ditolak sebagai "tidak menyatakan hak
+      // akses" -- penjaga menolak handler yang tidak punya satu pun penanda.
+      const { guard, context } = laporan('stock-list', ['INVENTORY.READ']);
+      await expect(guard.canActivate(context)).resolves.toBe(true);
     });
   });
 });
