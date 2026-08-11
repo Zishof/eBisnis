@@ -8,6 +8,7 @@ export const STEP_UP_KEY = 'ebisnis:stepUp';
 export const DEMO_BLOCKED_KEY = 'ebisnis:demoBlocked';
 export const AUTHENTICATED_ONLY_KEY = 'ebisnis:authenticatedOnly';
 export const RESOURCE_PERMISSION_KEY = 'ebisnis:resourcePermission';
+export const REPORT_PERMISSION_KEY = 'ebisnis:reportPermission';
 
 /** Menandai endpoint dapat diakses tanpa autentikasi. Guard global aktif secara default. */
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
@@ -38,6 +39,18 @@ export const AuthenticatedOnly = () => SetMetadata(AUTHENTICATED_ONLY_KEY, true)
  * lewat registry: `resourceCode` menjadi `menuCode`, lalu `MENU_CODE.ACTION`.
  */
 export const ResourcePermission = (action: string) => SetMetadata(RESOURCE_PERMISSION_KEY, action);
+
+/**
+ * Permission yang ditentukan oleh KODE LAPORAN pada parameter route `:code`.
+ *
+ * Satu handler melayani seluruh laporan, sehingga haknya tidak dapat ditulis
+ * sebagai konstanta — persis persoalan yang sama dengan `:resource` di atas,
+ * dan diselesaikan lewat jalur yang sama supaya tidak ada dua aturan berbeda.
+ *
+ * Petanya di `izin-laporan.ts`. Kode yang tidak ada di sana DITOLAK, bukan
+ * diloloskan dengan hak bawaan.
+ */
+export const ReportPermission = () => SetMetadata(REPORT_PERMISSION_KEY, true);
 
 /** Permission control plane yang dibutuhkan, mis. `PLATFORM.TENANT.READ`. */
 export const PlatformPermissions = (...permissions: string[]) =>

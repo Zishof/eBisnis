@@ -141,7 +141,7 @@ ada urutannya di `gap-analysis-video-48-2026-08-11.md` §6:
 
 | Prioritas | Inti |
 | --- | --- |
-| **P0** | Kejujuran klaim katalog — **sudah dikerjakan, lihat di bawah**; permission report per domain (sekarang semua memakai `SALES.READ`, termasuk finance/P&L) — masih terbuka |
+| **P0** | **SELESAI.** Kejujuran klaim katalog dan hak laporan per domain — keduanya di bawah |
 | **P1** | Vertical slice transaksi lengkap per rentang layar (20–29, 30–42, 08–19, 43–48) |
 | **P2** | ID test `NORMAL`/`VALIDATION`/`RBAC`/`AUDIT`/`PRINT-EXPORT`/`OFFLINE-RETRY`/`RECONCILIATION`/`VISUAL` per layar, lalu UAT perangkat nyata |
 
@@ -189,6 +189,36 @@ Angka jujurnya, yang dulu tersamar:
 Keduabelas layar itu memang hanya menuntut dapat dibuka (mis. "Membuka Daftar
 Supplier"). API nol karena setiap layar masih menunggu bukti `reconciliation`.
 Tidak ada satu layar pun yang lengkap pada semua surface sekaligus.
+
+#### P0 hak laporan per domain — selesai
+
+Seluruh laporan dijaga `SALES.READ`, termasuk `profit-loss` (laba rugi
+akuntansi), `gross-profit` (laba kotor, memuat HPP per barang), `ap-aging`, dan
+`ap-payment-register`. Siapa pun yang boleh membaca penjualan juga membaca
+margin, hutang dagang, dan laba rugi perusahaan.
+
+Petanya sekarang di modul murni `apps/api/src/modules/tenant/izin-laporan.ts`,
+ditegakkan `PermissionGuard` lewat dekorator `@ReportPermission()` — mengikuti
+pola `@ResourcePermission` yang sudah ada, supaya tidak lahir aturan kedua.
+
+Yang perlu diketahui bila menyentuhnya lagi:
+
+- **Kode laporan tak dikenal DITOLAK**, bukan jatuh ke hak bawaan. Laporan baru
+  tanpa entri akan gagal saat pertama dipanggil — terlihat, lalu diperbaiki.
+  Hak bawaan berarti laporan baru terbuka bagi semua orang tanpa seorang pun
+  menyadarinya, dan itu persis cara cacat ini terbentuk sejak awal.
+- **Snapshot tersimpan ikut dijaga.** Kode laporannya ada di dalam baris, bukan
+  di URL, jadi pemeriksaannya sesudah baris dibaca. Tanpa ini perbaikannya
+  kosmetik: laba rugi tetap terbaca lewat idnya, dan snapshot justru bentuk
+  yang paling mudah beredar.
+- Hak yang dipakai **seluruhnya sudah ada** pada katalog menu. Tidak ada migrasi
+  maupun penyemaian baru; yang berubah hanya laporan mana menuntut hak mana.
+  `SALES_REPORT.VIEW_PROFIT` sudah ada sejak awal dan belum pernah dipakai
+  menjaga apa pun.
+- Klien web sudah menampilkan galatnya sebagai pesan, bukan crash. Pemegang
+  `SALES.READ` kini melihat "Hak akses tidak mencukupi" pada tab laba rugi —
+  itu memang yang dimaksud. Menyembunyikan tabnya adalah pekerjaan UI
+  tersendiri, belum dikerjakan.
 
 ---
 

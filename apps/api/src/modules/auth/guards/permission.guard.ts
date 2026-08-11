@@ -9,12 +9,14 @@ import {
   IS_PUBLIC_KEY,
   PERMISSIONS_KEY,
   PLATFORM_PERMISSIONS_KEY,
+  REPORT_PERMISSION_KEY,
   RESOURCE_PERMISSION_KEY,
   STEP_UP_KEY,
 } from '../../../common/decorators';
 import { AuthService } from '../auth.service';
 import { TenantPermissionService } from '../tenant-permission.service';
 import { MASTER_RESOURCES } from '../../tenant/master-resource.registry';
+import { izinUntukLaporan } from '../../tenant/izin-laporan';
 import { bolehSaatWajibGantiKataSandi } from './password-change-allowlist';
 
 /** Peta kode sumber daya master ke kode menunya, untuk `@ResourcePermission`. */
@@ -60,6 +62,10 @@ export class PermissionGuard implements CanActivate {
       RESOURCE_PERMISSION_KEY,
       targets,
     );
+    const reportPermission = this.reflector.getAllAndOverride<boolean>(
+      REPORT_PERMISSION_KEY,
+      targets,
+    );
     const authenticatedOnly = this.reflector.getAllAndOverride<boolean>(
       AUTHENTICATED_ONLY_KEY,
       targets,
@@ -69,6 +75,7 @@ export class PermissionGuard implements CanActivate {
       Boolean(platformPermissions?.length) ||
       Boolean(tenantPermissions?.length) ||
       Boolean(resourceAction) ||
+      Boolean(reportPermission) ||
       Boolean(stepUpPurpose) ||
       Boolean(authenticatedOnly);
 
@@ -129,6 +136,25 @@ export class PermissionGuard implements CanActivate {
         );
       }
       requiredTenantPermissions.push(`${menuCode}.${resourceAction}`);
+    }
+
+    if (reportPermission) {
+      const code = (request.params as Record<string, string> | undefined)?.code;
+      const izin = izinUntukLaporan(code);
+      if (!izin) {
+        /*
+         * Laporan tak dikenal ditolak, bukan diloloskan -- alasan yang sama
+         * dengan sumber daya master di atas.
+         *
+         * Bila laporan baru diloloskan dengan hak bawaan, ia terbuka bagi semua
+         * orang tanpa seorang pun menyadarinya. Itu persis cara seluruh laporan,
+         * termasuk laba rugi, sempat dijaga `SALES.READ` saja.
+         */
+        throw AppError.forbidden(ErrorCodes.PERMISSION_DENIED, 'Kode laporan tidak dikenal.', {
+          report: code ?? null,
+        });
+      }
+      requiredTenantPermissions.push(izin);
     }
 
     if (requiredTenantPermissions.length) {
