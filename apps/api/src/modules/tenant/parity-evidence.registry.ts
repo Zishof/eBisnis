@@ -1,4 +1,8 @@
-import { SALES_INVENTORY_PARITY } from './sales-inventory-parity.catalog';
+import {
+  SALES_INVENTORY_PARITY,
+  type InventoryCoverage,
+  type InventoryParityItem,
+} from './sales-inventory-parity.catalog';
 
 export type ProofSurface = 'api' | 'web' | 'windows' | 'android';
 export type ProofCapability =
@@ -366,17 +370,135 @@ export function provenScreens(surface?: ProofSurface, capability?: ProofCapabili
   );
 }
 
-export function ensureCatalogWired(): void {
-  // Setiap layar OPERATIONAL harus tercatat sebagai PROVEN atau PENDING_PROOF.
-  const proven = provenScreens();
-  const pending = new Set(PENDING_PROOF.map((requirement) => requirement.screen));
-  for (const item of SALES_INVENTORY_PARITY) {
-    const claimsOperational =
-      item.web === 'OPERATIONAL' ||
-      item.windows === 'OPERATIONAL' ||
-      item.android === 'OPERATIONAL';
-    if (claimsOperational && !proven.has(item.screen) && !pending.has(item.screen)) {
-      throw new Error(`Layar ${item.screen} klaim OPERATIONAL tanpa bukti/PENDING_PROOF`);
+/** Surface yang punya label jangkauan pada katalog. API tidak punya. */
+export const CATALOG_SURFACES = ['web', 'windows', 'android'] as const;
+export type CatalogSurface = (typeof CATALOG_SURFACES)[number];
+
+export interface SurfaceEvidence {
+  screen: number;
+  surface: ProofSurface;
+  /** Banyaknya requirement untuk kombinasi ini. */
+  required: number;
+  proven: number;
+  /** Capability yang requirement-nya ada tetapi buktinya belum. */
+  missing: ProofCapability[];
+  /** Layarnya terbukti dapat DIBUKA pada surface ini. */
+  viewProven: boolean;
+  allProven: boolean;
+}
+
+/**
+ * Bukti per layar per surface, apa adanya.
+ *
+ * Ini yang harus menemani setiap label jangkauan katalog. Label itu menjawab
+ * "alurnya ada"; angka di sini menjawab "sudah dibuktikan" — dan menggabungkan
+ * keduanya menjadi satu kata adalah sebab `OPERATIONAL` terbaca sebagai
+ * "selesai" oleh siapa pun yang tidak membuka registry.
+ */
+export function surfaceEvidence(screen: number, surface: ProofSurface): SurfaceEvidence {
+  const requirements = PARITY_REQUIREMENTS.filter(
+    (requirement) => requirement.screen === screen && requirement.surface === surface,
+  );
+  const missing = requirements.filter((requirement) => !hasProof(requirement));
+  return {
+    screen,
+    surface,
+    required: requirements.length,
+    proven: requirements.length - missing.length,
+    missing: missing.map((requirement) => requirement.capability),
+    viewProven: hasProof({ screen, surface, capability: 'view' }),
+    allProven: requirements.length > 0 && missing.length === 0,
+  };
+}
+
+export interface CatalogOverclaim {
+  screen: number;
+  surface: CatalogSurface;
+  claimed: InventoryCoverage;
+  missing: ProofCapability[];
+}
+
+/**
+ * Klaim katalog yang melampaui buktinya.
+ *
+ * Batas minimumnya sengaja rendah dan tegas: sebuah surface boleh disebut
+ * `OPERATIONAL` atau `READ_ONLY` hanya bila layarnya terbukti dapat DIBUKA pada
+ * surface itu. Bukan "terbukti seluruhnya" — itu tugas `surfaceEvidence()` yang
+ * ikut dikirim bersama labelnya — melainkan batas yang benar-benar dapat
+ * dilanggar, sehingga penjaganya berarti.
+ */
+export function catalogOverclaims(
+  catalog: readonly InventoryParityItem[] = SALES_INVENTORY_PARITY,
+): CatalogOverclaim[] {
+  const overclaims: CatalogOverclaim[] = [];
+  for (const item of catalog) {
+    for (const surface of CATALOG_SURFACES) {
+      const claimed = item[surface];
+      if (claimed === 'CONTRACT_ONLY') continue;
+      const bukti = surfaceEvidence(item.screen, surface);
+      if (!bukti.viewProven) {
+        overclaims.push({
+          screen: item.screen,
+          surface,
+          claimed,
+          missing: bukti.missing,
+        });
+      }
     }
+  }
+  return overclaims;
+}
+
+/**
+ * Ringkasan bukti, terpisah dari ringkasan jangkauan.
+ *
+ * `paritySummary()` menghitung label katalog; fungsi ini menghitung bukti. Dua
+ * angka yang berbeda, dan memang harus terlihat berbeda.
+ */
+export function parityEvidenceSummary() {
+  const layar = Array.from({ length: 48 }, (_, index) => index + 1);
+  const perSurface = (surface: ProofSurface) => {
+    const bukti = layar.map((screen) => surfaceEvidence(screen, surface));
+    return {
+      viewProven: bukti.filter((b) => b.viewProven).length,
+      fullyProven: bukti.filter((b) => b.allProven).length,
+      requirements: bukti.reduce((sum, b) => sum + b.required, 0),
+      pending: bukti.reduce((sum, b) => sum + b.missing.length, 0),
+    };
+  };
+  return {
+    screens: layar.length,
+    requirements: PARITY_REQUIREMENTS.length,
+    pending: PENDING_PROOF.length,
+    fullyProvenAllSurfaces: provenScreens().size,
+    api: perSurface('api'),
+    web: perSurface('web'),
+    windows: perSurface('windows'),
+    android: perSurface('android'),
+  };
+}
+
+/**
+ * Menolak katalog yang mengklaim lebih daripada buktinya.
+ *
+ * ## Mengapa ditulis ulang
+ *
+ * Penjaga sebelumnya menuntut setiap layar `OPERATIONAL` tercatat pada
+ * `provenScreens()` ATAU `PENDING_PROOF`. Ketika registry masih menghitung
+ * `view` saja, syarat itu berarti sesuatu. Setelah registry diperluas menjadi
+ * 606 requirement dengan 414 di antaranya pending, `PENDING_PROOF` memuat
+ * SELURUH 48 layar — sehingga setiap layar memenuhi syaratnya tanpa kecuali.
+ *
+ * Penjaga itu terbaca seperti penegakan, tetapi tidak pernah dapat gagal.
+ */
+export function ensureCatalogWired(
+  catalog: readonly InventoryParityItem[] = SALES_INVENTORY_PARITY,
+): void {
+  const overclaims = catalogOverclaims(catalog);
+  if (overclaims.length) {
+    const rincian = overclaims
+      .map((o) => `layar ${o.screen}/${o.surface} klaim ${o.claimed}`)
+      .join('; ');
+    throw new Error(`Klaim katalog melampaui bukti: ${rincian}`);
   }
 }

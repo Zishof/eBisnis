@@ -1,3 +1,14 @@
+/**
+ * Jangkauan sebuah layar pada satu surface: **apakah alurnya ada**, bukan
+ * apakah alurnya sudah dibuktikan.
+ *
+ * Dua pertanyaan yang berbeda, dan pernah tercampur menjadi satu kata.
+ * `OPERATIONAL` di sini berarti "ada alur nyata yang dapat dipakai" — ia tidak
+ * pernah berarti "sudah teruji". Buktinya hidup di `parity-evidence.registry.ts`
+ * per `screen + surface + capability`, dan `surfaceEvidence()` di sana wajib
+ * ikut dikirim setiap kali label ini dikirim. Satu label yang berjalan sendirian
+ * akan terbaca sebagai "selesai" oleh siapa pun yang tidak membuka registry.
+ */
 export type InventoryCoverage = 'OPERATIONAL' | 'READ_ONLY' | 'CONTRACT_ONLY';
 
 export interface InventoryParityItem {
