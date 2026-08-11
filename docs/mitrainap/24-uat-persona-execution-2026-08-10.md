@@ -1,5 +1,8 @@
 # UAT Persona MitraInap v14 — eksekusi nyata, 10 Agustus 2026
 
+**Pembaruan 11 Agustus 2026**: temuan KRITIS §2 (Guest/Kiosk) sudah
+diperbaiki dan diverifikasi nyata -- lihat §3 di akhir dokumen ini.
+
 Melanjutkan `20-uat-persona-matrix.md` ("skenario otomatis/API PASS lokal;
 sign-off manusia dan provider eksternal tetap harus dicatat saat staging").
 Dokumen ini mencatat eksekusi HTTP sungguhan (bukan hanya unit test) untuk
@@ -158,3 +161,58 @@ order/tugas housekeeping yang dibuat selama pengujian ini. Tenant ini
 DIBIARKAN di basis data pengembangan lokal (bukan dihapus) -- lihat catatan
 serupa pada `docs/changelog/hospitality.md` MI-3 soal risiko
 `DROP SCHEMA ... CASCADE` pada Postgres lokal ini.
+
+## §3 — Guest/Kiosk (Experience): perbaikan 11 Agustus 2026
+
+Temuan KRITIS §2 di atas sudah diperbaiki, BUKAN dengan menambah
+`@Public()` begitu saja (yang akan tetap gagal sebab `portal()`/`kiosk()`/
+`verifyKiosk()` masih memanggil `sc(u)` yang butuh JWT staf) -- diperbaiki
+dengan resolusi tenant dari HOST permintaan lewat `PublicTenantResolver`
+(IR-005), pola SAMA PERSIS dengan situs properti publik MI-3
+(`HospitalityPublicSiteService.konteks()`), bukan mekanisme baru:
+
+- `HospitalityExperienceService.konteksTamu(host)` -- resolusi baru,
+  memanggil `PublicTenantResolver.resolve(host, 'hospitality')` (vertikal
+  yang SAMA dipakai `HospitalityPublicSiteService`, membaca baris
+  `vertical_site_domain` yang sama yang ditulis pendaftaran properti),
+  lalu properti PALING AWAL dibuat pada tenant itu (pola "properti
+  implisit aktif" yang sama dipakai MI-3).
+- `GET portal`, `POST kiosk`, `POST kiosk/:id/verify` sekarang `@Public()`,
+  mengambil schemaName dari `konteksTamu()`, BUKAN dari `@CurrentUser()`.
+- `kiosk()` TIDAK LAGI mempercayai `propertyId` dari body permintaan
+  (siapa pun dapat mengirim body apa pun ke endpoint publik) -- memakai
+  `propertyId` hasil resolusi host. Dibuktikan sungguhan: `propertyId`
+  palsu (`00000000-...`) dikirim di body, baris yang tersimpan di basis
+  data tetap memakai `propertyId` asli hasil resolusi.
+- **Bug KEDUA ditemukan begitu jalur auth benar-benar tercapai** (pola
+  yang sama seperti §1 -- galat yang hanya terlihat setelah kode
+  sungguhan dijalankan): `portal()` memakai `r.code` yang tidak pernah
+  ada pada `hospitality_room` (kolom asli `room_number`) -- diperbaiki
+  dengan alias yang sama dipakai perbaikan §1.
+
+Diverifikasi nyata lewat curl (bukan tsc/lint/unit test tiruan):
+
+- `GET portal` dengan token sesi bohong + Host tenant nyata -> `403
+  FORBIDDEN "Sesi portal tidak valid"` (BUKAN lagi `401 UNAUTHORIZED
+  "Token akses tidak ditemukan"` -- membuktikan permintaan kini benar-benar
+  mencapai logika verifikasi token, bukan ditolak sebelum sampai ke sana).
+- Staf menerbitkan sesi portal sungguhan (`POST portal-sessions`, tetap
+  terautentikasi staf) -> `GET portal` dengan token itu DAN Host tenant
+  yang BENAR, TANPA header Authorization sama sekali -> `200` berisi data
+  stay + folio yang benar.
+- **Isolasi lintas tenant dibuktikan sungguhan**: token sesi yang SAMA
+  dipakai dengan Host tenant LAIN (`mi3-verify-hotel-dua.mitrainap.id`,
+  tenant nyata lain di basis data yang sama) -> `403 FORBIDDEN` (lookup
+  token di-scope ke schema hasil resolusi host, sehingga token tenant A
+  tidak pernah cocok di schema tenant B -- tidak ada kebocoran).
+- `POST kiosk` tanpa Authorization -> `201`, dikonfirmasi lewat kueri
+  basis data langsung bahwa `property_id` yang tersimpan adalah properti
+  ASLI hasil resolusi host, bukan UUID palsu yang dikirim di body.
+- `POST kiosk/:id/verify` tanpa Authorization -> `200`, status `VERIFIED`.
+- `pnpm test` (186 suite/4176 test) LULUS penuh, `tsc --noEmit` bersih,
+  `pnpm --filter @ebisnis/api lint` bersih.
+
+Belum diverifikasi: `session()` (penerbitan sesi portal oleh staf),
+`provider()`, `mobile()`, `purge()`, dan `dash()` SENGAJA tetap
+terautentikasi staf (tidak diubah) -- ini adalah tindakan staf/admin,
+bukan tindakan tamu/kiosk, dan tetap benar memerlukan JWT.
