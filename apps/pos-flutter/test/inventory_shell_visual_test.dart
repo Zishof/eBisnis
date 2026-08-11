@@ -135,7 +135,7 @@ void main() {
     expect(find.text('Gudang Pusat'), findsOneWidget);
     expect(find.byKey(const Key('inventory-update-button')), findsOneWidget);
     expect(find.text('Update Baru'), findsOneWidget);
-    expect(find.text('v0.1.31  -  eBisnis Suite'), findsOneWidget);
+    expect(find.text('v0.1.32  -  eBisnis Suite'), findsOneWidget);
     expect(find.text('Tren Penjualan'), findsOneWidget);
     expect(find.text('Transaksi Terbaru'), findsOneWidget);
     await expectLater(
