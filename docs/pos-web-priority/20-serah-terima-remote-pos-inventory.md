@@ -70,16 +70,30 @@ mengisinya di `erp-purchasing.service.ts:1519`.
 
 Tidak perlu dikerjakan lagi.
 
-### 2.2 Pengaruh retur/void POS terhadap rata-rata biaya — **TERBUKA**
+### 2.2 Pengaruh retur/void POS terhadap rata-rata biaya — **SELESAI**
 
-Barang yang kembali ke stok lewat retur tidak memutakhirkan `average_cost`.
+Dulu: barang kembali ke stok lewat retur atau pembatalan tanpa memutakhirkan
+`average_cost` — kuantitas bertambah tanpa nilainya ikut bertambah, sehingga
+setiap retur mengencerkan nilai persediaan dan HPP penjualan berikutnya.
 
-Diverifikasi: di seluruh `apps/api/src/modules/` hanya **dua** pemanggil yang
-mengirim data biaya ke `applyBalanceDelta()`, dan keduanya di jalur pembelian
-(`erp-purchasing.service.ts:1156` dan `:1519`). Jalur POS tidak mengirim
-apa pun.
+Aturannya sekarang di modul murni `apps/api/src/modules/pos/pos-biaya-retur.ts`,
+dipakai `kembalikanStok()` pada `pos-return.service.ts` — satu-satunya jalur
+yang mengembalikan barang, dipakai baik oleh retur maupun pembatalan.
 
-Menyentuh HPP penjualan yang dijurnal sebagai COGS.
+Yang perlu diketahui bila menyentuhnya lagi:
+
+- Biaya diambil dari `cost_snapshot` saat barang **dijual**, bukan rata-rata
+  hari ini. Dengan begitu nilai persediaan bertambah persis sebesar COGS yang
+  dibalik.
+- **Biaya nol ditolak, bukan dicampur.** `cost_snapshot` bertipe `NOT NULL
+  DEFAULT 0` dan diisi dari `COALESCE(average_cost, 0)`; seluruh penjualan
+  sebelum 10 Agustus 2026 menyimpan nol. Mencampurkan nol akan menarik valuasi
+  produk itu ke bawah selamanya, diam-diam.
+- Hanya barang yang kembali ke stok jual yang menggeser rata-rata. Barang rusak
+  masuk `damaged_qty`; barang dimusnahkan tidak kembali ke mana pun.
+- Ekspresi SQL `average_cost` pada `kembalikanStok()` adalah cerminan
+  `rataRataSesudahRetur()`. Bila salah satu berubah, yang lain harus ikut —
+  ada penjaga yang membaca sumbernya di `pos-biaya-retur.spec.ts`.
 
 ### 2.3 Biaya penerimaan transfer antar-gudang — **TERBUKA, perlu keputusan**
 
@@ -200,10 +214,9 @@ node_modules atau Prisma bermasalah. Jangan menyentuh worktree lain.
 ### Mengerjakan gap berikutnya
 
 ```text
-Baca docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md bagian 2.2,
-kerjakan pengaruh retur/void POS terhadap rata-rata biaya. Aturannya di modul
-murni yang dapat diuji tanpa basis data, buktikan merah lebih dahulu, lalu
-buka PR.
+Baca docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md bagian 2.2
+sebagai contoh bentuk yang diinginkan, lalu kerjakan bagian 2.3 SETELAH saya
+memutuskan sumber biayanya. Jangan mulai sebelum keputusan itu ada.
 ```
 
 ```text
