@@ -1,0 +1,235 @@
+
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/antrean_cetak_test.dart: dua perintah tidak pernah berjalan bersamaan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/antrean_cetak_test.dart: urutannya sesuai urutan dikirim
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/antrean_cetak_test.dart: galat diteruskan ke pemanggilnya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/antrean_cetak_test.dart: satu kegagalan TIDAK mematikan antrean
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/antrean_cetak_test.dart: meneruskan keadaan siap apa adanya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_party_master_test.dart: kontrak master relasi mencakup pemasok pelanggan dan sales
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_party_master_test.dart: parser menggabungkan data master dan saldo server
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_finance_visual_test.dart: bukti visual kas jurnal dan keuangan desktop
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_sales_receivables_visual_test.dart: bukti visual penjualan dan piutang desktop
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_local_database_test.dart: cache katalog bertahan sebagai sumber baca offline
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_local_database_test.dart: outbox idempoten menyimpan command sampai selesai
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_local_database_test.dart: identitas perangkat dan cursor sinkronisasi bertahan lokal
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_api_fallback_test.dart: endpoint CMN memakai dua zona DNS terpisah sebagai fallback
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_api_fallback_test.dart: endpoint staging tidak pernah dialihkan ke produksi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_api_fallback_test.dart: hanya kegagalan lookup DNS yang boleh mencoba fallback
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_api_fallback_test.dart: HTTP 429 ditampilkan sebagai pesan yang dapat ditindaklanjuti
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_api_fallback_test.dart: Retry-After berbentuk tanggal HTTP ikut didukung
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_purchasing_test.dart: parser pembelian mempertahankan status dan nilai server
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_stock_pricing_visual_test.dart: bukti visual stok dan harga desktop
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/kasir_luring_test.dart: KasirLuringEngine.buat tidak melempar dan menandai luring tak tersedia ketika direktori data aplikasi tak terjangkau
+::group::✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/kasir_luring_test.dart: transaksi putus jaringan tersimpan lalu dikirim sekali saat reconnect
+WARNING (drift): It looks like you've created the database class InventoryLocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$InventoryLocalDatabase (package:ebisnis_pos/inventory/inventory_local_database.g.dart:1082:47)
+#4      new InventoryLocalDatabase (package:ebisnis_pos/inventory/inventory_local_database.dart:52:9)
+#5      main.<anonymous closure> (file:///home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/kasir_luring_test.dart:159:22)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:215:19)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:213:7)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:258:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+::endgroup::
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/apotik_login_test.dart: mode apotik selalu meminta akun server sebelum membuka kasir
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/apotik_login_test.dart: login apotik menolak kolom akun yang kosong
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: membuka laci kas mengirim ESC p dengan pin dan durasi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: membuka laci kas pin kedua dipetakan ke soket 5
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: membuka laci kas durasi tidak pernah nol
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: membuka laci kas durasi sangat panjang dibatasi, bukan meluap
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: membuka laci kas perintah pada struk sama dengan perintah berdiri sendiri
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: penyusunan struk diawali perintah kembali ke keadaan awal
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: penyusunan struk baris kiri-kanan merapatkan angka ke tepi kanan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: penyusunan struk keterangan yang terlalu panjang dipotong, bukan mendorong angkanya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: penyusunan struk angka yang lebih lebar daripada kertas dicetak sendiri
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: penyusunan struk garis mengisi selebar kertas
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: penyusunan struk karakter di luar Latin-1 diganti padanan, bukan menjadi tanda tanya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: penyusunan struk potong kertas menyisakan ruang di atas potongan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: penyusunan struk rata tengah dan tebal mengirim perintahnya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/escpos_test.dart: penyusunan struk hasilnya tidak dapat disunting setelah selesai
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_app_test.dart: aplikasi inventory menampilkan login produksi CMN
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_app_test.dart: halaman paritas memuat kontrak modul inventory lama
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_app_test.dart: operasional memetakan piutang, hutang, dan serah-terima nota
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_shell_visual_test.dart: shell inventory mengikuti mockup desktop
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_shell_visual_test.dart: shell inventory mengikuti mockup mobile
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_app_test.dart: sales melihat katalog tenant nyata untuk membuat order
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_app_test.dart: panduan inventory dapat dibaca dari aplikasi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: mengurai versi bentuk baku
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: mengurai versi awalan v diterima, sebab tag Git lazim memakainya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: mengurai versi bagian yang kurang dianggap nol
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: mengurai versi pratayang dipisahkan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: mengurai versi teks rusak menghasilkan null, bukan galat
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: membandingkan versi dibandingkan sebagai ANGKA, bukan teks
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: membandingkan versi urutan major, minor, patch
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: membandingkan versi versi yang sama tidak lebih besar maupun lebih kecil
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: membandingkan versi pratayang lebih TUA daripada rilis dengan angka yang sama
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: keputusan memperbarui versi lebih baru ditawarkan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: keputusan memperbarui versi sama dinyatakan mutakhir
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: keputusan memperbarui versi berjalan yang lebih baru TIDAK ditawari turun versi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: keputusan memperbarui sumber yang tidak terjangkau dinyatakan gagal diperiksa, bukan mutakhir
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: keputusan memperbarui versi rilis yang tidak terbaca dinyatakan gagal diperiksa
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: keputusan memperbarui versi berjalan yang tidak terbaca dinyatakan gagal diperiksa
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: keputusan memperbarui pembaruan wajib ditandai dan menyebutkan alasannya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/versi_test.dart: keputusan memperbarui pembaruan wajib yang versinya sama tidak memaksa apa pun
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_shell_visual_test.dart: seluruh aksi dashboard dan bantuan mempunyai hasil nyata
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_sales_receivables_test.dart: parser piutang mempertahankan status sales dan penerimaan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/tampilan_pelanggan_test.dart: menunggu menampilkan nama toko, bukan layar kosong
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/tampilan_pelanggan_test.dart: berbelanja menonjolkan barang yang baru dipindai
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/tampilan_pelanggan_test.dart: total tampil dan terbaca
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/tampilan_pelanggan_test.dart: kembalian dicetak lebih besar daripada total
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/tampilan_pelanggan_test.dart: membayar tanpa uang diserahkan hanya menampilkan total
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/tampilan_pelanggan_test.dart: selesai menampilkan terima kasih dan kembalian
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/tampilan_pelanggan_test.dart: keadaan menunggu tidak membawa sisa transaksi sebelumnya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/tampilan_pelanggan_test.dart: nama barang yang sangat panjang tidak merusak tata letak
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: bilah pintasan dapat diklik dan sinkronisasi benar-benar jalan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: memindai barcode memasukkan barang, dan fokus kembali ke kotak pindai
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: mode apotik memakai istilah dan konteks farmasi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/accurate_excel_test.dart: export lalu import format Accurate mempertahankan produk utama
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: mode apotik ponsel memakai navigasi bawah dan sheet keranjang
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: barcode alternatif ditemukan sama saja
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: memindai barang yang sama dua kali menambah jumlah, bukan baris
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: barcode tak dikenal menyebut kodenya dan langkah berikutnya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pencetak_test.dart: pencetak jaringan byte ESC/POS benar-benar sampai lewat TCP
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: tombol bayar mati selama keranjang kosong
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pencetak_test.dart: pencetak jaringan perintah membuka laci ikut terkirim utuh
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pencetak_test.dart: pencetak jaringan periksa melaporkan siap ketika printer menjawab
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: F2 membuka dialog bayar
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pencetak_test.dart: pencetak jaringan printer yang tidak ada dilaporkan tidak siap, bukan menggantung
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: selesaikan tidak dapat ditekan selama uang kurang
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pencetak_test.dart: pencetak jaringan kegagalan mengirim menandai tidak siap dan meneruskan galatnya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pencetak_test.dart: pencetak simpul perangkat byte ditulis apa adanya ke jalurnya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pencetak_test.dart: pencetak simpul perangkat struk kedua DITAMBAHKAN, tidak menimpa yang pertama
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pencetak_test.dart: pencetak simpul perangkat jalur yang tidak dapat ditulis dilaporkan tidak siap
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pencetak_test.dart: pencetak simpul perangkat memeriksa TIDAK mencetak apa pun
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pencetak_test.dart: pencetak simpul perangkat kegagalan menulis meneruskan galatnya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: alur penuh: pindai, bayar, lalu pilih cetak struk dan buka laci
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: pembayaran selesai masuk ke riwayat pembayaran dan summary
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: tanpa printer, transaksi tetap selesai tetapi dikatakan struk tidak tercetak
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: F10 membatalkan transaksi HANYA setelah dikonfirmasi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: F6 membuka laci lewat printer, setelah dikonfirmasi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: tanpa printer, F6 mengatakan lacinya tidak dapat dibuka
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: F1 menampilkan seluruh pintasan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: kisi produk menekan kartu produk memasukkannya ke keranjang
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: kisi produk barang habis TAMPIL tetapi tidak dapat ditekan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: kisi produk stok yang TIDAK diketahui tidak ditampilkan sebagai nol
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_purchasing_visual_test.dart: bukti visual pembelian desktop
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: kisi produk penyaring kategori mempersempit kisi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: kisi produk mengetik nama menyaring kisi, bukan mengeluh soal barcode
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: kisi produk nama yang tidak ada dikatakan tanpa menyebut master produk
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: cek pembaruan versi baru diumumkan otomatis sekali per sesi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_stock_pricing_test.dart: parser stok harga dan opname mempertahankan identitas server
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_stock_pricing_test.dart: parser baris opname menjaga batch dan jumlah fisik
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: cek pembaruan menekan tombol memeriksa dan menampilkan hasilnya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: cek pembaruan sumber yang gagal TIDAK dilaporkan sebagai sudah terbaru
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: cek pembaruan tanpa pengelola pembaruan, tombolnya tidak ada sama sekali
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: bilah atas mengatakan yang benar-benar diketahui printer yang tidak terpasang disebut merah, bukan didiamkan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: bilah atas mengatakan yang benar-benar diketahui sinkronisasi yang belum pernah diperiksa BUKAN "Online"
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: bilah samping menu non-kasir membuka halaman aktif
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: bilah samping dashboard bisnis memuat tab analitik lengkap
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: layar pelanggan mengikuti mulai dari sapaan, bukan layar kosong
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: layar pelanggan mengikuti menampilkan barang yang baru dipindai
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: layar pelanggan mengikuti kembalian tampil sebelum transaksi diselesaikan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/layar_kasir_test.dart: layar pelanggan mengikuti kembali ke sapaan setelah keranjang dikosongkan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/android_release_manifest_test.dart: APK release memiliki izin Internet untuk mengakses API eBisnis
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_party_master_visual_test.dart: bukti visual master pemasok desktop
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_finance_test.dart: parser keuangan mempertahankan akun jurnal periode dan laporan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_parity_navigation_test.dart: seluruh 48 layar memiliki workspace Flutter yang dapat dibuka
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_parity_navigation_test.dart: nomor di luar kontrak 48 layar ditolak
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/apotik_pos_visual_test.dart: POS Apotik mengikuti komposisi desktop
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/apotik_pos_visual_test.dart: POS Apotik mengikuti komposisi Android
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: pemetaan tombol seluruh tombol fungsi terpetakan, tanpa lubang
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: pemetaan tombol tidak ada dua tombol yang mengerjakan aksi yang sama
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: pemetaan tombol setiap aksi punya keterangan untuk bilah bantuan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: pemetaan tombol peta F1-F9 persis spesifikasi AIS §21
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: pemetaan tombol F10-F12 milik eBisnis, dan spesifikasi memang tidak memakainya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: pemetaan tombol aksi tanpa tombol tetap tidak terpetakan ke tombol mana pun
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: pemetaan tombol Esc menutup dialog
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: pemetaan tombol tombol biasa bukan pintasan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: pemetaan tombol kombinasi bermodifier TIDAK memicu aksi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: keselamatan aksi yang menghilangkan pekerjaan wajib dikonfirmasi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: keselamatan membuka laci kas wajib dikonfirmasi meski tidak merusak apa pun
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: keselamatan aksi sehari-hari TIDAK dikonfirmasi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: perbedaan dengan klien web hanya tombol yang direbut peramban yang ditandai
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pintasan_test.dart: perbedaan dengan klien web aksi yang paling sering dipakai tersedia di kedua klien
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis aset yang cocok platform diambil
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis tag berlingkup dikupas menjadi versi yang dapat dibandingkan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis tag tanpa angka dibiarkan apa adanya, lalu ditolak pembanding versi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis aset platform LAIN tidak diambil
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis rilis yang memuat kedua platform memberi berkas yang benar pada masing-masing
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis alamat unduhan http biasa DITOLAK
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis rilis draf tidak ditawarkan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis pratayang tidak ditawarkan kecuali diminta
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis rilis tanpa aset yang cocok tidak ditawarkan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis penanda [WAJIB] pada catatan rilis terbaca
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis jawaban rusak menghasilkan null, bukan galat
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengurai jawaban rilis platform tanpa akhiran yang dikenal tidak menawarkan apa pun
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengambil lewat HTTP jawaban sehat menjadi RilisTersedia
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengambil lewat HTTP kode galat menjadi null, bukan lemparan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_supplier_workspace_test.dart: workspace supplier desktop memuat lima alur operasional
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_supplier_workspace_test.dart: workspace supplier tetap dapat dinavigasi di layar telepon
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengambil lewat HTTP peladen yang tidak menjawab menyerah dalam batas waktu
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: mengambil lewat HTTP alamat repo GitHub tersusun benar
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: pengelola pembaruan belum diperiksa BUKAN berarti mutakhir
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: pengelola pembaruan memeriksa mengisi hasil dan mengabari pendengar
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: pengelola pembaruan sumber yang gagal menjadi gagalDiperiksa, dan bukan pembaruan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: pengelola pembaruan penekanan berulang tidak menumpuk permintaan
+::group::❌ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/sumber_pembaruan_test.dart: versi bawaan sama dengan pubspec (failed)
+Expected: '0.1.33'
+  Actual: '0.1.32'
+   Which: is different.
+          Expected: 0.1.33
+            Actual: 0.1.32
+                         ^
+           Differ at offset 5
+nilai bawaan versiAplikasi harus sama dengan version: pada pubspec.yaml
+
+package:matcher                        expect
+test/sumber_pembaruan_test.dart 298:5  main.<fn>
+::endgroup::
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: aritmetika uang perubahan desimal ke satuan terkecil
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: aritmetika uang pecahan mata uang
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: aritmetika uang perhitungan baris
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: aritmetika uang total keranjang
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: aritmetika uang kembalian
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: jatah nomor struk pengambilan nomor dan penilaian jatah
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: kesegaran katalog tingkat dan kelayakan pakai
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: keadaan sambungan penilaian dan warna lencana
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: keadaan sambungan jeda percobaan ulang
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: bahan hash — kontrak paling menentukan hash awal
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: bahan hash — kontrak paling menentukan bahan muatan transaksi
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: bahan hash — kontrak paling menentukan bahan baris tanpa rincian
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: bahan hash — kontrak paling menentukan bahan baris dengan rincian mengawali bahan tanpa rincian
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: bahan hash — kontrak paling menentukan pemisah medan adalah U+001F
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/konformansi_test.dart: bahan hash — kontrak paling menentukan sumber Dart tidak memuat karakter kendali tak terlihat
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: membuat id berbentuk UUID v4
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: membuat id tidak pernah kembar
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: membuat id menolak bentuk yang bukan UUID v4
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: membersihkan nama spasi berlebih dirapikan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: membersihkan nama nama kosong ditolak
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: membersihkan nama nama terlalu panjang ditolak
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: membersihkan nama karakter kendali ditolak
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: menyimpan dan memuat pemuatan pertama membuat identitas dan menyimpannya
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: menyimpan dan memuat id BERTAHAN antar pemuatan
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: menyimpan dan memuat mengubah nama TIDAK mengubah id
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: menyimpan dan memuat nama yang tidak sah tidak menimpa nama yang sudah ada
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: menyimpan dan memuat berkas rusak: identitas baru dibuat, yang lama DISINGKIRKAN bukan ditimpa
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: menyimpan dan memuat id yang tersimpan tetapi tidak sah diperlakukan sebagai rusak
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/identitas_mesin_test.dart: menyimpan dan memuat nama tersimpan yang tidak sah jatuh ke nama bawaan, id tetap dipakai
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_transaction_workspaces_test.dart: bukti visual sales order desktop
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/operasi_apotik_shift_test.dart: kas dan shift memakai ringkasan server lalu menutup shift
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_transaction_workspaces_test.dart: bukti visual pembelian mobile
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_transaction_workspaces_test.dart: sales order responsif dapat mencari, menambah, dan mengirim item
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pos_api_apotik_test.dart: POS Apotik membaca kas sistem lalu menutup shift dengan kas fisik
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/pos_api_apotik_test.dart: POS Apotik memilih FEFO lalu memvalidasi farmasi sebelum pembayaran
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_transaction_workspaces_test.dart: sales order memuat dan memakai harga khusus customer
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_transaction_workspaces_test.dart: kontrol sales menjalankan draft, sinkronisasi, riwayat, dan batal
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_transaction_workspaces_test.dart: admin dapat memposting order terkonfirmasi menjadi faktur
+✅ /home/runner/work/eBisnis/eBisnis/apps/pos-flutter/test/inventory_transaction_workspaces_test.dart: purchase workspace mobile memuat batch, expiry, gudang, dan submit multi-item
+
+::error::202 tests passed, 1 failed.
