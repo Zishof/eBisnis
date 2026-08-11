@@ -715,12 +715,12 @@ class _InventoryDesktopShell extends StatelessWidget {
                     syncing: syncing,
                     onSync: onSync,
                   ),
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.fromLTRB(16, 8, 16, 14),
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('v2.6.0  -  eBisnis Suite',
-                          style: TextStyle(
+                      child: Text('v$versiAplikasi  -  eBisnis Suite',
+                          style: const TextStyle(
                               color: Color(0xFF8793A5), fontSize: 10)),
                     ),
                   ),
@@ -1145,6 +1145,13 @@ class _InventoryTopBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
+          OutlinedButton.icon(
+            key: const Key('inventory-update-button'),
+            onPressed: onCekPembaruan,
+            icon: const Icon(Icons.system_update_alt, size: 17),
+            label: const Text('Update Baru'),
+          ),
+          const SizedBox(width: 10),
           TextButton.icon(
             onPressed: syncing ? null : onSync,
             style: TextButton.styleFrom(
