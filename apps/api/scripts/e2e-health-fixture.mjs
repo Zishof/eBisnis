@@ -59,6 +59,26 @@ const q = async (sql, params = []) => (await client.query(sql, params)).rows;
  * dijawab `prove-health-uat-persona.mjs`, dan menggabungkan keduanya akan
  * membuat masing-masing kurang jelas.
  */
+/**
+ * Pola nama pengguna fixture ini.
+ *
+ * Pembersihan TIDAK boleh bergantung pada berkas fixture saja. Berkasnya dapat
+ * hilang — terhapus, tertimpa, atau naskahnya terputus sebelum sempat
+ * menulisnya — sementara penggunanya tetap ada di basis data. Itu persis yang
+ * sudah terjadi: dua akun `e2e_kesehatan_*` tertinggal karena berkasnya tidak
+ * lagi menunjuk kepadanya.
+ *
+ * Pengguna uji yang tertinggal bukan sekadar sampah. Ia akun ACTIVE dengan hak
+ * kesehatan, dan setiap peninjauan akses akan membacanya sebagai orang
+ * sungguhan. Ratusan di antaranya sudah menumpuk pada tenant demo karena naskah
+ * pendahulu tidak membersihkan dirinya.
+ *
+ * Ditaruh di sini, bukan di dekat pemakaiannya: blok yang menjalankan perintah
+ * berada di atas fungsi-fungsinya, dan `const` tidak terangkat seperti
+ * deklarasi fungsi.
+ */
+const POLA_NAMA = '^e2e_kesehatan_[0-9a-f]{8}$';
+
 const PERAN = [
   'HEALTH_REGISTRATION_CLERK',
   'HEALTH_DOCTOR',
@@ -163,21 +183,30 @@ async function siapkan() {
 }
 
 async function bersihkan({ diam = false } = {}) {
-  if (!existsSync(BERKAS)) {
-    if (!diam) console.log('Tidak ada fixture kesehatan yang perlu dibersihkan.');
-    return;
-  }
-  const f = JSON.parse(readFileSync(BERKAS, 'utf8'));
   /*
-   * Dibersihkan berurutan dari yang paling bergantung. Pengguna uji yang
-   * tertinggal bukan sekadar sampah: ia akun ACTIVE dengan hak kesehatan, dan
-   * ratusan di antaranya sudah pernah menumpuk pada tenant demo karena naskah
-   * pendahulu tidak membersihkan dirinya.
+   * Disapu menurut POLA NAMANYA, bukan menurut isi berkas fixture. Berkasnya
+   * tetap dipakai bila ada, tetapi ia bukan satu-satunya sumber kebenaran.
    */
-  await q(`DELETE FROM "${SCHEMA}".user_role_assignment WHERE user_subject_id = $1`, [f.subjectId]).catch(() => {});
-  await q(`DELETE FROM "${SCHEMA}".user_subject WHERE id = $1`, [f.subjectId]).catch(() => {});
-  await q('DELETE FROM platform.tenant_membership WHERE platform_user_id = $1', [f.platformUserId]).catch(() => {});
-  await q('DELETE FROM platform.platform_user WHERE id = $1', [f.platformUserId]).catch(() => {});
-  rmSync(BERKAS, { force: true });
-  if (!diam) console.log('Fixture kesehatan dibersihkan.');
+  const sasaran = await q('SELECT id::text AS id, username FROM platform.platform_user WHERE username ~ $1', [
+    POLA_NAMA,
+  ]);
+
+  for (const s of sasaran) {
+    const subjek = await q(`SELECT id::text AS id FROM "${SCHEMA}".user_subject WHERE platform_user_id = $1`, [s.id]);
+    for (const u of subjek) {
+      await q(`DELETE FROM "${SCHEMA}".user_role_assignment WHERE user_subject_id = $1`, [u.id]).catch(() => {});
+      await q(`DELETE FROM "${SCHEMA}".user_subject WHERE id = $1`, [u.id]).catch(() => {});
+    }
+    await q('DELETE FROM platform.tenant_membership WHERE platform_user_id = $1', [s.id]).catch(() => {});
+    await q('DELETE FROM platform.platform_user WHERE id = $1', [s.id]).catch(() => {});
+  }
+
+  if (existsSync(BERKAS)) rmSync(BERKAS, { force: true });
+  if (!diam) {
+    console.log(
+      sasaran.length
+        ? `Fixture kesehatan dibersihkan: ${sasaran.length} pengguna (${sasaran.map((s) => s.username).join(', ')}).`
+        : 'Tidak ada fixture kesehatan yang perlu dibersihkan.',
+    );
+  }
 }
