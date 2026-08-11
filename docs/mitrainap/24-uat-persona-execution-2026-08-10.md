@@ -216,3 +216,36 @@ Belum diverifikasi: `session()` (penerbitan sesi portal oleh staf),
 `provider()`, `mobile()`, `purge()`, dan `dash()` SENGAJA tetap
 terautentikasi staf (tidak diubah) -- ini adalah tindakan staf/admin,
 bukan tindakan tamu/kiosk, dan tetap benar memerlukan JWT.
+
+## §4 — Resident/Owner: gap owner statement diperbaiki, 11 Agustus 2026
+
+Temuan §2 ("owner statement tidak dapat dibuat -- tidak ada endpoint yang
+membuat `hospitality_owner_contract`") sudah diperbaiki dengan menambah
+DUA endpoint minimal pada `HospitalityLongstayController`/`.service.ts`:
+
+- `POST hospitality/longstay/owners` -- membuat
+  `hospitality_owner_contract` (kepemilikan investor atas satu kamar,
+  ENTITAS TERPISAH dari `hospitality_rental_contract`/kontrak sewa
+  penghuni yang sudah lengkap teruji sebelumnya -- satu kamar dapat
+  disewakan ke penghuni SEKALIGUS punya pemilik investor yang menerima
+  laporan bulanan).
+- `GET hospitality/longstay/owners?propertyId=...` -- daftar, diperlukan
+  staf untuk menemukan `owner_contract_id` sebelum meminta statement
+  (tidak ada cara lain menemukannya).
+
+`statement()` yang sudah ada TIDAK diubah -- hanya entitas yang
+sebelumnya tidak dapat dibuat sekarang dapat dibuat, sehingga FK yang
+sudah benar sejak awal akhirnya punya baris untuk diacu.
+
+Diverifikasi nyata lewat curl terhadap tenant `uat_persona_hotel` yang
+sama: `POST owners` berhasil membuat kontrak kepemilikan atas kamar 102,
+`GET owners` menampilkannya, `POST owners/:id/statements` (endpoint yang
+SEBELUMNYA selalu gagal FK violation) sekarang BERHASIL membuat
+statement sungguhan. Dua guard basis data juga dibuktikan sungguhan:
+statement kedua untuk periode yang SAMA ditolak (`UNIQUE(owner_contract_id,
+period_start, period_end)`), dan kontrak kepemilikan kedua untuk kamar +
+tanggal mulai yang SAMA ditolak (`UNIQUE(room_id, valid_from)`) --
+keduanya lewat constraint basis data, konsisten dengan gaya modul ini
+yang tidak membungkus pelanggaran FK/unique dengan pesan ramah di tempat
+lain. `pnpm test` (186 suite/4176 test) LULUS, `tsc --noEmit` dan lint
+bersih.
