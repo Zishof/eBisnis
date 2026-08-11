@@ -1403,6 +1403,125 @@ export class ErpController {
     return { files, totals: totals[0] ?? {}, salesMap };
   }
 
+  @Get('inventory/legacy/receivables')
+  @Permissions('SALES.READ')
+  @ApiOperation({ summary: 'Piutang legacy CMN dari Tran_Piut dan PIUTSEMEN' })
+  async legacyReceivables(
+    @Query() query: BaseQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const search = query.search?.trim() || null;
+    return this.inventoryQuery(
+      ctx,
+      `SELECT lr.id::text, lr.source_file, lr.legacy_invoice_number, lr.transaction_date::text,
+              lr.due_date::text, lr.paid_at::text, lr.amount::text, lr.payment_note,
+              lr.giro_number, lr.bank_name, lr.return_number,
+              COALESCE(c.name, lr.metadata->>'KODECUST', 'Pelanggan tidak dikenal') AS customer_name,
+              COALESCE(us.name, us.username_snapshot, lr.metadata->>'KODESALES', 'Tanpa sales') AS sales_name
+         FROM ${S}.legacy_receivable_ledger lr
+         LEFT JOIN ${S}.customer c ON c.id = lr.customer_id
+         LEFT JOIN ${S}.user_subject us ON us.id = lr.salesperson_id
+        WHERE ($1::text IS NULL
+           OR lr.legacy_invoice_number ILIKE '%' || $1 || '%'
+           OR c.name ILIKE '%' || $1 || '%'
+           OR us.name ILIKE '%' || $1 || '%'
+           OR lr.bank_name ILIKE '%' || $1 || '%')
+        ORDER BY lr.due_date DESC NULLS LAST, lr.transaction_date DESC NULLS LAST
+        LIMIT ${query.pageSize} OFFSET ${query.skip}`,
+      [search],
+    );
+  }
+
+  @Get('inventory/legacy/payables')
+  @Permissions('PURCHASE_ORDER.READ')
+  @ApiOperation({ summary: 'Hutang legacy CMN dari Tran_Hut' })
+  async legacyPayables(
+    @Query() query: BaseQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const search = query.search?.trim() || null;
+    return this.inventoryQuery(
+      ctx,
+      `SELECT lp.id::text, lp.source_file, lp.legacy_invoice_number, lp.transaction_date::text,
+              lp.due_date::text, lp.paid_at::text, lp.amount::text, lp.payment_note,
+              lp.giro_number, lp.bank_name,
+              COALESCE(s.name, lp.metadata->>'KODESUPPL', 'Supplier tidak dikenal') AS supplier_name
+         FROM ${S}.legacy_payable_ledger lp
+         LEFT JOIN ${S}.supplier s ON s.id = lp.supplier_id
+        WHERE ($1::text IS NULL
+           OR lp.legacy_invoice_number ILIKE '%' || $1 || '%'
+           OR s.name ILIKE '%' || $1 || '%'
+           OR lp.bank_name ILIKE '%' || $1 || '%')
+        ORDER BY lp.due_date DESC NULLS LAST, lp.transaction_date DESC NULLS LAST
+        LIMIT ${query.pageSize} OFFSET ${query.skip}`,
+      [search],
+    );
+  }
+
+  @Get('inventory/legacy/price-history')
+  @Permissions('SALES.READ')
+  @ApiOperation({ summary: 'Riwayat harga jual dan beli legacy CMN' })
+  async legacyPriceHistory(
+    @Query() query: BaseQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const search = query.search?.trim() || null;
+    return this.inventoryQuery(
+      ctx,
+      `SELECT lph.id::text, lph.source_file, lph.party_type, lph.effective_date::text,
+              lph.price::text, p.code AS product_code, p.name AS product_name,
+              COALESCE(c.name, s.name, 'Mitra tidak dikenal') AS party_name
+         FROM ${S}.legacy_price_history lph
+         LEFT JOIN ${S}.product p ON p.id = lph.product_id
+         LEFT JOIN ${S}.customer c ON c.id = lph.customer_id
+         LEFT JOIN ${S}.supplier s ON s.id = lph.supplier_id
+        WHERE ($1::text IS NULL
+           OR p.code ILIKE '%' || $1 || '%'
+           OR p.name ILIKE '%' || $1 || '%'
+           OR c.name ILIKE '%' || $1 || '%'
+           OR s.name ILIKE '%' || $1 || '%')
+        ORDER BY lph.effective_date DESC NULLS LAST, p.name
+        LIMIT ${query.pageSize} OFFSET ${query.skip}`,
+      [search],
+    );
+  }
+
+  @Get('inventory/legacy/stock-opname')
+  @Permissions('INVENTORY_STOCK_COUNT.READ')
+  @ApiOperation({ summary: 'Stock opname legacy CMN dari dataopn' })
+  async legacyStockOpname(
+    @Query() query: BaseQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @RequestContext() meta: RequestMeta,
+  ) {
+    const ctx = context(user, meta);
+    const S = `"${ctx.schemaName}"`;
+    const search = query.search?.trim() || null;
+    return this.inventoryQuery(
+      ctx,
+      `SELECT lso.id::text, lso.source_file, lso.opname_date::text, lso.system_qty::text,
+              lso.physical_qty::text, lso.variance_qty::text, lso.unit_cost::text,
+              p.code AS product_code, p.name AS product_name
+         FROM ${S}.legacy_stock_opname lso
+         LEFT JOIN ${S}.product p ON p.id = lso.product_id
+        WHERE ($1::text IS NULL
+           OR p.code ILIKE '%' || $1 || '%'
+           OR p.name ILIKE '%' || $1 || '%')
+        ORDER BY lso.opname_date DESC NULLS LAST, p.name
+        LIMIT ${query.pageSize} OFFSET ${query.skip}`,
+      [search],
+    );
+  }
+
   // --- Internal Transfer ---------------------------------------------------
 
   @Get('internal-transfers')
