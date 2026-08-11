@@ -103,13 +103,9 @@ jobs:
           WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_CODE_SIGNING_PFX_BASE64 }}
           WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_CODE_SIGNING_PASSWORD }}
         run: |
-          $isRelease = '${{ github.event_name }}' -eq 'push'
           if ([string]::IsNullOrWhiteSpace($env:WINDOWS_PFX_BASE64) -or
               [string]::IsNullOrWhiteSpace($env:WINDOWS_PFX_PASSWORD)) {
-            if ($isRelease) {
-              throw 'Sertifikat Authenticode produksi belum lengkap. Tag tidak boleh menerbitkan installer unsigned.'
-            }
-            Write-Warning 'Sertifikat Authenticode belum tersedia; kandidat UAT tetap dibangun tetapi tidak diterbitkan.'
+            Write-Warning 'Sertifikat Authenticode belum tersedia; installer hanya boleh diterbitkan sebagai prerelease UAT.'
             "mode=unsigned" >> $env:GITHUB_OUTPUT
             exit 0
           }
@@ -139,7 +135,13 @@ jobs:
       - name: Buat checksum installer
         shell: pwsh
         run: |
-          $installer = Get-ChildItem keluaran\ebisnis-inventory-sales-*-windows.exe -File
+          if ('${{ steps.signing.outputs.mode }}' -eq 'unsigned') {
+            $unsigned = Get-ChildItem keluaran\ebisnis-inventory-sales-*-windows.exe -File
+            if ($unsigned.Count -ne 1) { throw "Diharapkan satu installer, ditemukan $($unsigned.Count)." }
+            $uatName = $unsigned.Name -replace '-windows\.exe$', '-windows-unsigned-uat.exe'
+            Rename-Item -LiteralPath $unsigned.FullName -NewName $uatName
+          }
+          $installer = Get-ChildItem keluaran\ebisnis-inventory-sales-*.exe -File
           if ($installer.Count -ne 1) { throw "Diharapkan satu installer, ditemukan $($installer.Count)." }
           $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $installer.FullName).Hash.ToLowerInvariant()
           "$hash  $($installer.Name)" | Set-Content -NoNewline -Encoding ascii "$($installer.FullName).sha256"
@@ -147,8 +149,8 @@ jobs:
         with:
           name: inventory-windows
           path: |
-            keluaran/ebisnis-inventory-sales-*-windows.exe
-            keluaran/ebisnis-inventory-sales-*-windows.exe.sha256
+            keluaran/ebisnis-inventory-sales-*.exe
+            keluaran/ebisnis-inventory-sales-*.exe.sha256
           if-no-files-found: error
 
   android-uat:
@@ -370,11 +372,13 @@ jobs:
           test "$SIGNING_MODE" = "release" || {
             echo "::error::APK bukan release-signed; publikasi dibatalkan."; exit 1;
           }
-          test "$WINDOWS_SIGNING_MODE" = "signed" || {
-            echo "::error::Installer Windows belum ditandatangani; publikasi dibatalkan."; exit 1;
-          }
           catatan="APK dan installer Windows telah ditandatangani serta diverifikasi oleh workflow rilis."
-          gh release create "$GITHUB_REF_NAME" \
+          opsi=()
+          if [ "$WINDOWS_SIGNING_MODE" != "signed" ]; then
+            opsi+=(--prerelease)
+            catatan="APK Android release-signed. Installer Windows BELUM Authenticode-signed dan hanya untuk UAT manual; produksi diblokir sampai secret sertifikat tersedia."
+          fi
+          gh release create "$GITHUB_REF_NAME" "${opsi[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --title "eBisnis Inventory Sales $versi" \
             --notes "Penutupan gap paritas 48 layar: pricing customer/supplier, kontrol kredit dan FEFO, purchase-to-pay terpadu, AP/AR parsial, lifecycle nota, laporan versioned, konflik sinkronisasi, serta perbaikan costing reversal. $catatan" \
