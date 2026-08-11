@@ -8,6 +8,7 @@ import { statusPoDariPenerimaan } from './purchase-order-status';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { LifecycleContext } from './master-lifecycle.service';
 import { applyBalanceDelta, assertWarehouseNotFrozen } from '../../infrastructure/provisioning/tenant-bootstrap.service';
+import { AccountingPostingService } from '../accounting/accounting-posting.service';
 
 export interface RequestOrderLineInput {
   productId: string;
@@ -36,6 +37,7 @@ export class ErpPurchasingService {
     private readonly tenantDb: TenantConnectionService,
     private readonly sequences: NumberSequenceService,
     private readonly audit: AuditService,
+    private readonly posting: AccountingPostingService,
   ) {}
 
   // --- REQUEST ORDER -------------------------------------------------------
@@ -1585,17 +1587,38 @@ export class ErpPurchasingService {
             [ctx.userId, reason, payable.id],
           );
         }
-        /* Peristiwa akuntansi yang belum sempat dijurnal (masih PENDING) untuk
-         * nilai yang baru saja dibalik tidak boleh menunggu lalu terjurnal
-         * belakangan -- jika sudah POSTED (sudah terjurnal), dibiarkan berdiri
-         * apa adanya (di luar cakupan reversal ini; perlu jurnal pembalik
-         * terpisah mengikuti pola `reversal_of_id`). */
+        /*
+         * Buku besar dibalik menurut sejauh mana peristiwanya sudah sampai.
+         *
+         * Yang masih `PENDING` belum pernah menjadi angka di buku, jadi cukup
+         * disetel `SKIPPED` -- kalau dibiarkan, penjadwal akan menjurnalnya
+         * belakangan untuk barang yang sudah tidak jadi masuk.
+         *
+         * Yang sudah `POSTED` tidak dapat diperlakukan begitu: jurnalnya sudah
+         * masuk buku besar dan mungkin sudah ikut dalam laporan yang dicetak.
+         * Ia dibalik dengan jurnal BARU yang ditautkan lewat `reversal_of_id`,
+         * bukan dihapus atau disunting. Sebelumnya bagian ini dilewati sama
+         * sekali, sehingga persediaan dan hutang dagang kembali sementara
+         * jurnalnya tetap berdiri -- selisih permanen yang tidak muncul sebagai
+         * galat apa pun.
+         *
+         * Urutannya: PENDING lebih dahulu, supaya peristiwa yang sempat
+         * terjurnal oleh penjadwal di sela-sela transaksi ini tetap terjaring
+         * pembalik di bawahnya.
+         */
         await client.query(
           `UPDATE ${S}.accounting_event
              SET status = 'SKIPPED'
            WHERE source_type = 'GOODS_RECEIPT' AND source_id = $1 AND status = 'PENDING'`,
           [id],
         );
+
+        await this.posting.reversePostedEvents(client, ctx.schemaName, {
+          sourceType: 'GOODS_RECEIPT',
+          sourceId: id,
+          reason,
+          userId: ctx.userId,
+        });
 
         await client.query(
           `INSERT INTO ${S}.goods_receipt_validation

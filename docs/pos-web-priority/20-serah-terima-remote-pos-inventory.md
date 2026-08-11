@@ -101,14 +101,38 @@ Jalur transfer tidak punya data biaya sama sekali. Ini bukan sekadar
 menyambungkan — perlu keputusan dari mana biayanya diambil (rata-rata gudang
 asal, atau biaya lot). **Tanyakan pemilik sebelum membangun** (§5 nomor 2).
 
-### 2.4 Jurnal pembalik untuk `accounting_event` yang sudah `POSTED` — **TERBUKA**
+### 2.4 Jurnal pembalik untuk `accounting_event` yang sudah `POSTED` — **SELESAI**
 
-Pembalikan hanya menyetel `SKIPPED` untuk event yang masih `PENDING`; yang sudah
-terjurnal dibiarkan berdiri. Komentarnya sendiri mencatat ini sebagai di luar
-cakupan — `erp-purchasing.service.ts:1589-1592` — dan menunjuk pola
-`reversal_of_id` yang sudah ada di `journal_entry`.
+Dulu: pembalikan hanya menyetel `SKIPPED` untuk event yang masih `PENDING`;
+yang sudah terjurnal dibiarkan berdiri. Stok dan hutang dagang kembali, tetapi
+jurnalnya tidak — selisih permanen tanpa galat apa pun.
 
-Jarang terjadi karena aturan posting tidak disemai default per tenant.
+Sekarang `AccountingPostingService.reversePostedEvents()` membentuk jurnal BARU
+yang ditautkan lewat `journal_entry.reversal_of_id`, dipanggil dari dalam
+transaksi yang sama dengan pembalikan dokumennya. Aturannya di modul murni
+`apps/api/src/modules/accounting/reversal-journal.ts`.
+
+Empat keputusan yang perlu diketahui bila menyentuhnya lagi:
+
+- **Dibalik dari baris jurnal yang tercatat, bukan dihitung ulang dari aturan
+  posting.** Aturan dapat diubah tanpa rilis; menghitung ulang akan menghasilkan
+  angka berbeda begitu aturannya pernah disunting.
+- **Peristiwa aslinya tetap `POSTED`.** Ia memang pernah terjurnal; itu riwayat.
+  Pembaliknya dicatat pada `metadata` dan lewat `reversal_of_id`.
+- **Kunci pembalik deterministik** (`ACCOUNTING_EVENT_REVERSAL:<id>`,
+  `AER-<tanggal>-<hex>`) sehingga indeks unik menolak pembalik kedua. Membalik
+  dua kali akan melewati nol dan berbalik arah — dan neracanya tetap seimbang,
+  jadi tidak ada yang menandainya.
+- **Periode pembalik adalah HARI INI dan wajib terbuka.** Tidak pernah
+  ditanggalkan mundur ke periode yang sudah ditutup. Bila tidak ada periode
+  terbuka, seluruh pembatalan digulung balik dengan pesan yang menyuruh membuka
+  periode — disengaja, sebab membalik stok tanpa membalik jurnalnya adalah
+  persis cacat yang baru saja ditutup ini. **Bila pemilik menghendaki
+  pembatalan tetap jalan tanpa jurnal, ini titik yang diubah.**
+
+Berlaku untuk pembatalan penerimaan barang. Jalur lain yang membalik dokumen
+dapat memanggil `reversePostedEvents()` yang sama dengan `sourceType` masing
+masing.
 
 ### 2.5 Matriks capability 48 layar — **TERBUKA, dan sekarang front terbesar**
 
