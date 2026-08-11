@@ -249,3 +249,102 @@ keduanya lewat constraint basis data, konsisten dengan gaya modul ini
 yang tidak membungkus pelanggaran FK/unique dengan pesan ramah di tempat
 lain. `pnpm test` (186 suite/4176 test) LULUS, `tsc --noEmit` dan lint
 bersih.
+
+## §5 — POS Outlet: alur penuh diuji langsung, 11 Agustus 2026
+
+Persona yang sebelumnya HANYA diverifikasi lewat perbaikan kode +
+`pos-hospitality.spec.ts` (§1 "POS Outlet") sekarang diuji ujung ke ujung
+sungguhan: sale → kitchen → room charge → return/refund.
+
+### Gap platform-wide ditemukan lebih dulu: tidak ada `product_category`
+
+`uat_persona_hotel` (dan SETIAP tenant hospitality lain yang mendaftar
+lewat jalur publik) ternyata tidak pernah memiliki `product_category` --
+prasyarat mutlak modul POS/inventaris. Penyebabnya BUKAN kekhususan
+hospitality, melainkan bug pendaftaran dari MI-3 sendiri:
+`PendaftaranHospitalityDto` tidak pernah mengekspos `includeSampleData`
+(berbeda dari `PendaftaranPesantrenDto` yang sudah lama
+mengeksposnya), sehingga `HospitalityRegistrationService.register()`
+selalu memaksa `includeSampleData: false` tanpa cara pendaftar
+mengubahnya. Master seed berkode `EXAMPLE` (`PRODUCT_CATEGORY`,
+`PRODUCT`, `SUPPLIER`, dst -- lihat `master-seed.types.ts`) HANYA disemai
+bila diminta; `REFERENCE` (uom, jenis outlet, jenis gudang, kategori
+pajak) SELALU disemai terlepas dari pilihan itu -- itu sebabnya
+`legal_entity`/`outlet_type`/`uom` ADA tetapi `product_category` KOSONG.
+Diperparah: **tidak ada satu pun endpoint di seluruh kodebasis** yang
+membuat `product_category` secara langsung -- HANYA lewat seeder
+`EXAMPLE` ini. Tanpa perbaikan, setiap properti yang mendaftar dan
+memilih (atau secara diam-diam dipaksa, sebelum perbaikan ini) tanpa
+data contoh kehilangan akses ke seluruh modul POS/inventaris SELAMANYA,
+tanpa jalan mandiri untuk pulih.
+
+Diperbaiki: `includeSampleData` ditambahkan ke `PendaftaranHospitalityDto`
+(opsional, default `true` di sisi layanan -- sebelumnya default `false`),
+menyamakan perilaku dengan pendaftaran pesantren. Dibuktikan sungguhan:
+tenant BARU (`uat_pos_hotel`) didaftarkan tanpa menyebut
+`includeSampleData` sama sekali -> `product_category` otomatis terisi 10
+baris, `POST /pos/sample-data` (yang sebelumnya gagal pada
+`uat_persona_hotel` dengan "Ruang kerja ini belum memiliki kategori
+produk") berhasil membangun 1 brand, 1 outlet, 1 register, 12 produk, 5
+pelanggan, 5 penjualan contoh.
+
+### Bug NYATA kedua: `KITCHEN_TRANSITIONS` didefinisikan tapi tidak pernah dipakai
+
+`PosHospitalityService.kitchen()` sebelumnya meng-UPSERT status apa pun
+yang dikirim tanpa memeriksa urutan -- konstanta `KITCHEN_TRANSITIONS`
+(QUEUED→PREPARING→READY→SERVED, tanpa jalan mundur) ada di berkas yang
+sama tetapi TIDAK PERNAH dibaca oleh kode yang sungguhan berjalan.
+Dibuktikan sungguhan SEBELUM perbaikan: tiket berstatus `SERVED` berhasil
+dikirim balik ke `QUEUED` tanpa ditolak (`200 OK`, bukan galat). Ini lolos
+dari unit test yang ADA (`pos-hospitality.spec.ts` sudah punya kasus
+"tidak mengizinkan kitchen ticket kembali dari served") karena uji itu
+menguji FUNGSI MURNI `KITCHEN_TRANSITIONS`/logikanya secara langsung,
+BUKAN metode servis yang sungguhan dipanggil HTTP -- pelajaran yang sama
+seperti temuan "inconsistent types deduced" di seluruh sesi UAT ini: yang
+diuji unit dan yang benar-benar dijalankan basis data adalah dua hal
+berbeda.
+
+Diperbaiki: `kitchen()` sekarang mengunci baris tiket (`FOR UPDATE`),
+memeriksa `KITCHEN_TRANSITIONS[status_sekarang]` sebelum menulis, dan
+menolak baik status awal selain `QUEUED` (tiket yang belum ada) maupun
+transisi yang tidak terdaftar. Dibuktikan sungguhan lewat curl: transisi
+sah QUEUED→PREPARING→READY→SERVED berhasil; PREPARING→SERVED (melompati
+READY) ditolak `409 CONFLICT`; SERVED→QUEUED (mundur) ditolak `409
+CONFLICT`, DUA KALI dicoba pada titik berbeda di alur yang sama.
+
+### Alur penuh dibuktikan sungguhan pada tenant `uat_pos_hotel`
+
+Tenant baru didaftarkan lewat jalur publik (bukan seed manual),
+properti+tipe kamar+kamar dibuat, kasir ditugaskan ke register, shift
+dibuka, outlet ditautkan ke properti hospitality
+(`POST /pos/hospitality/outlets`), tamu sungguhan dibuat reservasi
+lewat lalu di-check-in (IN_HOUSE) dengan folio terbuka -- seluruhnya
+memakai endpoint yang SAMA yang sudah teruji pada persona Front
+Desk/Cashier di atas, bukan jalan pintas:
+
+1. `POST /pos/sales` + `POST /pos/sales/:id/items` -- keranjang sungguhan, 1 produk, Rp34.000.
+2. `POST /pos/hospitality/sales/:id/context` (`orderSource: ROOM_SERVICE`) -- `room_charge_status: PENDING` dikonfirmasi.
+3. Tiket dapur QUEUED→PREPARING→READY→SERVED (lihat guard baru di atas).
+4. `POST /pos/sales/:id/payments` (metode `CREDIT`) + `POST /pos/sales/:id/complete`.
+5. `POST /pos/hospitality/sales/:id/room-charge` -- transaksi folio nyata
+   diposting; diulang dengan Idempotency-Key yang SAMA -> `replayed: true`,
+   dikonfirmasi lewat `GET /hospitality/folios/:id` bahwa HANYA SATU
+   baris transaksi (Rp34.000, `POS_ROOM_CHARGE`) tercatat -- tidak ada
+   duplikasi.
+6. `POST /pos/sales/:id/returns` (retur sebagian, 1 dari 2 unit) berhasil,
+   `POST /pos/returns/:id/approve` oleh AKUN YANG SAMA yang mengajukan
+   retur DITOLAK sungguhan (`403 FORBIDDEN "Anda tidak dapat menyetujui
+   permintaan yang Anda ajukan sendiri"`) -- pemisahan tugas pengaju/
+   penyetuju retur terbukti benar-benar ditegakkan, bukan sekadar
+   didokumentasikan.
+
+**Belum diverifikasi**: pembayaran refund sungguhan (`POST
+returns/:id/refund`) tidak dituntaskan -- memerlukan akun staf KEDUA
+untuk menyetujui retur (guard di atas dengan sengaja menolak akun yang
+sama), dan tidak ditemukan endpoint swalayan untuk mengundang/membuat
+staf tenant kedua dalam pencarian singkat di kodebasis ini. Kemungkinan
+gap produk tersendiri (bagaimana pemilik tenant menambah staf keduanya?)
+-- dicatat di sini, bukan diselidiki lebih lanjut sebagai bagian UAT ini.
+
+`pnpm test` (186 suite/4176 test) LULUS penuh, `tsc --noEmit` dan
+`pnpm --filter @ebisnis/api lint` bersih setelah kedua perbaikan di atas.

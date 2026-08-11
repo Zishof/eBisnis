@@ -46,6 +46,22 @@ class PendaftaranHospitalityDto {
   acceptPrivacy!: boolean;
 
   /*
+   * Ditemukan lewat UAT sungguhan (docs/mitrainap/24-uat-persona-execution-2026-08-10.md):
+   * kolom ini SEBELUMNYA tidak ada sama sekali di sini -- berbeda dari
+   * `PendaftaranPesantrenDto` yang sudah lama mengeksposnya -- sehingga
+   * `HospitalityRegistrationService.register()` selalu memaksa
+   * `includeSampleData: false` tanpa cara pendaftar mengubahnya. Master
+   * seed `PRODUCT_CATEGORY`/`PRODUCT`/`SUPPLIER`/dst berkode `EXAMPLE`
+   * (lihat `master-seed.types.ts`) HANYA disemai bila diminta -- tanpa
+   * kolom ini, SETIAP properti yang mendaftar lewat jalur publik
+   * kehilangan data master POS/inventaris dasarnya secara permanen, tanpa
+   * jalan mandiri untuk mengisinya kemudian.
+   */
+  @ApiPropertyOptional({ default: true })
+  @IsOptional() @IsBoolean()
+  includeSampleData?: boolean;
+
+  /*
    * Sengaja TIDAK ada `generatePassword` maupun `password` -- pola sama
    * dengan pendaftaran pesantren, alasannya sama persis.
    */

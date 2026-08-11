@@ -195,7 +195,7 @@ export class HospitalityRegistrationService {
           acceptTerms: input.acceptTerms,
           acceptPrivacy: input.acceptPrivacy,
           localeCode: input.localeCode ?? 'id',
-          includeSampleData: input.includeSampleData ?? false,
+          includeSampleData: input.includeSampleData ?? true,
         },
         meta,
       );
