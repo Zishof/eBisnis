@@ -95,11 +95,36 @@ Yang perlu diketahui bila menyentuhnya lagi:
   `rataRataSesudahRetur()`. Bila salah satu berubah, yang lain harus ikut —
   ada penjaga yang membaca sumbernya di `pos-biaya-retur.spec.ts`.
 
-### 2.3 Biaya penerimaan transfer antar-gudang — **TERBUKA, perlu keputusan**
+### 2.3 Biaya penerimaan transfer antar-gudang — **SELESAI**
 
-Jalur transfer tidak punya data biaya sama sekali. Ini bukan sekadar
-menyambungkan — perlu keputusan dari mana biayanya diambil (rata-rata gudang
-asal, atau biaya lot). **Tanyakan pemilik sebelum membangun** (§5 nomor 2).
+Dulu: jalur transfer tidak punya data biaya sama sekali. Barang tiba dengan
+kuantitas tetapi tanpa nilai, sehingga gudang yang stoknya hanya berasal dari
+transfer punya `average_cost` nol — dan setiap penjualan dari gudang itu
+membukukan COGS nol. Laba terbaca penuh, persediaan terbaca kosong nilainya.
+
+**Keputusan pemilik (11 Agustus 2026): rata-rata gudang ASAL**, bukan biaya lot.
+Konsisten dengan moving-average yang sudah dipakai jalur lain.
+
+Aturannya di modul murni `apps/api/src/modules/tenant/biaya-transfer.ts`,
+dipakai `dispatchTransfer()` dan `validateTransferReceipt()` pada
+`erp-inventory.service.ts`.
+
+Yang perlu diketahui bila menyentuhnya lagi:
+
+- **Biaya DIBEKUKAN saat kirim, bukan dibaca saat terima.** Barang di perjalanan
+  bisa berhari-hari, dan selama itu gudang asal dapat menerima pembelian baru
+  yang menggeser rata-ratanya. Membacanya saat terima menilai barang pada harga
+  yang tidak pernah melekat padanya. Dibekukan pada
+  `stock_movement.unit_cost` milik movement `TRANSFER_DISPATCH`.
+- **Ditimbang kuantitas.** Satu lot dapat pecah menjadi beberapa movement
+  (alokasi FEFO lintas bin dengan biaya berbeda). Rata-rata biasa akan membuat
+  nilai yang tiba berbeda dari nilai yang berangkat.
+- **Barang yang DITOLAK tidak ikut menilai.** Ia masuk `quarantine_qty`, bukan
+  `on_hand`.
+- **Biaya nol ditolak, bukan dicampur** — sama seperti §2.2. `average_cost`
+  gudang asal masih nol untuk produk yang tidak pernah lewat penerimaan barang;
+  mencampurkannya menyebarkan ketidaktahuan itu ke gudang kedua.
+- Tidak ada migrasi: `stock_movement.unit_cost` sudah ada sejak V004.
 
 ### 2.4 Jurnal pembalik untuk `accounting_event` yang sudah `POSTED` — **SELESAI**
 
@@ -285,7 +310,7 @@ Jangan mulai pekerjaan yang bergantung pada ini.
 | # | Keputusan | Menghalangi |
 | --- | --- | --- |
 | 1 | Penandatanganan Android: `ANDROID_STORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, `ANDROID_KEY_ALIAS` belum lengkap | Terbitnya APK ke rilis. Kuncinya **permanen** — sekali terbit dengan kunci X, semua pembaruan wajib kunci X |
-| 2 | Sumber biaya untuk transfer antar-gudang (§2.3) | Gap 2.3 |
+| 2 | ~~Sumber biaya untuk transfer antar-gudang~~ — **sudah diputuskan 11 Agu 2026: rata-rata gudang asal.** §2.3 selesai | — |
 | 3 | Member POS: pakai anggota koperasi, atau entitas sendiri | Saldo/PIN kasir (§3.5–3.6 spesifikasi AIS) |
 | 4 | Katalog kasir: hanya cache, atau live saat daring | §3.2 spesifikasi AIS |
 | 5 | Keputusan UAT yang terdaftar di `gap-analysis-video-48-2026-08-11.md` §7: custody nota, mapping akun sales legacy, perilaku retur/void/write-off, kebijakan `HPP Tambah (%)`, definisi tiga laporan layar 41, dan perangkat lapangan | Sebagian besar P1 dan seluruh P2 |

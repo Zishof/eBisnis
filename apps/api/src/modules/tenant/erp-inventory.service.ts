@@ -6,6 +6,7 @@ import { NumberSequenceService } from '../../infrastructure/sequence/number-sequ
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { LifecycleContext } from './master-lifecycle.service';
+import { biayaMasukTransfer } from './biaya-transfer';
 import {
   applyBalanceDelta,
   assertWarehouseNotFrozen,
@@ -282,6 +283,30 @@ export class ErpInventoryService {
             );
           }
 
+          /*
+           * Biaya dibekukan SEKARANG, sebelum stoknya berkurang.
+           *
+           * Barang yang berangkat membawa biaya yang dimilikinya saat berangkat.
+           * Membacanya lagi saat penerimaan — kadang berhari-hari kemudian —
+           * akan menilai barang ini pada rata-rata gudang asal yang sudah
+           * bergeser oleh pembelian baru, yaitu harga yang tidak pernah melekat
+           * padanya. Lihat `biaya-transfer.ts`.
+           */
+          const biayaSumber = await client.query<{ lot_id: string | null; average_cost: string }>(
+            `SELECT lot_id::text AS lot_id,
+                    CASE WHEN sum(on_hand_qty) > 0
+                         THEN (sum(on_hand_qty * average_cost) / sum(on_hand_qty))::text
+                         ELSE max(average_cost)::text
+                    END AS average_cost
+               FROM ${S}.stock_balance
+              WHERE warehouse_id = $1 AND product_id = $2
+              GROUP BY lot_id`,
+            [transfer.rows[0].source_warehouse_id, line.product_id],
+          );
+          const biayaPerLot = new Map<string | null, number>(
+            biayaSumber.rows.map((r) => [r.lot_id, Number(r.average_cost ?? 0)]),
+          );
+
           // Sumber: kurangi dari baris saldo yang benar-benar memiliki stok
           // (FEFO). Satu baris transfer dapat menghabiskan beberapa lot.
           let allocations: Array<{ lotId: string | null; binId: string | null; quantity: number }>;
@@ -319,17 +344,21 @@ export class ErpInventoryService {
             const movementNumber = await this.sequences.next(client, ctx.schemaName, 'STOCK_MOVEMENT');
             await client.query(
               `INSERT INTO ${S}.stock_movement
-                 (movement_number, movement_type, product_id, uom_id, lot_id, quantity,
+                 (movement_number, movement_type, product_id, uom_id, lot_id, quantity, unit_cost,
                   source_warehouse_id, destination_warehouse_id, bucket_from, bucket_to,
                   reference_type, reference_id, reference_number, posting_key, created_by)
-               VALUES ($1, 'TRANSFER_DISPATCH', $2, $3, $4, $5, $6, $7, 'AVAILABLE', 'IN_TRANSIT',
-                       'internal_transfer', $8, $9, $10, $11)`,
+               VALUES ($1, 'TRANSFER_DISPATCH', $2, $3, $4, $5, $6, $7, $8, 'AVAILABLE', 'IN_TRANSIT',
+                       'internal_transfer', $9, $10, $11, $12)`,
               [
                 movementNumber,
                 line.product_id,
                 line.uom_id,
                 allocation.lotId,
                 allocation.quantity,
+                // Dicatat apa adanya, termasuk nol: movement adalah catatan
+                // fakta. Penolakan atas biaya nol terjadi saat penerimaan, di
+                // titik rata-rata gudang tujuan benar-benar akan disentuh.
+                (biayaPerLot.get(allocation.lotId) ?? 0).toFixed(4),
                 transfer.rows[0].source_warehouse_id,
                 transfer.rows[0].destination_warehouse_id,
                 id,
@@ -487,8 +516,24 @@ export class ErpInventoryService {
 
           // Lot yang benar-benar dikirim diambil dari movement dispatch,
           // sehingga pengurangan in-transit selalu cocok per lot.
-          const dispatchedLots = await client.query<{ lot_id: string | null; quantity: string }>(
-            `SELECT lot_id::text AS lot_id, sum(quantity)::text AS quantity
+          /*
+           * Biaya kiriman ikut dibaca, ditimbang kuantitas.
+           *
+           * Satu lot dapat berasal dari beberapa movement — alokasi FEFO
+           * mengambil dari beberapa bin dengan biaya berbeda — jadi rata-rata
+           * tertimbanglah yang membuat nilai yang tiba sama dengan nilai yang
+           * berangkat. Rumusnya di `biayaKirimTertimbang()`, dicerminkan di sini.
+           */
+          const dispatchedLots = await client.query<{
+            lot_id: string | null;
+            quantity: string;
+            unit_cost: string;
+          }>(
+            `SELECT lot_id::text AS lot_id, sum(quantity)::text AS quantity,
+                    CASE WHEN sum(quantity) > 0
+                         THEN (sum(quantity * unit_cost) / sum(quantity))::text
+                         ELSE '0'
+                    END AS unit_cost
              FROM ${S}.stock_movement
              WHERE reference_type = 'internal_transfer' AND reference_id = $1
                AND movement_type = 'TRANSFER_DISPATCH'
@@ -512,17 +557,20 @@ export class ErpInventoryService {
               const movementNumber = await this.sequences.next(client, ctx.schemaName, 'STOCK_MOVEMENT');
               await client.query(
                 `INSERT INTO ${S}.stock_movement
-                   (movement_number, movement_type, product_id, uom_id, lot_id, quantity,
+                   (movement_number, movement_type, product_id, uom_id, lot_id, quantity, unit_cost,
                     source_warehouse_id, destination_warehouse_id, bucket_from, bucket_to,
                     reference_type, reference_id, reference_number, posting_key, created_by)
-                 VALUES ($1, 'TRANSFER_RECEIPT', $2, $3, $4, $5, $6, $7, 'IN_TRANSIT', 'ON_HAND',
-                         'internal_transfer', $8, $9, $10, $11)`,
+                 VALUES ($1, 'TRANSFER_RECEIPT', $2, $3, $4, $5, $6, $7, $8, 'IN_TRANSIT', 'ON_HAND',
+                         'internal_transfer', $9, $10, $11, $12)`,
                 [
                   movementNumber,
                   line.rows[0].product_id,
                   line.rows[0].uom_id,
                   lotRow.lot_id,
                   lotAccepted.toFixed(6),
+                  // Sama dengan biaya kirimnya: transfer memindahkan barang,
+                  // tidak menciptakan atau menghapus nilai.
+                  Number(lotRow.unit_cost ?? 0).toFixed(4),
                   transfer.rows[0].source_warehouse_id,
                   transfer.rows[0].destination_warehouse_id,
                   id,
@@ -533,6 +581,22 @@ export class ErpInventoryService {
               );
             }
 
+            /*
+             * Barang yang DITERIMA membawa nilainya ke gudang tujuan.
+             *
+             * Sebelumnya tidak: kuantitas bertambah tanpa nilainya ikut, dan
+             * gudang yang stoknya hanya berasal dari transfer berakhir dengan
+             * `average_cost` nol -- setiap penjualan dari sana membukukan COGS
+             * nol, laba terbaca penuh, dan tidak ada galat yang muncul.
+             *
+             * Yang DITOLAK tidak ikut: ia masuk `quarantine_qty`, bukan
+             * `on_hand`, jadi biayanya tidak boleh menilai stok jual.
+             */
+            const biaya = biayaMasukTransfer({
+              acceptedQty: lotAccepted.toNumber(),
+              unitCost: Number(lotRow.unit_cost ?? 0),
+            });
+
             await applyBalanceDelta(client, S, {
               warehouseId: transfer.rows[0].destination_warehouse_id,
               productId: line.rows[0].product_id,
@@ -541,6 +605,7 @@ export class ErpInventoryService {
               onHandDelta: lotAccepted.toNumber(),
               availableDelta: lotAccepted.toNumber(),
               quarantineDelta: lotRejected.toNumber(),
+              ...(biaya.inboundCost === null ? {} : { inboundCost: biaya.inboundCost }),
             });
 
             remainingAccepted = remainingAccepted.minus(lotAccepted);
