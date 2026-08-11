@@ -16,8 +16,8 @@ Baca sesuai bidang yang akan dilanjutkan:
 
 | Urutan | Bidang | Dokumen | Commit dokumen |
 | --- | --- | --- | --- |
-| 1 | **POS/Inventory 48 layar — handover aktif terbaru** | [`docs/session-notes/2026-08-11-handover-pos-inventory-48-layar.md`](docs/session-notes/2026-08-11-handover-pos-inventory-48-layar.md) | commit yang memuat handover ini |
-| 2 | Deskripsi pekerjaan POS/Inventory 11 Agustus 2026 | [`docs/session-notes/2026-08-11-deskripsi-pekerjaan-pos-inventory-48-layar.md`](docs/session-notes/2026-08-11-deskripsi-pekerjaan-pos-inventory-48-layar.md) | commit yang memuat handover ini |
+| 1 | **POS/Inventory 48 layar — handover aktif terbaru** | [`docs/session-notes/2026-08-11-handover-pos-inventory-48-layar.md`](docs/session-notes/2026-08-11-handover-pos-inventory-48-layar.md) | `00118111` |
+| 2 | Deskripsi pekerjaan POS/Inventory 11 Agustus 2026 | [`docs/session-notes/2026-08-11-deskripsi-pekerjaan-pos-inventory-48-layar.md`](docs/session-notes/2026-08-11-deskripsi-pekerjaan-pos-inventory-48-layar.md) | `00118111` |
 | 3 | eMedik dan POS Apotik | [`docs/emedik/HANDOVER-2026-08-10.md`](docs/emedik/HANDOVER-2026-08-10.md) | `64c60a4` |
 | 4 | POS/Inventory, CI/CD, rilis Flutter, dan perbaikan integritas (historis 10 Agustus) | [`docs/session-notes/2026-08-10-ringkasan-sesi.md`](docs/session-notes/2026-08-10-ringkasan-sesi.md) | `ea03c91` |
 | 5 | POS Apotek dan paritas 48 layar (historis 10 Agustus) | [`docs/session-notes/2026-08-10-handover-final-pos-apotek-48-layar.md`](docs/session-notes/2026-08-10-handover-final-pos-apotek-48-layar.md) | handover final 10 Agustus |

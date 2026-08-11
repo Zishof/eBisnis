@@ -10,12 +10,32 @@ sebelum melakukan audit, perubahan source, deploy, atau membuat release baru.
 - Commit source fitur utama: `e20b9131`
 - Commit release workflow: `d2989295`
 - Commit dokumentasi bukti: `2151b0c3`
+- Commit valuasi retur/void: `6489e569`
+- Commit jurnal pembalik goods receipt: `5091f997`
 - Tag kandidat UAT: `inventory-v0.1.35`
 - Versi Flutter: `0.1.35+35`
 - Release 0.1.35 berstatus **prerelease**, bukan stable production.
 
-Commit yang berisi handover ini berada setelah `2151b0c3`. Gunakan
-`git log -5 --oneline` setelah clone untuk melihat hash final handover.
+Commit baseline yang menambahkan handover ini adalah `00118111`. Gunakan
+`git log -5 --oneline` setelah clone untuk melihat commit dokumentasi lanjutan
+dan memastikan clone sudah sama dengan `origin/main`.
+
+## Perkembangan Sesudah Baseline Handover
+
+Handover awal ditulis pada `00118111`. Sebelum finalisasi lintas-komputer ini,
+dua perubahan integritas tambahan sudah masuk `main`:
+
+1. `6489e569` menutup pengenceran valuasi stok saat retur/void kasir dengan
+   mengembalikan nilai berdasarkan `cost_snapshot`; biaya tak diketahui dan
+   ember rusak/dimusnahkan dijaga agar tidak merusak average cost.
+2. `5091f997` membuat jurnal pembalik append-only untuk goods receipt yang
+   dibatalkan setelah event akuntansinya terlanjur `POSTED`, lengkap dengan
+   idempotensi, `reversal_of_id`, dan pemeriksaan periode terbuka.
+
+Kedua commit sudah memperbarui
+[`docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md`](../pos-web-priority/20-serah-terima-remote-pos-inventory.md).
+Jangan mengulang pekerjaan itu; mulai dari source dan test terbaru di
+`origin/main`.
 
 ## Urutan Baca di Komputer Baru
 

@@ -1,7 +1,9 @@
 # Deskripsi Pekerjaan POS/Inventory 48 Layar
 
-Tanggal: **11 Agustus 2026 (Asia/Jakarta)**  
-Repository: <https://github.com/Zishof/eBisnis.git>  
+Tanggal: **11 Agustus 2026 (Asia/Jakarta)**
+
+Repository: <https://github.com/Zishof/eBisnis.git>
+
 Branch: `main`
 
 ## Tujuan Pekerjaan
@@ -93,6 +95,27 @@ Implementasi utama berada pada commit `e20b9131` dan mencakup hal berikut.
 - Workflow sukses: <https://github.com/Zishof/eBisnis/actions/runs/31479114540>
 - Release: <https://github.com/Zishof/eBisnis/releases/tag/inventory-v0.1.35>
 
+### Perkembangan setelah baseline handover
+
+Sesudah handover awal `00118111` masuk ke `main`, dua gap integritas berikut
+ditutup oleh pekerjaan paralel dan sudah menjadi bagian `origin/main`:
+
+- `6489e569` — retur dan pembatalan kasir mengembalikan nilai persediaan memakai
+  `cost_snapshot` saat penjualan. Kuantitas yang kembali ke stok jual ikut
+  memperbarui moving-average cost; biaya nol/tidak diketahui tidak dipaksakan
+  masuk rata-rata, dan barang rusak/dimusnahkan tidak menambah nilai stok jual.
+  Ditambahkan 20 test; 353 test POS lulus.
+- `5091f997` — pembatalan goods receipt yang jurnalnya sudah `POSTED` sekarang
+  membuat jurnal pembalik baru dari baris jurnal asli, ditautkan melalui
+  `reversal_of_id`, memakai kunci idempotensi deterministik, dan wajib masuk
+  periode akuntansi terbuka. Ditambahkan 40 test serta smoke test pemuatan
+  `TenantModule`; 4.112 test lulus. Satu suite
+  `rich-text-sanitizer.spec.ts` gagal dimuat dan sudah merupakan masalah
+  sebelum perubahan ini.
+
+Rincian keputusan serta bukti lanjutan tercatat di
+[`docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md`](../pos-web-priority/20-serah-terima-remote-pos-inventory.md).
+
 ## Hasil Verifikasi
 
 | Area | Hasil |
@@ -104,6 +127,10 @@ Implementasi utama berada pada commit `e20b9131` dan mencakup hal berikut.
 | Windows CI | Build installer dan automated navigation UAT lulus |
 | Android CI | Release signing, verifikasi signing, dan emulator API 33 UAT lulus |
 | Git | Source dan dokumentasi dipush ke `origin/main` |
+
+Angka API pada tabel adalah baseline release `0.1.35`. Untuk dua commit
+integritas sesudah baseline, gunakan hasil test pada bagian perkembangan di
+atas dan jalankan ulang suite penuh pada clone komputer baru.
 
 Bukti lengkap dan checksum:
 [`docs/implementation/inventory-sales-48/evidence/uat/2026-08-11-inventory-0.1.35-release.md`](../implementation/inventory-sales-48/evidence/uat/2026-08-11-inventory-0.1.35-release.md).
