@@ -11,4 +11,4 @@
 library;
 
 const String versiAplikasi =
-    String.fromEnvironment('VERSI', defaultValue: '0.1.31');
+    String.fromEnvironment('VERSI', defaultValue: '0.1.32');
