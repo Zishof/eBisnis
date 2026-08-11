@@ -5,6 +5,50 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## UAT-2 — Alur satu pasien sampai klaim terbayar, dan uji peramban
+
+### Ditambahkan
+
+- **`scripts/prove-health-journey.mjs`** — satu pasien melewati **delapan
+  tangan** yang berbeda, dari pendaftaran sampai klaim `PAID`. Tiap
+  serah-terima diperiksa tiga hal: orang berikutnya melihat hasil orang
+  sebelumnya, yang dilihatnya menunjuk pasien yang sama, dan orang sebelumnya
+  **tidak dapat** mengerjakan langkah berikutnya. **25 pemeriksaan.**
+- **`apps/web/e2e/emedik-layar.spec.ts`** — sebelas layar kesehatan dibuka di
+  peramban sungguhan; yang diperiksa termasuk **galat konsol**, yang justru
+  menjadi sebab halaman kosong pada W-1. **12 uji × 2 viewport.**
+- **`scripts/e2e-health-fixture.mjs`** — `setup`/`teardown`, mengikuti pola
+  `e2e-pos-fixture.mjs`. Membersihkan dirinya sendiri.
+- **`docs/emedik/26-alur-pasien-dan-e2e.md`**.
+
+### Keputusan
+
+- **Sandbox demo tidak disentuh.** `DEMO_USER` tidak diberi hak kesehatan;
+  memberinya akan membuka data pasien contoh bagi siapa pun yang menekan "coba
+  demo". Fixture memakai penggunanya sendiri.
+- **Kendali negatif ditinggalkan sebagai uji permanen.** Asersi pertama hanya
+  menuntut "ada judul yang terlihat", dan kendali negatif membuktikannya kosong:
+  rute karangan pun lulus. Asersinya diperketat menjadi judul layar itu sendiri.
+
+### Diketahui
+
+- **Menyelesaikan kunjungan tidak menaruhnya pada daftar kerja koder.** Berkas
+  pengkodean baru terbit lewat `POST /health/him/records/check`. Bila tak
+  seorang pun menjalankannya, kunjungannya tidak pernah menjadi klaim dan tidak
+  ada galat yang muncul. Patut diputuskan dengan sadar apakah itu memang langkah
+  manusia.
+- **`POST /health/claims/:id/verify` menjawab 200 sekalipun klaimnya tertahan.**
+  Status berpindah hanya bila `blockingCount === 0`.
+- **Rute `/app/emedik/*` yang tidak dikenal jatuh ke Command Center**, bukan ke
+  halaman "tidak ditemukan".
+- **Terminologi ICD-10 aktif pada tenant demo hanya memuat tiga kode**, dan
+  **ICD9CM tidak ada sama sekali** — tindakan tidak dapat dikode.
+- **333 dari 404 akun platform adalah sisa naskah uji lama**, seluruhnya
+  `ACTIVE`; **299 dari 531 peran** demo adalah peran sintetis. Naskah sesi ini
+  membersihkan dirinya; yang sudah menumpuk belum disentuh.
+
+---
+
 ## UAT-1 — UAT persona 43 peran, dan satu kebocoran yang ditutupnya
 
 ### Ditambahkan

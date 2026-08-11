@@ -1,0 +1,73 @@
+==============================================================================
+ALUR SATU PASIEN — PENDAFTARAN SAMPAI KLAIM TERBAYAR
+Waktu   : 2026-08-11T11:32:50.446Z
+Peladen : http://localhost:3200/api/v1
+==============================================================================
+Fasilitas: IN-6408e695
+Obat     : Amoksisilin 500 mg
+
+Menyiapkan delapan orang dengan peran yang tersemai...
+  delapan tangan siap.
+
+------------------------------------------------------------------------------
+0. Hesti, administrator — mendaftarkan dr. Ardi sebagai pemberi layanan
+   Tanpa langkah ini berkasnya tidak dapat dikode sama sekali; percobaan
+   pertama alur ini terhenti tepat di situ.
+    LULUS  mendaftarkan dokter beserta nomor izin praktiknya
+    LULUS  ATURAN: dokter tanpa nomor izin praktik DITOLAK
+
+------------------------------------------------------------------------------
+1. Rina, petugas pendaftaran — mendaftarkan pasien baru
+    LULUS  mendaftarkan pasien baru
+   pasien: Alur Uji de0d90  (RM IN6408E6-000010)
+    LULUS  mendaftarkan kunjungannya
+   nomor antrean: (tidak disebut)
+    LULUS  SERAH-TERIMA: pasiennya muncul pada antrean
+
+------------------------------------------------------------------------------
+2. dr. Ardi — memeriksa, mendiagnosis, meresepkan
+    LULUS  memulai kunjungan dari pendaftaran itu
+   nomor kunjungan: ENC-IN6408E695-20260811-0009
+    LULUS  mencatat diagnosis utama
+    LULUS  menulis resep
+    LULUS  SERAH-TERIMA: resepnya terlihat oleh Dewi, apoteker
+    LULUS  menyelesaikan kunjungan
+
+------------------------------------------------------------------------------
+3. Yanto, koder — memeriksa kelengkapan berkas, lalu mengoding
+    LULUS  membuka berkas pengkodean lewat pemeriksaan kelengkapan
+   kekurangan berkas: 1
+    LULUS  SERAH-TERIMA: kunjungannya muncul pada daftar kerja koder
+    LULUS  mengoding diagnosis dan tindakan
+    LULUS  PEMISAHAN: Yanto TIDAK dapat memverifikasi kodingnya sendiri
+
+------------------------------------------------------------------------------
+4. Sri, verifikator koding — memeriksa hasil koding Yanto
+    LULUS  memverifikasi koding orang lain
+
+------------------------------------------------------------------------------
+5. Budi, petugas klaim — menyusun klaim
+    LULUS  SERAH-TERIMA: menyusun klaim atas kunjungan itu
+    LULUS  PEMISAHAN: Budi TIDAK dapat memverifikasi klaimnya sendiri
+
+------------------------------------------------------------------------------
+6. Tuti, verifikator klaim — memeriksa klaim Budi
+    LULUS  SERAH-TERIMA: klaimnya terlihat oleh verifikator
+    LULUS  memverifikasi klaim orang lain
+    LULUS  verifikasi internal tidak menemukan yang menahan pengajuan
+   status sesudah verifikasi: INTERNALLY_VERIFIED
+
+------------------------------------------------------------------------------
+7. Budi — mengajukan, lalu mencatat keputusan dan pembayaran penjamin
+    LULUS  mengajukan klaim ke penjamin
+    LULUS  ATURAN: potongan tanpa sebab DITOLAK
+    LULUS  mencatat keputusan penjamin (disetujui sebagian, bersebab)
+    LULUS  mencatat pembayaran
+
+   keadaan akhir klaim: PAID
+    LULUS  klaimnya dapat dibaca kembali beserta keadaannya
+
+==============================================================================
+RINGKASAN — lulus 25, gagal 0
+Satu pasien, delapan tangan, dari pendaftaran sampai pembayaran.
+==============================================================================
