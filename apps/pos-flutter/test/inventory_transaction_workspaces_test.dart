@@ -137,6 +137,51 @@ void main() {
     expect(find.textContaining('SO-2026-0001'), findsOneWidget);
   });
 
+  testWidgets('sales order memuat dan memakai harga khusus customer',
+      (tester) async {
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    String? requestedCustomer;
+    SalesOrderWorkspaceSubmission? submission;
+
+    await tester.pumpWidget(host(InventorySalesOrderWorkspace(
+      customers: parties,
+      products: products,
+      salesName: 'Muklis',
+      onCustomerChanged: (customerId) async {
+        requestedCustomer = customerId;
+        return const [
+          TransactionProduct(
+            id: 'p1',
+            uomId: 'u1',
+            code: '002959',
+            name: 'AMPLOP 3/4 AM',
+            uom: 'Bks',
+            price: 42000,
+            stock: 120,
+          ),
+        ];
+      },
+      onSubmit: (value) async {
+        submission = value;
+        return 'SO-CUSTOMER-PRICE';
+      },
+    )));
+    await tester.pumpAndSettle();
+    expect(requestedCustomer, 'c1');
+    expect(
+        find.textContaining('Harga katalog sudah disesuaikan'), findsOneWidget);
+
+    await tester.ensureVisible(find.byTooltip('Tambah item').first);
+    await tester.tap(find.byTooltip('Tambah item').first);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('submit-sales-order')));
+    await tester.pumpAndSettle();
+    expect(submission?.lines.single.unitPrice, 42000);
+  });
+
   testWidgets(
       'kontrol sales menjalankan draft, sinkronisasi, riwayat, dan batal',
       (tester) async {
@@ -211,6 +256,40 @@ void main() {
     await tester.ensureVisible(find.text('Review & Kirim'));
     await tester.tap(find.text('Review & Kirim'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('admin dapat memposting order terkonfirmasi menjadi faktur',
+      (tester) async {
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    String? invoicedId;
+
+    await tester.pumpWidget(host(InventorySalesOrderWorkspace(
+      customers: parties,
+      products: products,
+      salesName: 'Admin',
+      onSubmit: (_) async => 'SO-1',
+      onLoadOrders: () async => const [
+        SalesOrderHistoryItem(
+          id: 'so-1',
+          number: 'SO-2026-0001',
+          date: '2026-08-11',
+          customerName: 'Adem Sari Mart',
+          total: 42000,
+          status: 'CONFIRMED',
+          lineCount: 1,
+        ),
+      ],
+      onInvoiceOrder: (id) async => invoicedId = id,
+    )));
+    await tester.tap(find.text('Order Saya'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Posting Faktur'));
+    await tester.pumpAndSettle();
+    expect(invoicedId, 'so-1');
+    expect(find.textContaining('stok FEFO diperbarui'), findsOneWidget);
   });
 
   testWidgets(

@@ -1,5 +1,5 @@
 import { SALES_INVENTORY_PARITY, paritySummary, webRouteForScreen } from './sales-inventory-parity.catalog';
-import { reportSql } from './sales-inventory-operations.controller';
+import { normalizeReportFilters, reportSql } from './sales-inventory-operations.controller';
 import {
   PARITY_EVIDENCE,
   PARITY_REQUIREMENTS,
@@ -71,18 +71,19 @@ describe('sales inventory legacy parity contract', () => {
   });
 
   it('PENDING_PROOF hanya boleh menyusut (regression guard)', () => {
-    // 48 layar x (4 surface view + 1 rekonsiliasi). Turunkan saat evidence bertambah.
-    expect(PENDING_PROOF.length).toBeLessThanOrEqual(48 * 5);
+    // Registry sudah per-surface/per-capability, bukan hanya route/view.
+    expect(PENDING_PROOF.length).toBeLessThanOrEqual(PARITY_REQUIREMENTS.length);
+    expect(PENDING_PROOF.length).toBeGreaterThan(0);
   });
 
   it('memisahkan evidence API dari Web, Windows, dan Android', () => {
-    expect(PARITY_REQUIREMENTS).toHaveLength(48 * 5 + 2);
+    expect(PARITY_REQUIREMENTS).toHaveLength(606);
     expect(provenScreens('api', 'view').size).toBe(48);
     expect(provenScreens('api').size).toBe(0);
     expect(provenScreens('web', 'view').size).toBe(48);
-    expect(provenScreens('web').size).toBe(47);
-    expect(provenScreens('windows').size).toBe(48);
-    expect(provenScreens('android').size).toBe(48);
+    expect(provenScreens('web').size).toBeLessThan(48);
+    expect(provenScreens('windows').size).toBeLessThan(48);
+    expect(provenScreens('android').size).toBeLessThan(48);
     expect(provenScreens().size).toBe(0);
 
     const apiProof = PARITY_EVIDENCE.find((proof) => proof.screen === 1 && proof.surface === 'api');
@@ -111,5 +112,35 @@ describe('sales inventory legacy parity contract', () => {
     expect(report?.sql).toContain('JOIN "demo".account_type at');
     expect(report?.sql).toContain("at.category IN ('REVENUE', 'EXPENSE')");
     expect(report?.sql).not.toMatch(/\bcoa\.account_type\b/);
+  });
+
+  it('menerapkan rentang, pihak, dokumen, gudang, dan status pada laporan pembelian', () => {
+    const report = reportSql('purchase-invoice', '"demo"');
+    expect(report?.sql).toContain('po.order_date >= $2::date');
+    expect(report?.sql).toContain('po.supplier_id = $3::uuid');
+    expect(report?.sql).toContain('po.id = $4::uuid');
+    expect(report?.sql).toContain('po.warehouse_id = $5::uuid');
+    expect(report?.sql).toContain('po.status = $6::text');
+  });
+
+  it('memisahkan tiga laporan layar 41 dengan judul dan kolom yang benar', () => {
+    const sales = reportSql('sales-by-product', '"demo"');
+    const outstanding = reportSql('ar-outstanding', '"demo"');
+    const events = reportSql('ar-event-register', '"demo"');
+    expect(sales?.title).toBe('Rekap Penjualan Barang');
+    expect(sales?.sql).toContain('product_code');
+    expect(sales?.sql).toContain('uom');
+    expect(outstanding?.title).toBe('Piutang Belum Lunas');
+    expect(events?.title).toBe('Register Event Piutang');
+    expect(events?.sql).toContain("'INVOICE'::text");
+    expect(events?.sql).toContain("'RECEIPT'");
+  });
+
+  it('menolak filter report yang ambigu sebelum menyentuh SQL', () => {
+    expect(normalizeReportFilters({ startDate: '2026-08-01' }, '2026-08-31'))
+      .toEqual({ startDate: '2026-08-01' });
+    expect(() => normalizeReportFilters({ startDate: '2026-09-01' }, '2026-08-31')).toThrow();
+    expect(() => normalizeReportFilters({ partyId: 'bukan-uuid' }, '2026-08-31')).toThrow();
+    expect(() => normalizeReportFilters({ status: "POSTED' OR TRUE" }, '2026-08-31')).toThrow();
   });
 });

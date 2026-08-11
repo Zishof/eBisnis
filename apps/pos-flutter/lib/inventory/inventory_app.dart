@@ -2284,6 +2284,9 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
                 id: customer.id,
                 code: customer.code,
                 name: customer.name,
+                balance: customer.receivableBalance,
+                creditLimit: customer.creditLimit,
+                paymentTermDays: customer.paymentTermDays,
               ))
           .toList(),
       products: catalog.products
@@ -2327,8 +2330,28 @@ class _SalesOrderDraftPageState extends State<_SalesOrderDraftPage> {
         final result = await widget.client.synchronize();
         return 'Sinkronisasi selesai: ${result.sent} dikirim, ${result.pending} masih antre.';
       },
-      onLoadOrders: widget.client.mySalesOrders,
+      onLoadOrders: () =>
+          widget.client.salesOrders(includeAll: widget.persona.role != 'Sales'),
       onCancelOrder: widget.client.cancelSalesOrder,
+      onInvoiceOrder: widget.persona.role == 'Sales'
+          ? null
+          : widget.client.invoiceSalesOrder,
+      onCustomerChanged: (customerId) async {
+        final customerCatalog =
+            await widget.client.catalog(customerId: customerId);
+        return customerCatalog.products
+            .map((product) => TransactionProduct(
+                  id: product.id,
+                  uomId: product.uomId,
+                  code: product.code,
+                  name: product.name,
+                  uom: 'PCS',
+                  price: product.price,
+                  stock: product.stock.toDouble(),
+                  imageUrl: product.imageUrl,
+                ))
+            .toList();
+      },
     );
   }
 
@@ -3626,19 +3649,159 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
   }
 
   Future<void> _settle(SettlementDocument document) async {
+    final amount =
+        TextEditingController(text: document.amount.toStringAsFixed(0));
+    final bank = TextEditingController();
+    final reference = TextEditingController();
+    final giroDue = TextEditingController();
+    final note = TextEditingController();
+    var method = 'TRANSFER';
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(builder: (context, update) {
+        return AlertDialog(
+          title: Text(document.kind == 'AP'
+              ? 'Pembayaran hutang'
+              : 'Penerimaan piutang'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(
+                    '${document.invoiceNumber} • ${document.partyName}\nMaksimum ${rupiah(document.amount)}'),
+                TextField(
+                  controller: amount,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration:
+                      const InputDecoration(labelText: 'Nominal alokasi'),
+                ),
+                DropdownButtonFormField<String>(
+                  value: method,
+                  decoration: const InputDecoration(labelText: 'Metode'),
+                  items: const [
+                    DropdownMenuItem(value: 'CASH', child: Text('Tunai')),
+                    DropdownMenuItem(
+                        value: 'TRANSFER', child: Text('Transfer')),
+                    DropdownMenuItem(value: 'GIRO', child: Text('Giro / BG')),
+                    DropdownMenuItem(value: 'OTHER', child: Text('Lainnya')),
+                  ],
+                  onChanged: (value) => update(() => method = value ?? method),
+                ),
+                if (method != 'CASH') ...[
+                  TextField(
+                      controller: bank,
+                      decoration: const InputDecoration(labelText: 'Bank')),
+                  TextField(
+                      controller: reference,
+                      decoration:
+                          const InputDecoration(labelText: 'Nomor referensi')),
+                ],
+                if (method == 'GIRO')
+                  TextField(
+                      controller: giroDue,
+                      decoration: const InputDecoration(
+                          labelText: 'Jatuh tempo giro (YYYY-MM-DD)')),
+                TextField(
+                    controller: note,
+                    decoration: const InputDecoration(labelText: 'Catatan')),
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Posting')),
+          ],
+        );
+      }),
+    );
+    final allocated = double.tryParse(amount.text.replaceAll(',', '.')) ?? 0;
+    if (accepted != true) {
+      amount.dispose();
+      bank.dispose();
+      reference.dispose();
+      giroDue.dispose();
+      note.dispose();
+      return;
+    }
+    if (allocated <= 0 || allocated > document.amount) {
+      setState(() => _message =
+          'Nominal harus lebih dari nol dan tidak melebihi saldo dokumen.');
+      amount.dispose();
+      bank.dispose();
+      reference.dispose();
+      giroDue.dispose();
+      note.dispose();
+      return;
+    }
     setState(() {
       _busyId = document.id;
       _message = null;
     });
     try {
-      final number = await widget.client.settle(document);
+      final number = await widget.client.settle(
+        document,
+        amount: allocated,
+        method: method,
+        bankName: bank.text.trim(),
+        referenceNumber: reference.text.trim(),
+        giroDueDate: giroDue.text.trim(),
+        note: note.text.trim(),
+      );
       if (!mounted) return;
       setState(() => _message = '$number berhasil diposting.');
       _refresh();
     } on Object catch (error) {
       if (mounted) setState(() => _message = error.toString());
     } finally {
+      amount.dispose();
+      bank.dispose();
+      reference.dispose();
+      giroDue.dispose();
+      note.dispose();
       if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _reverseSettlement(String kind, String id, String number) async {
+    final reason = TextEditingController();
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Reverse $number'),
+        content: TextField(
+            controller: reason,
+            decoration: const InputDecoration(labelText: 'Alasan reversal'),
+            maxLines: 3),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Reverse')),
+        ],
+      ),
+    );
+    if (accepted != true || reason.text.trim().isEmpty) {
+      reason.dispose();
+      return;
+    }
+    try {
+      await widget.client.reverseSettlement(kind, id, reason.text.trim());
+      if (mounted) {
+        setState(() =>
+            _message = '$number berhasil direversal tanpa menghapus histori.');
+      }
+      _refresh();
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      reason.dispose();
     }
   }
 
@@ -3668,6 +3831,143 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
       await widget.client.returnAndCloseHandover(handover.id);
       if (!mounted) return;
       setState(() => _message = 'Nota ${handover.number} kembali dan ditutup.');
+      _refresh();
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _collectHandover(HandoverSummary handover) async {
+    final detail = await widget.client.handoverDetail(handover.id);
+    final lines = ((detail['lines'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((row) => Map<String, Object?>.from(row))
+        .where((row) => !const ['COLLECTED', 'RECONCILED']
+            .contains((row['status'] ?? '').toString()))
+        .toList();
+    if (lines.isEmpty || !mounted) return;
+    var lineId = (lines.first['id'] ?? '').toString();
+    var method = 'CASH';
+    final amount = TextEditingController();
+    final reference = TextEditingController();
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+          builder: (context, update) => AlertDialog(
+                title: Text('Catat tagihan ${handover.number}'),
+                content: SizedBox(
+                    width: 520,
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      DropdownButtonFormField<String>(
+                        value: lineId,
+                        decoration: const InputDecoration(labelText: 'Nota'),
+                        items: lines
+                            .map((row) => DropdownMenuItem(
+                                  value: (row['id'] ?? '').toString(),
+                                  child: Text(
+                                      '${row['invoice_number']} • ${rupiah(toDouble(row['outstanding_amount']) - toDouble(row['collected_amount']))}'),
+                                ))
+                            .toList(),
+                        onChanged: (value) =>
+                            update(() => lineId = value ?? lineId),
+                      ),
+                      TextField(
+                          controller: amount,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          decoration: const InputDecoration(
+                              labelText: 'Nominal diterima')),
+                      DropdownButtonFormField<String>(
+                        value: method,
+                        decoration: const InputDecoration(labelText: 'Metode'),
+                        items: const [
+                          DropdownMenuItem(value: 'CASH', child: Text('Tunai')),
+                          DropdownMenuItem(
+                              value: 'TRANSFER', child: Text('Transfer')),
+                          DropdownMenuItem(value: 'GIRO', child: Text('Giro')),
+                          DropdownMenuItem(
+                              value: 'OTHER', child: Text('Lainnya')),
+                        ],
+                        onChanged: (value) =>
+                            update(() => method = value ?? method),
+                      ),
+                      TextField(
+                          controller: reference,
+                          decoration:
+                              const InputDecoration(labelText: 'Referensi')),
+                    ])),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: const Text('Batal')),
+                  FilledButton(
+                      onPressed: () => Navigator.pop(dialogContext, true),
+                      child: const Text('Simpan penerimaan')),
+                ],
+              )),
+    );
+    final value = double.tryParse(amount.text.replaceAll(',', '.')) ?? 0;
+    if (accepted != true || value <= 0) {
+      amount.dispose();
+      reference.dispose();
+      return;
+    }
+    try {
+      await widget.client.collectHandover(
+          handover.id, lineId, value, method, reference.text.trim());
+      if (mounted) {
+        setState(() => _message =
+            'Penerimaan nota dicatat dan receipt piutang diposting.');
+      }
+      _refresh();
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      amount.dispose();
+      reference.dispose();
+    }
+  }
+
+  Future<void> _markHandoverException(
+      HandoverSummary handover, String status) async {
+    try {
+      await widget.client.markHandoverException(handover.id, status);
+      if (mounted) {
+        setState(() => _message =
+            '${handover.number} ditandai $status dan masuk tindak lanjut exception.');
+      }
+      _refresh();
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    }
+  }
+
+  Future<void> _resolveHandoverException(HandoverSummary handover) async {
+    try {
+      await widget.client.resolveHandoverException(handover.id);
+      if (mounted) {
+        setState(() => _message =
+            '${handover.number} selesai direkonsiliasi setelah exception dituntaskan.');
+      }
+      _refresh();
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    }
+  }
+
+  Future<void> _resolveSyncConflict(InventorySyncConflict conflict) async {
+    setState(() {
+      _busyId = conflict.id;
+      _message = null;
+    });
+    try {
+      await widget.client.resolveSyncConflict(conflict);
+      if (mounted) {
+        setState(() => _message =
+            'Konflik ${conflict.entityType} diselesaikan dengan data server; antrean lokal terkait ditutup.');
+      }
       _refresh();
     } on Object catch (error) {
       if (mounted) setState(() => _message = error.toString());
@@ -3863,6 +4163,14 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
   Future<void> _receivePurchase(PurchaseOrderSummary order) async {
     final batch = TextEditingController();
     final expiry = TextEditingController();
+    final invoice = TextEditingController();
+    final invoiceDate = TextEditingController(
+        text: DateTime.now().toIso8601String().substring(0, 10));
+    final dueDate = TextEditingController(
+        text: DateTime.now()
+            .add(const Duration(days: 30))
+            .toIso8601String()
+            .substring(0, 10));
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -3875,6 +4183,18 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
               controller: expiry,
               decoration: const InputDecoration(
                   labelText: 'Tanggal kedaluwarsa (YYYY-MM-DD)')),
+          TextField(
+              controller: invoice,
+              decoration:
+                  const InputDecoration(labelText: 'Nomor faktur supplier')),
+          TextField(
+              controller: invoiceDate,
+              decoration: const InputDecoration(
+                  labelText: 'Tanggal faktur (YYYY-MM-DD)')),
+          TextField(
+              controller: dueDate,
+              decoration:
+                  const InputDecoration(labelText: 'Jatuh tempo (YYYY-MM-DD)')),
         ]),
         actions: [
           TextButton(
@@ -3889,11 +4209,17 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
     if (accepted != true) return;
     setState(() => _busyId = order.id);
     try {
-      final number = await widget.client
-          .receivePurchaseOrder(order, batch.text.trim(), expiry.text.trim());
+      final number = await widget.client.receivePurchaseOrder(
+        order,
+        batch.text.trim(),
+        expiry.text.trim(),
+        invoice.text.trim(),
+        invoiceDate.text.trim(),
+        dueDate.text.trim(),
+      );
       if (mounted) {
         setState(() => _message =
-            'Penerimaan $number dibuat. Pemeriksaan dan posting mengikuti pemisahan tugas.');
+            'Penerimaan $number, posting stok, faktur supplier, dan hutang berhasil direkonsiliasi.');
         _refresh();
       }
     } on Object catch (error) {
@@ -3901,6 +4227,9 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
     } finally {
       batch.dispose();
       expiry.dispose();
+      invoice.dispose();
+      invoiceDate.dispose();
+      dueDate.dispose();
       if (mounted) setState(() => _busyId = null);
     }
   }
@@ -4142,6 +4471,104 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
         .saveTo(location.path);
   }
 
+  Future<void> _receivableSnapshotOutput(String code, String format) async {
+    setState(() {
+      _busyId = 'REPORT-$code-$format';
+      _message = null;
+    });
+    try {
+      final now = DateTime.now();
+      final start =
+          DateTime(now.year, now.month, 1).toIso8601String().substring(0, 10);
+      final filters = <String, Object?>{'startDate': start};
+      final report =
+          await widget.client.financeReport(code, now, filters: filters);
+      final headers = report.rows.isEmpty
+          ? <String>[]
+          : report.rows.first.keys.toList(growable: false);
+      final rows = report.rows
+          .map((row) => headers.map((key) => row[key]).toList())
+          .toList();
+      final safeName = '$code-$start-${report.asOfDate}';
+      if (format == 'EXCEL') {
+        final workbook = Excel.createExcel();
+        final sheet = workbook[workbook.getDefaultSheet()!];
+        sheet.appendRow(headers.map(TextCellValue.new).toList());
+        for (final row in rows) {
+          sheet.appendRow(row
+              .map((value) => TextCellValue(value?.toString() ?? ''))
+              .toList());
+        }
+        final location = await getSaveLocation(
+          suggestedName: '$safeName.xlsx',
+          acceptedTypeGroups: const [
+            XTypeGroup(label: 'Excel', extensions: ['xlsx'])
+          ],
+        );
+        if (location == null) return;
+        await XFile.fromData(
+          Uint8List.fromList(workbook.encode() ?? const <int>[]),
+          name: '$safeName.xlsx',
+          mimeType:
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ).saveTo(location.path);
+      } else {
+        final document = pw.Document();
+        document.addPage(pw.MultiPage(
+          pageFormat: PdfPageFormat.a4.landscape,
+          build: (_) => [
+            pw.Header(level: 0, text: report.title),
+            pw.Text('Periode $start sampai ${report.asOfDate}'),
+            pw.SizedBox(height: 12),
+            if (rows.isEmpty)
+              pw.Text('Tidak ada data.')
+            else
+              pw.TableHelper.fromTextArray(
+                headers: headers,
+                data: rows,
+                cellStyle: const pw.TextStyle(fontSize: 7),
+              ),
+            pw.SizedBox(height: 12),
+            pw.Text('Total ${report.totalKey}: ${rupiah(report.total)}'),
+          ],
+          footer: (context) => pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child:
+                pw.Text('Halaman ${context.pageNumber}/${context.pagesCount}'),
+          ),
+        ));
+        final location = await getSaveLocation(
+          suggestedName: '$safeName.pdf',
+          acceptedTypeGroups: const [
+            XTypeGroup(label: 'PDF', extensions: ['pdf'])
+          ],
+        );
+        if (location == null) return;
+        await XFile.fromData(await document.save(),
+                name: '$safeName.pdf', mimeType: 'application/pdf')
+            .saveTo(location.path);
+      }
+      final snapshotId = await widget.client.snapshotFinanceReport(
+        code,
+        report.asOfDate,
+        filters: filters,
+      );
+      await widget.client.logFinancePrint(
+        snapshotId,
+        '$safeName.${format == 'EXCEL' ? 'xlsx' : 'pdf'}',
+        format: format,
+      );
+      if (mounted) {
+        setState(() => _message =
+            '$format ${report.title} dibuat dari snapshot $snapshotId.');
+      }
+    } on Object catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<InventoryOperationsData>(
@@ -4174,6 +4601,12 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
                 value: 3,
                 icon: Icon(Icons.shopping_cart_checkout_outlined),
                 label: Text('Pembelian')),
+          if (_canSeePayables)
+            ButtonSegment(
+                value: 4,
+                icon: const Icon(Icons.sync_problem_outlined),
+                label: Text(
+                    'Konflik (${data.syncConflicts.where((row) => row.status == 'OPEN').length})')),
         ];
         if (!_canSeePayables && _segment == 1) _segment = 0;
         return ColoredBox(
@@ -4262,9 +4695,21 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
                       onSalesAging: () => _receivablePdf(data, 'AGING_SALES'),
                       onOutstanding: () => _receivablePdf(data, 'OUTSTANDING'),
                       onNotes: () => _receivablePdf(data, 'NOTES'),
+                      onSalesByProduct: () =>
+                          _receivableSnapshotOutput('sales-by-product', 'PDF'),
+                      onOutstandingSnapshot: () =>
+                          _receivableSnapshotOutput('ar-outstanding', 'PDF'),
+                      onEventRegister: () =>
+                          _receivableSnapshotOutput('ar-event-register', 'PDF'),
+                      onEventRegisterExcel: () => _receivableSnapshotOutput(
+                          'ar-event-register', 'EXCEL'),
                     ),
                     const SizedBox(height: 12),
-                    _ArReceiptHistoryList(receipts: data.arReceipts),
+                    _ArReceiptHistoryList(
+                      receipts: data.arReceipts,
+                      onReverse: (row) =>
+                          _reverseSettlement('AR', row.id, row.number),
+                    ),
                   ])
                 else if (_segment == 1)
                   Column(children: [
@@ -4283,16 +4728,25 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
                         onAging: () => _purchasePdf(data, 'AGING'),
                         onPurchases: () => _purchasePdf(data, 'PURCHASE')),
                     const SizedBox(height: 12),
-                    _ApPaymentHistoryList(payments: data.apPayments),
+                    _ApPaymentHistoryList(
+                      payments: data.apPayments,
+                      onReverse: (row) =>
+                          _reverseSettlement('AP', row.id, row.number),
+                    ),
                   ])
                 else if (_segment == 2)
                   _HandoverList(
                     handovers: data.handovers,
                     busyId: _busyId,
                     onReturnAndClose: _returnAndClose,
+                    onCollect: _collectHandover,
+                    onLost: (row) => _markHandoverException(row, 'LOST'),
+                    onDisputed: (row) =>
+                        _markHandoverException(row, 'DISPUTED'),
+                    onResolve: _resolveHandoverException,
                     onReport: () => _receivablePdf(data, 'NOTES'),
                   )
-                else
+                else if (_segment == 3)
                   Column(children: [
                     _purchaseWorkspace(data),
                     const SizedBox(height: 12),
@@ -4305,12 +4759,63 @@ class _InventoryOperationsPageState extends State<InventoryOperationsPage> {
                       onInvoice: _purchaseInvoicePdf,
                       onReport: () => _purchasePdf(data, 'PURCHASE'),
                     ),
-                  ]),
+                  ])
+                else
+                  _SyncConflictList(
+                    conflicts: data.syncConflicts,
+                    busyId: _busyId,
+                    onUseServer: _resolveSyncConflict,
+                  ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _SyncConflictList extends StatelessWidget {
+  const _SyncConflictList({
+    required this.conflicts,
+    required this.busyId,
+    required this.onUseServer,
+  });
+
+  final List<InventorySyncConflict> conflicts;
+  final String? busyId;
+  final ValueChanged<InventorySyncConflict> onUseServer;
+
+  @override
+  Widget build(BuildContext context) {
+    final open = conflicts.where((row) => row.status == 'OPEN').toList();
+    return _SectionCard(
+      title: 'Konflik Sinkronisasi',
+      icon: Icons.sync_problem_outlined,
+      child: open.isEmpty
+          ? const Text('Tidak ada konflik terbuka.')
+          : Column(
+              children: open.map((row) {
+                final busy = busyId == row.id;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                      '${row.entityType} • ${row.entityId.isEmpty ? row.eventId : row.entityId}'),
+                  subtitle: Text(
+                    'Perangkat ${row.deviceId} • versi lokal ${row.clientVersion} / server ${row.serverVersion}\n${row.createdAt}',
+                  ),
+                  trailing: FilledButton.tonal(
+                    onPressed: busy ? null : () => onUseServer(row),
+                    child: busy
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Gunakan Server'),
+                  ),
+                );
+              }).toList(),
+            ),
     );
   }
 }
@@ -4403,6 +4908,10 @@ class _ReceivableReportActions extends StatelessWidget {
     required this.onSalesAging,
     required this.onOutstanding,
     required this.onNotes,
+    required this.onSalesByProduct,
+    required this.onOutstandingSnapshot,
+    required this.onEventRegister,
+    required this.onEventRegisterExcel,
   });
 
   final VoidCallback onReceipts;
@@ -4410,6 +4919,10 @@ class _ReceivableReportActions extends StatelessWidget {
   final VoidCallback onSalesAging;
   final VoidCallback onOutstanding;
   final VoidCallback onNotes;
+  final VoidCallback onSalesByProduct;
+  final VoidCallback onOutstandingSnapshot;
+  final VoidCallback onEventRegister;
+  final VoidCallback onEventRegisterExcel;
 
   @override
   Widget build(BuildContext context) => _SectionCard(
@@ -4436,14 +4949,32 @@ class _ReceivableReportActions extends StatelessWidget {
               onPressed: onNotes,
               icon: const Icon(Icons.assignment_ind_outlined),
               label: const Text('Nota sales PDF')),
+          OutlinedButton.icon(
+              onPressed: onSalesByProduct,
+              icon: const Icon(Icons.inventory_2_outlined),
+              label: const Text('Rekap Penjualan Barang')),
+          OutlinedButton.icon(
+              onPressed: onOutstandingSnapshot,
+              icon: const Icon(Icons.account_balance_wallet_outlined),
+              label: const Text('Outstanding Piutang')),
+          OutlinedButton.icon(
+              onPressed: onEventRegister,
+              icon: const Icon(Icons.history_outlined),
+              label: const Text('Register Event Piutang')),
+          OutlinedButton.icon(
+              onPressed: onEventRegisterExcel,
+              icon: const Icon(Icons.table_view_outlined),
+              label: const Text('Event Piutang Excel')),
         ]),
       );
 }
 
 class _ArReceiptHistoryList extends StatelessWidget {
-  const _ArReceiptHistoryList({required this.receipts});
+  const _ArReceiptHistoryList(
+      {required this.receipts, required this.onReverse});
 
   final List<ArReceiptSummary> receipts;
+  final ValueChanged<ArReceiptSummary> onReverse;
 
   @override
   Widget build(BuildContext context) => _SectionCard(
@@ -4464,10 +4995,20 @@ class _ArReceiptHistoryList extends StatelessWidget {
                                   const TextStyle(fontWeight: FontWeight.w800)),
                           subtitle: Text(
                               '${receipt.date} | ${receipt.method} | ${receipt.status}'),
-                          trailing: Text(rupiah(receipt.total),
-                              style: const TextStyle(
-                                  color: Color(0xFF0F766E),
-                                  fontWeight: FontWeight.w900)),
+                          trailing: Wrap(
+                              spacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(rupiah(receipt.total),
+                                    style: const TextStyle(
+                                        color: Color(0xFF0F766E),
+                                        fontWeight: FontWeight.w900)),
+                                if (receipt.status == 'POSTED')
+                                  IconButton(
+                                      onPressed: () => onReverse(receipt),
+                                      tooltip: 'Reverse penerimaan',
+                                      icon: const Icon(Icons.undo_outlined)),
+                              ]),
                         ))
                     .toList(),
               ),
@@ -4507,9 +5048,11 @@ class _PurchaseReportActions extends StatelessWidget {
 }
 
 class _ApPaymentHistoryList extends StatelessWidget {
-  const _ApPaymentHistoryList({required this.payments});
+  const _ApPaymentHistoryList(
+      {required this.payments, required this.onReverse});
 
   final List<ApPaymentSummary> payments;
+  final ValueChanged<ApPaymentSummary> onReverse;
 
   @override
   Widget build(BuildContext context) => _SectionCard(
@@ -4530,10 +5073,20 @@ class _ApPaymentHistoryList extends StatelessWidget {
                                   const TextStyle(fontWeight: FontWeight.w800)),
                           subtitle: Text(
                               '${payment.date} | ${payment.method} | ${payment.status}'),
-                          trailing: Text(rupiah(payment.total),
-                              style: const TextStyle(
-                                  color: Color(0xFF0F766E),
-                                  fontWeight: FontWeight.w900)),
+                          trailing: Wrap(
+                              spacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(rupiah(payment.total),
+                                    style: const TextStyle(
+                                        color: Color(0xFF0F766E),
+                                        fontWeight: FontWeight.w900)),
+                                if (payment.status == 'POSTED')
+                                  IconButton(
+                                      onPressed: () => onReverse(payment),
+                                      tooltip: 'Reverse pembayaran',
+                                      icon: const Icon(Icons.undo_outlined)),
+                              ]),
                         ))
                     .toList(),
               ),
@@ -4625,10 +5178,18 @@ class _HandoverList extends StatelessWidget {
       {required this.handovers,
       required this.busyId,
       required this.onReturnAndClose,
+      required this.onCollect,
+      required this.onLost,
+      required this.onDisputed,
+      required this.onResolve,
       required this.onReport});
   final List<HandoverSummary> handovers;
   final String? busyId;
   final ValueChanged<HandoverSummary> onReturnAndClose;
+  final ValueChanged<HandoverSummary> onCollect;
+  final ValueChanged<HandoverSummary> onLost;
+  final ValueChanged<HandoverSummary> onDisputed;
+  final ValueChanged<HandoverSummary> onResolve;
   final VoidCallback onReport;
 
   @override
@@ -4659,14 +5220,37 @@ class _HandoverList extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.w800)),
                   subtitle: Text(
                       '${row.salesperson} - ${row.invoiceCount} nota - ${row.status}'),
-                  trailing: row.status == 'HANDED_OVER'
-                      ? FilledButton.tonal(
+                  trailing: Wrap(spacing: 6, children: [
+                    Text(rupiah(row.amount)),
+                    if (['CARRIED', 'PARTIAL_COLLECTED'].contains(row.status))
+                      OutlinedButton(
+                          onPressed:
+                              busyId == row.id ? null : () => onCollect(row),
+                          child: const Text('Catat tagihan')),
+                    if (['HANDED_OVER', 'CARRIED', 'PARTIAL_COLLECTED']
+                        .contains(row.status)) ...[
+                      FilledButton.tonal(
                           onPressed: busyId == row.id
                               ? null
                               : () => onReturnAndClose(row),
-                          child: const Text('Kembali & tutup'),
-                        )
-                      : Text(rupiah(row.amount)),
+                          child: const Text('Kembali & tutup')),
+                      IconButton(
+                          onPressed:
+                              busyId == row.id ? null : () => onLost(row),
+                          tooltip: 'Nota hilang',
+                          icon: const Icon(Icons.report_problem_outlined)),
+                      IconButton(
+                          onPressed:
+                              busyId == row.id ? null : () => onDisputed(row),
+                          tooltip: 'Nota diperselisihkan',
+                          icon: const Icon(Icons.gavel_outlined)),
+                    ],
+                    if (['LOST', 'DISPUTED'].contains(row.status))
+                      FilledButton(
+                          onPressed:
+                              busyId == row.id ? null : () => onResolve(row),
+                          child: const Text('Selesaikan exception')),
+                  ]),
                 )),
         ],
       ),
@@ -5648,10 +6232,16 @@ class InventoryProductDemo {
 }
 
 class InventoryCustomer {
-  const InventoryCustomer(this.id, this.code, this.name);
+  const InventoryCustomer(this.id, this.code, this.name,
+      {this.receivableBalance = 0,
+      this.creditLimit = 0,
+      this.paymentTermDays = 30});
   final String id;
   final String code;
   final String name;
+  final double receivableBalance;
+  final double creditLimit;
+  final int paymentTermDays;
 }
 
 class InventoryCatalog {
@@ -5670,6 +6260,9 @@ class InventoryCatalog {
                 (row['id'] ?? '').toString(),
                 (row['code'] ?? '').toString(),
                 (row['name'] ?? '').toString(),
+                receivableBalance: toDouble(row['receivable_balance']),
+                creditLimit: toDouble(row['credit_limit']),
+                paymentTermDays: toInt(row['legacy_payment_days']),
               ))
           .toList(),
       products: ((data['products'] as List?) ?? const [])
@@ -5996,33 +6589,35 @@ class InventoryApiClient {
     );
   }
 
-  Future<InventoryFinancialReport> financeReport(
-      String code, DateTime asOf) async {
+  Future<InventoryFinancialReport> financeReport(String code, DateTime asOf,
+      {Map<String, Object?> filters = const {}}) async {
     final data = await _request<Map<String, Object?>>(
       'POST',
       '/reports/$code/preview',
       body: {
         'asOfDate': asOf.toIso8601String().substring(0, 10),
-        'filters': {}
+        'filters': filters
       },
     );
     return InventoryFinancialReport.fromApi(data);
   }
 
-  Future<String> snapshotFinanceReport(String code, String asOfDate) async {
+  Future<String> snapshotFinanceReport(String code, String asOfDate,
+      {Map<String, Object?> filters = const {}}) async {
     final data = await _request<Map<String, Object?>>(
       'POST',
       '/reports/$code/snapshot',
-      body: {'asOfDate': asOfDate, 'filters': {}},
+      body: {'asOfDate': asOfDate, 'filters': filters},
     );
     return (data['id'] ?? '').toString();
   }
 
-  Future<void> logFinancePrint(String snapshotId, String documentNumber) async {
+  Future<void> logFinancePrint(String snapshotId, String documentNumber,
+      {String format = 'PDF'}) async {
     await _request<Map<String, Object?>>(
       'POST',
       '/report-snapshots/$snapshotId/print-log',
-      body: {'format': 'PDF', 'documentNumber': documentNumber},
+      body: {'format': format, 'documentNumber': documentNumber},
     );
   }
 
@@ -6244,6 +6839,9 @@ class InventoryApiClient {
     final opnameFuture = includePayables
         ? _request<Map<String, Object?>>('GET', '/stock-opnames')
         : Future.value(<String, Object?>{});
+    final conflictFuture = includePayables
+        ? _request<List<Object?>>('GET', '/sync/conflicts?pageSize=200')
+        : Future.value(<Object?>[]);
     final values = await Future.wait([
       receivableFuture,
       payableFuture,
@@ -6254,6 +6852,7 @@ class InventoryApiClient {
       catalogFuture,
       opnameFuture,
       receiptFuture,
+      conflictFuture,
     ]);
     return InventoryOperationsData.fromApi(
       values[0] as List<Object?>,
@@ -6266,7 +6865,20 @@ class InventoryApiClient {
       values[7] as Map<String, Object?>,
       baseUrl,
       values[8] as List<Object?>,
+      values[9] as List<Object?>,
     );
+  }
+
+  Future<void> resolveSyncConflict(InventorySyncConflict conflict,
+      {String resolution = 'SERVER_WINS'}) async {
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/sync/conflicts/${conflict.id}/resolve',
+      body: {'resolution': resolution},
+    );
+    if (resolution == 'SERVER_WINS' && conflict.eventId.isNotEmpty) {
+      await _localDatabase?.markCompleted(conflict.eventId);
+    }
   }
 
   Future<String> createPurchaseOrder({
@@ -6350,6 +6962,7 @@ class InventoryApiClient {
                   'orderedQty': line.quantity,
                   'unitPrice': line.unitPrice,
                   'discountPercent': line.discountPercent,
+                  'discountPercent2': line.discountPercent2,
                   'batchNumber':
                       line.batch.trim().isEmpty ? null : line.batch.trim(),
                   'expiryDate':
@@ -6377,7 +6990,16 @@ class InventoryApiClient {
       _request<Map<String, Object?>>('GET', '/purchase-orders/$id');
 
   Future<String> receivePurchaseOrder(
-      PurchaseOrderSummary order, String batch, String expiry) async {
+      PurchaseOrderSummary order,
+      String batch,
+      String expiry,
+      String invoiceNumber,
+      String invoiceDate,
+      String dueDate) async {
+    if (invoiceNumber.isEmpty || invoiceDate.isEmpty || dueDate.isEmpty) {
+      throw const InventoryApiException(
+          'Nomor, tanggal, dan jatuh tempo faktur supplier wajib diisi.');
+    }
     final detail = await purchaseOrderDetail(order.id);
     final lines = ((detail['lines'] as List?) ?? const [])
         .whereType<Map>()
@@ -6407,6 +7029,43 @@ class InventoryApiClient {
             .toList(),
       },
     );
+    final receiptId = (created['id'] ?? '').toString();
+    final receiptLines = ((created['lines'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((raw) => Map<String, Object?>.from(raw))
+        .toList();
+    if (receiptId.isEmpty || receiptLines.isEmpty) {
+      throw const InventoryApiException(
+          'Penerimaan tersimpan tanpa rincian yang dapat diperiksa.');
+    }
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/goods-receipts/$receiptId/inspect',
+      body: {
+        'result': 'ACCEPTED',
+        'notes': 'Pemeriksaan otomatis disetujui dari Flutter Inventory',
+        'lines': receiptLines
+            .map((line) => {
+                  'lineId': (line['id'] ?? '').toString(),
+                  'acceptedQty': toDouble(line['received_qty']),
+                  'rejectedQty': 0,
+                  'qualityStatus': 'GOOD',
+                })
+            .toList(),
+      },
+    );
+    await _request<Map<String, Object?>>(
+        'POST', '/goods-receipts/$receiptId/validate');
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/goods-receipts/$receiptId/supplier-invoice',
+      body: {
+        'invoiceNumber': invoiceNumber,
+        'invoiceDate': invoiceDate,
+        'dueDate': dueDate,
+        'note': 'Finalisasi otomatis dari Flutter Inventory',
+      },
+    );
     return (created['receipt_number'] ??
             created['receiptNumber'] ??
             created['id'] ??
@@ -6414,7 +7073,15 @@ class InventoryApiClient {
         .toString();
   }
 
-  Future<String> settle(SettlementDocument document) async {
+  Future<String> settle(
+    SettlementDocument document, {
+    required double amount,
+    required String method,
+    String bankName = '',
+    String referenceNumber = '',
+    String giroDueDate = '',
+    String note = '',
+  }) async {
     final path = document.kind == 'AP' ? '/ap/payments' : '/ar/receipts';
     final created = await _request<Map<String, Object?>>(
       'POST',
@@ -6425,9 +7092,13 @@ class InventoryApiClient {
       },
       body: {
         'partyId': document.partyId,
-        'method': 'TRANSFER',
+        'method': method,
+        if (bankName.isNotEmpty) 'bankName': bankName,
+        if (referenceNumber.isNotEmpty) 'referenceNumber': referenceNumber,
+        if (giroDueDate.isNotEmpty) 'giroDueDate': giroDueDate,
+        if (note.isNotEmpty) 'note': note,
         'allocations': [
-          {'ledgerId': document.id, 'amount': document.amount}
+          {'ledgerId': document.id, 'amount': amount}
         ],
       },
     );
@@ -6438,6 +7109,19 @@ class InventoryApiClient {
             created['receipt_number'] ??
             id)
         .toString();
+  }
+
+  Future<void> reverseSettlement(String kind, String id, String reason) async {
+    final path = kind == 'AP' ? '/ap/payments' : '/ar/receipts';
+    await _request<Map<String, Object?>>(
+      'POST',
+      '$path/$id/reverse',
+      headers: {
+        'Idempotency-Key':
+            'REVERSE_${kind}_${id}_${DateTime.now().microsecondsSinceEpoch}'
+      },
+      body: {'reason': reason},
+    );
   }
 
   Future<String> carryNote(SettlementDocument document) async {
@@ -6458,20 +7142,104 @@ class InventoryApiClient {
     final id = (created['id'] ?? '').toString();
     await _request<Map<String, Object?>>(
         'POST', '/sales-note-handovers/$id/handover');
+    await _request<Map<String, Object?>>(
+        'POST', '/sales-note-handovers/$id/carry');
     return (created['handover_number'] ?? id).toString();
   }
 
-  Future<void> returnAndCloseHandover(String id) async {
-    final detail = await _request<Map<String, Object?>>(
-        'GET', '/sales-note-handovers/$id');
+  Future<Map<String, Object?>> handoverDetail(String id) =>
+      _request<Map<String, Object?>>('GET', '/sales-note-handovers/$id');
+
+  Future<void> collectHandover(
+    String id,
+    String lineId,
+    double amount,
+    String method,
+    String reference,
+  ) async {
+    await _request<Map<String, Object?>>(
+      'POST',
+      '/sales-note-handovers/$id/collect',
+      headers: {
+        'Idempotency-Key':
+            'NOTA_COLLECT_${id}_${lineId}_${DateTime.now().microsecondsSinceEpoch}'
+      },
+      body: {
+        'lineId': lineId,
+        'amount': amount,
+        'method': method,
+        if (reference.isNotEmpty) 'referenceNumber': reference,
+        'note': 'Penerimaan melalui Flutter Inventory',
+      },
+    );
+  }
+
+  Future<void> markHandoverException(String id, String status) async {
+    final detail = await handoverDetail(id);
     final lines = ((detail['lines'] as List?) ?? const [])
-        .whereType<Map<String, Object?>>()
+        .whereType<Map>()
+        .map((row) => Map<String, Object?>.from(row))
+        .where((row) => !const ['COLLECTED', 'RECONCILED']
+            .contains((row['status'] ?? '').toString()))
         .map((row) => {
               'lineId': (row['id'] ?? '').toString(),
-              'status': 'RETURNED',
-              'amount': toDouble(row['outstanding_amount']),
+              'status': status,
+              'amount': 0,
             })
         .toList();
+    if (lines.isEmpty) {
+      throw const InventoryApiException(
+          'Tidak ada nota aktif untuk ditandai exception.');
+    }
+    await _request<Map<String, Object?>>(
+        'POST', '/sales-note-handovers/$id/return',
+        body: {'lines': lines});
+  }
+
+  Future<void> resolveHandoverException(String id) async {
+    final detail = await handoverDetail(id);
+    final lines = ((detail['lines'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((row) => Map<String, Object?>.from(row))
+        .where((row) => const ['LOST', 'DISPUTED']
+            .contains((row['status'] ?? '').toString()))
+        .toList();
+    for (final row in lines) {
+      final outstanding = toDouble(row['outstanding_amount']);
+      final collected = toDouble(row['collected_amount']);
+      await _request<Map<String, Object?>>(
+        'POST',
+        '/sales-note-handovers/$id/resolve-exception',
+        body: {
+          'lineId': (row['id'] ?? '').toString(),
+          'resolution': 'RETURNED',
+          'amount': (outstanding - collected).clamp(0, outstanding),
+          'reason':
+              'Nota ditemukan/dikembalikan dan diverifikasi dari Flutter Inventory',
+        },
+      );
+    }
+    await _request<Map<String, Object?>>(
+        'POST', '/sales-note-handovers/$id/reconcile',
+        body: {'note': 'Rekonsiliasi exception Flutter Inventory'});
+    await _request<Map<String, Object?>>(
+        'POST', '/sales-note-handovers/$id/close');
+  }
+
+  Future<void> returnAndCloseHandover(String id) async {
+    final detail = await handoverDetail(id);
+    final lines = ((detail['lines'] as List?) ?? const [])
+        .whereType<Map<String, Object?>>()
+        .map((row) {
+      final outstanding = toDouble(row['outstanding_amount']);
+      final collected = toDouble(row['collected_amount']);
+      final remaining = (outstanding - collected).clamp(0, outstanding);
+      return {
+        'lineId': (row['id'] ?? '').toString(),
+        'status': remaining > 0 ? 'RETURNED' : 'COLLECTED',
+        'amount': remaining > 0 ? remaining : collected,
+      };
+    }).toList();
     if (lines.isEmpty) {
       throw const InventoryApiException('Nota tidak memiliki rincian.');
     }
@@ -6481,20 +7249,34 @@ class InventoryApiClient {
       body: {'lines': lines},
     );
     await _request<Map<String, Object?>>(
+      'POST',
+      '/sales-note-handovers/$id/reconcile',
+      body: {'note': 'Rekonsiliasi dari Flutter Inventory'},
+    );
+    await _request<Map<String, Object?>>(
         'POST', '/sales-note-handovers/$id/close');
   }
 
-  Future<InventoryCatalog> catalog() async {
+  Future<InventoryCatalog> catalog({String? customerId}) async {
     if (_token == null) {
       throw const InventoryApiException('Silakan masuk kembali.');
     }
     try {
+      final suffix = customerId == null || customerId.isEmpty
+          ? ''
+          : '?customerId=${Uri.encodeQueryComponent(customerId)}';
+      final cacheKey = customerId == null || customerId.isEmpty
+          ? 'mobile-catalog'
+          : 'mobile-catalog-$customerId';
       final data = await _request<Map<String, Object?>>(
-          'GET', '/inventory/mobile-catalog');
-      await _localDatabase?.putCache('mobile-catalog', data);
+          'GET', '/inventory/mobile-catalog$suffix');
+      await _localDatabase?.putCache(cacheKey, data);
       return InventoryCatalog.fromApi(data, baseUrl: baseUrl);
     } on Object {
-      final cached = await _localDatabase?.getCache('mobile-catalog');
+      final cacheKey = customerId == null || customerId.isEmpty
+          ? 'mobile-catalog'
+          : 'mobile-catalog-$customerId';
+      final cached = await _localDatabase?.getCache(cacheKey);
       if (cached != null) {
         return InventoryCatalog.fromApi(cached, baseUrl: baseUrl);
       }
@@ -6619,10 +7401,14 @@ class InventoryApiClient {
     await database.putCache(_salesDraftCacheKey, {'items': items});
   }
 
-  Future<List<SalesOrderHistoryItem>> mySalesOrders() async {
+  Future<List<SalesOrderHistoryItem>> salesOrders(
+      {bool includeAll = false}) async {
     try {
-      final rows =
-          await _request<List<Object?>>('GET', '/inventory/mobile-orders');
+      final rows = await _request<List<Object?>>(
+          'GET',
+          includeAll
+              ? '/sales/orders?pageSize=100'
+              : '/inventory/mobile-orders');
       await _localDatabase
           ?.putCache(_salesOrderHistoryCacheKey, {'items': rows});
       return _salesOrdersFromRows(rows);
@@ -6634,6 +7420,22 @@ class InventoryApiClient {
       }
       rethrow;
     }
+  }
+
+  Future<void> invoiceSalesOrder(String id) async {
+    await _request<Map<String, Object?>>('POST', '/sales/orders/$id/invoice',
+        headers: {
+          'Idempotency-Key':
+              'INVOICE_${id}_${DateTime.now().microsecondsSinceEpoch}'
+        });
+    final cached = await _localDatabase?.getCache(_salesOrderHistoryCacheKey);
+    if (cached == null) return;
+    final rows = ((cached['items'] as List?) ?? const []).map((raw) {
+      final row = Map<String, Object?>.from(raw as Map);
+      if (row['id']?.toString() == id) row['status'] = 'INVOICED';
+      return row;
+    }).toList();
+    await _localDatabase?.putCache(_salesOrderHistoryCacheKey, {'items': rows});
   }
 
   List<SalesOrderHistoryItem> _salesOrdersFromRows(List<Object?> rows) =>
@@ -6691,10 +7493,48 @@ class InventoryApiClient {
           item.method,
           item.path,
           body: jsonDecode(item.payload) as Map<String, Object?>,
+          headers: {'Idempotency-Key': item.eventId},
         );
         await database.markCompleted(item.eventId);
         sent += 1;
       } on Object catch (error) {
+        if (error is InventoryApiException && error.statusCode == 409) {
+          final payload = jsonDecode(item.payload) as Map<String, Object?>;
+          final entityId = RegExp(
+                  r'/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:/|$)',
+                  caseSensitive: false)
+              .firstMatch(item.path)
+              ?.group(1);
+          final entityType = item.path
+                  .split('?')
+                  .first
+                  .split('/')
+                  .where((part) => part.isNotEmpty)
+                  .firstOrNull
+                  ?.toUpperCase() ??
+              'UNKNOWN';
+          try {
+            await _request<Map<String, Object?>>(
+              'POST',
+              '/sync/conflicts',
+              body: {
+                'deviceId': deviceId,
+                'eventId': item.eventId,
+                'entityType': entityType,
+                if (entityId != null) 'entityId': entityId,
+                'clientVersion': toInt(payload['version']),
+                'clientPayload': {
+                  'method': item.method,
+                  'path': item.path,
+                  'body': payload,
+                },
+              },
+            );
+          } on Object {
+            // Error asli tetap dipertahankan pada outbox; registrasi konflik
+            // akan dicoba kembali pada siklus sinkronisasi berikutnya.
+          }
+        }
         await database.markFailed(item, error);
         break;
       }
@@ -7440,6 +8280,7 @@ class InventoryOperationsData {
     required this.products,
     required this.warehouses,
     this.arReceipts = const [],
+    this.syncConflicts = const [],
   });
 
   factory InventoryOperationsData.fromApi(
@@ -7453,6 +8294,7 @@ class InventoryOperationsData {
     Map<String, Object?> opname = const {},
     Uri? baseUrl,
     List<Object?> arReceipts = const [],
+    List<Object?> syncConflicts = const [],
   ]) {
     final catalogBaseUrl = baseUrl ?? Uri.parse('http://localhost');
     return InventoryOperationsData(
@@ -7495,6 +8337,10 @@ class InventoryOperationsData {
           .whereType<Map<String, Object?>>()
           .map(ArReceiptSummary.fromApi)
           .toList(),
+      syncConflicts: syncConflicts
+          .whereType<Map<String, Object?>>()
+          .map(InventorySyncConflict.fromApi)
+          .toList(),
     );
   }
 
@@ -7507,6 +8353,44 @@ class InventoryOperationsData {
   final List<InventoryProductDemo> products;
   final List<InventoryWarehouse> warehouses;
   final List<ArReceiptSummary> arReceipts;
+  final List<InventorySyncConflict> syncConflicts;
+}
+
+class InventorySyncConflict {
+  const InventorySyncConflict({
+    required this.id,
+    required this.eventId,
+    required this.deviceId,
+    required this.entityType,
+    required this.entityId,
+    required this.clientVersion,
+    required this.serverVersion,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory InventorySyncConflict.fromApi(Map<String, Object?> row) =>
+      InventorySyncConflict(
+        id: (row['id'] ?? '').toString(),
+        eventId: (row['event_id'] ?? '').toString(),
+        deviceId: (row['device_id'] ?? '').toString(),
+        entityType: (row['entity_type'] ?? '').toString(),
+        entityId: (row['entity_id'] ?? '').toString(),
+        clientVersion: toInt(row['client_version']),
+        serverVersion: toInt(row['server_version']),
+        status: (row['status'] ?? '').toString(),
+        createdAt: (row['created_at'] ?? '').toString(),
+      );
+
+  final String id;
+  final String eventId;
+  final String deviceId;
+  final String entityType;
+  final String entityId;
+  final int clientVersion;
+  final int serverVersion;
+  final String status;
+  final String createdAt;
 }
 
 class PurchaseOrderSummary {
@@ -7533,7 +8417,8 @@ class PurchaseOrderSummary {
 
 class ApPaymentSummary {
   const ApPaymentSummary(this.number, this.date, this.supplierName, this.method,
-      this.total, this.status);
+      this.total, this.status,
+      {this.id = ''});
 
   factory ApPaymentSummary.fromApi(Map<String, Object?> row) =>
       ApPaymentSummary(
@@ -7543,8 +8428,10 @@ class ApPaymentSummary {
         (row['method'] ?? '-').toString(),
         toDouble(row['total_amount']),
         (row['status'] ?? '-').toString(),
+        id: (row['id'] ?? '').toString(),
       );
 
+  final String id;
   final String number;
   final String date;
   final String supplierName;
@@ -7555,7 +8442,8 @@ class ApPaymentSummary {
 
 class ArReceiptSummary {
   const ArReceiptSummary(this.number, this.date, this.customerName, this.method,
-      this.total, this.status);
+      this.total, this.status,
+      {this.id = ''});
 
   factory ArReceiptSummary.fromApi(Map<String, Object?> row) =>
       ArReceiptSummary(
@@ -7565,8 +8453,10 @@ class ArReceiptSummary {
         (row['method'] ?? '-').toString(),
         toDouble(row['total_amount']),
         (row['status'] ?? '-').toString(),
+        id: (row['id'] ?? '').toString(),
       );
 
+  final String id;
   final String number;
   final String date;
   final String customerName;

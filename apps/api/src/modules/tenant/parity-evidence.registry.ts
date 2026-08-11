@@ -265,25 +265,64 @@ export const PARITY_EVIDENCE: ParityProof[] = [
 
 export const PROOF_SURFACES: ProofSurface[] = ['api', 'web', 'windows', 'android'];
 
+const MUTATION_CAPABILITIES: Partial<Record<number, ProofCapability[]>> = {
+  1: ['create', 'update'], 4: ['create', 'update'], 7: ['create', 'update'],
+  9: ['create', 'update', 'post', 'reverse'],
+  17: ['create', 'update', 'post'], 18: ['create', 'update', 'post'],
+  19: ['create', 'update', 'post'],
+  20: ['create', 'update', 'post', 'reverse'],
+  24: ['create', 'post', 'reverse'],
+  30: ['create', 'update', 'post', 'reverse'],
+  34: ['create', 'post', 'reverse'],
+  39: ['create', 'update', 'post', 'reverse'],
+  43: ['create', 'update', 'post', 'reverse'],
+  44: ['create', 'update'],
+};
+
+const PRINT_SCREENS = new Set([10, 13, 15, 16, 26, 27, 28, 29, 36, 37, 38, 40, 41, 42, 46, 47, 48]);
+const EXPORT_SCREENS = new Set([14, 15, 16, 27, 29, 37, 38, 41, 42, 46, 47, 48]);
+const OFFLINE_SCREENS = new Set([1, 4, 7, 8, 9, 11, 17, 18, 19, 20, 22, 24, 29, 30, 32, 34, 39, 43]);
+const HARDWARE_SCREENS = new Set([10, 13, 15, 20, 26, 28, 30, 36, 40, 42, 46, 48]);
+
+function requirementsForScreen(screen: number): ParityRequirement[] {
+  const requirements: ParityRequirement[] = PROOF_SURFACES.map((surface) => ({
+    screen,
+    surface,
+    capability: 'view',
+  }));
+  requirements.push({ screen, surface: 'api', capability: 'reconciliation' });
+
+  for (const capability of MUTATION_CAPABILITIES[screen] ?? []) {
+    for (const surface of PROOF_SURFACES) requirements.push({ screen, surface, capability });
+  }
+  if (PRINT_SCREENS.has(screen)) {
+    for (const surface of PROOF_SURFACES) requirements.push({ screen, surface, capability: 'print' });
+  }
+  if (EXPORT_SCREENS.has(screen)) {
+    for (const surface of PROOF_SURFACES) requirements.push({ screen, surface, capability: 'export' });
+  }
+  if (OFFLINE_SCREENS.has(screen)) {
+    for (const surface of ['web', 'windows', 'android'] as const) {
+      requirements.push({ screen, surface, capability: 'offline' });
+    }
+  }
+  if (HARDWARE_SCREENS.has(screen)) {
+    for (const surface of ['windows', 'android'] as const) {
+      requirements.push({ screen, surface, capability: 'hardware' });
+    }
+  }
+  return requirements;
+}
+
 /**
  * Kontrak minimum P0: setiap layar harus memiliki bukti terpisah pada setiap
  * surface. Capability tambahan (print/export/offline/hardware dan operasi
  * mutasi) ditambahkan per vertical slice; tidak boleh disimpulkan dari `view`.
  */
-export const PARITY_REQUIREMENTS: ParityRequirement[] = [
-  ...Array.from({ length: 48 }, (_, index) => index + 1).flatMap<ParityRequirement>(
-    (screen) => [
-      ...PROOF_SURFACES.map((surface): ParityRequirement => ({
-        screen,
-        surface,
-        capability: 'view',
-      })),
-      { screen, surface: 'api', capability: 'reconciliation' },
-    ],
-  ),
-  { screen: 30, surface: 'web', capability: 'create' },
-  { screen: 30, surface: 'web', capability: 'offline' },
-];
+export const PARITY_REQUIREMENTS: ParityRequirement[] = Array.from(
+  { length: 48 },
+  (_, index) => index + 1,
+).flatMap(requirementsForScreen);
 
 const PROVEN_STATUSES = new Set<ProofStatus>([
   'AUTOMATED_PROVEN',

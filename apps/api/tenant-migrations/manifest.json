@@ -444,6 +444,41 @@
         "description": "Mengulang blok instalasi trigger audit generik V008 (aman dijalankan ulang) supaya tabel yang dibuat migrasi setelah V008 -- termasuk inventory_ap_payment dan inventory_ar_receipt -- ikut punya trg_audit_<table>. Ditemukan lewat UAT: aksi create/post/reverse pembayaran hutang tidak menghasilkan satu pun baris audit_event."
       },
       {
+        "version": "V064",
+        "sequence": 64,
+        "file": "V064__inventory_report_governance.sql",
+        "name": "Governance snapshot dan cetak laporan Inventory Sales",
+        "description": "Menambah versi, kolom/sort kanonik, SHA-256 hasil, approval, page count, watermark, nomor salinan, dan alasan reprint pada snapshot/print-log tanpa mengubah snapshot lama."
+      },
+      {
+        "version": "V065",
+        "sequence": 65,
+        "file": "V065__sales_note_full_custody_lifecycle.sql",
+        "name": "Lifecycle custody nota sales lengkap",
+        "description": "Menyelaraskan state READY sampai CLOSED, partial collection, reconciliation, lost/disputed, evidence serah-terima, event append-only, dan satu custody aktif per piutang."
+      },
+      {
+        "version": "V066",
+        "sequence": 66,
+        "file": "V066__sales_order_pricing_cost_attribution.sql",
+        "name": "Atribusi sales dan snapshot harga/HPP sales order",
+        "description": "Menambah salesperson eksplisit, memilih harga aktif di server dengan prioritas customer lalu tenant, membekukan sumber harga dan weighted-average HPP, serta mempertahankan histori order lama tanpa rewrite."
+      },
+      {
+        "version": "V067",
+        "sequence": 67,
+        "file": "V067__purchase_supplier_pricing_two_discounts.sql",
+        "name": "Harga supplier dan dua tingkat diskon pembelian",
+        "description": "Memilih harga supplier approved di server, menyimpan sumber/aturan harga, menghitung dua diskon secara berantai, dan membekukan harga beli neto pada baris PO."
+      },
+      {
+        "version": "V068",
+        "sequence": 68,
+        "file": "V068__supplier_invoice_goods_receipt_link.sql",
+        "name": "Relasi faktur supplier, penerimaan, dan hutang",
+        "description": "Mencatat nomor/tanggal/jatuh tempo faktur supplier setelah penerimaan, menghubungkannya ke GR dan ledger hutang yang sudah ada, serta mencegah pembentukan hutang ganda."
+      },
+      {
         "version": "H001",
       "sequence": 1001,
       "file": "H001__health__facility.sql",

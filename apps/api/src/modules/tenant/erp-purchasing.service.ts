@@ -480,6 +480,7 @@ export class ErpPurchasingService {
         orderedQty: number;
         unitPrice: number;
         discountPercent?: number;
+        discountPercent2?: number;
         batchNumber?: string;
         expiryDate?: string;
         requestOrderLineId?: string;
@@ -555,8 +556,8 @@ export class ErpPurchasingService {
           }
 
           // Pemasok harus punya mapping produk aktif.
-          const mapping = await client.query(
-            `SELECT 1 FROM ${S}.product_supplier
+          const mapping = await client.query<{ last_price: string }>(
+            `SELECT last_price::text FROM ${S}.product_supplier
              WHERE product_id = $1 AND supplier_id = $2 AND deleted_at IS NULL AND is_active = TRUE`,
             [line.productId, input.supplierId],
           );
@@ -568,18 +569,52 @@ export class ErpPurchasingService {
             );
           }
 
-          const gross = new Decimal(line.orderedQty).mul(new Decimal(line.unitPrice));
-          const discountAmount = gross.mul(new Decimal(line.discountPercent ?? 0)).div(100);
-          const lineTotal = gross.minus(discountAmount);
+          const approvedPrice = await client.query<{ item_id: string; price: string }>(
+            `SELECT pbi.id::text AS item_id, pbi.price::text
+               FROM ${S}.price_book_item pbi
+               JOIN ${S}.price_book pb ON pb.id = pbi.price_book_id
+              WHERE pbi.product_id = $1::uuid
+                AND (pbi.uom_id IS NULL OR pbi.uom_id = COALESCE($2::uuid, (SELECT base_uom_id FROM ${S}.product WHERE id = $1::uuid)))
+                AND pbi.minimum_qty <= $3
+                AND pbi.deleted_at IS NULL AND pbi.is_active
+                AND pb.deleted_at IS NULL AND pb.is_active
+                AND pb.approval_status = 'APPROVED'
+                AND pb.scope_type = 'SUPPLIER' AND pb.scope_id = $4::uuid
+                AND pb.valid_from <= CURRENT_DATE
+                AND (pb.valid_until IS NULL OR pb.valid_until >= CURRENT_DATE)
+                AND pbi.valid_from <= CURRENT_DATE
+                AND (pbi.valid_until IS NULL OR pbi.valid_until >= CURRENT_DATE)
+              ORDER BY pbi.minimum_qty DESC, pb.sort_order, pb.updated_at DESC
+              LIMIT 1`,
+            [line.productId, line.uomId ?? null, line.orderedQty, input.supplierId],
+          );
+          const selectedPrice = approvedPrice.rows[0]
+            ? new Decimal(approvedPrice.rows[0].price)
+            : new Decimal(mapping.rows[0].last_price ?? line.unitPrice);
+          const priceSource = approvedPrice.rows[0]
+            ? 'SUPPLIER_PRICE_BOOK'
+            : Number(mapping.rows[0].last_price ?? 0) > 0
+              ? 'PRODUCT_SUPPLIER_LAST'
+              : 'CLIENT_QUOTE';
+          const discountPercent1 = new Decimal(line.discountPercent ?? 0);
+          const discountPercent2 = new Decimal(line.discountPercent2 ?? 0);
+          const gross = new Decimal(line.orderedQty).mul(selectedPrice);
+          const afterFirstDiscount = gross.mul(new Decimal(100).minus(discountPercent1)).div(100);
+          const lineTotal = afterFirstDiscount.mul(new Decimal(100).minus(discountPercent2)).div(100);
+          const discountAmount = gross.minus(lineTotal);
+          const netUnitPrice = lineTotal.div(line.orderedQty);
           subtotal = subtotal.plus(gross);
           discountTotal = discountTotal.plus(discountAmount);
 
           const insertedLine = await client.query<{ id: string }>(
             `INSERT INTO ${S}.purchase_order_line
                (purchase_order_id, product_id, uom_id, line_no, ordered_qty, unit_price,
-                discount_amount, line_total, planned_batch_number, planned_expiry_date)
+                discount_amount, line_total, planned_batch_number, planned_expiry_date,
+                discount_percent_1, discount_percent_2, net_unit_price,
+                price_book_item_id, price_source, price_rule_snapshot)
              VALUES ($1, $2, COALESCE($3, (SELECT base_uom_id FROM ${S}.product WHERE id = $2)),
-                     $4, $5, $6, $7, $8, $9, $10::date)
+                     $4, $5, $6, $7, $8, $9, $10::date,
+                     $11, $12, $13, $14::uuid, $15, $16::jsonb)
              RETURNING id::text AS id`,
             [
               purchaseOrderId,
@@ -587,11 +622,25 @@ export class ErpPurchasingService {
               line.uomId ?? null,
               index + 1,
               line.orderedQty,
-              line.unitPrice,
+              selectedPrice.toFixed(4),
               discountAmount.toFixed(4),
               lineTotal.toFixed(4),
               line.batchNumber?.trim() || null,
               line.expiryDate ?? null,
+              discountPercent1.toFixed(4),
+              discountPercent2.toFixed(4),
+              netUnitPrice.toFixed(4),
+              approvedPrice.rows[0]?.item_id ?? null,
+              priceSource,
+              JSON.stringify({
+                source: priceSource,
+                serverUnitPrice: selectedPrice.toFixed(4),
+                clientUnitPrice: line.unitPrice,
+                supplierId: input.supplierId,
+                quantity: line.orderedQty,
+                discountPercent1: discountPercent1.toFixed(4),
+                discountPercent2: discountPercent2.toFixed(4),
+              }),
             ],
           );
 
@@ -1411,6 +1460,24 @@ export class ErpPurchasingService {
         for (const [index, movement] of originals.rows.entries()) {
           const movementNumber = await this.sequences.next(client, ctx.schemaName, 'STOCK_MOVEMENT');
           const qty = new Decimal(movement.quantity);
+          const currentBalance = await client.query<{ available_qty: string; quarantine_qty: string }>(
+            `SELECT available_qty::text, quarantine_qty::text
+               FROM ${S}.stock_balance
+              WHERE warehouse_id = $1::uuid AND product_id = $2::uuid
+                AND lot_id IS NOT DISTINCT FROM $3::uuid
+              FOR UPDATE`,
+            [receipt.rows[0].warehouse_id, movement.product_id, movement.lot_id],
+          );
+          const removable = movement.bucket_to === 'QUARANTINE'
+            ? currentBalance.rows.reduce((sum, row) => sum.plus(row.quarantine_qty), new Decimal(0))
+            : currentBalance.rows.reduce((sum, row) => sum.plus(row.available_qty), new Decimal(0));
+          if (removable.lessThan(qty)) {
+            throw AppError.conflict(
+              ErrorCodes.CONFLICT,
+              'Penerimaan tidak dapat direversal karena sebagian stok sudah dipakai atau berpindah.',
+              { productId: movement.product_id, lotId: movement.lot_id, required: qty.toString(), available: removable.toString() },
+            );
+          }
           await client.query(
             `INSERT INTO ${S}.stock_movement
                (movement_number, movement_type, product_id, uom_id, lot_id, quantity, unit_cost,
@@ -1449,6 +1516,7 @@ export class ErpPurchasingService {
               lotId: movement.lot_id,
               onHandDelta: -qty.toNumber(),
               availableDelta: -qty.toNumber(),
+              outboundCost: Number(movement.unit_cost),
             });
           }
         }
