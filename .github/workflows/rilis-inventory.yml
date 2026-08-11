@@ -377,7 +377,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --title "eBisnis Inventory Sales $versi" \
-            --notes "Perbaikan kontrol Sales Order, draft lokal, sinkronisasi, riwayat order, dan pembatalan order aman. $catatan" \
+            --notes "Penutupan gap paritas 48 layar: pricing customer/supplier, kontrol kredit dan FEFO, purchase-to-pay terpadu, AP/AR parsial, lifecycle nota, laporan versioned, konflik sinkronisasi, serta perbaikan costing reversal. $catatan" \
             berkas/inventory-windows/*.exe \
             berkas/inventory-windows/*.sha256 \
             berkas/inventory-android/*.apk \
