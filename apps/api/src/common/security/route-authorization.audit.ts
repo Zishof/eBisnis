@@ -1,14 +1,7 @@
 import { INestApplicationContext, Logger } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
-import {
-  AUTHENTICATED_ONLY_KEY,
-  IS_PUBLIC_KEY,
-  PERMISSIONS_KEY,
-  PLATFORM_PERMISSIONS_KEY,
-  RESOURCE_PERMISSION_KEY,
-  STEP_UP_KEY,
-} from '../decorators';
+import { AUTHORIZATION_MARKER_KEYS } from '../decorators';
 
 /**
  * Memeriksa bahwa setiap route menyatakan hak akses yang dibutuhkannya.
@@ -21,14 +14,15 @@ import {
  * lebih awal lagi.
  */
 
-const MARKER_KEYS = [
-  IS_PUBLIC_KEY,
-  PERMISSIONS_KEY,
-  PLATFORM_PERMISSIONS_KEY,
-  RESOURCE_PERMISSION_KEY,
-  STEP_UP_KEY,
-  AUTHENTICATED_ONLY_KEY,
-] as const;
+/*
+ * Daftarnya TIDAK ditulis ulang di sini.
+ *
+ * Berkas ini dan `PermissionGuard` dulu menyimpan daftar penandanya
+ * sendiri-sendiri. `@ReportPermission` sempat ditambahkan ke penjaganya saja,
+ * dan akibatnya bukan sekadar penanda yang terlewat: audit ini menolak, lalu
+ * aplikasi gagal menyala seluruhnya.
+ */
+const MARKER_KEYS = AUTHORIZATION_MARKER_KEYS;
 
 export interface UnmarkedRoute {
   controller: string;
@@ -96,6 +90,7 @@ export function assertEveryRouteIsMarked(app: INestApplicationContext): void {
   throw new Error(
     `${unmarked.length} route tidak menyatakan hak akses yang dibutuhkannya.\n\n${detail}\n\n` +
       'Tambahkan @Permissions, @PlatformPermissions, @ResourcePermission, ' +
-      '@RequireStepUp, @AuthenticatedOnly, atau @Public pada masing-masing.',
+      '@ReportPermission, @RequireStepUp, @AuthenticatedOnly, atau @Public ' +
+      'pada masing-masing.',
   );
 }

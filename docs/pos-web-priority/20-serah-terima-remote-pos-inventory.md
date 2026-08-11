@@ -219,6 +219,14 @@ Yang perlu diketahui bila menyentuhnya lagi:
   `SALES.READ` kini melihat "Hak akses tidak mencukupi" pada tab laba rugi —
   itu memang yang dimaksud. Menyembunyikan tabnya adalah pekerjaan UI
   tersendiri, belum dikerjakan.
+- **Menambah penanda otorisasi baru: cukup di `AUTHORIZATION_MARKER_KEYS`.**
+  Dulu daftarnya ditulis dua kali — di `PermissionGuard` dan di
+  `assertEveryRouteIsMarked`. `@ReportPermission` sempat ditambahkan ke
+  penjaganya saja, dan akibatnya bukan endpoint yang lolos melainkan **aplikasi
+  yang tidak dapat menyala sama sekali**; auditnya berjalan saat bootstrap.
+  Ketahuan dari uji peramban, bukan dari uji satuan mana pun. Sekarang satu
+  daftar dipakai keduanya, plus penjaga yang menuntut setiap kunci metadata
+  baru diputuskan: penanda, atau bukan.
 
 ---
 

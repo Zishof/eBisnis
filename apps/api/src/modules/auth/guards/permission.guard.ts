@@ -4,7 +4,7 @@ import { Request } from 'express';
 import { StepUpPurpose } from '@prisma/client';
 import { AppError, ErrorCodes } from '../../../common/errors/app-error';
 import {
-  AUTHENTICATED_ONLY_KEY,
+  AUTHORIZATION_MARKER_KEYS,
   AuthenticatedUser,
   IS_PUBLIC_KEY,
   PERMISSIONS_KEY,
@@ -66,18 +66,18 @@ export class PermissionGuard implements CanActivate {
       REPORT_PERMISSION_KEY,
       targets,
     );
-    const authenticatedOnly = this.reflector.getAllAndOverride<boolean>(
-      AUTHENTICATED_ONLY_KEY,
-      targets,
-    );
-
-    const hasMarker =
-      Boolean(platformPermissions?.length) ||
-      Boolean(tenantPermissions?.length) ||
-      Boolean(resourceAction) ||
-      Boolean(reportPermission) ||
-      Boolean(stepUpPurpose) ||
-      Boolean(authenticatedOnly);
+    /*
+     * Dihitung dari daftar penanda yang SAMA dengan `assertEveryRouteIsMarked`.
+     *
+     * Sebelumnya keduanya menyebut penandanya satu per satu, masing-masing di
+     * berkasnya sendiri. `@ReportPermission` sempat ditambahkan ke sini saja,
+     * dan akibatnya bukan endpoint yang lolos melainkan aplikasi yang tidak
+     * dapat menyala sama sekali -- audit itu berjalan saat bootstrap.
+     */
+    const hasMarker = AUTHORIZATION_MARKER_KEYS.some((key) => {
+      const value = this.reflector.getAllAndOverride<unknown>(key, targets);
+      return Array.isArray(value) ? value.length > 0 : Boolean(value);
+    });
 
     if (!hasMarker) {
       throw AppError.forbidden(

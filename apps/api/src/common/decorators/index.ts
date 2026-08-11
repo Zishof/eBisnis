@@ -10,6 +10,29 @@ export const AUTHENTICATED_ONLY_KEY = 'ebisnis:authenticatedOnly';
 export const RESOURCE_PERMISSION_KEY = 'ebisnis:resourcePermission';
 export const REPORT_PERMISSION_KEY = 'ebisnis:reportPermission';
 
+/**
+ * Seluruh penanda otorisasi yang diakui, dalam SATU daftar.
+ *
+ * Dipakai bersama oleh `PermissionGuard` (menolak handler tanpa penanda saat
+ * dipanggil) dan `assertEveryRouteIsMarked` (menolak aplikasi menyala bila ada
+ * route tanpa penanda).
+ *
+ * Keduanya dulu menyimpan daftarnya sendiri-sendiri, dan itu bukan duplikasi
+ * yang tidak berbahaya: `@ReportPermission` sempat ditambahkan ke penjaganya
+ * saja, sehingga penjaganya menerima endpoint laporan sementara audit saat
+ * menyala menolaknya — aplikasi tidak dapat start sama sekali. Penanda baru
+ * cukup ditambahkan di sini, dan keduanya ikut.
+ */
+export const AUTHORIZATION_MARKER_KEYS = [
+  IS_PUBLIC_KEY,
+  PERMISSIONS_KEY,
+  PLATFORM_PERMISSIONS_KEY,
+  RESOURCE_PERMISSION_KEY,
+  REPORT_PERMISSION_KEY,
+  STEP_UP_KEY,
+  AUTHENTICATED_ONLY_KEY,
+] as const;
+
 /** Menandai endpoint dapat diakses tanpa autentikasi. Guard global aktif secara default. */
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 
