@@ -33,6 +33,10 @@ Evidence disimpan di `evidence/screens`, `evidence/reports`, dan
 
 ## Hasil Akhir
 
-- Seluruh 48 layar berstatus `OPERATIONAL` pada Web dan Flutter Windows/Android.
-- Bukti build produksi dan checksum paket tersedia di
-  `evidence/uat/release-build-0.1.6.md`.
+- Implementasi Web dan Flutter Windows/Android untuk 48 layar telah tersedia dan
+  seluruh gate otomatis kandidat UAT lulus.
+- Status paritas 100% tetap menunggu UAT perangkat fisik, rekonsiliasi data legacy,
+  serta persetujuan pemilik proses; item tersebut tidak boleh dinyatakan selesai
+  hanya berdasarkan test otomatis.
+- Bukti build dan checksum terakhir tersedia di
+  [`evidence/uat/2026-08-11-inventory-0.1.35-release.md`](./evidence/uat/2026-08-11-inventory-0.1.35-release.md).
