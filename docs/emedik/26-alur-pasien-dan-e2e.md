@@ -183,9 +183,66 @@ peninjauan akses akan membacanya sebagai orang sungguhan.
 
 Naskah pada sesi ini (`prove-health-uat-persona.mjs`,
 `prove-health-journey.mjs`, `e2e-health-fixture.mjs`) **membersihkan dirinya
-sendiri**. Yang sudah menumpuk belum disentuh: pembersihannya menghapus baris
-pada tabel control-plane, dan itu keputusan pemilik sistem, bukan keputusan yang
-diambil sebagai efek samping sebuah sesi uji.
+sendiri**.
+
+### Naskah pembersih
+
+`apps/api/scripts/bersihkan-akun-uji.mjs`. **Bawaannya tidak mengubah apa pun.**
+
+```bash
+cd C:/opt/eBisnisGithub-emedik/apps/api && node scripts/bersihkan-akun-uji.mjs
+```
+
+| Saklar | Yang dilakukannya |
+|---|---|
+| *(tanpa saklar)* | melaporkan saja |
+| `--nonaktifkan` | mencabut penugasan peran, `platform_user` → `SUSPENDED`, `user_subject` → `INACTIVE`. **Jejak utuh.** |
+| `--hapus` | menghapus barisnya; yang tersangkut jejak jatuh ke nonaktif |
+
+Dipersempit lewat `POLA_UJI` dan `POLA_UJI_PERAN` bila hanya ingin membersihkan
+sisa satu naskah.
+
+**`--nonaktifkan` menghilangkan seluruh bahaya keamanannya tanpa menyentuh satu
+baris jejak pun,** dan itu pilihan yang benar bila ragu.
+
+#### Yang tidak akan disentuh, apa pun saklarnya
+
+- **staf platform dan pemilik tenant.** Enam akun cocok pola tetapi dilindungi —
+  termasuk `uji_masuk_penuh`, yang memiliki tenantnya sendiri. Menghapusnya
+  akan merusak tenant utuh.
+- **nama di luar pola** — termasuk `kader_*`, yang tampak data demo sungguhan
+  meski memegang peran `UJI_KADER_*`, dan `uat_persona_hotel`.
+- **peran yang masih terpasang pada pengguna di luar daftar hapus.** Delapan
+  peran `UJI_KADER_*` dilewati karena sebab ini; menghapusnya akan mencabut hak
+  pengguna yang sengaja dibiarkan hidup.
+
+#### Mengapa penghapusan dicoba satu per satu di dalam SAVEPOINT
+
+Ada **sekitar tujuh puluh kunci asing** menunjuk `demo.user_subject`, sebagian
+besar `NO ACTION` atau `RESTRICT`: `pos_shift.cashier_id`, pembayaran hutang,
+sesi opname, buku harga, serah-terima nota, surat masuk dan keluar.
+
+Pengguna uji yang pernah memposting penerimaan barang **sudah menjadi bagian
+jejak transaksi itu**. Menghapusnya akan gagal — dan pada kolom `SET NULL`
+justru lebih buruk: berhasil, lalu menghapus catatan siapa yang mengerjakannya.
+
+Karena itu kegagalan penghapusan di naskah ini **bukan galat**; ia jawaban, dan
+jawabannya "yang ini dinonaktifkan saja". Pada 11 Agustus 2026 tidak satu pun
+dari 313 subjek tersangkut — tetapi itu keadaan hari itu, dan naskahnya
+memeriksanya sendiri setiap kali dijalankan.
+
+#### Keadaan pada 11 Agustus 2026
+
+```
+akun cocok pola   323   dilindungi 6    sasaran 317   dari 395 akun
+peran cocok pola  299   dilewati   8    sasaran 291   dari 531 peran (2.609 hibah)
+```
+
+Kedua modus sudah diuji ujung ke ujung terhadap akun dan peran buatan yang
+mewakili empat kasus — biasa, terlindungi, di luar pola, dan peran yang masih
+dipakai orang lain — dan keempatnya digolongkan benar. **Belum dijalankan atas
+data sungguhan**: itu keputusan pemilik sistem, bukan efek samping sebuah sesi
+uji.
 
 ---
 
