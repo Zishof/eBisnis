@@ -5,6 +5,95 @@ menggabungkan entri terpilih ke `CHANGELOG.md` global.
 
 ---
 
+## UAT-2 — Alur satu pasien sampai klaim terbayar, dan uji peramban
+
+### Ditambahkan
+
+- **`scripts/prove-health-journey.mjs`** — satu pasien melewati **delapan
+  tangan** yang berbeda, dari pendaftaran sampai klaim `PAID`. Tiap
+  serah-terima diperiksa tiga hal: orang berikutnya melihat hasil orang
+  sebelumnya, yang dilihatnya menunjuk pasien yang sama, dan orang sebelumnya
+  **tidak dapat** mengerjakan langkah berikutnya. **25 pemeriksaan.**
+- **`apps/web/e2e/emedik-layar.spec.ts`** — sebelas layar kesehatan dibuka di
+  peramban sungguhan; yang diperiksa termasuk **galat konsol**, yang justru
+  menjadi sebab halaman kosong pada W-1. **12 uji × 2 viewport.**
+- **`scripts/e2e-health-fixture.mjs`** — `setup`/`teardown`, mengikuti pola
+  `e2e-pos-fixture.mjs`. Membersihkan dirinya sendiri.
+- **`docs/emedik/26-alur-pasien-dan-e2e.md`**.
+
+### Keputusan
+
+- **Sandbox demo tidak disentuh.** `DEMO_USER` tidak diberi hak kesehatan;
+  memberinya akan membuka data pasien contoh bagi siapa pun yang menekan "coba
+  demo". Fixture memakai penggunanya sendiri.
+- **Kendali negatif ditinggalkan sebagai uji permanen.** Asersi pertama hanya
+  menuntut "ada judul yang terlihat", dan kendali negatif membuktikannya kosong:
+  rute karangan pun lulus. Asersinya diperketat menjadi judul layar itu sendiri.
+
+### Diketahui
+
+- **Menyelesaikan kunjungan tidak menaruhnya pada daftar kerja koder.** Berkas
+  pengkodean baru terbit lewat `POST /health/him/records/check`. Bila tak
+  seorang pun menjalankannya, kunjungannya tidak pernah menjadi klaim dan tidak
+  ada galat yang muncul. Patut diputuskan dengan sadar apakah itu memang langkah
+  manusia.
+- **`POST /health/claims/:id/verify` menjawab 200 sekalipun klaimnya tertahan.**
+  Status berpindah hanya bila `blockingCount === 0`.
+- **Rute `/app/emedik/*` yang tidak dikenal jatuh ke Command Center**, bukan ke
+  halaman "tidak ditemukan".
+- **Terminologi ICD-10 aktif pada tenant demo hanya memuat tiga kode**, dan
+  **ICD9CM tidak ada sama sekali** — tindakan tidak dapat dikode.
+- **333 dari 404 akun platform adalah sisa naskah uji lama**, seluruhnya
+  `ACTIVE`; **299 dari 531 peran** demo adalah peran sintetis. Naskah sesi ini
+  membersihkan dirinya; yang sudah menumpuk belum disentuh.
+
+---
+
+## UAT-1 — UAT persona 43 peran, dan satu kebocoran yang ditutupnya
+
+### Ditambahkan
+
+- **`scripts/prove-health-uat-persona.mjs`** — tiap peran kesehatan yang
+  tersemai dijalankan sebagai orang sungguhan terhadap peladen hidup: dibuatkan
+  pengguna, diberi **peran yang tersemai apa adanya**, login, lalu diminta
+  mengerjakan pekerjaan hariannya dan mencoba yang bukan wewenangnya.
+  **217 pemeriksaan, 43/43 peran.**
+- **`docs/emedik/25-uat-persona.md`** — pemisahan wewenang yang terbukti
+  berlaku, temuannya, dan yang masih harus diperiksa manusia.
+- **`samarkanPenghuniTempatTidur()`** pada `health-inpatient.ts`, beserta lima
+  ujinya.
+
+### Diperbaiki
+
+- **Nama pasien bocor lewat daftar tempat tidur.** `HEALTH_ADMIN` menerima 403
+  pada `/health/patients` dan tidak memegang `HEALTH_ADMISSION`, tetapi
+  `GET /health/inpatient/beds` mengembalikan nama lengkap, nomor rawat inap, dan
+  nama kamar — salah satunya kamar isolasi, yang dengan sendirinya sudah
+  menyatakan sesuatu yang klinis. Identitas penghuni kini dibuang bagi yang
+  tidak memegang `HEALTH_ADMISSION.READ`; keadaan tempat tidurnya tetap utuh.
+
+### Keputusan
+
+- **Peran yang dipakai UAT adalah peran yang tersemai, bukan peran sintetis.**
+  Peran sintetis akan menguji naskahnya terhadap dirinya sendiri, bukan terhadap
+  apa yang sebenarnya diterima orang pada pemasangan sungguhan.
+- **Daftar menu berdata pasien dan daftar peran non-klinis ditulis tangan.**
+  Keduanya pernyataan kebijakan; menurunkannya dari basis data akan membuatnya
+  menyetujui apa pun yang tersemai, termasuk yang keliru.
+- **Penolakan diperiksa tepat 403.** 404 atau 400 bukan penolakan, dan
+  menghitungnya sebagai penolakan akan menyembunyikan jalan yang terbuka.
+- **`HEALTH_BED` dikeluarkan dari daftar menu berdata pasien** hanya SESUDAH
+  identitasnya disamarkan, dan yang menjaganya kini pemeriksaan perilaku pada
+  fasilitas yang benar-benar terisi — bukan daftar yang dapat usang diam-diam.
+
+### Diketahui
+
+- `/auth/login` dibatasi 10 percobaan per 60 detik, terkunci pada dekorator
+  `auth.controller.ts` sehingga `THROTTLE_AUTH_LIMIT` pada `.env` tidak
+  mengubahnya. Satu jalan UAT penuh memakan sekitar lima menit.
+
+---
+
 ## W-6B - Apotik landing dan POS Apotik
 
 ### Ditambahkan

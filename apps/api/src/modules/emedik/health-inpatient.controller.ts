@@ -25,6 +25,7 @@ import { AppError, ErrorCodes } from '../../common/errors/app-error';
 import { TenantPermissionService } from '../auth/tenant-permission.service';
 import { HealthInpatientService } from './health-inpatient.service';
 import { CoreIdentityAdapter } from './adapters/core.adapters';
+import { samarkanPenghuniTempatTidur } from './health-inpatient';
 import type { CaraPulang, JenisIsolasi, StatusTempatTidur } from './health-inpatient';
 import type { KonteksAkses } from './health-patient.service';
 import type { PurposeOfUse } from './ports';
@@ -449,12 +450,41 @@ export class HealthInpatientController {
   @ApiBearerAuth('access-token')
   @Permissions('HEALTH_BED.READ')
   @Get('beds')
-  @ApiOperation({ summary: 'Tempat tidur beserta keadaannya' })
-  tempatTidur(@Query('facilityId') facilityId: string, @CurrentUser() user: AuthenticatedUser) {
+  @ApiOperation({
+    summary: 'Tempat tidur beserta keadaannya',
+    description:
+      'Nama penghuni dan nomor rawat inap hanya disertakan bagi pemegang HEALTH_ADMISSION.READ. ' +
+      'Pengurus sarana memerlukan tempat tidurnya, bukan orang yang menempatinya.',
+  })
+  async tempatTidur(@Query('facilityId') facilityId: string, @CurrentUser() user: AuthenticatedUser) {
     if (!facilityId) {
       throw AppError.badRequest(ErrorCodes.VALIDATION_FAILED, 'Parameter facilityId wajib diisi.');
     }
-    return this.inap.daftarTempatTidur(requireSchema(user), facilityId);
+    const schema = requireSchema(user);
+    const baris = await this.inap.daftarTempatTidur(schema, facilityId);
+
+    /*
+     * Daftar tempat tidur mengembalikan nama penghuninya, dan HEALTH_BED.READ
+     * dipegang pula oleh peran yang sengaja DITOLAK indeks pasien maupun papan
+     * bangsal — administrator eMedik salah satunya.
+     *
+     * Akibatnya pintu depan terkunci sementara pintu samping terbuka: UAT
+     * persona memperlihatkan administrator menerima 403 pada /health/patients
+     * lalu memperoleh nama lengkap, nomor rawat inap, dan letak kamar dari
+     * jalan ini — termasuk bahwa seseorang berada di kamar isolasi, yang
+     * dengan sendirinya sudah menyatakan sesuatu yang klinis.
+     *
+     * Yang dibuang hanya identitas penghuninya. Kode tempat tidur, kamar,
+     * status, kelas rawat, dan waktu pembersihan tetap utuh, sebab itulah yang
+     * diperlukan pengurus sarana. Peran yang memang mengurus pasien — perawat,
+     * petugas bangsal, direktur — seluruhnya memegang HEALTH_ADMISSION.READ,
+     * sehingga tidak ada pekerjaan yang hilang karena penyamaran ini.
+     */
+    const kurang = await this.izin.findMissing(schema, user.userId, ['HEALTH_ADMISSION.READ'], {
+      isDemo: user.isDemo,
+      activeRoleId: user.activeRoleId,
+    });
+    return samarkanPenghuniTempatTidur(baris, kurang.length === 0);
   }
 
   @ApiBearerAuth('access-token')

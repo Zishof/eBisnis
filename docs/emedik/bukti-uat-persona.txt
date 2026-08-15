@@ -1,0 +1,532 @@
+==============================================================================
+UAT PERSONA eMEDIK — TIAP PERAN DIJALANKAN SEBAGAI ORANG SUNGGUHAN
+Waktu   : 2026-08-10T12:15:51.599Z
+Peladen : http://localhost:3200/api/v1
+Schema  : demo
+==============================================================================
+
+------------------------------------------------------------------------------
+Petugas pendaftaran  [HEALTH_REGISTRATION_CLERK]
+  Membuka antrean pagi, mencari pasien, mendaftarkan kunjungan.
+    ... batas laju login tercapai; menunggu 61 detik (percobaan 1/4)
+  Yang dilakukannya:
+    LULUS  GET /health/queue
+    LULUS  GET /health/patients?q=a
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/him/coding/worklist — pendaftaran tidak mengoding diagnosis
+    LULUS  GET /health/fee/policies — pendaftaran tidak melihat kebijakan jasa
+    LULUS  GET /health/investor/projections — pendaftaran tidak melihat proyeksi investor
+
+------------------------------------------------------------------------------
+Perawat triase  [HEALTH_TRIAGE_NURSE]
+  Menerima pasien gawat darurat dan menetapkan tingkat kegawatannya.
+  Yang dilakukannya:
+    LULUS  GET /health/acute/ed/board
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/acute/ot/schedule — triase bukan kamar operasi
+    LULUS  GET /health/pharmacy/prescriptions — triase tidak melihat resep
+    LULUS  POST /health/claims — triase tidak membuat klaim
+
+------------------------------------------------------------------------------
+Dokter  [HEALTH_DOCTOR]
+  Memeriksa pasien, menulis catatan, meresepkan, memesan laboratorium.
+  Yang dilakukannya:
+    LULUS  GET /health/patients?q=a
+    LULUS  GET /health/queue
+    LULUS  GET /health/lab/worklist
+    LULUS  GET /health/pharmacy/prescriptions
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/fee/policies — dokter tidak menetapkan persentase jasanya sendiri
+    LULUS  GET /health/investor/distributions — dokter tidak melihat distribusi investor
+    LULUS  GET /health/sample/runs — dokter tidak mengelola data contoh
+
+------------------------------------------------------------------------------
+Perawat  [HEALTH_NURSE]
+  Memberi obat menurut eMAR, mencatat asuhan, melaporkan insiden.
+  Yang dilakukannya:
+    LULUS  GET /health/pharmacy/administrations
+    LULUS  GET /health/inpatient/board
+  Yang harus DITOLAK sistem:
+    LULUS  POST /health/him/records/check — perawat tidak mengoding rekam medis
+    LULUS  POST /health/pharmacy/prescriptions — perawat memberikan obat, tetapi tidak meresepkannya
+    LULUS  GET /health/fee-contract — perawat tidak melihat kontrak fee
+    LULUS  GET /health/device-maintenance/work-orders — perawat bukan teknisi biomedis
+
+------------------------------------------------------------------------------
+Koder rekam medis  [HEALTH_CODER]
+  Mengoding diagnosis dan tindakan dari berkas rekam medis.
+  Yang dilakukannya:
+    LULUS  GET /health/him/coding/worklist
+    LULUS  GET /health/patients?q=a
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/him/incidents — koder tidak menelaah insiden keselamatan
+    LULUS  POST /health/claims — koder membaca klaim untuk mengoding, tetapi tidak mengajukannya
+    LULUS  POST /health/him/legal-holds — koder tidak menahan berkas untuk perkara hukum
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_CODER tidak memegang HEALTH_HIM_CODING.VERIFY — yang mengoding tidak boleh memverifikasi kodingnya sendiri
+
+------------------------------------------------------------------------------
+Verifikator koding  [HEALTH_CODING_VERIFIER]
+  Memeriksa hasil koding orang lain sebelum klaim diajukan.
+  Yang dilakukannya:
+    LULUS  GET /health/him/coding/worklist
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/claims — verifikator koding tidak mengajukan klaim
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_CODING_VERIFIER tidak memegang HEALTH_HIM_CODING.CREATE — yang memverifikasi tidak boleh membuat koding
+
+------------------------------------------------------------------------------
+Petugas klaim  [HEALTH_CLAIM_OFFICER]
+  Menyusun berkas klaim dan mengajukannya ke penjamin.
+  Yang dilakukannya:
+    LULUS  GET /health/claims
+    LULUS  GET /health/bpjs/sep
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/fee/policies — petugas klaim tidak menetapkan jasa
+    LULUS  GET /health/investor/projections — petugas klaim tidak melihat proyeksi investor
+
+------------------------------------------------------------------------------
+Apoteker  [HEALTH_PHARMACIST]
+  Menelaah resep dan menyerahkan obat. Ia tidak meresepkan, dan tidak memberikannya di bangsal.
+  Yang dilakukannya:
+    LULUS  GET /health/pharmacy/prescriptions
+  Yang harus DITOLAK sistem:
+    LULUS  POST /health/pharmacy/prescriptions — apoteker menelaah resep, tetapi tidak menulisnya
+    LULUS  GET /health/pharmacy/administrations — pemberian obat di bangsal dicatat perawat, bukan apoteker
+    LULUS  GET /health/acute/ot/schedule — apoteker bukan kamar operasi
+    LULUS  GET /health/fee-contract — apoteker tidak melihat kontrak fee
+
+------------------------------------------------------------------------------
+Analis laboratorium  [HEALTH_LAB_ANALYST]
+  Mengerjakan pemeriksaan dan melaporkan hasil kritis.
+  Yang dilakukannya:
+    LULUS  GET /health/lab/worklist
+    LULUS  GET /health/lab/critical
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/pharmacy/prescriptions — analis lab tidak melihat resep
+    LULUS  GET /health/him/coding/worklist — analis lab tidak mengoding
+
+------------------------------------------------------------------------------
+Petugas puskesmas  [HEALTH_PHC_OFFICER]
+  Kunjungan rumah, penimbangan balita, imunisasi, cakupan program.
+  Yang dilakukannya:
+    LULUS  GET /health/community/home-visits/worklist
+    LULUS  GET /health/community/coverage
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/acute/icu/board — puskesmas bukan ICU
+    LULUS  GET /health/fee/policies — puskesmas tidak menetapkan jasa
+
+------------------------------------------------------------------------------
+Kader posyandu  [HEALTH_CADRE]
+  Mencatat penimbangan balita di posyandu. Bukan tenaga kesehatan berizin.
+    ... batas laju login tercapai; menunggu 61 detik (percobaan 1/4)
+  Yang dilakukannya:
+    LULUS  GET /health/community/home-visits/worklist
+  Yang harus DITOLAK sistem:
+    LULUS  POST /health/community/immunization — kader memberitahu jadwal imunisasi, tetapi tidak menyuntikkannya
+    LULUS  GET /health/him/incidents — kader melaporkan insiden, tetapi tidak membaca register insiden
+    LULUS  GET /health/patients?q=a — kader tidak membuka indeks pasien fasilitas
+    LULUS  GET /health/pharmacy/prescriptions — kader tidak melihat resep
+    LULUS  GET /health/lab/worklist — kader tidak melihat hasil laboratorium
+    LULUS  GET /health/him/coding/worklist — kader tidak mengoding
+
+------------------------------------------------------------------------------
+Penyusun kontrak fee  [HEALTH_CONTRACT_DRAFTER]
+  Menyusun rancangan kontrak bagi hasil dengan investor.
+  Yang dilakukannya:
+    LULUS  GET /health/fee-contract
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — urusan kontrak tidak menyentuh data pasien
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_CONTRACT_DRAFTER tidak memegang HEALTH_FEE_CONTRACT.APPROVE — yang menyusun kontrak tidak boleh menyetujuinya
+    LULUS  HEALTH_CONTRACT_DRAFTER tidak memegang HEALTH_FEE_CONTRACT.ACTIVATE — yang menyusun kontrak tidak boleh mengaktifkannya
+
+------------------------------------------------------------------------------
+Penyetuju kontrak fee  [HEALTH_CONTRACT_APPROVER]
+  Menyetujui dan mengaktifkan kontrak yang disusun orang lain.
+  Yang dilakukannya:
+    LULUS  GET /health/fee-contract
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — urusan kontrak tidak menyentuh data pasien
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_CONTRACT_APPROVER tidak memegang HEALTH_FEE_CONTRACT.CREATE — yang menyetujui tidak boleh menyusun kontraknya sendiri
+
+------------------------------------------------------------------------------
+Petugas kalkulasi jasa  [HEALTH_SETTLEMENT_CLERK]
+  Menghitung jasa yang jatuh kepada tiap pemberi layanan.
+  Yang dilakukannya:
+    LULUS  GET /health/fee/policies
+    LULUS  GET /health/fee/contributors
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — kalkulasi jasa tidak menuntut data pasien
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_SETTLEMENT_CLERK tidak memegang HEALTH_FEE_SETTLEMENT.POST — yang menghitung jasa tidak boleh membayarkannya
+
+------------------------------------------------------------------------------
+Petugas pembayaran jasa  [HEALTH_SETTLEMENT_PAYER]
+  Membayarkan jasa yang sudah dihitung orang lain.
+  Yang dilakukannya:
+    LULUS  GET /health/investor/distributions
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — pembayaran jasa tidak menuntut data pasien
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_SETTLEMENT_PAYER tidak memegang HEALTH_FEE_SETTLEMENT.CREATE — yang membayar tidak boleh menghitung sendiri yang dibayarnya
+
+------------------------------------------------------------------------------
+Petugas kebijakan jasa  [HEALTH_FEE_ADMINISTRATOR]
+  Menyusun kebijakan persentase jasa pelayanan.
+  Yang dilakukannya:
+    LULUS  GET /health/fee/policies
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — kebijakan jasa tidak menuntut data pasien
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_FEE_ADMINISTRATOR tidak memegang HEALTH_FEE_POLICY.APPROVE — yang menyusun kebijakan jasa tidak boleh menyetujuinya
+
+------------------------------------------------------------------------------
+Pemegang kontrak investor  [HEALTH_INVESTOR_VIEWER]
+  Melihat kinerja investasinya. Aturan R2: tidak pernah melihat data pasien.
+  Yang dilakukannya:
+    LULUS  GET /health/investor/projections
+    LULUS  GET /health/fee-contract/investor-summary
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — ATURAN MUTLAK R2 — investor tidak pernah melihat data pasien
+    LULUS  GET /health/queue — antrean menyebut nama pasien
+    LULUS  GET /health/lab/critical — hasil kritis adalah data klinis
+    LULUS  GET /health/pharmacy/prescriptions — resep adalah data klinis
+    LULUS  GET /health/him/coding/worklist — koding memuat diagnosis
+    LULUS  GET /health/acute/ed/board — papan gawat darurat menyebut pasien
+    LULUS  GET /health/acute/icu/board — papan ICU menyebut pasien
+    LULUS  GET /health/inpatient/board — papan rawat inap menyebut pasien
+    LULUS  GET /health/bpjs/sep — SEP memuat identitas peserta
+    LULUS  GET /health/community/home-visits/worklist — kunjungan rumah memuat alamat pasien
+    LULUS  GET /health/patients/00000000-0000-4000-8000-000000000000 — jalan berparameter pun harus tertutup
+
+------------------------------------------------------------------------------
+Teknisi biomedis  [HEALTH_BIOMEDICAL_ENGINEER]
+  Memelihara alat medis, mengerjakan perintah kerja, uji keselamatan.
+  Yang dilakukannya:
+    LULUS  GET /health/device-maintenance/work-orders
+    LULUS  GET /health/devices
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — teknisi alat tidak membuka data pasien
+    LULUS  GET /health/lab/critical — teknisi alat tidak melihat hasil pasien
+
+------------------------------------------------------------------------------
+Petugas hukum  [HEALTH_LEGAL_OFFICER]
+  Menahan berkas untuk perkara hukum, melayani permintaan informasi.
+  Yang dilakukannya:
+    LULUS  GET /health/patients?q=a
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/fee/policies — urusan hukum tidak menetapkan jasa
+    LULUS  POST /health/claims — urusan hukum tidak mengajukan klaim
+
+------------------------------------------------------------------------------
+Petugas keselamatan pasien  [HEALTH_PATIENT_SAFETY_OFFICER]
+  Menelaah insiden keselamatan dan menindaklanjutinya.
+  Yang dilakukannya:
+    LULUS  GET /health/him/incidents
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/fee-contract — keselamatan pasien tidak melihat kontrak fee
+    LULUS  GET /health/claims — keselamatan pasien tidak menangani klaim
+
+------------------------------------------------------------------------------
+Pengelola website fasilitas  [HEALTH_WEB_EDITOR]
+  Menyunting konten publik. Sama sekali di luar wilayah klinis.
+    ... batas laju login tercapai; menunggu 61 detik (percobaan 1/4)
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — pengelola website tidak membuka data pasien
+    LULUS  GET /health/queue — pengelola website tidak melihat antrean
+    LULUS  GET /health/claims — pengelola website tidak melihat klaim
+    LULUS  GET /health/fee/policies — pengelola website tidak melihat kebijakan jasa
+    LULUS  GET /health/lab/worklist — pengelola website tidak melihat laboratorium
+
+------------------------------------------------------------------------------
+Dokter bedah  [HEALTH_SURGEON]
+  Menjadwalkan operasi, menandai sisi sayatan, mengoperasi.
+  Yang dilakukannya:
+    LULUS  GET /health/acute/ot/schedule
+    LULUS  GET /health/patients?q=a
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/pharmacy/administrations — pemberian obat di bangsal bukan wewenang bedah
+    LULUS  GET /health/fee/policies — dokter bedah tidak menetapkan persentase jasanya sendiri
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_SURGEON tidak memegang HEALTH_SURGERY.CHECKLIST — yang menyayat tidak mencentang daftar periksa keselamatannya sendiri
+
+------------------------------------------------------------------------------
+Perawat instrumen  [HEALTH_SCRUB_NURSE]
+  Mencentang daftar periksa keselamatan dan menghitung kasa.
+  Yang dilakukannya:
+    LULUS  GET /health/acute/ot/checklist-items
+    LULUS  GET /health/acute/ot/schedule
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/fee/policies — perawat instrumen tidak menetapkan kebijakan jasa
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_SCRUB_NURSE tidak memegang HEALTH_SURGERY.INCISE — yang mencentang daftar periksa bukan yang menyayat
+    LULUS  HEALTH_SCRUB_NURSE tidak memegang HEALTH_SURGERY.CREATE — perawat instrumen tidak menjadwalkan operasi
+
+------------------------------------------------------------------------------
+Dokter intensif  [HEALTH_INTENSIVIST]
+  Mengelola papan ICU dan menilai skor perawatan intensif.
+  Yang dilakukannya:
+    LULUS  GET /health/acute/icu/board
+    LULUS  GET /health/inpatient/board
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/acute/ot/schedule — ICU bukan kamar operasi
+    LULUS  GET /health/claims — dokter intensif tidak menangani klaim
+
+------------------------------------------------------------------------------
+Radiografer  [HEALTH_RADIOGRAPHER]
+  Mengerjakan pemeriksaan radiologi dan memasukkan hasilnya.
+  Yang dilakukannya:
+    LULUS  GET /health/lab/worklist
+    LULUS  GET /health/patients?q=a
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/pharmacy/prescriptions — radiografer tidak melihat resep
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_RADIOGRAPHER tidak memegang HEALTH_LAB_RESULT.VERIFY_RESULT — yang memasukkan hasil tidak memverifikasi hasilnya sendiri
+
+------------------------------------------------------------------------------
+Penanggung jawab laboratorium  [HEALTH_LAB_SUPERVISOR]
+  Memverifikasi hasil, melaporkan nilai kritis, menelaah hasil alat.
+  Yang dilakukannya:
+    LULUS  GET /health/lab/critical
+    LULUS  GET /health/devices/observations/pending-link
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/fee/policies — penanggung jawab lab tidak menetapkan jasa
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_LAB_SUPERVISOR tidak memegang HEALTH_LAB_RESULT.CREATE — yang memverifikasi hasil tidak memasukkannya sendiri
+
+------------------------------------------------------------------------------
+Tenaga gizi  [HEALTH_NUTRITIONIST]
+  Memantau pertumbuhan dan status gizi, terutama balita.
+  Yang dilakukannya:
+    LULUS  GET /health/community/coverage
+    LULUS  GET /health/community/home-visits/worklist
+  Yang harus DITOLAK sistem:
+    LULUS  POST /health/community/immunization — tenaga gizi tidak mengimunisasi
+    LULUS  GET /health/pharmacy/prescriptions — tenaga gizi tidak melihat resep
+
+------------------------------------------------------------------------------
+Petugas bangsal  [HEALTH_WARD_CLERK]
+  Mengurus ketersediaan tempat tidur dan perpindahan pasien.
+  Yang dilakukannya:
+    LULUS  GET /health/inpatient/beds
+    LULUS  GET /health/inpatient/board
+  Yang harus DITOLAK sistem:
+    LULUS  POST /health/inpatient/admissions — petugas bangsal mengatur tempat tidur, tetapi tidak memutuskan rawat inap
+    LULUS  GET /health/patients?q=a — petugas bangsal tidak membuka indeks pasien
+
+------------------------------------------------------------------------------
+Tenaga teknis kefarmasian  [HEALTH_PHARMACY_TECHNICIAN]
+  Menyiapkan dan menyerahkan obat menurut resep yang sudah ditelaah.
+  Yang dilakukannya:
+    LULUS  GET /health/pharmacy/prescriptions
+  Yang harus DITOLAK sistem:
+    LULUS  POST /health/pharmacy/prescriptions — tenaga teknis tidak menulis resep
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_PHARMACY_TECHNICIAN tidak memegang HEALTH_PRESCRIPTION.REVIEW — telaah resep wewenang apoteker, bukan tenaga teknis
+
+------------------------------------------------------------------------------
+Penanggung jawab farmasi  [HEALTH_PHARMACY_MANAGER]
+  Menyetujui terminologi obat dan pemetaan KFA.
+  Yang dilakukannya:
+    LULUS  GET /health/terminology/catalog
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/pharmacy/prescriptions — penanggung jawab farmasi mengurus terminologi, bukan resep perorangan
+    LULUS  GET /health/patients?q=a — urusan terminologi tidak menyentuh data pasien
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_PHARMACY_MANAGER tidak memegang HEALTH_TERMINOLOGY.IMPORT — yang menyetujui impor terminologi tidak mengimpornya sendiri
+
+------------------------------------------------------------------------------
+Verifikator klaim internal  [HEALTH_CLAIM_VERIFIER]
+  Memeriksa klaim yang disusun petugas klaim sebelum diajukan.
+    ... batas laju login tercapai; menunggu 61 detik (percobaan 1/4)
+  Yang dilakukannya:
+    LULUS  GET /health/claims
+    LULUS  GET /health/bpjs/sep
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/fee/policies — verifikator klaim tidak menetapkan jasa
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_CLAIM_VERIFIER tidak memegang HEALTH_CLAIM.CREATE — yang memverifikasi klaim tidak menyusunnya sendiri
+
+------------------------------------------------------------------------------
+Petugas keuangan rumah sakit  [HEALTH_FINANCE_OFFICER]
+  Memetakan akuntansi, merekonsiliasi klaim, menutup periode.
+  Yang dilakukannya:
+    LULUS  GET /health/accounting/coa-template
+    LULUS  GET /health/claims
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — urusan keuangan tidak menuntut data pasien
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_FINANCE_OFFICER tidak memegang HEALTH_FEE_SETTLEMENT.POST — yang membalik pembayaran jasa tidak membayarkannya
+    LULUS  HEALTH_FINANCE_OFFICER tidak memegang HEALTH_FEE_SETTLEMENT.APPROVE — yang membalik pembayaran jasa tidak menyetujuinya
+
+------------------------------------------------------------------------------
+Penyetuju kebijakan jasa  [HEALTH_FEE_APPROVER]
+  Menyetujui dan mengaktifkan kebijakan jasa yang disusun orang lain.
+  Yang dilakukannya:
+    LULUS  GET /health/fee/policies
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — kebijakan jasa tidak menuntut data pasien
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_FEE_APPROVER tidak memegang HEALTH_FEE_POLICY.CREATE — yang menyetujui kebijakan jasa tidak menyusunnya sendiri
+
+------------------------------------------------------------------------------
+Petugas tarif  [HEALTH_TARIFF_OFFICER]
+  Mengimpor regulasi tarif dan memelihara data penjamin.
+  Yang dilakukannya:
+    LULUS  GET /health/tariff/versions
+    LULUS  GET /health/tariff/regulations
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — urusan tarif tidak menyentuh data pasien
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_TARIFF_OFFICER tidak memegang HEALTH_TARIFF.APPROVE — yang mengimpor tarif tidak menyetujuinya
+    LULUS  HEALTH_TARIFF_OFFICER tidak memegang HEALTH_TARIFF.ACTIVATE — yang mengimpor tarif tidak mengaktifkannya
+
+------------------------------------------------------------------------------
+Petugas katalog layanan  [HEALTH_SERVICE_CATALOGUER]
+  Menyusun katalog layanan dan pemetaan kodenya.
+  Yang dilakukannya:
+    LULUS  GET /health/master-data/services
+    LULUS  GET /health/master-data/code-mappings
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — katalog layanan tidak menyentuh data pasien
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_SERVICE_CATALOGUER tidak memegang HEALTH_SERVICE_CATALOG.ACTIVATE — yang menyusun katalog layanan tidak mengaktifkannya
+
+------------------------------------------------------------------------------
+Manajer mutu  [HEALTH_QUALITY_MANAGER]
+  Mengukur indikator mutu, menelaah insiden, menyetujui akses darurat.
+  Yang dilakukannya:
+    LULUS  GET /health/him/quality/dashboard
+    LULUS  GET /health/him/incidents
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — penelaah akses darurat tidak perlu membaca rekam yang diaksesnya
+    LULUS  GET /health/fee/policies — manajer mutu tidak menetapkan jasa
+
+------------------------------------------------------------------------------
+Petugas rekam medis  [HEALTH_MEDICAL_RECORD_OFFICER]
+  Menggabungkan pasien ganda, melayani pelepasan informasi, menelaah jejak akses.
+  Yang dilakukannya:
+    LULUS  GET /health/patients/duplicates/open
+    LULUS  GET /health/patients?q=a
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/fee/policies — rekam medis tidak menetapkan jasa
+    LULUS  POST /health/claims — rekam medis tidak mengajukan klaim
+
+------------------------------------------------------------------------------
+Petugas interoperabilitas  [HEALTH_INTEROP_OFFICER]
+  Mengurus kemampuan SATUSEHAT dan verifikasi sambungan BPJS.
+  Yang dilakukannya:
+    LULUS  GET /health/satusehat/capabilities
+    LULUS  GET /health/satusehat/catalog
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — petugas interoperabilitas mengurus sambungan, bukan isi rekam
+    LULUS  POST /health/bpjs/accounts — ia memverifikasi sambungan, tetapi tidak memegang kredensialnya
+
+------------------------------------------------------------------------------
+Petugas hasil alat  [HEALTH_DEVICE_INBOX_CLERK]
+  Menautkan hasil alat yang belum berpasangan ke pasien yang benar.
+  Yang dilakukannya:
+    LULUS  GET /health/devices/observations/pending-link
+    LULUS  GET /health/patients?q=a
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/device-maintenance/work-orders — petugas hasil alat bukan teknisi
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_DEVICE_INBOX_CLERK tidak memegang HEALTH_DEVICE_INBOX.REVIEW — yang menautkan hasil tidak menelaah tautannya sendiri
+
+------------------------------------------------------------------------------
+Analis keamanan alat medis  [HEALTH_DEVICE_SECURITY_ANALYST]
+  Menilai risiko keamanan alat dan mencatat insiden keamanannya.
+  Yang dilakukannya:
+    LULUS  GET /health/device-maintenance/security-incidents
+    LULUS  GET /health/device-maintenance/risk
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — analis keamanan alat tidak membuka data pasien
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_DEVICE_SECURITY_ANALYST tidak memegang HEALTH_DEVICE_SECURITY.APPROVE — yang menilai risiko alat tidak menyetujui penilaiannya sendiri
+
+------------------------------------------------------------------------------
+Analis investasi rumah sakit  [HEALTH_INVESTOR_ANALYST]
+  Menyusun proyeksi dan waterfall bagi hasil.
+    ... batas laju login tercapai; menunggu 61 detik (percobaan 1/4)
+  Yang dilakukannya:
+    LULUS  GET /health/investor/projections
+    LULUS  GET /health/investor/distributions
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — ATURAN MUTLAK R2 — investor tidak pernah melihat data pasien
+    LULUS  GET /health/queue — antrean menyebut nama pasien
+    LULUS  GET /health/him/coding/worklist — koding memuat diagnosis
+  Hak yang tidak boleh dipegangnya:
+    LULUS  HEALTH_INVESTOR_ANALYST tidak memegang HEALTH_INVESTOR_DISTRIBUTION.POST — yang menyusun distribusi tidak membayarkannya
+
+------------------------------------------------------------------------------
+Direktur / kepala fasilitas  [HEALTH_DIRECTOR]
+  Mengawasi arus pelayanan, mutu, dan keuangan. Ia mengawasi, bukan merawat.
+  Yang dilakukannya:
+    LULUS  GET /health/him/quality/dashboard
+    LULUS  GET /health/inpatient/board
+    LULUS  GET /health/claims
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — jabatan tinggi bukan alasan klinis untuk membuka rekam pasien
+    LULUS  GET /health/pharmacy/prescriptions — direktur tidak membaca resep perorangan
+    LULUS  POST /health/claims — direktur tidak mengajukan klaim
+
+------------------------------------------------------------------------------
+Administrator eMedik  [HEALTH_ADMIN]
+  Menyiapkan fasilitas, unit, alat, dan sambungan. Ia mengurus sistem, bukan pasien.
+  Yang dilakukannya:
+    LULUS  GET /health/sample/catalog
+    LULUS  GET /health/devices
+    LULUS  GET /health/master-data/samples
+  Yang harus DITOLAK sistem:
+    LULUS  GET /health/patients?q=a — administrator sistem bukan tenaga kesehatan
+    LULUS  GET /health/pharmacy/prescriptions — administrator tidak membaca resep
+    LULUS  GET /health/lab/critical — administrator tidak membaca hasil laboratorium
+    LULUS  GET /health/him/coding/worklist — administrator tidak membaca diagnosis
+
+==============================================================================
+DAFTAR TEMPAT TIDUR — IDENTITAS PENGHUNI
+Diperiksa pada fasilitas yang tempat tidurnya BENAR-BENAR TERISI.
+Nol baris bukan bukti keamanan; ia hanya berarti tidak ada yang dilihat.
+==============================================================================
+    LULUS  HEALTH_ADMIN: daftar tempat tidur terjawab (3 baris)
+    LULUS  HEALTH_ADMIN TIDAK melihat nama penghuni — administrator ditolak indeks pasien, jadi ia tidak boleh memperolehnya lewat tempat tidur
+    LULUS  HEALTH_NURSE: daftar tempat tidur terjawab (3 baris)
+    LULUS  HEALTH_NURSE MELIHAT nama penghuni — perawat memegang HEALTH_ADMISSION.READ dan memang merawat penghuninya
+
+==============================================================================
+ATURAN MUTLAK — PERAN NON-KLINIS TIDAK MEMEGANG SATU PUN HAK DATA PASIEN
+Disapu atas SELURUH menu berdata pasien, bukan hanya yang kebetulan
+diuji persona di atas. Satu hak yang lolos di sini membuka seluruh
+rekam bagi orang yang tidak pernah merawat siapa pun.
+==============================================================================
+    LULUS  HEALTH_INVESTOR_VIEWER tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_INVESTOR_ANALYST tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_ADMIN tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_WEB_EDITOR tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_TARIFF_OFFICER tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_FEE_ADMINISTRATOR tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_FEE_APPROVER tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_CONTRACT_DRAFTER tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_CONTRACT_APPROVER tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_SETTLEMENT_CLERK tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_SETTLEMENT_PAYER tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_SERVICE_CATALOGUER tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_INTEROP_OFFICER tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_DEVICE_SECURITY_ANALYST tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_BIOMEDICAL_ENGINEER tidak memegang satu pun hak berdata pasien
+    LULUS  HEALTH_PHARMACY_MANAGER tidak memegang satu pun hak berdata pasien
+
+==============================================================================
+PERAN YANG BELUM DIUJI PERSONA
+==============================================================================
+  tersemai 43 peran; diuji persona 43; belum 0
+
+  Angka ini BUKAN kelulusan. Ia daftar yang masih harus ditulis persona-
+  nya. Menghapusnya dari laporan akan membuat cakupan separuh tampak penuh.
+
+==============================================================================
+RINGKASAN — lulus 217, gagal 0
+Cakupan persona: 43/43 peran; 0 belum berpersona.
+==============================================================================
