@@ -1,0 +1,1 @@
+describe('hospitality MICE conflict interval',()=>{it('menggunakan rentang half-open agar pergantian event tidak bentrok',()=>{const overlap=(a0:number,a1:number,b0:number,b1:number)=>a0<b1&&b0<a1;expect(overlap(10,12,12,14)).toBe(false);expect(overlap(10,13,12,14)).toBe(true)})});

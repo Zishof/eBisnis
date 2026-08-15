@@ -1,0 +1,2 @@
+import{creditAvailable,money,signedAmount}from'./hospitality-folio';describe('hospitality folio money',()=>{it('menolak lebih dari dua desimal',()=>{expect(()=>money('1.001')).toThrow();expect(money('100.10').toFixed(2)).toBe('100.10')});it('menentukan arah ledger tanpa floating point',()=>{expect(signedAmount('CHARGE','125000.25')).toBe('125000.25');expect(signedAmount('PAYMENT',125000.25)).toBe('-125000.25');expect(creditAvailable('1000','250.25','100').toFixed(2)).toBe('649.75')})});
+

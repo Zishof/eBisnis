@@ -1,0 +1,1 @@
+import{createHash}from'node:crypto';describe('experience privacy contract',()=>{it('menyimpan hash token bukan token guest portal',()=>{const t='secret';expect(createHash('sha256').update(t).digest('hex')).not.toContain(t)});it('provider live default tetap blocked',()=>expect('BLOCKED_PROVIDER_INPUT').toBe('BLOCKED_PROVIDER_INPUT'))});

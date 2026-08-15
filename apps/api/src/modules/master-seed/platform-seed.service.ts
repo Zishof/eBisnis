@@ -12,6 +12,10 @@ import {
   EPESANTREN_PRODUCT_CODE,
   ESCHOOL_PRODUCT_CODE,
   FEATURE_CATALOG_SEED,
+  HOSPITALITY_FEATURE_CATALOG_SEED,
+  HOSPITALITY_MODULE_CATALOG_SEED,
+  HOSPITALITY_PLAN_SEED,
+  HOSPITALITY_PRODUCT_CODE,
   LOCALE_SEED,
   MODULE_CATALOG_SEED,
   PAYMENT_CHANNEL_SEED,
@@ -55,6 +59,7 @@ export class PlatformSeedService {
     summary.plans = await this.seedPlans();
     summary.addOns = await this.seedAddOns();
     summary.epesantrenCatalog = await this.seedEpesantrenCatalog();
+    summary.hospitalityCatalog = await this.seedHospitalityCatalog();
     summary.discounts = await this.seedDiscountPrograms();
     summary.paymentChannels = await this.seedPaymentProvider();
     summary.migrationCatalog = await this.seedMigrationCatalog();
@@ -850,6 +855,183 @@ export class PlatformSeedService {
       });
     }
 
+    return 1;
+  }
+
+  /**
+   * MI-4 MitraInap: katalog dan entitlement memakai mesin platform bersama.
+   * Paket sengaja tidak mempunyai SubscriptionPlanPrice sampai keputusan
+   * komersial tersedia; public API mengembalikan `price: null` dan metadata
+   * `PRICE_CONFIGURATION_REQUIRED`, bukan angka rekaan.
+   */
+  private async seedHospitalityCatalog(): Promise<number> {
+    const product = await this.prisma.subscriptionProduct.upsert({
+      where: { code: HOSPITALITY_PRODUCT_CODE },
+      create: {
+        code: HOSPITALITY_PRODUCT_CODE,
+        name: 'MitraInap',
+        nameKey: 'product.mitrainap',
+        productType: 'SUBSCRIPTION',
+        defaultTrialDays: 0,
+        isSystem: true,
+        metadata: { priceStatus: HOSPITALITY_PLAN_SEED.priceStatus },
+      },
+      update: {
+        name: 'MitraInap',
+        metadata: { priceStatus: HOSPITALITY_PLAN_SEED.priceStatus },
+      },
+    });
+
+    for (const module of HOSPITALITY_MODULE_CATALOG_SEED) {
+      await this.prisma.moduleCatalog.upsert({
+        where: { code: module.code },
+        create: {
+          code: module.code,
+          name: module.name,
+          nameKey: `module.${module.code.toLowerCase()}`,
+          descriptionKey: `module.${module.code.toLowerCase()}.desc`,
+          category: module.category,
+          icon: module.icon,
+          dependsOn: (('dependsOn' in module ? module.dependsOn : []) ?? []) as Prisma.InputJsonValue,
+          sortOrder: module.sortOrder,
+          isSystem: true,
+        },
+        update: {
+          name: module.name,
+          category: module.category,
+          icon: module.icon,
+          dependsOn: (('dependsOn' in module ? module.dependsOn : []) ?? []) as Prisma.InputJsonValue,
+          sortOrder: module.sortOrder,
+        },
+      });
+    }
+
+    const modules = await this.prisma.moduleCatalog.findMany({
+      where: { code: { in: HOSPITALITY_MODULE_CATALOG_SEED.map((module) => module.code) } },
+      select: { id: true, code: true },
+    });
+    const moduleMap = new Map(modules.map((module) => [module.code, module.id]));
+
+    for (const feature of HOSPITALITY_FEATURE_CATALOG_SEED) {
+      const moduleId = moduleMap.get(feature.moduleCode);
+      if (!moduleId) throw new Error(`Modul ${feature.moduleCode} untuk fitur ${feature.code} tidak ditemukan.`);
+      await this.prisma.featureCatalog.upsert({
+        where: { code: feature.code },
+        create: {
+          code: feature.code,
+          moduleId,
+          name: feature.name,
+          nameKey: `feature.${feature.code.toLowerCase()}`,
+          featureType: feature.featureType,
+          unit: feature.unit ?? null,
+          sortOrder: feature.sortOrder,
+          isSystem: true,
+        },
+        update: {
+          moduleId,
+          name: feature.name,
+          featureType: feature.featureType,
+          unit: feature.unit ?? null,
+          sortOrder: feature.sortOrder,
+        },
+      });
+    }
+
+    const plan = await this.prisma.subscriptionPlan.upsert({
+      where: { code: HOSPITALITY_PLAN_SEED.code },
+      create: {
+        productId: product.id,
+        code: HOSPITALITY_PLAN_SEED.code,
+        name: HOSPITALITY_PLAN_SEED.name,
+        nameKey: 'plan.mitrainap_consultation',
+        descriptionKey: 'plan.mitrainap_consultation.desc',
+        metadata: {
+          description: HOSPITALITY_PLAN_SEED.description,
+          priceStatus: HOSPITALITY_PLAN_SEED.priceStatus,
+          cta: 'REQUEST_QUOTE',
+        },
+        status: 'PUBLISHED',
+        isPublic: true,
+        isRecommended: HOSPITALITY_PLAN_SEED.isRecommended,
+        sortOrder: HOSPITALITY_PLAN_SEED.sortOrder,
+      },
+      update: {
+        productId: product.id,
+        name: HOSPITALITY_PLAN_SEED.name,
+        metadata: {
+          description: HOSPITALITY_PLAN_SEED.description,
+          priceStatus: HOSPITALITY_PLAN_SEED.priceStatus,
+          cta: 'REQUEST_QUOTE',
+        },
+        status: 'PUBLISHED',
+      },
+    });
+    const effectiveFrom = new Date('2026-08-09T00:00:00.000Z');
+    const version = await this.prisma.subscriptionPlanVersion.upsert({
+      where: { planId_versionNumber: { planId: plan.id, versionNumber: 1 } },
+      create: {
+        planId: plan.id,
+        versionNumber: 1,
+        status: 'PUBLISHED',
+        effectiveFrom,
+        futureModulePolicy: 'SNAPSHOT_AT_VERSION',
+        tenantWidePolicy: 'ANY_ACTIVE_ITEM',
+        trialDays: 0,
+        gracePeriodDays: 0,
+        publishedAt: new Date(),
+        changeNote: 'MI-4: offering konsultasi tanpa harga rekaan.',
+      },
+      update: {},
+    });
+
+    for (const [index, entry] of HOSPITALITY_PLAN_SEED.modules.entries()) {
+      const moduleId = moduleMap.get(entry.code);
+      if (!moduleId) throw new Error(`Modul paket ${entry.code} tidak ditemukan.`);
+      await this.prisma.subscriptionPlanModule.upsert({
+        where: { planVersionId_moduleId: { planVersionId: version.id, moduleId } },
+        create: { planVersionId: version.id, moduleId, entitlementScope: entry.scope, included: true, sortOrder: index + 1 },
+        update: { entitlementScope: entry.scope, included: true, sortOrder: index + 1 },
+      });
+    }
+    const features = await this.prisma.featureCatalog.findMany({
+      where: { code: { in: HOSPITALITY_PLAN_SEED.features } },
+      select: { id: true, code: true },
+    });
+    const featureMap = new Map(features.map((feature) => [feature.code, feature.id]));
+    for (const featureCode of HOSPITALITY_PLAN_SEED.features) {
+      const featureId = featureMap.get(featureCode);
+      if (!featureId) throw new Error(`Fitur paket ${featureCode} tidak ditemukan.`);
+      await this.prisma.subscriptionPlanFeature.upsert({
+        where: { planVersionId_featureId: { planVersionId: version.id, featureId } },
+        create: { planVersionId: version.id, featureId, included: true, entitlementScope: 'TENANT_WIDE' },
+        update: { included: true, entitlementScope: 'TENANT_WIDE' },
+      });
+    }
+
+    // Tenant Hospitality yang dibuat sebelum MI-4 menerima assignment yang
+    // sama secara idempotent; tenant baru mendapatkannya saat registration.
+    const tenantsWithoutAssignment = await this.prisma.tenant.findMany({
+      where: {
+        verticalCode: 'HOSPITALITY',
+        packageAssignments: {
+          none: { planVersionId: version.id, status: 'ACTIVE', isActive: true },
+        },
+      },
+      select: { id: true },
+    });
+    if (tenantsWithoutAssignment.length > 0) {
+      await this.prisma.packageAssignment.createMany({
+        data: tenantsWithoutAssignment.map((tenant) => ({
+          tenantId: tenant.id,
+          planVersionId: version.id,
+          scopeType: 'TENANT' as const,
+          status: 'ACTIVE',
+        })),
+      });
+    }
+
+    // Tidak membuat baris harga. Bila kelak harga dikonfigurasi secara resmi,
+    // seed idempotent ini juga tidak menghapus atau menimpanya.
     return 1;
   }
 

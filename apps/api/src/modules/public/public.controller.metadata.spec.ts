@@ -28,3 +28,20 @@ describe('metadataForHost eMedik dan Apotik', () => {
     expect(metadata.siteName).toBe('Demo Apotik eMedik');
   });
 });
+
+describe('metadataForHost MitraInap', () => {
+  it('memakai brand MitraInap pada apex dan www', () => {
+    for (const host of ['mitrainap.id', 'www.mitrainap.id']) {
+      const metadata = metadataForHost(host);
+      expect(metadata.siteName).toBe('MitraInap.id');
+      expect(metadata.themeColor).toBe('#4f46e5');
+      expect(metadata.title).toContain('MitraInap.id');
+      expect(metadata.title).not.toContain('eBisnis');
+    }
+  });
+
+  it('mengenali subdomain mitrainap.id sebagai brand yang sama', () => {
+    const metadata = metadataForHost('app.mitrainap.id');
+    expect(metadata.siteName).toBe('MitraInap.id');
+  });
+});

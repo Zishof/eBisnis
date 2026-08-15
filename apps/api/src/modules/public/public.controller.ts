@@ -248,6 +248,7 @@ const PREVIEW_IMAGES = {
   salon: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80',
   apotik: 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=80',
   emedik: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=1200&q=80',
+  mitrainap: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
 };
 
 function cleanHost(hostname: string): string {
@@ -396,6 +397,18 @@ export function metadataForHost(hostname: string): PreviewMetadata {
     };
   }
 
+  if (host === 'mitrainap.id' || host === 'www.mitrainap.id' || host.endsWith('.mitrainap.id')) {
+    return {
+      title: 'MitraInap.id - PMS, Booking Engine, dan Operasional Hotel Terintegrasi',
+      description:
+        'Property management system, booking engine langsung, front office, housekeeping, dan folio untuk hotel, homestay, dan properti sewa.',
+      siteName: 'MitraInap.id',
+      themeColor: '#4f46e5',
+      iconDataUri: svgIcon('in', '#4f46e5'),
+      imageUrl: PREVIEW_IMAGES.mitrainap,
+    };
+  }
+
   return {
     title: 'eBisnis.id — Platform SaaS POS dan ERP Terintegrasi',
     description:
@@ -439,7 +452,18 @@ export class PublicController {
       orderBy: { sortOrder: 'asc' },
       include: {
         domains: { where: { status: 'ACTIVE' } },
-        linksTo: {
+        /*
+         * `linksFrom`, BUKAN `linksTo`. `linksTo` berisi baris yang menjadikan
+         * portal ini sebagai TARGET (portal lain menaut ke sini) -- me-`include`
+         * `target` pada baris semacam itu selalu mengembalikan portal ini
+         * sendiri, sebab `target` didefinisikan sebagai portal yang menjadi
+         * sasaran baris itu. `linksFrom` adalah baris yang portal ini sebagai
+         * SUMBERnya, sehingga `target`-nya benar portal LAIN yang dituju.
+         * Bug ini ditemukan lewat pengujian API sungguhan (MI-1 MitraInap):
+         * seluruh footer ekosistem portal (termasuk eBisnis.id, santri.info,
+         * eMedik.id) menaut ke dirinya sendiri berulang, bukan ke portal lain.
+         */
+        linksFrom: {
           where: { isActive: true },
           orderBy: { sortOrder: 'asc' },
           include: { target: { include: { domains: { where: { status: 'ACTIVE' } } } } },
@@ -458,7 +482,7 @@ export class PublicController {
         defaultLocale: p.defaultLocale,
         url: tautanKanonik(p.domains, 'PUBLIC'),
         appUrl: tautanKanonik(p.domains, 'APP'),
-        ecosystem: p.linksTo
+        ecosystem: p.linksFrom
           .map((l) => ({
             code: l.target.code,
             label: l.label,

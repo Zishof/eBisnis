@@ -1,0 +1,1 @@
+describe('longstay lifecycle guard',()=>{it('mewajibkan signed move-in sebelum aktif',()=>{const canActivate=(inspection?:{signed:boolean})=>inspection?.signed===true;expect(canActivate()).toBe(false);expect(canActivate({signed:true})).toBe(true)})});

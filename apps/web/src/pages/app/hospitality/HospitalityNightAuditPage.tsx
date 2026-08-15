@@ -1,0 +1,12 @@
+import { useState } from 'react';
+import { PageHeader } from '../../../components/ui';
+import { api } from '../../../lib/api';
+const STEPS = ['PRECHECK','ROOM_POSTING','INTERFACE_CHECK','BALANCE_RECONCILIATION','REPORT_SNAPSHOT'];
+type AuditException={id:string;severity:string;message:string;status:string};
+type AuditRun={id:string;status:string;exceptions?:AuditException[]};
+export function HospitalityNightAuditPage() {
+  const [propertyId,setPropertyId]=useState(''); const [businessDate,setBusinessDate]=useState(new Date().toISOString().slice(0,10)); const [run,setRun]=useState<AuditRun>(); const [message,setMessage]=useState('');
+  async function start(){try{const r=await api.post<AuditRun>('/hospitality/night-audit',{propertyId,businessDate},{headers:{'Idempotency-Key':crypto.randomUUID()}});setRun(r);setMessage('Night audit dimulai.');}catch{setMessage('Gagal memulai audit.')}}
+  async function step(code:string){if(!run)return;try{await api.post(`/hospitality/night-audit/${run.id}/steps/${code}`,{}, {headers:{'Idempotency-Key':`${run.id}:${code}`}});const r=await api.get<AuditRun>(`/hospitality/night-audit/${run.id}`);setRun(r);}catch{setMessage('Step gagal.')}}
+  return <div className="space-y-5"><PageHeader title="Night Audit & Income Audit" description="End-of-day resumable, exception queue, rekonsiliasi, dan business-date roll." breadcrumbs={[{label:'Beranda',href:'/app'},{label:'Hospitality'},{label:'Night Audit'}]}/><section className="rounded-xl border bg-white p-5"><div className="grid gap-3 md:grid-cols-3"><input className="rounded border p-2" value={propertyId} onChange={e=>setPropertyId(e.target.value)} placeholder="Property UUID"/><input className="rounded border p-2" type="date" value={businessDate} onChange={e=>setBusinessDate(e.target.value)}/><button className="rounded bg-blue-600 px-4 py-2 text-white" onClick={start}>Mulai Night Audit</button></div>{message&&<p className="mt-3 text-sm">{message}</p>}</section>{run&&<section className="rounded-xl border bg-white p-5"><h2 className="font-semibold">Run {run.id} · {run.status}</h2><div className="mt-4 grid gap-3 md:grid-cols-5">{STEPS.map(code=><button key={code} className="rounded border p-3 text-sm hover:bg-slate-50" onClick={()=>step(code)}>{code}</button>)}</div><div className="mt-4 space-y-2">{run.exceptions?.map(x=><div key={x.id} className="rounded bg-amber-50 p-3 text-sm">{x.severity}: {x.message} ({x.status})</div>)}</div></section>}</div>;
+}

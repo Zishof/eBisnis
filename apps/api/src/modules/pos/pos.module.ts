@@ -61,6 +61,8 @@ import { PosPromotionService } from './pos-promotion.service';
 import { bersihkanPenyaring } from './pos-held';
 import { AuthModule } from '../auth/auth.module';
 import { TenantPermissionService } from '../auth/tenant-permission.service';
+import { PosHospitalityController } from './pos-hospitality.controller';
+import { PosHospitalityService } from './pos-hospitality.service';
 
 function requireSchema(user: AuthenticatedUser): string {
   if (!user.schemaName) {
@@ -1613,7 +1615,7 @@ import { ExternalPaymentRegistry } from './external-payment.registry';
 
 @Module({
   imports: [InfrastructureModule, AuthModule],
-  controllers: [PosController],
+  controllers: [PosController, PosHospitalityController],
   providers: [
     ExternalPaymentRegistry,
     PosCatalogService,
@@ -1626,6 +1628,7 @@ import { ExternalPaymentRegistry } from './external-payment.registry';
     PosSampleService,
     PosOfflineService,
     PosPromotionService,
+    PosHospitalityService,
   ],
   exports: [
     ExternalPaymentRegistry,

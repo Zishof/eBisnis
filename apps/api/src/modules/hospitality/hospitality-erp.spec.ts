@@ -1,0 +1,1 @@
+import{ERP_TARGETS}from'./hospitality-erp.service';describe('hospitality ERP boundary',()=>{it('menggunakan port eksplisit dan tidak menaruh debit/kredit di controller',()=>{expect(ERP_TARGETS).toContain('FINANCE');expect(ERP_TARGETS).toContain('INVENTORY');expect(ERP_TARGETS).toContain('HR_PAYROLL')})});

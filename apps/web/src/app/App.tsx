@@ -20,6 +20,7 @@ import { inventoryRootRedirectFor } from '../pages/inventory/inventory-host';
 import { isCooperativeHost } from '../verticals/cooperative/cooperative-host';
 import { isSantriPortalHost, slugPondokDariHost } from '../verticals/pesantren/santri-host';
 import { PondokChrome } from '../verticals/pesantren/PondokChrome';
+import { isMitrainapDemoHost, isMitrainapPortalHost, slugPropertiDariHost } from '../verticals/hospitality/mitrainap-host';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { RegisterSuccessPage } from '../pages/auth/RegisterSuccessPage';
@@ -32,6 +33,21 @@ import { PesantrenUnitPendidikanPage } from '../pages/app/pesantren/PesantrenUni
 import { PesantrenAsramaPage } from '../pages/app/pesantren/PesantrenAsramaPage';
 import { PesantrenTagihanPage } from '../pages/app/pesantren/PesantrenTagihanPage';
 import { PesantrenProfilPage } from '../pages/app/pesantren/PesantrenProfilPage';
+import { HospitalityPropertiPage } from '../pages/app/hospitality/HospitalityPropertiPage';
+import { HospitalityTamuPage } from '../pages/app/hospitality/HospitalityTamuPage';
+import { HospitalityReservasiPage } from '../pages/app/hospitality/HospitalityReservasiPage';
+import { HospitalityFrontdeskPage } from '../pages/app/hospitality/HospitalityFrontdeskPage';
+import { HospitalityHousekeepingPage } from '../pages/app/hospitality/HospitalityHousekeepingPage';
+import { HospitalityMaintenancePage } from '../pages/app/hospitality/HospitalityMaintenancePage';
+import { HospitalityFolioPage } from '../pages/app/hospitality/HospitalityFolioPage';
+import { HospitalityNightAuditPage } from '../pages/app/hospitality/HospitalityNightAuditPage';
+import { HospitalityMicePage } from '../pages/app/hospitality/HospitalityMicePage';
+import { HospitalityGuestServicePage } from '../pages/app/hospitality/HospitalityGuestServicePage';
+import { HospitalityLongstayPage } from '../pages/app/hospitality/HospitalityLongstayPage';
+import { HospitalityExperiencePage } from '../pages/app/hospitality/HospitalityExperiencePage';
+import { HospitalityErpPage } from '../pages/app/hospitality/HospitalityErpPage';
+import { HospitalityInsightPage } from '../pages/app/hospitality/HospitalityInsightPage';
+import { HospitalityGoLivePage } from '../pages/app/hospitality/HospitalityGoLivePage';
 import { PesantrenBeritaPage } from '../pages/app/pesantren/PesantrenBeritaPage';
 import { PesantrenPsbPage } from '../pages/app/pesantren/PesantrenPsbPage';
 import { PesantrenKioskPage } from '../pages/app/pesantren/PesantrenKioskPage';
@@ -403,6 +419,56 @@ const PenawaranPesantrenPage = lazy(() =>
   })),
 );
 
+// Portal MitraInap.id (Hospitality) -- kerangkanya sendiri, sebab `PublicLayout`
+// memakai merek eBisnis dan keterangan footer tentang retail dan F&B.
+const MitrainapLayout = lazy(() =>
+  import('../verticals/hospitality/MitrainapLayout').then((m) => ({
+    default: m.MitrainapLayout,
+  })),
+);
+const MitrainapHomePage = lazy(() =>
+  import('../verticals/hospitality/MitrainapHomePage').then((m) => ({
+    default: m.MitrainapHomePage,
+  })),
+);
+const MitrainapSolusiPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapSolusiPage').then((m) => ({
+    default: m.MitrainapSolusiPage,
+  })),
+);
+const MitrainapFaqPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapFaqPage').then((m) => ({
+    default: m.MitrainapFaqPage,
+  })),
+);
+const MitrainapPricingPage = lazy(() => import('../verticals/hospitality/MitrainapResourcesPage').then((m) => ({ default: m.MitrainapPricingPage })));
+const MitrainapDemoPage = lazy(() => import('../verticals/hospitality/MitrainapResourcesPage').then((m) => ({ default: m.MitrainapDemoPage })));
+const MitrainapBlogPage = lazy(() => import('../verticals/hospitality/MitrainapResourcesPage').then((m) => ({ default: m.MitrainapBlogPage })));
+const MitrainapHelpPage = lazy(() => import('../verticals/hospitality/MitrainapResourcesPage').then((m) => ({ default: m.MitrainapHelpPage })));
+const MitrainapKelolaPesananPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapKelolaPesananPage').then((m) => ({
+    default: m.MitrainapKelolaPesananPage,
+  })),
+);
+const MitrainapDaftarPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapDaftarPage').then((m) => ({
+    default: m.MitrainapDaftarPage,
+  })),
+);
+const MitrainapDaftarBerhasilPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapDaftarBerhasilPage').then((m) => ({
+    default: m.MitrainapDaftarBerhasilPage,
+  })),
+);
+// Situs properti publik (`<slug>.mitrainap.id`, MI-3) -- di luar
+// `MitrainapLayout` sengaja, pola sama dengan `SitusPondokPage`/
+// `/santri/pondok` (subdomain penyewa bukan halaman portal platform).
+const MitrainapPropertiSitusPage = lazy(() =>
+  import('../verticals/hospitality/MitrainapPesanPage').then((m) => ({
+    default: m.MitrainapPropertiSitusPage,
+  })),
+);
+
 /**
  * Apa yang dilihat pengunjung di akar situs, menurut alamat yang ia ketik.
  *
@@ -432,6 +498,15 @@ function AkarMenurutHost() {
    */
   if (isSantriPortalHost()) return <Navigate to="/santri" replace />;
   if (slugPondokDariHost()) return <Navigate to="/santri/pondok" replace />;
+  /*
+   * Tiga cabang untuk mitrainap.id (MI-3), urutannya penting sama seperti
+   * santri.info di atas: `demo.mitrainap.id` adalah SANDBOX (bukan portal,
+   * bukan properti), apex adalah PORTAL, dan `<slug>.mitrainap.id` adalah
+   * SITUS PROPERTI.
+   */
+  if (isMitrainapDemoHost()) return <Navigate to="/demo" replace />;
+  if (isMitrainapPortalHost()) return <Navigate to="/mitrainap" replace />;
+  if (slugPropertiDariHost()) return <Navigate to="/mitrainap/properti" replace />;
   return <HomePage />;
 }
 
@@ -539,8 +614,38 @@ export function App() {
           */}
           <Route path="masuk" element={<LoginPage />} />
         </Route>
+
+        {/* Portal MitraInap.id (Hospitality) */}
+        <Route path="/mitrainap" element={<MitrainapLayout />}>
+          <Route index element={<MitrainapHomePage />} />
+          <Route path="solusi" element={<MitrainapSolusiPage />} />
+          <Route path="faq" element={<MitrainapFaqPage />} />
+          <Route path="harga" element={<MitrainapPricingPage />} />
+          <Route path="demo" element={<MitrainapDemoPage />} />
+          <Route path="blog" element={<MitrainapBlogPage />} />
+          <Route path="bantuan" element={<MitrainapHelpPage />} />
+          {/* Pendaftaran properti sungguhan (MI-3) -- lihat komentar di berkasnya. */}
+          <Route path="daftar" element={<MitrainapDaftarPage />} />
+          <Route path="daftar/berhasil" element={<MitrainapDaftarBerhasilPage />} />
+          {/*
+            Masuk BERBEDA dari `/masuk` global: `LoginPage` yang sama, dibungkus
+            `MitrainapLayout` alih-alih `PublicLayout` supaya pengunjung
+            mitrainap.id tidak berpindah merek saat menekan "Masuk".
+          */}
+          <Route path="masuk" element={<LoginPage />} />
+        </Route>
         {/* Di luar kerangka portal: subdomain pondok bukan halaman platform. */}
         <Route path="/santri/pondok" element={<SitusPondokPage />} />
+        {/*
+          Situs properti publik (`<slug>.mitrainap.id`, MI-3) -- di luar
+          `MitrainapLayout` dengan alasan yang sama persis dengan
+          `/santri/pondok` di atas: subdomain penyewa bukan halaman portal
+          platform (tautan "Daftarkan Properti"/"Coba Demo" di sana tidak
+          relevan bagi pengunjung yang sudah berada di situs properti
+          seorang PELANGGAN).
+        */}
+        <Route path="/mitrainap/properti" element={<MitrainapPropertiSitusPage />} />
+        <Route path="/mitrainap/properti/kelola-pesanan" element={<MitrainapKelolaPesananPage />} />
         {/*
           Formulir PSB dibungkus PondokChrome (nama/logo pondok di header,
           bukan bingkai kosong) -- rute ini hanya pernah dicapai lewat
@@ -788,6 +893,21 @@ export function App() {
           <Route path="pesantren/unit-pendidikan" element={<PesantrenUnitPendidikanPage />} />
           <Route path="pesantren/santri" element={<PesantrenSantriPage />} />
           <Route path="pesantren/asrama" element={<PesantrenAsramaPage />} />
+          <Route path="hospitality/properti" element={<HospitalityPropertiPage />} />
+          <Route path="hospitality/tamu" element={<HospitalityTamuPage />} />
+          <Route path="hospitality/reservasi" element={<HospitalityReservasiPage />} />
+          <Route path="hospitality/frontdesk" element={<HospitalityFrontdeskPage />} />
+          <Route path="hospitality/housekeeping" element={<HospitalityHousekeepingPage />} />
+          <Route path="hospitality/maintenance" element={<HospitalityMaintenancePage />} />
+          <Route path="hospitality/folio" element={<HospitalityFolioPage />} />
+          <Route path="hospitality/night-audit" element={<HospitalityNightAuditPage />} />
+          <Route path="hospitality/mice" element={<HospitalityMicePage />} />
+          <Route path="hospitality/guest-service" element={<HospitalityGuestServicePage />} />
+          <Route path="hospitality/longstay" element={<HospitalityLongstayPage />} />
+          <Route path="hospitality/experience" element={<HospitalityExperiencePage />} />
+          <Route path="hospitality/erp" element={<HospitalityErpPage />} />
+          <Route path="hospitality/insight" element={<HospitalityInsightPage />} />
+          <Route path="hospitality/go-live" element={<HospitalityGoLivePage />} />
           <Route path="pesantren/tagihan" element={<PesantrenTagihanPage />} />
           <Route path="pesantren/profil" element={<PesantrenProfilPage />} />
           <Route path="pesantren/berita" element={<PesantrenBeritaPage />} />

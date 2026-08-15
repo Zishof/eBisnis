@@ -171,6 +171,39 @@ export const KATALOG_PORTAL: PortalKatalog[] = [
     ],
   },
   {
+    /*
+     * MitraInap.id -- vertical baru (HOSPITALITY), bukan modul tambahan pada
+     * vertical yang sudah ada. §8.1 perintah master MitraInap V14 menetapkan
+     * kode portal, kode vertical, dan host apex/app persis seperti di bawah.
+     *
+     * `demo.mitrainap.id` (MI-3): didaftarkan sebagai domain portal supaya
+     * `resolveDemoSchema()` (auth.service.ts) mencocokkannya ke `demoSchema`
+     * di bawah -- persis mekanisme yang sudah dipakai `ponpes_demo` untuk
+     * santri.info, TIDAK ditulis ulang. Tenant `mitrainap_demo` sendiri
+     * disiapkan `deploy/ensure-demo-mitrainap.sh` (pola sama dengan
+     * `ensure-demo-pesantren.sh`) lewat endpoint pendaftaran publik yang
+     * sama yang dipakai penyewa sungguhan -- bukan jalur/skema khusus.
+     */
+    code: 'MITRAINAP',
+    name: 'MitraInap.id',
+    tagline: 'PMS, booking engine, dan operasional hotel/properti dalam satu platform.',
+    verticalCode: 'HOSPITALITY',
+    brandPrimary: '#1E1B4B',
+    brandAccent: '#4F46E5',
+    sortOrder: 7,
+    crossLinkDescription: 'PMS, Booking Engine, Front Office, Housekeeping',
+    domains: [
+      { host: 'mitrainap.id', kind: 'PUBLIC', isCanonical: true },
+      { host: 'www.mitrainap.id', kind: 'PUBLIC', isCanonical: false },
+      { host: 'app.mitrainap.id', kind: 'APP', isCanonical: true },
+      { host: 'demo.mitrainap.id', kind: 'PUBLIC', isCanonical: false },
+    ],
+    demoSchema: 'mitrainap_demo',
+    // String literal, bukan impor -- alasan sama dengan `demoDefaultRole:
+    // 'EPESANTREN_ADMIN'` pada entri SANTRI_INFO di atas.
+    demoDefaultRole: 'HOSPITALITY_ADMIN',
+  },
+  {
     code: 'EKOPERASI',
     name: 'eKoperasi.id',
     tagline: 'Keanggotaan, simpan pinjam, RAT, dan SHU.',

@@ -352,6 +352,23 @@ log "2/10  Backup database"
 ADMIN_URL=$(grep -E '^DATABASE_ADMIN_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
 [[ -n "$ADMIN_URL" ]] || die "DATABASE_ADMIN_URL tidak ada pada $ENV_FILE."
 
+# Prisma multi-schema menyimpan histori migration di schema `platform`. URL
+# tanpa `?schema=platform` dapat terhubung ke database tetapi gagal saat
+# inisialisasi persistence migration. Fail-fast sebelum backup/build panjang,
+# dan jangan pernah mencetak URL yang dapat memuat password.
+DATABASE_URL_VALUE=$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
+DIRECT_DATABASE_URL_VALUE=$(grep -E '^DIRECT_DATABASE_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
+for DB_URL_LABEL in DATABASE_URL DIRECT_DATABASE_URL DATABASE_ADMIN_URL; do
+  case "$DB_URL_LABEL" in
+    DATABASE_URL) DB_URL_VALUE=$DATABASE_URL_VALUE ;;
+    DIRECT_DATABASE_URL) DB_URL_VALUE=$DIRECT_DATABASE_URL_VALUE ;;
+    DATABASE_ADMIN_URL) DB_URL_VALUE=$ADMIN_URL ;;
+  esac
+  [[ -n "$DB_URL_VALUE" ]] || die "$DB_URL_LABEL tidak ada pada $ENV_FILE."
+  [[ "$DB_URL_VALUE" =~ [\?\&]schema=platform([\&]|$) ]] \
+    || die "$DB_URL_LABEL wajib memuat parameter schema=platform. Nilai aktual disembunyikan."
+done
+
 install -d -m 700 "$BACKUP_DIR"
 STAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/ebisnis-$STAMP.dump"
@@ -520,6 +537,7 @@ if ! as_app "git -C '$APP_DIR' merge-base --is-ancestor '$MIGRATION_BASE' HEAD";
   rollback
 fi
 as_app "cd '$APP_DIR' && node scripts/ci/verify-migrations.mjs '$MIGRATION_BASE'" || rollback
+as_app "cd '$APP_DIR' && node scripts/ci/verify-mitrainap-release.mjs" || rollback
 
 if [[ "${SKIP_RELEASE_TESTS:-0}" == "1" ]]; then
   warn "SKIP_RELEASE_TESTS=1 — lint dan unit test dilewati atas permintaan eksplisit."
@@ -602,14 +620,14 @@ as_app "cd '$APP_DIR' && pnpm seed:verify" || warn "Verifikasi seed melaporkan m
 # ---------------------------------------------------------------------------
 log "7-9/10  Onboarding sandbox/pelanggan contoh (latar belakang)"
 # ---------------------------------------------------------------------------
-# Ketiga proses ini (ePesantren, Raudlatul Ulum, CMN Inventory) TIDAK PERNAH
+# Keempat proses ini (ePesantren, MitraInap, Raudlatul Ulum, CMN Inventory) TIDAK PERNAH
 # menggagalkan deploy (lihat masing-masing `|| warn` di bawah) dan tidak ada
 # langkah sesudahnya -- termasuk Apache pada "10/10" -- yang bergantung pada
-# hasilnya. Karena itu ketiganya dijalankan paralel satu sama lain DAN paralel
+# hasilnya. Karena itu keempatnya dijalankan paralel satu sama lain DAN paralel
 # dengan Apache, bukan berurutan; hasilnya baru ditunggu tepat sebelum
 # `DEPLOY_STAMP` ditulis, supaya skrip tidak keluar sementara mereka masih
 # berjalan. Beda dengan backup pada "1/10": tidak ada satu pun langkah wajib
-# yang menunggu ketiganya, jadi tidak perlu titik `wait` di tengah.
+# yang menunggu keempatnya, jadi tidak perlu titik `wait` di tengah.
 #
 # `${PSQL:-psql}` sebab `$PSQL` hanya diisi di dalam langkah backup, dan tidak
 # ada sama sekali bila dipanggil dengan SKIP_DB_BACKUP=1.
@@ -621,12 +639,29 @@ APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:
 PESANTREN_PID=$!
 
 # shellcheck disable=SC2097,SC2098
+# Mendaftarkan mitrainap_demo (bila belum ada) lewat alur publik yang sama
+# dengan pendaftar asli -- lihat deploy/ensure-demo-mitrainap.sh (MI-3)
+# untuk jaminan idempotensinya. Kegagalan di sini tidak pernah menggagalkan
+# deploy.
+APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:-psql}" \
+  bash "$APP_DIR/deploy/ensure-demo-mitrainap.sh" >/tmp/ensure-demo-mitrainap.log 2>&1 &
+MITRAINAP_PID=$!
+
+# Mendaftarkan raudlatul-ulum.santri.info (bila belum ada) lewat alur publik
+# yang sama dengan pendaftar asli, lalu menyiapkan profil situs, unit
+# pendidikan, mata pelajaran, tagihan percobaan, dan akun staf -- lihat
+# deploy/onboard-raudlatul-ulum.sh untuk jaminan idempotensinya. BERBEDA dari
+# sandbox demo di atas: ini pelanggan sungguhan, bukan tenant bersama.
+# Kegagalan di sini tidak pernah menggagalkan deploy.
 APP_DIR="$APP_DIR" APP_USER="$APP_USER" ADMIN_URL="$ADMIN_URL" PSQL_BIN="${PSQL:-psql}" \
   bash "$APP_DIR/deploy/onboard-raudlatul-ulum.sh" >/tmp/onboard-raudlatul-ulum.log 2>&1 &
 RAUDLATUL_PID=$!
 
 # Penyalinan DBF tetap sinkron (cepat, lokal) sebab skrip onboarding di
 # bawahnya butuh berkasnya sudah di tempat sebelum ia mulai.
+# Membuat schema `cmnmedika_inventory`, akun pemilik/sales/admin, domain
+# cmnmedika-inventory.ebisnis.id, serta impor DBF legacy bila foldernya tersedia.
+# Kegagalan di sini tidak menggagalkan deploy utama.
 CMN_BUNDLED_IMPORT_DIR="$APP_DIR/deploy/imports/cmn-inventory"
 CMN_IMPORT_DIR=/opt/ebisnis/imports/cmn-inventory
 if [[ -d "$CMN_BUNDLED_IMPORT_DIR" ]]; then
@@ -672,12 +707,13 @@ rm -f "$APACHE_ROLLBACK_DIR"/ebisnis-app.inc \
 rmdir "$APACHE_ROLLBACK_DIR"
 APACHE_ROLLBACK_DIR=
 
-# Ketiganya sudah berjalan sejak "7-9/10", tumpang tindih dengan Apache di
+# Keempatnya sudah berjalan sejak "7-9/10", tumpang tindih dengan Apache di
 # atas. Ditunggu di sini -- bukan di tengah -- karena tidak ada langkah wajib
 # yang bergantung padanya; ini semata memastikan skrip tidak keluar sementara
 # proses latar belakang masih berjalan, bukan gerbang keberhasilan deploy.
 for entry in \
   "Sandbox demo ePesantren:$PESANTREN_PID:/tmp/ensure-demo-pesantren.log" \
+  "Sandbox demo MitraInap:$MITRAINAP_PID:/tmp/ensure-demo-mitrainap.log" \
   "Pelanggan Raudlatul Ulum:$RAUDLATUL_PID:/tmp/onboard-raudlatul-ulum.log" \
   "Pelanggan CMN Inventory:$CMN_PID:/tmp/onboard-cmn-inventory.log"; do
   nama=${entry%%:*}

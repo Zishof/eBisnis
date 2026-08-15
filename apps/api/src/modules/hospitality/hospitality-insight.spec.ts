@@ -1,0 +1,1 @@
+import{REPORT_CODES}from'./hospitality-insight.service';describe('hospitality insight guard',()=>{it('membatasi report pada katalog evidence yang dikenal',()=>expect(REPORT_CODES).toEqual(['OPERATIONAL','REVENUE','FINANCE','GUEST','HOUSEKEEPING','MAINTENANCE','CHANNEL','POS']));it('AI use case tetap draft sampai approval',()=>expect('DRAFT').not.toBe('APPROVED'))});

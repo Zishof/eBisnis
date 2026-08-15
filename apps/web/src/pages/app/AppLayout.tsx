@@ -10,6 +10,7 @@ import { useAuth } from '../../app/auth-context';
 import { useTheme } from '../../app/theme-context';
 import { SUPPORTED_LOCALES } from '../../i18n';
 import { emedikPublicBrandFor, isApotikHost } from '../public/emedik-host';
+import { isMitrainapAppHost } from '../../verticals/hospitality/mitrainap-host';
 
 export interface MenuNode {
   id: string;
@@ -44,10 +45,13 @@ export function AppLayout() {
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [query, setQuery] = useState('');
   const emedikBrand = emedikPublicBrandFor();
-  const appBrand = {
-    logoText: emedikBrand?.logoText ?? 'eB',
-    name: emedikBrand?.name ?? 'eBisnis.id',
-  };
+  const mitrainapAppHost = isMitrainapAppHost();
+  const appBrand = mitrainapAppHost
+    ? { logoText: 'in', name: 'MitraInap.id' }
+    : {
+        logoText: emedikBrand?.logoText ?? 'eB',
+        name: emedikBrand?.name ?? 'eBisnis.id',
+      };
 
   const menus = useMenuTree();
   const visibleMenus = useMemo(

@@ -517,6 +517,11 @@ export class PublicSiteService {
       .filter((plan) => plan.versions.length > 0)
       .map((plan) => {
         const version = plan.versions[0];
+        const planMetadata = plan.metadata as {
+          description?: string;
+          priceStatus?: string;
+          cta?: string;
+        } | null;
         const monthly = version.prices.find(
           (p) => p.billingInterval === 'MONTH' && p.intervalCount === 1,
         );
@@ -525,7 +530,9 @@ export class PublicSiteService {
           name: plan.name,
           nameKey: plan.nameKey,
           descriptionKey: plan.descriptionKey,
-          description: (plan.metadata as { description?: string } | null)?.description ?? null,
+          description: planMetadata?.description ?? null,
+          priceStatus: planMetadata?.priceStatus ?? (monthly ? 'CONFIGURED' : 'PRICE_CONFIGURATION_REQUIRED'),
+          cta: planMetadata?.cta ?? (monthly ? null : 'REQUEST_QUOTE'),
           isRecommended: plan.isRecommended,
           sortOrder: plan.sortOrder,
           versionNumber: version.versionNumber,

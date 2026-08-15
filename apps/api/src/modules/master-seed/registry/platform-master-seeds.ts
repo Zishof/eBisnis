@@ -214,6 +214,37 @@ export const EPESANTREN_PRODUCT_CODE = 'EPESANTREN';
 export const ESCHOOL_PRODUCT_CODE = 'ESCHOOL';
 export const ECAMPUS_PRODUCT_CODE = 'ECAMPUS';
 
+/** MI-4: katalog MitraInap hanya memuat capability yang sudah punya implementasi nyata. */
+export const HOSPITALITY_PRODUCT_CODE = 'MITRAINAP';
+export const HOSPITALITY_MODULE_CATALOG_SEED = [
+  { code: 'HOSPITALITY_FOUNDATION', name: 'Fondasi MitraInap', category: 'CORE' as const, icon: 'building-2', sortOrder: 300 },
+  { code: 'HOSPITALITY_SITE_BOOKING', name: 'Website dan Direct Booking', category: 'OPERATIONS' as const, icon: 'globe-2', dependsOn: ['HOSPITALITY_FOUNDATION'], sortOrder: 301 },
+  { code: 'HOSPITALITY_INVENTORY', name: 'Kamar dan Ketersediaan', category: 'OPERATIONS' as const, icon: 'bed-double', dependsOn: ['HOSPITALITY_FOUNDATION'], sortOrder: 302 },
+  { code: 'HOSPITALITY_GUEST_CRM', name: 'Guest CRM dan Privasi', category: 'OPERATIONS' as const, icon: 'users-round', dependsOn: ['HOSPITALITY_FOUNDATION'], sortOrder: 303 },
+  { code: 'HOSPITALITY_RESERVATION', name: 'Reservasi dan CRS', category: 'OPERATIONS' as const, icon: 'calendar-range', dependsOn: ['HOSPITALITY_INVENTORY', 'HOSPITALITY_GUEST_CRM'], sortOrder: 304 },
+  { code: 'HOSPITALITY_REVENUE', name: 'Rate dan Revenue', category: 'OPERATIONS' as const, icon: 'chart-no-axes-combined', dependsOn: ['HOSPITALITY_INVENTORY'], sortOrder: 305 },
+  { code: 'HOSPITALITY_CHANNEL', name: 'Channel dan Distribution', category: 'OPERATIONS' as const, icon: 'waypoints', dependsOn: ['HOSPITALITY_RESERVATION', 'HOSPITALITY_REVENUE'], sortOrder: 306 },
+];
+
+export const HOSPITALITY_FEATURE_CATALOG_SEED = [
+  { code: 'HOSPITALITY_MULTI_PROPERTY', moduleCode: 'HOSPITALITY_FOUNDATION', name: 'Multi-property', featureType: 'LIMIT' as const, unit: 'property', sortOrder: 300 },
+  { code: 'HOSPITALITY_BOOKING_ENGINE', moduleCode: 'HOSPITALITY_SITE_BOOKING', name: 'Direct booking engine', featureType: 'BOOLEAN' as const, sortOrder: 301 },
+  { code: 'HOSPITALITY_CHANNEL_CONNECTIONS', moduleCode: 'HOSPITALITY_CHANNEL', name: 'Koneksi channel', featureType: 'LIMIT' as const, unit: 'connection', sortOrder: 302 },
+  { code: 'HOSPITALITY_SELLABLE_UNITS', moduleCode: 'HOSPITALITY_INVENTORY', name: 'Unit dapat dijual', featureType: 'LIMIT' as const, unit: 'unit', sortOrder: 303 },
+];
+
+/** Tidak memiliki unitPrice: keputusan komersial belum tersedia. */
+export const HOSPITALITY_PLAN_SEED = {
+  code: 'MITRAINAP_CONSULTATION',
+  name: 'MitraInap — Konsultasi',
+  description: 'Paket disusun sesuai jumlah properti, unit, dan modul. Hubungi tim untuk penawaran.',
+  priceStatus: 'PRICE_CONFIGURATION_REQUIRED' as const,
+  isRecommended: true,
+  sortOrder: 20,
+  modules: HOSPITALITY_MODULE_CATALOG_SEED.map((module) => ({ code: module.code, scope: 'TENANT_WIDE' as const })),
+  features: HOSPITALITY_FEATURE_CATALOG_SEED.map((feature) => feature.code),
+};
+
 /**
  * Paket awal santri.info.
  *

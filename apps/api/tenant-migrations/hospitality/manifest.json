@@ -1,0 +1,80 @@
+{
+  "$comment": "Manifest migrasi modul Hospitality (MitraInap.id, MI-5+). Ditemukan otomatis oleh TenantMigrationService.discoverModuleManifests() -- setiap tenant baru maupun yang sudah ada menerima tabel ini lewat 'pnpm migrate:tenants', terlepas dari vertikal yang dipakainya. Belum ada tenant hospitality sungguhan on-board -- migrasi ini disiapkan lebih dulu supaya provisioning tenant pertama tidak menunggu langkah manual.",
+  "module": "hospitality",
+  "schemaVersion": 1,
+  "dependsOn": [
+    "core"
+  ],
+  "migrations": [
+    {
+      "id": "20260806T060000__hospitality__foundation",
+      "file": "20260806T060000__hospitality__foundation.sql",
+      "name": "Fondasi Hospitality: properti, tipe kamar, dan kamar",
+      "description": "hospitality_property, hospitality_room_type, hospitality_room. Prasyarat mutlak seluruh modul hospitality lain (MI-6 ketersediaan, MI-8 reservasi, MI-12 front office, dst). Sengaja HANYA properti/tipe kamar/kamar -- portofolio/badan hukum/gedung/lantai/zona penuh BRD ditunda sampai tenant multi-properti sungguhan on-board (MISSING, lihat komentar migrasi). Kode properti unik per penyewa, kode tipe kamar dan nomor kamar unik per properti, ditegakkan indeks unik parsial."
+    },
+    {
+      "id": "20260806T090000__hospitality__inventory_availability",
+      "file": "20260806T090000__hospitality__inventory_availability.sql",
+      "name": "MI-6: Room Inventory dan Availability",
+      "description": "hospitality_room_block (ledger pengecualian ketersediaan per kamar per malam, BLOCKED/OUT_OF_ORDER/OUT_OF_SERVICE), overbooking_limit pada hospitality_room_type, features pada hospitality_room. UNIQUE (room_id, stay_date) adalah penjaga kondisi pacu sesungguhnya -- dua blokir bersamaan untuk kamar+tanggal yang sama tidak menghasilkan baris ganda, ditegakkan lewat ON CONFLICT DO UPDATE di sisi layanan, diuji dengan permintaan bersamaan sungguhan terhadap basis data nyata (lihat docs/changelog/hospitality.md)."
+    },
+    {
+      "id": "20260806T120000__hospitality__guest_crm",
+      "file": "20260806T120000__hospitality__guest_crm.sql",
+      "name": "MI-7: Guest Identity, CRM, Consent, Privacy",
+      "description": "hospitality_guest (profil tunggal tamu -- identitas, kontak, alamat, preferensi, consent pemasaran, do-not-rent, merged_into_id untuk penggabungan) dan hospitality_guest_privacy_request (catatan permintaan ekspor/penghapusan data). Indeks unik parsial pada (identifier_type, identifier_number) adalah penjaga duplikat keras; kemiripan nama/telepon tanpa nomor identitas sama diperiksa di sisi layanan, bukan basis data. Companion/relationship dan tautan perusahaan/travel agent SENGAJA belum ada -- menyusul MI-18 (grup/korporat) begitu ada pemakainya."
+    },
+    {
+      "id": "20260806T150000__hospitality__reservation",
+      "file": "20260806T150000__hospitality__reservation.sql",
+      "name": "MI-8: Reservation dan CRS",
+      "description": "hospitality_reservation (kepala reservasi -- tamu, sumber, segmen pasar, status HOLD/CONFIRMED/CANCELLED/NO_SHOW, idempotency_key unik) dan hospitality_reservation_room_stay (satu baris per kamar per reservasi -- room_id nullable, ditunjuk belakangan oleh front office MI-12; rate_snapshot dan restriction_snapshot JSONB WAJIB, tidak pernah berubah sesudah dibuat). Kondisi pacu kapasitas tipe kamar ditegakkan SELECT ... FOR UPDATE pada baris room_type di dalam transaksi yang sama dengan penghitungan dan penulisan (bukan indeks unik -- yang dijaga adalah HITUNGAN lintas baris), diuji dengan permintaan bersamaan sungguhan (lihat docs/changelog/hospitality.md). Kunci optimistik (version) ditegakkan sungguhan pada seluruh transisi status. Waitlist SENGAJA belum ada -- alur kerja terpisah di luar siklus hidup inti fase ini."
+    },
+    {
+      "id": "20260806T180000__hospitality__booking_engine",
+      "file": "20260806T180000__hospitality__booking_engine.sql",
+      "name": "MI-9: Direct Booking Engine",
+      "description": "published_rate_amount pada hospitality_room_type -- satu tarif per malam yang dipublikasikan staf secara manual (MI-10 rate plan belum ada), NULL berarti tipe kamar tidak muncul di pencarian publik. Setelah MI-3, booking engine menentukan tenant dan properti hanya dari host terverifikasi; nama schema tidak pernah diterima dari URL atau body."
+    },
+    {
+      "id": "20260806T210000__hospitality__rate_management",
+      "file": "20260806T210000__hospitality__rate_management.sql",
+      "name": "MI-10: Rate, Restriction, dan Revenue Management",
+      "description": "hospitality_rate_plan (rencana harga bernama per tipe kamar) dan hospitality_rate_calendar (harga + MinLOS/MaxLOS/CTA/CTD/stop-sell, satu baris per rate plan per malam, status DRAFT/PUBLISHED -- booking engine publik MI-9 HANYA membaca PUBLISHED). Menggantikan published_rate_amount MI-9 sebagai sumber harga sesungguhnya bila rate plan tersedia, jatuh ke published_rate_amount bila tidak (kompatibel mundur). BAR/derived rate otomatis, pickup/pace/forecast, dan rekomendasi SENGAJA belum ada -- lihat komentar migrasi."
+    },
+    {
+      "id": "20260807T000000__hospitality__channel_distribution",
+      "file": "20260807T000000__hospitality__channel_distribution.sql",
+      "name": "MI-11: Channel Manager dan Distribution",
+      "description": "Provider-neutral channel account dan property/room/rate mapping, canonical ARI/reservation delivery queue dengan idempotency, retry/dead-letter, payload hash dan sanitized raw message, serta reconciliation exception queue. Live OTA/GDS adapter tetap BLOCKED_PROVIDER_INPUT sampai dokumentasi dan credential provider tersedia; contract dan deterministic test double tersedia di hospitality-channel.ts."
+    },
+    {
+      "id": "20260807T030000__hospitality__front_office",
+      "file": "20260807T030000__hospitality__front_office.sql",
+      "name": "MI-12: Front Office dan Guest Stay",
+      "description": "Lifecycle operasional guest stay terpisah dari booking, pre-arrival, room assignment, transactional check-in/out idempotent, provider-neutral physical/digital key issuance, immutable room move, walk/overbooking exception, dan shift handover."
+    },
+    {
+      "id": "20260807T060000__hospitality__housekeeping",
+      "file": "20260807T060000__hospitality__housekeeping.sql",
+      "name": "MI-13: Housekeeping, Linen, Minibar, Lost-and-Found",
+      "description": "Room operational state, supervisor/mobile task lifecycle dengan offline client-operation idempotency, inspection/rework, linen/laundry movements, minibar posting outbox, serta immutable lost-and-found custody chain."
+    },
+    {
+      "id": "20260807T090000__hospitality__maintenance",
+      "file": "20260807T090000__hospitality__maintenance.sql",
+      "name": "MI-14: Maintenance, Asset, dan Room Downtime",
+      "description": "Engineering work-order/SLA/mobile events, asset links ke shared product/supplier, preventive plans, inventory issue outbox, dan approved OOO/OOS closure yang menulis availability block serta memerlukan verifikasi sebelum release."
+    },
+    {"id":"20260807T120000__hospitality__folio","file":"20260807T120000__hospitality__folio.sql","name":"MI-15: Folio, Cashiering, Payment, City Ledger","description":"Multi-window folio/routing, Decimal immutable postings and reversal, cashier shift, token-reference payment/deposit/refund, city ledger credit, source/accounting correlation, and immutable invoice snapshots."},
+    {"id":"20260807T150000__hospitality__night_audit","file":"20260807T150000__hospitality__night_audit.sql","name":"MI-16: Night Audit dan Income Audit","description":"Business date, resumable idempotent step execution, exception queue, immutable report snapshots, step-up protected final roll, and income-audit review."},
+    {"id":"20260807T180000__hospitality__pos_adapter","file":"20260807T180000__hospitality__pos_adapter.sql","name":"MI-17: POS Hospitality dan F&B","description":"Additive extension over shared POS for property/outlet context, room charge, meal entitlement, kitchen status, and accounting/stock outbox trace."},
+    {"id":"20260807T210000__hospitality__mice","file":"20260807T210000__hospitality__mice.sql","name":"MI-18: Group Corporate Allotment MICE Banquet","description":"Business accounts, negotiated rates, group blocks/allotment/pickup, rooming list, function-space calendar, events, BEO versions and billing instructions."},
+    {"id":"20260808T000000__hospitality__guest_service","file":"20260808T000000__hospitality__guest_service.sql","name":"MI-19: Guest Service Ancillary Reputation","description":"Guest request SLA board, concierge/transport/parking/activity/spa/parcel/visitor bookings, consent-bound journey communication, feedback and provider-neutral reputation contract."},
+    {"id":"20260808T030000__hospitality__longstay","file":"20260808T030000__hospitality__longstay.sql","name":"MI-20: Long Stay Rental Owner Management","description":"Configurable resident/unit terminology, rental lifecycle, move inspection, recurring rent/deposit, utility readings/charges, collection, owner contract/commission and immutable statement."},
+    {"id":"20260808T060000__hospitality__experience","file":"20260808T060000__hospitality__experience.sql","name":"MI-21: Guest Portal Staff Mobile Kiosk Digital Key IoT","description":"Privacy-bounded portal/kiosk sessions, idempotent offline mobile queue, and provider-neutral digital-key/IoT/kiosk contracts. Live provider calls remain blocked until verified contracts and credentials exist."},
+    {"id":"20260808T090000__hospitality__erp","file":"20260808T090000__hospitality__erp.sql","name":"MI-22: ERP Integration Accounting Events","description":"Canonical versioned domain/accounting events, provider-neutral ports, transactional delivery queue and reconciliation for inventory/procurement/finance/HR/assets/investor/workflow/marketplace."},
+    {"id":"20260808T120000__hospitality__insight","file":"20260808T120000__hospitality__insight.sql","name":"MI-23: Reporting AI Help Demo Observability","description":"Immutable report snapshots/exports, evidence-bound read-only AI drafts, contextual help/flowchart, resettable demo batch markers, notification outbox and observability/security dashboard events."},
+    {"id":"20260809T000000__hospitality__go_live_completion","file":"20260809T000000__hospitality__go_live_completion.sql","name":"MI-2/3/5-11: Go-live functional completion","description":"CMS publication records; legal entity/portfolio/brand/building/floor/zone and active context; sellable room/unit/bed hierarchy; stay-date inventory ledger and allotment; guest relationship/loyalty; quote/waitlist; provider-neutral booking payment/recovery; revenue forecast/recommendation approval; and channel worker attempt/parity evidence. External providers remain fail-closed until verified credentials exist."}
+  ]
+}
