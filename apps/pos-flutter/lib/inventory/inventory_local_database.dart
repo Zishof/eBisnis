@@ -6,6 +6,8 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'antrean_luring.dart';
+
 part 'inventory_local_database.g.dart';
 
 class InventoryCacheEntries extends Table {
@@ -108,8 +110,13 @@ class InventoryLocalDatabase extends _$InventoryLocalDatabase {
     bool ignoreSchedule = false,
   }) {
     final now = DateTime.now().toUtc();
+    /*
+     * Hanya status yang memang layak diulang. `REJECTED` dan `CONFLICT` tidak
+     * pernah terambil lagi — itulah yang menghentikan satu penolakan meracuni
+     * seluruh antrean. Daftarnya di `antrean_luring.dart`.
+     */
     final query = select(inventoryOutboxItems)
-      ..where((table) => table.status.isIn(['PENDING', 'FAILED']));
+      ..where((table) => table.status.isIn(StatusAntrean.dapatDiulang));
     if (!ignoreSchedule) {
       query.where((table) => table.nextAttemptAt.isSmallerOrEqualValue(now));
     }
@@ -131,27 +138,39 @@ class InventoryLocalDatabase extends _$InventoryLocalDatabase {
     );
   }
 
-  Future<void> markFailed(InventoryOutboxItem item, Object error) async {
+  /// Mencatat kegagalan menurut keputusan `antrean_luring.dart`.
+  ///
+  /// `keputusan` menentukan statusnya: yang diulang tetap `FAILED` dengan jeda
+  /// menaik, yang ditolak peladen menjadi `REJECTED` dan tidak pernah diambil
+  /// lagi. Sebelumnya SEMUA kegagalan menjadi `FAILED` dan diulang selamanya —
+  /// termasuk penolakan yang jawabannya tidak akan pernah berubah.
+  Future<void> markFailed(
+    InventoryOutboxItem item,
+    Object error, {
+    KeputusanAntrean keputusan = KeputusanAntrean.ulangiNanti,
+  }) async {
     final attempts = item.attempts + 1;
-    final delayMinutes = attempts >= 6 ? 60 : 1 << attempts.clamp(0, 5);
     await (update(inventoryOutboxItems)
           ..where((table) => table.eventId.equals(item.eventId)))
         .write(
       InventoryOutboxItemsCompanion(
-        status: const Value('FAILED'),
+        status: Value(statusUntuk(keputusan)),
         attempts: Value(attempts),
         lastError: Value(error.toString()),
-        nextAttemptAt:
-            Value(DateTime.now().toUtc().add(Duration(minutes: delayMinutes))),
+        nextAttemptAt: Value(
+          DateTime.now().toUtc().add(Duration(minutes: jedaMenit(attempts))),
+        ),
       ),
     );
   }
 
   Future<int> pendingCount() async {
     final count = inventoryOutboxItems.eventId.count();
+    // Yang ditolak permanen bukan pekerjaan yang tertunda; menghitungnya akan
+    // menampilkan lencana "belum terkirim" yang tidak pernah bisa nol.
     final query = selectOnly(inventoryOutboxItems)
       ..addColumns([count])
-      ..where(inventoryOutboxItems.status.isIn(['PENDING', 'FAILED']));
+      ..where(inventoryOutboxItems.status.isIn(StatusAntrean.dapatDiulang));
     return (await query.map((row) => row.read(count) ?? 0).getSingle());
   }
 
