@@ -1,4 +1,4 @@
-# Indeks Serah-Terima - 11 Agustus 2026
+# Indeks Serah-Terima - 15 Agustus 2026
 
 Mulai dari berkas ini ketika repository dipindahkan ke komputer lain. Seluruh
 dokumen yang tercantum di bagian **Handoff aktif** sudah disimpan di Git dan
@@ -16,19 +16,19 @@ Baca sesuai bidang yang akan dilanjutkan:
 
 | Urutan | Bidang | Dokumen | Commit dokumen |
 | --- | --- | --- | --- |
-| 1 | **POS/Inventory 48 layar — handover aktif terbaru** | [`docs/session-notes/2026-08-11-handover-pos-inventory-48-layar.md`](docs/session-notes/2026-08-11-handover-pos-inventory-48-layar.md) | `00118111` |
-| 2 | Deskripsi pekerjaan POS/Inventory 11 Agustus 2026 | [`docs/session-notes/2026-08-11-deskripsi-pekerjaan-pos-inventory-48-layar.md`](docs/session-notes/2026-08-11-deskripsi-pekerjaan-pos-inventory-48-layar.md) | `00118111` |
-| 3 | eMedik dan POS Apotik | [`docs/emedik/HANDOVER-2026-08-10.md`](docs/emedik/HANDOVER-2026-08-10.md) | `64c60a4` |
-| 4 | POS/Inventory, CI/CD, rilis Flutter, dan perbaikan integritas (historis 10 Agustus) | [`docs/session-notes/2026-08-10-ringkasan-sesi.md`](docs/session-notes/2026-08-10-ringkasan-sesi.md) | `ea03c91` |
-| 5 | POS Apotek dan paritas 48 layar (historis 10 Agustus) | [`docs/session-notes/2026-08-10-handover-final-pos-apotek-48-layar.md`](docs/session-notes/2026-08-10-handover-final-pos-apotek-48-layar.md) | handover final 10 Agustus |
-| 6 | ePesantren, eSchool, dan Education Core | [`docs/santri-info/21-session-handoff-2026-08-10.md`](docs/santri-info/21-session-handoff-2026-08-10.md) | `aef9c93` |
-| 7 | POS/Inventory dan ekosistem lintas vertikal | [`docs/pos-web-priority/18-serah-terima-claude-2026-08-10.md`](docs/pos-web-priority/18-serah-terima-claude-2026-08-10.md) | `9634dfb` |
-| 8 | POS/Inventory untuk kendali jarak jauh (historis) | [`docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md`](docs/pos-web-priority/20-serah-terima-remote-pos-inventory.md) | serah-terima remote |
+| 1 | **Migrasi seluruh eBisnis ke AIS Java/JSP `/ebisnis/*`** | [`docs/migration/2026-08-15-handover-migrasi-ebisnis-ke-ais-servlet-jsp.md`](docs/migration/2026-08-15-handover-migrasi-ebisnis-ke-ais-servlet-jsp.md) | commit yang memuat handover ini |
+| 2 | Penjelasan lengkap website dan modul eBisnis | [`docs/migration/2026-08-15-penjelasan-lengkap-website-ebisnis.md`](docs/migration/2026-08-15-penjelasan-lengkap-website-ebisnis.md) | commit yang memuat handover ini |
+| 3 | POS/Inventory 48 layar | [`docs/session-notes/2026-08-11-handover-pos-inventory-48-layar.md`](docs/session-notes/2026-08-11-handover-pos-inventory-48-layar.md) | `00118111` |
+| 4 | Deskripsi pekerjaan POS/Inventory 11 Agustus 2026 | [`docs/session-notes/2026-08-11-deskripsi-pekerjaan-pos-inventory-48-layar.md`](docs/session-notes/2026-08-11-deskripsi-pekerjaan-pos-inventory-48-layar.md) | `00118111` |
+| 5 | eMedik dan POS Apotik | [`docs/emedik/HANDOVER-2026-08-10.md`](docs/emedik/HANDOVER-2026-08-10.md) | `64c60a4` |
+| 6 | POS/Inventory, CI/CD, rilis Flutter, dan perbaikan integritas (historis 10 Agustus) | [`docs/session-notes/2026-08-10-ringkasan-sesi.md`](docs/session-notes/2026-08-10-ringkasan-sesi.md) | `ea03c91` |
+| 7 | ePesantren, eSchool, dan Education Core | [`docs/santri-info/21-session-handoff-2026-08-10.md`](docs/santri-info/21-session-handoff-2026-08-10.md) | `aef9c93` |
+| 8 | POS/Inventory dan ekosistem lintas vertikal | [`docs/pos-web-priority/18-serah-terima-claude-2026-08-10.md`](docs/pos-web-priority/18-serah-terima-claude-2026-08-10.md) | `9634dfb` |
 
-Untuk melanjutkan POS/Inventory, selalu mulai dari dokumen nomor 1. Dokumen itu
-memuat keadaan source dan release 0.1.35, langkah clone, baseline test, deploy,
-gap yang masih terbuka, serta batas klaim UAT. Dokumen nomor 2 mencatat rincian
-pekerjaan yang telah dilaksanakan.
+Untuk migrasi ke AIS, mulai dari dokumen nomor 1 lalu nomor 2. Keduanya memuat
+arsitektur eBisnis, route target `/ebisnis/*`, temuan existing AIS, urutan fase,
+batas kompatibilitas Flutter/API, dan larangan terhadap worktree AIS yang belum
+bersih. Untuk POS/Inventory secara khusus, lanjutkan dengan dokumen nomor 3.
 
 Dokumen historis lainnya tetap saling melengkapi. Dokumen eMedik mencakup domain,
 landing, storefront tenant, UI klinis, POS Apotik Web/Windows/Android, manual,
